@@ -43,12 +43,7 @@
         {% set enctype = '' %}
     {% endif %}
 
-    <form action="" method="{{ method }}" enctype="{{ enctype }}" class="ui form {{ extra_classes }}
-        {% if form.errors or flashes['error'] %} error
-        {% elif flashes['warning'] %} warning
-        {% elif flashes['info'] %} info
-        {% elif flashes['success'] %} success
-        {% endif %}">
+    <form action="" method="{{ method }}" enctype="{{ enctype }}" class="row g-2" style="padding: 10px;">
     {{ form.hidden_tag() }}
 {% endmacro %}
 
@@ -109,14 +104,14 @@
     {% if field.type == 'Radio Field' %}
         {% set extra_classes = extra_classes + ' grouped fields' %}
     {% endif %}
-    <div class="field {% if field.errors %}error{% endif %} {{ extra_classes }}">
+    <!-- <div class="field {% if field.errors %}error{% endif %} {{ extra_classes }}"> -->
         {{ render_form_input(field) }}
         {% if field.errors %}
             <div class="ui red pointing label">
                 {{ field.errors[0] | safe }}
             </div>
         {% endif %}
-    </div>
+    <!-- </div> -->
 {% endmacro %}
 
 {% macro render_form_input(field) %}
@@ -134,18 +129,36 @@
             </div>
         {% endfor %}
     {% elif field.type == 'SubmitField' %}
-        {{ field(class='ui button') }}
+        <div>
+            {{ field(class='btn btn-primary') }}
+        </div>
     {% elif field.type == 'FormField' %}
         {{ render_form(field) }}
     {% elif field.type == 'CustomSelectField' %}
         {{ render_custom_select(field) }}
-    {% else %}
-        {{ field.label }}
+    {% elif field.type == 'EmailField' %}
+        <div class="col-md-12">
+            <div>
+                {{field.label}}
+            </div>
+            {{ field(placeholder=field.label.text) }}
+        </div>
         {% if field.description %}
             <div class="ui pointing below label">
                 {{ field.description }}
             </div>
         {% endif %}
-        {{ field(placeholder=field.label.text) }}
+    {% else %}
+        <div class="col-md-6">
+            <div>
+                {{field.label}}
+            </div>
+            {{ field(placeholder=field.label.text) }}
+        </div>
+        {% if field.description %}
+            <div class="ui pointing below label">
+                {{ field.description }}
+            </div>
+        {% endif %}
     {% endif %}
 {% endmacro %}
