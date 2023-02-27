@@ -1,68 +1,49 @@
 <!-- 
     Author: David Cruciani
 -->
+{% extends 'base.html' %}
 {% import 'macros/form_macros.html' as f %}
 {% import 'macros/check_password.html' as check %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>Typo-Squatting</title>
+
+{% block content %}
+    <div id="container">
+        <div class="ui grid container">
+            <div class="eight wide computer sixteen wide mobile centered column">
+                <h2 class="ui dividing header">Create an account</h2>
     
-        <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/sidebar.css') }}">
-        <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='bootstrap-5.3.0/css/bootstrap.min.css') }}">
-        <script src="{{ url_for('static',filename='bootstrap-5.3.0/js/bootstrap.min.js') }}"></script>
-
-        <link rel= "stylesheet" href= "{{ url_for('static',filename='font-awesome/css/font-awesome.min.css') }}"> 
-    </head>
-
-    <body>
-        <div id="main" style="background-color: #d9dedf;">
-            {% include 'sidebar.html' %}
-            
-            <div id="container">
-                <div class="ui grid container">
-                    <div class="eight wide computer sixteen wide mobile centered column">
-                        <h2 class="ui dividing header">Create an account</h2>
-            
-                        {% set flashes = {
-                            'error':   get_flashed_messages(category_filter=['form-error']),
-                            'warning': get_flashed_messages(category_filter=['form-check-email']),
-                            'info':    get_flashed_messages(category_filter=['form-info']),
-                            'success': get_flashed_messages(category_filter=['form-success'])
-                        } %}
-            
-                        {{ f.begin_form(form, flashes) }}
-            
-                        <div class="two fields">
-                            {{ f.render_form_field(form.first_name) }}
-                            {{ f.render_form_field(form.last_name) }}
-                        </div>
-            
-                        {{ f.render_form_field(form.email) }}
-            
-                        <div class="two fields">
-                            {{ f.render_form_field(form.password) }}
-                            {{ f.render_form_field(form.password2) }}
-                        </div>
-            
-                        {{ f.form_message(flashes['error'], header='Something went wrong.', class='error') }}
-                        {{ f.form_message(flashes['warning'], header='Check your email.', class='warning') }}
-                        {{ f.form_message(flashes['info'], header='Information', class='info') }}
-                        {{ f.form_message(flashes['success'], header='Success!', class='success') }}
-            
-                        {% for field in form | selectattr('type', 'equalto', 'SubmitField') %}
-                            {{ f.render_form_field(field) }}
-                        {% endfor %}
-            
-                        {{ f.end_form(form) }}
-                    </div>
+                {% set flashes = {
+                    'error':   get_flashed_messages(category_filter=['form-error']),
+                    'warning': get_flashed_messages(category_filter=['form-check-email']),
+                    'info':    get_flashed_messages(category_filter=['form-info']),
+                    'success': get_flashed_messages(category_filter=['form-success'])
+                } %}
+    
+                {{ f.begin_form(form, flashes) }}
+    
+                <div class="two fields">
+                    {{ f.render_form_field(form.first_name) }}
+                    {{ f.render_form_field(form.last_name) }}
                 </div>
+    
+                {{ f.render_form_field(form.email) }}
+    
+                <div class="two fields">
+                    {{ f.render_form_field(form.password) }}
+                    {{ f.render_form_field(form.password2) }}
+                </div>
+    
+                {{ f.form_message(flashes['error'], header='Something went wrong.', class='error') }}
+                {{ f.form_message(flashes['warning'], header='Check your email.', class='warning') }}
+                {{ f.form_message(flashes['info'], header='Information', class='info') }}
+                {{ f.form_message(flashes['success'], header='Success!', class='success') }}
+    
+                {% for field in form | selectattr('type', 'equalto', 'SubmitField') %}
+                    {{ f.render_form_field(field) }}
+                {% endfor %}
+    
+                {{ f.end_form(form) }}
             </div>
-                
         </div>
-    </body>
-
-	<script src="{{ url_for('static',filename='js/core.js') }}"></script>
-</html>
+        {{ check.password_check('password', 0) }}
+    </div>
+{% endblock %}
