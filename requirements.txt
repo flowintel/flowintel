@@ -5,3 +5,5 @@ Flask-WTF
 WTForms
 Werkzeug
 email_validator
+Flask-Migrate
+Flask-Login

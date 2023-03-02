@@ -1,0 +1,31 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    
+    <div id="container">
+        <a class="btn btn-outline-success" href="/case/add_task/{{id}}" type="button">New Task</a>
+        {{case.id}}
+        {{case.title}}
+        {{case.description}}
+        {{case.uuid}}
+        <table>
+            <tr>
+                <th>Task id</th>
+                <th>Task title</th>
+                <th>Task description</th>
+            </tr>
+            {% for task in case.tasks %}
+            <tr>
+                <td>{{task.id}}</td>
+                <td>{{task.title}}</td>
+                <td>{{task.description}}</td>
+            </tr>
+            {%endfor%}
+        </table>
+    </div>
+        
+{% endblock %}

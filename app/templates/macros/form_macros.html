@@ -9,6 +9,8 @@
         extra_classes – The classes to add to the <form>.
         enctype       – <form> enctype attribute. If None, will automatically be set to
                         multipart/form-data if a FileField is present in the form. #}
+
+                        
 {% macro render_form(form, method='POST', extra_classes='', enctype=None) %}
     {% set flashes = {
         'error':   get_flashed_messages(category_filter=['form-error']),

@@ -5,14 +5,12 @@
     </a>
     <ul class="list-unstyled ps-0">
       <li class="mb-1">
-        <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#home-collapse" aria-expanded="true">
+        <button class="btn-toggle d-inline-flex align-items-center rounded border-0" style="font-weight: 400; color: black;" data-bs-toggle="collapse" data-bs-target="#home-collapse" aria-expanded="true">
           Home
         </button>
         <div class="collapse show" id="home-collapse">
           <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-            <li><a href="/account" class="link-dark d-inline-flex text-decoration-none rounded">Overview</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Updates</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Reports</a></li>
+            <li><a href="/case" class="link-dark d-inline-flex text-decoration-none rounded">Case</a></li>
           </ul>
         </div>
       </li>
@@ -49,10 +47,13 @@
         </button>
         <div class="collapse" id="account-collapse">
           <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">New...</a></li>
+            <li><a href="/account" class="link-dark d-inline-flex text-decoration-none rounded">Account</a></li>
             <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Profile</a></li>
             <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Settings</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Sign out</a></li>
+            {% if current_user.is_authenticated %}
+              <li><a href="/account/logout" class="link-dark d-inline-flex text-decoration-none rounded">Logout</a></li>
+            {% endif %}
+            
           </ul>
         </div>
       </li>
