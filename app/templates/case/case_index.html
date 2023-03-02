@@ -10,19 +10,8 @@
         
         <a class="btn btn-outline-success" href="/case/add" type="button">New Case</a>
 
-        <div class="row" style="padding: 10px">
-            {% for case in cases %}
-            <div class="col-sm-6 mb-3 mb-sm-0">
-              <div class="card">
-                <div class="card-body">
-                  <h5 class="card-title">{{case.title}}</h5>
-                  <p class="card-text">With supporting text below as a natural lead-in to additional content.</p>
-                  <a href="/case/view/{{case.id}}" class="btn btn-primary">Go somewhere</a>
-                  <p class="card-text"><small class="text-muted">Last updated 3 mins ago</small></p>
-                </div>
-              </div>
-            </div>
-            {%endfor%}
+        <div class="row row-cols-auto" style="padding: 10px" id="case-card">
         </div>
-        
+	</div>
+	
 {% endblock %}

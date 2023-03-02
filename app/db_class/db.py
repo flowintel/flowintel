@@ -4,7 +4,7 @@ from flask_login import  UserMixin
 
 
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     # confirmed = db.Column(db.Boolean, default=False)
     first_name = db.Column(db.String(64), index=True)
     last_name = db.Column(db.String(64), index=True)
@@ -23,19 +23,22 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 class Case(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String)
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade="all, delete-orphan")
 
+    def to_json(self):
+        return {"id": self.id, "uuid": self.uuid, "title": self.title, "description": self.description}
+
 class Task(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String)
     # user_id = db.Column(db.Integer, index=True, nullable=True)
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'))
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
 
 class Task_User(db.Model):
     id = db.Column(db.Integer, primary_key=True)

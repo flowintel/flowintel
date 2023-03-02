@@ -5,20 +5,24 @@ import uuid
 
 def get(id):
     if isUUID(id):
-        case = db.session.execute(db.select(Case).filter_by(uuid=id)).first()
+        case = Case.query.filter_by(uuid=id).first()
     elif id.isdigit():
-        case = db.session.execute(db.select(Case).filter_by(id=id)).first()
+        case = Case.query.get(id)
     else:
         case = None
     return case
 
 def getAll():
-    cases = db.session.execute(db.select(Case)).scalars()
+    cases = Case.query.all()
     return cases
 
-def case_uuid_route_core(sid):
-    tasks = db.session.execute(db.select(Task).filter_by(uuid_case=sid)).scalars()
-    return tasks
+def delete(id):
+    case = get(id)
+    if case is not None:
+        db.session.delete(case)
+        db.session.commit()
+        return True
+    return False
 
 def add_case_core(form):
     case = Case(

@@ -23,7 +23,7 @@ account_blueprint = Blueprint(
 @account_blueprint.route("/")
 @login_required
 def index():
-    users = db.session.execute(db.select(User)).scalars()
+    users = User.query.all()
 
     return render_template("account/account_index.html", users=users)
 
