@@ -1,6 +1,6 @@
 from .. import db
 from ..db_class.db import Case, Task
-from flask import Blueprint, render_template, redirect, jsonify
+from flask import Blueprint, render_template, redirect, jsonify, request
 import re
 from .form import CaseForm, TaskForm
 from flask_login import login_required
@@ -28,20 +28,40 @@ def get_cases():
     cases = CaseModel.getAll()
     return jsonify({"cases": [case.to_json() for case in cases]}), 201
 
-@case_blueprint.route("case/delete/<id>", methods=['GET'])
+@case_blueprint.route("/delete", methods=['POST'])
 @login_required
-def delete(id):
-    cases = CaseModel.delete(id)
-    return jsonify({"message": "delete"}), 201
+def delete():
+    id = request.json["id_case"]
+    if CaseModel.delete(id):
+        return jsonify({"message": "Case deleted"}), 201
+    else:
+        return jsonify({"message": "Error case deleted"}), 201
 
 @case_blueprint.route("/view/<id>", methods=['GET'])
 @login_required
 def view(id):
     case = CaseModel.get(id)
-    print(case)
+    # print(case)
     if case:
         return render_template("case/case_view.html", id=id, case=case)
     return render_template("404.html")
+
+@case_blueprint.route("view/get_case_info/<id>", methods=['GET'])
+@login_required
+def get_case_info(id):
+    case = CaseModel.get(id)
+
+    return jsonify({"case": case.to_json(), "tasks": [task.to_json() for task in case.tasks]}), 201
+
+
+@case_blueprint.route("/delete_task", methods=['POST'])
+@login_required
+def delete_task():
+    id = request.json["id_task"]
+    if CaseModel.delete_task(id):
+        return jsonify({"message": "Task deleted"}), 201
+    else:
+        return jsonify({"message": "Error task deleted"}), 201
 
 
 @case_blueprint.route("/add", methods=['GET','POST'])
@@ -63,3 +83,41 @@ def add_task(id):
         task = CaseModel.add_task_core(form, id)
         return redirect(f"/case/view/{id}")
     return render_template("case/add_task.html", form=form)
+
+
+@case_blueprint.route("/modif_note", methods=['POST'])
+@login_required
+def modif_note():
+    id = request.json["id_task"]
+    notes = request.json["notes"]
+    
+    if CaseModel.modif_note_core(id, notes):
+        return jsonify({"message": "Note added"}), 201
+    else:
+        return jsonify({"message": "Error not added"}), 201
+
+
+@case_blueprint.route("/get_note_text", methods=['GET'])
+@login_required
+def get_note_text():
+    """Get category page"""
+
+    data_dict = dict(request.args)
+    note = CaseModel.get_note_text(data_dict["id"])
+
+    # note = CaseModel.get_notes_core(data_dict["id"])
+
+    return jsonify({"note": note}), 201
+
+@case_blueprint.route("/get_note_markdown", methods=['GET'])
+@login_required
+def get_note_markdown():
+    """Get category page"""
+
+    data_dict = dict(request.args)
+    note = CaseModel.get_note_markdown(data_dict["id"])
+    print(note)
+
+    # note = CaseModel.get_notes_core(data_dict["id"])
+
+    return jsonify({"note": note}), 201

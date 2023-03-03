@@ -37,8 +37,12 @@ class Task(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String)
+    notes = db.Column(db.String, nullable=True)
     # user_id = db.Column(db.Integer, index=True, nullable=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
+
+    def to_json(self):
+        return {"id": self.id, "uuid": self.uuid, "title": self.title, "description": self.description, "notes": self.notes}
 
 class Task_User(db.Model):
     id = db.Column(db.Integer, primary_key=True)

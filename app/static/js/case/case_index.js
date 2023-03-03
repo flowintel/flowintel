@@ -44,8 +44,10 @@ function get_case(){
 }
 
 function delete_case(id){
-    $.get({
-        url: 'case/delete/' + id,
+    $.post({
+        headers: { "X-CSRFToken": $("#csrf_token").val() },
+        url: '/case/delete',
+        data: JSON.stringify({"id_case": id.toString()}),
         contentType: 'application/json',
         success: function(data) {
             $('#status').empty()

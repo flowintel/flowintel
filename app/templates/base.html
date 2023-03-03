@@ -25,14 +25,17 @@
                 {% block content %}
                 {% endblock %}
 
-                {# Implement CSRF protection for site #}
-                {% if csrf_token()|safe %}
-                    <div style="visibility: hidden; display: none">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token()|safe }}">
-                    </div>
-                {% endif %}
             </div>
         </div>
-        <script src="{{ url_for('static',filename='js/case/script.js') }}"></script>
+
+        {# Implement CSRF protection for site #}
+        {% if csrf_token()|safe %}
+            <div style="visibility: hidden; display: none">
+            <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token()|safe }}">
+            </div>
+        {% endif %}
+
+        {% block script %}
+        {% endblock %}
     </body>
 </html>

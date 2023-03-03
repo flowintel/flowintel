@@ -12,7 +12,7 @@
         {{case.title}}
         {{case.description}}
         {{case.uuid}}
-        <table>
+        <table id="data">
             <tr>
                 <th>Task id</th>
                 <th>Task title</th>
@@ -28,4 +28,8 @@
         </table>
     </div>
         
+{% endblock %}
+
+{% block script %}
+	<script src="{{ url_for('static',filename='js/case/case_view.js') }}"></script>
 {% endblock %}
