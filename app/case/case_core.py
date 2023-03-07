@@ -1,9 +1,10 @@
 from .. import db
-from ..db_class.db import Case, Task
+from ..db_class.db import Case, Task, Task_User, User, Case_User
 from ..utils.utils import isUUID
 import uuid
 import bleach
 import markdown
+from flask_login import current_user
 
 def get(id):
     if isUUID(id):
@@ -31,6 +32,7 @@ def delete(id):
     case = get(id)
     if case is not None:
         db.session.delete(case)
+        Case_User.query.filter_by(case_id=case.id).delete()
         db.session.commit()
         return True
     return False
@@ -39,14 +41,15 @@ def delete_task(id):
     task = get_task(id)
     if task is not None:
         db.session.delete(task)
+        Task_User.query.filter_by(task_id=task.id).delete()
         db.session.commit()
         return True
     return False
 
 def add_case_core(form):
     case = Case(
-        title=form.title.data,
-        description=form.description.data,
+        title=bleach.clean(form.title.data),
+        description=bleach.clean(form.description.data),
         uuid=str(uuid.uuid4()))
     db.session.add(case)
     db.session.commit()
@@ -56,8 +59,8 @@ def add_case_core(form):
 def add_task_core(form, id):
     task = Task(
         uuid=str(uuid.uuid4()),
-        title=form.title.data,
-        description=form.description.data,
+        title=bleach.clean(form.title.data),
+        description=bleach.clean(form.description.data),
         case_id=id)
     db.session.add(task)
     db.session.commit()
@@ -85,3 +88,43 @@ def get_note_markdown(id):
         return markdown.markdown(task.notes)
     else:
         return ""
+
+def assign_task(id):
+    task = get_task(id)
+    task_user = Task_User(task_id=task.id, user_id=current_user.id)
+    db.session.add(task_user)
+
+    if not Case_User.query.filter_by(user_id=current_user.id).first():
+        case_user = Case_User(case_id=task.case_id, user_id=current_user.id) 
+        db.session.add(case_user)
+
+    db.session.commit()
+
+def get_user_assign_task(task_id):
+    task_users = Task_User.query.filter_by(task_id=task_id).all()
+    users = list()
+    flag = False
+    for task_user in task_users:
+        u = User.query.get(task_user.user_id)
+        if u.id == current_user.id:
+            flag = True
+        users.append(u.to_json())
+    return users, flag
+
+def get_user_assign_case(case_id):
+    case_user = Case_User.query.filter_by(case_id=case_id).all()
+    users = list()
+
+    for user in case_user:
+        u = User.query.get(user.user_id)
+        users.append(u.to_json())
+
+    return users
+
+
+def remove_assign_task(id):
+    task = get_task(id)
+    task_users = Task_User.query.filter_by(task_id=task.id, user_id=current_user.id).all()
+    for task_user in task_users:
+        db.session.delete(task_user)
+        db.session.commit()

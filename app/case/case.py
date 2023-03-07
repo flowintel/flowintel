@@ -1,11 +1,7 @@
-from .. import db
-from ..db_class.db import Case, Task
 from flask import Blueprint, render_template, redirect, jsonify, request
-import re
 from .form import CaseForm, TaskForm
-from flask_login import login_required
+from flask_login import login_required, current_user
 from . import case_core as CaseModel
-import json
 
 case_blueprint = Blueprint(
     'case',
@@ -50,8 +46,15 @@ def view(id):
 @login_required
 def get_case_info(id):
     case = CaseModel.get(id)
+    
+    tasks = list()
+    for task in case.tasks:
+        users, flag = CaseModel.get_user_assign_task(task.id)
+        tasks.append((task.to_json(), users, flag))
 
-    return jsonify({"case": case.to_json(), "tasks": [task.to_json() for task in case.tasks]}), 201
+    case_users = CaseModel.get_user_assign_case(case.id)
+
+    return jsonify({"case": case.to_json(), "tasks": tasks, "case_users": case_users}), 201
 
 
 @case_blueprint.route("/delete_task", methods=['POST'])
@@ -105,8 +108,6 @@ def get_note_text():
     data_dict = dict(request.args)
     note = CaseModel.get_note_text(data_dict["id"])
 
-    # note = CaseModel.get_notes_core(data_dict["id"])
-
     return jsonify({"note": note}), 201
 
 @case_blueprint.route("/get_note_markdown", methods=['GET'])
@@ -116,8 +117,29 @@ def get_note_markdown():
 
     data_dict = dict(request.args)
     note = CaseModel.get_note_markdown(data_dict["id"])
-    print(note)
-
-    # note = CaseModel.get_notes_core(data_dict["id"])
 
     return jsonify({"note": note}), 201
+
+
+@case_blueprint.route("/take_task", methods=['POST'])
+@login_required
+def take_task():
+    """Get category page"""
+
+    id = request.json["task_id"]
+
+    CaseModel.assign_task(id)
+
+    return jsonify({"user": current_user.to_json()}), 201
+
+
+@case_blueprint.route("/remove_assign_task", methods=['POST'])
+@login_required
+def remove_assign_task():
+    """Get category page"""
+
+    id = request.json["task_id"]
+
+    CaseModel.remove_assign_task(id)
+
+    return jsonify({"user": current_user.to_json()}), 201

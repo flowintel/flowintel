@@ -7,27 +7,23 @@
 {% block content %}
     
     <div id="container">
+        <div>
+            <h1 style="display: inline-block; font-size: xxx-large;">{{case.id}} - {{case.title}}</h1>
+            <span><i style="font-size: 12px;">{{case.uuid}}</i></span>
+            <hr>
+        </div>
+        
+        <div>
+            <p style="display: inline-block;">{{case.description}}</p>
+            <div id="assign" style="float: right;"></div>
+        </div>
+
         <a class="btn btn-outline-success" href="/case/add_task/{{id}}" type="button">New Task</a>
-        {{case.id}}
-        {{case.title}}
-        {{case.description}}
-        {{case.uuid}}
+
         <table id="data">
-            <tr>
-                <th>Task id</th>
-                <th>Task title</th>
-                <th>Task description</th>
-            </tr>
-            {% for task in case.tasks %}
-            <tr>
-                <td>{{task.id}}</td>
-                <td>{{task.title}}</td>
-                <td>{{task.description}}</td>
-            </tr>
-            {%endfor%}
         </table>
     </div>
-        
+  
 {% endblock %}
 
 {% block script %}
