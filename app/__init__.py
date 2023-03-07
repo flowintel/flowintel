@@ -29,8 +29,10 @@ def create_app():
     from .main.home import home_blueprint
     from .account.account import account_blueprint
     from .case.case import case_blueprint
+    from .admin.admin import admin_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
+    app.register_blueprint(admin_blueprint, url_prefix="/admin")
 
     return app

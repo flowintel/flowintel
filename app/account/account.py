@@ -1,14 +1,13 @@
-from .. import db
 from ..db_class.db import User
 from flask import Blueprint, render_template, redirect, url_for, request, flash
-from .form import RegistrationForm, LoginForm
+from .form import LoginForm
 from flask_login import (
     current_user,
     login_required,
     login_user,
     logout_user,
 )
-from .account_core import *
+from . import account_core as AccountModel
 from ..utils.create_user import create_user
 
 account_blueprint = Blueprint(
@@ -23,19 +22,8 @@ account_blueprint = Blueprint(
 @account_blueprint.route("/")
 @login_required
 def index():
-    users = User.query.all()
 
-    return render_template("account/account_index.html", users=users)
-
-
-@account_blueprint.route("/add_user", methods=['GET','POST'])
-@login_required
-def add_user():
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        add_user_core(form)
-        return redirect("/account")
-    return render_template("account/add_user.html", form=form)
+    return render_template("account/account_index.html", user=current_user)
 
 
 @account_blueprint.route('/login', methods=['GET', 'POST'])
