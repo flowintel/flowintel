@@ -112,8 +112,15 @@ function get_case_info(){
                     div_user
                 ),
                 $('<td>').append(
-                    $("<div>").text(tasks["creation_date"]),
-                    $("<div>").text(tasks["dead_line"])
+                    $("<div>").text("Creation: " + tasks["creation_date"]),
+                    $("<div>").text("Dead Line: " + tasks["dead_line"])
+                ),
+                $("<td>").append(
+                    $('<a>').attr({"href": "/case/view/" + data["case"]["id"] + "/edit_task/" + tasks["id"], "role": "button", "class": "btn btn-primary"}).text("Edit").css({
+                        "padding": "7px",
+                        "box-sizing": "border-box",
+                        "margin": "0",
+                    })
                 )
                 
             ).appendTo("#data")

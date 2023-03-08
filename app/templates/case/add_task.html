@@ -22,6 +22,9 @@
             {{ f.render_form_field(form.title) }}
             <!-- {# f.render_form_field(form.group_id) #} -->
             {{ f.render_form_field(form.description) }}
+            
+            {{ f.render_form_field(form.dead_line_date) }}
+            {{ f.render_form_field(form.dead_line_time) }}
 
 
             {{ f.form_message(flashes['error'], header='Something went wrong.', class='error') }}

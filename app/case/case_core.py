@@ -7,6 +7,7 @@ import markdown
 from flask_login import current_user
 import datetime
 
+
 def get(id):
     if isUUID(id):
         case = Case.query.filter_by(uuid=id).first()
@@ -28,6 +29,7 @@ def get_task(id):
 def getAll():
     cases = Case.query.all()
     return cases
+
 
 def delete(id):
     case = get(id)
@@ -54,13 +56,15 @@ def delete_task(id):
     return False
 
 def add_case_core(form):
+    dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
+
     case = Case(
         title=bleach.clean(form.title.data),
         description=bleach.clean(form.description.data),
         uuid=str(uuid.uuid4()),
         creation_date=datetime.datetime.now(),
         last_modif=datetime.datetime.now(),
-        dead_line=datetime.datetime.combine(form.dead_line_date.data, form.dead_line_time.data)
+        dead_line=dead_line
     )
     db.session.add(case)
     db.session.commit()
@@ -70,19 +74,25 @@ def add_case_core(form):
 def edit_case_core(form, id):
     case = get(id)
 
+    dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
+
     case.title = bleach.clean(form.title.data)
     case.description=bleach.clean(form.description.data)
-    case.dead_line=datetime.datetime.combine(form.dead_line_date.data, form.dead_line_time.data)
+    case.dead_line=dead_line
 
+    update_last_modif(id)
     db.session.commit()
     
 
 def add_task_core(form, id):
+    dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
+
     task = Task(
         uuid=str(uuid.uuid4()),
         title=bleach.clean(form.title.data),
         description=bleach.clean(form.description.data),
         creation_date=datetime.datetime.now(),
+        dead_line=dead_line,
         case_id=id
     )
     db.session.add(task)
@@ -90,6 +100,28 @@ def add_task_core(form, id):
     db.session.commit()
 
     return task
+
+def edit_task_core(form, id):
+    task = get_task(id)
+    dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
+
+    task.title = bleach.clean(form.title.data)
+    task.description=bleach.clean(form.description.data)
+    task.dead_line=dead_line
+
+    update_last_modif(task.case_id)
+    db.session.commit()
+
+
+def dead_line_check(date, time):
+    dead_line = None
+    if date and time:
+        dead_line = datetime.datetime.combine(date, time)
+    elif date:
+        dead_line = date
+    
+    return dead_line
+
 
 def modif_note_core(id, notes):
     task = get_task(id)
@@ -119,7 +151,9 @@ def assign_task(id):
     task_user = Task_User(task_id=task.id, user_id=current_user.id)
     db.session.add(task_user)
 
-    if not Case_User.query.filter_by(user_id=current_user.id).first():
+    case_user = Case_User.query.filter_by(case_id=task.case_id, user_id=current_user.id).first()
+
+    if not case_user:
         case_user = Case_User(case_id=task.case_id, user_id=current_user.id) 
         db.session.add(case_user)
 

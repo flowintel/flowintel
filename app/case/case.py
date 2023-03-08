@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, jsonify, request
-from .form import CaseForm, TaskForm, CaseEditForm
+from .form import CaseForm, TaskForm, CaseEditForm, TaskEditForm
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
 
@@ -100,8 +100,26 @@ def add_task(id):
     form = TaskForm()
     # form.group_id.choices = [(g.uuid, g.title) for g in Case.query.order_by('title')]
     if form.validate_on_submit():
-        task = CaseModel.add_task_core(form, id)
+        CaseModel.add_task_core(form, id)
         return redirect(f"/case/view/{id}")
+    return render_template("case/add_task.html", form=form)
+
+
+@case_blueprint.route("view/<id_case>/edit_task/<id>", methods=['GET','POST'])
+@login_required
+def edit_task(id_case, id):
+    form = TaskEditForm()
+
+    if form.validate_on_submit():
+        CaseModel.edit_task_core(form, id)
+        return redirect(f"/case/view/{id_case}")
+    else:
+        task_modif = CaseModel.get_task(id)
+        form.description.data = task_modif.description
+        form.title.data = task_modif.title
+        form.dead_line_date.data = task_modif.dead_line
+        form.dead_line_time.data = task_modif.dead_line
+    
     return render_template("case/add_task.html", form=form)
 
 
