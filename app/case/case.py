@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, jsonify, request
-from .form import CaseForm, TaskForm
+from .form import CaseForm, TaskForm, CaseEditForm
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
 
@@ -39,7 +39,7 @@ def view(id):
     case = CaseModel.get(id)
     # print(case)
     if case:
-        return render_template("case/case_view.html", id=id, case=case)
+        return render_template("case/case_view.html", id=id, case=case.to_json())
     return render_template("404.html")
 
 @case_blueprint.route("view/get_case_info/<id>", methods=['GET'])
@@ -74,6 +74,23 @@ def add_case():
     if form.validate_on_submit():
         case = CaseModel.add_case_core(form)
         return redirect(f"/case/view/{case.id}")
+    return render_template("case/add_case.html", form=form)
+
+
+@case_blueprint.route("/edit/<id>", methods=['GET','POST'])
+@login_required
+def edit_case(id):
+    form = CaseEditForm()
+
+    if form.validate_on_submit():
+        CaseModel.edit_case_core(form, id)
+        return redirect(f"/case/view/{id}")
+    else:
+        case_modif = CaseModel.get(id)
+        form.description.data = case_modif.description
+        form.title.data = case_modif.title
+        form.dead_line_date.data = case_modif.dead_line
+        form.dead_line_time.data = case_modif.dead_line
     return render_template("case/add_case.html", form=form)
 
 

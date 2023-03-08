@@ -8,7 +8,9 @@ from wtforms.fields import (
     SubmitField,
     EmailField,
     SelectField,
-    TextAreaField
+    TextAreaField,
+    DateField,
+    TimeField
 )
 from wtforms.validators import Email, EqualTo, InputRequired, Length
 
@@ -22,11 +24,23 @@ class CaseForm(FlaskForm):
         'Title', validators=[InputRequired(),
                                   Length(1, 64)])
     description = TextAreaField('Description')
+    dead_line_date = DateField('Dead_line_date')
+    dead_line_time = TimeField("Dead_line_time")
     submit = SubmitField('Register')
 
     def validate_title(self, field):
         if Case.query.filter_by(title=field.data).first():
             raise ValidationError("The title already exist")
+
+class CaseEditForm(FlaskForm):
+    title = StringField(
+        'Title', validators=[InputRequired(),
+                                  Length(1, 64)])
+    description = TextAreaField('Description')
+    dead_line_date = DateField('Dead_line_date')
+    dead_line_time = TimeField("Dead_line_time")
+    submit = SubmitField('Modify')
+
 
 class TaskForm(FlaskForm):
     title = StringField(

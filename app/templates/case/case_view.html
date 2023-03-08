@@ -12,6 +12,18 @@
             <span><i style="font-size: 12px;">{{case.uuid}}</i></span>
             <hr>
         </div>
+
+        <div>
+            <a class="btn btn-outline-success" href="/case/edit/{{id}}" type="button">Edit Case</a>
+            <br/>
+            Creation: {{case.creation_date}}
+            <br/>
+            Last Modif: {{case.last_modif}}
+            {% if case.dead_line %}
+                <br/>
+                Dead Line: {{case.dead_line}}
+            {%endif%}
+        </div>
         
         <div>
             <p style="display: inline-block;">{{case.description}}</p>

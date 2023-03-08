@@ -1,6 +1,7 @@
 from .. import db, login_manager
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin
+import datetime
 
 
 class User(UserMixin, db.Model):
@@ -34,10 +35,24 @@ class Case(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String)
+    creation_date = db.Column(db.DateTime)
+    dead_line = db.Column(db.DateTime)
+    last_modif = db.Column(db.DateTime)
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
-        return {"id": self.id, "uuid": self.uuid, "title": self.title, "description": self.description}
+        json_dict = {
+            "id": self.id, "uuid": self.uuid, 
+            "title": self.title, "description": self.description,
+            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
+        }
+        if self.dead_line:
+            json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
+        else:
+            json_dict["dead_line"] = self.dead_line
+
+        return json_dict
 
 
 class Task(db.Model):
@@ -46,10 +61,23 @@ class Task(db.Model):
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String, nullable=True)
     notes = db.Column(db.String, nullable=True)
+    creation_date = db.Column(db.DateTime)
+    dead_line = db.Column(db.DateTime)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
 
     def to_json(self):
-        return {"id": self.id, "uuid": self.uuid, "title": self.title, "description": self.description, "notes": self.notes}
+        json_dict = {
+            "id": self.id, "uuid": self.uuid, 
+            "title": self.title, "description": self.description, 
+            "notes": self.notes,
+            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M')
+        }
+        if self.dead_line:
+            json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
+        else:
+            json_dict["dead_line"] = self.dead_line
+
+        return json_dict
 
 
 class Case_User(db.Model):

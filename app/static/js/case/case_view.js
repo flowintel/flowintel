@@ -14,6 +14,7 @@ function get_case_info(){
 
         $("#assign").empty()
 
+        // List of user working in the case
         div_user = $("<div>").attr({"class": "dropdown", "id": "dropdown_user_case"}).appendTo($("#assign"))
         if(data["case_users"].length > 0){
             div_user.append(
@@ -38,12 +39,13 @@ function get_case_info(){
             )
 
 
-
+        // For each task
         $.each(data["tasks"], function(i, item) {
             tasks = data["tasks"][i][0]
             users = data["tasks"][i][1]
             current_user = data["tasks"][i][2]
 
+            // cell to take or remove assignation to a task
             td_take_task = $("<td>").attr("id", "td_task_" + tasks["id"])
             if (!current_user){
                 td_take_task.append(
@@ -63,6 +65,7 @@ function get_case_info(){
                 )
             }
             
+            // List of user on a tasks
             div_user = $("<div>").attr({"class": "dropdown", "id": "dropdown_user_" + tasks["id"]})
             if(users.length > 0){
                 div_user.append(
@@ -107,6 +110,10 @@ function get_case_info(){
                 ),
                 $('<td>').append(
                     div_user
+                ),
+                $('<td>').append(
+                    $("<div>").text(tasks["creation_date"]),
+                    $("<div>").text(tasks["dead_line"])
                 )
                 
             ).appendTo("#data")

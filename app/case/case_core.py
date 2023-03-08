@@ -5,6 +5,7 @@ import uuid
 import bleach
 import markdown
 from flask_login import current_user
+import datetime
 
 def get(id):
     if isUUID(id):
@@ -37,11 +38,17 @@ def delete(id):
         return True
     return False
 
+def update_last_modif(id):
+    case = Case.query.get(id)
+    case.last_modif = datetime.datetime.now()
+
 def delete_task(id):
     task = get_task(id)
     if task is not None:
         db.session.delete(task)
         Task_User.query.filter_by(task_id=task.id).delete()
+
+        update_last_modif(task.case_id)
         db.session.commit()
         return True
     return False
@@ -50,19 +57,36 @@ def add_case_core(form):
     case = Case(
         title=bleach.clean(form.title.data),
         description=bleach.clean(form.description.data),
-        uuid=str(uuid.uuid4()))
+        uuid=str(uuid.uuid4()),
+        creation_date=datetime.datetime.now(),
+        last_modif=datetime.datetime.now(),
+        dead_line=datetime.datetime.combine(form.dead_line_date.data, form.dead_line_time.data)
+    )
     db.session.add(case)
     db.session.commit()
 
     return case
+
+def edit_case_core(form, id):
+    case = get(id)
+
+    case.title = bleach.clean(form.title.data)
+    case.description=bleach.clean(form.description.data)
+    case.dead_line=datetime.datetime.combine(form.dead_line_date.data, form.dead_line_time.data)
+
+    db.session.commit()
+    
 
 def add_task_core(form, id):
     task = Task(
         uuid=str(uuid.uuid4()),
         title=bleach.clean(form.title.data),
         description=bleach.clean(form.description.data),
-        case_id=id)
+        creation_date=datetime.datetime.now(),
+        case_id=id
+    )
     db.session.add(task)
+    update_last_modif(id)
     db.session.commit()
 
     return task
@@ -71,6 +95,7 @@ def modif_note_core(id, notes):
     task = get_task(id)
     if task:
         task.notes = bleach.clean(notes)
+        update_last_modif(task.case_id)
         db.session.commit()
         return True
     return False
@@ -97,6 +122,8 @@ def assign_task(id):
     if not Case_User.query.filter_by(user_id=current_user.id).first():
         case_user = Case_User(case_id=task.case_id, user_id=current_user.id) 
         db.session.add(case_user)
+
+    update_last_modif(task.case_id)
 
     db.session.commit()
 
@@ -127,4 +154,7 @@ def remove_assign_task(id):
     task_users = Task_User.query.filter_by(task_id=task.id, user_id=current_user.id).all()
     for task_user in task_users:
         db.session.delete(task_user)
-        db.session.commit()
+
+    update_last_modif(task.case_id)
+    
+    db.session.commit()
