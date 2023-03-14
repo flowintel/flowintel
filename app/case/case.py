@@ -50,6 +50,7 @@ def get_case_info(id):
     tasks = list()
     for task in case.tasks:
         users, flag = CaseModel.get_user_assign_task(task.id)
+        task.notes = CaseModel.markdown_notes(task.notes)
         tasks.append((task.to_json(), users, flag))
 
     case_users = CaseModel.get_user_assign_case(case.id)

@@ -6,6 +6,7 @@ import bleach
 import markdown
 from flask_login import current_user
 import datetime
+from sqlalchemy import desc
 
 
 def get(id):
@@ -27,7 +28,7 @@ def get_task(id):
     return case
 
 def getAll():
-    cases = Case.query.all()
+    cases = Case.query.order_by(desc(Case.last_modif))
     return cases
 
 
@@ -145,6 +146,11 @@ def get_note_markdown(id):
         return markdown.markdown(task.notes)
     else:
         return ""
+
+def markdown_notes(notes):
+    if notes:
+        return markdown.markdown(notes)
+    return notes
 
 def assign_task(id):
     task = get_task(id)

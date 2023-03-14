@@ -14,7 +14,16 @@
         </div>
 
         <div>
+            <p style="display: inline-block;">{{case.description}}</p>
+            
+            {% if case.description %}
+                <hr>
+            {%endif%}
+        </div>
+
+        <div>
             <a class="btn btn-outline-success" href="/case/edit/{{id}}" type="button">Edit Case</a>
+            <div id="assign" style="float: right;"></div>
             <br/>
             Creation: {{case.creation_date}}
             <br/>
@@ -24,15 +33,10 @@
                 Dead Line: {{case.dead_line}}
             {%endif%}
         </div>
-        
-        <div>
-            <p style="display: inline-block;">{{case.description}}</p>
-            <div id="assign" style="float: right;"></div>
-        </div>
 
         <a class="btn btn-outline-success" href="/case/add_task/{{id}}" type="button">New Task</a>
 
-        <table id="data">
+        <table id="data-task">
         </table>
     </div>
   

@@ -6,6 +6,7 @@ def create_user():
         first_name="David",
         last_name="Cruciani",
         email="admin@admin.com",
-        password="admin")
+        password="admin",
+        role='admin')
     db.session.add(user)
     db.session.commit()

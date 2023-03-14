@@ -4,26 +4,26 @@ $(document).ready(function() {
 
 function get_case_info(){
     $.getJSON('get_case_info/'+window.location.pathname.split("/").slice(-1), function(data) {
-        $('#data').empty()
+        $('#data-task').empty()
         $('<tr>').append(
             $('<th>'),
             $('<th>').text("Title"),
             $('<th>').text("Description"),
             $('<th>').text("")
-        ).appendTo('#data')
+        ).appendTo('#data-task')
 
         $("#assign").empty()
 
         // List of user working in the case
-        div_user = $("<div>").attr({"class": "dropdown", "id": "dropdown_user_case"}).appendTo($("#assign"))
+        div_user_case = $("<div>").attr({"class": "dropdown", "id": "dropdown_user_case"}).appendTo($("#assign"))
         if(data["case_users"].length > 0){
-            div_user.append(
+            div_user_case.append(
                 $("<button>").attr({"class": "btn btn-secondary dropdown-toggle", "type": "button", "data-bs-toggle": "dropdown", "aria-expanded": "false"}).text(
                     "Users"
                 )
             )
             ul_user = $("<ul>").attr("class", "dropdown-menu")
-            div_user.append(ul_user)
+            div_user_case.append(ul_user)
             for (user in data["case_users"]){
                 ul_user.append(
                     $("<li>").append(
@@ -34,7 +34,7 @@ function get_case_info(){
             }
         }
         else
-            div_user.append(
+            div_user_case.append(
                 $("<i>").text("No user assigned")
             )
 
@@ -123,27 +123,25 @@ function get_case_info(){
                     })
                 )
                 
-            ).appendTo("#data")
+            ).appendTo("#data-task")
 
 
             if (tasks['notes']){
-                $.getJSON('/case/get_note_markdown?id='+tasks["id"], function(data_note) {
-                    $('<tr>').append(
-                        $('<td>').attr({"colspan": "5"}).append(
-                            $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
-                                $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
-                                    $('<span>').append(
-                                        $('<button>').attr({"onclick": "edit_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
-                                            $('<div>').attr({"hidden":""}).text(tasks["title"]),
-                                            "Edit"
-                                        ),
-                                    ).css({"right": "1em", "position": "relative"}),
-                                    data_note['note']
-                                )
+                $('<tr>').append(
+                    $('<td>').attr({"colspan": "5"}).append(
+                        $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
+                            $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
+                                $('<span>').append(
+                                    $('<button>').attr({"onclick": "edit_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
+                                        $('<div>').attr({"hidden":""}).text(tasks["title"]),
+                                        "Edit"
+                                    ),
+                                ).css({"right": "1em", "position": "relative"}),
+                                tasks['notes']
                             )
                         )
-                    ).appendTo("#data")
-                })
+                    )
+                ).appendTo("#data-task")
             }else{
                 $('<tr>').append(
                     $('<td>').attr({"colspan": "5"}).append(
@@ -159,7 +157,7 @@ function get_case_info(){
                             )
                         )
                     )
-                ).appendTo("#data")
+                ).appendTo("#data-task")
             }
         })
     })
