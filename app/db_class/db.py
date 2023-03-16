@@ -11,6 +11,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(64), unique=True, index=True)
     role = db.Column(db.String(64), index=True)
     password_hash = db.Column(db.String(128))
+    api_key = db.Column(db.String(60), index=True)
 
     def can(self, permissions):
         return self.role == permissions
@@ -27,7 +28,7 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def to_json(self):
-        return {"id": self.id, "first_name": self.first_name, "last_name": self.last_name, "email": self.email}
+        return {"id": self.id, "first_name": self.first_name, "last_name": self.last_name, "email": self.email, "api_key": self.api_key}
 
 
 class Case(db.Model):

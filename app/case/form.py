@@ -56,10 +56,6 @@ class TaskForm(FlaskForm):
     dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
     submit = SubmitField('Register')
 
-    def validate_title(self, field):
-        if Task.query.filter_by(title=field.data).first():
-            raise ValidationError("The title already exist")
-
     def validate_dead_line_time(self, field):
         if field.data and not self.dead_line_date.data:
             raise ValidationError("Choose a date")

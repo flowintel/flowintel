@@ -35,4 +35,8 @@ def create_app():
     app.register_blueprint(case_blueprint, url_prefix="/case")
     app.register_blueprint(admin_blueprint, url_prefix="/admin")
 
+    from .case.case_api import api_case_blueprint
+    csrf.exempt(api_case_blueprint)
+    app.register_blueprint(api_case_blueprint, url_prefix="/api/case")
+
     return app
