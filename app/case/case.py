@@ -58,6 +58,15 @@ def get_case_info(id):
     return jsonify({"case": case.to_json(), "tasks": tasks, "case_users": case_users}), 201
 
 
+@case_blueprint.route("/complete_task", methods=['POST'])
+@login_required
+def complete_task():
+    id = request.json["id_task"]
+    if CaseModel.complete_task(id):
+        return jsonify({"message": "Task completed"}), 201
+    else:
+        return jsonify({"message": "Error task completed"}), 201
+
 @case_blueprint.route("/delete_task", methods=['POST'])
 @login_required
 def delete_task():

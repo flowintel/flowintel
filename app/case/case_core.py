@@ -45,6 +45,18 @@ def update_last_modif(id):
     case = Case.query.get(id)
     case.last_modif = datetime.datetime.now()
 
+def complete_task(id):
+    task = get_task(id)
+    if task is not None:
+        if task.completed:
+            task.completed = False
+        else:
+            task.completed=True
+        update_last_modif(task.case_id)
+        db.session.commit()
+        return True
+    return False
+
 def delete_task(id):
     task = get_task(id)
     if task is not None:

@@ -39,6 +39,8 @@ function get_case_info(){
             )
 
 
+        tr_completed_line = $("<tr>").appendTo("#data-task")
+
         // For each task
         $.each(data["tasks"], function(i, item) {
             tasks = data["tasks"][i][0]
@@ -90,9 +92,24 @@ function get_case_info(){
                 )
 
 
-            $('<tr>').append(
+            tr_note = $('<tr>')
+            if (tasks["completed"]){
+                tr_task = $('<tr>').css({"background-color": "antiquewhite"})
+                tr_completed_line.after(tr_note)
+                tr_completed_line.after(tr_task)
+            }else{
+                tr_task = $('<tr>')
+                tr_completed_line.before(tr_task)
+                tr_completed_line.before(tr_note)
+            }
+
+            tr_task.append(
                 $('<td>').append(
-                    $("<a>").attr({"class": "btn btn-primary", "data-bs-toggle": "collapse", "href": "#collapse_"+tasks["id"], "role": "button", "aria-expanded": "false", "aria-controls": "collapse_"+tasks["id"]}).text("🔽"),
+                    $("<a>").attr({"class": "btn", "data-bs-toggle": "collapse", "href": "#collapse_"+tasks["id"], "role": "button", "aria-expanded": "false", "aria-controls": "collapse_"+tasks["id"]}).css(
+                        {"--bs-btn-border-width": 1}
+                    ).append(
+                        $("<i>").attr("class", "fas fa-chevron-down")
+                    ),
                 ),
                 $('<td>').text(tasks["title"]).css({
                     "padding": "7px",
@@ -121,13 +138,15 @@ function get_case_info(){
                         "box-sizing": "border-box",
                         "margin": "0",
                     })
+                ),
+                $("<td>").append(
+                    $('<input>').attr({"onclick": "complete_task(" + tasks["id"] + ")", "type": "checkbox"})
                 )
-                
-            ).appendTo("#data-task")
+            )
 
 
             if (tasks['notes']){
-                $('<tr>').append(
+                tr_note.append(
                     $('<td>').attr({"colspan": "5"}).append(
                         $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
                             $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
@@ -141,9 +160,9 @@ function get_case_info(){
                             )
                         )
                     )
-                ).appendTo("#data-task")
+                )
             }else{
-                $('<tr>').append(
+                tr_note.append(
                     $('<td>').attr({"colspan": "5"}).append(
                         $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
                             $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
@@ -157,11 +176,37 @@ function get_case_info(){
                             )
                         )
                     )
-                ).appendTo("#data-task")
+                )
             }
         })
+        tr_completed_line.before(
+            $("<td>").attr("colspan", "50").append(
+                $("<hr>")
+            )
+        )
     })
 }
+
+function complete_task(id){
+    $.post({
+        headers: { "X-CSRFToken": $("#csrf_token").val() },
+        url: '/case/complete_task',
+        data: JSON.stringify({"id_task": id.toString()}),
+        contentType: 'application/json',
+        success: function(data) {
+            $('#status').empty()
+            $('#status').css("color", "green")
+            $('#status').text(data['message'])
+            get_case_info()
+        },
+        error: function(xhr, status, error) {
+            $('#status').empty()
+            $('#status').css("color", "brown")
+            $('#status').text(xhr.responseJSON['message'])
+        },
+    });
+}
+
 
 function delete_task(id){
     $.post({

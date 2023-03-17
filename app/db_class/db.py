@@ -40,13 +40,15 @@ class Case(db.Model):
     dead_line = db.Column(db.DateTime)
     last_modif = db.Column(db.DateTime)
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade="all, delete-orphan")
+    completed = db.Column(db.Boolean, default=False)
 
     def to_json(self):
         json_dict = {
             "id": self.id, "uuid": self.uuid, 
             "title": self.title, "description": self.description,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "completed": self.completed
         }
         if self.dead_line:
             json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
@@ -65,13 +67,15 @@ class Task(db.Model):
     creation_date = db.Column(db.DateTime)
     dead_line = db.Column(db.DateTime)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
+    completed = db.Column(db.Boolean, default=False)
 
     def to_json(self):
         json_dict = {
             "id": self.id, "uuid": self.uuid, 
             "title": self.title, "description": self.description, 
             "notes": self.notes,
-            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M')
+            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
+            "completed": self.completed
         }
         if self.dead_line:
             json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
