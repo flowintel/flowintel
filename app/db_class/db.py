@@ -63,6 +63,7 @@ class Task(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String, nullable=True)
+    url = db.Column(db.String(64), index=True)
     notes = db.Column(db.String, nullable=True)
     creation_date = db.Column(db.DateTime)
     dead_line = db.Column(db.DateTime)
@@ -72,7 +73,8 @@ class Task(db.Model):
     def to_json(self):
         json_dict = {
             "id": self.id, "uuid": self.uuid, 
-            "title": self.title, "description": self.description, 
+            "title": self.title, "description": self.description,
+            "url": self.url,
             "notes": self.notes,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
             "completed": self.completed

@@ -7,8 +7,14 @@ function get_case_info(){
         $('#data-task').empty()
         $('<tr>').append(
             $('<th>'),
+            $('<th>').text("Complete"),
             $('<th>').text("Title"),
             $('<th>').text("Description"),
+            $('<th>').text(""),
+            $('<th>').text(""),
+            $('<th>').text("Assignation"),
+            $('<th>').text("Times"),
+            $('<th>').text("Tool/Link"),
             $('<th>').text("")
         ).appendTo('#data-task')
 
@@ -30,7 +36,6 @@ function get_case_info(){
                         $("<button>").attr("class", "dropdown-item").text(data["case_users"][user]["first_name"] + " " + data["case_users"][user]["last_name"])
                     )
                 )
-                
             }
         }
         else
@@ -104,12 +109,8 @@ function get_case_info(){
             }
 
             tr_task.append(
-                $('<td>').append(
-                    $("<a>").attr({"class": "btn", "data-bs-toggle": "collapse", "href": "#collapse_"+tasks["id"], "role": "button", "aria-expanded": "false", "aria-controls": "collapse_"+tasks["id"]}).css(
-                        {"--bs-btn-border-width": 1}
-                    ).append(
-                        $("<i>").attr("class", "fas fa-chevron-down")
-                    ),
+                $("<td>").append(
+                    $('<input>').attr({"onclick": "complete_task(" + tasks["id"] + ")", "type": "checkbox"})
                 ),
                 $('<td>').text(tasks["title"]).css({
                     "padding": "7px",
@@ -132,22 +133,29 @@ function get_case_info(){
                     $("<div>").text("Creation: " + tasks["creation_date"]),
                     $("<div>").text("Dead Line: " + tasks["dead_line"])
                 ),
+                $('<td>').append(
+                    $("<a>").attr("href", tasks["url"]).text(tasks["url"])
+                ),
                 $("<td>").append(
                     $('<a>').attr({"href": "/case/view/" + data["case"]["id"] + "/edit_task/" + tasks["id"], "role": "button", "class": "btn btn-primary"}).text("Edit").css({
                         "padding": "7px",
                         "box-sizing": "border-box",
                         "margin": "0",
                     })
-                ),
-                $("<td>").append(
-                    $('<input>').attr({"onclick": "complete_task(" + tasks["id"] + ")", "type": "checkbox"})
                 )
             )
 
 
             if (tasks['notes']){
+                tr_task.prepend($('<td>').append(
+                    $("<a>").attr({"class": "btn", "data-bs-toggle": "collapse", "href": "#collapse_"+tasks["id"], "role": "button", "aria-expanded": "false", "aria-controls": "collapse_"+tasks["id"]}).css(
+                        {"--bs-btn-border-width": 1}
+                    ).append(
+                        $("<i>").attr("class", "fas fa-chevron-down")
+                    ),
+                ),)
                 tr_note.append(
-                    $('<td>').attr({"colspan": "5"}).append(
+                    $('<td>').attr({"colspan": "50"}).append(
                         $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
                             $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
                                 $('<span>').append(
@@ -162,8 +170,19 @@ function get_case_info(){
                     )
                 )
             }else{
+                tr_task.prepend($('<td>'))
+                tr_task.append(
+                    $("<td>").append(
+                        $('<a>').attr({ "role": "button", "class": "btn btn-primary", "data-bs-toggle": "collapse", "href": "#collapse_"+tasks["id"], "aria-expanded": "false", "aria-controls": "collapse_"+tasks["id"]}).
+                        text("Add Note").
+                        css({
+                            "padding": "7px",
+                            "box-sizing": "border-box",
+                            "margin": "0",
+                        })
+                ))
                 tr_note.append(
-                    $('<td>').attr({"colspan": "5"}).append(
+                    $('<td>').attr({"colspan": "50"}).append(
                         $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
                             $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
                                 $('<span>').append(

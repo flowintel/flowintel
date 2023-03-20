@@ -104,6 +104,7 @@ def add_task_core(form, id):
         uuid=str(uuid.uuid4()),
         title=bleach.clean(form.title.data),
         description=bleach.clean(form.description.data),
+        url=bleach.clean(form.url.data),
         creation_date=datetime.datetime.now(),
         dead_line=dead_line,
         case_id=id
@@ -120,6 +121,7 @@ def edit_task_core(form, id):
 
     task.title = bleach.clean(form.title.data)
     task.description=bleach.clean(form.description.data)
+    task.url=bleach.clean(form.url.data),
     task.dead_line=dead_line
 
     update_last_modif(task.case_id)
