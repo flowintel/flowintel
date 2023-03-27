@@ -1,0 +1,29 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    
+    <div id="container">
+        <a class="btn btn-outline-success" href="/admin/add_role" type="button">New Role</a>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Is Admin</th>
+                <th>read_only</th>
+            </tr>
+            {% for role in roles %}
+                <tr>
+                    <td>{{role.name}}</td>
+                    <td>{{role.description}}</td>
+                    <td>{{role.admin}}</td>
+                    <td>{{role.read_only}}</td>
+                </tr>
+            {%endfor%}
+        </table>
+    </div>
+        
+{% endblock %}

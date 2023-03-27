@@ -15,6 +15,9 @@
                     <td>{{user.first_name}}</td>
                     <td>{{user.last_name}}</td>
                     <td>{{user.email}}</td>
+                    <td>{{user.role_id}}</td>
+                    <td>{{user.org_id}}</td>
+                    <td><a class="btn btn-primary" href="/admin/edit_user/{{user.id}}" type="button">Edit</a></td>
                 </tr>
             {%endfor%}
         </table>

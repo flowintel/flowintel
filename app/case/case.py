@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, redirect, jsonify, request
-from .form import CaseForm, TaskForm, CaseEditForm, TaskEditForm
+from .form import CaseForm, TaskForm, CaseEditForm, TaskEditForm, AddOrgsCase
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
+from ..db_class.db import Org, Case_Org
+from ..decorators import editor_required
 
 case_blueprint = Blueprint(
     'case',
@@ -22,16 +24,20 @@ def index():
 @login_required
 def get_cases():
     cases = CaseModel.getAll()
-    return jsonify({"cases": [case.to_json() for case in cases]}), 201
+    role = CaseModel.permission_user()
+    return jsonify({"cases": [case.to_json() for case in cases], "role": role}), 201
+
 
 @case_blueprint.route("/delete", methods=['POST'])
 @login_required
+@editor_required
 def delete():
     id = request.json["id_case"]
     if CaseModel.delete(id):
         return jsonify({"message": "Case deleted"}), 201
     else:
         return jsonify({"message": "Error case deleted"}), 201
+
 
 @case_blueprint.route("/view/<id>", methods=['GET'])
 @login_required
@@ -41,6 +47,7 @@ def view(id):
     if case:
         return render_template("case/case_view.html", id=id, case=case.to_json())
     return render_template("404.html")
+
 
 @case_blueprint.route("view/get_case_info/<id>", methods=['GET'])
 @login_required
@@ -53,13 +60,15 @@ def get_case_info(id):
         task.notes = CaseModel.markdown_notes(task.notes)
         tasks.append((task.to_json(), users, flag))
 
-    case_users = CaseModel.get_user_assign_case(case.id)
+    orgs_in_case = CaseModel.get_orgs_assign_case(case.id)
+    permission = CaseModel.permission_user()
 
-    return jsonify({"case": case.to_json(), "tasks": tasks, "case_users": case_users}), 201
+    return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission}), 201
 
 
 @case_blueprint.route("/complete_task", methods=['POST'])
 @login_required
+@editor_required
 def complete_task():
     id = request.json["id_task"]
     if CaseModel.complete_task(id):
@@ -69,6 +78,7 @@ def complete_task():
 
 @case_blueprint.route("/delete_task", methods=['POST'])
 @login_required
+@editor_required
 def delete_task():
     id = request.json["id_task"]
     if CaseModel.delete_task(id):
@@ -79,6 +89,7 @@ def delete_task():
 
 @case_blueprint.route("/add", methods=['GET','POST'])
 @login_required
+@editor_required
 def add_case():
     form = CaseForm()
     if form.validate_on_submit():
@@ -89,6 +100,7 @@ def add_case():
 
 @case_blueprint.route("/edit/<id>", methods=['GET','POST'])
 @login_required
+@editor_required
 def edit_case(id):
     form = CaseEditForm()
 
@@ -106,6 +118,7 @@ def edit_case(id):
 
 @case_blueprint.route("/add_task/<id>", methods=['GET','POST'])
 @login_required
+@editor_required
 def add_task(id):
     form = TaskForm()
     # form.group_id.choices = [(g.uuid, g.title) for g in Case.query.order_by('title')]
@@ -117,6 +130,7 @@ def add_task(id):
 
 @case_blueprint.route("view/<id_case>/edit_task/<id>", methods=['GET','POST'])
 @login_required
+@editor_required
 def edit_task(id_case, id):
     form = TaskEditForm()
 
@@ -135,6 +149,7 @@ def edit_task(id_case, id):
 
 @case_blueprint.route("/modif_note", methods=['POST'])
 @login_required
+@editor_required
 def modif_note():
     id = request.json["id_task"]
     notes = request.json["notes"]
@@ -146,9 +161,9 @@ def modif_note():
 
 
 @case_blueprint.route("/get_note_text", methods=['GET'])
-@login_required
+@editor_required
 def get_note_text():
-    """Get category page"""
+    """Get not of a task in text format"""
 
     data_dict = dict(request.args)
     note = CaseModel.get_note_text(data_dict["id"])
@@ -156,9 +171,8 @@ def get_note_text():
     return jsonify({"note": note}), 201
 
 @case_blueprint.route("/get_note_markdown", methods=['GET'])
-@login_required
 def get_note_markdown():
-    """Get category page"""
+    """Get not of a task in markdown format"""
 
     data_dict = dict(request.args)
     note = CaseModel.get_note_markdown(data_dict["id"])
@@ -168,8 +182,9 @@ def get_note_markdown():
 
 @case_blueprint.route("/take_task", methods=['POST'])
 @login_required
+@editor_required
 def take_task():
-    """Get category page"""
+    """Assign a task"""
 
     id = request.json["task_id"]
 
@@ -180,11 +195,44 @@ def take_task():
 
 @case_blueprint.route("/remove_assign_task", methods=['POST'])
 @login_required
+@editor_required
 def remove_assign_task():
-    """Get category page"""
+    """Remove an assignation to a task"""
 
     id = request.json["task_id"]
 
     CaseModel.remove_assign_task(id)
 
     return jsonify({"user": current_user.to_json()}), 201
+
+
+@case_blueprint.route("/view/<id>/add_orgs", methods=['GET', 'POST'])
+@login_required
+@editor_required
+def add_orgs(id):
+    """Add orgs to a case"""
+
+    form = AddOrgsCase()
+    case_org = Case_Org.query.filter_by(case_id=id).all()
+
+    org_list = list()
+
+    for org in Org.query.order_by('name'):
+        if case_org:
+            flag = False
+            for c_o in case_org:
+                if c_o.org_id == org.id:
+                    flag = True
+            if not flag:
+                org_list.append((org.id, f"{org.name}"))
+        else:
+            org_list.append((org.id, f"{org.name}"))
+
+    form.org_id.choices = org_list
+    form.case_id.data=id
+
+    if form.validate_on_submit():
+        CaseModel.assign_case(form, id)
+        return redirect(f"/case/view/{id}")
+
+    return render_template("case/add_orgs.html", form=form)

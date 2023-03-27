@@ -8,7 +8,7 @@
 {% block content %}
     <!-- <div class="ui grid container">
         <div class="eight wide computer sixteen wide mobile centered column"> -->
-            <h2 class="ui dividing header">Create an account</h2>
+            <h2 class="ui dividing header">Add Orgs to case</h2>
 
             {% set flashes = {
                 'error':   get_flashed_messages(category_filter=['form-error']),
@@ -20,15 +20,8 @@
             {{ f.begin_form(form, flashes) }}
 
 
-            {{ f.render_form_field(form.first_name) }}
-            {{ f.render_form_field(form.last_name) }}
-
-            {{ f.render_form_field(form.email) }}
-			{{ f.render_form_field(form.password) }}
-			{{ f.render_form_field(form.password2) }}
-
-			{{ f.render_form_field(form.role) }}
-			{{ f.render_form_field(form.org) }}
+            {{ f.render_form_field(form.org_id) }}
+            {{ f.render_form_field(form.case_id) }}
 
 
             {{ f.form_message(flashes['error'], header='Something went wrong.', class='error') }}
@@ -43,5 +36,13 @@
             {{ f.end_form(form) }}
         </div>
     </div>
-    {{ check.password_check('password', 0) }}
 {% endblock %}
+
+{%block script%}
+<script type="text/javascript">
+    $(document).ready(function(){
+        $('.select2-select').select2()
+    });
+
+</script>
+{%endblock%}

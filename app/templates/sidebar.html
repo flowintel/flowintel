@@ -5,16 +5,16 @@
     </a>
     <ul class="list-unstyled ps-0">
       <li class="mb-1">
-        <button class="btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse" data-bs-target="#home-collapse" aria-expanded="true">
+        <button class="btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#home-collapse" aria-expanded="false">
           Home
         </button>
-        <div class="collapse show" id="home-collapse">
+        <div class="collapse" id="home-collapse">
           <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
             <li><a href="/case" class="link-dark d-inline-flex text-decoration-none rounded">Case</a></li>
           </ul>
         </div>
       </li>
-	  {% if current_user.role == 'admin' %}
+	  {% if current_user.is_admin() %}
       <li class="mb-1">
         <button class="btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#dashboard-collapse" aria-expanded="false">
           Admin
@@ -23,8 +23,8 @@
           <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
             <li><a href="/admin" class="link-dark d-inline-flex text-decoration-none rounded">All Users</a></li>
             <li><a href="/admin/add_user" class="link-dark d-inline-flex text-decoration-none rounded">Add User</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Monthly</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Annually</a></li>
+            <li><a href="/admin/orgs" class="link-dark d-inline-flex text-decoration-none rounded">Organisations</a></li>
+            <li><a href="/admin/roles" class="link-dark d-inline-flex text-decoration-none rounded">Roles</a></li>
           </ul>
         </div>
       </li>

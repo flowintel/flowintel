@@ -1,5 +1,5 @@
 from .. import db
-from ..db_class.db import Case, Task, Task_User, User, Case_User
+from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org
 from ..utils.utils import isUUID
 import uuid
 import bleach
@@ -32,11 +32,17 @@ def getAll():
     return cases
 
 
+def get_role():
+    return Role.query.get(current_user.role_id)
+
+
 def delete(id):
     case = get(id)
     if case is not None:
+        for task in case.tasks:
+            delete_task(task.id)
+        Case_Org.query.filter_by(case_id=case.id).delete()
         db.session.delete(case)
-        Case_User.query.filter_by(case_id=case.id).delete()
         db.session.commit()
         return True
     return False
@@ -79,10 +85,20 @@ def add_case_core(form):
         last_modif=datetime.datetime.now(),
         dead_line=dead_line
     )
+    
     db.session.add(case)
     db.session.commit()
 
+    case_org = Case_Org(
+        case_id=case.id, 
+        org_id=current_user.org_id
+    )
+
+    db.session.add(case_org)
+    db.session.commit()
+
     return case
+
 
 def edit_case_core(form, id):
     case = get(id)
@@ -166,16 +182,28 @@ def markdown_notes(notes):
         return markdown.markdown(notes)
     return notes
 
+
+def permission_user():
+    return get_role().to_json()
+
+
+def assign_case(form, id):
+    for org_id in form.org_id.data:
+        case_org = Case_Org(
+            case_id=id, 
+            org_id=org_id
+        )
+        db.session.add(case_org)
+
+    update_last_modif(id)
+
+    db.session.commit()
+
+
 def assign_task(id):
     task = get_task(id)
     task_user = Task_User(task_id=task.id, user_id=current_user.id)
     db.session.add(task_user)
-
-    case_user = Case_User.query.filter_by(case_id=task.case_id, user_id=current_user.id).first()
-
-    if not case_user:
-        case_user = Case_User(case_id=task.case_id, user_id=current_user.id) 
-        db.session.add(case_user)
 
     update_last_modif(task.case_id)
 
@@ -192,15 +220,15 @@ def get_user_assign_task(task_id):
         users.append(u.to_json())
     return users, flag
 
-def get_user_assign_case(case_id):
-    case_user = Case_User.query.filter_by(case_id=case_id).all()
-    users = list()
+def get_orgs_assign_case(case_id):
+    case_org = Case_Org.query.filter_by(case_id=case_id).all()
+    orgs = list()
 
-    for user in case_user:
-        u = User.query.get(user.user_id)
-        users.append(u.to_json())
+    for c_o in case_org:
+        o = Org.query.get(c_o.org_id)
+        orgs.append(o.to_json())
 
-    return users
+    return orgs
 
 
 def remove_assign_task(id):

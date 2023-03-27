@@ -22,7 +22,10 @@
         </div>
 
         <div>
-            <a class="btn btn-outline-success" href="/case/edit/{{id}}" type="button">Edit Case</a>
+            {% if not current_user.read_only() %}
+                <a class="btn btn-outline-success" href="/case/edit/{{id}}" type="button">Edit Case</a>
+            {%endif%}
+
             <div id="assign" style="float: right;"></div>
             <br/>
             Creation: {{case.creation_date}}
@@ -34,7 +37,9 @@
             {%endif%}
         </div>
 
-        <a class="btn btn-outline-success" href="/case/add_task/{{id}}" type="button">New Task</a>
+        {% if not current_user.read_only() %}
+            <a class="btn btn-outline-success" href="/case/add_task/{{id}}" type="button">New Task</a>
+        {%endif%}
 
         <table id="data-task">
         </table>

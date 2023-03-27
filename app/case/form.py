@@ -5,14 +5,16 @@ from wtforms.fields import (
     StringField,
     SubmitField,
     EmailField,
+    SelectMultipleField,
     SelectField,
     TextAreaField,
     DateField,
-    TimeField
+    TimeField, 
+    HiddenField
 )
 from wtforms.validators import Email, EqualTo, InputRequired, Length, Optional
 
-from ..db_class.db import Case, Task
+from ..db_class.db import Case, User, Case_Org
 
 
 class CaseForm(FlaskForm):
@@ -52,7 +54,7 @@ class TaskForm(FlaskForm):
                                   Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
     # group_id = SelectField(u'Category', coerce=str, validators=[InputRequired()])
-    url = StringField('Tool/Link', validators=[Length(1, 64)])
+    url = StringField('Tool/Link', validators=[Optional(), Length(64)])
     dead_line_date = DateField('Dead_line_date', validators=[Optional()])
     dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
     submit = SubmitField('Register')
@@ -67,7 +69,7 @@ class TaskEditForm(FlaskForm):
         'Title', validators=[InputRequired(),
                                   Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
-    url = StringField('Tool/Link', validators=[Length(1, 64)])
+    url = StringField('Tool/Link', validators=[Optional(), Length(64)])
     dead_line_date = DateField('Dead_line_date', validators=[Optional()])
     dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
     submit = SubmitField('Modify')
@@ -75,3 +77,17 @@ class TaskEditForm(FlaskForm):
     def validate_dead_line_time(self, field):
         if field.data and not self.dead_line_date.data:
             raise ValidationError("Choose a date")
+
+
+class AddOrgsCase(FlaskForm):
+    org_id = SelectMultipleField(u'Orgs', coerce=int)
+    case_id = HiddenField("")
+
+    submit = SubmitField('Register')
+
+    def validate_org_id(self, field):
+        for org in field.data:
+            if Case_Org.query.filter_by(case_id = self.case_id.data, org_id=org).first():
+                raise ValidationError(f"Org {org} already in case")
+
+        

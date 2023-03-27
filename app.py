@@ -1,6 +1,6 @@
 from app import create_app, db
 import argparse
-import os
+from app.utils.init_db import create_admin
 
 
 parser = argparse.ArgumentParser()
@@ -14,11 +14,13 @@ app = create_app()
 if args.init_db:
     with app.app_context():
         db.create_all()
+        create_admin()
         
 elif args.recreate_db:
     with app.app_context():
         db.drop_all()
         db.create_all()
+        create_admin()
 elif args.delete_db:
     with app.app_context():
         db.drop_all()

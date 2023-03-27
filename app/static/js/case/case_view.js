@@ -20,28 +20,39 @@ function get_case_info(){
 
         $("#assign").empty()
 
+        user_permission = data["permission"]
+
         // List of user working in the case
         div_user_case = $("<div>").attr({"class": "dropdown", "id": "dropdown_user_case"}).appendTo($("#assign"))
-        if(data["case_users"].length > 0){
-            div_user_case.append(
-                $("<button>").attr({"class": "btn btn-secondary dropdown-toggle", "type": "button", "data-bs-toggle": "dropdown", "aria-expanded": "false"}).text(
-                    "Users"
+        div_user_case.append(
+            $("<button>").attr({"class": "btn btn-secondary dropdown-toggle", "type": "button", "data-bs-toggle": "dropdown", "aria-expanded": "false"}).text(
+                "Orgs"
+            )
+        )
+
+        ul_org = $("<ul>").attr("class", "dropdown-menu")
+        if(!user_permission["read_only"]){
+            ul_org.append(
+                $("<li>").append(
+                    $('<a>').attr({"href": "/case/view/" + data["case"]["id"] + "/add_orgs", "role": "button", "class": "btn btn-primary"}).
+                    text("Add Orgs").
+                    css({
+                        "padding": "7px",
+                        "box-sizing": "border-box",
+                        "margin": "0",
+                    })
                 )
             )
-            ul_user = $("<ul>").attr("class", "dropdown-menu")
-            div_user_case.append(ul_user)
-            for (user in data["case_users"]){
-                ul_user.append(
-                    $("<li>").append(
-                        $("<button>").attr("class", "dropdown-item").text(data["case_users"][user]["first_name"] + " " + data["case_users"][user]["last_name"])
-                    )
-                )
-            }
         }
-        else
-            div_user_case.append(
-                $("<i>").text("No user assigned")
+
+        div_user_case.append(ul_org)
+        for (org in data["orgs_in_case"]){
+            ul_org.append(
+                $("<li>").append(
+                    $("<button>").attr("class", "dropdown-item").text(data["orgs_in_case"][org]["name"])
+                )
             )
+        }
 
 
         tr_completed_line = $("<tr>").appendTo("#data-task")
@@ -55,21 +66,25 @@ function get_case_info(){
             // cell to take or remove assignation to a task
             td_take_task = $("<td>").attr("id", "td_task_" + tasks["id"])
             if (!current_user){
-                td_take_task.append(
-                    $('<button>').attr("onclick", "take_task(" + tasks["id"] + ")").text("Take Task").css({
-                        "padding": "7px",
-                        "box-sizing": "border-box",
-                        "margin": "0",
-                    })
-                )
+                if(!user_permission["read_only"]){
+                    td_take_task.append(
+                        $('<button>').attr("onclick", "take_task(" + tasks["id"] + ")").text("Take Task").css({
+                            "padding": "7px",
+                            "box-sizing": "border-box",
+                            "margin": "0",
+                        })
+                    )
+                }
             }else{
-                td_take_task.append(
-                    $('<button>').attr("onclick", "remove_assign_task(" + tasks["id"] + ")").text("Remove assign Task").css({
-                        "padding": "7px",
-                        "box-sizing": "border-box",
-                        "margin": "0",
-                    })
-                )
+                if(!user_permission["read_only"]){
+                    td_take_task.append(
+                        $('<button>').attr("onclick", "remove_assign_task(" + tasks["id"] + ")").text("Remove assign Task").css({
+                            "padding": "7px",
+                            "box-sizing": "border-box",
+                            "margin": "0",
+                        })
+                    )
+                }
             }
             
             // List of user on a tasks
@@ -80,10 +95,10 @@ function get_case_info(){
                         "Users"
                     )
                 )
-                ul_user = $("<ul>").attr("class", "dropdown-menu")
-                div_user.append(ul_user)
+                ul_org = $("<ul>").attr("class", "dropdown-menu")
+                div_user.append(ul_org)
                 for (user in users){
-                    ul_user.append(
+                    ul_org.append(
                         $("<li>").append(
                             $("<button>").attr("class", "dropdown-item").text(users[user]["first_name"] + " " + users[user]["last_name"])
                         )
@@ -108,10 +123,39 @@ function get_case_info(){
                 tr_completed_line.before(tr_note)
             }
 
+            // Delete a Task
+            td_delete = $("<td>")
+            if(!user_permission["read_only"]){
+                td_delete.append(
+                    $('<button>').attr("onclick", "delete_task(" + tasks["id"] + ")").text("Remove").css({
+                    "padding": "7px",
+                    "box-sizing": "border-box",
+                    "margin": "0",
+                }))
+            }
+
+
+            // Edit a Task
+            td_edit_task = $("<td>")
+            if(!user_permission["read_only"]){
+                td_edit_task.append(
+                    $('<a>').attr({"href": "/case/view/" + data["case"]["id"] + "/edit_task/" + tasks["id"], "role": "button", "class": "btn btn-primary"}).text("Edit").css({
+                        "padding": "7px",
+                        "box-sizing": "border-box",
+                        "margin": "0",
+                    })
+                )
+            }
+
+            // Complete
+            td_complete = $("<td>")
+            if(!user_permission["read_only"]){
+                td_complete.append($('<input>').attr({"onclick": "complete_task(" + tasks["id"] + ")", "type": "checkbox"}))
+            }
+
+            // Main tr
             tr_task.append(
-                $("<td>").append(
-                    $('<input>').attr({"onclick": "complete_task(" + tasks["id"] + ")", "type": "checkbox"})
-                ),
+                td_complete,
                 $('<td>').text(tasks["title"]).css({
                     "padding": "7px",
                     "box-sizing": "border-box",
@@ -119,13 +163,7 @@ function get_case_info(){
                 }),
                 $('<td>').text(tasks["description"]),
                 td_take_task,
-                $('<td>').append(
-                    $('<button>').attr("onclick", "delete_task(" + tasks["id"] + ")").text("Remove").css({
-                        "padding": "7px",
-                        "box-sizing": "border-box",
-                        "margin": "0",
-                    })
-                ),
+                td_delete,
                 $('<td>').append(
                     div_user
                 ),
@@ -136,13 +174,7 @@ function get_case_info(){
                 $('<td>').append(
                     $("<a>").attr("href", tasks["url"]).text(tasks["url"])
                 ),
-                $("<td>").append(
-                    $('<a>').attr({"href": "/case/view/" + data["case"]["id"] + "/edit_task/" + tasks["id"], "role": "button", "class": "btn btn-primary"}).text("Edit").css({
-                        "padding": "7px",
-                        "box-sizing": "border-box",
-                        "margin": "0",
-                    })
-                )
+                td_edit_task
             )
 
 
@@ -153,16 +185,20 @@ function get_case_info(){
                     ).append(
                         $("<i>").attr("class", "fas fa-chevron-down")
                     ),
-                ),)
+                ))
+                if(!user_permission["read_only"])
+                    button_edit = ('<button>').attr({"onclick": "edit_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
+                        $('<div>').attr({"hidden":""}).text(tasks["title"]),
+                        "Edit"
+                    )
+                else
+                    button_edit=""
                 tr_note.append(
                     $('<td>').attr({"colspan": "50"}).append(
                         $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
                             $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
                                 $('<span>').append(
-                                    $('<button>').attr({"onclick": "edit_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
-                                        $('<div>').attr({"hidden":""}).text(tasks["title"]),
-                                        "Edit"
-                                    ),
+                                    button_edit
                                 ).css({"right": "1em", "position": "relative"}),
                                 tasks['notes']
                             )
@@ -171,31 +207,33 @@ function get_case_info(){
                 )
             }else{
                 tr_task.prepend($('<td>'))
-                tr_task.append(
-                    $("<td>").append(
-                        $('<a>').attr({ "role": "button", "class": "btn btn-primary", "data-bs-toggle": "collapse", "href": "#collapse_"+tasks["id"], "aria-expanded": "false", "aria-controls": "collapse_"+tasks["id"]}).
-                        text("Add Note").
-                        css({
-                            "padding": "7px",
-                            "box-sizing": "border-box",
-                            "margin": "0",
-                        })
-                ))
-                tr_note.append(
-                    $('<td>').attr({"colspan": "50"}).append(
-                        $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
-                            $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
-                                $('<span>').append(
-                                    $('<button>').attr({"onclick": "modif_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
-                                        $('<div>').attr({"hidden":""}).text(tasks["title"]),
-                                        "Create"
-                                    ),
-                                ).css({"right": "1em", "position": "relative"}),                                    
-                                $('<textarea>').attr({"id": "note_area_" + tasks["id"], "rows": "5", "cols": "50", "maxlength": "5000"})
+                if(!user_permission["read_only"]){
+                    tr_task.append(
+                        $("<td>").append(
+                            $('<a>').attr({ "role": "button", "class": "btn btn-primary", "data-bs-toggle": "collapse", "href": "#collapse_"+tasks["id"], "aria-expanded": "false", "aria-controls": "collapse_"+tasks["id"]}).
+                            text("Add Note").
+                            css({
+                                "padding": "7px",
+                                "box-sizing": "border-box",
+                                "margin": "0",
+                            })
+                    ))
+                    tr_note.append(
+                        $('<td>').attr({"colspan": "50"}).append(
+                            $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
+                                $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
+                                    $('<span>').append(
+                                        $('<button>').attr({"onclick": "modif_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
+                                            $('<div>').attr({"hidden":""}).text(tasks["title"]),
+                                            "Create"
+                                        ),
+                                    ).css({"right": "1em", "position": "relative"}),                                    
+                                    $('<textarea>').attr({"id": "note_area_" + tasks["id"], "rows": "5", "cols": "50", "maxlength": "5000"})
+                                )
                             )
                         )
                     )
-                )
+                }
             }
         })
         tr_completed_line.before(
@@ -270,7 +308,6 @@ function edit_note(id){
    
     $.getJSON('/case/get_note_text?id='+id, function(data) {
         $("#divNote"+id).empty()
-        console.log(data);
 
         $("#divNote"+id).append(
             $('<span>').append($('<button>').attr({"onclick": "modif_note(" + id + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+id}).text("Save")).css(

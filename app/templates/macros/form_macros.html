@@ -137,6 +137,14 @@
         </div>
     {% elif field.type == 'FormField' %}
         {{ render_form(field) }}
+
+    {% elif field.type == 'SelectMultipleField' %}
+        <select data-placeholder="Organisations" multiple class="select2-select" name="org_id" id="org_id">
+            {% for choice in field.choices %}
+                <option value="{{choice[0]}}">{{choice[1]}}</option>
+            {% endfor %}
+        </select>
+
     {% elif field.type == 'CustomSelectField' %}
         {{ render_custom_select(field) }}
     {% elif field.type == 'EmailField' %}

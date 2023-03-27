@@ -1,0 +1,26 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    
+    <div id="container">
+        <a class="btn btn-outline-success" href="/admin/add_org" type="button">New Organisation</a>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Read_only</th>
+            </tr>
+            {% for org in orgs %}
+                <tr>
+                    <td>{{org.name}}</td>
+                    <td>{{org.description}}</td>
+                </tr>
+            {%endfor%}
+        </table>
+    </div>
+        
+{% endblock %}

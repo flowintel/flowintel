@@ -8,7 +8,7 @@
 {% block content %}
     <!-- <div class="ui grid container">
         <div class="eight wide computer sixteen wide mobile centered column"> -->
-            <h2 class="ui dividing header">Create an account</h2>
+            <h2 class="ui dividing header">Edit User</h2>
 
             {% set flashes = {
                 'error':   get_flashed_messages(category_filter=['form-error']),
@@ -22,10 +22,6 @@
 
             {{ f.render_form_field(form.first_name) }}
             {{ f.render_form_field(form.last_name) }}
-
-            {{ f.render_form_field(form.email) }}
-			{{ f.render_form_field(form.password) }}
-			{{ f.render_form_field(form.password2) }}
 
 			{{ f.render_form_field(form.role) }}
 			{{ f.render_form_field(form.org) }}
@@ -43,5 +39,4 @@
             {{ f.end_form(form) }}
         </div>
     </div>
-    {{ check.password_check('password', 0) }}
 {% endblock %}

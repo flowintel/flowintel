@@ -1,5 +1,5 @@
 from .. import db
-from ..db_class.db import Case, Task, Task_User, User, Case_User
+from ..db_class.db import Case, Task, Task_User, User
 from ..utils.utils import isUUID
 import uuid
 import bleach

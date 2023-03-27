@@ -5,11 +5,14 @@ from wtforms.fields import (
     PasswordField,
     StringField,
     SubmitField,
-    EmailField
+    EmailField,
+    SelectField,
+    TextAreaField,
+    BooleanField
 )
-from wtforms.validators import Email, EqualTo, InputRequired, Length
+from wtforms.validators import Email, EqualTo, InputRequired, Length, Optional
 
-from ..db_class.db import User
+from ..db_class.db import User, Org, Role
 
 class RegistrationForm(FlaskForm):
     first_name = StringField(
@@ -29,6 +32,10 @@ class RegistrationForm(FlaskForm):
             EqualTo('password2', 'Passwords must match')
         ])
     password2 = PasswordField('Confirm password', validators=[InputRequired()])
+
+    role = SelectField(u'Role', coerce=str, validators=[InputRequired()])
+    org = SelectField(u'Organisation', coerce=str, validators=[InputRequired()])
+
     submit = SubmitField('Register')
 
     def validate_email(self, field):
@@ -36,3 +43,37 @@ class RegistrationForm(FlaskForm):
             raise ValidationError('Email already registered. (Did you mean to '
                                   '<a href="{}">log in</a> instead?)'.format(
                                     url_for('account.index')))
+
+
+class EditUserFrom(FlaskForm):
+    first_name = StringField('First name', validators=[InputRequired(), Length(1, 64)])
+    last_name = StringField('Last name', validators=[InputRequired(), Length(1, 64)])
+
+    role = SelectField(u'Role', coerce=str, validators=[InputRequired()])
+    org = SelectField(u'Organisation', coerce=str, validators=[InputRequired()])
+
+    submit = SubmitField('Register')
+
+
+class CreateOrgForm(FlaskForm):
+    name = StringField('Name', validators=[InputRequired(), Length(1, 64)])
+    description = TextAreaField('Description', default="", validators=[Optional()])
+
+    submit = SubmitField('Register')
+
+    def validate_name(self, field):
+        if Org.query.filter_by(name=field.data).first():
+            raise ValidationError("Name Already Exist")
+
+
+class AddRoleForm(FlaskForm):
+    name = StringField('Name', validators=[InputRequired(),Length(1, 64)])
+    description = TextAreaField('Description', validators=[Optional()])
+    admin = BooleanField("Create Case", default=False, false_values=(False, 'false'))
+    read_only = BooleanField("Read only", default=True, false_values=(False, 'false'))
+
+    submit = SubmitField('Register')
+
+    def validate_name(self, field):
+        if Role.query.get(field.data):
+            raise ValidationError("Name already exist")
