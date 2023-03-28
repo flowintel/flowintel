@@ -83,6 +83,22 @@ def add_org():
     return render_template("admin/add_org.html", form=form)
 
 
+@admin_blueprint.route("/edit_org/<id>", methods=['GET','POST'])
+@login_required
+@admin_required
+def edit_org(id):
+    form = CreateOrgForm()
+    if form.validate_on_submit():
+        AdminModel.edit_org_core(form, id)
+        return redirect("/admin/orgs")
+    else:
+        org = AdminModel.get_org(id)
+        form.name.data = org.name
+        form.description.data = org.description
+        form.uuid.data = org.uuid
+    return render_template("admin/add_org.html", form=form)
+
+
 @admin_blueprint.route("/roles", methods=['GET'])
 @login_required
 @admin_required

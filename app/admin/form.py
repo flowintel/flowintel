@@ -14,6 +14,8 @@ from wtforms.validators import Email, EqualTo, InputRequired, Length, Optional
 
 from ..db_class.db import User, Org, Role
 
+from ..utils.utils import isUUID
+
 class RegistrationForm(FlaskForm):
     first_name = StringField(
         'First name', validators=[InputRequired(),
@@ -58,12 +60,18 @@ class EditUserFrom(FlaskForm):
 class CreateOrgForm(FlaskForm):
     name = StringField('Name', validators=[InputRequired(), Length(1, 64)])
     description = TextAreaField('Description', default="", validators=[Optional()])
+    uuid = StringField('UUID', validators=[Length(0,36)])
 
     submit = SubmitField('Register')
 
     def validate_name(self, field):
         if Org.query.filter_by(name=field.data).first():
             raise ValidationError("Name Already Exist")
+
+    def validate_uuid(self, field):
+        if field.data:
+            if not isUUID(field.data):
+                raise ValidationError("UUID is not valid")
 
 
 class AddRoleForm(FlaskForm):

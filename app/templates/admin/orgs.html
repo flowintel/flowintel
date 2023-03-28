@@ -12,12 +12,16 @@
             <tr>
                 <th>Name</th>
                 <th>Description</th>
-                <th>Read_only</th>
+                <th>Uuid</th>
+                <th>Default Org</th>
             </tr>
             {% for org in orgs %}
                 <tr>
                     <td>{{org.name}}</td>
                     <td>{{org.description}}</td>
+                    <td>{{org.uuid}}</td>
+                    <td>{{org.default_org}}</td>
+                    <td><a class="btn btn-primary" href="/admin/edit_org/{{org.id}}" type="button">Edit</a></td>
                 </tr>
             {%endfor%}
         </table>

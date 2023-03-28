@@ -52,9 +52,9 @@ class Case(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String)
-    creation_date = db.Column(db.DateTime)
-    dead_line = db.Column(db.DateTime)
-    last_modif = db.Column(db.DateTime)
+    creation_date = db.Column(db.DateTime, index=True)
+    dead_line = db.Column(db.DateTime, index=True)
+    last_modif = db.Column(db.DateTime, index=True)
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade="all, delete-orphan")
     completed = db.Column(db.Boolean, default=False)
 
@@ -81,8 +81,8 @@ class Task(db.Model):
     description = db.Column(db.String, nullable=True)
     url = db.Column(db.String(64), index=True)
     notes = db.Column(db.String, nullable=True)
-    creation_date = db.Column(db.DateTime)
-    dead_line = db.Column(db.DateTime)
+    creation_date = db.Column(db.DateTime, index=True)
+    dead_line = db.Column(db.DateTime, index=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
     completed = db.Column(db.Boolean, default=False)
 
@@ -107,13 +107,17 @@ class Org(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True)
     description = db.Column(db.String, nullable=True)
+    uuid = db.Column(db.String(36), index=True)
     users = db.relationship('User', backref='Org', lazy='dynamic', cascade="all, delete-orphan")
+    default_org = db.Column(db.Boolean, default=True)
 
     def to_json(self):
         return {
             "id": self.id, 
             "name": self.name, 
-            "description": self.description
+            "description": self.description,
+            "uuid": self.uuid,
+            "default_org": self.default_org
         }
 
 

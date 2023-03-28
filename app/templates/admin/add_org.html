@@ -22,6 +22,7 @@
 
             {{ f.render_form_field(form.name) }}
             {{ f.render_form_field(form.description) }}
+            {{ f.render_form_field(form.uuid) }}
 
 
             {{ f.form_message(flashes['error'], header='Something went wrong.', class='error') }}

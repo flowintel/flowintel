@@ -2,6 +2,7 @@ from .. import db
 from ..db_class.db import User, Role, Org, Case_Org
 import bleach
 from ..utils.utils import generate_api_key
+import uuid
 
 def get_all_users():
     return User.query.all()
@@ -15,11 +16,15 @@ def get_all_orgs():
 def get_user(id):
     return User.query.get(id)
 
+def get_org(id):
+    return Org.query.get(id)
+
 
 def create_default_org(user):
     org = Org(
         name = bleach.clean(f"{user.first_name} {user.last_name}"),
-        description = bleach.clean(f"Org for user: {user.id}-{user.first_name} {user.last_name}")
+        description = bleach.clean(f"Org for user: {user.id}-{user.first_name} {user.last_name}"),
+        default_org = True
     )
     db.session.add(org)
     db.session.commit()
@@ -27,9 +32,9 @@ def create_default_org(user):
     return org
 
 
-def delete_default_org(user_org_id, user_first_name, user_last_name):
+def delete_default_org(user_org_id):
     org = Org.query.get(user_org_id)
-    if org.name == f"{user_first_name} {user_last_name}":
+    if org.default_org:
         cases_orgs = Case_Org.query.filter_by(org_id=org.id)
         for case_org in cases_orgs:
             db.session.delete(case_org)
@@ -60,19 +65,18 @@ def add_user_core(form):
 
 def edit_user_core(form, id):
     user = get_user(id)
+    prev_user_org_id = user.org_id
     flag = False
 
     if not form.org.data or form.org.data == 'None':
-        org = Org.query.filter_by(name=f"{user.first_name} {user.last_name}").first()
-        if not org:
+        org = get_org(prev_user_org_id)
+        if not org.default_org:
             org = create_default_org(user)
         org_change = str(org.id)
     else:
-        prev_user_org_id = user.org_id
-        prev_user_first_name = user.first_name
-        prev_user_last_name = user.last_name
         org_change = form.org.data
-        flag = True
+        if not get_org(form.org.data).id == prev_user_org_id:
+            flag = True
 
     user.first_name=bleach.clean(form.first_name.data)
     user.last_name=bleach.clean(form.last_name.data)
@@ -82,15 +86,34 @@ def edit_user_core(form, id):
     db.session.commit()
 
     if flag:
-        delete_default_org(prev_user_org_id, prev_user_first_name, prev_user_last_name)
+        delete_default_org(prev_user_org_id)
 
 
 def add_org_core(form):
+    if form.uuid.data:
+        uuid_field = form.uuid.data
+    else:
+        uuid_field = str(uuid.uuid4())
     org = Org(
         name = bleach.clean(form.name.data),
-        description = bleach.clean(form.description.data)
+        description = bleach.clean(form.description.data),
+        uuid = uuid_field,
+        default_org = False
     )
     db.session.add(org)
+    db.session.commit()
+
+
+def edit_org_core(form, id):
+    org = get_org(id)
+    if form.uuid.data:
+        org.uuid = form.uuid.data
+    else:
+        org.uuid = str(uuid.uuid4())
+
+    org.name = bleach.clean(form.name.data)
+    org.description = bleach.clean(form.description.data)
+    
     db.session.commit()
 
 
