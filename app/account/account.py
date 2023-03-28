@@ -8,7 +8,6 @@ from flask_login import (
     logout_user,
 )
 from . import account_core as AccountModel
-from ..utils.create_user import create_user
 
 account_blueprint = Blueprint(
     'account',
@@ -22,8 +21,14 @@ account_blueprint = Blueprint(
 @account_blueprint.route("/")
 @login_required
 def index():
-
     return render_template("account/account_index.html", user=current_user)
+
+
+@account_blueprint.route("/")
+@login_required
+def get_user_info():
+    
+    return
 
 
 @account_blueprint.route('/login', methods=['GET', 'POST'])
@@ -48,8 +53,3 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('home.home'))
 
-# TO BE REMOVED
-@account_blueprint.route('/create')
-def create():
-    create_user()
-    return redirect(url_for('home.home'))
