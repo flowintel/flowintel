@@ -25,7 +25,7 @@ class GetCases(Resource):
         if verif:
             return verif
 
-        cases = CaseModel.getAll()
+        cases = CaseModel.get_all_cases()
         return {"cases": [case.to_json() for case in cases]}
 
 
@@ -37,7 +37,7 @@ class GetCase(Resource):
         if verif:
             return verif
 
-        case = CaseModel.get(id)
+        case = CaseModel.get_case(id)
         if case:
             return case.to_json()
         return {"message": "Case not found"}
@@ -51,11 +51,11 @@ class GetTasks(Resource):
         if verif:
             return verif
 
-        case = CaseModel.get(id)
+        case = CaseModel.get_case(id)
             
         tasks = list()
         for task in case.tasks:
-            users, flag = CaseModel.get_user_assign_task(task.id)
+            users, flag = CaseModel.get_users_assign_task(task.id)
             task.notes = CaseModel.markdown_notes(task.notes)
             tasks.append((task.to_json(), users, flag))
 
@@ -72,7 +72,10 @@ class GetTask(Resource):
 
         task = CaseModel.get_task(tid)
         if task:
-            return task.to_json()
+            if not id == task.case_id:
+                return task.to_json()
+            else:
+                return {"message": "Task not in this case"}
         return {"message": "Task not found"}
 
 
@@ -84,7 +87,7 @@ class DeleteCase(Resource):
         if verif:
             return verif
 
-        if CaseModel.delete(id):
+        if CaseModel.delete_case(id):
             return {"message": "Case deleted"}, 200
         else:
             return {"message": "Error case deleted"}
@@ -98,10 +101,17 @@ class DeleteTask(Resource):
         if verif:
             return verif
 
-        if CaseModel.delete_task(tid):
-            return {"message": "Task deleted"}, 201
-        else:
-            return {"message": "Error task deleted"}, 201
+        task = CaseModel.get_task(tid)
+        if task:
+            if not id == task.case_id:
+                if CaseModel.delete_task(tid):
+                    return {"message": "Task deleted"}, 201
+                else:
+                    return {"message": "Error task deleted"}, 201
+            else:
+                return {"message": "Task not in this case"}
+        return {"message": "Task not found"}
+        
 
 @api.route('/add', methods=['POST'])
 @api.doc(description='Add a case')
@@ -112,11 +122,13 @@ class AddCase(Resource):
         if verif:
             return verif
 
+        user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+
         if request.json:
             verif_dict = CaseModelApi.verif_add_api(request.json)
 
             if "message" not in verif_dict:
-                case = CaseModelApi.add_case_core(verif_dict)
+                case = CaseModel.add_case_core(verif_dict, user)
                 return {"message": f"Case created, id: {case.id}"}
 
             return verif_dict
@@ -136,7 +148,7 @@ class AddTask(Resource):
             verif_dict = CaseModelApi.verif_add_api(request.json)
 
             if "message" not in verif_dict:
-                task = CaseModelApi.add_task_core(verif_dict, id)
+                task = CaseModel.add_task_core(verif_dict, id)
                 return {"message": f"Task created for case id: {id}"}
 
             return verif_dict
@@ -156,7 +168,7 @@ class EditCase(Resource):
             verif_dict = CaseModelApi.verif_edit_api(request.json, id)
 
             if "message" not in verif_dict:
-                CaseModelApi.edit_case_core(verif_dict, id)
+                CaseModel.edit_case_core(verif_dict, id)
                 return {"message": f"Case {id} edited"}
 
             return verif_dict
@@ -173,13 +185,20 @@ class EditTake(Resource):
             return verif
 
         if request.json:
-            verif_dict = CaseModelApi.verif_edit_api(request.json, tid)
+            task = CaseModel.get_task(tid)
+            if task:
+                if not id == task.case_id:
+                    verif_dict = CaseModelApi.verif_edit_api(request.json, tid)
 
-            if "message" not in verif_dict:
-                CaseModelApi.edit_task_core(verif_dict, tid)
-                return {"message": f"Task {tid} edited"}
+                    if "message" not in verif_dict:
+                        CaseModel.edit_task_core(verif_dict, tid)
+                        return {"message": f"Task {tid} edited"}
 
-            return verif_dict
+                    return verif_dict
+                else:
+                    return {"message": "Task not in this case"}
+            else:
+                return {"message": "Task not found"}
         return {"message": "Please give data"}
 
 
@@ -191,10 +210,15 @@ class CompleteTake(Resource):
         if verif:
             return verif
 
-        if CaseModel.complete_task(tid):
-            return {"message": f"Task {tid} completed"}
-
-        return {"message": f"Error task {tid} completed"}
+        task = CaseModel.get_task(tid)
+        if task:
+            if not id == task.case_id:
+                if CaseModel.complete_task(tid):
+                    return {"message": f"Task {tid} completed"}
+                return {"message": f"Error task {tid} completed"}
+            else:
+                return {"message": "Task not in this case"}
+        return {"message": "Task not found"}
 
 
 @api.route('/<id>/task/<tid>/get_note')
@@ -205,9 +229,14 @@ class ModifNoteTask(Resource):
         if verif:
             return verif
 
-        note = CaseModel.get_note_text(tid)
-        return {"note": note}
-
+        task = CaseModel.get_task(tid)
+        if task:
+            if not id == task.case_id:
+                note = CaseModel.get_note_text(tid)
+                return {"note": note}
+            else:
+                return {"message": "Task not in this case"}
+        return {"message": "Task not found"}
 
 
 @api.route('/<id>/task/<tid>/modif_note', methods=['POST'])
@@ -220,7 +249,11 @@ class ModifNoteTask(Resource):
             return verif
 
         if "note" in request.json:
-            CaseModel.modif_note_core(tid, request.json["note"])
-            return {"message": f"Note for Task {tid} edited"}
-
+            task = CaseModel.get_task(tid)
+            if task:
+                if not id == task.case_id:
+                    if CaseModel.modif_note_core(tid, request.json["note"]):
+                        return {"message": f"Note for Task {tid} edited"}
+                    return {"message": f"Error Note for Task {tid} edited"}
+            return {"message": "Task not found"}
         return {"message": "Key 'note' not found"}

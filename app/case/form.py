@@ -54,7 +54,7 @@ class TaskForm(FlaskForm):
                                   Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
     # group_id = SelectField(u'Category', coerce=str, validators=[InputRequired()])
-    url = StringField('Tool/Link', validators=[Optional(), Length(64)])
+    url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     dead_line_date = DateField('Dead_line_date', validators=[Optional()])
     dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
     submit = SubmitField('Register')
@@ -69,7 +69,7 @@ class TaskEditForm(FlaskForm):
         'Title', validators=[InputRequired(),
                                   Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
-    url = StringField('Tool/Link', validators=[Optional(), Length(64)])
+    url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     dead_line_date = DateField('Dead_line_date', validators=[Optional()])
     dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
     submit = SubmitField('Modify')

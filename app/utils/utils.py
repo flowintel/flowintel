@@ -23,3 +23,10 @@ def verif_api_key(headers):
     if not user:
         return {"message": "API key not found"}, 403
     return {}
+
+def form_to_dict(form):
+    loc_dict = dict()
+    for field in form._fields:
+        if not field == "submit" and not field == "csrf_token":
+            loc_dict[field] = form._fields[field].data
+    return loc_dict

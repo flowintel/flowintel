@@ -4,7 +4,6 @@ from ..utils.utils import isUUID
 import uuid
 import bleach
 import markdown
-from flask_login import current_user
 import datetime
 from sqlalchemy import desc
 
@@ -34,9 +33,9 @@ def get_all_cases():
     cases = Case.query.order_by(desc(Case.last_modif))
     return cases
 
-def get_role():
+def get_role(user):
     """Return role for the current user"""
-    return Role.query.get(current_user.role_id)
+    return Role.query.get(user.role_id)
 
 
 def delete_case(id):
@@ -86,13 +85,14 @@ def complete_task(id):
 
 
 
-def add_case_core(form):
+def add_case_core(form_dict, user):
     """Add a case to the DB"""
-    dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
+
+    dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
 
     case = Case(
-        title=bleach.clean(form.title.data),
-        description=bleach.clean(form.description.data),
+        title=bleach.clean(form_dict["title"]),
+        description=bleach.clean(form_dict["description"]),
         uuid=str(uuid.uuid4()),
         creation_date=datetime.datetime.now(),
         last_modif=datetime.datetime.now(),
@@ -105,7 +105,7 @@ def add_case_core(form):
     # Add the current user's org to the case
     case_org = Case_Org(
         case_id=case.id, 
-        org_id=current_user.org_id
+        org_id=user.org_id
     )
 
     db.session.add(case_org)
@@ -114,29 +114,29 @@ def add_case_core(form):
     return case
 
 
-def edit_case_core(form, id):
+def edit_case_core(form_dict, id):
     """Edit a case to the DB"""
     case = get_case(id)
 
-    dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
+    dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
 
-    case.title = bleach.clean(form.title.data)
-    case.description=bleach.clean(form.description.data)
+    case.title = bleach.clean(form_dict["title"])
+    case.description=bleach.clean(form_dict["description"])
     case.dead_line=dead_line
 
     update_last_modif(id)
     db.session.commit()
     
 
-def add_task_core(form, id):
+def add_task_core(form_dict, id):
     """Add a task to the DB"""
-    dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
+    dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
 
     task = Task(
         uuid=str(uuid.uuid4()),
-        title=bleach.clean(form.title.data),
-        description=bleach.clean(form.description.data),
-        url=bleach.clean(form.url.data),
+        title=bleach.clean(form_dict["title"]),
+        description=bleach.clean(form_dict["description"]),
+        url=bleach.clean(form_dict["url"]),
         creation_date=datetime.datetime.now(),
         dead_line=dead_line,
         case_id=id
@@ -147,14 +147,14 @@ def add_task_core(form, id):
 
     return task
 
-def edit_task_core(form, id):
+def edit_task_core(form_dict, id):
     """Edit a task to the DB"""
     task = get_task(id)
-    dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
+    dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
 
-    task.title = bleach.clean(form.title.data)
-    task.description=bleach.clean(form.description.data)
-    task.url=bleach.clean(form.url.data),
+    task.title = bleach.clean(form_dict["title"])
+    task.description=bleach.clean(form_dict["description"])
+    task.url=bleach.clean(form_dict["url"])
     task.dead_line=dead_line
 
     update_last_modif(task.case_id)
@@ -205,9 +205,9 @@ def markdown_notes(notes):
     return notes
 
 
-def add_orgs_case(form, id):
+def add_orgs_case(form_dict, id):
     """Add orgs to case in th DB"""
-    for org_id in form.org_id.data:
+    for org_id in form_dict["org_id"]:
         case_org = Case_Org(
             case_id=id, 
             org_id=org_id
@@ -241,11 +241,11 @@ def remove_org_case(case_id, org_id):
     return False
 
 
-def assign_task(id):
+def assign_task(id, user):
     """Assign current user to a task"""
     task = get_task(id)
     if task:
-        task_user = Task_User(task_id=task.id, user_id=current_user.id)
+        task_user = Task_User(task_id=task.id, user_id=user.id)
 
         db.session.add(task_user)
         update_last_modif(task.case_id)
@@ -253,7 +253,7 @@ def assign_task(id):
         return True
     return False
 
-def get_users_assign_task(task_id):
+def get_users_assign_task(task_id, user):
     """Return users assigned to a task"""
     task_users = Task_User.query.filter_by(task_id=task_id).all()
     users = list()
@@ -261,17 +261,17 @@ def get_users_assign_task(task_id):
     for task_user in task_users:
         u = User.query.get(task_user.user_id)
         # if current user is assigned to the task
-        if u.id == current_user.id:
+        if u.id == user.id:
             flag = True
         users.append(u.to_json())
     return users, flag
 
 
-def remove_assign_task(id):
+def remove_assign_task(id, user):
     """Remove current user to the assignement to a task"""
     task = get_task(id)
     if task:
-        task_users = Task_User.query.filter_by(task_id=task.id, user_id=current_user.id).all()
+        task_users = Task_User.query.filter_by(task_id=task.id, user_id=user.id).all()
         for task_user in task_users:
             db.session.delete(task_user)
 
@@ -281,13 +281,13 @@ def remove_assign_task(id):
     return False
 
 
-def get_present_in_case(case_id):
+def get_present_in_case(case_id, user):
     """Return if current user is present in a case"""
     orgs_in_case = get_orgs_in_case(case_id)
 
     present_in_case = False
     for org in orgs_in_case:
-        if org["id"] == current_user.org_id:
+        if org["id"] == user.org_id:
             present_in_case = True
 
     return present_in_case
