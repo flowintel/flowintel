@@ -18,6 +18,7 @@
                     <td>{{user.role_id}}</td>
                     <td>{{user.org_id}}</td>
                     <td><a class="btn btn-primary" href="/admin/edit_user/{{user.id}}" type="button">Edit</a></td>
+                    <td><a class="btn btn-danger" href="/admin/delete_user/{{user.id}}" type="button">Delete</a></td>
                 </tr>
             {%endfor%}
         </table>

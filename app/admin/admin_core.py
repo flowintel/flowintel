@@ -1,5 +1,5 @@
 from .. import db
-from ..db_class.db import User, Role, Org, Case_Org
+from ..db_class.db import User, Role, Org, Case_Org, Task_User
 import bleach
 from ..utils.utils import generate_api_key
 import uuid
@@ -19,17 +19,24 @@ def get_user(id):
 def get_org(id):
     return Org.query.get(id)
 
+def get_role(id):
+    return Role.query.get(id)
+
 
 def create_default_org(user):
-    org = Org(
-        name = bleach.clean(f"{user.first_name} {user.last_name}"),
-        description = bleach.clean(f"Org for user: {user.id}-{user.first_name} {user.last_name}"),
-        default_org = True
-    )
-    db.session.add(org)
-    db.session.commit()
+    o_d = Org.query.filter_by(name=f"{user.first_name} {user.last_name}").first()
+    if not o_d:
+        org = Org(
+            name = bleach.clean(f"{user.first_name} {user.last_name}"),
+            description = bleach.clean(f"Org for user: {user.id}-{user.first_name} {user.last_name}"),
+            uuid = str(uuid.uuid4()),
+            default_org = True
+        )
+        db.session.add(org)
+        db.session.commit()
 
-    return org
+        return org
+    return o_d
 
 
 def delete_default_org(user_org_id):
@@ -41,6 +48,8 @@ def delete_default_org(user_org_id):
             db.session.commit()
         db.session.delete(org)
         db.session.commit()
+        return True
+    return False
 
 
 def add_user_core(form):
@@ -89,6 +98,17 @@ def edit_user_core(form, id):
         delete_default_org(prev_user_org_id)
 
 
+def delete_user_core(id):
+    user = get_user(id)
+    if user:
+        if not delete_default_org(user.org_id):
+            db.session.delete(user)
+            db.session.commit()
+        return True
+    else:
+        return False
+
+
 def add_org_core(form):
     if form.uuid.data:
         uuid_field = form.uuid.data
@@ -117,6 +137,22 @@ def edit_org_core(form, id):
     db.session.commit()
 
 
+def delete_org_core(id):
+    org = get_org(id)
+    if org:
+        for user in org.users:
+            tasks_users = Task_User.query.filter_by(user_id=user.id)
+            for task_user in tasks_users:
+                db.session.delete(task_user)
+                db.session.commit()
+
+        db.session.delete(org)
+        db.session.commit()
+        return True
+    else:
+        return False
+
+
 def add_role_core(form):
     role = Role(
         name = bleach.clean(form.name.data),
@@ -133,3 +169,13 @@ def add_role_core(form):
     )
     db.session.add(role)
     db.session.commit()
+
+
+def delete_role_core(id):
+    role = get_role(id)
+    if role:
+        db.session.delete(role)
+        db.session.commit()
+        return True
+    else:
+        return False

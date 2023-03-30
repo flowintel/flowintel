@@ -64,6 +64,17 @@ def edit_user(id):
     return render_template("admin/edit_user.html", form=form)
 
 
+@admin_blueprint.route("/delete_user/<id>", methods=['GET','POST'])
+@login_required
+@admin_required
+def delete_user(id):
+    if AdminModel.delete_user_core(id):
+        flash("User deleted", 'success')
+    else:
+        flash("User not deleted", "error")
+    return redirect("/admin")
+
+
 @admin_blueprint.route("/orgs", methods=['GET'])
 @login_required
 @admin_required
@@ -99,6 +110,17 @@ def edit_org(id):
     return render_template("admin/add_org.html", form=form)
 
 
+@admin_blueprint.route("/delete_org/<id>", methods=['GET','POST'])
+@login_required
+@admin_required
+def delete_org(id):
+    if AdminModel.delete_org_core(id):
+        flash("Org deleted", "success")
+    else:
+        flash("Org not deleted", "error")
+    return redirect("/admin/orgs")
+
+
 @admin_blueprint.route("/roles", methods=['GET'])
 @login_required
 @admin_required
@@ -115,3 +137,14 @@ def add_role():
         AdminModel.add_role_core(form)
         return redirect("/admin/roles")
     return render_template("admin/add_role.html", form=form)
+
+
+@admin_blueprint.route("/delete_role/<id>", methods=['GET','POST'])
+@login_required
+@admin_required
+def delete_role(id):
+    if AdminModel.delete_role_core(id):
+        flash("Role deleted", "success")
+    else:
+        flash("Role not deleted", "error")
+    return redirect("/admin/roles")

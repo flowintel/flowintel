@@ -5,10 +5,10 @@
     </a>
     <ul class="list-unstyled ps-0">
       <li class="mb-1">
-        <button class="btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#home-collapse" aria-expanded="false">
+        <button class="btn-toggle d-inline-flex align-items-center rounded border-0 " data-bs-toggle="collapse" data-bs-target="#home-collapse" aria-expanded="true">
           Home
         </button>
-        <div class="collapse" id="home-collapse">
+        <div class="collapse show" id="home-collapse">
           <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
             <li><a href="/case" class="link-dark d-inline-flex text-decoration-none rounded">Case</a></li>
           </ul>
@@ -16,20 +16,19 @@
       </li>
 	  {% if current_user.is_admin() %}
       <li class="mb-1">
-        <button class="btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#dashboard-collapse" aria-expanded="false">
+        <button class="btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse" data-bs-target="#dashboard-collapse" aria-expanded="true">
           Admin
         </button>
-        <div class="collapse" id="dashboard-collapse">
+        <div class="collapse show" id="dashboard-collapse">
           <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-            <li><a href="/admin" class="link-dark d-inline-flex text-decoration-none rounded">All Users</a></li>
-            <li><a href="/admin/add_user" class="link-dark d-inline-flex text-decoration-none rounded">Add User</a></li>
+            <li><a href="/admin" class="link-dark d-inline-flex text-decoration-none rounded">Users</a></li>
             <li><a href="/admin/orgs" class="link-dark d-inline-flex text-decoration-none rounded">Organisations</a></li>
             <li><a href="/admin/roles" class="link-dark d-inline-flex text-decoration-none rounded">Roles</a></li>
           </ul>
         </div>
       </li>
 	  {% endif %}
-      <li class="mb-1">
+      <!-- <li class="mb-1">
         <button class="btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#orders-collapse" aria-expanded="false">
           Orders
         </button>
@@ -41,17 +40,15 @@
             <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Returned</a></li>
           </ul>
         </div>
-      </li>
+      </li> -->
       <li class="border-top my-3"></li>
       <li class="mb-1">
-        <button class="btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#account-collapse" aria-expanded="false">
+        <button class="btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse" data-bs-target="#account-collapse" aria-expanded="true">
           Account
         </button>
-        <div class="collapse" id="account-collapse">
+        <div class="collapse show" id="account-collapse">
           <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
             <li><a href="/account" class="link-dark d-inline-flex text-decoration-none rounded">Account</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Profile</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Settings</a></li>
             {% if current_user.is_authenticated %}
               <li><a href="/account/logout" class="link-dark d-inline-flex text-decoration-none rounded">Logout</a></li>
             {% endif %}
