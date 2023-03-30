@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from .form import CaseForm, TaskForm, CaseEditForm, TaskEditForm, AddOrgsCase
-from flask_login import login_required, current_user
+from flask_login import login_required
 from . import case_core as CaseModel
 from ..db_class.db import Org, Case_Org
 from ..decorators import editor_required
@@ -20,11 +20,13 @@ case_blueprint = Blueprint(
 @case_blueprint.route("/", methods=['GET'])
 @login_required
 def index():
+    """List all cases"""
     return render_template("case/case_index.html")
 
 @case_blueprint.route("/view/<id>", methods=['GET'])
 @login_required
 def view(id):
+    """View of a case"""
     case = CaseModel.get_case(id)
     
     if case:
@@ -36,6 +38,7 @@ def view(id):
 @login_required
 @editor_required
 def add_case():
+    """Add a new case"""
     form = CaseForm()
     if form.validate_on_submit():
         case = CaseModel.add_case_core(form)
@@ -46,6 +49,7 @@ def add_case():
 @login_required
 @editor_required
 def edit_case(id):
+    """Edit the case"""
     if CaseModel.get_present_in_case(id):
         form = CaseEditForm()
 
@@ -66,6 +70,7 @@ def edit_case(id):
 @login_required
 @editor_required
 def add_task(id):
+    """Add a task to the case"""
     if CaseModel.get_present_in_case(id):
         form = TaskForm()
         # form.group_id.choices = [(g.uuid, g.title) for g in Case.query.order_by('title')]
@@ -80,6 +85,7 @@ def add_task(id):
 @login_required
 @editor_required
 def edit_task(case_id, id):
+    """Edit the task"""
     if CaseModel.get_present_in_case(case_id):
         form = TaskEditForm()
 
@@ -103,7 +109,7 @@ def edit_task(case_id, id):
 @login_required
 @editor_required
 def add_orgs(id):
-    """Add orgs to a case"""
+    """Add orgs to the case"""
 
     if CaseModel.get_present_in_case(id):
         form = AddOrgsCase()
@@ -126,7 +132,7 @@ def add_orgs(id):
         form.case_id.data=id
 
         if form.validate_on_submit():
-            CaseModel.assign_case(form, id)
+            CaseModel.add_orgs_case(form, id)
             return redirect(f"/case/view/{id}")
 
         return render_template("case/add_orgs.html", form=form)
@@ -134,15 +140,17 @@ def add_orgs(id):
 
 
 
-##########
-#
-#########
+############
+# Function #
+#  Route   #
+############
 
 @case_blueprint.route("case/get_cases", methods=['GET'])
 @login_required
 def get_cases():
+    """Return all cases"""
     cases = CaseModel.get_all_cases()
-    role = CaseModel.permission_user()
+    role = CaseModel.get_role().to_json()
     return jsonify({"cases": [case.to_json() for case in cases], "role": role}), 201
 
 
@@ -150,6 +158,7 @@ def get_cases():
 @login_required
 @editor_required
 def delete():
+    """Delete the case"""
     id = request.json["id_case"]
 
     if CaseModel.get_present_in_case(id):
@@ -164,16 +173,17 @@ def delete():
 @case_blueprint.route("view/get_case_info/<id>", methods=['GET'])
 @login_required
 def get_case_info(id):
+    """Return all info of the case"""
     case = CaseModel.get_case(id)
     
     tasks = list()
     for task in case.tasks:
-        users, flag = CaseModel.get_user_assign_task(task.id)
+        users, flag = CaseModel.get_users_assign_task(task.id)
         task.notes = CaseModel.markdown_notes(task.notes)
         tasks.append((task.to_json(), users, flag))
 
-    orgs_in_case = CaseModel.get_orgs_assign_case(case.id)
-    permission = CaseModel.permission_user()
+    orgs_in_case = CaseModel.get_orgs_in_case(case.id)
+    permission = CaseModel.get_role().to_json()
 
     present_in_case = CaseModel.get_present_in_case(id)
 
@@ -184,6 +194,7 @@ def get_case_info(id):
 @login_required
 @editor_required
 def complete_task():
+    """Complete the task"""
     id = request.json["id_task"]
 
     task = CaseModel.get_task(id)
@@ -199,6 +210,7 @@ def complete_task():
 @login_required
 @editor_required
 def delete_task():
+    """Delete the task"""
     id = request.json["id_task"]
     task = CaseModel.get_task(id)
     if CaseModel.get_present_in_case(task.case_id):
@@ -213,6 +225,7 @@ def delete_task():
 @login_required
 @editor_required
 def modif_note():
+    """Modify note of the task"""
     id = request.json["id_task"]
 
     task = CaseModel.get_task(id)
@@ -252,7 +265,7 @@ def get_note_markdown():
 @login_required
 @editor_required
 def take_task():
-    """Assign a task"""
+    """Assign current user to the task"""
 
     id = request.json["task_id"]
 
@@ -267,7 +280,7 @@ def take_task():
 @login_required
 @editor_required
 def remove_assign_task():
-    """Remove an assignation to a task"""
+    """Remove an assignation to the task"""
     
     id = request.json["task_id"]
     task = CaseModel.get_task(id)
@@ -282,7 +295,7 @@ def remove_assign_task():
 @login_required
 @editor_required
 def remove_org_case(cid, oid):
-    """remove org to a case"""
+    """Remove an org to the case"""
 
     if CaseModel.get_present_in_case(cid):
         if CaseModel.remove_org_case(cid, oid):

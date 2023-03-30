@@ -18,11 +18,15 @@ admin_blueprint = Blueprint(
 )
 
 
+#########
+# Users #
+#########
 
 @admin_blueprint.route("/")
 @login_required
 @admin_required
 def index():
+    """List all users"""
     users = AdminModel.get_all_users()
 
     return render_template("admin/admin_index.html", users=users)
@@ -31,6 +35,7 @@ def index():
 @login_required
 @admin_required
 def add_user():
+    """Add a new user"""
     form = RegistrationForm()
 
     form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
@@ -47,6 +52,7 @@ def add_user():
 @login_required
 @admin_required
 def edit_user(id):
+    """Edit the user"""
     form = EditUserFrom()
 
     form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
@@ -68,6 +74,7 @@ def edit_user(id):
 @login_required
 @admin_required
 def delete_user(id):
+    """Delete the user"""
     if AdminModel.delete_user_core(id):
         flash("User deleted", 'success')
     else:
@@ -75,10 +82,15 @@ def delete_user(id):
     return redirect("/admin")
 
 
+########
+# Orgs #
+########
+
 @admin_blueprint.route("/orgs", methods=['GET'])
 @login_required
 @admin_required
 def orgs():
+    """List all organisations"""
     orgs = AdminModel.get_all_orgs()
     return render_template("admin/orgs.html", orgs=orgs)
 
@@ -87,6 +99,7 @@ def orgs():
 @login_required
 @admin_required
 def add_org():
+    """Add an org"""
     form = CreateOrgForm()
     if form.validate_on_submit():
         AdminModel.add_org_core(form)
@@ -98,6 +111,7 @@ def add_org():
 @login_required
 @admin_required
 def edit_org(id):
+    """Edit the org"""
     form = CreateOrgForm()
     if form.validate_on_submit():
         AdminModel.edit_org_core(form, id)
@@ -114,6 +128,7 @@ def edit_org(id):
 @login_required
 @admin_required
 def delete_org(id):
+    """Delete the org"""
     if AdminModel.delete_org_core(id):
         flash("Org deleted", "success")
     else:
@@ -121,10 +136,15 @@ def delete_org(id):
     return redirect("/admin/orgs")
 
 
+#########
+# Roles #
+#########
+
 @admin_blueprint.route("/roles", methods=['GET'])
 @login_required
 @admin_required
 def roles():
+    """List all roles"""
     roles = AdminModel.get_all_roles()
     return render_template("admin/roles.html", roles=roles)
 
@@ -132,6 +152,7 @@ def roles():
 @login_required
 @admin_required
 def add_role():
+    """Add a role"""
     form = AddRoleForm()
     if form.validate_on_submit():
         AdminModel.add_role_core(form)
@@ -143,6 +164,7 @@ def add_role():
 @login_required
 @admin_required
 def delete_role(id):
+    """Delete the role"""
     if AdminModel.delete_role_core(id):
         flash("Role deleted", "success")
     else:

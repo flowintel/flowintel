@@ -5,25 +5,32 @@ from ..utils.utils import generate_api_key
 import uuid
 
 def get_all_users():
+    """Return all users"""
     return User.query.all()
 
 def get_all_roles():
+    """Return all roles"""
     return Role.query.all()
 
 def get_all_orgs():
+    """Return all organisations"""
     return Org.query.all()
 
 def get_user(id):
+    """Return the user"""
     return User.query.get(id)
 
 def get_org(id):
+    """Return the org"""
     return Org.query.get(id)
 
 def get_role(id):
+    """Return the role"""
     return Role.query.get(id)
 
 
 def create_default_org(user):
+    """Create a default org for a user who have no org"""
     o_d = Org.query.filter_by(name=f"{user.first_name} {user.last_name}").first()
     if not o_d:
         org = Org(
@@ -40,6 +47,7 @@ def create_default_org(user):
 
 
 def delete_default_org(user_org_id):
+    """Delete the default org for the user"""
     org = Org.query.get(user_org_id)
     if org.default_org:
         cases_orgs = Case_Org.query.filter_by(org_id=org.id)
@@ -53,6 +61,7 @@ def delete_default_org(user_org_id):
 
 
 def add_user_core(form):
+    """Add a user to the DB"""
     user = User(
         first_name=bleach.clean(form.first_name.data),
         last_name=bleach.clean(form.last_name.data),
@@ -73,6 +82,7 @@ def add_user_core(form):
 
 
 def edit_user_core(form, id):
+    """Edit the user to the DB"""
     user = get_user(id)
     prev_user_org_id = user.org_id
     flag = False
@@ -99,6 +109,7 @@ def edit_user_core(form, id):
 
 
 def delete_user_core(id):
+    """Delete the user to the DB"""
     user = get_user(id)
     if user:
         if not delete_default_org(user.org_id):
@@ -110,6 +121,7 @@ def delete_user_core(id):
 
 
 def add_org_core(form):
+    """Add an org to the DB"""
     if form.uuid.data:
         uuid_field = form.uuid.data
     else:
@@ -125,6 +137,7 @@ def add_org_core(form):
 
 
 def edit_org_core(form, id):
+    """Edit the org ot the DB"""
     org = get_org(id)
     if form.uuid.data:
         org.uuid = form.uuid.data
@@ -138,6 +151,7 @@ def edit_org_core(form, id):
 
 
 def delete_org_core(id):
+    """Delete the org to the DB"""
     org = get_org(id)
     if org:
         for user in org.users:
@@ -154,6 +168,7 @@ def delete_org_core(id):
 
 
 def add_role_core(form):
+    """Add a role to the DB"""
     role = Role(
         name = bleach.clean(form.name.data),
         description = bleach.clean(form.description.data),
@@ -172,6 +187,7 @@ def add_role_core(form):
 
 
 def delete_role_core(id):
+    """Delete a role to the DB"""
     role = get_role(id)
     if role:
         db.session.delete(role)

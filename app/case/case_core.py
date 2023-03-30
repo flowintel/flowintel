@@ -10,6 +10,7 @@ from sqlalchemy import desc
 
 
 def get_case(id):
+    """Return a case by is id"""
     if isUUID(id):
         case = Case.query.filter_by(uuid=id).first()
     elif id.isdigit():
@@ -19,6 +20,7 @@ def get_case(id):
     return case
 
 def get_task(id):
+    """Return a task by is id"""
     if isUUID(id):
         case = Task.query.filter_by(uuid=id).first()
     elif id.isdigit():
@@ -28,30 +30,49 @@ def get_task(id):
     return case
 
 def get_all_cases():
+    """Return all cases"""
     cases = Case.query.order_by(desc(Case.last_modif))
     return cases
 
-
 def get_role():
+    """Return role for the current user"""
     return Role.query.get(current_user.role_id)
 
 
 def delete_case(id):
+    """Delete a case by is id"""
     case = get_case(id)
     if case is not None:
+        # Delete all tasks in the case
         for task in case.tasks:
             delete_task(task.id)
+
         Case_Org.query.filter_by(case_id=case.id).delete()
         db.session.delete(case)
         db.session.commit()
         return True
     return False
 
+def delete_task(id):
+    """Delete a task by is id"""
+    task = get_task(id)
+    if task is not None:
+        Task_User.query.filter_by(task_id=task.id).delete()
+        db.session.delete(task)
+        update_last_modif(task.case_id)
+        db.session.commit()
+        return True
+    return False
+
+
 def update_last_modif(id):
+    """Update 'last_modif' of a case"""
     case = Case.query.get(id)
     case.last_modif = datetime.datetime.now()
 
+
 def complete_task(id):
+    """Complete task by is id"""
     task = get_task(id)
     if task is not None:
         if task.completed:
@@ -63,18 +84,10 @@ def complete_task(id):
         return True
     return False
 
-def delete_task(id):
-    task = get_task(id)
-    if task is not None:
-        db.session.delete(task)
-        Task_User.query.filter_by(task_id=task.id).delete()
 
-        update_last_modif(task.case_id)
-        db.session.commit()
-        return True
-    return False
 
 def add_case_core(form):
+    """Add a case to the DB"""
     dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
 
     case = Case(
@@ -89,6 +102,7 @@ def add_case_core(form):
     db.session.add(case)
     db.session.commit()
 
+    # Add the current user's org to the case
     case_org = Case_Org(
         case_id=case.id, 
         org_id=current_user.org_id
@@ -101,6 +115,7 @@ def add_case_core(form):
 
 
 def edit_case_core(form, id):
+    """Edit a case to the DB"""
     case = get_case(id)
 
     dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
@@ -114,6 +129,7 @@ def edit_case_core(form, id):
     
 
 def add_task_core(form, id):
+    """Add a task to the DB"""
     dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
 
     task = Task(
@@ -132,6 +148,7 @@ def add_task_core(form, id):
     return task
 
 def edit_task_core(form, id):
+    """Edit a task to the DB"""
     task = get_task(id)
     dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
 
@@ -145,6 +162,7 @@ def edit_task_core(form, id):
 
 
 def dead_line_check(date, time):
+    """Combine the date and the time if time exist"""
     dead_line = None
     if date and time:
         dead_line = datetime.datetime.combine(date, time)
@@ -155,6 +173,7 @@ def dead_line_check(date, time):
 
 
 def modif_note_core(id, notes):
+    """Modify a noe of a task to the DB"""
     task = get_task(id)
     if task:
         task.notes = bleach.clean(notes)
@@ -164,6 +183,7 @@ def modif_note_core(id, notes):
     return False
 
 def get_note_text(id):
+    """Return a text note by task's id"""
     task = get_task(id)
     if task:
         return task.notes
@@ -171,23 +191,22 @@ def get_note_text(id):
         return ""
 
 def get_note_markdown(id):
+    """Return a markdown note by task's id"""
     task = get_task(id)
     if task:
-        return markdown.markdown(task.notes)
+        return markdown_notes(task.notes)
     else:
         return ""
 
 def markdown_notes(notes):
+    """Return a markdown version of a note"""
     if notes:
         return markdown.markdown(notes)
     return notes
 
 
-def permission_user():
-    return get_role().to_json()
-
-
-def assign_case(form, id):
+def add_orgs_case(form, id):
+    """Add orgs to case in th DB"""
     for org_id in form.org_id.data:
         case_org = Case_Org(
             case_id=id, 
@@ -196,41 +215,11 @@ def assign_case(form, id):
         db.session.add(case_org)
 
     update_last_modif(id)
-
     db.session.commit()
+    return True
 
-
-def remove_org_case(case_id, org_id):
-    case_org = Case_Org.query.filter_by(case_id=case_id, org_id=org_id).first()
-    if case_org:
-        db.session.delete(case_org)
-        update_last_modif(case_id)
-        db.session.commit()
-        return True
-    return False
-
-
-def assign_task(id):
-    task = get_task(id)
-    task_user = Task_User(task_id=task.id, user_id=current_user.id)
-    db.session.add(task_user)
-
-    update_last_modif(task.case_id)
-
-    db.session.commit()
-
-def get_user_assign_task(task_id):
-    task_users = Task_User.query.filter_by(task_id=task_id).all()
-    users = list()
-    flag = False
-    for task_user in task_users:
-        u = User.query.get(task_user.user_id)
-        if u.id == current_user.id:
-            flag = True
-        users.append(u.to_json())
-    return users, flag
-
-def get_orgs_assign_case(case_id):
+def get_orgs_in_case(case_id):
+    """Return orgs present in a case"""
     case_org = Case_Org.query.filter_by(case_id=case_id).all()
     orgs = list()
 
@@ -241,19 +230,60 @@ def get_orgs_assign_case(case_id):
     return orgs
 
 
-def remove_assign_task(id):
-    task = get_task(id)
-    task_users = Task_User.query.filter_by(task_id=task.id, user_id=current_user.id).all()
-    for task_user in task_users:
-        db.session.delete(task_user)
+def remove_org_case(case_id, org_id):
+    """Remove an org from a case"""
+    case_org = Case_Org.query.filter_by(case_id=case_id, org_id=org_id).first()
+    if case_org:
+        db.session.delete(case_org)
+        update_last_modif(case_id)
+        db.session.commit()
+        return True
+    return False
 
-    update_last_modif(task.case_id)
-    
-    db.session.commit()
+
+def assign_task(id):
+    """Assign current user to a task"""
+    task = get_task(id)
+    if task:
+        task_user = Task_User(task_id=task.id, user_id=current_user.id)
+
+        db.session.add(task_user)
+        update_last_modif(task.case_id)
+        db.session.commit()
+        return True
+    return False
+
+def get_users_assign_task(task_id):
+    """Return users assigned to a task"""
+    task_users = Task_User.query.filter_by(task_id=task_id).all()
+    users = list()
+    flag = False
+    for task_user in task_users:
+        u = User.query.get(task_user.user_id)
+        # if current user is assigned to the task
+        if u.id == current_user.id:
+            flag = True
+        users.append(u.to_json())
+    return users, flag
+
+
+def remove_assign_task(id):
+    """Remove current user to the assignement to a task"""
+    task = get_task(id)
+    if task:
+        task_users = Task_User.query.filter_by(task_id=task.id, user_id=current_user.id).all()
+        for task_user in task_users:
+            db.session.delete(task_user)
+
+        update_last_modif(task.case_id)
+        db.session.commit()
+        return True
+    return False
 
 
 def get_present_in_case(case_id):
-    orgs_in_case = get_orgs_assign_case(case_id)
+    """Return if current user is present in a case"""
+    orgs_in_case = get_orgs_in_case(case_id)
 
     present_in_case = False
     for org in orgs_in_case:
