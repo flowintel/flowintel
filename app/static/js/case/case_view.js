@@ -21,6 +21,7 @@ function get_case_info(){
         $("#assign").empty()
 
         user_permission = data["permission"]
+        present_in_case = data["present_in_case"]
 
         // List of user working in the case
         div_user_case = $("<div>").attr({"class": "dropdown", "id": "dropdown_user_case"}).appendTo($("#assign"))
@@ -31,7 +32,7 @@ function get_case_info(){
         )
 
         ul_org = $("<ul>").attr("class", "dropdown-menu")
-        if(!user_permission["read_only"]){
+        if(!user_permission["read_only"] && present_in_case){
             ul_org.append(
                 $("<li>").append(
                     $('<a>').attr({"href": "/case/view/" + data["case"]["id"] + "/add_orgs", "role": "button", "class": "btn btn-primary"}).
@@ -48,9 +49,13 @@ function get_case_info(){
         div_user_case.append(ul_org)
         for (org in data["orgs_in_case"]){
             ul_org.append(
-                $("<li>").append(
-                    $("<button>").attr("class", "dropdown-item").text(data["orgs_in_case"][org]["name"])
-                )
+                    $("<li>").append(
+                        $("<div>").css({"display": "flex"}).append(
+                            $("<button>").attr("class", "dropdown-item").text(data["orgs_in_case"][org]["name"]),
+                            $("<button>").attr({"class": "btn btn-danger", "onclick": "remove_org_case(" + data["case"]["id"] + ", " + data["orgs_in_case"][org]["id"] + ")"}).text("delete")
+                        )
+                    )
+                
             )
         }
 
@@ -66,7 +71,7 @@ function get_case_info(){
             // cell to take or remove assignation to a task
             td_take_task = $("<td>").attr("id", "td_task_" + tasks["id"])
             if (!current_user){
-                if(!user_permission["read_only"]){
+                if(!user_permission["read_only"] && present_in_case){
                     td_take_task.append(
                         $('<button>').attr("onclick", "take_task(" + tasks["id"] + ")").text("Take Task").css({
                             "padding": "7px",
@@ -76,7 +81,7 @@ function get_case_info(){
                     )
                 }
             }else{
-                if(!user_permission["read_only"]){
+                if(!user_permission["read_only"] && present_in_case){
                     td_take_task.append(
                         $('<button>').attr("onclick", "remove_assign_task(" + tasks["id"] + ")").text("Remove assign Task").css({
                             "padding": "7px",
@@ -125,7 +130,7 @@ function get_case_info(){
 
             // Delete a Task
             td_delete = $("<td>")
-            if(!user_permission["read_only"]){
+            if(!user_permission["read_only"] && present_in_case){
                 td_delete.append(
                     $('<button>').attr("onclick", "delete_task(" + tasks["id"] + ")").text("Remove").css({
                     "padding": "7px",
@@ -137,7 +142,7 @@ function get_case_info(){
 
             // Edit a Task
             td_edit_task = $("<td>")
-            if(!user_permission["read_only"]){
+            if(!user_permission["read_only"] && present_in_case){
                 td_edit_task.append(
                     $('<a>').attr({"href": "/case/view/" + data["case"]["id"] + "/edit_task/" + tasks["id"], "role": "button", "class": "btn btn-primary"}).text("Edit").css({
                         "padding": "7px",
@@ -149,7 +154,7 @@ function get_case_info(){
 
             // Complete
             td_complete = $("<td>")
-            if(!user_permission["read_only"]){
+            if(!user_permission["read_only"] && present_in_case){
                 td_complete.append($('<input>').attr({"onclick": "complete_task(" + tasks["id"] + ")", "type": "checkbox"}))
             }
 
@@ -186,7 +191,7 @@ function get_case_info(){
                         $("<i>").attr("class", "fas fa-chevron-down")
                     ),
                 ))
-                if(!user_permission["read_only"])
+                if(!user_permission["read_only"] && present_in_case)
                     button_edit = ('<button>').attr({"onclick": "edit_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
                         $('<div>').attr({"hidden":""}).text(tasks["title"]),
                         "Edit"
@@ -207,7 +212,7 @@ function get_case_info(){
                 )
             }else{
                 tr_task.prepend($('<td>'))
-                if(!user_permission["read_only"]){
+                if(!user_permission["read_only"] && present_in_case){
                     tr_task.append(
                         $("<td>").append(
                             $('<a>').attr({ "role": "button", "class": "btn btn-primary", "data-bs-toggle": "collapse", "href": "#collapse_"+tasks["id"], "aria-expanded": "false", "aria-controls": "collapse_"+tasks["id"]}).
@@ -334,7 +339,6 @@ function take_task(id){
             $('#status').empty()
             $('#status').css("color", "green")
             $('#status').text(data['message'])
-            // take_task_after(data, id)
             get_case_info()
         },
         error: function(xhr, status, error) {
@@ -345,21 +349,6 @@ function take_task(id){
     });
 }
 
-function take_task_after(data, id){
-    $("#dropdown_user_" + id).empty()
-    $("#dropdown_user_" + id).append(
-        $("<button>").attr({"class": "btn btn-secondary dropdown-toggle", "type": "button", "data-bs-toggle": "dropdown", "aria-expanded": "false"}).text(
-            "Users"
-        ),
-        $("<ul>").attr("class", "dropdown-menu").append(
-            $("<li>").append(
-                $("<button>").attr("class", "dropdown-item").text(data["user"]["first_name"] + " " + data["user"]["last_name"])
-            )
-        )
-    )
-    $("#td_task_" + id).empty()
-    
-}
 
 function remove_assign_task(id){
     $.post({
@@ -371,7 +360,25 @@ function remove_assign_task(id){
             $('#status').empty()
             $('#status').css("color", "green")
             $('#status').text(data['message'])
-            // take_task_after(data, id)
+            get_case_info()
+        },
+        error: function(xhr, status, error) {
+            $('#status').empty()
+            $('#status').css("color", "brown")
+            $('#status').text(xhr.responseJSON['message'])
+        },
+    });
+}
+
+
+function remove_org_case(case_id, org_id){
+    $.get({
+        url: '/case/' + case_id + '/remove_org/' + org_id,
+        contentType: 'application/json',
+        success: function(data) {
+            $('#status').empty()
+            $('#status').css("color", "green")
+            $('#status').text(data['message'])
             get_case_info()
         },
         error: function(xhr, status, error) {

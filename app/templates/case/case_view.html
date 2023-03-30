@@ -22,7 +22,7 @@
         </div>
 
         <div>
-            {% if not current_user.read_only() %}
+            {% if not current_user.read_only() and present_in_case %}
                 <a class="btn btn-outline-success" href="/case/edit/{{id}}" type="button">Edit Case</a>
             {%endif%}
 
@@ -37,8 +37,8 @@
             {%endif%}
         </div>
 
-        {% if not current_user.read_only() %}
-            <a class="btn btn-outline-success" href="/case/add_task/{{id}}" type="button">New Task</a>
+        {% if not current_user.read_only() and present_in_case %}
+            <a class="btn btn-outline-success" href="/case/{{id}}/add_task" type="button">New Task</a>
         {%endif%}
 
         <table id="data-task">

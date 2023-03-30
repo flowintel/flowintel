@@ -9,7 +9,7 @@ import datetime
 from sqlalchemy import desc
 
 
-def get(id):
+def get_case(id):
     if isUUID(id):
         case = Case.query.filter_by(uuid=id).first()
     elif id.isdigit():
@@ -27,7 +27,7 @@ def get_task(id):
         case = None
     return case
 
-def getAll():
+def get_all_cases():
     cases = Case.query.order_by(desc(Case.last_modif))
     return cases
 
@@ -36,8 +36,8 @@ def get_role():
     return Role.query.get(current_user.role_id)
 
 
-def delete(id):
-    case = get(id)
+def delete_case(id):
+    case = get_case(id)
     if case is not None:
         for task in case.tasks:
             delete_task(task.id)
@@ -101,7 +101,7 @@ def add_case_core(form):
 
 
 def edit_case_core(form, id):
-    case = get(id)
+    case = get_case(id)
 
     dead_line = dead_line_check(form.dead_line_date.data, form.dead_line_time.data)
 
@@ -200,6 +200,16 @@ def assign_case(form, id):
     db.session.commit()
 
 
+def remove_org_case(case_id, org_id):
+    case_org = Case_Org.query.filter_by(case_id=case_id, org_id=org_id).first()
+    if case_org:
+        db.session.delete(case_org)
+        update_last_modif(case_id)
+        db.session.commit()
+        return True
+    return False
+
+
 def assign_task(id):
     task = get_task(id)
     task_user = Task_User(task_id=task.id, user_id=current_user.id)
@@ -240,3 +250,14 @@ def remove_assign_task(id):
     update_last_modif(task.case_id)
     
     db.session.commit()
+
+
+def get_present_in_case(case_id):
+    orgs_in_case = get_orgs_assign_case(case_id)
+
+    present_in_case = False
+    for org in orgs_in_case:
+        if org["id"] == current_user.org_id:
+            present_in_case = True
+
+    return present_in_case
