@@ -78,7 +78,7 @@ class GetTask(Resource):
 
         task = CaseModel.get_task(tid)
         if task:
-            if not id == task.case_id:
+            if id == task.case_id:
                 return task.to_json()
             else:
                 return {"message": "Task not in this case"}
@@ -112,7 +112,7 @@ class DeleteTask(Resource):
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             task = CaseModel.get_task(tid)
             if task:
-                if not id == task.case_id:
+                if id == task.case_id:
                     if CaseModel.delete_task(tid):
                         return {"message": "Task deleted"}, 201
                     else:
@@ -202,7 +202,7 @@ class EditTake(Resource):
             if request.json:
                 task = CaseModel.get_task(tid)
                 if task:
-                    if not id == task.case_id:
+                    if id == task.case_id:
                         verif_dict = CaseModelApi.verif_edit_api(request.json, tid)
 
                         if "message" not in verif_dict:
@@ -229,7 +229,7 @@ class CompleteTake(Resource):
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             task = CaseModel.get_task(tid)
             if task:
-                if not id == task.case_id:
+                if id == task.case_id:
                     if CaseModel.complete_task(tid):
                         return {"message": f"Task {tid} completed"}
                     return {"message": f"Error task {tid} completed"}
@@ -249,7 +249,7 @@ class GetNoteTask(Resource):
 
         task = CaseModel.get_task(tid)
         if task:
-            if not id == task.case_id:
+            if id == task.case_id:
                 note = CaseModel.get_note_text(tid)
                 return {"note": note}
             else:
@@ -270,10 +270,12 @@ class ModifNoteTask(Resource):
             if "note" in request.json:
                 task = CaseModel.get_task(tid)
                 if task:
-                    if not id == task.case_id:
+                    if id == task.case_id:
                         if CaseModel.modif_note_core(tid, request.json["note"]):
                             return {"message": f"Note for Task {tid} edited"}
                         return {"message": f"Error Note for Task {tid} edited"}
+                    else:
+                        return {"message": "Task not in this case"}
                 return {"message": "Task not found"}
             return {"message": "Key 'note' not found"}
         return {"message": "Permission denied"}, 403
@@ -343,10 +345,14 @@ class AssignTask(Resource):
             task = CaseModel.get_task(tid)
 
             if task:
-                user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-                if CaseModel.assign_task(tid, user):
-                    return {"message": f"Task Take"}
-                return {"message": f"Error Task Take"}
+                if id == task.case_id:
+                    user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+                    if CaseModel.assign_task(tid, user):
+                        return {"message": f"Task Take"}
+                    else:
+                        return {"message": f"Error Task Take"}
+                else:
+                    return {"message": "Task not in this case"}
             return {"message": "Task not found"}
         return {"message": "Permission denied"}, 403
 
@@ -363,9 +369,12 @@ class RemoveOrgCase(Resource):
             task = CaseModel.get_task(tid)
 
             if task:
-                user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-                if CaseModel.remove_assign_task(tid, user):
-                    return {"message": f"User Removed from assignation"}
-                return {"message": f"Error User Removed from assignation"}
+                if id == task.case_id:
+                    user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+                    if CaseModel.remove_assign_task(tid, user):
+                        return {"message": f"User Removed from assignation"}
+                    return {"message": f"Error User Removed from assignation"}
+                else:
+                    return {"message": "Task not in this case"}
             return {"message": "Task not found"}
         return {"message": "Permission denied"}, 403
