@@ -37,6 +37,17 @@ def get_role(user):
     """Return role for the current user"""
     return Role.query.get(user.role_id)
 
+def get_org(id):
+    """Return an org by is id"""
+    return Org.query.get(id)
+
+def get_org_by_name(name):
+    """Return an org by is name"""
+    return Org.query.filter_by(name=name).first()
+
+def get_org_in_case(org_id, case_id):
+    return Case_Org.query.filter_by(case_id=case_id, org_id=org_id).first()
+
 
 def delete_case(id):
     """Delete a case by is id"""
@@ -245,6 +256,8 @@ def assign_task(id, user):
     """Assign current user to a task"""
     task = get_task(id)
     if task:
+        # if Task_User.query.filter_by(task_id=task.id, user_id=user.id).first():
+        #     return 
         task_user = Task_User(task_id=task.id, user_id=user.id)
 
         db.session.add(task_user)

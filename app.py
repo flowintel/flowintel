@@ -1,6 +1,8 @@
 from app import create_app, db
 import argparse
 from app.utils.init_db import create_admin
+from flask import render_template, request, Response
+import json
 
 
 parser = argparse.ArgumentParser()
@@ -10,6 +12,13 @@ parser.add_argument("-d", "--delete_db", help="Delete and initialise the db", ac
 args = parser.parse_args()
 
 app = create_app()
+
+@app.errorhandler(404)
+def error_page_not_found(e):
+    if request.path.startswith('/api/'): ## # TODO: add baseUrl
+        return Response(json.dumps({"status": "error", "reason": "404 Not Found"}, indent=2, sort_keys=True), mimetype='application/json'), 404
+    return render_template('404.html'), 404
+    
 
 if args.init_db:
     with app.app_context():

@@ -39,7 +39,13 @@ class GetCase(Resource):
 
         case = CaseModel.get_case(id)
         if case:
-            return case.to_json()
+            case_json = case.to_json()
+            orgs = CaseModel.get_orgs_in_case(id)
+            case_json["orgs"] = list()
+            for org in orgs:
+                case_json["orgs"].append({"id": org["id"], "uuid": org["uuid"], "name": org["name"]})
+            
+            return case_json
         return {"message": "Case not found"}
 
 
@@ -55,7 +61,7 @@ class GetTasks(Resource):
             
         tasks = list()
         for task in case.tasks:
-            users, flag = CaseModel.get_users_assign_task(task.id)
+            users, flag = CaseModel.get_users_assign_task(task.id, CaseModelApi.get_user_api(request.headers["X-API-KEY"]))
             task.notes = CaseModel.markdown_notes(task.notes)
             tasks.append((task.to_json(), users, flag))
 
@@ -87,10 +93,12 @@ class DeleteCase(Resource):
         if verif:
             return verif
 
-        if CaseModel.delete_case(id):
-            return {"message": "Case deleted"}, 200
-        else:
-            return {"message": "Error case deleted"}
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            if CaseModel.delete_case(id):
+                return {"message": "Case deleted"}, 200
+            else:
+                return {"message": "Error case deleted"}
+        return {"message": "Permission denied"}, 403
 
 
 @api.route('/<id>/task/<tid>/delete')
@@ -101,16 +109,18 @@ class DeleteTask(Resource):
         if verif:
             return verif
 
-        task = CaseModel.get_task(tid)
-        if task:
-            if not id == task.case_id:
-                if CaseModel.delete_task(tid):
-                    return {"message": "Task deleted"}, 201
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            task = CaseModel.get_task(tid)
+            if task:
+                if not id == task.case_id:
+                    if CaseModel.delete_task(tid):
+                        return {"message": "Task deleted"}, 201
+                    else:
+                        return {"message": "Error task deleted"}, 201
                 else:
-                    return {"message": "Error task deleted"}, 201
-            else:
-                return {"message": "Task not in this case"}
-        return {"message": "Task not found"}
+                    return {"message": "Task not in this case"}
+            return {"message": "Task not found"}
+        return {"message": "Permission denied"}, 403
         
 
 @api.route('/add', methods=['POST'])
@@ -144,15 +154,17 @@ class AddTask(Resource):
         if verif:
             return verif
 
-        if request.json:
-            verif_dict = CaseModelApi.verif_add_api(request.json)
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            if request.json:
+                verif_dict = CaseModelApi.verif_add_api(request.json)
 
-            if "message" not in verif_dict:
-                task = CaseModel.add_task_core(verif_dict, id)
-                return {"message": f"Task created for case id: {id}"}
+                if "message" not in verif_dict:
+                    task = CaseModel.add_task_core(verif_dict, id)
+                    return {"message": f"Task created for case id: {id}"}
 
-            return verif_dict
-        return {"message": "Please give data"}
+                return verif_dict
+            return {"message": "Please give data"}
+        return {"message": "Permission denied"}, 403
 
 
 @api.route('/<id>/edit', methods=['POST'])
@@ -164,15 +176,17 @@ class EditCase(Resource):
         if verif:
             return verif
 
-        if request.json:
-            verif_dict = CaseModelApi.verif_edit_api(request.json, id)
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            if request.json:
+                verif_dict = CaseModelApi.verif_edit_api(request.json, id)
 
-            if "message" not in verif_dict:
-                CaseModel.edit_case_core(verif_dict, id)
-                return {"message": f"Case {id} edited"}
+                if "message" not in verif_dict:
+                    CaseModel.edit_case_core(verif_dict, id)
+                    return {"message": f"Case {id} edited"}
 
-            return verif_dict
-        return {"message": "Please give data"}
+                return verif_dict
+            return {"message": "Please give data"}
+        return {"message": "Permission denied"}, 403
 
 
 @api.route('/<id>/task/<tid>/edit', methods=['POST'])
@@ -184,22 +198,24 @@ class EditTake(Resource):
         if verif:
             return verif
 
-        if request.json:
-            task = CaseModel.get_task(tid)
-            if task:
-                if not id == task.case_id:
-                    verif_dict = CaseModelApi.verif_edit_api(request.json, tid)
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            if request.json:
+                task = CaseModel.get_task(tid)
+                if task:
+                    if not id == task.case_id:
+                        verif_dict = CaseModelApi.verif_edit_api(request.json, tid)
 
-                    if "message" not in verif_dict:
-                        CaseModel.edit_task_core(verif_dict, tid)
-                        return {"message": f"Task {tid} edited"}
+                        if "message" not in verif_dict:
+                            CaseModel.edit_task_core(verif_dict, tid)
+                            return {"message": f"Task {tid} edited"}
 
-                    return verif_dict
+                        return verif_dict
+                    else:
+                        return {"message": "Task not in this case"}
                 else:
-                    return {"message": "Task not in this case"}
-            else:
-                return {"message": "Task not found"}
-        return {"message": "Please give data"}
+                    return {"message": "Task not found"}
+            return {"message": "Please give data"}
+        return {"message": "Permission denied"}, 403
 
 
 @api.route('/<id>/task/<tid>/complete')
@@ -210,20 +226,22 @@ class CompleteTake(Resource):
         if verif:
             return verif
 
-        task = CaseModel.get_task(tid)
-        if task:
-            if not id == task.case_id:
-                if CaseModel.complete_task(tid):
-                    return {"message": f"Task {tid} completed"}
-                return {"message": f"Error task {tid} completed"}
-            else:
-                return {"message": "Task not in this case"}
-        return {"message": "Task not found"}
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            task = CaseModel.get_task(tid)
+            if task:
+                if not id == task.case_id:
+                    if CaseModel.complete_task(tid):
+                        return {"message": f"Task {tid} completed"}
+                    return {"message": f"Error task {tid} completed"}
+                else:
+                    return {"message": "Task not in this case"}
+            return {"message": "Task not found"}
+        return {"message": "Permission denied"}, 403
 
 
 @api.route('/<id>/task/<tid>/get_note')
 @api.doc(description='Get note of a task in a case', params={'id': 'id of a case', "tid": "id of a task"})
-class ModifNoteTask(Resource):
+class GetNoteTask(Resource):
     def get(self, id, tid):
         verif = verif_api_key(request.headers)
         if verif:
@@ -248,12 +266,106 @@ class ModifNoteTask(Resource):
         if verif:
             return verif
 
-        if "note" in request.json:
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            if "note" in request.json:
+                task = CaseModel.get_task(tid)
+                if task:
+                    if not id == task.case_id:
+                        if CaseModel.modif_note_core(tid, request.json["note"]):
+                            return {"message": f"Note for Task {tid} edited"}
+                        return {"message": f"Error Note for Task {tid} edited"}
+                return {"message": "Task not found"}
+            return {"message": "Key 'note' not found"}
+        return {"message": "Permission denied"}, 403
+
+
+
+@api.route('/<id>/add_org', methods=['POST'])
+@api.doc(description='Add an org to the case', params={'id': 'id of a case'})
+class AddOrgCase(Resource):
+    @api.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
+    def post(self, id):
+        verif = verif_api_key(request.headers)
+        if verif:
+            return verif
+
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            if "name" in request.json:
+                org = CaseModel.get_org_by_name(request.json["name"])
+            elif "id" in request.json:
+                org = CaseModel.get_org(request.json["oid"])
+            else:
+                return {"message": "Required an id or a name of an Org"}
+
+            if org:
+                if not CaseModel.get_org_in_case(org.id, id):
+                    if CaseModel.add_orgs_case({"org_id": [org.id]}, id):
+                        return {"message": f"Org added for Case {id} edited"}
+                    return {"message": f"Error Org added for Case {id} edited"}
+                else:
+                    return {"message": "Org already in case"}
+            return {"message": "Org not found"}
+
+        return {"message": "Permission denied"}, 403
+
+
+@api.route('/<id>/remove_org/<oid>', methods=['GET'])
+@api.doc(description='Add an org to the case', params={'id': 'id of a case', "oid": "id of an org"})
+class RemoveOrgCase(Resource):
+    def get(self, id, oid):
+        verif = verif_api_key(request.headers)
+        if verif:
+            return verif
+
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            org = CaseModel.get_org(oid)
+
+            if org:
+                if CaseModel.get_org_in_case(org.id, id):
+                    if CaseModel.remove_org_case(id, org.id):
+                        return {"message": f"Org deleted for Case {id} edited"}
+                    return {"message": f"Error Org deleted for Case {id} edited"}
+                else:
+                    return {"message": "Org not in case"}
+            return {"message": "Org not found"}
+        return {"message": "Permission denied"}, 403
+
+
+@api.route('/<id>/take_task/<tid>', methods=['GET'])
+@api.doc(description='Assign user to the task', params={'id': 'id of a case', "tid": "id of a task"})
+class AssignTask(Resource):
+    def get(self, id, tid):
+        verif = verif_api_key(request.headers)
+        if verif:
+            return verif
+
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             task = CaseModel.get_task(tid)
+
             if task:
-                if not id == task.case_id:
-                    if CaseModel.modif_note_core(tid, request.json["note"]):
-                        return {"message": f"Note for Task {tid} edited"}
-                    return {"message": f"Error Note for Task {tid} edited"}
+                user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+                if CaseModel.assign_task(tid, user):
+                    return {"message": f"Task Take"}
+                return {"message": f"Error Task Take"}
             return {"message": "Task not found"}
-        return {"message": "Key 'note' not found"}
+        return {"message": "Permission denied"}, 403
+
+
+@api.route('/<id>/remove_assign_task/<tid>', methods=['GET'])
+@api.doc(description='Assign user to the task', params={'id': 'id of a case', "tid": "id of a task"})
+class RemoveOrgCase(Resource):
+    def get(self, id, tid):
+        verif = verif_api_key(request.headers)
+        if verif:
+            return verif
+
+        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+            task = CaseModel.get_task(tid)
+
+            if task:
+                user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+                if CaseModel.remove_assign_task(tid, user):
+                    return {"message": f"User Removed from assignation"}
+                return {"message": f"Error User Removed from assignation"}
+            return {"message": "Task not found"}
+        return {"message": "Permission denied"}, 403

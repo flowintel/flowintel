@@ -43,7 +43,7 @@ def verif_add_api(data_dict):
 
 
 def verif_edit_api(data_dict, case_id):
-    case = CaseModel.get(case_id)
+    case = CaseModel.get_case(case_id)
     if "title" not in data_dict:
         data_dict["title"] = case.title
 
