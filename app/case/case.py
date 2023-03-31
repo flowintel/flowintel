@@ -157,7 +157,14 @@ def get_cases():
     """Return all cases"""
     cases = CaseModel.get_all_cases()
     role = CaseModel.get_role(current_user).to_json()
-    return jsonify({"cases": [case.to_json() for case in cases], "role": role}), 201
+
+    loc = dict()
+    loc["cases"] = list()
+    
+    for case in cases:
+        present_in_case = CaseModel.get_present_in_case(case.id, current_user)
+        loc["cases"].append((case.to_json(), present_in_case))
+    return jsonify({"cases": loc, "role": role, "present_in_case": present_in_case}), 201
 
 
 @case_blueprint.route("/delete", methods=['POST'])
