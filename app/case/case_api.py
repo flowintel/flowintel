@@ -4,6 +4,7 @@ from . import case_core_api as CaseModelApi
 
 from flask_restx import Api, Resource
 from ..utils.utils import verif_api_key
+from ..decorators import api_required, editor_required
 
 api_case_blueprint = Blueprint('api_case', __name__)
 api = Api(api_case_blueprint,
@@ -20,11 +21,8 @@ api = Api(api_case_blueprint,
 @api.route('/all')
 @api.doc(description='Get all cases')
 class GetCases(Resource):
+    method_decorators = [api_required]
     def get(self):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         cases = CaseModel.get_all_cases()
         return {"cases": [case.to_json() for case in cases]}
 
@@ -32,11 +30,8 @@ class GetCases(Resource):
 @api.route('/<id>')
 @api.doc(description='Get a case', params={'id': 'id of a case'})
 class GetCase(Resource):
+    method_decorators = [api_required]
     def get(self, id):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         case = CaseModel.get_case(id)
         if case:
             case_json = case.to_json()
@@ -52,11 +47,8 @@ class GetCase(Resource):
 @api.route('/<id>/tasks')
 @api.doc(description='Get all tasks for a case', params={'id': 'id of a case'})
 class GetTasks(Resource):
+    method_decorators = [api_required]
     def get(self, id):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         case = CaseModel.get_case(id)
             
         tasks = list()
@@ -71,11 +63,8 @@ class GetTasks(Resource):
 @api.route('/<id>/task/<tid>')
 @api.doc(description='Get a specific task for a case', params={"id": "id of a case", "tid": "id of a task"})
 class GetTask(Resource):
+    method_decorators = [api_required]
     def get(self, id, tid):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         task = CaseModel.get_task(tid)
         if task:
             if id == task.case_id:
@@ -88,11 +77,8 @@ class GetTask(Resource):
 @api.route('/<id>/delete')
 @api.doc(description='Delete a case', params={'id': 'id of a case'})
 class DeleteCase(Resource):
+    method_decorators = [editor_required, api_required]
     def get(self, id):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             if CaseModel.delete_case(id):
                 return {"message": "Case deleted"}, 200
@@ -104,11 +90,8 @@ class DeleteCase(Resource):
 @api.route('/<id>/task/<tid>/delete')
 @api.doc(description='Delete a specific task in a case', params={'id': 'id of a case', "tid": "id of a task"})
 class DeleteTask(Resource):
+    method_decorators = [editor_required, api_required]
     def get(self, id, tid):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             task = CaseModel.get_task(tid)
             if task:
@@ -126,12 +109,9 @@ class DeleteTask(Resource):
 @api.route('/add', methods=['POST'])
 @api.doc(description='Add a case')
 class AddCase(Resource):
+    method_decorators = [editor_required, api_required]
     @api.doc(params={"title": "Required. Title for a case", "description": "Description of a case", "dead_line_date": "Date(%Y-%m-%d)", "dead_line_time": "Time(%H-%M)"})
     def post(self):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
 
         if request.json:
@@ -148,12 +128,9 @@ class AddCase(Resource):
 @api.route('/<id>/add_task', methods=['POST'])
 @api.doc(description='Add a task to a case', params={'id': 'id of a case'})
 class AddTask(Resource):
+    method_decorators = [editor_required, api_required]
     @api.doc(params={"title": "Required. Title for a task", "description": "Description of a task", "dead_line_date": "Date(%Y-%m-%d)", "dead_line_time": "Time(%H-%M)"})
     def post(self, id):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             if request.json:
                 verif_dict = CaseModelApi.verif_add_api(request.json)
@@ -170,12 +147,9 @@ class AddTask(Resource):
 @api.route('/<id>/edit', methods=['POST'])
 @api.doc(description='Edit a case', params={'id': 'id of a case'})
 class EditCase(Resource):
+    method_decorators = [editor_required, api_required]
     @api.doc(params={"title": "Title for a case", "description": "Description of a case", "dead_line_date": "Date(%Y-%m-%d)", "dead_line_time": "Time(%H-%M)"})
     def post(self, id):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             if request.json:
                 verif_dict = CaseModelApi.verif_edit_api(request.json, id)
@@ -192,12 +166,9 @@ class EditCase(Resource):
 @api.route('/<id>/task/<tid>/edit', methods=['POST'])
 @api.doc(description='Edit a task in a case', params={'id': 'id of a case', "tid": "id of a task"})
 class EditTake(Resource):
+    method_decorators = [editor_required, api_required]
     @api.doc(params={"title": "Title for a case", "description": "Description of a case", "dead_line_date": "Date(%Y-%m-%d)", "dead_line_time": "Time(%H-%M)"})
     def post(self, id, tid):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             if request.json:
                 task = CaseModel.get_task(tid)
@@ -221,11 +192,8 @@ class EditTake(Resource):
 @api.route('/<id>/task/<tid>/complete')
 @api.doc(description='Complete a task in a case', params={'id': 'id of a case', "tid": "id of a task"})
 class CompleteTake(Resource):
+    method_decorators = [editor_required, api_required]
     def get(self, id, tid):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             task = CaseModel.get_task(tid)
             if task:
@@ -242,11 +210,8 @@ class CompleteTake(Resource):
 @api.route('/<id>/task/<tid>/get_note')
 @api.doc(description='Get note of a task in a case', params={'id': 'id of a case', "tid": "id of a task"})
 class GetNoteTask(Resource):
+    method_decorators = [api_required]
     def get(self, id, tid):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         task = CaseModel.get_task(tid)
         if task:
             if id == task.case_id:
@@ -260,12 +225,9 @@ class GetNoteTask(Resource):
 @api.route('/<id>/task/<tid>/modif_note', methods=['POST'])
 @api.doc(description='Edit note of a task in a case', params={'id': 'id of a case', "tid": "id of a task"})
 class ModifNoteTask(Resource):
+    method_decorators = [editor_required, api_required]
     @api.doc(params={"note": "note to create or modify"})
     def post(self, id, tid):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             if "note" in request.json:
                 task = CaseModel.get_task(tid)
@@ -285,12 +247,9 @@ class ModifNoteTask(Resource):
 @api.route('/<id>/add_org', methods=['POST'])
 @api.doc(description='Add an org to the case', params={'id': 'id of a case'})
 class AddOrgCase(Resource):
+    method_decorators = [editor_required, api_required]
     @api.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
     def post(self, id):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             if "name" in request.json:
                 org = CaseModel.get_org_by_name(request.json["name"])
@@ -314,11 +273,8 @@ class AddOrgCase(Resource):
 @api.route('/<id>/remove_org/<oid>', methods=['GET'])
 @api.doc(description='Add an org to the case', params={'id': 'id of a case', "oid": "id of an org"})
 class RemoveOrgCase(Resource):
+    method_decorators = [editor_required, api_required]
     def get(self, id, oid):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             org = CaseModel.get_org(oid)
 
@@ -336,11 +292,8 @@ class RemoveOrgCase(Resource):
 @api.route('/<id>/take_task/<tid>', methods=['GET'])
 @api.doc(description='Assign user to the task', params={'id': 'id of a case', "tid": "id of a task"})
 class AssignTask(Resource):
+    method_decorators = [editor_required, api_required]
     def get(self, id, tid):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             task = CaseModel.get_task(tid)
 
@@ -360,6 +313,7 @@ class AssignTask(Resource):
 @api.route('/<id>/remove_assign_task/<tid>', methods=['GET'])
 @api.doc(description='Assign user to the task', params={'id': 'id of a case', "tid": "id of a task"})
 class RemoveOrgCase(Resource):
+    method_decorators = [editor_required, api_required]
     def get(self, id, tid):
         verif = verif_api_key(request.headers)
         if verif:

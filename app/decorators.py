@@ -1,7 +1,8 @@
 from functools import wraps
 
-from flask import abort
+from flask import abort, request
 from flask_login import current_user
+from .utils.utils import get_user_api, verif_api_key
 
 
 def permission_required(perm):
@@ -11,10 +12,34 @@ def permission_required(perm):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if perm == "admin":
-                if not current_user.is_admin():
+                if request.path.startswith("/api/"):
+                    user = get_user_api(request.headers["X-API-KEY"])
+                    if not user.is_admin():
+                        abort(403)
+                elif not current_user.is_admin():
                     abort(403)
             if perm == "read_only":
-                if current_user.read_only():
+                if request.path.startswith("/api/"):
+                    user = get_user_api(request.headers["X-API-KEY"])
+                    if user.read_only():
+                        abort(403)
+                elif current_user.read_only():
+                    abort(403)
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
+
+
+def verification_required():
+    """Restrict an api access to users without a key"""
+
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if request.path.startswith("/api/"):
+                if verif_api_key(request.headers):
                     abort(403)
             return f(*args, **kwargs)
 
@@ -28,3 +53,6 @@ def admin_required(f):
 
 def editor_required(f):
     return permission_required("read_only")(f)
+
+def api_required(f):
+    return verification_required()(f)
