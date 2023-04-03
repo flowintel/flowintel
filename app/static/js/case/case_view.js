@@ -192,7 +192,7 @@ function get_case_info(){
                     ),
                 ))
                 if(!user_permission["read_only"] && present_in_case)
-                    button_edit = ('<button>').attr({"onclick": "edit_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
+                    button_edit = $('<button>').attr({"onclick": "edit_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
                         $('<div>').attr({"hidden":""}).text(tasks["title"]),
                         "Edit"
                     )
