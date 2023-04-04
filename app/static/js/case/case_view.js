@@ -10,11 +10,11 @@ function get_case_info(){
             $('<th>').text("Complete"),
             $('<th>').text("Title"),
             $('<th>').text("Description"),
-            $('<th>').text(""),
-            $('<th>').text(""),
-            $('<th>').text("Assignation"),
             $('<th>').text("Times"),
             $('<th>').text("Tool/Link"),
+            $('<th>').text("Assignation"),
+            $('<th>').text(""),
+            $('<th>').text(""),
             $('<th>').text("")
         ).appendTo('#data-task')
 
@@ -73,7 +73,7 @@ function get_case_info(){
             if (!current_user){
                 if(!user_permission["read_only"] && present_in_case){
                     td_take_task.append(
-                        $('<button>').attr("onclick", "take_task(" + tasks["id"] + ")").text("Take Task").css({
+                        $('<button>').attr({"class": "btn btn-success", "onclick": "take_task(" + tasks["id"] + ")"}).text("Take Task").css({
                             "padding": "7px",
                             "box-sizing": "border-box",
                             "margin": "0",
@@ -83,7 +83,7 @@ function get_case_info(){
             }else{
                 if(!user_permission["read_only"] && present_in_case){
                     td_take_task.append(
-                        $('<button>').attr("onclick", "remove_assign_task(" + tasks["id"] + ")").text("Remove assign Task").css({
+                        $('<button>').attr({"class": "btn btn-success", "onclick": "remove_assign_task(" + tasks["id"] + ")"}).text("Remove assign Task").css({
                             "padding": "7px",
                             "box-sizing": "border-box",
                             "margin": "0",
@@ -132,7 +132,7 @@ function get_case_info(){
             td_delete = $("<td>")
             if(!user_permission["read_only"] && present_in_case){
                 td_delete.append(
-                    $('<button>').attr("onclick", "delete_task(" + tasks["id"] + ")").text("Remove").css({
+                    $('<button>').attr({"class": "btn btn-danger", "onclick": "delete_task(" + tasks["id"] + ")"}).text("Remove").css({
                     "padding": "7px",
                     "box-sizing": "border-box",
                     "margin": "0",
@@ -167,11 +167,6 @@ function get_case_info(){
                     "margin": "0",
                 }),
                 $('<td>').text(tasks["description"]),
-                td_take_task,
-                td_delete,
-                $('<td>').append(
-                    div_user
-                ),
                 $('<td>').append(
                     $("<div>").text("Creation: " + tasks["creation_date"]),
                     $("<div>").text("Dead Line: " + tasks["dead_line"])
@@ -179,7 +174,12 @@ function get_case_info(){
                 $('<td>').append(
                     $("<a>").attr("href", tasks["url"]).text(tasks["url"])
                 ),
-                td_edit_task
+                $('<td>').append(
+                    div_user
+                ),
+                td_take_task,
+                td_edit_task,
+                td_delete
             )
 
 
@@ -256,15 +256,17 @@ function complete_task(id){
         data: JSON.stringify({"id_task": id.toString()}),
         contentType: 'application/json',
         success: function(data) {
-            $('#status').empty()
-            $('#status').css("color", "green")
-            $('#status').text(data['message'])
-            get_case_info()
+            request_result(data["message"], true)
         },
         error: function(xhr, status, error) {
-            $('#status').empty()
-            $('#status').css("color", "brown")
-            $('#status').text(xhr.responseJSON['message'])
+            request_result(xhr.responseJSON['message'], false)
+            $(".flashes").append(
+                $("<div>").attr({"class": "alert alert-danger alert-dismissible fade show message", "data-autohide": "5"}).append(
+                    xhr.responseJSON['message'],
+                    $("<button>").attr({"type": "button", "class": "btn-close", "data-bs-dismiss": "alert", "aria-label": "Close"})
+                )
+            )
+            flash_messg()
         },
     });
 }
@@ -277,15 +279,10 @@ function delete_task(id){
         data: JSON.stringify({"id_task": id.toString()}),
         contentType: 'application/json',
         success: function(data) {
-            $('#status').empty()
-            $('#status').css("color", "green")
-            $('#status').text(data['message'])
-            get_case_info()
+            request_result(data["message"], true)
         },
         error: function(xhr, status, error) {
-            $('#status').empty()
-            $('#status').css("color", "brown")
-            $('#status').text(xhr.responseJSON['message'])
+            request_result(xhr.responseJSON['message'], false)
         },
     });
 }
@@ -297,14 +294,10 @@ function modif_note(id){
         data: JSON.stringify({"id_task": id.toString(), "notes": $("#note_area_" + id).val()}),
         contentType: 'application/json',
         success: function(data) {
-            $('#status').empty()
-            $('#status').css("color", "green")
-            $('#status').text(data['message'])
-            get_case_info()
+            request_result(data["message"], true)
         },
         error: function(xhr, status, error) {
-            $('#status').empty()
-            $('#status').css("color", "brown")
+            request_result(xhr.responseJSON['message'], false)
         },
     });
 }
@@ -336,15 +329,10 @@ function take_task(id){
         data: JSON.stringify({"task_id": id.toString()}),
         contentType: 'application/json',
         success: function(data) {
-            $('#status').empty()
-            $('#status').css("color", "green")
-            $('#status').text(data['message'])
-            get_case_info()
+            request_result(data["message"], true)
         },
         error: function(xhr, status, error) {
-            $('#status').empty()
-            $('#status').css("color", "brown")
-            $('#status').text(xhr.responseJSON['message'])
+            request_result(xhr.responseJSON['message'], false)
         },
     });
 }
@@ -357,15 +345,10 @@ function remove_assign_task(id){
         data: JSON.stringify({"task_id": id.toString()}),
         contentType: 'application/json',
         success: function(data) {
-            $('#status').empty()
-            $('#status').css("color", "green")
-            $('#status').text(data['message'])
-            get_case_info()
+            request_result(data["message"], true)
         },
         error: function(xhr, status, error) {
-            $('#status').empty()
-            $('#status').css("color", "brown")
-            $('#status').text(xhr.responseJSON['message'])
+            request_result(xhr.responseJSON['message'], false)
         },
     });
 }
@@ -376,17 +359,48 @@ function remove_org_case(case_id, org_id){
         url: '/case/' + case_id + '/remove_org/' + org_id,
         contentType: 'application/json',
         success: function(data) {
-            $('#status').empty()
-            $('#status').css("color", "green")
-            $('#status').text(data['message'])
-            get_case_info()
+            request_result(data["message"], true)
         },
         error: function(xhr, status, error) {
-            $('#status').empty()
-            $('#status').css("color", "brown")
-            $('#status').text(xhr.responseJSON['message'])
+            request_result(xhr.responseJSON['message'], false)
         },
     });
+}
+
+
+function request_result(message, success){
+    if(success){
+        $(".flashes").append(
+            $("<div>").attr({"class": "alert alert-success alert-dismissible fade show message", "data-autohide": "4"}).append(
+                message,
+                $("<button>").attr({"type": "button", "class": "btn-close", "data-bs-dismiss": "alert", "aria-label": "Close"})
+            )
+        )
+        get_case_info()
+        flash_messg()
+    }else{
+        $(".flashes").append(
+            $("<div>").attr({"class": "alert alert-danger alert-dismissible fade show message", "data-autohide": "4"}).append(
+                message,
+                $("<button>").attr({"type": "button", "class": "btn-close", "data-bs-dismiss": "alert", "aria-label": "Close"})
+            )
+        )
+        flash_messg()
+    }
+}
+
+
+function flash_messg(){
+    $('.message').each((i, el) => {
+        const $el = $(el);
+        const $xx = $el.find('.close');
+        const sec = $el.data('autohide');
+        const triggerRemove = () => clearTimeout($el.trigger('remove').T);
+    
+        $el.one('remove', () => $el.remove());
+        $xx.one('click', triggerRemove);
+        if (sec) $el.T = setTimeout(triggerRemove, sec * 1000);
+      });
 }
 
 
