@@ -60,46 +60,48 @@ def delete_default_org(user_org_id):
     return False
 
 
-def add_user_core(form):
+def add_user_core(form_dict):
     """Add a user to the DB"""
     user = User(
-        first_name=bleach.clean(form.first_name.data),
-        last_name=bleach.clean(form.last_name.data),
-        email=bleach.clean(form.email.data),
-        password=bleach.clean(form.password.data),
-        role_id = bleach.clean(form.role.data),
-        org_id = bleach.clean(form.org.data),
+        first_name=bleach.clean(form_dict["first_name"]),
+        last_name=bleach.clean(form_dict["last_name"]),
+        email=bleach.clean(form_dict["email"]),
+        password=bleach.clean(form_dict["password"]),
+        role_id = bleach.clean(form_dict["role"]),
+        org_id = bleach.clean(form_dict["org"]),
         api_key = generate_api_key()
     )
     db.session.add(user)
     db.session.commit()
 
-    if form.org.data == "None":
+    if not form_dict["org"] or form_dict["org"] == "None":
         org = create_default_org(user)
 
         user.org_id = org.id
         db.session.commit()
 
+    return user
 
-def edit_user_core(form, id):
+
+def edit_user_core(form_dict, id):
     """Edit the user to the DB"""
     user = get_user(id)
     prev_user_org_id = user.org_id
     flag = False
 
-    if not form.org.data or form.org.data == 'None':
+    if not form_dict["org"] or form_dict["org"] == 'None':
         org = get_org(prev_user_org_id)
         if not org.default_org:
             org = create_default_org(user)
         org_change = str(org.id)
     else:
-        org_change = form.org.data
-        if not get_org(form.org.data).id == prev_user_org_id:
+        org_change = form_dict["org"]
+        if not get_org(form_dict["org"]).id == prev_user_org_id:
             flag = True
 
-    user.first_name=bleach.clean(form.first_name.data)
-    user.last_name=bleach.clean(form.last_name.data)
-    user.role_id = bleach.clean(form.role.data)
+    user.first_name=bleach.clean(form_dict["first_name"])
+    user.last_name=bleach.clean(form_dict["last_name"])
+    user.role_id = bleach.clean(form_dict["role"])
     user.org_id = org_change
 
     db.session.commit()
@@ -120,15 +122,15 @@ def delete_user_core(id):
         return False
 
 
-def add_org_core(form):
+def add_org_core(form_dict):
     """Add an org to the DB"""
-    if form.uuid.data:
-        uuid_field = form.uuid.data
+    if form_dict["uuid"]:
+        uuid_field = form_dict["uuid"]
     else:
         uuid_field = str(uuid.uuid4())
     org = Org(
-        name = bleach.clean(form.name.data),
-        description = bleach.clean(form.description.data),
+        name = bleach.clean(form_dict["name"]),
+        description = bleach.clean(form_dict["description"]),
         uuid = uuid_field,
         default_org = False
     )
@@ -136,16 +138,16 @@ def add_org_core(form):
     db.session.commit()
 
 
-def edit_org_core(form, id):
+def edit_org_core(form_dict, id):
     """Edit the org ot the DB"""
     org = get_org(id)
-    if form.uuid.data:
-        org.uuid = form.uuid.data
+    if form_dict["uuid"]:
+        org.uuid = form_dict["uuid"]
     else:
         org.uuid = str(uuid.uuid4())
 
-    org.name = bleach.clean(form.name.data)
-    org.description = bleach.clean(form.description.data)
+    org.name = bleach.clean(form_dict["name"])
+    org.description = bleach.clean(form_dict["description"])
     
     db.session.commit()
 
@@ -167,23 +169,18 @@ def delete_org_core(id):
         return False
 
 
-def add_role_core(form):
+def add_role_core(form_dict):
     """Add a role to the DB"""
     role = Role(
-        name = bleach.clean(form.name.data),
-        description = bleach.clean(form.description.data),
-        admin = form.admin.data,
-        create_case = form.create_case.data,
-        create_task = form.create_task.data,
-        remove_case = form.remove_case.data,
-        remove_task = form.remove_task.data,
-        take_task = form.take_task.data,
-        edit_case = form.edit_case.data,
-        edit_task = form.edit_task.data,
-        edit_task_note = form.edit_task_note.data
+        name = bleach.clean(form_dict["name"]),
+        description = bleach.clean(form_dict["description"]),
+        admin = form_dict["admin"],
+        read_only = form_dict["read_only"]
     )
     db.session.add(role)
     db.session.commit()
+
+    return role
 
 
 def delete_role_core(id):

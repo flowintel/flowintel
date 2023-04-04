@@ -44,8 +44,10 @@ def verif_add_api(data_dict):
 
 def verif_edit_api(data_dict, case_id):
     case = CaseModel.get_case(case_id)
-    if "title" not in data_dict:
+    if "title" not in data_dict or data_dict["title"] == case.title:
         data_dict["title"] = case.title
+    elif Case.query.filter_by(title=data_dict["title"]).first():
+        return {"message": "Title already in use"}
 
     if "description" not in data_dict:
         data_dict["description"] = case.description

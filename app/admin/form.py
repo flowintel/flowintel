@@ -77,7 +77,7 @@ class CreateOrgForm(FlaskForm):
 class AddRoleForm(FlaskForm):
     name = StringField('Name', validators=[InputRequired(),Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
-    admin = BooleanField("Create Case", default=False, false_values=(False, 'false'))
+    admin = BooleanField("Admin", default=False, false_values=(False, 'false'))
     read_only = BooleanField("Read only", default=True, false_values=(False, 'false'))
 
     submit = SubmitField('Register')

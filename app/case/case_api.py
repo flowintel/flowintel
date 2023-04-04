@@ -3,7 +3,6 @@ from . import case_core as CaseModel
 from . import case_core_api as CaseModelApi
 
 from flask_restx import Api, Resource
-from ..utils.utils import verif_api_key
 from ..decorators import api_required, editor_required
 
 api_case_blueprint = Blueprint('api_case', __name__)
@@ -315,10 +314,6 @@ class AssignTask(Resource):
 class RemoveOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, id, tid):
-        verif = verif_api_key(request.headers)
-        if verif:
-            return verif
-
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             task = CaseModel.get_task(tid)
 

@@ -1,4 +1,3 @@
-from ..db_class.db import User
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import (
     current_user,
@@ -9,6 +8,7 @@ from flask_login import (
 from .form import RegistrationForm, CreateOrgForm, AddRoleForm, EditUserFrom
 from . import admin_core as AdminModel
 from ..decorators import admin_required
+from ..utils.utils import form_to_dict
 
 admin_blueprint = Blueprint(
     'admin',
@@ -43,7 +43,8 @@ def add_user():
     form.org.choices.insert(0, ("None", "--"))
 
     if form.validate_on_submit():
-        AdminModel.add_user_core(form)
+        form_dict = form_to_dict(form)
+        AdminModel.add_user_core(form_dict)
         return redirect("/admin")
     return render_template("admin/add_user.html", form=form)
 
@@ -60,7 +61,8 @@ def edit_user(id):
     form.org.choices.insert(0, ("None", "--"))
 
     if form.validate_on_submit():
-        AdminModel.edit_user_core(form, id)
+        form_dict = form_to_dict(form)
+        AdminModel.edit_user_core(form_dict, id)
         return redirect("/admin")
     else:
         user_modif = AdminModel.get_user(id)
@@ -102,7 +104,8 @@ def add_org():
     """Add an org"""
     form = CreateOrgForm()
     if form.validate_on_submit():
-        AdminModel.add_org_core(form)
+        form_dict = form_to_dict(form)
+        AdminModel.add_org_core(form_dict)
         return redirect("/admin/orgs")
     return render_template("admin/add_org.html", form=form)
 
@@ -114,7 +117,8 @@ def edit_org(id):
     """Edit the org"""
     form = CreateOrgForm()
     if form.validate_on_submit():
-        AdminModel.edit_org_core(form, id)
+        form_dict = form_to_dict(form)
+        AdminModel.edit_org_core(form_dict, id)
         return redirect("/admin/orgs")
     else:
         org = AdminModel.get_org(id)
@@ -155,7 +159,8 @@ def add_role():
     """Add a role"""
     form = AddRoleForm()
     if form.validate_on_submit():
-        AdminModel.add_role_core(form)
+        form_dict = form_to_dict(form)
+        AdminModel.add_role_core(form_dict)
         return redirect("/admin/roles")
     return render_template("admin/add_role.html", form=form)
 

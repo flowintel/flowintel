@@ -19,6 +19,8 @@ def create_app():
     app.config["FLASK_URL"] = '127.0.0.1'
     app.config["FLASK_PORT"] = 7006
 
+    app.config["DEBUG"] = True
+
 
     db.init_app(app)
     csrf.init_app(app)
@@ -36,7 +38,10 @@ def create_app():
     app.register_blueprint(admin_blueprint, url_prefix="/admin")
 
     from .case.case_api import api_case_blueprint
+    from .admin.admin_api import api_admin_blueprint
     csrf.exempt(api_case_blueprint)
+    csrf.exempt(api_admin_blueprint)
     app.register_blueprint(api_case_blueprint, url_prefix="/api/case")
+    app.register_blueprint(api_admin_blueprint, url_prefix="/api/admin")
 
     return app
