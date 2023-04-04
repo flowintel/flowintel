@@ -109,12 +109,17 @@ class DeleteTask(Resource):
 @api.doc(description='Add a case')
 class AddCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"title": "Required. Title for a case", "description": "Description of a case", "dead_line_date": "Date(%Y-%m-%d)", "dead_line_time": "Time(%H-%M)"})
+    @api.doc(params={
+        "title": "Required. Title for a case", 
+        "description": "Description of a case", 
+        "dead_line_date": "Date(%Y-%m-%d)", 
+        "dead_line_time": "Time(%H-%M)"
+    })
     def post(self):
         user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
 
         if request.json:
-            verif_dict = CaseModelApi.verif_add_api(request.json)
+            verif_dict = CaseModelApi.verif_add_case_task(request.json, True)
 
             if "message" not in verif_dict:
                 case = CaseModel.add_case_core(verif_dict, user)
@@ -128,11 +133,17 @@ class AddCase(Resource):
 @api.doc(description='Add a task to a case', params={'id': 'id of a case'})
 class AddTask(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"title": "Required. Title for a task", "description": "Description of a task", "dead_line_date": "Date(%Y-%m-%d)", "dead_line_time": "Time(%H-%M)"})
+    @api.doc(params={
+        "title": "Required. Title for a task", 
+        "description": "Description of a task",
+        "url": "Link to a tool or a ressource",
+        "dead_line_date": "Date(%Y-%m-%d)", 
+        "dead_line_time": "Time(%H-%M)"
+    })
     def post(self, id):
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             if request.json:
-                verif_dict = CaseModelApi.verif_add_api(request.json)
+                verif_dict = CaseModelApi.verif_add_case_task(request.json, False)
 
                 if "message" not in verif_dict:
                     task = CaseModel.add_task_core(verif_dict, id)
@@ -151,7 +162,7 @@ class EditCase(Resource):
     def post(self, id):
         if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
             if request.json:
-                verif_dict = CaseModelApi.verif_edit_api(request.json, id)
+                verif_dict = CaseModelApi.verif_edit_case(request.json, id, True)
 
                 if "message" not in verif_dict:
                     CaseModel.edit_case_core(verif_dict, id)
@@ -173,7 +184,7 @@ class EditTake(Resource):
                 task = CaseModel.get_task(tid)
                 if task:
                     if id == task.case_id:
-                        verif_dict = CaseModelApi.verif_edit_api(request.json, tid)
+                        verif_dict = CaseModelApi.verif_edit_task(request.json, tid, False)
 
                         if "message" not in verif_dict:
                             CaseModel.edit_task_core(verif_dict, tid)
