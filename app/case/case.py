@@ -44,6 +44,7 @@ def add_case():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         case = CaseModel.add_case_core(form_dict, current_user)
+        flash("Case created", "success")
         return redirect(f"/case/view/{case.id}")
     return render_template("case/add_case.html", form=form)
 
@@ -58,6 +59,7 @@ def edit_case(id):
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             CaseModel.edit_case_core(form_dict, id)
+            flash("Case edited", "success")
             return redirect(f"/case/view/{id}")
         else:
             case_modif = CaseModel.get_case(id)
@@ -79,8 +81,11 @@ def add_task(id):
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             CaseModel.add_task_core(form_dict, id)
+            flash("Task created", "success")
             return redirect(f"/case/view/{id}")
         return render_template("case/add_task.html", form=form)
+    else:
+        flash("Access denied", "error")
 
     return redirect(f"/case/view/{id}")
 
@@ -95,6 +100,7 @@ def edit_task(case_id, id):
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             CaseModel.edit_task_core(form_dict, id)
+            flash("Task edited", "success")
             return redirect(f"/case/view/{case_id}")
         else:
             task_modif = CaseModel.get_task(id)
@@ -139,9 +145,12 @@ def add_orgs(id):
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             CaseModel.add_orgs_case(form_dict, id)
+            flash("Orgs added", "success")
             return redirect(f"/case/view/{id}")
 
         return render_template("case/add_orgs.html", form=form)
+    else:
+        flash("Access denied", "error")
     return redirect(f"/case/view/{id}")
 
 
@@ -315,3 +324,29 @@ def remove_org_case(cid, oid):
             return {"message": "Org removed from case"}
         return {"message", "Error removing org from case"}
     return {"message": "Not in Case"}
+
+
+@case_blueprint.route("/change_status/<tid>", methods=['POST'])
+@login_required
+@editor_required
+def change_status(tid):
+    """Change the status of the task"""
+    
+    status = request.json["status"]
+    task = CaseModel.get_task(tid)
+
+    if CaseModel.get_present_in_case(task.case_id, current_user):
+        CaseModel.change_status(status, task)
+        flash("Assignation changed", "success")
+        return {"message": "Assignation changed"}, 201
+    return {"message": "Not in Case"}
+
+
+@case_blueprint.route("/get_status/<tid>", methods=['GET'])
+@login_required
+@editor_required
+def get_status(tid):
+    """Get status"""
+    task = CaseModel.get_task(tid)
+    status = CaseModel.get_status()
+    return {"status": status, "task": task.to_json()}, 200

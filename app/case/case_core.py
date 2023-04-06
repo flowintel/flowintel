@@ -1,6 +1,6 @@
 from .. import db
 from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org
-from ..utils.utils import isUUID
+from ..utils.utils import isUUID, status_list
 import uuid
 import bleach
 import markdown
@@ -150,7 +150,8 @@ def add_task_core(form_dict, id):
         url=bleach.clean(form_dict["url"]),
         creation_date=datetime.datetime.now(),
         dead_line=dead_line,
-        case_id=id
+        case_id=id,
+        status=0
     )
     db.session.add(task)
     update_last_modif(id)
@@ -304,3 +305,14 @@ def get_present_in_case(case_id, user):
             present_in_case = True
 
     return present_in_case
+
+
+def change_status(status, task):
+    task.status = status
+    update_last_modif(task.case_id)
+    db.session.commit()
+    
+    return True
+
+def get_status():
+    return status_list()

@@ -7,7 +7,7 @@ function get_case_info(){
         $('#data-task').empty()
         $('<tr>').append(
             $('<th>'),
-            $('<th>').text("Complete"),
+            $('<th>').text("Status"),
             $('<th>').text("Title"),
             $('<th>').text("Description"),
             $('<th>').text("Times"),
@@ -116,9 +116,10 @@ function get_case_info(){
                     $("<i>").text("No user assigned")
                 )
 
-
+            
+            // Task finish
             tr_note = $('<tr>')
-            if (tasks["completed"]){
+            if (tasks["status"] == "3"){
                 tr_task = $('<tr>').css({"background-color": "antiquewhite"})
                 tr_completed_line.after(tr_note)
                 tr_completed_line.after(tr_task)
@@ -152,15 +153,41 @@ function get_case_info(){
                 )
             }
 
-            // Complete
-            td_complete = $("<td>")
+            // Status
+            td_status = $("<td>")
+            button_status = $("<button>").attr({"class": "btn btn-secondary dropdown-toggle", "id": "button_" + tasks["id"], "type": "button", "data-bs-toggle": "dropdown", "aria-expanded": "false"})
             if(!user_permission["read_only"] && present_in_case){
-                td_complete.append($('<input>').attr({"onclick": "complete_task(" + tasks["id"] + ")", "type": "checkbox"}))
+                td_status.append(
+                    $("<div>").attr({"class": "dropdown", "id": "dropdown_status_" + tasks["id"]}).append(
+                        button_status,
+                        ul_status = $("<ul>").attr({"class": "dropdown-menu", "id": "dropdown_ul_status_" + tasks["id"]})
+                    )
+                )
+                $.get({
+                    url: '/case/get_status/' + tasks["id"],
+                    contentType: 'application/json',
+                    success: function(data) {
+                        status_list =  data["status"]
+                        t = data["task"]
+                        $("#button_" + t["id"]).text(status_list[t["status"]])
+
+                        $.each(status_list, function(i, item) {
+                            if(item != status_list[t["status"]]){
+                                $("#dropdown_ul_status_" + t["id"]).append(
+                                    $("<li>").append(
+                                        $("<button>").attr({"class": "dropdown-item", "onclick": "change_status(" + i + "," + t["id"] + ")"}).text(item)
+                                    )
+                                )
+                            }
+                        })
+                    }
+                })               
+                
             }
 
             // Main tr
             tr_task.append(
-                td_complete,
+                td_status,
                 $('<td>').text(tasks["title"]).css({
                     "padding": "7px",
                     "box-sizing": "border-box",
@@ -401,6 +428,22 @@ function flash_messg(){
         $xx.one('click', triggerRemove);
         if (sec) $el.T = setTimeout(triggerRemove, sec * 1000);
       });
+}
+
+
+function change_status(status, task_id){
+    $.post({
+        headers: { "X-CSRFToken": $("#csrf_token").val() },
+        url: '/case/change_status/' + task_id,
+        data: JSON.stringify({"status": status}),
+        contentType: 'application/json',
+        success: function(data) {
+            request_result(data["message"], true)
+        },
+        error: function(xhr, status, error) {
+            request_result(xhr.responseJSON['message'], false)
+        },
+    });
 }
 
 

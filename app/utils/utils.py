@@ -30,3 +30,7 @@ def form_to_dict(form):
         if not field == "submit" and not field == "csrf_token":
             loc_dict[field] = form._fields[field].data
     return loc_dict
+
+
+def status_list():
+    return ["Created", "On going", "Scheduled", "Finished"]
