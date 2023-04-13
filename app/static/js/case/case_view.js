@@ -67,6 +67,7 @@ function get_case_info(){
             tasks = data["tasks"][i][0]
             users = data["tasks"][i][1]
             current_user = data["tasks"][i][2]
+            files = data["tasks"][i][3]
 
             // cell to take or remove assignation to a task
             td_take_task = $("<td>").attr("id", "td_task_" + tasks["id"])
@@ -119,14 +120,18 @@ function get_case_info(){
             
             // Task finish
             tr_note = $('<tr>')
+            tr_file = $('<tr>')
+            tr_accordion = $('<tr>')
             if (tasks["status"] == "3"){
                 tr_task = $('<tr>').css({"background-color": "antiquewhite"})
+                tr_completed_line.after(tr_accordion)
                 tr_completed_line.after(tr_note)
                 tr_completed_line.after(tr_task)
             }else{
                 tr_task = $('<tr>')
                 tr_completed_line.before(tr_task)
                 tr_completed_line.before(tr_note)
+                tr_completed_line.before(tr_accordion)
             }
 
             // Delete a Task
@@ -210,7 +215,8 @@ function get_case_info(){
             )
 
 
-            if (tasks['notes']){
+            // Note and file for task
+            if (tasks['notes'] || files){
                 tr_task.prepend($('<td>').append(
                     $("<a>").attr({"class": "btn", "data-bs-toggle": "collapse", "href": "#collapse_"+tasks["id"], "role": "button", "aria-expanded": "false", "aria-controls": "collapse_"+tasks["id"]}).css(
                         {"--bs-btn-border-width": 1}
@@ -218,6 +224,17 @@ function get_case_info(){
                         $("<i>").attr("class", "fas fa-chevron-down")
                     ),
                 ))
+            }else
+                tr_task.prepend($('<td>'))
+
+            tr_accordion.append(
+                $('<td>').attr({"colspan": "50"}).append(
+                    div_note_file = $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]})
+                )
+            )
+            
+            // Note
+            if (tasks['notes']){
                 if(!user_permission["read_only"] && present_in_case)
                     button_edit = $('<button>').attr({"onclick": "edit_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
                         $('<div>').attr({"hidden":""}).text(tasks["title"]),
@@ -225,20 +242,21 @@ function get_case_info(){
                     )
                 else
                     button_edit=""
-                tr_note.append(
-                    $('<td>').attr({"colspan": "50"}).append(
-                        $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
-                            $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
-                                $('<span>').append(
-                                    button_edit
-                                ).css({"right": "1em", "position": "relative"}),
-                                tasks['notes']
-                            )
+
+                div_note_file.append(
+                    $("<button>").attr({"class": "btn btn-primary", "type": "button", "data-bs-toggle": "collapse", "data-bs-target": "#collapse-note-" + tasks["id"], "aria-expanded": "false", "aria-controls": "collapse-note-" + tasks["id"]}).text(
+                        "Notes"
+                    ),
+                    $("<div>").attr({"class": "collapse", "id": "collapse-note-" + tasks["id"]}).append(
+                        $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).append(
+                            $('<span>').append(
+                                button_edit
+                            ).css({"right": "1em", "position": "relative"}),
+                            tasks['notes']
                         )
                     )
                 )
             }else{
-                tr_task.prepend($('<td>'))
                 if(!user_permission["read_only"] && present_in_case){
                     tr_task.append(
                         $("<td>").append(
@@ -250,24 +268,49 @@ function get_case_info(){
                                 "margin": "0",
                             })
                     ))
-                    tr_note.append(
-                        $('<td>').attr({"colspan": "50"}).append(
-                            $('<div>').attr({"class": "collapse", "id": "collapse_"+tasks["id"]}).append(
-                                $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).css("max-width", "900px").append(
-                                    $('<span>').append(
-                                        $('<button>').attr({"onclick": "modif_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
-                                            $('<div>').attr({"hidden":""}).text(tasks["title"]),
-                                            "Create"
-                                        ),
-                                    ).css({"right": "1em", "position": "relative"}),                                    
-                                    $('<textarea>').attr({"id": "note_area_" + tasks["id"], "rows": "5", "cols": "50", "maxlength": "5000"})
-                                )
+                    div_note_file.append(
+                        $("<button>").attr({"class": "btn btn-primary", "type": "button", "data-bs-toggle": "collapse", "data-bs-target": "#collapse-note-" + tasks["id"], "aria-expanded": "false", "aria-controls": "collapse-note-" + tasks["id"]}).text(
+                            "Notes"
+                        ),
+                        $("<div>").attr({"class": "collapse show", "id": "collapse-note-" + tasks["id"]}).append(
+                            $('<div>').attr({"class": "card card-body", "id": "divNote"+tasks["id"]}).append(
+                                $('<span>').append(
+                                    $('<button>').attr({"onclick": "modif_note(" + tasks["id"] + ")", "type": "button", "class": "btn btn-primary", "id": "note_"+tasks["id"]}).append(
+                                        $('<div>').attr({"hidden":""}).text(tasks["title"]),
+                                        "Create"
+                                    ),
+                                ).css({"right": "1em", "position": "relative"}),                                    
+                                $('<textarea>').attr({"id": "note_area_" + tasks["id"], "rows": "5", "cols": "50", "maxlength": "5000"})
                             )
                         )
                     )
                 }
             }
+
+            // File
+            if(files){
+                div_note_file.append(
+                    $("<button>").attr({"class": "btn btn-primary", "type": "button", "data-bs-toggle": "collapse", "data-bs-target": "#collapse-file-" + tasks["id"], "aria-expanded": "false", "aria-controls": "collapse-file-" + tasks["id"]}).text(
+                        "File"
+                    )
+                )
+                for(file in files){
+                    div_note_file.append(
+                        $("<div>").attr({"class": "collapse", "id": "collapse-file-" + tasks["id"]}).append(
+                            $('<div>').attr({"class": "card card-body"}).append(
+                                $('<span>').append(
+                                    $("<a>").attr({"class": "btn btn-secondary", "href": "/case/task/"+tasks["id"]+"/download_file/"+files[file]["id"]}).text(files[file]["name"].split(")")[1]),
+                                    $("<button>").attr({"class": "btn btn-danger", "onclick": "remove_file(" + tasks["id"] + ", " +files[file]["id"] + ")"}).text("Delete File")
+                                        .css({"right": "1em", "position": "absolute"})
+                                )
+                            )
+                        ) 
+                    )
+                }
+            }
+
         })
+
         tr_completed_line.before(
             $("<td>").attr("colspan", "50").append(
                 $("<hr>")
@@ -275,6 +318,17 @@ function get_case_info(){
         )
     })
 }
+
+
+
+
+
+
+
+
+
+
+
 
 function complete_task(id){
     $.post({
@@ -394,6 +448,18 @@ function remove_org_case(case_id, org_id){
     });
 }
 
+function remove_file(task_id, file_id){
+    $.get({
+        url: '/case/task/' + task_id + '/delete_file/' + file_id,
+        contentType: 'application/json',
+        success: function(data) {
+            request_result(data["message"], true)
+        },
+        error: function(xhr, status, error) {
+            request_result(xhr.responseJSON['message'], false)
+        },
+    });
+}
 
 function request_result(message, success){
     if(success){

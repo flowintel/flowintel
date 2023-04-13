@@ -41,6 +41,8 @@
     {# Set proper enctype #}
     {% if enctype is none and (form | selectattr('type', 'equalto', 'FileField') | list | length > 0) %}
         {% set enctype = 'multipart/form-data' %}
+    {% elif enctype is none and (form | selectattr('type', 'equalto', 'MultipleFileField') | list | length > 0) %}
+        {% set enctype = 'multipart/form-data' %}
     {% else %}
         {% set enctype = '' %}
     {% endif %}

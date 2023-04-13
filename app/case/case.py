@@ -80,8 +80,10 @@ def add_task(id):
         form = TaskForm()
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            CaseModel.add_task_core(form_dict, id)
-            flash("Task created", "success")
+            if CaseModel.add_task_core(form_dict, id):
+                flash("Task created", "success")
+            else:
+                flash("Error File", "error")
             return redirect(f"/case/view/{id}")
         return render_template("case/add_task.html", form=form)
     else:
@@ -202,7 +204,10 @@ def get_case_info(id):
     for task in case.tasks:
         users, flag = CaseModel.get_users_assign_task(task.id, current_user)
         task.notes = CaseModel.markdown_notes(task.notes)
-        tasks.append((task.to_json(), users, flag))
+        file_list = list()
+        for file in task.files:
+            file_list.append(file.to_json())
+        tasks.append((task.to_json(), users, flag, file_list))
 
     orgs_in_case = CaseModel.get_orgs_in_case(case.id)
     permission = CaseModel.get_role(current_user).to_json()
@@ -350,3 +355,33 @@ def get_status(tid):
     task = CaseModel.get_task(tid)
     status = CaseModel.get_status()
     return {"status": status, "task": task.to_json()}, 200
+
+
+@case_blueprint.route("/task/<tid>/download_file/<fid>", methods=['GET'])
+@login_required
+@editor_required
+def download_file(tid, fid):
+    """Get status"""
+    task = CaseModel.get_task(tid)
+    file = CaseModel.get_file(fid)
+    if file and file in task.files:
+        if CaseModel.get_present_in_case(task.case_id, current_user):
+            return CaseModel.download_file(file.name)
+        return {"message": "Not in Case"}
+    return {"message": "File not found"}
+
+
+@case_blueprint.route("/task/<tid>/delete_file/<fid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_file(tid, fid):
+    """Get status"""
+    task = CaseModel.get_task(tid)
+    file = CaseModel.get_file(fid)
+    if file and file in task.files:
+        if CaseModel.get_present_in_case(task.case_id, current_user):
+            if CaseModel.delete_file(file):
+                return {"message": "File Deleted"}
+            return {"message": "Error deleting file"}, 404
+        return {"message": "Not in Case"}, 404
+    return {"message": "File not found"}, 404

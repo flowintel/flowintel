@@ -85,6 +85,7 @@ class Task(db.Model):
     dead_line = db.Column(db.DateTime, index=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
     status = db.Column(db.String, index=True)
+    files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
         json_dict = {
@@ -135,6 +136,18 @@ class Role(db.Model):
             "description": self.description,
             "admin": self.admin,
             "read_only": self.read_only
+        }
+
+class File(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(64), index=True, unique=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
+
+    def to_json(self):
+        return {
+            "id": self.id, 
+            "name": self.name,
+            "task_id": self.task_id
         }
 
 class Task_User(db.Model):

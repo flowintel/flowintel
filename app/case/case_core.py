@@ -1,11 +1,16 @@
+import os
 from .. import db
-from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org
+from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File
 from ..utils.utils import isUUID, status_list
 import uuid
 import bleach
 import markdown
 import datetime
 from sqlalchemy import desc
+from flask import request, send_file
+from werkzeug.utils import secure_filename
+
+UPLOAD_FOLDER = '/home/dacru/Desktop/Git/flowintel-cm/uploads'
 
 
 def get_case(id):
@@ -49,6 +54,10 @@ def get_org_in_case(org_id, case_id):
     return Case_Org.query.filter_by(case_id=case_id, org_id=org_id).first()
 
 
+def get_file(fid):
+    return File.query.get(fid)
+
+
 def delete_case(id):
     """Delete a case by is id"""
     case = get_case(id)
@@ -67,6 +76,13 @@ def delete_task(id):
     """Delete a task by is id"""
     task = get_task(id)
     if task is not None:
+        for file in task.files:
+            try:
+                os.remove(os.path.join(UPLOAD_FOLDER, file.name))
+            except:
+                return False
+            db.session.delete(file)
+            db.session.commit()
         Task_User.query.filter_by(task_id=task.id).delete()
         db.session.delete(task)
         update_last_modif(task.case_id)
@@ -154,8 +170,29 @@ def add_task_core(form_dict, id):
         status=0
     )
     db.session.add(task)
-    update_last_modif(id)
     db.session.commit()
+
+
+    if form_dict["files_upload"]:
+        for file in form_dict["files_upload"]["data"]:
+            filename = f"({str(uuid.uuid4())}){secure_filename(file.filename)}"
+            try:
+                file_data = request.files[form_dict["files_upload"]["name"]].read()
+                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as write_file:
+                    write_file.write(file_data)
+            except Exception as e:
+                print(e)
+                return False
+
+            f = File(
+                name=filename,
+                task_id=task.id
+            )
+            db.session.add(f)
+            db.session.commit()
+
+
+    update_last_modif(id)
 
     return task
 
@@ -311,8 +348,23 @@ def change_status(status, task):
     task.status = status
     update_last_modif(task.case_id)
     db.session.commit()
-    
+
     return True
 
 def get_status():
     return status_list()
+
+
+def download_file(filename):
+    return send_file(os.path.join(UPLOAD_FOLDER, filename), as_attachment=True, download_name=filename.split(")")[1])
+
+
+def delete_file(file):
+    try:
+        os.remove(os.path.join(UPLOAD_FOLDER, file.name))
+    except:
+        return False
+
+    db.session.delete(file)
+    db.session.commit()
+    return True
