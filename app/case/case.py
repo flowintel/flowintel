@@ -175,7 +175,7 @@ def get_cases():
     for case in cases:
         present_in_case = CaseModel.get_present_in_case(case.id, current_user)
         loc["cases"].append((case.to_json(), present_in_case))
-    return jsonify({"cases": loc, "role": role, "present_in_case": present_in_case}), 201
+    return jsonify({"cases": loc["cases"], "role": role}), 201
 
 
 @case_blueprint.route("/delete", methods=['POST'])
@@ -183,7 +183,7 @@ def get_cases():
 @editor_required
 def delete():
     """Delete the case"""
-    id = request.json["id_case"]
+    id = request.json["case_id"]
 
     if CaseModel.get_present_in_case(id, current_user):
         if CaseModel.delete_case(id):

@@ -7,15 +7,70 @@
 {% block content %}
     
     <div id="container">
-        
         <a class="btn btn-outline-success" href="/case/add" type="button">New Case</a>
-
-        <div class="row row-cols-auto" style="padding: 10px" id="case-card">
+        <div class="row row-cols-auto" style="padding: 10px" id="case-card" v-if="case_list">
+            <template v-for="case_loc in case_list.cases">
+                <div class="col mb-3 mb-sm-0">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">[[ case_loc[0].id ]]-[[ case_loc[0].title ]]</h5>
+                            <p v-if="case_loc[0].description" class="card-text">[[ case_loc[0].description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            <a :href="`/case/view/${case_loc[0].id}`" class="btn btn-primary">Consult</a>
+                            <a v-if="!case_list.role.read_only && case_loc[1]" @click="delete_case(case_list, case_loc)" class="btn btn-danger">Delete</a>
+                        </div>
+                        <div class="card-footer">
+                            <small class="text-muted">Last Updated [[ case_loc[0].last_modif ]]</small>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
 	</div>
 	
 {% endblock %}
 
 {% block script %}
-	<script src="{{ url_for('static',filename='js/case/case_index.js') }}"></script>
+	<!-- <script src="{{ url_for('static',filename='js/case/case_index.js') }}"></script> -->
+
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const case_list = ref(null)
+
+                async function fetchCase() {
+                    case_list.value = null
+                    const res = await fetch(
+                        'case/get_cases'
+                    )
+                    case_list.value = await res.json()
+                }
+
+                function delete_case(case_list, case_loc){
+                    fetch(
+                        '/case/delete',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"case_id": case_loc[0].id.toString()})
+                        }
+                    )
+
+                    let index = case_list.cases.indexOf(case_loc)
+                    if(index > -1)
+                        case_list.cases.splice(index, 1)
+                }
+
+                fetchCase()
+
+                return {
+                    case_list,
+                    delete_case
+                }
+            }
+        }).mount('#container')
+
+    </script>
 {% endblock %}
