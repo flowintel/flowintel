@@ -84,7 +84,7 @@ class Task(db.Model):
     creation_date = db.Column(db.DateTime, index=True)
     dead_line = db.Column(db.DateTime, index=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
-    status = db.Column(db.String, index=True)
+    status_id = db.Column(db.Integer, index=True)
     files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
@@ -94,7 +94,7 @@ class Task(db.Model):
             "url": self.url,
             "notes": self.notes,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
-            "status": self.status
+            "status_id": self.status_id
         }
         if self.dead_line:
             json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
@@ -148,6 +148,16 @@ class File(db.Model):
             "id": self.id, 
             "name": self.name,
             "task_id": self.task_id
+        }
+
+class Status(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(64), index=True, unique=True)
+
+    def to_json(self):
+        return {
+            "id": self.id, 
+            "name": self.name
         }
 
 class Task_User(db.Model):

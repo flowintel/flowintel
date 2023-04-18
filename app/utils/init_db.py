@@ -1,5 +1,5 @@
 from ..db_class.db import db
-from ..db_class.db import User, Role, Org
+from ..db_class.db import User, Role, Org, Status
 from .utils import generate_api_key
 import uuid
 
@@ -46,6 +46,15 @@ def create_admin_org(user):
     db.session.commit()
 
     return org
+
+
+def create_status():
+    status = ["Created", "On going", "Scheduled", "Finished"]
+
+    for s in status:
+        status_db = Status(name=s)
+        db.session.add(status_db)
+        db.session.commit()
     
 
 def create_admin():
@@ -71,3 +80,5 @@ def create_admin():
     user.org_id = org.id
     db.session.commit()
 
+    # Status
+    create_status()

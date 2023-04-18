@@ -1,6 +1,6 @@
 import os
 from .. import db
-from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File
+from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status
 from ..utils.utils import isUUID, status_list
 import uuid
 import bleach
@@ -56,6 +56,12 @@ def get_org_in_case(org_id, case_id):
 
 def get_file(fid):
     return File.query.get(fid)
+
+def get_all_status():
+    return Status.query.all()
+
+def get_status(sid):
+    return Status.query.get(sid).first()
 
 
 def delete_case(id):
@@ -167,7 +173,7 @@ def add_task_core(form_dict, id):
         creation_date=datetime.datetime.now(),
         dead_line=dead_line,
         case_id=id,
-        status=0
+        status_id=1
     )
     db.session.add(task)
     db.session.commit()
@@ -175,21 +181,22 @@ def add_task_core(form_dict, id):
 
     if form_dict["files_upload"]:
         for file in form_dict["files_upload"]["data"]:
-            filename = f"({str(uuid.uuid4())}){secure_filename(file.filename)}"
-            try:
-                file_data = request.files[form_dict["files_upload"]["name"]].read()
-                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as write_file:
-                    write_file.write(file_data)
-            except Exception as e:
-                print(e)
-                return False
+            if file.filename:
+                filename = f"({str(uuid.uuid4())}){secure_filename(file.filename)}"
+                try:
+                    file_data = request.files[form_dict["files_upload"]["name"]].read()
+                    with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as write_file:
+                        write_file.write(file_data)
+                except Exception as e:
+                    print(e)
+                    return False
 
-            f = File(
-                name=filename,
-                task_id=task.id
-            )
-            db.session.add(f)
-            db.session.commit()
+                f = File(
+                    name=filename,
+                    task_id=task.id
+                )
+                db.session.add(f)
+                db.session.commit()
 
 
     update_last_modif(id)
@@ -345,14 +352,11 @@ def get_present_in_case(case_id, user):
 
 
 def change_status(status, task):
-    task.status = status
+    task.status_id = status
     update_last_modif(task.case_id)
     db.session.commit()
 
     return True
-
-def get_status():
-    return status_list()
 
 
 def download_file(filename):

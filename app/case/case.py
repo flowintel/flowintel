@@ -202,16 +202,20 @@ def get_case_info(id):
     
     tasks = list()
     for task in case.tasks:
-        users, flag = CaseModel.get_users_assign_task(task.id, current_user)
+        users, is_current_user_assigned = CaseModel.get_users_assign_task(task.id, current_user)
         task.notes = CaseModel.markdown_notes(task.notes)
         file_list = list()
         for file in task.files:
             file_list.append(file.to_json())
-        tasks.append((task.to_json(), users, flag, file_list))
+        finalTask = task.to_json()
+        finalTask["users"] = users
+        finalTask["is_current_user_assigned"] = is_current_user_assigned
+        finalTask["files"] = file_list
+
+        tasks.append(finalTask)
 
     orgs_in_case = CaseModel.get_orgs_in_case(case.id)
     permission = CaseModel.get_role(current_user).to_json()
-
     present_in_case = CaseModel.get_present_in_case(id, current_user)
 
     return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case}), 201
@@ -222,7 +226,7 @@ def get_case_info(id):
 @editor_required
 def complete_task():
     """Complete the task"""
-    id = request.json["id_task"]
+    id = request.json["task_id"]
 
     task = CaseModel.get_task(id)
     if CaseModel.get_present_in_case(task.case_id, current_user):
@@ -238,7 +242,7 @@ def complete_task():
 @editor_required
 def delete_task():
     """Delete the task"""
-    id = request.json["id_task"]
+    id = request.json["task_id"]
     task = CaseModel.get_task(id)
     if CaseModel.get_present_in_case(task.case_id, current_user):
         if CaseModel.delete_task(id):
@@ -253,7 +257,7 @@ def delete_task():
 @editor_required
 def modif_note():
     """Modify note of the task"""
-    id = request.json["id_task"]
+    id = request.json["task_id"]
 
     task = CaseModel.get_task(id)
     if CaseModel.get_present_in_case(task.case_id, current_user):
@@ -347,14 +351,17 @@ def change_status(tid):
     return {"message": "Not in Case"}
 
 
-@case_blueprint.route("/get_status/<tid>", methods=['GET'])
+@case_blueprint.route("/get_status", methods=['GET'])
 @login_required
 @editor_required
-def get_status(tid):
+def get_status():
     """Get status"""
-    task = CaseModel.get_task(tid)
-    status = CaseModel.get_status()
-    return {"status": status, "task": task.to_json()}, 200
+
+    status = CaseModel.get_all_status()
+    status_list = list()
+    for s in status:
+        status_list.append(s.to_json())
+    return jsonify({"status": status_list}), 200
 
 
 @case_blueprint.route("/task/<tid>/download_file/<fid>", methods=['GET'])
