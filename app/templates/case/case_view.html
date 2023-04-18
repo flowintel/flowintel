@@ -41,10 +41,7 @@
             <a class="btn btn-outline-success" href="/case/{{id}}/add_task" type="button">New Task</a>
         {%endif%}
 
-        <table id="data-task">
-            [[cases_info]]
-            [[status_info]]
-            
+        <table id="data-task">           
             <tr><th></th><th>Status</th><th>Title</th><th>Description</th><th>Times</th><th>Tool/Link</th><th>Assignation</th><th></th><th></th><th></th></tr>
             <template v-if="cases_info && cases_info.tasks" >
                 <template v-for="task in cases_info.tasks" :key="task.id">
