@@ -122,7 +122,7 @@
 
                         <td>
                             <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-                                <a :href="'/case/view/'+cases_info.id+'/edit_task/'+task.id" role="button" class="btn btn-primary">Edit</a>
+                                <a :href="'/case/view/'+cases_info.case.id+'/edit_task/'+task.id" role="button" class="btn btn-primary">Edit</a>
                             </template>
                         </td>
 
