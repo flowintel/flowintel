@@ -31,10 +31,8 @@
 {% endblock %}
 
 {% block script %}
-	<!-- <script src="{{ url_for('static',filename='js/case/case_index.js') }}"></script> -->
-
     <script type="module">
-        const { createApp, ref, computed, onMounted } = Vue
+        const { createApp, ref } = Vue
         
         createApp({
             delimiters: ['[[', ']]'],
