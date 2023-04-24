@@ -8,223 +8,200 @@
     
     <div id="container">
         <div>
-            <h1 style="display: inline-block; font-size: xxx-large;">{{case.id}} - {{case.title}}</h1>
-            <span><i style="font-size: 12px;">{{case.uuid}}</i></span>
-            <hr>
-        </div>
+            <!-- <div> -->
+                <h1 style="display: inline-block; font-size: xxx-large;">{{case.id}} - {{case.title}}</h1>
+                <span><i style="font-size: 12px;">{{case.uuid}}</i></span>
+            <!-- </div> -->
+            <div v-if="cases_info && !cases_info.permission.read_only && cases_info.present_in_case" style="float:right">
+                <button class="btn btn-success btn-sm"  @click=""><i class="fa-solid fa-check"></i></button>
+                <a class="btn btn-primary btn-sm" :href="`/case/edit/${cases_info.case.id}`" type="button"><i class="fa-solid fa-pen-to-square"></i></a>
+                <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)"><i class="fa-solid fa-trash"></i></button>
+            </div>
 
-        <div>
-            <p style="display: inline-block;">{{case.description}}</p>
             
-            {% if case.description %}
-                <hr>
-            {%endif%}
-        </div>
-
-        <div>
-            {% if not current_user.read_only() and present_in_case %}
-                <a class="btn btn-outline-success" href="/case/edit/{{id}}" type="button">Edit Case</a>
-            {%endif%}
-
-            <div id="assign" style="float: right;"></div>
-            <br/>
-            Creation: {{case.creation_date}}
-            <br/>
-            Last Modif: {{case.last_modif}}
-            {% if case.dead_line %}
+            <div>
                 <br/>
-                Dead Line: {{case.dead_line}}
+                Creation: {{case.creation_date}}
+                <br/>
+                Last Modif: {{case.last_modif}}
+                {% if case.dead_line %}
+                    <br/>
+                    Dead Line: {{case.dead_line}}
+                {%endif%}
+
+                <div id="assign" style="float: right;" v-if="cases_info">
+                    <div class="dropdown" id="dropdown_user_case">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Orgs</button>
+                        <ul class="dropdown-menu">
+                            <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+                                <li>
+                                    <a class="btn btn-primary" :href="`/case/view/${cases_info.case.id}/add_orgs`" role="button">Add Orgs</a>
+                                </li>
+                            </template>
+                            <template v-for="org in cases_info.orgs_in_case">
+                                <li>
+                                    <div style="display: flex;">
+                                        <button class="dropdown-item">[[org.name]]</button>
+                                        <button class="btn btn-danger" @click="remove_org_case(cases_info, org)">Delete</button>
+                                    </div>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if case.description %}
+        <div>
+            <hr>
+            <p style="display: inline-block;">{{case.description}}</p>
+        </div>
+        {%endif%}
+        
+        <hr style="margin-bottom: 40px;">
+
+        <div style="display: flex;">
+            <h3>Tasks</h3>
+            {% if not current_user.read_only() and present_in_case %}
+                <span style="padding-left: 10px;">
+                    <a class="btn btn-primary btn-small" href="/case/{{id}}/add_task"><i class="fa-solid fa-plus"></i></a>
+                </span>
             {%endif%}
         </div>
 
-        {% if not current_user.read_only() and present_in_case %}
-            <a class="btn btn-outline-success" href="/case/{{id}}/add_task" type="button">New Task</a>
-        {%endif%}
 
-        <table id="data-task">           
-            <tr><th></th><th>Status</th><th>Title</th><th>Description</th><th>Times</th><th>Tool/Link</th><th>Assignation</th><th></th><th></th><th></th></tr>
-            <template v-if="cases_info && cases_info.tasks" >
-                <template v-for="task in cases_info.tasks" :key="task.id">
-                    <tr>
-                        
-                        <td v-if="task.notes || task.files.length">
-                            <a class="btn" data-bs-toggle="collapse" :href="`#collapse_${task.id}`" role="button" aria-expanded="false" :aria-controls="`collapse_${task.id}`" style="--bs-btn-border-width:1;"><i class="fas fa-chevron-down"></i></a>
-                        </td>
-                        <td v-else></td>
+
+
+        <template v-if="cases_info && cases_info.tasks" >
+            <template v-for="task in cases_info.tasks" :key="task.id">
+
+                <div class="list-group" style="margin-bottom: 20px;">
+                    <div style="display: flex;">                          
+                        <a :href="'#collapse'+task.id" class="list-group-item list-group-item-action" data-bs-toggle="collapse" role="button" aria-expanded="false" :aria-controls="'collapse'+task.id">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">[[task.title]]</h5>
+                                <small><i>Changed [[ moment(task.last_modif).fromNow() ]]</i></small>
+                            </div>
+
+                            <div class="d-flex w-100 justify-content-between">
+                                <p v-if="task.description" class="card-text">[[ task.description ]]</p>
+                                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
         
-                        <td>
-                            <div class="dropdown" :id="'dropdown_status_'+task.id">
-                                <template v-if="status_info">
-                                    <button class="btn btn-secondary dropdown-toggle" :id="'button_'+task.id" type="button" data-bs-toggle="dropdown" aria-expanded="false">[[ status_info.status[task.status_id -1].name ]]</button>
-                                    <ul class="dropdown-menu" :id="'dropdown_ul_status_'+task.id">
-                                        <template v-for="status_list in status_info.status">
-                                            <li v-if="status_list.id != task.status_id">
-                                                <button class="dropdown-item" @click="change_status(status_list.id, task)">[[ status_list.name ]]</button>
-                                            </li>
+                                <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">[[ status_info.status[task.status_id -1].name ]]</span></small>
+                            </div>
+
+                            <div v-if="task.users.length">
+                                Users: 
+                                <template v-for="user in task.users">
+                                    [[user.first_name]] [[user.last_name]],
+                                </template>
+                            </div>
+
+                            <div v-else>
+                                <i>No user assigned</i>
+                            </div>
+                        </a>
+                        <div v-if="!cases_info.permission.read_only && cases_info.present_in_case" style="display: grid;">
+                            <button class="btn btn-success btn-sm"  @click=""><i class="fa-solid fa-check"></i></button>
+                            <button v-if="!task.is_current_user_assigned" class="btn btn-secondary btn-sm"  @click="take_task(task, cases_info.current_user)"><i class="fa-solid fa-hand"></i></button>
+                            <button v-else class="btn btn-secondary btn-sm"  @click="remove_assign_task(task, cases_info.current_user)"><i class="fa-solid fa-handshake-slash"></i></button>
+                            <a class="btn btn-primary btn-sm" :href="'/case/view/'+cases_info.case.id+'/edit_task/'+task.id" type="button"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <button class="btn btn-danger btn-sm"  @click="delete_task(task, cases_info.tasks)"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+
+                    
+                    <!-- Collapse Part -->
+                    <div class="collapse" :id="'collapse'+task.id">
+                        <div class="card card-body" style="background-color: whitesmoke;">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div>
+                                    <div>
+                                        <h3>Notes</h3>
+                                    </div>
+                                    <div v-if="task.notes">
+                                        <template v-if="edit_mode">
+                                            <div>
+                                                <button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
+                                                    <div hidden>[[task.title]]</div>
+                                                    Save
+                                                </button>
+                                            </div>
+                                            <textarea :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" cols="30" maxlength="5000" v-html="task.notes"></textarea>
                                         </template>
-                                    </ul>
-                                </template>
-                            </div>
-                        </td>
+                                        <template v-else>
+                                            <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+                                                <button class="btn btn-primary" @click="edit_note(task)" type="button" :id="'note_'+task.id">
+                                                    <div hidden>[[task.title]]</div>
+                                                    Edit
+                                                </button>
+                                            </template> 
+                                            <p v-html="task.notes"></p>
+                                        </template>
+                                    </div>
+                                    <div v-else>
+                                        <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+                                            <div>
+                                                <button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
+                                                    <div hidden>[[task.title]]</div>
+                                                    Create
+                                                </button>
+                                            </div>
+                                            <textarea :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" cols="30" maxlength="5000"></textarea>
+                                        </template>
+                                    </div>
+                                </div>
 
-                        <td style="padding: 7px; box-sizing: border-box; margin: 0;">
-                            [[task.title]]
-                        </td>
-
-                        <td> [[task.description]] </td>
-
-                        <td>
-                            <div> Creation: [[task.creation_date]] </div>
-                            <div> Dead Line: [[task.dead_line]] </div>
-                        </td>
-
-                        <td>
-                            <a :href="task.url">[[task.url]]</a>
-                        </td>
-
-                        <!-- List of users assigned to the task -->
-                        <td>
-                            <div class="dropdown" :id="'dropdown_user_'+task.id">
-                                <template v-if="task.users.length">
-                                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Users</button>
-                                    <ul class="dropdown-menu" v-for="user in task.users">
-                                        <li>
-                                            <button class="dropdown-item">
-                                                [[user.first_name]] [[user.last_name]]
-                                            </button>
-                                        </li>
-                                    </ul>
-                                </template>
-                                <template v-else>
-                                    <i>No user assigned</i>
-                                </template>
-                            </div>
-                        </td>
-                        <!--  -->
-
-                        <td :id="'td_task_'+task.id">
-                            <template v-if="!task.is_current_user_assigned">
-                                <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-                                    <button class="btn btn-success" @click="take_task(task)">
-                                        Take Task
-                                    </button>
-                                </template>
-                            </template>
-                            
-                            <template v-else>
-                                <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-                                    <button class="btn btn-success" @click="remove_assign_task(task)">
-                                        Remove assignation
-                                    </button>
-                                </template>
-                            </template>
-                        </td>
-
-                        <td>
-                            <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-                                <a :href="'/case/view/'+cases_info.case.id+'/edit_task/'+task.id" role="button" class="btn btn-primary">Edit</a>
-                            </template>
-                        </td>
-
-                        <td>
-                            <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-                                <button class="btn btn-danger" @click="delete_task(task, cases_info.tasks)">
-                                    Remove
-                                </button>
-                            </template>
-                        </td>
-
-                        <td>
-                            <template v-if="!task.notes">
-                                <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-                                    <a class="btn btn-primary" :href="'#collapse_'+task.id" role="button" data-bs-toggle="collapse" aria-expanded="false" :aria-controls="'collapse_'+task.id"> 
-                                        Add Note
-                                    </a>
-                                </template>
-                            </template>
-                        </td>
-                    </tr>
-
-                    <!-- Collapse for notes and files -->
-                    <tr>
-                        <td colspan="50">
-                            <div class="collapse" :id="'collapse_'+task.id">
-                                <!-- If there's some notes existing -->
-                                <template v-if="task.notes">
-                                    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-note-'+task.id" :aria-controls="'collapse-note-'+task.id">
-                                        Notes
-                                    </button>
-                                    <div class="collapse" :id="'collapse-note-'+task.id">
-                                        <div class="card card-body" :id="'divNote'+task.id">
-                                            <!-- Edit mode open on existing notes -->
-                                            <template v-if="edit_mode">
-                                                <span style="right: 1em; position: relative;">
-                                                    <button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
-                                                        <div hidden>[[task.title]]</div>
-                                                        Save
-                                                    </button>
-                                                </span>
-                                                <textarea :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" cols="50" maxlength="5000" v-html="task.notes"></textarea>
+                                <div>
+                                    <div>
+                                        <h3>Files</h3>
+                                    </div>
+                                    <div>
+                                        <div>
+                                            <input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
+                                            <button class="btn btn-primary" @click="add_file(task)">Add</button>
+                                        </div>
+                                        <br/>
+                                        <template v-if="task.files.length">
+                                            <template v-for="file in task.files">
+                                                <div>
+                                                    <a class="btn btn-link" :href="`/case/task/${task.id}/download_file/${file.id}`">
+                                                        [[ file.name.split(")")[1] ]]
+                                                    </a>
+                                                    <button class="btn btn-danger" @click="delete_file(file, task)"><i class="fa-solid fa-trash"></i></button>
+                                                </div>
                                             </template>
-                                            <!-- Read notes -->
-                                            <template v-else>
-                                                <span style="right: 1em; position: relative;">
-                                                    <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-                                                        <button class="btn btn-primary" @click="edit_note(task)" type="button" :id="'note_'+task.id">
-                                                            <div hidden>[[task.title]]</div>
-                                                            Edit
-                                                        </button>
-                                                    </template> 
-                                                </span>
-                                                <p v-html="task.notes"></p>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div>
+                                        <h3>Change Status</h3>
+                                    </div>
+                                    <div>
+                                        <div class="dropdown" :id="'dropdown_status_'+task.id">
+                                            <template v-if="status_info">
+                                                <button class="btn btn-secondary dropdown-toggle" :id="'button_'+task.id" type="button" data-bs-toggle="dropdown" aria-expanded="false">[[ status_info.status[task.status_id -1].name ]]</button>
+                                                <ul class="dropdown-menu" :id="'dropdown_ul_status_'+task.id">
+                                                    <template v-for="status_list in status_info.status">
+                                                        <li v-if="status_list.id != task.status_id">
+                                                            <button class="dropdown-item" @click="change_status(status_list.id, task)">[[ status_list.name ]]</button>
+                                                        </li>
+                                                    </template>
+                                                </ul>
                                             </template>
                                         </div>
                                     </div>
-                                </template>
-                                <!-- There's no notes for the task -->
-                                <template v-else>
-                                    <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-                                        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-note-'+task.id" :aria-controls="'collapse-note-'+task.id">
-                                            Notes
-                                        </button>
-                                        <div class="collapse" :id="'collapse-note-'+task.id">
-                                            <div class="card card-body" :id="'divNote'+task.id">
-                                                <span style="right: 1em; position: relative;">
-                                                    <button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
-                                                        <div hidden>[[task.title]]</div>
-                                                        Create
-                                                    </button>
-                                                </span>
-                                                <textarea :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" cols="50" maxlength="5000"></textarea>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </template>
-
-
-                                <template v-if="task.files.length">
-                                    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-file-'+task.id" aria-expanded="false" :aria-controls="'collapse-file-'+task.id">
-                                        File
-                                    </button>
-                                    <template v-for="file in task.files">
-                                        <div class="collapse" :id="'collapse-file-'+task.id">
-                                            <div class="card card-body">
-                                                <span>
-                                                    <a class="btn btn-secondary" :href="`/case/task/${task.id}/download_file/${file.id}`">
-                                                        [[ file.name.split(")")[1] ]]
-                                                    </a>
-                                                    <button class="btn btn-danger" @click="" style="right: 1em; position: absolute;">Delete File</button>
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </template>
+                                </div>
                             </div>
-                        </td>
-                    </tr>
-                </template>
+                        </div>
+                    </div>
+                </div>
+
             </template>
-        </table>
+        </template>
+
     </div>
   
 {% endblock %}
@@ -258,6 +235,18 @@
                     status_info.value = await res.json()
                 }
 
+                async function delete_case(case_id){
+                    await fetch(
+                        '/case/delete',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"case_id": case_id.toString()})
+                        }
+                    )
+
+                    return window.location.href="/case"
+                }
+
                 function change_status(status, task){
                     task.status_id=status
                     fetch(
@@ -269,8 +258,10 @@
                     )
                 }
 
-                function take_task(task){
+                function take_task(task, current_user){
                     task.is_current_user_assigned = true
+                    task.users.push(current_user)
+                    
                     fetch(
                         '/case/take_task',{
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
@@ -280,8 +271,20 @@
                     )
                 }
 
-                function remove_assign_task(task){
+                function remove_assign_task(task, current_user){
                     task.is_current_user_assigned = false
+
+                    let index = -1
+
+                    for(let i=0;i<task.users.length;i++){
+                        if (task.users[i].id==current_user.id)
+                            index = i
+                    }
+
+                    if(index > -1)
+                        task.users.splice(index, 1)
+                
+                    
                     fetch(
                         '/case/remove_assign_task',{
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
@@ -332,6 +335,50 @@
                     task.notes = loc["note"]
                 }
 
+
+                function remove_org_case(cases_info, org){
+                    fetch('/case/' + cases_info.case.id + '/remove_org/' + org.id)
+
+                    let index = cases_info.orgs_in_case.indexOf(org)
+                    if(index > -1)
+                        cases_info.orgs_in_case.splice(index, 1)
+                }
+
+
+                async function add_file(task){
+                    let files = document.getElementById('formFileMultiple'+task.id).files
+
+                    let formData = new FormData();
+                    for(let i=0;i<files.length;i++){
+                        formData.append("files"+i, files[i]);
+                    }
+                    formData.append("task_id", task.id.toString());
+
+                    const res = await fetch(
+                        '/case/add_files',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val() },
+                            method: "POST",
+                            files: files,
+                            body: formData
+                        }
+                    )
+                    
+                    let loc = await res.json()
+
+                    for(let file in loc){
+                        task.files.push(loc[file])
+                    }
+
+                }
+
+                function delete_file(file, task){
+                    fetch('/case/task/' + task.id + '/delete_file/' + file.id)
+
+                    let index = task.files.indexOf(file)
+                    if(index > -1)
+                    task.files.splice(index, 1)
+                }
+
                 
 
                 fetchCase()
@@ -341,12 +388,17 @@
                     cases_info,
                     status_info,
                     edit_mode,
+                    moment,
+                    delete_case,
                     change_status,
                     take_task,
                     remove_assign_task,
                     delete_task,
                     edit_note,
-                    modif_note
+                    modif_note,
+                    remove_org_case,
+                    add_file,
+                    delete_file
                 }
             }
         }).mount('#container')

@@ -49,10 +49,14 @@ def create_admin_org(user):
 
 
 def create_status():
-    status = ["Created", "On going", "Scheduled", "Finished"]
+    status = [("Created", "success"), ("On going", "primary"), ("Scheduled", "warning"), ("Finished", "danger")]
 
     for s in status:
-        status_db = Status(name=s)
+        status_db = Status(
+            name=s[0],
+            bootstrap_style=s[1]
+        )
+
         db.session.add(status_db)
         db.session.commit()
     

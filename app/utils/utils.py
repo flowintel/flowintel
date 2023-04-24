@@ -1,4 +1,5 @@
 import re
+import os
 import random
 import string
 from ..db_class.db import User
@@ -35,6 +36,6 @@ def form_to_dict(form):
             loc_dict[field] = form._fields[field].data
     return loc_dict
 
-
-def status_list():
-    return ["Created", "On going", "Scheduled", "Finished"]
+def create_upload_dir(uplaod_dir):
+    if not os.path.isdir(uplaod_dir):
+        os.mkdir(uplaod_dir)

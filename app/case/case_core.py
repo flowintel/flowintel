@@ -1,7 +1,7 @@
 import os
 from .. import db
 from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status
-from ..utils.utils import isUUID, status_list
+from ..utils.utils import isUUID, create_upload_dir
 import uuid
 import bleach
 import markdown
@@ -97,10 +97,19 @@ def delete_task(id):
     return False
 
 
-def update_last_modif(id):
+def update_last_modif(case_id):
     """Update 'last_modif' of a case"""
-    case = Case.query.get(id)
+    case = Case.query.get(case_id)
     case.last_modif = datetime.datetime.now()
+
+
+
+def update_last_modif_task(task_id):
+    """Update 'last_modif' of a task"""
+    if task_id:
+        task = Task.query.get(task_id)
+        task.last_modif = datetime.datetime.now()
+
 
 
 def complete_task(id):
@@ -112,6 +121,7 @@ def complete_task(id):
         else:
             task.completed=True
         update_last_modif(task.case_id)
+        update_last_modif_task(task.id)
         db.session.commit()
         return True
     return False
@@ -129,7 +139,9 @@ def add_case_core(form_dict, user):
         uuid=str(uuid.uuid4()),
         creation_date=datetime.datetime.now(),
         last_modif=datetime.datetime.now(),
-        dead_line=dead_line
+        dead_line=dead_line,
+        status_id=1,
+        owner_case_id=user.id
     )
     
     db.session.add(case)
@@ -171,6 +183,7 @@ def add_task_core(form_dict, id):
         description=bleach.clean(form_dict["description"]),
         url=bleach.clean(form_dict["url"]),
         creation_date=datetime.datetime.now(),
+        last_modif=datetime.datetime.now(),
         dead_line=dead_line,
         case_id=id,
         status_id=1
@@ -178,30 +191,35 @@ def add_task_core(form_dict, id):
     db.session.add(task)
     db.session.commit()
 
-
-    if form_dict["files_upload"]:
-        for file in form_dict["files_upload"]["data"]:
-            if file.filename:
-                filename = f"({str(uuid.uuid4())}){secure_filename(file.filename)}"
-                try:
-                    file_data = request.files[form_dict["files_upload"]["name"]].read()
-                    with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as write_file:
-                        write_file.write(file_data)
-                except Exception as e:
-                    print(e)
-                    return False
-
-                f = File(
-                    name=filename,
-                    task_id=task.id
-                )
-                db.session.add(f)
-                db.session.commit()
-
-
     update_last_modif(id)
 
     return task
+
+
+def add_file_core(task, files_list):
+    create_upload_dir(UPLOAD_FOLDER)
+    return_files_list = list()
+    for file in files_list:
+        if files_list[file].filename:
+            filename = f"({str(uuid.uuid4())}){secure_filename(files_list[file].filename)}"
+            try:
+                file_data = request.files[file].read()
+                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as write_file:
+                    write_file.write(file_data)
+            except Exception as e:
+                print(e)
+                return False
+
+            f = File(
+                name=filename,
+                task_id=task.id
+            )
+            db.session.add(f)
+            update_last_modif(task.case_id)
+            update_last_modif_task(task.id)
+            db.session.commit()
+            return_files_list.append(f.to_json())
+    return return_files_list
 
 def edit_task_core(form_dict, id):
     """Edit a task to the DB"""
@@ -214,6 +232,7 @@ def edit_task_core(form_dict, id):
     task.dead_line=dead_line
 
     update_last_modif(task.case_id)
+    update_last_modif_task(task.id)
     db.session.commit()
 
 
@@ -234,6 +253,7 @@ def modif_note_core(id, notes):
     if task:
         task.notes = bleach.clean(notes)
         update_last_modif(task.case_id)
+        update_last_modif_task(task.id)
         db.session.commit()
         return True
     return False
@@ -307,6 +327,7 @@ def assign_task(id, user):
 
         db.session.add(task_user)
         update_last_modif(task.case_id)
+        update_last_modif_task(task.id)
         db.session.commit()
         return True
     return False
@@ -334,6 +355,7 @@ def remove_assign_task(id, user):
             db.session.delete(task_user)
 
         update_last_modif(task.case_id)
+        update_last_modif_task(task.id)
         db.session.commit()
         return True
     return False
@@ -354,6 +376,7 @@ def get_present_in_case(case_id, user):
 def change_status(status, task):
     task.status_id = status
     update_last_modif(task.case_id)
+    update_last_modif_task(task.id)
     db.session.commit()
 
     return True

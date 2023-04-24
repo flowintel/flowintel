@@ -7,9 +7,7 @@ from wtforms.fields import (
     TextAreaField,
     DateField,
     TimeField, 
-    HiddenField,
-    FileField,
-    MultipleFileField
+    HiddenField
 )
 from wtforms.validators import InputRequired, Length, Optional
 from werkzeug.utils import secure_filename
@@ -57,17 +55,12 @@ class TaskForm(FlaskForm):
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     dead_line_date = DateField('Dead_line_date', validators=[Optional()])
     dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
-    files_upload = MultipleFileField("Files to upload", validators=[Optional()])
     submit = SubmitField('Register')
 
     def validate_dead_line_time(self, field):
         if field.data and not self.dead_line_date.data:
             raise ValidationError("Choose a date")
 
-    def validate_file_upload(self, field):
-        field.data.filename = secure_filename(field.data.filename)
-        if "/" in field.data.filename:
-            raise ValidationError("Name may not contain '/'")
 
 
 class TaskEditForm(FlaskForm):
@@ -78,7 +71,6 @@ class TaskEditForm(FlaskForm):
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     dead_line_date = DateField('Dead_line_date', validators=[Optional()])
     dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
-    files_upload = MultipleFileField("File to upload", validators=[Optional()])
     submit = SubmitField('Modify')
 
     def validate_dead_line_time(self, field):

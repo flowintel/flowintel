@@ -18,6 +18,14 @@ case_blueprint = Blueprint(
 # Render #
 ##########
 
+
+@case_blueprint.route("/test_page", methods=['GET'])
+@login_required
+def tas_page():
+    """List all cases"""
+    return render_template("case/test_page.html")
+
+
 @case_blueprint.route("/", methods=['GET'])
 @login_required
 def index():
@@ -174,7 +182,11 @@ def get_cases():
     
     for case in cases:
         present_in_case = CaseModel.get_present_in_case(case.id, current_user)
-        loc["cases"].append((case.to_json(), present_in_case))
+        case_loc = case.to_json()
+        case_loc["present_in_case"] = present_in_case
+        case_loc["current_user_permission"] = CaseModel.get_role(current_user).to_json()
+
+        loc["cases"].append(case_loc)
     return jsonify({"cases": loc["cases"], "role": role}), 201
 
 
@@ -218,7 +230,7 @@ def get_case_info(id):
     permission = CaseModel.get_role(current_user).to_json()
     present_in_case = CaseModel.get_present_in_case(id, current_user)
 
-    return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case}), 201
+    return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 201
 
 
 @case_blueprint.route("/complete_task", methods=['POST'])
@@ -353,7 +365,6 @@ def change_status(tid):
 
 @case_blueprint.route("/get_status", methods=['GET'])
 @login_required
-@editor_required
 def get_status():
     """Get status"""
 
@@ -392,3 +403,22 @@ def delete_file(tid, fid):
             return {"message": "Error deleting file"}, 404
         return {"message": "Not in Case"}, 404
     return {"message": "File not found"}, 404
+
+
+@case_blueprint.route("/add_files", methods=['POST'])
+@login_required
+@editor_required
+def add_files():
+    """Add files to a task"""
+    if request.form.get("task_id"):
+        
+        task = CaseModel.get_task(request.form.get("task_id"))
+
+        return_files_list = CaseModel.add_file_core(task=task, files_list=request.files)
+
+        # if CaseModel.get_present_in_case(task.case_id, current_user):
+        #     CaseModel.change_status(status, task)
+        #     flash("Assignation changed", "success")
+        #     return {"message": "Assignation changed"}, 201
+        return return_files_list
+    return []

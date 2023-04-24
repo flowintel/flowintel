@@ -56,15 +56,19 @@ class Case(db.Model):
     dead_line = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade="all, delete-orphan")
-    completed = db.Column(db.Integer, index=True)
+    status_id = db.Column(db.Integer, index=True)
+    owner_case_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
         json_dict = {
-            "id": self.id, "uuid": self.uuid, 
-            "title": self.title, "description": self.description,
+            "id": self.id,
+            "uuid": self.uuid,
+            "title": self.title,
+            "description": self.description,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
-            "completed": self.completed
+            "status_id": self.status_id,
+            "owner_case_id": self.owner_case_id
         }
         if self.dead_line:
             json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
@@ -83,6 +87,7 @@ class Task(db.Model):
     notes = db.Column(db.String, nullable=True)
     creation_date = db.Column(db.DateTime, index=True)
     dead_line = db.Column(db.DateTime, index=True)
+    last_modif = db.Column(db.DateTime, index=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
     status_id = db.Column(db.Integer, index=True)
     files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
@@ -94,6 +99,7 @@ class Task(db.Model):
             "url": self.url,
             "notes": self.notes,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
             "status_id": self.status_id
         }
         if self.dead_line:
@@ -152,21 +158,23 @@ class File(db.Model):
 
 class Status(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(64), index=True, unique=True)
+    name = db.Column(db.String(30), index=True, unique=True)
+    bootstrap_style = db.Column(db.String(30), index=True)
 
     def to_json(self):
         return {
             "id": self.id, 
-            "name": self.name
+            "name": self.name,
+            "bootstrap_style": self.bootstrap_style
         }
 
 class Task_User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer)
 
 class Case_Org(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer)
     org_id = db.Column(db.Integer)
 

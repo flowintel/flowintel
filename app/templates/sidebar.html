@@ -1,62 +1,104 @@
-  <div class="flex-shrink-0 p-3 bg-white" style="width: auto;">
-    <a href="/" class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom">
-      <svg class="bi pe-none me-2" width="30" height="24"><use xlink:href="#bootstrap"/></svg>
-      <span class="fs-5 fw-semibold">Collapsible</span>
-    </a>
-    <ul class="list-unstyled ps-0">
-      <li class="mb-1">
-        <button class="btn-toggle d-inline-flex align-items-center rounded border-0 " data-bs-toggle="collapse" data-bs-target="#home-collapse" aria-expanded="true">
-          Home
-        </button>
-        <div class="collapse show" id="home-collapse">
-          <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-            <li><a href="/case" class="link-dark d-inline-flex text-decoration-none rounded">Case</a></li>
-          </ul>
-        </div>
-      </li>
-	  {% if current_user.is_admin() %}
-      <li class="mb-1">
-        <button class="btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse" data-bs-target="#dashboard-collapse" aria-expanded="true">
-          Admin
-        </button>
-        <div class="collapse show" id="dashboard-collapse">
-          <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-            <li><a href="/admin" class="link-dark d-inline-flex text-decoration-none rounded">Users</a></li>
-            <li><a href="/admin/orgs" class="link-dark d-inline-flex text-decoration-none rounded">Organisations</a></li>
-            <li><a href="/admin/roles" class="link-dark d-inline-flex text-decoration-none rounded">Roles</a></li>
-          </ul>
-        </div>
-      </li>
-	  {% endif %}
-      <!-- <li class="mb-1">
-        <button class="btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#orders-collapse" aria-expanded="false">
-          Orders
-        </button>
-        <div class="collapse" id="orders-collapse">
-          <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">New</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Processed</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Shipped</a></li>
-            <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">Returned</a></li>
-          </ul>
-        </div>
-      </li> -->
-      <li class="border-top my-3"></li>
-      <li class="mb-1">
-        <button class="btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse" data-bs-target="#account-collapse" aria-expanded="true">
-          Account
-        </button>
-        <div class="collapse show" id="account-collapse">
-          <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-            <li><a href="/account" class="link-dark d-inline-flex text-decoration-none rounded">Account</a></li>
-            {% if current_user.is_authenticated %}
-              <li><a href="/account/logout" class="link-dark d-inline-flex text-decoration-none rounded">Logout</a></li>
-            {% endif %}
-            
-          </ul>
-        </div>
-      </li>
-    </ul>
-  </div>
+<!--Main Navigation-->
+<header>
+  	<!-- Sidebar -->
+  	<nav id="sidebarMenu" class="collapse d-lg-block sidebar collapse bg-white">
+		<div class="position-sticky">
+			<div class="list-group list-group-flush mx-3 mt-4">
+				<a href="/" class="list-group-item list-group-item-action py-2 ripple" aria-current="true">
+					<i class="fas fa-tachometer-alt fa-fw me-3"></i><span>Home</span>
+				</a>
+				<a href="/case" class="list-group-item list-group-item-action py-2 ripple">
+					<i class="fas fa-chart-area fa-fw me-3"></i><span>Cases</span>
+				</a>
+				<a href="#" class="list-group-item list-group-item-action py-2 ripple">
+					<i class="fas fa-lock fa-fw me-3"></i><span>Task assigned</span>
+				</a>
+				<a href="#" class="list-group-item list-group-item-action py-2 ripple">
+					<i class="fas fa-chart-line fa-fw me-3"></i><span>Reminder</span>
+				</a>
+				{% if current_user.is_admin() %}
+				<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
+					<i class="fas fa-chart-pie fa-fw me-3"></i><span>Org</span>
+				</a>
+				<a href="/admin" class="list-group-item list-group-item-action py-2 ripple">
+					<i class="fas fa-users fa-fw me-3"></i><span>Users</span>
+				</a>
+				{% endif %}
+			</div>
+		</div>
+  	</nav>
+  <!-- Sidebar -->
 
-  <div class="b-example-divider b-example-vr"></div>
+
+	<!-- Navbar -->
+	<nav id="main-navbar" class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+    	<!-- Container wrapper -->
+    	<div class="container-fluid">
+      		<!-- Toggle button -->
+			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu"
+				aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+				<i class="fas fa-bars"></i>
+			</button>
+
+			<!-- Brand -->
+			<a class="navbar-brand" href="#">
+				<img src="{{ url_for('static',filename='image/flow-intel.png') }}" height="40" alt="flowintel Logo"
+				loading="lazy" />
+			</a>
+			<!-- Search form -->
+			<div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
+				<input autocomplete="off" type="search" class="form-control rounded"
+				placeholder='Search case by ID/UUID' style="min-width: 350px;" />
+				<span class="input-group-text border-0"><i class="fas fa-search"></i></span>
+			</div>
+
+			<!-- Right links -->
+			<ul class="navbar-nav ms-auto d-flex flex-row">
+				<!-- Notification dropdown -->
+				<li class="nav-item dropdown">
+					<a class="nav-link me-3 me-lg-0 dropdown-toggle hidden-arrow" href="#" id="navbarDropdownMenuLink"
+						role="button" data-bs-toggle="dropdown" aria-expanded="false">
+						<i class="fas fa-bell"></i>
+						<!-- <span class="badge rounded-pill badge-notification bg-danger">1</span> -->
+					</a>
+					<ul class="dropdown-menu">
+						<li>
+							<a class="dropdown-item" href="#">Some news</a>
+						</li>
+						<li>
+							<a class="dropdown-item" href="#">Another news</a>
+						</li>
+						<li>
+							<a class="dropdown-item" href="#">Something else here</a>
+						</li>
+					</ul>
+				</li>
+
+				<!-- Avatar -->
+				<li class="nav-item dropdown">
+					<a class="nav-link dropdown-toggle hidden-arrow d-flex align-items-center" href="#"
+						id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+						{{current_user.first_name}} {{current_user.last_name}}
+					</a>
+					<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownMenuLink">
+						<li>
+							<a class="dropdown-item" href="/account">My profile</a>
+						</li>
+						<li>
+							<a class="dropdown-item" href="#">Settings</a>
+						</li>
+						{% if current_user.is_authenticated %}
+							<li>
+								<a class="dropdown-item" href="/account/logout">Logout</a>
+							</li>
+						{% endif %}
+					</ul>
+       			</li>
+      		</ul>
+    	</div>
+    <!-- Container wrapper -->
+ 	 </nav>
+  	<!-- Navbar -->
+</header>
+<!--Main Navigation-->
+
