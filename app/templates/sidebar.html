@@ -41,15 +41,20 @@
 			</button>
 
 			<!-- Brand -->
-			<a class="navbar-brand" href="#">
+			<a class="navbar-brand" href="/">
 				<img src="{{ url_for('static',filename='image/flow-intel.png') }}" height="40" alt="flowintel Logo"
 				loading="lazy" />
 			</a>
 			<!-- Search form -->
-			<div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
-				<input autocomplete="off" type="search" class="form-control rounded"
-				placeholder='Search case by ID/UUID' style="min-width: 350px;" />
-				<span class="input-group-text border-0"><i class="fas fa-search"></i></span>
+			<div id="search-form">
+				<div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
+					<input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by ID/UUID' style="min-width: 350px;" />
+				</div>
+				<div v-if="result_search.length" style="position: absolute; background-color: white; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); min-width: 160px;">
+					<ul v-for="case_search in result_search">
+						<div><a :href="'/case/view/'+case_search.id">[[case_search.title]]</a></div>
+					</ul>
+				</div>
 			</div>
 
 			<!-- Right links -->

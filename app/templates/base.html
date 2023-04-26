@@ -45,5 +45,43 @@
 
         {% block script %}
         {% endblock %}
+
+        <script type="module">
+            const { createApp, ref } = Vue
+            
+            createApp({
+                delimiters: ['[[', ']]'],
+                setup() {
+                    const case_list = ref(null)
+                    const result_search = ref([])
+
+                    async function fetchCase() {
+                        case_list.value = null
+                        const res = await fetch(
+                            '/case/case/get_cases'
+                        )
+                        case_list.value = await res.json()
+                    }
+
+                    function onInput(e){
+                        result_search.value = []
+                        if(e.target.value){
+                            for(let i in case_list.value.cases){
+                                if(case_list.value.cases[i].title.toLowerCase().includes(e.target.value)){
+                                    result_search.value.push(case_list.value.cases[i])
+                                }
+                            }
+                        }
+                    }
+
+                    fetchCase()
+
+                    return {
+                        onInput,
+                        result_search
+                    }
+                }
+            }).mount('.navbar')
+        </script>
     </body>
 </html>
