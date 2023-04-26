@@ -195,10 +195,10 @@ def get_cases():
 @editor_required
 def delete():
     """Delete the case"""
-    id = request.json["case_id"]
+    cid = request.json["case_id"]
 
-    if CaseModel.get_present_in_case(id, current_user):
-        if CaseModel.delete_case(id):
+    if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.delete_case(cid):
             return {"message": "Case deleted"}, 201
         else:
             return {"message": "Error case deleted"}, 201
@@ -233,16 +233,29 @@ def get_case_info(id):
     return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 201
 
 
-@case_blueprint.route("/complete_task", methods=['POST'])
+@case_blueprint.route("/complete_case/<cid>", methods=['GET'])
 @login_required
 @editor_required
-def complete_task():
+def complete_case(cid):
     """Complete the task"""
-    id = request.json["task_id"]
 
-    task = CaseModel.get_task(id)
+    if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.complete_case(cid):
+            return {"message": "Case completed"}, 201
+        else:
+            return {"message": "Error case completed"}, 201
+    return {"message": "Not in case"}
+
+
+@case_blueprint.route("/complete_task/<tid>", methods=['GET'])
+@login_required
+@editor_required
+def complete_task(tid):
+    """Complete the task"""
+
+    task = CaseModel.get_task(str(tid))
     if CaseModel.get_present_in_case(task.case_id, current_user):
-        if CaseModel.complete_task(id):
+        if CaseModel.complete_task(tid):
             return {"message": "Task completed"}, 201
         else:
             return {"message": "Error task completed"}, 201

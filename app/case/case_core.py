@@ -13,22 +13,22 @@ from werkzeug.utils import secure_filename
 UPLOAD_FOLDER = '/home/dacru/Desktop/Git/flowintel-cm/uploads'
 
 
-def get_case(id):
+def get_case(cid):
     """Return a case by is id"""
-    if isUUID(id):
-        case = Case.query.filter_by(uuid=id).first()
-    elif id.isdigit():
-        case = Case.query.get(id)
+    if isUUID(cid):
+        case = Case.query.filter_by(uuid=cid).first()
+    elif str(cid).isdigit():
+        case = Case.query.get(cid)
     else:
         case = None
     return case
 
-def get_task(id):
+def get_task(tid):
     """Return a task by is id"""
-    if isUUID(id):
-        case = Task.query.filter_by(uuid=id).first()
-    elif id.isdigit():
-        case = Task.query.get(id)
+    if isUUID(tid):
+        case = Task.query.filter_by(uuid=tid).first()
+    elif str(tid).isdigit():
+        case = Task.query.get(tid)
     else:
         case = None
     return case
@@ -42,9 +42,9 @@ def get_role(user):
     """Return role for the current user"""
     return Role.query.get(user.role_id)
 
-def get_org(id):
+def get_org(oid):
     """Return an org by is id"""
-    return Org.query.get(id)
+    return Org.query.get(oid)
 
 def get_org_by_name(name):
     """Return an org by is name"""
@@ -64,9 +64,9 @@ def get_status(sid):
     return Status.query.get(sid).first()
 
 
-def delete_case(id):
+def delete_case(cid):
     """Delete a case by is id"""
-    case = get_case(id)
+    case = get_case(cid)
     if case is not None:
         # Delete all tasks in the case
         for task in case.tasks:
@@ -78,9 +78,9 @@ def delete_case(id):
         return True
     return False
 
-def delete_task(id):
+def delete_task(tid):
     """Delete a task by is id"""
-    task = get_task(id)
+    task = get_task(tid)
     if task is not None:
         for file in task.files:
             try:
@@ -111,10 +111,23 @@ def update_last_modif_task(task_id):
         task.last_modif = datetime.datetime.now()
 
 
+def complete_case(cid):
+    """Complete case by is id"""
+    case = get_case(cid)
+    if case is not None:
+        if case.completed:
+            case.completed = False
+        else:
+            case.completed=True
+        update_last_modif(cid)
+        db.session.commit()
+        return True
+    return False
 
-def complete_task(id):
+
+def complete_task(tid):
     """Complete task by is id"""
-    task = get_task(id)
+    task = get_task(tid)
     if task is not None:
         if task.completed:
             task.completed = False
@@ -125,7 +138,6 @@ def complete_task(id):
         db.session.commit()
         return True
     return False
-
 
 
 def add_case_core(form_dict, user):
@@ -159,9 +171,9 @@ def add_case_core(form_dict, user):
     return case
 
 
-def edit_case_core(form_dict, id):
+def edit_case_core(form_dict, cid):
     """Edit a case to the DB"""
-    case = get_case(id)
+    case = get_case(cid)
 
     dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
 
@@ -173,7 +185,7 @@ def edit_case_core(form_dict, id):
     db.session.commit()
     
 
-def add_task_core(form_dict, id):
+def add_task_core(form_dict, cid):
     """Add a task to the DB"""
     dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
 
@@ -185,13 +197,13 @@ def add_task_core(form_dict, id):
         creation_date=datetime.datetime.now(),
         last_modif=datetime.datetime.now(),
         dead_line=dead_line,
-        case_id=id,
+        case_id=cid,
         status_id=1
     )
     db.session.add(task)
     db.session.commit()
 
-    update_last_modif(id)
+    update_last_modif(cid)
 
     return task
 
@@ -221,9 +233,9 @@ def add_file_core(task, files_list):
             return_files_list.append(f.to_json())
     return return_files_list
 
-def edit_task_core(form_dict, id):
+def edit_task_core(form_dict, tid):
     """Edit a task to the DB"""
-    task = get_task(id)
+    task = get_task(tid)
     dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
 
     task.title = bleach.clean(form_dict["title"])
@@ -247,9 +259,9 @@ def dead_line_check(date, time):
     return dead_line
 
 
-def modif_note_core(id, notes):
+def modif_note_core(tid, notes):
     """Modify a noe of a task to the DB"""
-    task = get_task(id)
+    task = get_task(tid)
     if task:
         task.notes = bleach.clean(notes)
         update_last_modif(task.case_id)
@@ -258,17 +270,17 @@ def modif_note_core(id, notes):
         return True
     return False
 
-def get_note_text(id):
+def get_note_text(tid):
     """Return a text note by task's id"""
-    task = get_task(id)
+    task = get_task(tid)
     if task:
         return task.notes
     else:
         return ""
 
-def get_note_markdown(id):
+def get_note_markdown(tid):
     """Return a markdown note by task's id"""
-    task = get_task(id)
+    task = get_task(tid)
     if task:
         return markdown_notes(task.notes)
     else:
@@ -281,16 +293,16 @@ def markdown_notes(notes):
     return notes
 
 
-def add_orgs_case(form_dict, id):
+def add_orgs_case(form_dict, cid):
     """Add orgs to case in th DB"""
     for org_id in form_dict["org_id"]:
         case_org = Case_Org(
-            case_id=id, 
+            case_id=cid, 
             org_id=org_id
         )
         db.session.add(case_org)
 
-    update_last_modif(id)
+    update_last_modif(cid)
     db.session.commit()
     return True
 
@@ -317,9 +329,9 @@ def remove_org_case(case_id, org_id):
     return False
 
 
-def assign_task(id, user):
+def assign_task(tid, user):
     """Assign current user to a task"""
-    task = get_task(id)
+    task = get_task(tid)
     if task:
         # if Task_User.query.filter_by(task_id=task.id, user_id=user.id).first():
         #     return 
@@ -346,9 +358,9 @@ def get_users_assign_task(task_id, user):
     return users, flag
 
 
-def remove_assign_task(id, user):
+def remove_assign_task(tid, user):
     """Remove current user to the assignement to a task"""
-    task = get_task(id)
+    task = get_task(tid)
     if task:
         task_users = Task_User.query.filter_by(task_id=task.id, user_id=user.id).all()
         for task_user in task_users:

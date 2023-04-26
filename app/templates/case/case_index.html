@@ -5,42 +5,84 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div>
-        <h1>
-            List of Case
-            <span style="padding-left: 10px;">
-                <a class="btn btn-primary btn-small" href="/case/add"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        </h1>
+    <h1>
+        List of Case
+        <span style="padding-left: 10px;">
+            <a class="btn btn-primary btn-small" href="/case/add"><i class="fa-solid fa-plus"></i></a>
+        </span>
+    </h1>
         
-    </div>
-    <div class="list-group" v-if="case_list">
+    <template v-if="case_list">
         <template v-for="case_loc in case_list.cases">
-            <div style="display:flex">
-                <a :href="`/case/view/${case_loc.id}`" class="list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h4 class="mb-1">[[ case_loc.id ]]-[[ case_loc.title ]]</h4>
-                            <small><i>Changed [[ moment(case_loc.last_modif).fromNow() ]]</i></small>
-                    </div>
-                    <div class="d-flex w-100 justify-content-between">
-                        <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
-                        <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+            <div class="list-group" style="margin-bottom: 20px;" v-if="!case_loc.completed">
+                <div style="display:flex" v-if="!case_loc.completed">
+                    <a :href="`/case/view/${case_loc.id}`" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1">[[ case_loc.id ]]-[[ case_loc.title ]]</h4>
+                                <small><i>Changed [[ moment(case_loc.last_modif).fromNow() ]]</i></small>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
 
-                        <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
+                            <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <small>And some small print.</small>
+                            <!-- <small>Last Updated [[ case_loc.last_modif ]]</small> -->
+                        </div>
+                    </a>
+                    <div v-if="!case_loc.current_user_permission.read_only && case_loc.present_in_case" style="display: grid;">
+                        <button class="btn btn-success btn-sm"  @click="complete_case(case_loc)"><i class="fa-solid fa-check"></i></button>
+                        <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button"><i class="fa-solid fa-pen-to-square"></i></a>
+                        <button class="btn btn-danger btn-sm"  @click="delete_case(case_list, case_loc)"><i class="fa-solid fa-trash"></i></button>
                     </div>
-                    <div class="d-flex w-100 justify-content-between">
-                        <small>And some small print.</small>
-                        <!-- <small>Last Updated [[ case_loc.last_modif ]]</small> -->
-                    </div>
-                </a>
-                <div v-if="!case_loc.current_user_permission.read_only && case_loc.present_in_case" style="display: grid;">
-                    <button class="btn btn-success btn-sm"  @click=""><i class="fa-solid fa-check"></i></button>
-                    <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button"><i class="fa-solid fa-pen-to-square"></i></a>
-                    <button class="btn btn-danger btn-sm"  @click="delete_case(case_list, case_loc)"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </div>
         </template>
-    </div>
+
+        <div class="list-group" style="margin-bottom: 20px; margin-top: 50px;" >
+            <a href="#collapse_close_case" class="list-group-item list-group-item-action" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="collapse_close_case">
+                <hr>
+            </a>
+        </div>
+    
+        <div class="collapse" id="collapse_close_case">
+            <div class="card card-body" style="background-color: #fbfbfb; border:#fbfbfb">
+                <template v-for="case_loc in case_list.cases">
+                    <div class="list-group" style="margin-bottom: 20px;" v-if="case_loc.completed">
+                        <div style="display:flex" >
+                            <a :href="`/case/view/${case_loc.id}`" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h4 class="mb-1">[[ case_loc.id ]]-[[ case_loc.title ]]</h4>
+                                        <small><i>Changed [[ moment(case_loc.last_modif).fromNow() ]]</i></small>
+                                </div>
+                                <div class="d-flex w-100 justify-content-between">
+                                    <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
+                                    <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+            
+                                    <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
+                                </div>
+                                <div class="d-flex w-100 justify-content-between">
+                                    <small>And some small print.</small>
+                                    <!-- <small>Last Updated [[ case_loc.last_modif ]]</small> -->
+                                </div>
+                            </a>
+                            <div v-if="!case_loc.current_user_permission.read_only && case_loc.present_in_case" style="display: grid;">
+                                <button class="btn btn-success btn-sm"  @click="complete_case(case_loc)"><i class="fa-solid fa-check"></i></button>
+                                <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button"><i class="fa-solid fa-pen-to-square"></i></a>
+                                <button class="btn btn-danger btn-sm"  @click="delete_case(case_list, case_loc)"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+    </template>
+
+    
+    
 	
 {% endblock %}
 
@@ -84,13 +126,20 @@
                         case_list.cases.splice(index, 1)
                 }
 
+                function complete_case(case_loc){
+                    case_loc.last_modif = Date.now()
+                    case_loc.completed = !case_loc.completed
+                    fetch('/case/complete_case/'+case_loc.id)
+                }
+
                 fetchCase()
                 fetchStatus()
 
                 return {
                     case_list,
                     status_info,
-                    delete_case, 
+                    delete_case,
+                    complete_case,
                     moment
                 }
             }

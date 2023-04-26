@@ -55,8 +55,10 @@ class Case(db.Model):
     creation_date = db.Column(db.DateTime, index=True)
     dead_line = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
+    finish_date = db.Column(db.DateTime, index=True)
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade="all, delete-orphan")
     status_id = db.Column(db.Integer, index=True)
+    completed = db.Column(db.Boolean, default=False)
     owner_case_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
@@ -68,12 +70,18 @@ class Case(db.Model):
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
             "status_id": self.status_id,
+            "completed": self.completed,
             "owner_case_id": self.owner_case_id
         }
         if self.dead_line:
             json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
         else:
             json_dict["dead_line"] = self.dead_line
+
+        if self.finish_date:
+            json_dict["finish_date"] = self.finish_date.strftime('%Y-%m-%d %H:%M')
+        else:
+            json_dict["finish_date"] = self.finish_date
 
         return json_dict
 
@@ -88,8 +96,10 @@ class Task(db.Model):
     creation_date = db.Column(db.DateTime, index=True)
     dead_line = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
+    finish_date = db.Column(db.DateTime, index=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
     status_id = db.Column(db.Integer, index=True)
+    completed = db.Column(db.Boolean, default=False)
     files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
@@ -100,12 +110,18 @@ class Task(db.Model):
             "notes": self.notes,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
-            "status_id": self.status_id
+            "status_id": self.status_id,
+            "completed": self.completed
         }
         if self.dead_line:
             json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
         else:
             json_dict["dead_line"] = self.dead_line
+
+        if self.finish_date:
+            json_dict["finish_date"] = self.finish_date.strftime('%Y-%m-%d %H:%M')
+        else:
+            json_dict["finish_date"] = self.finish_date
 
         return json_dict
 

@@ -49,7 +49,7 @@ def create_admin_org(user):
 
 
 def create_status():
-    status = [("Created", "success"), ("On going", "primary"), ("Scheduled", "warning"), ("Finished", "danger")]
+    status = [("Created", "success"), ("On going", "primary"), ("Scheduled", "warning"), ("Unavailable", "info"), ("Revive", "info"), ("Finished", "danger")]
 
     for s in status:
         status_db = Status(
