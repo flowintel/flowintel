@@ -71,32 +71,18 @@
             {%endif%}
         </div>
 
+        <task_filter :cases_info="cases_info" @tasks_list="(tasks) => cases_info.tasks = tasks"></task_filter>
 
+        <hr>
 
 
 
         <template v-if="cases_info && cases_info.tasks && status_info" >
             <template v-for="task in cases_info.tasks" :key="task.id">
-                <div class="list-group" style="margin-bottom: 20px;" v-if="!task.completed">
+                <div class="list-group" style="margin-bottom: 20px;">
                     <case_tasks :cases_info="cases_info" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg"></case_tasks>
                 </div>
             </template>
-
-            <div class="list-group" style="margin-bottom: 20px; margin-top: 50px;" >
-                <a href="#collapse_close_task" style="background-color: #fbfbfb; border:#fbfbfb" class="list-group-item list-group-item-action" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="collapse_close_task">
-                    <hr>
-                </a>
-            </div>
-
-            <div class="collapse" id="collapse_close_task">
-                <div class="card card-body" style="background-color: #fbfbfb; border:#fbfbfb">
-                    <template v-for="task in cases_info.tasks" :key="task.id">
-                        <div class="list-group" style="margin-bottom: 20px;" v-if="task.completed">
-                            <case_tasks :cases_info="cases_info" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg"></case_tasks>
-                        </div>
-                    </template>
-                </div>
-            </div>
         </template>
     </div>
 {% endblock %}
@@ -108,11 +94,13 @@
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
         import case_tasks from '../../static/js/case/case_tasks.js'
+        import task_filter from '../../static/js/case/task_filter.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
-                case_tasks
+                case_tasks,
+                task_filter
             },
             setup() {
                 const edit_mode = ref(false)

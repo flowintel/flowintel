@@ -206,29 +206,17 @@ def delete():
 
 
 
-@case_blueprint.route("view/get_case_info/<id>", methods=['GET'])
+@case_blueprint.route("view/get_case_info/<cid>", methods=['GET'])
 @login_required
-def get_case_info(id):
+def get_case_info(cid):
     """Return all info of the case"""
-    case = CaseModel.get_case(id)
+    case = CaseModel.get_case(cid)
     
-    tasks = list()
-    for task in case.tasks:
-        users, is_current_user_assigned = CaseModel.get_users_assign_task(task.id, current_user)
-        task.notes = CaseModel.markdown_notes(task.notes)
-        file_list = list()
-        for file in task.files:
-            file_list.append(file.to_json())
-        finalTask = task.to_json()
-        finalTask["users"] = users
-        finalTask["is_current_user_assigned"] = is_current_user_assigned
-        finalTask["files"] = file_list
-
-        tasks.append(finalTask)
+    tasks = CaseModel.sort_by_ongoing_task_core(case, current_user)
 
     orgs_in_case = CaseModel.get_orgs_in_case(case.id)
     permission = CaseModel.get_role(current_user).to_json()
-    present_in_case = CaseModel.get_present_in_case(id, current_user)
+    present_in_case = CaseModel.get_present_in_case(cid, current_user)
 
     return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 201
 
@@ -392,7 +380,7 @@ def get_status():
 @login_required
 @editor_required
 def download_file(tid, fid):
-    """Get status"""
+    """Download the file"""
     task = CaseModel.get_task(tid)
     file = CaseModel.get_file(fid)
     if file and file in task.files:
@@ -406,7 +394,7 @@ def download_file(tid, fid):
 @login_required
 @editor_required
 def delete_file(tid, fid):
-    """Get status"""
+    """Delete the file"""
     task = CaseModel.get_task(tid)
     file = CaseModel.get_file(fid)
     if file and file in task.files:
@@ -429,9 +417,57 @@ def add_files():
 
         return_files_list = CaseModel.add_file_core(task=task, files_list=request.files)
 
-        # if CaseModel.get_present_in_case(task.case_id, current_user):
-        #     CaseModel.change_status(status, task)
-        #     flash("Assignation changed", "success")
-        #     return {"message": "Assignation changed"}, 201
         return return_files_list
     return []
+
+
+@case_blueprint.route("/<cid>/sort_by_ongoing_task", methods=['GET'])
+@login_required
+@editor_required
+def sort_by_ongoing_task(cid):
+    """Sort Task by living one"""
+    case = CaseModel.get_case(cid)
+    if CaseModel.get_present_in_case(cid, current_user):
+        return CaseModel.sort_by_ongoing_task_core(case, current_user)
+    return {"message": "Not in Case"}
+
+
+@case_blueprint.route("/<cid>/sort_by_finished_task", methods=['GET'])
+@login_required
+@editor_required
+def sort_by_finished_task(cid):
+    """Sort task by finished one"""
+    case = CaseModel.get_case(cid)
+    if CaseModel.get_present_in_case(cid, current_user):
+        return CaseModel.sort_by_finished_task_core(case, current_user)
+    return {"message": "Not in Case"}
+
+
+
+
+@case_blueprint.route("/<cid>/ongoing", methods=['GET'])
+@login_required
+@editor_required
+def ongoing_sort_by_filter(cid):
+    """Sort by filter for living task"""
+    data_dict = dict(request.args)
+    if "filter" in data_dict:
+        case = CaseModel.get_case(cid)
+        if CaseModel.get_present_in_case(cid, current_user):
+            return CaseModel.sort_by_filter(case, current_user, False, data_dict["filter"])
+        return {"message": "Not in Case"}
+    return {"message": "No filter pass"}
+
+
+@case_blueprint.route("/<cid>/finished", methods=['GET'])
+@login_required
+@editor_required
+def finished_sort_by_filter(cid):
+    """Sort by filter for finished task"""
+    data_dict = dict(request.args)
+    if "filter" in data_dict:
+        case = CaseModel.get_case(cid)
+        if CaseModel.get_present_in_case(cid, current_user):
+            return CaseModel.sort_by_filter(case, current_user, True, data_dict["filter"])
+        return {"message": "Not in Case"}
+    return {"message": "No filter pass"}

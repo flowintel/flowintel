@@ -407,3 +407,59 @@ def delete_file(file):
     db.session.delete(file)
     db.session.commit()
     return True
+
+
+
+def get_task_info(tasks_list, user):
+    tasks = list()
+    for task in tasks_list:
+        users, is_current_user_assigned = get_users_assign_task(task.id, user)
+        task.notes = markdown_notes(task.notes)
+        file_list = list()
+        for file in task.files:
+            file_list.append(file.to_json())
+        finalTask = task.to_json()
+        finalTask["users"] = users
+        finalTask["is_current_user_assigned"] = is_current_user_assigned
+        finalTask["files"] = file_list
+
+        tasks.append(finalTask)
+    return tasks
+
+
+def sort_by_ongoing_task_core(case, user):
+    tasks_list = Task.query.filter_by(case_id=case.id, completed=False).all()
+    return get_task_info(tasks_list, user)
+    
+def sort_by_finished_task_core(case, user):
+    tasks_list = Task.query.filter_by(case_id=case.id, completed=True).all()
+    return get_task_info(tasks_list, user)
+
+
+def sort_by_filter(case, user, completed, filter):
+    if filter == "assigned_tasks":
+        final_tasks = list()
+        tasks_list_query = Task.query.filter_by(case_id=case.id, completed=completed).all()
+        for task in tasks_list_query:
+            users, _ = get_users_assign_task(task.id, user)
+            if users:
+                task.len_u = len(users)
+            else:
+                task.len_u = 0
+            final_tasks.append(task)
+        tasks_list = sorted(final_tasks, key=lambda t: t.len_u)
+
+    elif filter == "my_assignation":
+        final_tasks = list()
+        tasks_list_query = Task.query.filter_by(case_id=case.id, completed=completed).all()
+        for task in tasks_list_query:
+            _, is_current_user_assigned = get_users_assign_task(task.id, user)
+            task.is_current_user_assigned = is_current_user_assigned
+            final_tasks.append(task)
+        tasks_list = sorted(final_tasks, key=lambda t: t.is_current_user_assigned)
+        
+    else:
+        tasks_list = Task.query.filter_by(case_id=case.id, completed=completed).order_by(desc(filter)).all()
+
+    return get_task_info(tasks_list, user)
+
