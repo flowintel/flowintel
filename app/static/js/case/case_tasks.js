@@ -1,7 +1,6 @@
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
-		msg: String,
 		cases_info: Object,
 		status_info: Object,
 		edit_mode: Boolean,
@@ -159,7 +158,7 @@ export default {
 				if(task.status_id == status)
 					task.status_id = 1
 
-				fetch('/case/change_status/'+task.id,{
+				fetch('/case/change_status/task/'+task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"status": task.status_id})
@@ -177,6 +176,9 @@ export default {
 					}
 				}
 			}
+			let index = props.cases_info.tasks.indexOf(task)
+			if(index > -1)
+				props.cases_info.tasks.splice(index, 1)
 		}
 
 		function formatNow(dt) {
@@ -227,7 +229,7 @@ export default {
 			</div>
 		</a>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case" style="display: grid;">
-			<button class="btn btn-success btn-sm"  @click="complete_task(task, status_info)"><i class="fa-solid fa-check"></i></button>
+			<button class="btn btn-success btn-sm"  @click="complete_task(task)"><i class="fa-solid fa-check"></i></button>
 			<button v-if="!task.is_current_user_assigned" class="btn btn-secondary btn-sm"  @click="take_task(task, cases_info.current_user)"><i class="fa-solid fa-hand"></i></button>
 			<button v-else class="btn btn-secondary btn-sm"  @click="remove_assign_task(task, cases_info.current_user)"><i class="fa-solid fa-handshake-slash"></i></button>
 			<a class="btn btn-primary btn-sm" :href="'/case/view/'+cases_info.case.id+'/edit_task/'+task.id" type="button"><i class="fa-solid fa-pen-to-square"></i></a>

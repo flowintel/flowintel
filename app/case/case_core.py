@@ -115,10 +115,7 @@ def complete_case(cid):
     """Complete case by is id"""
     case = get_case(cid)
     if case is not None:
-        if case.completed:
-            case.completed = False
-        else:
-            case.completed=True
+        case.completed = not case.completed
         update_last_modif(cid)
         db.session.commit()
         return True
@@ -385,7 +382,15 @@ def get_present_in_case(case_id, user):
     return present_in_case
 
 
-def change_status(status, task):
+def change_status_core(status, case):
+    case.status_id = status
+    update_last_modif(case.id)
+    db.session.commit()
+
+    return True
+
+
+def change_status_task(status, task):
     task.status_id = status
     update_last_modif(task.case_id)
     update_last_modif_task(task.id)
@@ -427,6 +432,21 @@ def get_task_info(tasks_list, user):
     return tasks
 
 
+def regroup_case_info(cases, user):
+    loc = dict()
+    loc["cases"] = list()
+    
+    for case in cases:
+        present_in_case = get_present_in_case(case.id, user)
+        case_loc = case.to_json()
+        case_loc["present_in_case"] = present_in_case
+        case_loc["current_user_permission"] = get_role(user).to_json()
+
+        loc["cases"].append(case_loc)
+
+    return loc
+
+
 def sort_by_ongoing_task_core(case, user):
     tasks_list = Task.query.filter_by(case_id=case.id, completed=False).all()
     return get_task_info(tasks_list, user)
@@ -436,7 +456,7 @@ def sort_by_finished_task_core(case, user):
     return get_task_info(tasks_list, user)
 
 
-def sort_by_filter(case, user, completed, filter):
+def sort_tasks_by_filter(case, user, completed, filter):
     if filter == "assigned_tasks":
         final_tasks = list()
         tasks_list_query = Task.query.filter_by(case_id=case.id, completed=completed).all()
@@ -457,9 +477,19 @@ def sort_by_filter(case, user, completed, filter):
             task.is_current_user_assigned = is_current_user_assigned
             final_tasks.append(task)
         tasks_list = sorted(final_tasks, key=lambda t: t.is_current_user_assigned)
-        
+
     else:
         tasks_list = Task.query.filter_by(case_id=case.id, completed=completed).order_by(desc(filter)).all()
 
     return get_task_info(tasks_list, user)
 
+
+def sort_by_ongoing_core():
+    return Case.query.filter_by(completed=False).all()
+    
+def sort_by_finished_core():
+    return Case.query.filter_by(completed=True).all()
+
+
+def sort_by_filter(completed, filter): 
+    return Case.query.filter_by(completed=completed).order_by(desc(filter)).all()

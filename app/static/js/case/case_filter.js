@@ -1,9 +1,6 @@
 export default {
 	delimiters: ['[[', ']]'],
-	props: {
-		cases_info: Object
-	},
-	emits: ['tasks_list'],
+	emits: ['cases_list'],
 	setup(props, {emit}) {
 		let show_ongoing = true
 		let current_filter = ""
@@ -13,13 +10,13 @@ export default {
 			show_ongoing = ongoing
 
 			if(show_ongoing){
-				const res = await fetch('/case/'+props.cases_info.case.id+'/sort_by_ongoing_task')
+				const res = await fetch('/case/sort_by_ongoing')
 				let loc = await res.json()
-				emit('tasks_list', loc)
+				emit('cases_list', loc)
 			}else{
-				const res = await fetch('/case/'+props.cases_info.case.id+'/sort_by_finished_task')
+				const res = await fetch('/case/sort_by_finished')
 				let loc = await res.json()
-				emit('tasks_list', loc)
+				emit('cases_list', loc)
 			}
 		}
 
@@ -43,15 +40,6 @@ export default {
 			asc_desc_filter()
 		}
 
-		function sort_by_assigned_tasks(){
-			current_filter = "assigned_tasks"
-			asc_desc_filter()
-		}
-
-		function sort_by_my_assignation(){
-			current_filter = "my_assignation"
-			asc_desc_filter()
-		}
 
 		async function asc_desc_filter(change=false){
 			if(change)
@@ -60,14 +48,16 @@ export default {
 			let res
 			if (current_filter){
 				if(show_ongoing)
-					res = await fetch('/case/'+props.cases_info.case.id+'/tasks/ongoing?filter=' + current_filter)
+					res = await fetch('/case/ongoing?filter=' + current_filter)
 				else
-					res = await fetch('/case/'+props.cases_info.case.id+'/tasks/finished?filter=' + current_filter)
+					res = await fetch('/case/finished?filter=' + current_filter)
 				let loc = await res.json()
 				if(asc_desc)
-					emit('tasks_list', loc)
-				else
-					emit('tasks_list', loc.reverse())
+					emit('cases_list', loc)
+				else{
+                    loc["cases"] = loc["cases"].reverse()
+					emit('cases_list', loc)
+                }
 			}
 			
 		}
@@ -79,8 +69,6 @@ export default {
 			sort_by_title,
 			sort_by_dead_line,
 			sort_by_status,
-			sort_by_assigned_tasks,
-			sort_by_my_assignation,
 			asc_desc_filter
 		}
 	},
@@ -94,11 +82,11 @@ export default {
 				<div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_ongoing(true)" checked>
-						<label class="form-check-label" for="radioStatusOngoing">Ongoing Tasks</label>
+						<label class="form-check-label" for="radioStatusOngoing">Ongoing Cases</label>
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_ongoing(false)">
-						<label class="form-check-label" for="radioStatusFinished">Finished Tasks</label>
+						<label class="form-check-label" for="radioStatusFinished">Finished Cases</label>
 					</div>
 				</div>
 
@@ -118,14 +106,6 @@ export default {
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_status()">
 						<label class="form-check-label" for="radioOtherStatus">Status</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherAssign" @click="sort_by_assigned_tasks()">
-						<label class="form-check-label" for="radioOtherAssign">Assigned tasks</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherCurrentAssign" @click="sort_by_my_assignation()">
-						<label class="form-check-label" for="radioOtherCurrentAssign">My assignation</label>
 					</div>
 				</div>
 

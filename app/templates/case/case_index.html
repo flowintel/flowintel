@@ -11,11 +11,15 @@
             <a class="btn btn-primary btn-small" href="/case/add"><i class="fa-solid fa-plus"></i></a>
         </span>
     </h1>
-        
+
+    <case_filter @cases_list="(cases) => case_list.cases = cases['cases']"></case_filter>
+
+    <hr>
+
     <template v-if="case_list">
         <template v-for="case_loc in case_list.cases">
-            <div class="list-group" style="margin-bottom: 20px;" v-if="!case_loc.completed">
-                <div style="display:flex" v-if="!case_loc.completed">
+            <div class="list-group" style="margin-bottom: 20px;">
+                <div style="display:flex">
                     <a :href="`/case/view/${case_loc.id}`" class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">[[ case_loc.id ]]-[[ case_loc.title ]]</h4>
@@ -29,55 +33,16 @@
                         </div>
                         <div class="d-flex w-100 justify-content-between">
                             <small>And some small print.</small>
-                            <!-- <small>Last Updated [[ case_loc.last_modif ]]</small> -->
                         </div>
                     </a>
                     <div v-if="!case_loc.current_user_permission.read_only && case_loc.present_in_case" style="display: grid;">
-                        <button class="btn btn-success btn-sm"  @click="complete_case(case_loc)"><i class="fa-solid fa-check"></i></button>
+                        <button class="btn btn-success btn-sm"  @click="complete_case(case_loc, case_list.cases)"><i class="fa-solid fa-check"></i></button>
                         <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button"><i class="fa-solid fa-pen-to-square"></i></a>
                         <button class="btn btn-danger btn-sm"  @click="delete_case(case_list, case_loc)"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
             </div>
         </template>
-
-        <div class="list-group" style="margin-bottom: 20px; margin-top: 50px;" >
-            <a href="#collapse_close_case" class="list-group-item list-group-item-action" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="collapse_close_case">
-                <hr>
-            </a>
-        </div>
-    
-        <div class="collapse" id="collapse_close_case">
-            <div class="card card-body" style="background-color: #fbfbfb; border:#fbfbfb">
-                <template v-for="case_loc in case_list.cases">
-                    <div class="list-group" style="margin-bottom: 20px;" v-if="case_loc.completed">
-                        <div style="display:flex" >
-                            <a :href="`/case/view/${case_loc.id}`" class="list-group-item list-group-item-action">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h4 class="mb-1">[[ case_loc.id ]]-[[ case_loc.title ]]</h4>
-                                        <small><i>Changed [[ moment(case_loc.last_modif).fromNow() ]]</i></small>
-                                </div>
-                                <div class="d-flex w-100 justify-content-between">
-                                    <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
-                                    <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
-            
-                                    <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
-                                </div>
-                                <div class="d-flex w-100 justify-content-between">
-                                    <small>And some small print.</small>
-                                    <!-- <small>Last Updated [[ case_loc.last_modif ]]</small> -->
-                                </div>
-                            </a>
-                            <div v-if="!case_loc.current_user_permission.read_only && case_loc.present_in_case" style="display: grid;">
-                                <button class="btn btn-success btn-sm"  @click="complete_case(case_loc)"><i class="fa-solid fa-check"></i></button>
-                                <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button"><i class="fa-solid fa-pen-to-square"></i></a>
-                                <button class="btn btn-danger btn-sm"  @click="delete_case(case_list, case_loc)"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
-        </div>
 
     </template>
 
@@ -89,9 +54,13 @@
 {% block script %}
     <script type="module">
         const { createApp, ref } = Vue
+        import case_filter from '../../static/js/case/case_filter.js'
         
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                case_filter
+            },
             setup() {
                 const case_list = ref(null)
                 const status_info = ref(null)
@@ -126,10 +95,41 @@
                         case_list.cases.splice(index, 1)
                 }
 
-                function complete_case(case_loc){
+                function complete_case(case_loc, cases_list){
                     case_loc.last_modif = Date.now()
                     case_loc.completed = !case_loc.completed
                     fetch('/case/complete_case/'+case_loc.id)
+
+                    if(status_info.value.status[case_loc.status_id -1].name == 'Finished'){
+                        for(let i in status_info.value.status){
+                            if(status_info.value.status[i].name == 'Revive')
+                            case_loc.status_id = status_info.value.status[i].id
+                        }
+                        if(case_loc.status_id == status)
+                            case_loc.status_id = 1
+
+                        fetch('/case/change_status/'+case_loc.id,{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"status": case_loc.status_id})
+                        })
+                    }else{
+                        for(let i in status_info.value.status){
+                            if(status_info.value.status[i].name == 'Finished'){
+                                case_loc.status_id = status_info.value.status[i].id
+                                fetch('/case/change_status/'+case_loc.id,{
+                                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                    method: "POST",
+                                    body: JSON.stringify({"status": case_loc.status_id})
+                                })
+                                break
+                            }
+                        }
+			}
+
+                    let index = cases_list.indexOf(case_loc)
+                    if(index > -1)
+                        cases_list.splice(index, 1)
                 }
 
                 fetchCase()

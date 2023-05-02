@@ -174,19 +174,10 @@ def add_orgs(id):
 @login_required
 def get_cases():
     """Return all cases"""
-    cases = CaseModel.get_all_cases()
+    cases = CaseModel.sort_by_ongoing_core()
     role = CaseModel.get_role(current_user).to_json()
 
-    loc = dict()
-    loc["cases"] = list()
-    
-    for case in cases:
-        present_in_case = CaseModel.get_present_in_case(case.id, current_user)
-        case_loc = case.to_json()
-        case_loc["present_in_case"] = present_in_case
-        case_loc["current_user_permission"] = CaseModel.get_role(current_user).to_json()
-
-        loc["cases"].append(case_loc)
+    loc = CaseModel.regroup_case_info(cases, current_user)
     return jsonify({"cases": loc["cases"], "role": role}), 201
 
 
@@ -225,7 +216,7 @@ def get_case_info(cid):
 @login_required
 @editor_required
 def complete_case(cid):
-    """Complete the task"""
+    """Complete the case"""
 
     if CaseModel.get_present_in_case(cid, current_user):
         if CaseModel.complete_case(cid):
@@ -348,17 +339,33 @@ def remove_org_case(cid, oid):
     return {"message": "Not in Case"}
 
 
-@case_blueprint.route("/change_status/<tid>", methods=['POST'])
+@case_blueprint.route("/change_status/<cid>", methods=['POST'])
 @login_required
 @editor_required
-def change_status(tid):
+def change_status(cid):
+    """Change the status of the case"""
+    
+    status = request.json["status"]
+    case = CaseModel.get_case(cid)
+
+    if CaseModel.get_present_in_case(cid, current_user):
+        CaseModel.change_status_core(status, case)
+        flash("Assignation changed", "success")
+        return {"message": "Assignation changed"}, 201
+    return {"message": "Not in Case"}
+
+
+@case_blueprint.route("/change_status/task/<tid>", methods=['POST'])
+@login_required
+@editor_required
+def change_status_task(tid):
     """Change the status of the task"""
     
     status = request.json["status"]
     task = CaseModel.get_task(tid)
 
     if CaseModel.get_present_in_case(task.case_id, current_user):
-        CaseModel.change_status(status, task)
+        CaseModel.change_status_task(status, task)
         flash("Assignation changed", "success")
         return {"message": "Assignation changed"}, 201
     return {"message": "Not in Case"}
@@ -445,29 +452,78 @@ def sort_by_finished_task(cid):
 
 
 
-@case_blueprint.route("/<cid>/ongoing", methods=['GET'])
+@case_blueprint.route("/<cid>/tasks/ongoing", methods=['GET'])
 @login_required
 @editor_required
-def ongoing_sort_by_filter(cid):
+def ongoing_tasks_sort_by_filter(cid):
     """Sort by filter for living task"""
     data_dict = dict(request.args)
     if "filter" in data_dict:
         case = CaseModel.get_case(cid)
         if CaseModel.get_present_in_case(cid, current_user):
-            return CaseModel.sort_by_filter(case, current_user, False, data_dict["filter"])
+            return CaseModel.sort_tasks_by_filter(case, current_user, False, data_dict["filter"])
         return {"message": "Not in Case"}
     return {"message": "No filter pass"}
 
 
-@case_blueprint.route("/<cid>/finished", methods=['GET'])
+@case_blueprint.route("/<cid>/tasks/finished", methods=['GET'])
 @login_required
 @editor_required
-def finished_sort_by_filter(cid):
+def finished_tasks_sort_by_filter(cid):
     """Sort by filter for finished task"""
     data_dict = dict(request.args)
     if "filter" in data_dict:
         case = CaseModel.get_case(cid)
         if CaseModel.get_present_in_case(cid, current_user):
-            return CaseModel.sort_by_filter(case, current_user, True, data_dict["filter"])
+            return CaseModel.sort_tasks_by_filter(case, current_user, True, data_dict["filter"])
         return {"message": "Not in Case"}
+    return {"message": "No filter pass"}
+
+
+
+
+
+
+
+@case_blueprint.route("/sort_by_ongoing", methods=['GET'])
+@login_required
+@editor_required
+def sort_by_ongoing():
+    """Sort Case by living one"""
+    cases_list = CaseModel.sort_by_ongoing_core()
+    return CaseModel.regroup_case_info(cases_list, current_user)
+
+
+
+@case_blueprint.route("/sort_by_finished", methods=['GET'])
+@login_required
+@editor_required
+def sort_by_finished():
+    """Sort Case by finished one"""
+    cases_list = CaseModel.sort_by_finished_core()
+    return CaseModel.regroup_case_info(cases_list, current_user)
+
+
+
+@case_blueprint.route("/ongoing", methods=['GET'])
+@login_required
+@editor_required
+def ongoing_sort_by_filter():
+    """Sort by filter for living case"""
+    data_dict = dict(request.args)
+    if "filter" in data_dict:
+        cases_list = CaseModel.sort_by_filter(False, data_dict["filter"])
+        return CaseModel.regroup_case_info(cases_list, current_user)
+    return {"message": "No filter pass"}
+
+
+@case_blueprint.route("/finished", methods=['GET'])
+@login_required
+@editor_required
+def finished_sort_by_filter():
+    """Sort by filter for finished task"""
+    data_dict = dict(request.args)
+    if "filter" in data_dict:
+        cases_list = CaseModel.sort_by_filter(True, data_dict["filter"])
+        return CaseModel.regroup_case_info(cases_list, current_user)
     return {"message": "No filter pass"}
