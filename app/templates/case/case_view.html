@@ -43,7 +43,9 @@
                                 <li>
                                     <div style="display: flex;">
                                         <button class="dropdown-item">[[org.name]]</button>
-                                        <button class="btn btn-danger" @click="remove_org_case(cases_info, org)">Delete</button>
+                                        <template v-if="org.id != cases_info.case.owner_org_id">
+                                            <button class="btn btn-danger" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case">Delete</button>
+                                        </template>
                                     </div>
                                 </li>
                             </template>

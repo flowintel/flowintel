@@ -59,7 +59,7 @@ class Case(db.Model):
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade="all, delete-orphan")
     status_id = db.Column(db.Integer, index=True)
     completed = db.Column(db.Boolean, default=False)
-    owner_case_id = db.Column(db.Integer, index=True)
+    owner_org_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
         json_dict = {
@@ -71,7 +71,7 @@ class Case(db.Model):
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
             "status_id": self.status_id,
             "completed": self.completed,
-            "owner_case_id": self.owner_case_id
+            "owner_org_id": self.owner_org_id
         }
         if self.dead_line:
             json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')

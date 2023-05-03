@@ -12,7 +12,7 @@ export default {
 			task.last_modif = Date.now()
 			task.status_id=status
 			fetch(
-				'/case/change_status/'+task.id,{
+				'/case/change_status/task/'+task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"status": status})
@@ -167,7 +167,7 @@ export default {
 				for(let i in props.status_info.status){
 					if(props.status_info.status[i].name == 'Finished'){
 						task.status_id = props.status_info.status[i].id
-						fetch('/case/change_status/'+task.id,{
+						fetch('/case/change_status/task/'+task.id,{
 							headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 							method: "POST",
 							body: JSON.stringify({"status": task.status_id})

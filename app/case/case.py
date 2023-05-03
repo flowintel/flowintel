@@ -19,13 +19,6 @@ case_blueprint = Blueprint(
 ##########
 
 
-@case_blueprint.route("/test_page", methods=['GET'])
-@login_required
-def tas_page():
-    """List all cases"""
-    return render_template("case/test_page.html")
-
-
 @case_blueprint.route("/", methods=['GET'])
 @login_required
 def index():

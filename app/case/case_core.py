@@ -150,7 +150,7 @@ def add_case_core(form_dict, user):
         last_modif=datetime.datetime.now(),
         dead_line=dead_line,
         status_id=1,
-        owner_case_id=user.id
+        owner_org_id=user.org_id
     )
     
     db.session.add(case)
