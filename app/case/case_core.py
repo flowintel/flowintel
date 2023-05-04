@@ -178,7 +178,7 @@ def edit_case_core(form_dict, cid):
     case.description=bleach.clean(form_dict["description"])
     case.dead_line=dead_line
 
-    update_last_modif(id)
+    update_last_modif(cid)
     db.session.commit()
     
 
@@ -493,3 +493,11 @@ def sort_by_finished_core():
 
 def sort_by_filter(completed, filter): 
     return Case.query.filter_by(completed=completed).order_by(desc(filter)).all()
+
+
+def my_assignation_sort_by_status(user, completed):
+    return Task.query.join(Task_User, Task_User.task_id==Task.id).where(Task_User.user_id==user.id, Task.completed==completed).all()
+
+
+def my_assignation_sort_by_filter(user, completed, filter):
+    return Task.query.join(Task_User, Task_User.task_id==Task.id).where(Task_User.user_id==user.id, Task.completed==completed).order_by(desc(filter)).all()

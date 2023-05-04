@@ -9,6 +9,14 @@
     <div id="container">
         <a class="btn btn-outline-success" href="/admin/add_user" type="button">New User</a>
         <table>
+            <tr>
+                <th>User ID</th>
+                <th>First name</th>
+                <th>Last name</th>
+                <th>Email</th>
+                <th>Role ID</th>
+                <th>Org ID</th>
+            </tr>
             {% for user in users %}
                 <tr>
                     <td>{{user.id}}</td>
@@ -17,8 +25,8 @@
                     <td>{{user.email}}</td>
                     <td>{{user.role_id}}</td>
                     <td>{{user.org_id}}</td>
-                    <td><a class="btn btn-primary" href="/admin/edit_user/{{user.id}}" type="button">Edit</a></td>
-                    <td><a class="btn btn-danger" href="/admin/delete_user/{{user.id}}" type="button">Delete</a></td>
+                    <td><a class="btn btn-primary" href="/admin/edit_user/{{user.id}}" type="button"><i class="fa-solid fa-pen-to-square"></i></a></td>
+                    <td><a class="btn btn-danger" href="/admin/delete_user/{{user.id}}" type="button"><i class="fa-solid fa-trash"></i></a></td>
                 </tr>
             {%endfor%}
         </table>

@@ -185,6 +185,10 @@ export default {
 			return moment(dt).fromNow()
 		}
 
+		function endOf(dt){
+			return moment(dt).endOf().fromNow()
+		}
+
 		return {
 			change_status,
 			take_task,
@@ -195,7 +199,8 @@ export default {
 			add_file,
 			delete_file,
 			complete_task,
-			formatNow
+			formatNow,
+			endOf
 		}
 	},
 	template: `
@@ -217,16 +222,20 @@ export default {
 				</small>
 			</div>
 
-			<div v-if="task.users.length">
-				Users: 
-				<template v-for="user in task.users">
-					[[user.first_name]] [[user.last_name]],
-				</template>
-			</div>
+			<div class="d-flex w-100 justify-content-between">
+                <div v-if="task.users.length">
+                    Users: 
+                    <template v-for="user in task.users">
+                        [[user.first_name]] [[user.last_name]],
+                    </template>
+                </div>
 
-			<div v-else>
-				<i>No user assigned</i>
-			</div>
+                <div v-else>
+                    <i>No user assigned</i>
+                </div>
+                <small v-if="task.dead_line" :title="task.dead_line"><i>Dead line [[endOf(task.dead_line)]]</i></small>
+                <small v-else><i>No dead line</i></small>
+            </div>
 		</a>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case" style="display: grid;">
 			<button class="btn btn-success btn-sm"  @click="complete_task(task)"><i class="fa-solid fa-check"></i></button>

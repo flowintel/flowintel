@@ -1,0 +1,97 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div style="margin-bottom: 10px;">
+    <h1>My Assignation to Tasks</h1>
+    <my_assignation_filter :tasks_list="tasks_list" @tasks_list="(tasks) => tasks_list = tasks" ></my_assignation_filter>
+</div>
+
+<template v-for="task in tasks_list">
+    <div class="list-group" style="margin-bottom: 20px;">                      
+        <a :href="'/case/view/' + task.case_id" class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">[[task.title]]</h5>
+                <small><i>Changed [[ moment(task.last_modif).fromNow() ]] </i></small>
+            </div>
+
+            <div class="d-flex w-100 justify-content-between">
+                <p v-if="task.description" class="card-text">[[ task.description ]]</p>
+                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+
+                <small v-if="status_info">
+                    <span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">
+                        [[ status_info.status[task.status_id -1].name ]]
+                    </span>
+                </small>
+            </div>
+
+            <div class="d-flex w-100 justify-content-between">
+                <div v-if="task.users.length">
+                    Users: 
+                    <template v-for="user in task.users">
+                        [[user.first_name]] [[user.last_name]],
+                    </template>
+                </div>
+
+                <div v-else>
+                    <i>No user assigned</i>
+                </div>
+                <small v-if="task.dead_line" :title="task.dead_line"><i>Dead line [[moment(task.dead_line).endOf().fromNow()]]</i></small>
+                <small v-else><i>No dead line</i></small>
+            </div>
+        </a>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref } = Vue
+        import my_assignation_filter from '../../static/js/case/my_assignation_filter.js'
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            components: {
+                my_assignation_filter
+            },
+            setup() {
+                const tasks_list = ref(null)
+                const status_info = ref(null)
+
+                async function fetchAssignedTask() {
+                    tasks_list.value = null
+                    const res = await fetch(
+                        '/case/my_assignation_data'
+                    )
+                    tasks_list.value = await res.json()
+                }
+
+                async function fetchStatus() {
+                    status_info.value = null
+                    const res = await fetch(
+                        '/case/get_status'
+                    )
+                    status_info.value = await res.json()
+                }
+
+                
+
+                fetchAssignedTask()
+                fetchStatus()
+
+                return {
+                    tasks_list,
+                    status_info,
+                    moment
+                }
+            }
+        }).mount('.container')
+
+    </script>
+{% endblock %}

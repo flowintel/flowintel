@@ -110,6 +110,7 @@ class Task(db.Model):
             "notes": self.notes,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "case_id": self.case_id,
             "status_id": self.status_id,
             "completed": self.completed
         }

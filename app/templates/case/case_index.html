@@ -7,7 +7,7 @@
 {% block content %}
     <h1>
         List of Case
-        <span style="padding-left: 10px;">
+        <span>
             <a class="btn btn-primary btn-small" href="/case/add"><i class="fa-solid fa-plus"></i></a>
         </span>
     </h1>
@@ -23,7 +23,7 @@
                     <a :href="`/case/view/${case_loc.id}`" class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">[[ case_loc.id ]]-[[ case_loc.title ]]</h4>
-                                <small><i>Changed [[ moment(case_loc.last_modif).fromNow() ]]</i></small>
+                            <small><i>Changed [[ moment(case_loc.last_modif).fromNow() ]]</i></small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
                             <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
@@ -32,7 +32,11 @@
                             <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
-                            <small>And some small print.</small>
+                            <div class="d-flex w-100 justify-content-between">
+                                <div></div>
+                                <small v-if="case_loc.dead_line" :title="case_loc.dead_line"><i>Dead line [[moment(case_loc.dead_line).endOf().fromNow()]]</i></small>
+                                <small v-else><i>No dead line</i></small>
+                            </div>
                         </div>
                     </a>
                     <div v-if="!case_loc.current_user_permission.read_only && case_loc.present_in_case" style="display: grid;">

@@ -73,10 +73,10 @@ export default {
 		}
 	},
 	template: `
-	<button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="true" aria-controls="collapsefiltertask">
+	<button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltercase" aria-expanded="false" aria-controls="collapsefiltercase">
 		filter
 	</button>
-	<div class="collapse show" id="collapsefiltertask">
+	<div class="collapse" id="collapsefiltercase">
 		<div class="card card-body">
 			<div class="d-flex w-100 justify-content-between">
 				<div>

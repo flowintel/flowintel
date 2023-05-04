@@ -36,6 +36,12 @@ def view(id):
         return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case)
     return render_template("404.html")
 
+@case_blueprint.route("/my_assignation", methods=['GET'])
+@login_required
+def my_assignation():
+    """View of a assigned tasks"""
+    return render_template("case/my_assignation.html")
+
 @case_blueprint.route("/add", methods=['GET','POST'])
 @login_required
 @editor_required
@@ -423,7 +429,6 @@ def add_files():
 
 @case_blueprint.route("/<cid>/sort_by_ongoing_task", methods=['GET'])
 @login_required
-@editor_required
 def sort_by_ongoing_task(cid):
     """Sort Task by living one"""
     case = CaseModel.get_case(cid)
@@ -434,7 +439,6 @@ def sort_by_ongoing_task(cid):
 
 @case_blueprint.route("/<cid>/sort_by_finished_task", methods=['GET'])
 @login_required
-@editor_required
 def sort_by_finished_task(cid):
     """Sort task by finished one"""
     case = CaseModel.get_case(cid)
@@ -447,7 +451,6 @@ def sort_by_finished_task(cid):
 
 @case_blueprint.route("/<cid>/tasks/ongoing", methods=['GET'])
 @login_required
-@editor_required
 def ongoing_tasks_sort_by_filter(cid):
     """Sort by filter for living task"""
     data_dict = dict(request.args)
@@ -461,7 +464,6 @@ def ongoing_tasks_sort_by_filter(cid):
 
 @case_blueprint.route("/<cid>/tasks/finished", methods=['GET'])
 @login_required
-@editor_required
 def finished_tasks_sort_by_filter(cid):
     """Sort by filter for finished task"""
     data_dict = dict(request.args)
@@ -480,7 +482,6 @@ def finished_tasks_sort_by_filter(cid):
 
 @case_blueprint.route("/sort_by_ongoing", methods=['GET'])
 @login_required
-@editor_required
 def sort_by_ongoing():
     """Sort Case by living one"""
     cases_list = CaseModel.sort_by_ongoing_core()
@@ -490,7 +491,6 @@ def sort_by_ongoing():
 
 @case_blueprint.route("/sort_by_finished", methods=['GET'])
 @login_required
-@editor_required
 def sort_by_finished():
     """Sort Case by finished one"""
     cases_list = CaseModel.sort_by_finished_core()
@@ -500,7 +500,6 @@ def sort_by_finished():
 
 @case_blueprint.route("/ongoing", methods=['GET'])
 @login_required
-@editor_required
 def ongoing_sort_by_filter():
     """Sort by filter for living case"""
     data_dict = dict(request.args)
@@ -512,11 +511,60 @@ def ongoing_sort_by_filter():
 
 @case_blueprint.route("/finished", methods=['GET'])
 @login_required
-@editor_required
 def finished_sort_by_filter():
     """Sort by filter for finished task"""
     data_dict = dict(request.args)
     if "filter" in data_dict:
         cases_list = CaseModel.sort_by_filter(True, data_dict["filter"])
         return CaseModel.regroup_case_info(cases_list, current_user)
+    return {"message": "No filter pass"}
+
+
+@case_blueprint.route("/my_assignation_data", methods=['GET'])
+@login_required
+def my_assignation_data():
+    """Get tasks assigned to current user"""
+    tasks_list = CaseModel.my_assignation_sort_by_status(user=current_user, completed=False)
+    return CaseModel.get_task_info(tasks_list, current_user)
+
+
+
+
+
+@case_blueprint.route("/my_assignation/sort_by_ongoing", methods=['GET'])
+@login_required
+def my_assignation_sort_by_ongoing():
+    """Sort Task by living one"""
+    tasks_list = CaseModel.my_assignation_sort_by_status(user=current_user, completed=False)
+    return CaseModel.get_task_info(tasks_list, current_user)
+
+
+
+@case_blueprint.route("/my_assignation/sort_by_finished", methods=['GET'])
+@login_required
+def my_assignation_sort_by_finished():
+    """Sort Task by finished one"""
+    tasks_list = CaseModel.my_assignation_sort_by_status(user=current_user, completed=True)
+    return CaseModel.get_task_info(tasks_list, current_user)
+
+
+@case_blueprint.route("/my_assignation/tasks/ongoing", methods=['GET'])
+@login_required
+def my_assignation_ongoing_sort_by_filter():
+    """Sort Task by living one"""
+    data_dict = dict(request.args)
+    if "filter" in data_dict:
+        tasks_list = CaseModel.my_assignation_sort_by_filter(user=current_user, completed=False, filter=data_dict["filter"])
+        return CaseModel.get_task_info(tasks_list, current_user)
+    return {"message": "No filter pass"}
+
+
+@case_blueprint.route("/my_assignation/tasks/finished", methods=['GET'])
+@login_required
+def my_assignation_finished_sort_by_filter():
+    """Sort Task by finished one"""
+    data_dict = dict(request.args)
+    if "filter" in data_dict:
+        tasks_list = CaseModel.my_assignation_sort_by_filter(user=current_user, completed=False, filter=data_dict["filter"])
+        return CaseModel.get_task_info(tasks_list, current_user)
     return {"message": "No filter pass"}
