@@ -11,7 +11,13 @@ export default {
 	setup(props, {emit}) {
 		Vue.onMounted(async () => {
 			select2_change(props.task.id)
-		  })
+		})
+		  Vue.onUpdated(async () => {
+			select2_change(props.task.id)
+		})
+
+
+
 		function change_status(status, task){
 			task.last_modif = Date.now()
 			task.status_id=status
@@ -87,8 +93,36 @@ export default {
 				const res = await fetch('/case/' + props.task.case_id + '/get_assigned_users/' +props.task.id)
 				let loc = await res.json()
 				props.task.users = loc
+				props.task.last_modif = Date.now()
 				emit('task', props.task)
 			}
+		}
+
+
+		async function remove_assigned_user(user_id){
+			props.task.last_modif = Date.now()
+
+			let index = -1
+			for(let i=0;i<props.task.users.length;i++){
+				if (props.task.users[i].id==user_id){
+					if(user_id == props.cases_info.current_user.id.toString()){
+						props.task.is_current_user_assigned = true
+					}
+					props.task.is_current_user_assigned = false
+					index = i
+				}
+			}
+
+			if(index > -1)
+				props.task.users.splice(index, 1)
+		
+			fetch(
+				'/case/remove_assigned_user',{
+					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+					method: "POST",
+					body: JSON.stringify({"task_id": props.task.id.toString(), "user_id": user_id})
+				}
+			)
 		}
 
 		function delete_task(task, task_array){
@@ -228,7 +262,8 @@ export default {
 		}
 
 		function select2_change(tid){
-			$('.select2-selectUser'+tid).select2()
+			$('.select2-selectUser'+tid).select2({width: 'element'})
+			$('.select2-container').css("min-width", "200px")
 		}
 
 		return {
@@ -236,6 +271,7 @@ export default {
 			take_task,
 			remove_assign_task,
 			assign_user_task,
+			remove_assigned_user,
 			delete_task,
 			edit_note,
 			modif_note,
@@ -244,8 +280,7 @@ export default {
 			complete_task,
 			formatNow,
 			endOf,
-			present_user_in_task,
-			select2_change
+			present_user_in_task
 		}
 	},
 	template: `
@@ -376,12 +411,20 @@ export default {
 
 					<div v-if="users_in_case">
 						<h3>Assign</h3>
-						<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" >
+						<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
 							<template v-for="user in users_in_case.users_list">
 								<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]]</option>
 							</template>
 						</select>
 						<button class="btn btn-primary" @click="assign_user_task()">Assign</button>
+					</div>
+
+					<div v-if="task.users.length">
+						<h3>Remove assign</h3>
+						<div v-for="user in task.users">
+							<span>[[user.first_name]] [[user.last_name]]</span>
+							<button class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
+						</div>
 					</div>
 				</div>
 			</div>

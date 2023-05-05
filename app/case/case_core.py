@@ -362,7 +362,10 @@ def remove_assign_task(tid, user):
     """Remove current user to the assignement to a task"""
     task = get_task(tid)
     if task:
-        task_users = Task_User.query.filter_by(task_id=task.id, user_id=user.id).all()
+        if type(user) == int:
+            task_users = Task_User.query.filter_by(task_id=task.id, user_id=user).all()
+        else:
+            task_users = Task_User.query.filter_by(task_id=task.id, user_id=user.id).all()
         for task_user in task_users:
             db.session.delete(task_user)
 

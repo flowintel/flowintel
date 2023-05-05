@@ -612,3 +612,19 @@ def get_assigned_users(cid, tid):
         users, _ = CaseModel.get_users_assign_task(tid, current_user)
         return users
     return {"message": "Not in Case"}
+
+
+@case_blueprint.route("/remove_assigned_user", methods=['POST'])
+@login_required
+@editor_required
+def remove_assigned_user():
+    """Assign current user to the task"""
+
+    tid = request.json["task_id"]
+    user_id = request.json["user_id"]
+
+    task = CaseModel.get_task(tid)
+    if CaseModel.get_present_in_case(task.case_id, current_user):
+        CaseModel.remove_assign_task(tid, user_id)
+        return {"message": "Users Assigned"}, 201
+    return {"message": "Not in Case"}
