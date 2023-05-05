@@ -418,6 +418,7 @@ def delete_file(file):
 def get_task_info(tasks_list, user):
     tasks = list()
     for task in tasks_list:
+        case = get_case(task.case_id)
         users, is_current_user_assigned = get_users_assign_task(task.id, user)
         task.notes = markdown_notes(task.notes)
         file_list = list()
@@ -427,6 +428,7 @@ def get_task_info(tasks_list, user):
         finalTask["users"] = users
         finalTask["is_current_user_assigned"] = is_current_user_assigned
         finalTask["files"] = file_list
+        finalTask["case_title"] = case.title
 
         tasks.append(finalTask)
     return tasks
@@ -501,3 +503,7 @@ def my_assignation_sort_by_status(user, completed):
 
 def my_assignation_sort_by_filter(user, completed, filter):
     return Task.query.join(Task_User, Task_User.task_id==Task.id).where(Task_User.user_id==user.id, Task.completed==completed).order_by(desc(filter)).all()
+
+
+def get_all_users_core(case):
+    return Org.query.join(Case_Org, Case_Org.case_id==case.id).all()

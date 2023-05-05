@@ -37,7 +37,7 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def to_json(self):
-        return {"id": self.id, "first_name": self.first_name, "last_name": self.last_name, "email": self.email, "api_key": self.api_key, "org_id": self.org_id}
+        return {"id": self.id, "first_name": self.first_name, "last_name": self.last_name, "email": self.email, "org_id": self.org_id}
 
 class AnonymousUser(AnonymousUserMixin):
     def is_admin(self):

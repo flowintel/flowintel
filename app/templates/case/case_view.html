@@ -82,7 +82,7 @@
         <template v-if="cases_info && cases_info.tasks && status_info" >
             <template v-for="task in cases_info.tasks" :key="task.id">
                 <div class="list-group" style="margin-bottom: 20px;">
-                    <case_tasks :cases_info="cases_info" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg"></case_tasks>
+                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg"></case_tasks>
                 </div>
             </template>
         </template>
@@ -108,6 +108,7 @@
                 const edit_mode = ref(false)
                 const cases_info = ref(null)
                 const status_info = ref(null)
+                const users_in_case = ref(null)
 
 
                 async function fetchCase() {
@@ -124,6 +125,12 @@
                         '/case/get_status'
                     )
                     status_info.value = await res.json()
+                }
+
+                async function get_all_users_case(){
+                    users_in_case.value = null
+                    const res = await fetch('/case/' + window.location.pathname.split("/").slice(-1) + '/get_all_users')
+                    users_in_case.value = await res.json()
                 }
 
 
@@ -174,11 +181,13 @@
 
                 fetchCase()
                 fetchStatus()
+                get_all_users_case()
 
     
                 return {
                     cases_info,
                     status_info,
+                    users_in_case,
                     edit_mode,
                     moment,
                     delete_case,

@@ -568,3 +568,19 @@ def my_assignation_finished_sort_by_filter():
         tasks_list = CaseModel.my_assignation_sort_by_filter(user=current_user, completed=False, filter=data_dict["filter"])
         return CaseModel.get_task_info(tasks_list, current_user)
     return {"message": "No filter pass"}
+
+
+
+@case_blueprint.route("/<cid>/get_all_users", methods=['GET'])
+@login_required
+def get_all_users(cid):
+    """Sort Task by finished one"""
+    users_list = list()
+    case = CaseModel.get_case(cid)
+    if CaseModel.get_present_in_case(cid, current_user):
+        orgs = CaseModel.get_all_users_core(case)
+        for org in orgs:
+            for user in org.users:
+                users_list.append(user.to_json())
+        return {"users_list": users_list}
+    return {"message": "Not in Case"}

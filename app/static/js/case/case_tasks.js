@@ -3,11 +3,15 @@ export default {
 	props: {
 		cases_info: Object,
 		status_info: Object,
+		users_in_case: Object,
 		edit_mode: Boolean,
 		task: Object
 	},
 	emits: ['edit_mode'],
 	setup(props, {emit}) {
+		Vue.onMounted(async () => {
+			select2_change(props.task.id)
+		  })
 		function change_status(status, task){
 			task.last_modif = Date.now()
 			task.status_id=status
@@ -189,6 +193,22 @@ export default {
 			return moment(dt).endOf().fromNow()
 		}
 
+
+		function present_user_in_task(task_user_list, user){
+			let index = -1
+
+			for(let i=0;i<task_user_list.length;i++){
+				if (task_user_list[i].id==user.id)
+					index = i
+			}
+
+			return index
+		}
+
+		function select2_change(tid){
+			$('.select2-selectUser'+tid).select2()
+		}
+
 		return {
 			change_status,
 			take_task,
@@ -200,7 +220,9 @@ export default {
 			delete_file,
 			complete_task,
 			formatNow,
-			endOf
+			endOf,
+			present_user_in_task,
+			select2_change
 		}
 	},
 	template: `
@@ -328,9 +350,19 @@ export default {
 							</template>
 						</div>
 					</div>
+
+					<div v-if="users_in_case">
+						<h3>Assign</h3>
+						<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" >
+							<template v-for="user in users_in_case.users_list">
+								<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]]</option>
+							</template>
+						</select>
+					</div>
 				</div>
 			</div>
 		</div>
 	</div>
+
 	`
 }

@@ -10,8 +10,14 @@
     <h1>My Assignation to Tasks</h1>
     <my_assignation_filter :tasks_list="tasks_list" @tasks_list="(tasks) => tasks_list = tasks" ></my_assignation_filter>
 </div>
+<hr>
 
-<template v-for="task in tasks_list">
+<!-- <template v-for="task in tasks_list"> -->
+<template v-for="(task, index) in tasks_list">
+    <div style="text-align: center;" v-if="index==0"><h4><i>[[task.case_title]]</i></h4></div>
+    <div style="text-align: center;" v-if="index != 0 && tasks_list[index].case_title != tasks_list[index-1].case_title">
+        <h4><i>[[task.case_title]]</i></h4>
+    </div>
     <div class="list-group" style="margin-bottom: 20px;">                      
         <a :href="'/case/view/' + task.case_id" class="list-group-item list-group-item-action">
             <div class="d-flex w-100 justify-content-between">
@@ -70,6 +76,11 @@
                         '/case/my_assignation_data'
                     )
                     tasks_list.value = await res.json()
+                    tasks_list.value.sort(function(a,b){
+                        if(a.case_title<b.case_title) return -1
+                        if(a.case_title>b.case_title) return 1
+                        return 0
+                    })
                 }
 
                 async function fetchStatus() {
