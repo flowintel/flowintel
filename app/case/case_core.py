@@ -332,7 +332,10 @@ def assign_task(tid, user):
     if task:
         # if Task_User.query.filter_by(task_id=task.id, user_id=user.id).first():
         #     return 
-        task_user = Task_User(task_id=task.id, user_id=user.id)
+        if type(user) == str:
+            task_user = Task_User(task_id=task.id, user_id=user)
+        else:
+            task_user = Task_User(task_id=task.id, user_id=user.id)
 
         db.session.add(task_user)
         update_last_modif(task.case_id)

@@ -584,3 +584,31 @@ def get_all_users(cid):
                 users_list.append(user.to_json())
         return {"users_list": users_list}
     return {"message": "Not in Case"}
+
+
+@case_blueprint.route("/assign_users_task", methods=['POST'])
+@login_required
+@editor_required
+def assign_user_task():
+    """Assign current user to the task"""
+
+    tid = request.json["task_id"]
+    users_list = request.json["users_id"]
+
+    task = CaseModel.get_task(tid)
+    if CaseModel.get_present_in_case(task.case_id, current_user):
+        for user in users_list:
+            CaseModel.assign_task(tid, user)
+        return {"message": "Users Assigned"}, 201
+    return {"message": "Not in Case"}
+
+
+@case_blueprint.route("/<cid>/get_assigned_users/<tid>", methods=['GET'])
+@login_required
+def get_assigned_users(cid, tid):
+    """Get assigned users to the task"""
+
+    if CaseModel.get_present_in_case(cid, current_user):
+        users, _ = CaseModel.get_users_assign_task(tid, current_user)
+        return users
+    return {"message": "Not in Case"}

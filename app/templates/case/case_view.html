@@ -82,7 +82,7 @@
         <template v-if="cases_info && cases_info.tasks && status_info" >
             <template v-for="task in cases_info.tasks" :key="task.id">
                 <div class="list-group" style="margin-bottom: 20px;">
-                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg"></case_tasks>
+                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
                 </div>
             </template>
         </template>
