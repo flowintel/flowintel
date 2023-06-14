@@ -1,0 +1,153 @@
+﻿/* month white */
+
+.month_white_main {
+    --color-event-background: #5794D0;
+    --color-event-text: #ffffff;
+    --color-event-border: #ffffff;
+    --color-header-background: #ffffff;
+    --color-header-text: #777777;
+    --color-border: #cccccc;
+    --color-cell-border: #e8e8e8;
+    --color-cell-background-business: #ffffff;
+    --color-cell-background-nonbusiness: #f9f9f9;
+}
+
+.month_white_main
+{
+	border: 1px solid var(--color-border);
+    box-sizing: border-box;
+    font-size: 13px;
+}
+
+.month_white_cell
+{
+	background-color: white;
+}
+
+.month_white_cell_inner
+{
+	border-right: 1px solid var(--color-border);
+	border-bottom: 1px solid var(--color-border);
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	bottom: 0px;
+	right: 0px;
+    background-color: var(--color-cell-background-nonbusiness);
+}
+
+.month_white_cell_business .month_white_cell_inner {
+    background-color: var(--color-cell-background-business);
+}
+
+.month_white_cell_header
+{
+	text-align: right;
+	padding-right: 2px;
+}
+
+.month_white_header_inner
+{
+	text-align: center;
+	vertical-align: middle;
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	bottom: 0px;
+	right: 0px;
+	border-right: 1px solid var(--color-border);
+	border-bottom: 1px solid var(--color-border);
+	cursor: default;
+
+	color: var(--color-header-text);
+	background-color: var(--color-header-background);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.month_white_message
+{
+	padding: 10px;
+	opacity: 0.9;
+	filter: alpha(opacity=90);
+	color: #ffffff;
+	background: #ffa216;
+}
+
+
+.month_white_event_inner
+{
+	position: absolute;
+	top: 0px;
+	bottom: 0px;
+	left: 2px;
+	right: 2px;
+	overflow:hidden;
+
+	padding: 2px;
+	padding-left: 5px;
+
+	font-size: 13px;
+	color: var(--color-event-text);
+	background-color: var(--color-event-background);
+	border-radius: 5px;
+
+    display: flex;
+    align-items: center;
+}
+
+.month_white_event_continueright .month_white_event_inner {
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+	border-right-style: dotted;
+    border-right-width: 1px;
+}
+
+.month_white_event_continueleft .month_white_event_inner
+{
+	border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+	border-left-style: dotted;
+    border-left-width: 1px;
+}
+
+.month_white_event_hover .month_white_event_inner
+{
+}
+
+
+.month_white_selected .month_white_event_inner
+{
+	background: #ddd;
+}
+
+.month_white_shadow_inner
+{
+	background-color: #666666;
+	opacity: 0.5;
+	filter: alpha(opacity=50);
+	height: 100%;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+}
+
+
+.month_white_event_delete {
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAadEVYdFNvZnR3YXJlAFBhaW50Lk5FVCB2My41LjExR/NCNwAAAI5JREFUKFNtkLERgCAMRbmzdK8s4gAUlhYOYEHJEJYOYOEwDmGBPxC4kOPfvePy84MGR0RJ2N1A8H3N6DATwSQ57m2ql8NBG+AEM7D+UW+wjdfUPgerYNgB5gOLRHqhcasg84C2QxPMtrUhSqQIhg7ypy9VM2EUZPI/4rQ7rGxqo9sadTegw+UdjeDLAKUfhbaQUVPIfJYAAAAASUVORK5CYII=) center center no-repeat;
+    opacity: 0.6;
+    cursor: pointer;
+}
+
+.month_white_event_delete:hover {
+    opacity: 1;
+    -ms-filter: none;
+}
+
+.month_white_event_timeleft { color: #ccc; font-size: 8pt; }
+.month_white_event_timeright { color: #ccc; font-size: 8pt; text-align: right; }

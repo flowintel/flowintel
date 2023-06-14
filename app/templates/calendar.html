@@ -1,0 +1,176 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    a.navi-button {
+        width: 200px;
+        padding: 10px 10px;
+        text-align: center;
+        display: inline-block;
+        background-color: #3495CF;
+        color: white;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+
+    .ui-datepicker-calendar {
+    display: none;
+    }
+
+    .ui-widget {
+        font-size:.7em;
+    }
+</style>
+
+<div id="container">
+    <!-- Modal -->
+    <div class="modal fade" id="modal_task" tabindex="-1" aria-labelledby="modal_task_label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal_task_label">Modal title</h5>
+                <div id="status_modal"></div>
+                <button type="button" class="btn-close" aria-label="Close" @click="closeModal"></button>
+            </div>
+            <div class="modal-body" id="modal_body">
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="closeModal">Close</button>
+                <a type="button" class="btn btn-primary" id="see_case">See case</a>
+            </div>
+            </div>
+        </div>
+    </div>
+
+
+    <label for="startDate">Date :</label>
+    <input name="startDate" id="startDate" class="date-picker"  data-date="" style="margin-bottom: 10px;"/>
+
+    <div id="dp"></div>
+
+</div>
+{% endblock %}
+
+
+{% block script %}
+<script type="module">
+    const { createApp, ref, computed, onMounted, reactive } = Vue
+    
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const tasks = ref(null)
+            const status_info = ref(null)
+
+
+            async function fetchCalendar(current_month) {
+                tasks.value = null
+                const res = await fetch(
+                    'get_task_month?date=' + current_month
+                )
+                let loc = await res.json()
+                tasks.value = loc["tasks"]
+
+                for (let i=0; i<tasks.value.length; i++){
+                    var e = new DayPilot.Event({
+                        start: new DayPilot.Date(moment(tasks.value[i]["dead_line"]).format('YYYY-MM-DD')),
+                        end: new DayPilot.Date(moment(tasks.value[i]["dead_line"]).format('YYYY-MM-DD')),
+                        id: tasks.value[i]["id"],
+                        text: tasks.value[i]["title"],
+                        toJson: tasks.value[i]
+                    });
+                    e.client.html = ""
+                    dp.events.add(e);
+                }
+            }
+            async function fetchStatus() {
+                status_info.value = null
+                const res = await fetch(
+                    '/case/get_status'
+                )
+                status_info.value = await res.json()
+            }       
+
+            fetchCalendar(moment().format('YYYY-MM'))
+            fetchStatus()
+
+            
+            function openModal()
+            {
+                modal_task.show()
+            }
+
+            function closeModal()
+            {
+                modal_task.hide()
+            }
+
+
+            function date_picker(){
+                var myDate = $("#startDate").attr('data-date');
+
+                $('#startDate').datepicker({
+                    yearRange: "-20:+0",
+                    changeMonth: true,
+                    changeYear: true,
+                    setDate: myDate,
+                    showButtonPanel: false,
+                    dateFormat: 'MM yy',
+                    onClose: function(dateText, inst) {
+                        dp.events.list = []
+                        var month = $("#ui-datepicker-div .ui-datepicker-month :selected").val();
+                        var year = $("#ui-datepicker-div .ui-datepicker-year :selected").val();
+                        $(this).datepicker('setDate', new Date(year, month, 1));
+
+                        fetchCalendar(moment(new Date(year, month)).format('YYYY-MM'))
+
+                        let loc_date = moment(new Date(year, month, 1)).format('YYYY-MM-DD')
+                        dp.startDate = loc_date
+                        dp.update()
+                    }
+                });
+                $('#startDate').datepicker('setDate', myDate);
+            }
+
+
+            var dp = new DayPilot.Month("dp");
+
+            dp.theme = "month_white";
+            dp.startDate = moment().format('YYYY-MM-DD');
+            
+
+            dp.onEventClicked = function(args) {
+                $("#modal_task_label").text(args.e.data.toJson.title).css("margin-right", "5px")
+                $("#status_modal").empty()
+                $("#status_modal").append(
+                    $("<span>").attr({"class": "badge rounded-pill text-bg-"+status_info.value.status[args.e.data.toJson.status_id -1].bootstrap_style}).text(
+                        status_info.value.status[ args.e.data.toJson.status_id -1].name
+                    )
+                )
+                $("#modal_body").text(args.e.data.toJson.description)
+                $("#see_case").attr("href", "/case/view/" + args.e.data.toJson.case_id)
+                
+                openModal()
+            };
+
+
+            onMounted(() => { 
+                modal_task = new bootstrap.Modal('#modal_task', {})
+                date_picker()
+                dp.init();
+            })
+
+
+            return {
+                openModal, closeModal
+            }
+        }
+    }).mount('#container')
+
+</script>
+
+{% endblock %}
+
+

@@ -32,10 +32,13 @@ def create_app():
     from .account.account import account_blueprint
     from .case.case import case_blueprint
     from .admin.admin import admin_blueprint
+    from .calendar.calendar import calendar_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
     app.register_blueprint(admin_blueprint, url_prefix="/admin")
+    app.register_blueprint(calendar_blueprint, url_prefix="/calendar")
+
 
     from .case.case_api import api_case_blueprint
     from .admin.admin_api import api_admin_blueprint

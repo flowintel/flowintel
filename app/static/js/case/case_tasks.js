@@ -422,7 +422,7 @@ export default {
 					<div v-if="task.users.length">
 						<h3>Remove assign</h3>
 						<div v-for="user in task.users">
-							<span>[[user.first_name]] [[user.last_name]]</span>
+							<span style="margin-right: 5px">[[user.first_name]] [[user.last_name]]</span>
 							<button class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
 						</div>
 					</div>
