@@ -369,6 +369,15 @@ export default {
 				</div>
 
 				<div>
+					<template v-if="task.url">
+						<div>
+							<h3>Tool/Url</h3>
+						</div>
+						<div>
+							<a :href=task.url>[[task.url]]</a>
+						</div>
+					</template>
+
 					<div>
 						<h3>Files</h3>
 					</div>
