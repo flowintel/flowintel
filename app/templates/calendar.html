@@ -48,6 +48,42 @@
     <label for="startDate">Date :</label>
     <input name="startDate" id="startDate" class="date-picker"  data-date="" style="margin-bottom: 10px;"/>
 
+
+    <div style="margin-bottom: 5px;">
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltercalendar" aria-expanded="false" aria-controls="collapsefiltercalendar">
+            filter
+        </button>
+        <div class="collapse " id="collapsefiltercalendar">
+            <div class="card card-body">
+                <div class="d-flex w-100 justify-content-evenly">
+                    <div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="select_task_filter()" checked>
+                            <label class="form-check-label" for="radioStatusOngoing">Tasks</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="select_case_filter()">
+                            <label class="form-check-label" for="radioStatusFinished">Case</label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioOther" id="radioDeadLine" @click="select_dead_filter()" checked>
+                            <label class="form-check-label" for="radioDeadLine">Dead Line</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioOther" id="radioCreation" @click="select_creation_filter()">
+                            <label class="form-check-label" for="radioCreation">Creation</label>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <div id="dp"></div>
 
 </div>
@@ -62,29 +98,58 @@
         delimiters: ['[[', ']]'],
         setup() {
             const tasks = ref(null)
+            const cases = ref(null)
             const status_info = ref(null)
+            let flag_case_task = false
+            let flag_dead_creation = true
 
 
-            async function fetchCalendar(current_month) {
+            async function fetch_task_calendar(current_month, flag_dead_creation_loc=true) {
                 tasks.value = null
                 const res = await fetch(
-                    'get_task_month?date=' + current_month
+                    'get_task_month?date=' + current_month + "&dead_creation=" + flag_dead_creation_loc
                 )
                 let loc = await res.json()
                 tasks.value = loc["tasks"]
 
+                let loc_var
                 for (let i=0; i<tasks.value.length; i++){
+                    if(flag_dead_creation_loc) loc_var = tasks.value[i]["dead_line"]
+                    else loc_var = tasks.value[i]["creation_date"]
                     var e = new DayPilot.Event({
-                        start: new DayPilot.Date(moment(tasks.value[i]["dead_line"]).format('YYYY-MM-DD')),
-                        end: new DayPilot.Date(moment(tasks.value[i]["dead_line"]).format('YYYY-MM-DD')),
+                        start: date_parser(loc_var, true),
+                        end: date_parser(loc_var, true),
                         id: tasks.value[i]["id"],
                         text: tasks.value[i]["title"],
                         toJson: tasks.value[i]
                     });
-                    e.client.html = ""
                     dp.events.add(e);
                 }
             }
+
+            async function fetch_case_calendar(current_month, flag_dead_creation_loc=true){
+                cases.value = null
+                const res = await fetch(
+                    'get_case_month?date=' + current_month + "&dead_creation=" + flag_dead_creation_loc
+                )
+                let loc = await res.json()
+                cases.value = loc["cases"]
+
+                let loc_var
+                for (let i=0; i<cases.value.length; i++){
+                    if(flag_dead_creation_loc) loc_var = cases.value[i]["dead_line"]
+                    else loc_var = cases.value[i]["creation_date"]
+                    var e = new DayPilot.Event({
+                        start: date_parser(loc_var, true),
+                        end: date_parser(loc_var, true),
+                        id: cases.value[i]["id"],
+                        text: cases.value[i]["title"],
+                        toJson: cases.value[i]
+                    });
+                    dp.events.add(e);
+                }
+            }
+
             async function fetchStatus() {
                 status_info.value = null
                 const res = await fetch(
@@ -93,10 +158,10 @@
                 status_info.value = await res.json()
             }       
 
-            fetchCalendar(moment().format('YYYY-MM'))
+            fetch_task_calendar(moment().format('YYYY-MM'))
             fetchStatus()
 
-            
+
             function openModal()
             {
                 modal_task.show()
@@ -105,6 +170,59 @@
             function closeModal()
             {
                 modal_task.hide()
+            }
+
+            function date_parser(date, flag_day=false){
+                var d = new Date(date),
+                    month = '' + (d.getMonth() + 1),
+                    year = d.getFullYear();
+                    
+                if (month.length < 2) 
+                    month = '0' + month;
+
+                if(flag_day){
+                    var day = '' + d.getDate()
+                    if (day.length < 2) 
+                        day = '0' + day;
+                    return [year, month, day].join('-');
+                }
+
+                return [year, month].join('-');
+            }
+
+            function select_case_filter(){
+                dp.events.list = []
+                fetch_case_calendar(date_parser(dp.startDate), flag_dead_creation)
+                dp.update()
+                flag_case_task = true
+            }
+            function select_task_filter(){
+                dp.events.list = []
+                fetch_task_calendar(date_parser(dp.startDate), flag_dead_creation)
+                dp.update()
+                flag_case_task = false
+            }
+
+            function select_dead_filter(){
+                dp.events.list = []
+                if(flag_case_task){
+                    fetch_case_calendar(date_parser(dp.startDate), true)
+                }else{
+                    fetch_task_calendar(date_parser(dp.startDate), true)
+                }
+                dp.update()
+                flag_dead_creation = true
+            }
+
+            function select_creation_filter(){
+                dp.events.list = []
+                if(flag_case_task){
+                    fetch_case_calendar(date_parser(dp.startDate), false)
+                }else{
+                    fetch_task_calendar(date_parser(dp.startDate), false)
+                }
+                dp.update()
+                flag_dead_creation = false
             }
 
 
@@ -123,10 +241,13 @@
                         var month = $("#ui-datepicker-div .ui-datepicker-month :selected").val();
                         var year = $("#ui-datepicker-div .ui-datepicker-year :selected").val();
                         $(this).datepicker('setDate', new Date(year, month, 1));
+                        
+                        if(flag_case_task)
+                            fetch_case_calendar(date_parser(new Date(year, month)), flag_dead_creation)
+                        else
+                            fetch_task_calendar(date_parser(new Date(year, month)), flag_dead_creation)
 
-                        fetchCalendar(moment(new Date(year, month)).format('YYYY-MM'))
-
-                        let loc_date = moment(new Date(year, month, 1)).format('YYYY-MM-DD')
+                        let loc_date = date_parser(new Date(year, month, 1), true)
                         dp.startDate = loc_date
                         dp.update()
                     }
@@ -164,7 +285,7 @@
 
 
             return {
-                openModal, closeModal
+                openModal, closeModal, select_case_filter, select_task_filter, select_dead_filter, select_creation_filter
             }
         }
     }).mount('#container')

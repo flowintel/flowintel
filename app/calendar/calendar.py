@@ -26,11 +26,30 @@ def get_task_month():
 
     data_dict = dict(request.args)
     date_month = data_dict["date"]
+    flag_dead_creation = data_dict["dead_creation"]
     if date_month:
         tasks_list = list()
-        tasks_month = CalendarModel.get_task_month_core(date_month, current_user)
+        tasks_month = CalendarModel.get_task_month_core(date_month, flag_dead_creation, current_user)
         for task in tasks_month:
             tasks_list.append(task.to_json())
 
         return {"tasks": tasks_list}
+    return {"message": "No date"}
+
+
+@calendar_blueprint.route("/get_case_month", methods=['GET'])
+@login_required
+def get_case_month():
+    """Calendar info"""
+
+    data_dict = dict(request.args)
+    date_month = data_dict["date"]
+    flag_dead_creation = data_dict["dead_creation"]
+    if date_month:
+        cases_list = list()
+        cases_month = CalendarModel.get_case_month_core(date_month, flag_dead_creation, current_user)
+        for case in cases_month:
+            cases_list.append(case.to_json())
+
+        return {"cases": cases_list}
     return {"message": "No date"}
