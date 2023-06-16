@@ -5,55 +5,61 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div id="top"></div>
     <div>
         <header>
         </header>
         <h1>Flowintel-cm</h1>
     </div>
 
-    <br/><br/>
     <hr>
-    <div>
-        <fieldset class="border p-2" id="fieldset-algo">
-            <legend  class="float-none w-auto p-2">About</legend>
-            <div id="fieldset-content">
-                <p>
-                <a href="https://en.wikipedia.org/wiki/Typosquatting">Typosquatting</a> is a commonly used method by attackers to have domain names (and urls) which sounds or looks like an original domain. This kind of attacks can be used to trick users to access incorrect websites by mistake or providing looks alike domain names. 
-                <br/>CIRCL provides a free and public service to find typosquatted domains in order to quickly assess if there are any existing fake domains used by an adversary. The results might include false-positive which are legitimate domain names with similar names.
-Software
-                </p>    
+    <br/>
+    <br/>
+    <div class="card card-body">
+        <div class="d-flex w-100 justify-content-evenly">
+            <div>
+                <div><h3><u>My Cases</u></h3></div>
+                <div>
+                    <h6>Open: {{cases_open_len}}</h6>
+                </div>
+                <div>
+                    <h6>Closed: {{cases_closed_len}}</h6>
+                </div>
             </div>
-        </fieldset>
+            <div>
+                <div><h3><u>My Tasks</u></h3></div>
+                <div>
+                    <h6>Open: {{tasks_open_len}}</h6>
+                </div>
+                <div>
+                    <h6>Closed: {{tasks_closed_len}}</h6>
+                </div>
+            </div>
+        </div>
     </div>
-    <br/><br/>
-    <hr>
-    <div>
-        <fieldset class="border p-2" id="fieldset-algo">
-            <legend  class="float-none w-auto p-2">Software</legend>
-            <div id="fieldset-content">
-                <p>
-                The back-end software is available as an <a href="https://github.com/ail-project/ail-typo-website">open source project</a>. <a href="https://github.com/ail-project/ail-typo-squatting">The typosquatting library is also developed</a> for this project but it can also be used independently of the web interface.
-                </p>
-            </div>
-        </fieldset>
-    </div>
-    <br/><br/>
-    <hr>
-    <div>
-        <fieldset class="border p-2" id="fieldset-algo">
-            <legend  class="float-none w-auto p-2">Funding</legend>
-            <div id="fieldset-content">
-                <p>This project is co-funded by Joint Threat Analysis Network - JTAN and CIRCL.<br/>
-                The Action will establish a Joint Threat Analysis Network, an open collaboration group of European computer security incident response teams (CSIRTs) with the focus on collecting, sharing and analysis of technical, operational and strategic threat intelligence. The purpose of this collaboration is to combine unique advantages of different teams to obtain comprehensive situational awareness and actionable information to effectively defend constituencies in each Member State, from critical infrastructure operators targeted by state-sponsored actors to individual citizens affected by cybercrime. The main part of the Action addresses gaps in the Cyber Threat Intelligence (CTI) tooling that is currently used by the national level CSIRTs in Europe. By strengthening individual tools and interconnecting them, the beneficiaries will achieve a new level of common situational awareness and they will benefit from shared knowledge and tooling.
-                </p>
-            </div>
-        </fieldset>
-        <br/><br/>
-        <hr>
+    <br/>
 
-        <br/><br/><br/><br/>
+    {% if current_user.is_admin() %}
+    <div class="card card-body">
+        <div class="d-flex w-100 justify-content-evenly">
+            <div>
+                <div><h3><u> All Cases</u></h3></div>
+                <div>
+                    <h6>Open: {{all_cases_open}}</h6>
+                </div>
+                <div>
+                    <h6>Closed: {{all_cases_closed}}</h6>
+                </div>
+            </div>
+            <div>
+                <div><h3><u>All Tasks</u></h3></div>
+                <div>
+                    <h6>Open: {{all_tasks_open}}</h6>
+                </div>
+                <div>
+                    <h6>Closed: {{all_tasks_closed}}</h6>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+    {% endif %}
 {% endblock %}
