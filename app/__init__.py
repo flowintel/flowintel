@@ -16,11 +16,6 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    app.config["FLASK_URL"] = '127.0.0.1'
-    app.config["FLASK_PORT"] = 7006
-
-    app.config["DEBUG"] = True
-
 
     db.init_app(app)
     csrf.init_app(app)
