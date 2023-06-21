@@ -16,7 +16,7 @@ calendar_blueprint = Blueprint(
 @login_required
 def calendar():
     """Calendar view"""
-    return render_template("calendar.html")
+    return render_template("calendar/calendar.html")
 
 
 @calendar_blueprint.route("/get_task_month", methods=['GET'])

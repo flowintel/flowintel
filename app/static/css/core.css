@@ -9,3 +9,9 @@ body {
   }
 }
 
+span#goTop{
+  position: fixed;
+  right: 1em;
+  bottom: 1em;
+  background-color: #fafbfc; 
+}

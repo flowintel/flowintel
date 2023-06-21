@@ -5,23 +5,20 @@
 		<div class="position-sticky">
 			<div class="list-group list-group-flush mx-3 mt-4">
 				<a href="/" class="list-group-item list-group-item-action py-2 ripple" aria-current="true">
-					<i class="fas fa-tachometer-alt fa-fw me-3"></i><span>Home</span>
+					<i class="fa-solid fa-house fa-fw me-3"></i><span>Home</span>
 				</a>
 				<a href="/case" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fas fa-chart-area fa-fw me-3"></i><span>Cases</span>
+					<i class="fa-solid fa-note-sticky fa-fw me-3"></i><span>Cases</span>
 				</a>
 				<a href="/case/my_assignation" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fas fa-lock fa-fw me-3"></i><span>Task assigned</span>
+					<i class="fa-solid fa-list-check fa-fw me-3"></i><span>Task assigned</span>
 				</a>
 				<a href="/calendar" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fas fa-chart-line fa-fw me-3"></i><span>Calendar</span>
+					<i class="fa-solid fa-calendar fa-fw me-3"></i><span>Calendar</span>
 				</a>
 				{% if current_user.is_admin() %}
 				<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fas fa-chart-pie fa-fw me-3"></i><span>Org</span>
-				</a>
-				<a href="/admin" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fas fa-users fa-fw me-3"></i><span>Users</span>
+					<i class="fas fa-users fa-fw me-3"></i><span>Org</span>
 				</a>
 				{% endif %}
 			</div>

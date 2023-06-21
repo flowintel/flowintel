@@ -22,15 +22,6 @@ admin_blueprint = Blueprint(
 # Users #
 #########
 
-@admin_blueprint.route("/")
-@login_required
-@admin_required
-def index():
-    """List all users"""
-    users = AdminModel.get_all_users()
-
-    return render_template("admin/admin_index.html", users=users)
-
 @admin_blueprint.route("/add_user", methods=['GET','POST'])
 @login_required
 @admin_required
@@ -45,7 +36,7 @@ def add_user():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_user_core(form_dict)
-        return redirect("/admin")
+        return redirect("/admin/orgs")
     return render_template("admin/add_user.html", form=form)
 
 
@@ -81,7 +72,7 @@ def delete_user(id):
         flash("User deleted", 'success')
     else:
         flash("User not deleted", "error")
-    return redirect("/admin")
+    return redirect("/admin/orgs")
 
 
 ########
@@ -139,6 +130,34 @@ def delete_org(id):
         flash("Org not deleted", "error")
     return redirect("/admin/orgs")
 
+
+@admin_blueprint.route("/get_orgs", methods=['GET','POST'])
+@login_required
+@admin_required
+def get_orgs():
+    """get all orgs"""
+    orgs = AdminModel.get_all_orgs()
+    if orgs:
+        orgs_list = list()
+        for org in orgs:
+            orgs_list.append(org.to_json())
+        return {"orgs": orgs_list}
+    return {"message": "No orgs"}
+
+
+@admin_blueprint.route("/get_org_users", methods=['GET','POST'])
+@login_required
+@admin_required
+def get_org_users():
+    """get all user of an org"""
+    data_dict = dict(request.args)
+    users = AdminModel.get_all_user_org(data_dict["org_id"])
+    if users:
+        users_list = list()
+        for user in users:
+            users_list.append(user.to_json())
+        return {"users": users_list}
+    return {"message": "No user in the org"}
 
 #########
 # Roles #

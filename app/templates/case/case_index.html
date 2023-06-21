@@ -6,7 +6,7 @@
 
 {% block content %}
     <h1>
-        List of Case
+        Cases
         <span>
             <a class="btn btn-primary btn-small" href="/case/add"><i class="fa-solid fa-plus"></i></a>
         </span>
@@ -15,7 +15,7 @@
     <case_filter @cases_list="(cases) => case_list.cases = cases['cases']"></case_filter>
 
     <hr>
-
+    <div id="top"></div>
     <template v-if="case_list">
         <template v-for="case_loc in case_list.cases">
             <div class="list-group" style="margin-bottom: 20px;">
@@ -49,11 +49,9 @@
         </template>
 
     </template>
-
-    
-    
-	
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
+
 
 {% block script %}
     <script type="module">

@@ -28,6 +28,10 @@ def get_role(id):
     """Return the role"""
     return Role.query.get(id)
 
+def get_all_user_org(org_id):
+    """Return all users of an org"""
+    return User.query.join(Org, User.org_id==Org.id).where(Org.id==org_id).all()
+
 
 def create_default_org(user):
     """Create a default org for a user who have no org"""

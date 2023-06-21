@@ -11,7 +11,7 @@
     <my_assignation_filter :tasks_list="tasks_list" @tasks_list="(tasks) => tasks_list = tasks" ></my_assignation_filter>
 </div>
 <hr>
-
+<div id="top"></div>
 <!-- <template v-for="task in tasks_list"> -->
 <template v-for="(task, index) in tasks_list">
     <div style="text-align: center;" v-if="index==0"><h4><i>[[task.case_title]]</i></h4></div>
@@ -53,6 +53,7 @@
         </a>
     </div>
 </template>
+<span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 
 {% endblock %}
 
