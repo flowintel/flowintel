@@ -40,9 +40,32 @@
                 </div>
 
                 <div class="collapse" :id="'collapse'+org.id" style="margin-bottom: 20px;">
-                    
                     <div class="card card-body" :id="'card-body_'+org.id" style="background-color: whitesmoke;">
-                        
+                        <template v-if="users_table">
+                            <table>
+                                <template v-for="user in users_table[org.id]">
+                                    <tr>
+                                        <td>[[user.id]]</td>
+                                        <td>[[user.first_name]]</td>
+                                        <td>[[user.last_name]]</td>
+                                        <td>[[user.email]]</td>
+                                        <td>
+                                            <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a class="btn btn-danger btn-sm" :href='"/admin/delete_user/"+user.id' type="button" title="Delete the user">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </table>
+                        </template>
+                        <template v-else>
+                            Loading...
+                        </template>
                     </div>
                 </div>
             </template>
@@ -62,7 +85,8 @@
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
-                const orgs_list = ref(false)
+                const orgs_list = ref(null)
+                const users_table = ref({})
 
 
                 async function fetchOrgs() {
@@ -75,28 +99,7 @@
                 async function extend_collapse(org_id){
                     const res = await fetch('get_org_users?org_id='+org_id)
                     let loc = await res.json()
-                    let user_org = loc["users"]
-                    if(user_org){
-                        $('#card-body_'+org_id).empty()
-                        let table_user_org = $("<table>")
-                        for(let i=0; i<user_org.length; i++){
-                            table_user_org.append("<tr>").append(
-                                $("<td>").text(user_org[i].id),
-                                $("<td>").text(user_org[i].first_name),
-                                $("<td>").text(user_org[i].last_name),
-                                $("<td>").text(user_org[i].email),
-                                $("<td>").append(
-                                    $("<a>").attr({"class": "btn btn-primary btn-sm", "href": "/admin/edit_user/"+user_org[i].id, "type": "button", "title": "Edit the user"}).append(
-                                        $("<i>").attr("class", "fa-solid fa-pen-to-square")
-                                    ),
-                                    $("<a>").attr({"class": "btn btn-danger btn-sm", "href": "/admin/delete_user/"+user_org[i].id, "type": "button", "title": "Delete the user"}).append(
-                                        $("<i>").attr("class", "fa-solid fa-trash")
-                                    )
-                                ),
-                            )
-                        }
-                        $('#card-body_'+org_id).append(table_user_org)
-                    }
+                    users_table.value[org_id] = loc["users"]
 
                     const collapseElementList = document.querySelectorAll('#collapse'+org_id)
                     const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
@@ -108,6 +111,7 @@
     
                 return {
                     orgs_list,
+                    users_table,
                     extend_collapse
                 }
             }
