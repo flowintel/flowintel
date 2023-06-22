@@ -8,7 +8,8 @@ from wtforms.fields import (
     EmailField,
     SelectField,
     TextAreaField,
-    BooleanField
+    BooleanField,
+    HiddenField
 )
 from wtforms.validators import Email, EqualTo, InputRequired, Length, Optional
 
@@ -23,13 +24,8 @@ class RegistrationForm(FlaskForm):
     last_name = StringField(
         'Last name', validators=[InputRequired(),
                                  Length(1, 64)])
-    email = EmailField(
-        'Email', validators=[InputRequired(),
-                             Length(1, 64),
-                             Email()])
-    password = PasswordField(
-        'Password',
-        validators=[
+    email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
+    password = PasswordField('Password', validators=[
             InputRequired(),
             EqualTo('password2', 'Passwords must match')
         ])
@@ -47,14 +43,27 @@ class RegistrationForm(FlaskForm):
                                     url_for('account.index')))
 
 
-class EditUserFrom(FlaskForm):
+
+class AdminEditUserFrom(FlaskForm):
+    user_id = HiddenField("")
     first_name = StringField('First name', validators=[InputRequired(), Length(1, 64)])
     last_name = StringField('Last name', validators=[InputRequired(), Length(1, 64)])
+    email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
+    password = PasswordField('Password', validators=[EqualTo('password2', 'Passwords must match')])
+    password2 = PasswordField('Confirm password')
 
     role = SelectField(u'Role', coerce=str, validators=[InputRequired()])
     org = SelectField(u'Organisation', coerce=str, validators=[InputRequired()])
 
     submit = SubmitField('Register')
+
+    def validate_email(self, field):
+        user = User.query.get(self.user_id.data)
+        if not field.data == user.email:
+            if User.query.filter_by(email=field.data).first():
+                raise ValidationError('Email already registered. (Did you mean to '
+                                    '<a href="{}">log in</a> instead?)'.format(
+                                        url_for('account.index')))
 
 
 class CreateOrgForm(FlaskForm):

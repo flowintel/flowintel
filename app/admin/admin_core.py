@@ -87,7 +87,7 @@ def add_user_core(form_dict):
     return user
 
 
-def edit_user_core(form_dict, id):
+def admin_edit_user_core(form_dict, id):
     """Edit the user to the DB"""
     user = get_user(id)
     prev_user_org_id = user.org_id
@@ -105,6 +105,9 @@ def edit_user_core(form_dict, id):
 
     user.first_name=bleach.clean(form_dict["first_name"])
     user.last_name=bleach.clean(form_dict["last_name"])
+    user.email=bleach.clean(form_dict["email"])
+    if form_dict["password"]:
+        user.password=bleach.clean(form_dict["password"])
     user.role_id = bleach.clean(form_dict["role"])
     user.org_id = org_change
 

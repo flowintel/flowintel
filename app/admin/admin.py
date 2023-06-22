@@ -2,10 +2,8 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import (
     current_user,
     login_required,
-    login_user,
-    logout_user,
 )
-from .form import RegistrationForm, CreateOrgForm, AddRoleForm, EditUserFrom
+from .form import RegistrationForm, CreateOrgForm, AddRoleForm, AdminEditUserFrom
 from . import admin_core as AdminModel
 from ..decorators import admin_required
 from ..utils.utils import form_to_dict
@@ -40,25 +38,27 @@ def add_user():
     return render_template("admin/add_user.html", form=form)
 
 
-@admin_blueprint.route("/edit_user/<id>", methods=['GET','POST'])
+@admin_blueprint.route("/edit_user/<uid>", methods=['GET','POST'])
 @login_required
 @admin_required
-def edit_user(id):
+def edit_user(uid):
     """Edit the user"""
-    form = EditUserFrom()
+    form = AdminEditUserFrom()
 
+    form.user_id.data = uid
     form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
     form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
     form.org.choices.insert(0, ("None", "--"))
 
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
-        AdminModel.edit_user_core(form_dict, id)
-        return redirect("/admin")
+        AdminModel.admin_edit_user_core(form_dict, uid)
+        return redirect("/admin/orgs")
     else:
-        user_modif = AdminModel.get_user(id)
+        user_modif = AdminModel.get_user(uid)
         form.first_name.data = user_modif.first_name
         form.last_name.data = user_modif.last_name
+        form.email.data = user_modif.email
 
     return render_template("admin/edit_user.html", form=form)
 
@@ -155,7 +155,11 @@ def get_org_users():
     if users:
         users_list = list()
         for user in users:
-            users_list.append(user.to_json())
+            u = user.to_json()
+            r = AdminModel.get_role(user.role_id)
+            u["role"] = r.name
+            users_list.append(u)
+
         return {"users": users_list}
     return {"message": "No user in the org"}
 

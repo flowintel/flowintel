@@ -45,16 +45,15 @@
                             <table>
                                 <template v-for="user in users_table[org.id]">
                                     <tr>
-                                        <td>[[user.id]]</td>
-                                        <td>[[user.first_name]]</td>
-                                        <td>[[user.last_name]]</td>
-                                        <td>[[user.email]]</td>
+                                        <td title="Id">[[user.id]]</td>
+                                        <td title="First name">[[user.first_name]]</td>
+                                        <td title="last name">[[user.last_name]]</td>
+                                        <td title="Email">[[user.email]]</td>
+                                        <td title="Role">[[user.role]]</td>
                                         <td>
                                             <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
-                                        </td>
-                                        <td>
                                             <a class="btn btn-danger btn-sm" :href='"/admin/delete_user/"+user.id' type="button" title="Delete the user">
                                                 <i class="fa-solid fa-trash"></i>
                                             </a>
