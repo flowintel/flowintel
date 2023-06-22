@@ -1,6 +1,6 @@
 from ..db_class.db import User
 from flask import Blueprint, render_template, redirect, url_for, request, flash
-from .form import LoginForm
+from .form import LoginForm, EditUserFrom
 from flask_login import (
     current_user,
     login_required,
@@ -8,6 +8,7 @@ from flask_login import (
     logout_user,
 )
 from . import account_core as AccountModel
+from ..utils.utils import form_to_dict
 
 account_blueprint = Blueprint(
     'account',
@@ -24,11 +25,22 @@ def index():
     return render_template("account/account_index.html", user=current_user)
 
 
-@account_blueprint.route("/")
+@account_blueprint.route("/edit", methods=['GET', 'POST'])
 @login_required
-def get_user_info():
-    
-    return
+def edit_user():
+    """Edit the user"""
+    form = EditUserFrom()
+
+    if form.validate_on_submit():
+        form_dict = form_to_dict(form)
+        AccountModel.edit_user_core(form_dict, current_user.id)
+        return redirect("/account")
+    else:
+        form.first_name.data = current_user.first_name
+        form.last_name.data = current_user.last_name
+        form.email.data = current_user.email
+
+    return render_template("account/edit_user.html", form=form)
 
 
 @account_blueprint.route('/login', methods=['GET', 'POST'])
