@@ -4,8 +4,6 @@ A simple case management.
 
 ![case-management](https://github.com/flowintel/flowintel-cm/blob/main/doc/case_fcm.png?raw=true)
 
-
-
 ![task-management](https://github.com/flowintel/flowintel-cm/blob/main/doc/task_fcm.png?raw=true)
 
 ## Installation
