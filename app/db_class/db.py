@@ -196,6 +196,34 @@ class Case_Org(db.Model):
     org_id = db.Column(db.Integer)
 
 
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    message = db.Column(db.String(60), index=True)
+    is_read = db.Column(db.Boolean, default=False)
+    user_id = db.Column(db.Integer, index=True)
+    case_id = db.Column(db.Integer, index=True)
+    creation_date = db.Column(db.DateTime, index=True)
+    read_date = db.Column(db.DateTime, index=True)
+    html_icon = db.Column(db.String(60), index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "message": self.message,
+            "is_read": self.is_read,
+            "user_id": self.user_id,
+            "case_id": self.case_id,
+            "html_icon": self.html_icon,
+            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M')
+        }
+        if self.read_date:
+            json_dict["read_date"] = self.read_date.strftime('%Y-%m-%d %H:%M')
+        else:
+            json_dict["read_date"] = self.read_date
+        
+        return json_dict
+
+
 login_manager.anonymous_user = AnonymousUser
 
 @login_manager.user_loader

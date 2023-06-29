@@ -47,7 +47,7 @@
 				<div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
 					<input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by ID/UUID' style="min-width: 350px;" />
 				</div>
-				<div v-if="result_search.length" style="position: absolute; background-color: white; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); min-width: 160px;">
+				<div v-if="result_search && result_search.length" style="position: absolute; background-color: white; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); min-width: 160px;">
 					<ul v-for="case_search in result_search">
 						<div><a :href="'/case/view/'+case_search.id">[[case_search.title]]</a></div>
 					</ul>
@@ -58,22 +58,13 @@
 			<ul class="navbar-nav ms-auto d-flex flex-row">
 				<!-- Notification dropdown -->
 				<li class="nav-item dropdown">
-					<a class="nav-link me-3 me-lg-0 dropdown-toggle hidden-arrow" href="#" id="navbarDropdownMenuLink"
-						role="button" data-bs-toggle="dropdown" aria-expanded="false">
+					<a class="nav-link me-3 me-lg-0" href="/notification">
 						<i class="fas fa-bell"></i>
-						<!-- <span class="badge rounded-pill badge-notification bg-danger">1</span> -->
+						<template v-if="notif_list && notif_list> 0">
+							<span v-if="notif_list < 100" class="position-absolute translate-middle badge rounded-pill bg-danger">[[notif_list]]</span>
+							<span v-else class="position-absolute translate-middle badge rounded-pill bg-danger">99+</span>
+						</template>
 					</a>
-					<ul class="dropdown-menu">
-						<li>
-							<a class="dropdown-item" href="#">Some news</a>
-						</li>
-						<li>
-							<a class="dropdown-item" href="#">Another news</a>
-						</li>
-						<li>
-							<a class="dropdown-item" href="#">Something else here</a>
-						</li>
-					</ul>
 				</li>
 
 				<!-- Avatar -->
@@ -104,3 +95,51 @@
 </header>
 <!--Main Navigation-->
 
+<script type="module">
+	const { createApp, ref, computed, onMounted } = Vue
+
+	createApp({
+		delimiters: ['[[', ']]'],
+		setup() {
+			const case_list = ref(null)
+			const result_search = ref([])
+			
+			const notif_list = ref(null)
+
+			async function fetchCase() {
+				case_list.value = null
+				const res = await fetch(
+					'/case/case/get_cases'
+				)
+				case_list.value = await res.json()
+			}
+
+			function onInput(e){
+				result_search.value = []
+				if(e.target.value){
+					for(let i in case_list.value.cases){
+						if(case_list.value.cases[i].title.toLowerCase().includes(e.target.value)){
+							result_search.value.push(case_list.value.cases[i])
+						}
+					}
+				}
+			}
+
+			async function fetchNotif() {
+				notif_list.value = null
+				const res = await fetch('/notification/get_user_notifications_len')
+				let loc = await res.json()
+				notif_list.value = loc["notif"]
+			}
+
+			fetchCase()
+			fetchNotif()
+
+			return {
+				onInput,
+				result_search,
+				notif_list
+			}
+		}
+	}).mount('.navbar')
+</script>

@@ -153,7 +153,7 @@ def add_orgs(id):
 
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            CaseModel.add_orgs_case(form_dict, id)
+            CaseModel.add_orgs_case(form_dict, id, current_user)
             flash("Orgs added", "success")
             return redirect(f"/case/view/{id}")
 
@@ -188,7 +188,7 @@ def delete():
     cid = request.json["case_id"]
 
     if CaseModel.get_present_in_case(cid, current_user):
-        if CaseModel.delete_case(cid):
+        if CaseModel.delete_case(cid, current_user):
             return {"message": "Case deleted"}, 201
         else:
             return {"message": "Error case deleted"}, 201
@@ -218,7 +218,7 @@ def complete_case(cid):
     """Complete the case"""
 
     if CaseModel.get_present_in_case(cid, current_user):
-        if CaseModel.complete_case(cid):
+        if CaseModel.complete_case(cid, current_user):
             return {"message": "Case completed"}, 201
         else:
             return {"message": "Error case completed"}, 201
@@ -305,7 +305,7 @@ def take_task():
 
     task = CaseModel.get_task(id)
     if CaseModel.get_present_in_case(task.case_id, current_user):
-        CaseModel.assign_task(id, current_user)
+        CaseModel.assign_task(id, current_user, flag_current_user=True)
         return {"message": "User Assigned"}, 201
     return {"message": "Not in Case"}
 
@@ -320,7 +320,7 @@ def remove_assign_task():
     task = CaseModel.get_task(id)
 
     if CaseModel.get_present_in_case(task.case_id, current_user):
-        CaseModel.remove_assign_task(id, current_user)
+        CaseModel.remove_assign_task(id, current_user, flag_current_user=True)
         return {"message": "User Removed from assignation"}, 201
     return {"message": "Not in Case"}
 
@@ -332,7 +332,7 @@ def remove_org_case(cid, oid):
     """Remove an org to the case"""
 
     if CaseModel.get_present_in_case(cid, current_user):
-        if CaseModel.remove_org_case(cid, oid):
+        if CaseModel.remove_org_case(cid, oid, current_user):
             return {"message": "Org removed from case"}
         return {"message", "Error removing org from case"}
     return {"message": "Not in Case"}
@@ -598,7 +598,7 @@ def assign_user_task():
     task = CaseModel.get_task(tid)
     if CaseModel.get_present_in_case(task.case_id, current_user):
         for user in users_list:
-            CaseModel.assign_task(tid, user)
+            CaseModel.assign_task(tid, user, flag_current_user=False)
         return {"message": "Users Assigned"}, 201
     return {"message": "Not in Case"}
 
@@ -625,6 +625,6 @@ def remove_assigned_user():
 
     task = CaseModel.get_task(tid)
     if CaseModel.get_present_in_case(task.case_id, current_user):
-        CaseModel.remove_assign_task(tid, user_id)
+        CaseModel.remove_assign_task(tid, user_id, flag_current_user=False)
         return {"message": "Users Assigned"}, 201
     return {"message": "Not in Case"}

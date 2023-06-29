@@ -1,0 +1,147 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    
+    <div id="container">
+        <h1>
+            Notifications
+        </h1>
+    
+        <hr>
+
+        <div id="top"></div>
+        <div style="margin-bottom: 5px;">
+            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltercalendar" aria-expanded="false" aria-controls="collapsefiltercalendar">
+                filter
+            </button>
+            <div class="collapse " id="collapsefiltercalendar">
+                <div class="card card-body">
+                    <div class="d-flex w-100 justify-content-evenly">
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioNotif" id="radioUnread" @click="select_unread_read(true)" checked>
+                                <label class="form-check-label" for="radioStatusOngoing">Unread</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioNotif" id="radioRead" @click="select_unread_read(false)">
+                                <label class="form-check-label" for="radioStatusFinished">Read</label>
+                            </div>
+                        </div>    
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <template v-if="notif_list">
+            <template v-for="notif in notif_list">
+                <div class="list-group" style="margin-bottom: 10px;">
+                    <div class="d-flex align-items-center">
+                        <input class="form-check-input me-2" type="checkbox" name="radioReadNotif" id="radioReadNotif" @click="read_notification(notif)">
+
+                        <a v-if="flag_is_read" :href="`/case/view/${notif.case_id}`" class="list-group-item list-group-item-action" style="background-color: whitesmoke;">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1"><i v-if="notif.html_icon" :class="notif.html_icon"></i>  [[ notif.message ]]</h5>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <span class="badge text-bg-dark">Read</span>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <small><i class="card-text" :title="notif.creation_date">Created [[ moment(notif.creation_date).fromNow() ]]</i></small>
+                                <small><i v-if="notif.read_date" class="card-text" :title="notif.read_date">Read [[ moment(notif.read_date).fromNow() ]]</i></small>
+                            </div>
+                        </a>
+                        <a v-else :href="`/case/view/${notif.case_id}`" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                
+                                <h5 class="mb-1"> <i v-if="notif.html_icon" :class="notif.html_icon"></i>  [[ notif.message ]]</h5>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <small><i class="card-text" :title="notif.creation_date">Recieved [[ moment(notif.creation_date).fromNow() ]]</i></small>
+                            </div>
+                        </a>
+                        <div style="display: grid;">
+                            <button class="btn btn-danger btn-sm" @click="delete_notif(notif)" type="button" title="Delete the notification"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <!-- [[notif]] -->
+            </template>    
+        </template>
+        <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+
+    </div>
+        
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                let flag_is_read = ref(false)
+                const notif_list = ref(null)
+
+                async function fetchNotif(unread_read) {
+                    notif_list.value = null
+                    const res = await fetch('/notification/get_user_notifications?unread_read=' + unread_read)
+                    let loc = await res.json()
+                    notif_list.value = loc["notif"]
+                    if(!unread_read){
+                        flag_is_read.value = true
+                    }
+                    else{
+                        flag_is_read.value = false
+                    }
+			    }
+
+                function read_notification(notif){
+                    notif.is_read = !notif.is_read
+                    notif.read_date = Date.now()
+
+                    fetch("/notification/read_notification/" + notif.id)
+
+                    let index = notif_list.value.indexOf(notif)
+                    if(index > -1)
+                        notif_list.value.splice(index, 1)
+                }
+
+                async function select_unread_read(unread_read){
+                    if(unread_read){
+                        fetchNotif(true)
+                    }else{
+                        fetchNotif(false)
+                    }
+                }
+
+                function delete_notif(notif){
+                    fetch("/notification/delete/" + notif.id)
+
+                    let index = notif_list.value.indexOf(notif)
+                    if(index > -1)
+                        notif_list.value.splice(index, 1)
+                }
+
+
+                fetchNotif(true)
+                // fetchNotif(false)
+    
+                return {
+                    notif_list,
+                    flag_is_read,
+                    read_notification,
+                    select_unread_read,
+                    delete_notif,
+                    moment
+                }
+            }
+        }).mount('#container')
+
+    </script>
+{% endblock %}

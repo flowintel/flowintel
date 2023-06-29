@@ -9,6 +9,7 @@ import datetime
 from sqlalchemy import desc
 from flask import request, send_file
 from werkzeug.utils import secure_filename
+from ..notification import notification_core as NotifModel
 
 UPLOAD_FOLDER = '/home/dacru/Desktop/Git/flowintel-cm/uploads'
 
@@ -64,13 +65,15 @@ def get_status(sid):
     return Status.query.get(sid).first()
 
 
-def delete_case(cid):
+def delete_case(cid, current_user):
     """Delete a case by is id"""
     case = get_case(cid)
     if case is not None:
         # Delete all tasks in the case
         for task in case.tasks:
             delete_task(task.id)
+
+        NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", cid, html_icon="fa-solid fa-trash", current_user=current_user)
 
         Case_Org.query.filter_by(case_id=case.id).delete()
         db.session.delete(case)
@@ -89,6 +92,14 @@ def delete_task(tid):
                 return False
             db.session.delete(file)
             db.session.commit()
+
+        case = get_case(task.case_id)
+        task_users = Task_User.query.where(Task_User.task_id==task.id).all()
+        for task_user in task_users:
+            user = User.query.get(task_user.user_id)
+            print(user.to_json())
+            NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
+
         Task_User.query.filter_by(task_id=task.id).delete()
         db.session.delete(task)
         update_last_modif(task.case_id)
@@ -111,11 +122,16 @@ def update_last_modif_task(task_id):
         task.last_modif = datetime.datetime.now()
 
 
-def complete_case(cid):
+def complete_case(cid, current_user):
     """Complete case by is id"""
     case = get_case(cid)
     if case is not None:
         case.completed = not case.completed
+        if case.completed:
+            NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' is now completed", cid, html_icon="fa-solid fa-square-check", current_user=current_user)
+        else:
+            NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' is now revived", cid, html_icon="fa-solid fa-heart-circle-plus", current_user=current_user)
+
         update_last_modif(cid)
         db.session.commit()
         return True
@@ -126,10 +142,23 @@ def complete_task(tid):
     """Complete task by is id"""
     task = get_task(tid)
     if task is not None:
+        task.completed = not task.completed
+
+        case = get_case(task.case_id)
+        task_users = Task_User.query.where(Task_User.task_id==task.id).all()
         if task.completed:
-            task.completed = False
+            message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
         else:
-            task.completed=True
+            message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived"
+        for task_user in task_users:
+            user = User.query.get(task_user.user_id)
+            if task.completed:
+                message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
+                NotifModel.create_notification_user(message, task.case_id, user_id=user.id, html_icon="fa-solid fa-check")
+            else:
+                message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived"
+                NotifModel.create_notification_user(message, task.case_id, user_id=user.id, html_icon="fa-solid fa-heart-circle-bolt")
+
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
@@ -290,7 +319,7 @@ def markdown_notes(notes):
     return notes
 
 
-def add_orgs_case(form_dict, cid):
+def add_orgs_case(form_dict, cid, current_user):
     """Add orgs to case in th DB"""
     for org_id in form_dict["org_id"]:
         case_org = Case_Org(
@@ -298,6 +327,8 @@ def add_orgs_case(form_dict, cid):
             org_id=org_id
         )
         db.session.add(case_org)
+        case = get_case(cid)
+        NotifModel.create_notification_org(f"{get_org(org_id).name} add to case: '{case.id}-{case.title}'", cid, org_id, html_icon="fa-solid fa-sitemap", current_user=current_user)
 
     update_last_modif(cid)
     db.session.commit()
@@ -315,27 +346,34 @@ def get_orgs_in_case(case_id):
     return orgs
 
 
-def remove_org_case(case_id, org_id):
+def remove_org_case(case_id, org_id, current_user):
     """Remove an org from a case"""
     case_org = Case_Org.query.filter_by(case_id=case_id, org_id=org_id).first()
     if case_org:
         db.session.delete(case_org)
+
+        case = get_case(case_id)
+        NotifModel.create_notification_org(f"{get_org(org_id).name} removed from case: '{case.id}-{case.title}'", case_id, org_id, html_icon="fa-solid fa-door-open", current_user=current_user)
+
         update_last_modif(case_id)
         db.session.commit()
         return True
     return False
 
 
-def assign_task(tid, user):
+def assign_task(tid, user, flag_current_user):
     """Assign current user to a task"""
     task = get_task(tid)
+    case = get_case(task.case_id)
     if task:
-        # if Task_User.query.filter_by(task_id=task.id, user_id=user.id).first():
-        #     return 
         if type(user) == str:
             task_user = Task_User(task_id=task.id, user_id=user)
+            if not flag_current_user:
+                NotifModel.create_notification_user(f"You have been assign to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user, html_icon="fa-solid fa-hand")
         else:
             task_user = Task_User(task_id=task.id, user_id=user.id)
+            if not flag_current_user:
+                NotifModel.create_notification_user(f"You have been assign to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-hand")
 
         db.session.add(task_user)
         update_last_modif(task.case_id)
@@ -358,14 +396,19 @@ def get_users_assign_task(task_id, user):
     return users, flag
 
 
-def remove_assign_task(tid, user):
+def remove_assign_task(tid, user, flag_current_user):
     """Remove current user to the assignement to a task"""
     task = get_task(tid)
+    case = get_case(task.case_id)
     if task:
         if type(user) == int:
             task_users = Task_User.query.filter_by(task_id=task.id, user_id=user).all()
+            if not flag_current_user:
+                NotifModel.create_notification_user(f"Your assignation have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user, html_icon="fa-solid fa-handshake-slash")
         else:
             task_users = Task_User.query.filter_by(task_id=task.id, user_id=user.id).all()
+            if not flag_current_user:
+                NotifModel.create_notification_user(f"Your assignation have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-handshake-slash")
         for task_user in task_users:
             db.session.delete(task_user)
 
@@ -512,4 +555,4 @@ def my_assignation_sort_by_filter(user, completed, filter):
 
 
 def get_all_users_core(case):
-    return Org.query.join(Case_Org, Case_Org.case_id==case.id).all()
+    return Org.query.join(Case_Org, Case_Org.case_id==case.id).where(Case_Org.org_id==Org.id).all()
