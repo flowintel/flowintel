@@ -147,9 +147,36 @@
                     return window.location.href="/case"
                 }
 
-                function complete_case(case_loc){
-                    case_loc.completed = true
-                    fetch('/case/complete_case/'+case_loc.id) 
+                async function complete_case(case_loc){
+                    await fetch('/case/complete_case/'+case_loc.id)
+
+                    if(status_info.value.status[case_loc.status_id -1].name == 'Finished'){
+                        for(let i in status_info.value.status){
+                            if(status_info.value.status[i].name == 'Revive')
+                            case_loc.status_id = status_info.value.status[i].id
+                        }
+                        if(case_loc.status_id == status)
+                            case_loc.status_id = 1
+
+                            await fetch('/case/change_status/'+case_loc.id,{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"status": case_loc.status_id})
+                        })
+                    }else{
+                        for(let i in status_info.value.status){
+                            if(status_info.value.status[i].name == 'Finished'){
+                                case_loc.status_id = status_info.value.status[i].id
+                                await fetch('/case/change_status/'+case_loc.id,{
+                                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                    method: "POST",
+                                    body: JSON.stringify({"status": case_loc.status_id})
+                                })
+                                break
+                            }
+                        }
+			        }
+                    return window.location.href="/case"
                 }
 
                 function change_status(status, task){
