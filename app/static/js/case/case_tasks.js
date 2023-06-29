@@ -399,7 +399,7 @@ export default {
 						</template>
 					</div>
 				</div>
-				<div>
+				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case">
 					<div>
 						<h3>Change Status</h3>
 					</div>
@@ -422,7 +422,7 @@ export default {
 						<h3>Assign</h3>
 						<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
 							<template v-for="user in users_in_case.users_list">
-								<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]]</option>
+								<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]] [[user.last_name]]</option>
 							</template>
 						</select>
 						<button class="btn btn-primary" @click="assign_user_task()">Assign</button>
