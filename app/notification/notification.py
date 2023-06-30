@@ -37,6 +37,7 @@ def get_user_notifications():
 @login_required
 def get_user_notifications_len():
     """Return notification for current_user"""
+    NotifModel.create_notification_dead_line(current_user)
     user_notif = NotifModel.get_user_notif(current_user, "true")
     return {"notif": len(user_notif)}
 
@@ -54,26 +55,3 @@ def delete_notification(nid):
     """Delete Notification"""
     
     return {"message": NotifModel.delete_notification_core(nid)}
-
-
-# @notification_blueprint.route("/create_notification_org", methods=['POST'])
-# @login_required
-# def create_notification_org():
-#     """Create Notification"""
-
-#     msg = request.json["msg"]
-#     case_id = request.json["case_id"]
-    
-#     return {"message": NotifModel.create_notification_org(msg, case_id)}
-
-
-# @notification_blueprint.route("/create_notification_user", methods=['POST'])
-# @login_required
-# def create_notification_user():
-#     """Create Notification"""
-
-#     msg = request.json["msg"]
-#     case_id = request.json["case_id"]
-#     user_id = request.json["user_id"]
-    
-#     return {"message": NotifModel.create_notification_user(msg, case_id, user_id)}
