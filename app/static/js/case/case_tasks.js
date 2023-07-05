@@ -332,43 +332,6 @@ export default {
 		<div class="card card-body" style="background-color: whitesmoke;">
 			<div class="d-flex w-100 justify-content-between">
 				<div>
-					<div>
-						<h3>Notes</h3>
-					</div>
-					<div v-if="task.notes">
-						<template v-if="edit_mode">
-							<div>
-								<button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
-									<div hidden>[[task.title]]</div>
-									Save
-								</button>
-							</div>
-							<textarea :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" cols="30" maxlength="5000" v-html="task.notes"></textarea>
-						</template>
-						<template v-else>
-							<template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-								<button class="btn btn-primary" @click="edit_note(task)" type="button" :id="'note_'+task.id">
-									<div hidden>[[task.title]]</div>
-									Edit
-								</button>
-							</template> 
-							<p v-html="task.notes"></p>
-						</template>
-					</div>
-					<div v-else>
-						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-							<div>
-								<button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
-									<div hidden>[[task.title]]</div>
-									Create
-								</button>
-							</div>
-							<textarea :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" cols="30" maxlength="5000"></textarea>
-						</template>
-					</div>
-				</div>
-
-				<div>
 					<template v-if="task.url">
 						<div>
 							<h3>Tool/Url</h3>
@@ -379,7 +342,7 @@ export default {
 					</template>
 
 					<div>
-						<h3>Files</h3>
+						<h5>Files</h5>
 					</div>
 					<div>
 						<div>
@@ -400,8 +363,27 @@ export default {
 					</div>
 				</div>
 				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+					<div v-if="users_in_case">
+						<h5>Assign</h5>
+						<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
+							<template v-for="user in users_in_case.users_list">
+								<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]] [[user.last_name]]</option>
+							</template>
+						</select>
+						<button class="btn btn-primary" @click="assign_user_task()">Assign</button>
+					</div>
+
+					<div v-if="task.users.length">
+						<h5>Remove assign</h5>
+						<div v-for="user in task.users">
+							<span style="margin-right: 5px">[[user.first_name]] [[user.last_name]]</span>
+							<button class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
+						</div>
+					</div>
+				</div>
+				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case">
 					<div>
-						<h3>Change Status</h3>
+						<h5>Change Status</h5>
 					</div>
 					<div>
 						<div class="dropdown" :id="'dropdown_status_'+task.id">
@@ -416,24 +398,44 @@ export default {
 								</ul>
 							</template>
 						</div>
+					</div>					
+				</div>
+			</div>
+			<div class="d-flex w-100 justify-content-between">
+				<div class="w-100">
+					<div>
+						<h5>Notes</h5>
 					</div>
-
-					<div v-if="users_in_case">
-						<h3>Assign</h3>
-						<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
-							<template v-for="user in users_in_case.users_list">
-								<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]] [[user.last_name]]</option>
-							</template>
-						</select>
-						<button class="btn btn-primary" @click="assign_user_task()">Assign</button>
+					<div v-if="task.notes">
+						<template v-if="edit_mode">
+							<div>
+								<button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
+									<div hidden>[[task.title]]</div>
+									Save
+								</button>
+							</div>
+							<textarea class="w-100" :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" maxlength="5000" v-html="task.notes"></textarea>
+						</template>
+						<template v-else>
+							<template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+								<button class="btn btn-primary" @click="edit_note(task)" type="button" :id="'note_'+task.id">
+									<div hidden>[[task.title]]</div>
+									Edit
+								</button>
+							</template> 
+							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="task.notes"></p>
+						</template>
 					</div>
-
-					<div v-if="task.users.length">
-						<h3>Remove assign</h3>
-						<div v-for="user in task.users">
-							<span style="margin-right: 5px">[[user.first_name]] [[user.last_name]]</span>
-							<button class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
-						</div>
+					<div v-else>
+						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+							<div>
+								<button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
+									<div hidden>[[task.title]]</div>
+									Create
+								</button>
+							</div>
+							<textarea class="w-100" :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" maxlength="5000"></textarea>
+						</template>
 					</div>
 				</div>
 			</div>

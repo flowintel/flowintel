@@ -1,6 +1,6 @@
 # Flowintel-cm
 
-A simple case management.
+A flexible case management.
 
 ![case-management](https://github.com/flowintel/flowintel-cm/blob/main/doc/case_fcm.png?raw=true)
 
