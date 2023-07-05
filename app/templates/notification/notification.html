@@ -14,27 +14,18 @@
         <hr>
 
         <div id="top"></div>
-        <div style="margin-bottom: 5px;">
-            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltercalendar" aria-expanded="false" aria-controls="collapsefiltercalendar">
-                filter
-            </button>
-            <div class="collapse " id="collapsefiltercalendar">
-                <div class="card card-body">
-                    <div class="d-flex w-100">
-                        <div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="radioNotif" id="radioUnread" @click="select_unread_read(true)" checked>
-                                <label class="form-check-label" for="radioStatusOngoing">Unread</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="radioNotif" id="radioRead" @click="select_unread_read(false)">
-                                <label class="form-check-label" for="radioStatusFinished">Read</label>
-                            </div>
-                        </div>    
-                    </div>
-                </div>
+        <div style="background-color: white; border: 1px rgb(195, 196, 197) solid; padding: 5px; margin-bottom: 5px;">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="radioNotif" id="radioUnread" @click="select_unread_read(true)" checked>
+                <label class="form-check-label" for="radioStatusOngoing">Unread</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="radioNotif" id="radioRead" @click="select_unread_read(false)">
+                <label class="form-check-label" for="radioStatusFinished">Read</label>
             </div>
         </div>
+
+        <a class="btn btn-primary" href="/notification/mark_all_read">Mark all read</a>
         
         <template v-if="notif_list">
             <template v-for="notif in notif_list">
@@ -68,7 +59,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- [[notif]] -->
             </template>    
         </template>
         <span id="goTop">[<a href="#top">Go Back Top</a>]</span>

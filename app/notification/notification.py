@@ -55,3 +55,11 @@ def delete_notification(nid):
     """Delete Notification"""
     
     return {"message": NotifModel.delete_notification_core(nid)}
+
+
+
+@notification_blueprint.route("/mark_all_read", methods=['GET'])
+@login_required
+def mark_all_read():
+    NotifModel.mark_all_read(current_user)
+    return redirect("/notification")

@@ -126,3 +126,12 @@ def create_notification_dead_line(current_user):
         case_task_dead_line_notif(task, msg, "fa-solid fa-skull-crossbones", now, current_user)
 
     return True
+
+
+def mark_all_read(user):
+    notif_list = get_user_notif(user, unread_read="true")
+
+    for notif in notif_list:
+        notif.is_read = True
+        notif.read_date = datetime.datetime.now()
+        db.session.commit()
