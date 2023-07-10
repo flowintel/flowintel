@@ -9,3 +9,4 @@ Flask-Migrate
 Flask-Login
 bleach
 markdown
+git+https://github.com/python-restx/flask-restx.git
