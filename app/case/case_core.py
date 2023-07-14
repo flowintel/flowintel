@@ -609,20 +609,29 @@ def create_template_from_case(cid, case_title_template):
     db.session.commit()
 
     for task in case.tasks:
-        task_template = Task_Template(
-            uuid=str(uuid.uuid4()),
-            title=task.title,
-            description=task.description,
-            url=task.url
-        )
-        db.session.add(task_template)
-        db.session.commit()
-
-        case_task_template = Case_Task_Template(
-                case_id=new_template.id,
-                task_id=task_template.id
+        task_exist = Task_Template.query.filter_by(title=task.title).first()
+        if not task_exist:
+            task_template = Task_Template(
+                uuid=str(uuid.uuid4()),
+                title=task.title,
+                description=task.description,
+                url=task.url
             )
-        db.session.add(case_task_template)
-        db.session.commit()
+            db.session.add(task_template)
+            db.session.commit()
+
+            case_task_template = Case_Task_Template(
+                    case_id=new_template.id,
+                    task_id=task_template.id
+                )
+            db.session.add(case_task_template)
+            db.session.commit()
+        else:
+            case_task_template = Case_Task_Template(
+                    case_id=new_template.id,
+                    task_id=task_exist.id
+                )
+            db.session.add(case_task_template)
+            db.session.commit()
 
     return new_template
