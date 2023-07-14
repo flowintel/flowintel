@@ -261,7 +261,8 @@ class Task_Template(db.Model):
             "id": self.id,
             "uuid": self.uuid,
             "title": self.title,
-            "description": self.description
+            "description": self.description,
+            "url": self.url
         }
     
 
