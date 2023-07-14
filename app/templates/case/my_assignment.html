@@ -7,8 +7,8 @@
 {% block content %}
 
 <div style="margin-bottom: 10px;">
-    <h1>My Assignation to Tasks</h1>
-    <my_assignation_filter :tasks_list="tasks_list" @tasks_list="(tasks) => tasks_list = tasks" ></my_assignation_filter>
+    <h1>My Assignment to Tasks</h1>
+    <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => tasks_list = tasks" ></my_assignment_filter>
 </div>
 <hr>
 <div id="top"></div>
@@ -47,8 +47,8 @@
                 <div v-else>
                     <i>No user assigned</i>
                 </div>
-                <small v-if="task.dead_line" :title="task.dead_line"><i>Dead line [[moment(task.dead_line).endOf().fromNow()]]</i></small>
-                <small v-else><i>No dead line</i></small>
+                <small v-if="task.dead_line" :title="task.dead_line"><i>Deadline [[moment(task.dead_line).endOf().fromNow()]]</i></small>
+                <small v-else><i>No deadline</i></small>
             </div>
         </a>
     </div>
@@ -60,12 +60,12 @@
 {% block script %}
     <script type="module">
         const { createApp, ref } = Vue
-        import my_assignation_filter from '../../static/js/case/my_assignation_filter.js'
+        import my_assignment_filter from '../../static/js/case/my_assignment_filter.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
-                my_assignation_filter
+                my_assignment_filter
             },
             setup() {
                 const tasks_list = ref(null)
@@ -74,7 +74,7 @@
                 async function fetchAssignedTask() {
                     tasks_list.value = null
                     const res = await fetch(
-                        '/case/my_assignation_data'
+                        '/case/my_assignment_data'
                     )
                     tasks_list.value = await res.json()
                     tasks_list.value.sort(function(a,b){

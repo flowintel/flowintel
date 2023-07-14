@@ -313,14 +313,14 @@ export default {
                 <div v-else>
                     <i>No user assigned</i>
                 </div>
-                <small v-if="task.dead_line" :title="task.dead_line"><i>Dead line [[endOf(task.dead_line)]]</i></small>
-                <small v-else><i>No dead line</i></small>
+                <small v-if="task.dead_line" :title="task.dead_line"><i>Deadline [[endOf(task.dead_line)]]</i></small>
+                <small v-else><i>No deadline</i></small>
             </div>
 		</a>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case" style="display: grid;">
 			<button class="btn btn-success btn-sm"  @click="complete_task(task)" title="Complete the task"><i class="fa-solid fa-check"></i></button>
 			<button v-if="!task.is_current_user_assigned" class="btn btn-secondary btn-sm"  @click="take_task(task, cases_info.current_user)" title="Be assigned to the task"><i class="fa-solid fa-hand"></i></button>
-			<button v-else class="btn btn-secondary btn-sm"  @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignation"><i class="fa-solid fa-handshake-slash"></i></button>
+			<button v-else class="btn btn-secondary btn-sm"  @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment"><i class="fa-solid fa-handshake-slash"></i></button>
 			<a class="btn btn-primary btn-sm" :href="'/case/view/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task"><i class="fa-solid fa-pen-to-square"></i></a>
 			<button class="btn btn-danger btn-sm"  @click="delete_task(task, cases_info.tasks)" title="Delete the task"><i class="fa-solid fa-trash"></i></button>
 		</div>

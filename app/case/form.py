@@ -82,7 +82,7 @@ class AddOrgsCase(FlaskForm):
     org_id = SelectMultipleField(u'Orgs', coerce=int)
     case_id = HiddenField("")
 
-    submit = SubmitField('Register')
+    submit = SubmitField('Add')
 
     def validate_org_id(self, field):
         for org in field.data:

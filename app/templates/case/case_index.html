@@ -34,8 +34,8 @@
                         <div class="d-flex w-100 justify-content-between">
                             <div class="d-flex w-100 justify-content-between">
                                 <div></div>
-                                <small v-if="case_loc.dead_line" :title="case_loc.dead_line"><i>Dead line [[moment(case_loc.dead_line).endOf().fromNow()]]</i></small>
-                                <small v-else><i>No dead line</i></small>
+                                <small v-if="case_loc.dead_line" :title="case_loc.dead_line"><i>Deadline [[moment(case_loc.dead_line).endOf().fromNow()]]</i></small>
+                                <small v-else><i>No deadline</i></small>
                             </div>
                         </div>
                     </a>

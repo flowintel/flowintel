@@ -332,8 +332,8 @@ class RemoveOrgCase(Resource):
                 if id == task.case_id:
                     user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
                     if CaseModel.remove_assign_task(tid, user):
-                        return {"message": f"User Removed from assignation"}
-                    return {"message": f"Error User Removed from assignation"}
+                        return {"message": f"User Removed from assignment"}
+                    return {"message": f"Error User Removed from assignment"}
                 else:
                     return {"message": "Task not in this case"}
             return {"message": "Task not found"}

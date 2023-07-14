@@ -48,8 +48,8 @@ export default {
 			asc_desc_filter()
 		}
 
-		function sort_by_my_assignation(){
-			current_filter = "my_assignation"
+		function sort_by_my_assignment(){
+			current_filter = "my_assignment"
 			asc_desc_filter()
 		}
 
@@ -80,7 +80,7 @@ export default {
 			sort_by_dead_line,
 			sort_by_status,
 			sort_by_assigned_tasks,
-			sort_by_my_assignation,
+			sort_by_my_assignment,
 			asc_desc_filter
 		}
 	},
@@ -113,7 +113,7 @@ export default {
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_dead_line()">
-						<label class="form-check-label" for="radioOtherDeadLine">Dead line</label>
+						<label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_status()">
@@ -124,8 +124,8 @@ export default {
 						<label class="form-check-label" for="radioOtherAssign">Assigned tasks</label>
 					</div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherCurrentAssign" @click="sort_by_my_assignation()">
-						<label class="form-check-label" for="radioOtherCurrentAssign">My assignation</label>
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherCurrentAssign" @click="sort_by_my_assignment()">
+						<label class="form-check-label" for="radioOtherCurrentAssign">My assignment</label>
 					</div>
 				</div>
 

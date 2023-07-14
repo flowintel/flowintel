@@ -410,11 +410,11 @@ def remove_assign_task(tid, user, flag_current_user):
         if type(user) == int:
             task_users = Task_User.query.filter_by(task_id=task.id, user_id=user).all()
             if not flag_current_user:
-                NotifModel.create_notification_user(f"Your assignation have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user, html_icon="fa-solid fa-handshake-slash")
+                NotifModel.create_notification_user(f"Your assignment have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user, html_icon="fa-solid fa-handshake-slash")
         else:
             task_users = Task_User.query.filter_by(task_id=task.id, user_id=user.id).all()
             if not flag_current_user:
-                NotifModel.create_notification_user(f"Your assignation have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-handshake-slash")
+                NotifModel.create_notification_user(f"Your assignment have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-handshake-slash")
         for task_user in task_users:
             db.session.delete(task_user)
 
@@ -526,7 +526,7 @@ def sort_tasks_by_filter(case, user, completed, filter):
             final_tasks.append(task)
         tasks_list = sorted(final_tasks, key=lambda t: t.len_u)
 
-    elif filter == "my_assignation":
+    elif filter == "my_assignment":
         final_tasks = list()
         tasks_list_query = Task.query.filter_by(case_id=case.id, completed=completed).all()
         for task in tasks_list_query:
@@ -552,11 +552,11 @@ def sort_by_filter(completed, filter):
     return Case.query.filter_by(completed=completed).order_by(desc(filter)).all()
 
 
-def my_assignation_sort_by_status(user, completed):
+def my_assignment_sort_by_status(user, completed):
     return Task.query.join(Task_User, Task_User.task_id==Task.id).where(Task_User.user_id==user.id, Task.completed==completed).all()
 
 
-def my_assignation_sort_by_filter(user, completed, filter):
+def my_assignment_sort_by_filter(user, completed, filter):
     return Task.query.join(Task_User, Task_User.task_id==Task.id).where(Task_User.user_id==user.id, Task.completed==completed).order_by(desc(filter)).all()
 
 

@@ -97,11 +97,11 @@ export default {
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_last_modif()">
-						<label class="form-check-label" for="radioOrderAsc">Last Modif</label>
+						<label class="form-check-label" for="radioOrderAsc">Last modification</label>
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_dead_line()">
-						<label class="form-check-label" for="radioOtherDeadLine">Dead line</label>
+						<label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_status()">

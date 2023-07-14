@@ -36,9 +36,9 @@ def view(id):
         return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case)
     return render_template("404.html")
 
-@case_blueprint.route("/my_assignation", methods=['GET'])
+@case_blueprint.route("/my_assignment", methods=['GET'])
 @login_required
-def my_assignation():
+def my_assignment():
     """View of a assigned tasks"""
     return render_template("case/my_assignation.html")
 
@@ -54,6 +54,7 @@ def add_case():
         flash("Case created", "success")
         return redirect(f"/case/view/{case.id}")
     return render_template("case/add_case.html", form=form)
+    return render_template("case/my_assignment.html")
 
 @case_blueprint.route("/edit/<id>", methods=['GET','POST'])
 @login_required
@@ -314,14 +315,14 @@ def take_task():
 @login_required
 @editor_required
 def remove_assign_task():
-    """Remove an assignation to the task"""
+    """Remove an assignment to the task"""
     
     id = request.json["task_id"]
     task = CaseModel.get_task(id)
 
     if CaseModel.get_present_in_case(task.case_id, current_user):
         CaseModel.remove_assign_task(id, current_user, flag_current_user=True)
-        return {"message": "User Removed from assignation"}, 201
+        return {"message": "User Removed from assignment"}, 201
     return {"message": "Not in Case"}
 
 
@@ -349,8 +350,8 @@ def change_status(cid):
 
     if CaseModel.get_present_in_case(cid, current_user):
         CaseModel.change_status_core(status, case)
-        flash("Assignation changed", "success")
-        return {"message": "Assignation changed"}, 201
+        flash("Assignment changed", "success")
+        return {"message": "Assignment changed"}, 201
     return {"message": "Not in Case"}
 
 
@@ -365,8 +366,8 @@ def change_status_task(tid):
 
     if CaseModel.get_present_in_case(task.case_id, current_user):
         CaseModel.change_status_task(status, task)
-        flash("Assignation changed", "success")
-        return {"message": "Assignation changed"}, 201
+        flash("Assignment changed", "success")
+        return {"message": "Assignment changed"}, 201
     return {"message": "Not in Case"}
 
 
@@ -520,52 +521,52 @@ def finished_sort_by_filter():
     return {"message": "No filter pass"}
 
 
-@case_blueprint.route("/my_assignation_data", methods=['GET'])
+@case_blueprint.route("/my_assignment_data", methods=['GET'])
 @login_required
-def my_assignation_data():
+def my_assignment_data():
     """Get tasks assigned to current user"""
-    tasks_list = CaseModel.my_assignation_sort_by_status(user=current_user, completed=False)
+    tasks_list = CaseModel.my_assignment_sort_by_status(user=current_user, completed=False)
     return CaseModel.get_task_info(tasks_list, current_user)
 
 
 
 
 
-@case_blueprint.route("/my_assignation/sort_by_ongoing", methods=['GET'])
+@case_blueprint.route("/my_assignment/sort_by_ongoing", methods=['GET'])
 @login_required
-def my_assignation_sort_by_ongoing():
+def my_assignment_sort_by_ongoing():
     """Sort Task by living one"""
-    tasks_list = CaseModel.my_assignation_sort_by_status(user=current_user, completed=False)
+    tasks_list = CaseModel.my_assignment_sort_by_status(user=current_user, completed=False)
     return CaseModel.get_task_info(tasks_list, current_user)
 
 
 
-@case_blueprint.route("/my_assignation/sort_by_finished", methods=['GET'])
+@case_blueprint.route("/my_assignment/sort_by_finished", methods=['GET'])
 @login_required
-def my_assignation_sort_by_finished():
+def my_assignment_sort_by_finished():
     """Sort Task by finished one"""
-    tasks_list = CaseModel.my_assignation_sort_by_status(user=current_user, completed=True)
+    tasks_list = CaseModel.my_assignment_sort_by_status(user=current_user, completed=True)
     return CaseModel.get_task_info(tasks_list, current_user)
 
 
-@case_blueprint.route("/my_assignation/tasks/ongoing", methods=['GET'])
+@case_blueprint.route("/my_assignment/tasks/ongoing", methods=['GET'])
 @login_required
-def my_assignation_ongoing_sort_by_filter():
+def my_assignment_ongoing_sort_by_filter():
     """Sort Task by living one"""
     data_dict = dict(request.args)
     if "filter" in data_dict:
-        tasks_list = CaseModel.my_assignation_sort_by_filter(user=current_user, completed=False, filter=data_dict["filter"])
+        tasks_list = CaseModel.my_assignment_sort_by_filter(user=current_user, completed=False, filter=data_dict["filter"])
         return CaseModel.get_task_info(tasks_list, current_user)
     return {"message": "No filter pass"}
 
 
-@case_blueprint.route("/my_assignation/tasks/finished", methods=['GET'])
+@case_blueprint.route("/my_assignment/tasks/finished", methods=['GET'])
 @login_required
-def my_assignation_finished_sort_by_filter():
+def my_assignment_finished_sort_by_filter():
     """Sort Task by finished one"""
     data_dict = dict(request.args)
     if "filter" in data_dict:
-        tasks_list = CaseModel.my_assignation_sort_by_filter(user=current_user, completed=False, filter=data_dict["filter"])
+        tasks_list = CaseModel.my_assignment_sort_by_filter(user=current_user, completed=False, filter=data_dict["filter"])
         return CaseModel.get_task_info(tasks_list, current_user)
     return {"message": "No filter pass"}
 
