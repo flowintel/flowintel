@@ -88,9 +88,49 @@
             <h3>Tasks</h3>
             {% if not current_user.read_only() and present_in_case %}
                 <span style="padding-left: 10px;">
-                    <a class="btn btn-primary btn-small" href="/case/{{id}}/add_task"><i class="fa-solid fa-plus"></i></a>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
                 </span>
             {%endif%}
+        </div>
+
+        <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="FormModalLabel">Create a New Task</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="" method="post">
+                        {{ form.hidden_tag() }}
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                {{form.title.label(class_="col-form-label")}}:
+                                {{form.title(class_="form-control")}}
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="col-form-label">Description:</label>
+                                {{form.description(class_="form-control")}}
+                            </div>
+                            <div class="mb-3">
+                                {{form.url.label(class_="col-form-label")}}:
+                                {{form.url(class_="form-control")}}
+                            </div>
+                            <div class="mb-3">
+                                {{form.dead_line_date.label(class_="col-form-label")}}:
+                                {{form.dead_line_date(class_="form-control")}}
+                            </div>
+                            <div class="mb-3">
+                                {{form.dead_line_time.label(class_="col-form-label")}}:
+                                {{form.dead_line_time(class_="form-control")}}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                {{form.submit(class='btn btn-primary')}}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <task_filter :cases_info="cases_info" @tasks_list="(tasks) => cases_info.tasks = tasks"></task_filter>

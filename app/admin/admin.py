@@ -3,7 +3,7 @@ from flask_login import (
     current_user,
     login_required,
 )
-from .form import RegistrationForm, CreateOrgForm, AddRoleForm, AdminEditUserFrom
+from .form import RegistrationForm, CreateOrgForm, AdminEditUserFrom
 from . import admin_core as AdminModel
 from ..decorators import admin_required
 from ..utils.utils import form_to_dict
@@ -44,11 +44,17 @@ def add_user():
 def edit_user(uid):
     """Edit the user"""
     form = AdminEditUserFrom()
-
+    user_modif = AdminModel.get_user(uid)
     form.user_id.data = uid
-    form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
-    form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
-    form.org.choices.insert(0, ("None", "--"))
+    form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
+    role_temp = AdminModel.get_role(user_modif.role_id)
+    form.role.choices.insert(0, (role_temp.id, role_temp.name))
+
+
+    form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs() if not user_modif.org_id == org.id]
+    org_temp = AdminModel.get_org(user_modif.org_id)
+    form.org.choices.insert(0, (org_temp.id, org_temp.name))
+    form.org.choices.insert(1, ("None", "--"))
 
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
@@ -60,7 +66,7 @@ def edit_user(uid):
         form.last_name.data = user_modif.last_name
         form.email.data = user_modif.email
 
-    return render_template("admin/edit_user.html", form=form)
+    return render_template("admin/add_user.html", form=form, edit_mode=True)
 
 
 @admin_blueprint.route("/delete_user/<id>", methods=['GET','POST'])
@@ -85,20 +91,12 @@ def delete_user(id):
 def orgs():
     """List all organisations"""
     orgs = AdminModel.get_all_orgs()
-    return render_template("admin/orgs.html", orgs=orgs)
-
-
-@admin_blueprint.route("/add_org", methods=['GET','POST'])
-@login_required
-@admin_required
-def add_org():
-    """Add an org"""
     form = CreateOrgForm()
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_org_core(form_dict)
         return redirect("/admin/orgs")
-    return render_template("admin/add_org.html", form=form)
+    return render_template("admin/orgs.html", orgs=orgs, form=form)
 
 
 @admin_blueprint.route("/edit_org/<id>", methods=['GET','POST'])
@@ -116,7 +114,7 @@ def edit_org(id):
         form.name.data = org.name
         form.description.data = org.description
         form.uuid.data = org.uuid
-    return render_template("admin/add_org.html", form=form)
+    return render_template("admin/edit_org.html", form=form)
 
 
 @admin_blueprint.route("/delete_org/<id>", methods=['GET','POST'])
@@ -163,38 +161,4 @@ def get_org_users():
         return {"users": users_list}
     return {"message": "No user in the org"}
 
-#########
-# Roles #
-#########
 
-@admin_blueprint.route("/roles", methods=['GET'])
-@login_required
-@admin_required
-def roles():
-    """List all roles"""
-    roles = AdminModel.get_all_roles()
-    return render_template("admin/roles.html", roles=roles)
-
-@admin_blueprint.route("/add_role", methods=['GET','POST'])
-@login_required
-@admin_required
-def add_role():
-    """Add a role"""
-    form = AddRoleForm()
-    if form.validate_on_submit():
-        form_dict = form_to_dict(form)
-        AdminModel.add_role_core(form_dict)
-        return redirect("/admin/roles")
-    return render_template("admin/add_role.html", form=form)
-
-
-@admin_blueprint.route("/delete_role/<id>", methods=['GET','POST'])
-@login_required
-@admin_required
-def delete_role(id):
-    """Delete the role"""
-    if AdminModel.delete_role_core(id):
-        flash("Role deleted", "success")
-    else:
-        flash("Role not deleted", "error")
-    return redirect("/admin/roles")

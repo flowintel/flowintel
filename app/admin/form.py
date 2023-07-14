@@ -49,7 +49,7 @@ class AdminEditUserFrom(FlaskForm):
     first_name = StringField('First name', validators=[InputRequired(), Length(1, 64)])
     last_name = StringField('Last name', validators=[InputRequired(), Length(1, 64)])
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
-    password = PasswordField('Password', validators=[EqualTo('password2', 'Passwords must match')])
+    password = PasswordField('Password', validators=[Optional(), EqualTo('password2', 'Passwords must match')])
     password2 = PasswordField('Confirm password')
 
     role = SelectField(u'Role', coerce=str, validators=[InputRequired()])
@@ -81,16 +81,3 @@ class CreateOrgForm(FlaskForm):
         if field.data:
             if not isUUID(field.data):
                 raise ValidationError("UUID is not valid")
-
-
-class AddRoleForm(FlaskForm):
-    name = StringField('Name', validators=[InputRequired(),Length(1, 64)])
-    description = TextAreaField('Description', validators=[Optional()])
-    admin = BooleanField("Admin", default=False, false_values=(False, 'false'))
-    read_only = BooleanField("Read only", default=True, false_values=(False, 'false'))
-
-    submit = SubmitField('Register')
-
-    def validate_name(self, field):
-        if Role.query.get(field.data):
-            raise ValidationError("Name already exist")

@@ -1,0 +1,41 @@
+<!-- 
+    Author: David Cruciani
+-->
+{% extends 'base.html' %}
+{% import 'macros/form_macros.html' as f %}
+
+{% block content %}
+
+    <h2 class="ui dividing header">Create a task</h2>
+
+    <form action="" method="post">
+        {{ form.hidden_tag() }}
+        <div class="modal-body">
+            <div class="mb-3">
+                {{form.title.label(class_="col-form-label")}}:
+                {{form.title(class_="form-control")}}
+            </div>
+            <div class="mb-3">
+                <label for="description" class="col-form-label">Description:</label>
+                {{form.description(class_="form-control")}}
+            </div>
+            <div class="mb-3">
+                {{form.url.label(class_="col-form-label")}}:
+                {{form.url(class_="form-control")}}
+            </div>
+            <div class="row">
+                <div class="col">
+                    {{form.dead_line_date.label(class_="col-form-label")}}:
+                    {{form.dead_line_date(class_="form-control")}}
+                </div>
+                <div class="col">
+                    {{form.dead_line_time.label(class_="col-form-label")}}:
+                    {{form.dead_line_time(class_="form-control")}}
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 10px;">
+                {{form.submit(class='btn btn-primary')}}
+            </div>
+        </div>
+    </form>
+{% endblock %}

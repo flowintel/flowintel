@@ -8,9 +8,45 @@
     <h1>
         Cases
         <span>
-            <a class="btn btn-primary btn-small" href="/case/add"><i class="fa-solid fa-plus"></i></a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
         </span>
     </h1>
+
+    <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="FormModalLabel">Create a new case</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="" method="post">
+                    {{ form.hidden_tag() }}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            {{form.title.label(class_="col-form-label")}}:
+                            {{form.title(class_="form-control")}}
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="col-form-label">Description:</label>
+                            {{form.description(class_="form-control")}}
+                        </div>
+                        <div class="mb-3">
+                            {{form.dead_line_date.label(class_="col-form-label")}}:
+                            {{form.dead_line_date(class_="form-control")}}
+                        </div>
+                        <div class="mb-3">
+                            {{form.dead_line_time.label(class_="col-form-label")}}:
+                            {{form.dead_line_time(class_="form-control")}}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            {{form.submit(class='btn btn-primary')}}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <case_filter @cases_list="(cases) => case_list.cases = cases['cases']"></case_filter>
 

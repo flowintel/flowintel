@@ -19,11 +19,17 @@ case_blueprint = Blueprint(
 ##########
 
 
-@case_blueprint.route("/", methods=['GET'])
+@case_blueprint.route("/", methods=['GET', 'POST'])
 @login_required
 def index():
     """List all cases"""
-    return render_template("case/case_index.html")
+    form = CaseForm()
+    if form.validate_on_submit():
+        form_dict = form_to_dict(form)
+        case = CaseModel.add_case_core(form_dict, current_user)
+        flash("Case created", "success")
+        return redirect(f"/case/view/{case.id}")
+    return render_template("case/case_index.html", form=form)
 
 @case_blueprint.route("/view/<id>", methods=['GET'])
 @login_required
@@ -33,27 +39,22 @@ def view(id):
     
     if case:
         present_in_case = CaseModel.get_present_in_case(id, current_user)
-        return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case)
+        if present_in_case:
+            form = TaskForm()
+            if form.validate_on_submit():
+                form_dict = form_to_dict(form)
+                if CaseModel.add_task_core(form_dict, id):
+                    flash("Task created", "success")
+                else:
+                    flash("Error File", "error")
+                return redirect(f"/case/view/{id}")
+        return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case, form=form)
     return render_template("404.html")
 
 @case_blueprint.route("/my_assignment", methods=['GET'])
 @login_required
 def my_assignment():
     """View of a assigned tasks"""
-    return render_template("case/my_assignation.html")
-
-@case_blueprint.route("/add", methods=['GET','POST'])
-@login_required
-@editor_required
-def add_case():
-    """Add a new case"""
-    form = CaseForm()
-    if form.validate_on_submit():
-        form_dict = form_to_dict(form)
-        case = CaseModel.add_case_core(form_dict, current_user)
-        flash("Case created", "success")
-        return redirect(f"/case/view/{case.id}")
-    return render_template("case/add_case.html", form=form)
     return render_template("case/my_assignment.html")
 
 @case_blueprint.route("/edit/<id>", methods=['GET','POST'])
@@ -75,27 +76,7 @@ def edit_case(id):
             form.title.data = case_modif.title
             form.dead_line_date.data = case_modif.dead_line
             form.dead_line_time.data = case_modif.dead_line
-        return render_template("case/add_case.html", form=form)
-
-    return redirect(f"/case/view/{id}")
-
-@case_blueprint.route("/<id>/add_task", methods=['GET','POST'])
-@login_required
-@editor_required
-def add_task(id):
-    """Add a task to the case"""
-    if CaseModel.get_present_in_case(id, current_user):
-        form = TaskForm()
-        if form.validate_on_submit():
-            form_dict = form_to_dict(form)
-            if CaseModel.add_task_core(form_dict, id):
-                flash("Task created", "success")
-            else:
-                flash("Error File", "error")
-            return redirect(f"/case/view/{id}")
-        return render_template("case/add_task.html", form=form)
-    else:
-        flash("Access denied", "error")
+        return render_template("case/edit_case.html", form=form)
 
     return redirect(f"/case/view/{id}")
 
@@ -120,7 +101,7 @@ def edit_task(case_id, id):
             form.dead_line_date.data = task_modif.dead_line
             form.dead_line_time.data = task_modif.dead_line
         
-        return render_template("case/add_task.html", form=form)
+        return render_template("case/edit_task.html", form=form)
     else:
         flash("Access denied", "error")
     
