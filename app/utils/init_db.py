@@ -71,7 +71,7 @@ def create_admin():
     user = User(
         first_name="admin",
         last_name="admin",
-        email="admin@admin.com",
+        email="admin@admin",
         password="admin",
         role_id=role.id,
         api_key = generate_api_key()
