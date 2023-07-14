@@ -234,6 +234,44 @@ class Notification(db.Model):
         return json_dict
 
 
+class Case_Template(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True)
+    title = db.Column(db.String(64), index=True)
+    description = db.Column(db.String, nullable=True)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "uuid": self.uuid,
+            "title": self.title,
+            "description": self.description
+        }
+    
+
+class Task_Template(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True)
+    title = db.Column(db.String(64), index=True)
+    description = db.Column(db.String, nullable=True)
+    url = db.Column(db.String(64), index=True)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "uuid": self.uuid,
+            "title": self.title,
+            "description": self.description
+        }
+    
+
+class Case_Task_Template(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    task_id = db.Column(db.Integer, index=True)
+
+
+
 login_manager.anonymous_user = AnonymousUser
 
 @login_manager.user_loader

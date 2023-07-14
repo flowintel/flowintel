@@ -1,0 +1,40 @@
+<!-- 
+    Author: David Cruciani
+-->
+{% extends 'base.html' %}
+{% import 'macros/form_macros.html' as f %}
+
+{% block content %}
+    <div id="container">
+            <h2 class="ui dividing header">edit Task</h2>
+
+            <form action="" method="post">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    {{form.title.label(class_="col-form-label")}}:
+                    {{form.title(class_="form-control")}}
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="col-form-label">Description:</label>
+                    {{form.body(class_="form-control")}}
+                </div>
+
+                <div class="mb-3">
+                    {{form.url.label(class_="col-form-label")}}:
+                    {{form.url(class_="form-control")}}
+                </div>
+                
+                {{form.submit(class='btn btn-primary')}}
+            </form>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+<script type="text/javascript">
+    $(document).ready(function(){
+        $('.select2-select').select2()
+    });
+</script>
+{% endblock %}

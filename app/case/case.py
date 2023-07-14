@@ -628,3 +628,67 @@ def remove_assigned_user():
         CaseModel.remove_assign_task(tid, user_id, flag_current_user=False)
         return {"message": "Users Assigned"}, 201
     return {"message": "Not in Case"}
+
+
+@case_blueprint.route("/download/<cid>", methods=['GET'])
+@login_required
+def download_case(cid):
+    """Download a case"""
+
+    case = CaseModel.get_case(cid)
+    task_list = list()
+    for task in case.tasks:
+        task_list.append(task.to_json())
+    return_dict = case.to_json()
+    return_dict["tasks"] = task_list
+    return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=case_{case.title}.json'}
+
+
+
+@case_blueprint.route("/fork/<cid>", methods=['POST'])
+@login_required
+def fork_case(cid):
+    """Assign current user to the task"""
+
+    case_title_fork = request.json["case_title_fork"]
+
+    new_case = CaseModel.fork_case_core(cid, case_title_fork, current_user)
+    if type(new_case) == dict:
+        return new_case
+    return {"new_case_id": new_case.id}, 201
+
+
+@case_blueprint.route("/get_all_case_title", methods=['GET'])
+@login_required
+def get_all_case_title():
+    data_dict = dict(request.args)
+    if CaseModel.get_case_by_title(data_dict["title"]):
+        flag = True
+    else:
+        flag = False
+    
+    return {"title_already_exist": flag}
+
+
+@case_blueprint.route("/create_template/<cid>", methods=['POST'])
+@login_required
+@editor_required
+def create_template(cid):
+    case_title_template = request.json["case_title_template"]
+
+    new_case = CaseModel.create_template_from_case(cid, case_title_template)
+    if type(new_case) == dict:
+        return new_case
+    return {"new_case_id": new_case.id}, 201
+
+
+@case_blueprint.route("/get_all_case_template_title", methods=['GET'])
+@login_required
+def get_all_case_template_title():
+    data_dict = dict(request.args)
+    if CaseModel.get_case_template_by_title(data_dict["title"]):
+        flag = True
+    else:
+        flag = False
+    
+    return {"title_already_exist": flag}

@@ -1,0 +1,119 @@
+<!-- 
+    Author: David Cruciani
+-->
+{% extends 'base.html' %}
+
+{% block content %}
+    
+    <div id="container">
+        <h1>
+            Task Templates
+            <span>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal"><i class="fa-solid fa-plus"></i></button>
+            </span>
+        </h1>
+    
+        <hr>
+
+        <div id="top"></div>
+
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="exampleModalLabel">New message</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="" method="post">
+                        {{ form.hidden_tag() }}
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                {{form.title.label(class_="col-form-label")}}:
+                                {{form.title(class_="form-control")}}
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="col-form-label">Description:</label>
+                                {{form.body(class_="form-control")}}
+                            </div>
+                            <div class="mb-3">
+                                {{form.url.label(class_="col-form-label")}}:
+                                {{form.url(class_="form-control")}}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                {{form.submit(class='btn btn-primary')}}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+  
+
+        <template v-if="task_templates_list">
+            <template v-for="template, key in task_templates_list">
+                <div class="list-group" style="margin-bottom: 20px;">
+                    <div style="display:flex">
+                        <a class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h4 class="mb-1">[[ key+1 ]]-[[ template.title ]]</h4>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <p v-if="template.description" class="card-text">[[ template.description ]]</p>
+                                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <p v-if="template.url" class="card-text">[[ template.url ]]</p>
+                                <p v-else class="card-text"><i style="font-size: 12px;">No url</i></p>
+                            </div>
+                        </a>
+                        <div v-if="!template.current_user_permission.read_only" style="display: grid;">
+                            <a class="btn btn-primary btn-sm" :href="`/tools/template/edit_task/${template.id}`" type="button" title="Edit the task template"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <button class="btn btn-danger btn-sm"  @click="delete_task(template)" title="Delete the task template"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </template>
+
+        <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+    </div>
+        
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const task_templates_list = ref(null)
+
+                async function fetch_template(){
+                    task_templates_list.value = null
+                    const res = await fetch("/tools/get_all_task_templates")
+                    let loc = await res.json()
+                    task_templates_list.value = loc["templates"]
+                }
+
+                async function delete_task(task){
+                    const res = await fetch("/tools/template/delete_task/" + task.id)
+                    let index = task_templates_list.value.indexOf(task)
+                    if(index > -1)
+                        task_templates_list.value.splice(index, 1)
+                }
+
+
+                fetch_template()
+    
+                return {
+                    task_templates_list,
+                    delete_task
+                }
+            }
+        }).mount('#container')
+
+    </script>
+{% endblock %}

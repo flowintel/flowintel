@@ -1,0 +1,83 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    
+    <div id="container">
+        <h1>
+            Case Templates
+            <span>
+                <a class="btn btn-primary btn-small" href="/tools/add_template" title="Add a Template"><i class="fa-solid fa-plus"></i></a>
+            </span>
+        </h1>
+    
+        <hr>
+
+        <div id="top"></div>
+
+        <template v-if="templates_list">
+            <template v-for="template in templates_list">
+                <div class="list-group" style="margin-bottom: 20px;">
+                    <div style="display:flex">
+                        <a :href="`/tools/template/case/view/${template.id}`" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h4 class="mb-1">[[ template.id ]]-[[ template.title ]]</h4>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <p v-if="template.description" class="card-text">[[ template.description ]]</p>
+                                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            </div>
+                        </a>
+                        <div v-if="!template.current_user_permission.read_only" style="display: grid;">
+                            <a class="btn btn-primary btn-sm" :href="" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <button class="btn btn-danger btn-sm"  @click="delete_case(template)" title="Delete the case"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </template>
+
+        <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+    </div>
+        
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const templates_list = ref(null)
+
+                async function fetch_templates(){
+                    templates_list.value = null
+                    const res = await fetch("/tools/get_all_case_templates")
+                    let loc = await res.json()
+                    templates_list.value = loc["templates"]
+                }
+
+                async function delete_case(case_template){
+                    const res = await fetch("/tools/template/delete_case/" + case_template.id)
+                    let index = templates_list.value.indexOf(case_template)
+                    if(index > -1)
+                    templates_list.value.splice(index, 1)
+                }
+
+
+                fetch_templates()
+    
+                return {
+                    templates_list,
+                    delete_case
+                }
+            }
+        }).mount('#container')
+
+    </script>
+{% endblock %}

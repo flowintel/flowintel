@@ -16,6 +16,19 @@
 				<a href="/calendar" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fa-solid fa-calendar fa-fw me-3"></i><span>Calendar</span>
 				</a>
+				<button class="list-group-item list-group-item-action py-2 ripple" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="true">
+					<i class="fa-solid fa-toolbox fa-fw me-3"></i><span>Tools</span>
+				</button>
+				<div class="collapse" id="tools-collapse">
+					<!-- <a href="/tools/templates" class="list-group-item list-group-item-action py-2 ripple">Templates</a> -->
+					<button class="list-group-item list-group-item-action py-2 ripple" data-bs-toggle="collapse" data-bs-target="#template-collapse" aria-expanded="true">
+						<span>Templates</span>
+					</button>
+					<div class="collapse" id="template-collapse">
+						<a href="/tools/templates/case" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Case</a>
+						<a href="/tools/templates/task" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Task</a>
+					</div>
+				</div>
 				{% if current_user.is_admin() %}
 				<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fas fa-users fa-fw me-3"></i><span>Org</span>

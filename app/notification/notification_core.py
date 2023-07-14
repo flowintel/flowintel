@@ -86,7 +86,7 @@ def create_notification_user(message, case_id, user_id, html_icon):
     return notif
 
 
-def case_task_dead_line_notif(case_or_task, msg, html_icon, now, current_user):
+def case_task_dead_line_notif(case_or_task, msg, html_icon, now, current_user, flag_task=False):
     if case_or_task.dead_line:
         notif_dead_line = None
         if case_or_task.notif_dead_line_id:
@@ -104,7 +104,10 @@ def case_task_dead_line_notif(case_or_task, msg, html_icon, now, current_user):
                         notif_dead_line.is_read = False
                         db.session.commit()
                 else:
-                    notif_dead_line = create_notification_user(f"{loc.days} {msg}", case_or_task.id, current_user.id, html_icon)
+                    if flag_task:
+                        notif_dead_line = create_notification_user(f"{loc.days} {msg}", case_or_task.case_id, current_user.id, html_icon)
+                    else:
+                        notif_dead_line = create_notification_user(f"{loc.days} {msg}", case_or_task.id, current_user.id, html_icon)
                     notif_dead_line.for_dead_line = now
                     case_or_task.notif_dead_line_id = notif_dead_line.id
                     db.session.commit()
@@ -123,7 +126,7 @@ def create_notification_dead_line(current_user):
     for task in tasks:
         case = Case.query.get(task.case_id)
         msg = f"days remains for task '{task.title}' of case '{case.id}-{case.title}'"
-        case_task_dead_line_notif(task, msg, "fa-solid fa-skull-crossbones", now, current_user)
+        case_task_dead_line_notif(task, msg, "fa-solid fa-skull-crossbones", now, current_user, True)
 
     return True
 

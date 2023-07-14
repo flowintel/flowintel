@@ -1,6 +1,6 @@
 import os
 from .. import db
-from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status
+from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status, Task_Template, Case_Task_Template, Case_Template
 from ..utils.utils import isUUID, create_upload_dir
 import uuid
 import bleach
@@ -38,6 +38,12 @@ def get_all_cases():
     """Return all cases"""
     cases = Case.query.order_by(desc(Case.last_modif))
     return cases
+
+def get_case_by_title(title):
+    return Case.query.filter_by(title=title).first()
+
+def get_case_template_by_title(title):
+    return Case_Template.query.filter_by(title=title).first()
 
 def get_role(user):
     """Return role for the current user"""
@@ -556,3 +562,67 @@ def my_assignation_sort_by_filter(user, completed, filter):
 
 def get_all_users_core(case):
     return Org.query.join(Case_Org, Case_Org.case_id==case.id).where(Case_Org.org_id==Org.id).all()
+
+
+def fork_case_core(cid, case_title_fork, user):
+    case_title_stored = get_case_by_title(case_title_fork)
+    if case_title_stored:
+        return {"message": "Error, title already exist"}
+    case = get_case(cid)
+
+    case_json = case.to_json()
+    case_json["title"] = case_title_fork
+
+    if case.dead_line:
+        case_json["dead_line_date"] = datetime.datetime.strptime(case_json["dead_line"].split(" ")[0], "%Y-%m-%d").date()
+        case_json["dead_line_time"] = datetime.datetime.strptime(case_json["dead_line"].split(" ")[1], "%H:%M").time()
+    else:
+        case_json["dead_line_date"] = None
+        case_json["dead_line_time"] = None
+
+    new_case = add_case_core(case_json, user)
+
+    for task in case.tasks:
+        task_json = task.to_json()
+        if task.dead_line:
+            task_json["dead_line_date"] = datetime.datetime.strptime(task_json["dead_line"].split(" ")[0], "%Y-%m-%d").date()
+            task_json["dead_line_time"] = datetime.datetime.strptime(task_json["dead_line"].split(" ")[1], "%H:%M").time()
+        else:
+            task_json["dead_line_date"] = None
+            task_json["dead_line_time"] = None
+
+        add_task_core(task_json, new_case.id)
+    return new_case
+
+
+def create_template_from_case(cid, case_title_template):
+    if Case_Template.query.filter_by(title=case_title_template).first():
+        return {"message": "Error, title already exist"}
+    
+    case = get_case(cid)
+    new_template = Case_Template(
+        uuid=str(uuid.uuid4()),
+        title=case_title_template,
+        description=case.description
+    )
+    db.session.add(new_template)
+    db.session.commit()
+
+    for task in case.tasks:
+        task_template = Task_Template(
+            uuid=str(uuid.uuid4()),
+            title=task.title,
+            description=task.description,
+            url=task.url
+        )
+        db.session.add(task_template)
+        db.session.commit()
+
+        case_task_template = Case_Task_Template(
+                case_id=new_template.id,
+                task_id=task_template.id
+            )
+        db.session.add(case_task_template)
+        db.session.commit()
+
+    return new_template
