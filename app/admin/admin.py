@@ -85,7 +85,7 @@ def delete_user(id):
 # Orgs #
 ########
 
-@admin_blueprint.route("/orgs", methods=['GET'])
+@admin_blueprint.route("/orgs", methods=['GET', 'POST'])
 @login_required
 @admin_required
 def orgs():

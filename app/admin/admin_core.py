@@ -53,11 +53,10 @@ def create_default_org(user):
 def delete_default_org(user_org_id):
     """Delete the default org for the user"""
     org = Org.query.get(user_org_id)
-    if org.default_org:
-        cases_orgs = Case_Org.query.filter_by(org_id=org.id)
-        for case_org in cases_orgs:
-            db.session.delete(case_org)
-            db.session.commit()
+    cp = 0
+    for user in org.users:
+        cp += 1
+    if org.default_org and not cp > 0:
         db.session.delete(org)
         db.session.commit()
         return True

@@ -31,7 +31,7 @@ def index():
         return redirect(f"/case/view/{case.id}")
     return render_template("case/case_index.html", form=form)
 
-@case_blueprint.route("/view/<id>", methods=['GET'])
+@case_blueprint.route("/view/<id>", methods=['GET', 'POST'])
 @login_required
 def view(id):
     """View of a case"""
