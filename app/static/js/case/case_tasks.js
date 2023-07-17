@@ -318,7 +318,7 @@ export default {
             </div>
 		</a>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case" style="display: grid;">
-			<button v-if="task.completed" class="btn btn-secondary btn-sm"  @click="complete_task(task)" title="Revive the case"><i class="fa-solid fa-backward"></i></button>
+			<button v-if="task.completed" class="btn btn-secondary btn-sm"  @click="complete_task(task)" title="Revive the task"><i class="fa-solid fa-backward"></i></button>
 			<button v-else class="btn btn-success btn-sm"  @click="complete_task(task)" title="Complete the task"><i class="fa-solid fa-check"></i></button>
 			<button v-if="!task.is_current_user_assigned" class="btn btn-secondary btn-sm"  @click="take_task(task, cases_info.current_user)" title="Be assigned to the task"><i class="fa-solid fa-hand"></i></button>
 			<button v-else class="btn btn-secondary btn-sm"  @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment"><i class="fa-solid fa-handshake-slash"></i></button>
@@ -332,37 +332,6 @@ export default {
 	<div class="collapse" :id="'collapse'+task.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
 			<div class="d-flex w-100 justify-content-between">
-				<div>
-					<template v-if="task.url">
-						<div>
-							<h3>Tool/Url</h3>
-						</div>
-						<div>
-							<a :href=task.url>[[task.url]]</a>
-						</div>
-					</template>
-
-					<div>
-						<h5>Files</h5>
-					</div>
-					<div>
-						<div>
-							<input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
-							<button class="btn btn-primary" @click="add_file(task)">Add</button>
-						</div>
-						<br/>
-						<template v-if="task.files.length">
-							<template v-for="file in task.files">
-								<div>
-									<a class="btn btn-link" :href="'/case/task/'+task.id+'/download_file/'+file.id">
-										[[ file.name.split(")")[1] ]]
-									</a>
-									<button class="btn btn-danger" @click="delete_file(file, task)"><i class="fa-solid fa-trash"></i></button>
-								</div>
-							</template>
-						</template>
-					</div>
-				</div>
 				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case">
 					<div v-if="users_in_case">
 						<h5>Assign</h5>
@@ -402,6 +371,39 @@ export default {
 					</div>					
 				</div>
 			</div>
+			<hr>
+			<div class="d-flex w-100 justify-content-between">
+				<div v-if="task.url">
+					<div>
+						<h5>Tool/Url</h5>
+					</div>
+					<div>
+						[[task.url]]
+					</div>
+				</div>
+
+				<div>
+				<div>
+					<h5>Files</h5>
+				</div>
+					<div>
+						<input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
+						<button class="btn btn-primary" @click="add_file(task)">Add</button>
+					</div>
+					<br/>
+					<template v-if="task.files.length">
+						<template v-for="file in task.files">
+							<div>
+								<a class="btn btn-link" :href="'/case/task/'+task.id+'/download_file/'+file.id">
+									[[ file.name.split(")")[1] ]]
+								</a>
+								<button class="btn btn-danger" @click="delete_file(file, task)"><i class="fa-solid fa-trash"></i></button>
+							</div>
+						</template>
+					</template>
+				</div>
+			</div>
+			<hr>
 			<div class="d-flex w-100 justify-content-between">
 				<div class="w-100">
 					<div>
