@@ -18,12 +18,8 @@ from ..db_class.db import User, Org, Role
 from ..utils.utils import isUUID
 
 class RegistrationForm(FlaskForm):
-    first_name = StringField(
-        'First name', validators=[InputRequired(),
-                                  Length(1, 64)])
-    last_name = StringField(
-        'Last name', validators=[InputRequired(),
-                                 Length(1, 64)])
+    first_name = StringField('First name', validators=[InputRequired(), Length(1, 64)])
+    last_name = StringField('Last name', validators=[InputRequired(), Length(1, 64)])
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
     password = PasswordField('Password', validators=[
             InputRequired(),
@@ -38,9 +34,7 @@ class RegistrationForm(FlaskForm):
 
     def validate_email(self, field):
         if User.query.filter_by(email=field.data).first():
-            raise ValidationError('Email already registered. (Did you mean to '
-                                  '<a href="{}">log in</a> instead?)'.format(
-                                    url_for('account.index')))
+            raise ValidationError('Email already registered')
 
 
 
@@ -61,9 +55,7 @@ class AdminEditUserFrom(FlaskForm):
         user = User.query.get(self.user_id.data)
         if not field.data == user.email:
             if User.query.filter_by(email=field.data).first():
-                raise ValidationError('Email already registered. (Did you mean to '
-                                    '<a href="{}">log in</a> instead?)'.format(
-                                        url_for('account.index')))
+                raise ValidationError('Email already registered')
 
 
 class CreateOrgForm(FlaskForm):
