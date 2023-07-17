@@ -1,4 +1,3 @@
-import re
 import os
 import random
 import string
@@ -11,7 +10,6 @@ def isUUID(uid):
         return True
     except ValueError:
         return False
-    # return re.match(r"^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$", str(uuid))
 
 
 def generate_api_key(length=60):
@@ -42,6 +40,6 @@ def form_to_dict(form):
             loc_dict[field] = form._fields[field].data
     return loc_dict
 
-def create_upload_dir(uplaod_dir):
-    if not os.path.isdir(uplaod_dir):
-        os.mkdir(uplaod_dir)
+def create_upload_dir(upload_dir):
+    if not os.path.isdir(upload_dir):
+        os.mkdir(upload_dir)

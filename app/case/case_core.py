@@ -11,7 +11,7 @@ from flask import request, send_file
 from werkzeug.utils import secure_filename
 from ..notification import notification_core as NotifModel
 
-UPLOAD_FOLDER = '/home/dacru/Desktop/Git/flowintel-cm/uploads'
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 
 
 def get_case(cid):
