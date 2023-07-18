@@ -551,18 +551,8 @@ def sort_by_finished_core():
 def sort_by_filter(completed, filter): 
     return Case.query.filter_by(completed=completed).order_by(desc(filter)).all()
 
-
-def my_assignment_sort_by_status(user, completed):
-    return Task.query.join(Task_User, Task_User.task_id==Task.id).where(Task_User.user_id==user.id, Task.completed==completed).all()
-
-
-def my_assignment_sort_by_filter(user, completed, filter):
-    return Task.query.join(Task_User, Task_User.task_id==Task.id).where(Task_User.user_id==user.id, Task.completed==completed).order_by(desc(filter)).all()
-
-
 def get_all_users_core(case):
     return Org.query.join(Case_Org, Case_Org.case_id==case.id).where(Case_Org.org_id==Org.id).all()
-
 
 def fork_case_core(cid, case_title_fork, user):
     case_title_stored = get_case_by_title(case_title_fork)

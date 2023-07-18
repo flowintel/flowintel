@@ -13,11 +13,11 @@ export default {
 			show_ongoing = ongoing
 
 			if(show_ongoing){
-				const res = await fetch('/case/my_assignment/sort_by_ongoing')
+				const res = await fetch('/my_assignment/sort_by_ongoing')
 				let loc = await res.json()
 				emit('tasks_list', loc)
 			}else{
-				const res = await fetch('/case/my_assignment/sort_by_finished')
+				const res = await fetch('/my_assignment/sort_by_finished')
 				let loc = await res.json()
 				emit('tasks_list', loc)
 			}
@@ -50,9 +50,9 @@ export default {
 			let res
 			if (current_filter){
 				if(show_ongoing)
-					res = await fetch('/case/my_assignment/tasks/ongoing?filter=' + current_filter)
+					res = await fetch('/my_assignment/tasks/ongoing?filter=' + current_filter)
 				else
-					res = await fetch('/case/my_assignment/tasks/finished?filter=' + current_filter)
+					res = await fetch('/my_assignment/tasks/finished?filter=' + current_filter)
 				let loc = await res.json()
 				if(asc_desc)
 					emit('tasks_list', loc)

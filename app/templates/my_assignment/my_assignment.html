@@ -60,7 +60,7 @@
 {% block script %}
     <script type="module">
         const { createApp, ref } = Vue
-        import my_assignment_filter from '../../static/js/case/my_assignment_filter.js'
+        import my_assignment_filter from '../../static/js/my_assignment/my_assignment_filter.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -74,7 +74,7 @@
                 async function fetchAssignedTask() {
                     tasks_list.value = null
                     const res = await fetch(
-                        '/case/my_assignment_data'
+                        '/my_assignment/data'
                     )
                     tasks_list.value = await res.json()
                     tasks_list.value.sort(function(a,b){
