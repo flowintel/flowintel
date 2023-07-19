@@ -13,8 +13,8 @@
         {{form.case_id}}
         <div class="modal-body">
             <div class="mb-3">
-                <select data-placeholder="Task Template" multiple class="select2-select form-control" name="tasks" id="tasks">
-                    {% for choice in form.org_id %}
+                <select data-placeholder="Organisations" multiple class="select2-select form-control" name="org_id" id="org_id">
+                    {% for choice in form.org_id.choices %}
                         <option value="{{choice[0]}}">{{choice[1]}}</option>
                     {% endfor %}
                 </select>
