@@ -1,3 +1,4 @@
+import {prepare_toast} from '../toaster.js'
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -17,25 +18,28 @@ export default {
 		})
 
 
-
-		function change_status(status, task){
-			task.last_modif = Date.now()
-			task.status_id=status
-			fetch(
+		async function change_status(status, task){
+			const res = await fetch(
 				'/case/change_status/task/'+task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"status": status})
 				}
 			)
-				
-			if(props.status_info.status[status-1].name == 'Finished'){
+			if(await res.status==200){
 				task.last_modif = Date.now()
-				task.completed = true
-				fetch('/case/complete_task/'+task.id)
-			}else{
-				task.completed = false
+				task.status_id=status
+					
+				if(props.status_info.status[status-1].name == 'Finished'){
+					task.last_modif = Date.now()
+					task.completed = true
+					fetch('/case/complete_task/'+task.id)
+				}else{
+					task.completed = false
+				}
 			}
+			let result = await prepare_toast(res)
+			emit("prepare_toast", result)
 		}
 
 		function take_task(task, current_user){

@@ -150,12 +150,13 @@ def change_status_task(tid):
     
     status = request.json["status"]
     task = CaseModel.get_task(tid)
-
-    if CaseModel.get_present_in_case(task.case_id, current_user):
-        CaseModel.change_status_task(status, task)
-        flash("Assignment changed", "success")
-        return {"message": "Assignment changed"}, 201
-    return {"message": "Not in Case"}
+    if task:
+        if CaseModel.get_present_in_case(task.case_id, current_user):
+            if CaseModel.change_status_task(status, task):
+                return {"message": "Status changed", "toast_class": "success-subtle"}, 200
+            return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 400
+    return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
 
 
 @task_blueprint.route("/task/<tid>/download_file/<fid>", methods=['GET'])

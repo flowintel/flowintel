@@ -140,12 +140,14 @@ def delete():
     """Delete the case"""
     cid = request.json["case_id"]
 
-    if CaseModel.get_present_in_case(cid, current_user):
-        if CaseModel.delete_case(cid, current_user):
-            return {"message": "Case deleted"}, 201
-        else:
-            return {"message": "Error case deleted"}, 201
-    return {"message": "Not in case"}
+    if CaseModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user):
+            if CaseModel.delete_case(cid, current_user):
+                return {"message": "Case deleted", "toast_class": "success-subtle"}, 200
+            else:
+                return {"message": "Error case deleted", 'toast_class': "danger-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case no found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("view/get_case_info/<cid>", methods=['GET'])
@@ -168,13 +170,14 @@ def get_case_info(cid):
 @editor_required
 def complete_case(cid):
     """Complete the case"""
-
-    if CaseModel.get_present_in_case(cid, current_user):
-        if CaseModel.complete_case(cid, current_user):
-            return {"message": "Case completed"}, 201
-        else:
-            return {"message": "Error case completed"}, 201
-    return {"message": "Not in case"}
+    if CaseModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user):
+            if CaseModel.complete_case(cid, current_user):
+                return {"message": "Case completed", "toast_class": "success-subtle"}, 200
+            else:
+                return {"message": "Error case completed", 'toast_class': "danger-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case no found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/<cid>/remove_org/<oid>", methods=['GET'])
@@ -183,11 +186,13 @@ def complete_case(cid):
 def remove_org_case(cid, oid):
     """Remove an org to the case"""
 
-    if CaseModel.get_present_in_case(cid, current_user):
-        if CaseModel.remove_org_case(cid, oid, current_user):
-            return {"message": "Org removed from case"}
-        return {"message", "Error removing org from case"}
-    return {"message": "Not in Case"}
+    if CaseModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user):
+            if CaseModel.remove_org_case(cid, oid, current_user):
+                return {"message": "Org removed from case", "toast_class": "success-subtle"}, 200
+            return {"message": "Error removing org from case", "toast_class": "danger-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/change_status/<cid>", methods=['POST'])
@@ -199,11 +204,12 @@ def change_status(cid):
     status = request.json["status"]
     case = CaseModel.get_case(cid)
 
-    if CaseModel.get_present_in_case(cid, current_user):
-        CaseModel.change_status_core(status, case)
-        flash("Assignment changed", "success")
-        return {"message": "Assignment changed"}, 201
-    return {"message": "Not in Case"}
+    if CaseModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user):
+            CaseModel.change_status_core(status, case)
+            return {"message": "Status changed", "toast_class": "success-subtle"}, 200
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/get_status", methods=['GET'])

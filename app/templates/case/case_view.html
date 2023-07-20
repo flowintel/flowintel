@@ -80,6 +80,8 @@
             <p style="display: inline-block;">{{case.description}}</p>
         </div>
         {%endif%}
+
+        <button type="button" class="btn btn-primary" @click="test_toast()">Toast</button>
         
         <hr style="margin-bottom: 40px;">
         <div id="top"></div>
@@ -140,7 +142,7 @@
         <template v-if="cases_info && cases_info.tasks && status_info" >
             <template v-for="task in cases_info.tasks" :key="task.id">
                 <div class="list-group" style="margin-bottom: 20px;">
-                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
+                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg" @prepare_toast="(msg) => prepare_toast(msg)"></case_tasks>
                 </div>
             </template>
         </template>
@@ -153,9 +155,10 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, onMounted } = Vue
+        const { createApp, ref, computed, nextTick, onMounted } = Vue
         import case_tasks from '../../static/js/case/case_tasks.js'
         import task_filter from '../../static/js/case/task_filter.js'
+        import {display_toast, display_prepared_toast, message_list} from '../../static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -164,10 +167,13 @@
                 task_filter
             },
             setup() {
+                let c = 0
                 const edit_mode = ref(false)
                 const cases_info = ref(null)
                 const status_info = ref(null)
                 const users_in_case = ref(null)
+
+                // const message_list = ref([])
 
 
                 async function fetchCase() {
@@ -194,74 +200,60 @@
 
 
                 async function delete_case(case_id){
-                    await fetch(
+                    const res = await fetch(
                         '/case/delete',{
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
                             body: JSON.stringify({"case_id": case_id.toString()})
                         }
                     )
-                    return window.location.href="/case"
+                    if (await res.status == 200)
+                        return window.location.href="/case"
+                    display_toast(res)
                 }
 
                 async function complete_case(case_loc){
-                    await fetch('/case/complete_case/'+case_loc.id)
-
-                    if(status_info.value.status[case_loc.status_id -1].name == 'Finished'){
-                        for(let i in status_info.value.status){
-                            if(status_info.value.status[i].name == 'Revive')
-                            case_loc.status_id = status_info.value.status[i].id
-                        }
-                        if(case_loc.status_id == status)
-                            case_loc.status_id = 1
-
-                            await fetch('/case/change_status/'+case_loc.id,{
-                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                            method: "POST",
-                            body: JSON.stringify({"status": case_loc.status_id})
-                        })
-                    }else{
-                        for(let i in status_info.value.status){
-                            if(status_info.value.status[i].name == 'Finished'){
+                    const res = await fetch('/case/complete_case/'+case_loc.id)
+                    if (await res.status == 200){
+                        if(status_info.value.status[case_loc.status_id -1].name == 'Finished'){
+                            for(let i in status_info.value.status){
+                                if(status_info.value.status[i].name == 'Created')
                                 case_loc.status_id = status_info.value.status[i].id
+                            }
+                            if(case_loc.status_id == status)
+                                case_loc.status_id = 1
+
                                 await fetch('/case/change_status/'+case_loc.id,{
-                                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                    method: "POST",
-                                    body: JSON.stringify({"status": case_loc.status_id})
-                                })
-                                break
+                                headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                method: "POST",
+                                body: JSON.stringify({"status": case_loc.status_id})
+                            })
+                        }else{
+                            for(let i in status_info.value.status){
+                                if(status_info.value.status[i].name == 'Finished'){
+                                    case_loc.status_id = status_info.value.status[i].id
+                                    await fetch('/case/change_status/'+case_loc.id,{
+                                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                        method: "POST",
+                                        body: JSON.stringify({"status": case_loc.status_id})
+                                    })
+                                    break
+                                }
                             }
                         }
-			        }
-                    return window.location.href="/case"
-                }
-
-                function change_status(status, task){
-                    task.last_modif = Date.now()
-                    task.status_id=status
-                    fetch(
-                        '/case/change_status/'+task.id,{
-                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                            method: "POST",
-                            body: JSON.stringify({"status": status})
-                        }
-                    )
-                        
-                    if(status_info.value.status[status-1].name == 'Finished'){
-                        task.last_modif = Date.now()
-                        task.completed = true
-                        fetch('/case/complete_task/'+task.id)
-                    }else{
-                        task.completed = false
+                        return window.location.href="/case"
                     }
+                    display_toast(res)
                 }
 
-                function remove_org_case(cases_info, org){
-                    fetch('/case/' + cases_info.case.id + '/remove_org/' + org.id)
-
-                    let index = cases_info.orgs_in_case.indexOf(org)
-                    if(index > -1)
-                        cases_info.orgs_in_case.splice(index, 1)
+                async function remove_org_case(cases_info, org){
+                    const res = awaitfetch('/case/' + cases_info.case.id + '/remove_org/' + org.id)
+                    if (await res.status == 200){
+                        let index = cases_info.orgs_in_case.indexOf(org)
+                        if(index > -1)
+                            cases_info.orgs_in_case.splice(index, 1)
+                    }
+                    display_toast(res)
                 }
 
                 async function fork_case(case_id){
@@ -314,6 +306,16 @@
                     return false
                 }
 
+                async function prepare_toast(msg){
+                    await display_prepared_toast(msg)
+                }
+
+                async function test_toast(){
+                    let loc = {"message": `Hello ${c}`, "toast_class": "success-subtle", "id": Math.random()}
+                    c += 1
+                    prepare_toast(loc)
+                }
+
                 fetchCase()
                 fetchStatus()
                 get_all_users_case()
@@ -323,17 +325,19 @@
                     cases_info,
                     status_info,
                     users_in_case,
+                    message_list,
                     edit_mode,
                     moment,
                     delete_case,
-                    change_status,
                     remove_org_case,
                     complete_case,
                     fork_case,
-                    create_template
+                    create_template,
+                    prepare_toast,
+                    test_toast
                 }
             }
-        }).mount('#container')
+        }).mount('.container')
 
     </script>
 {% endblock %}

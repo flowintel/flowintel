@@ -12,6 +12,7 @@
         </span>
     </h1>
 
+
     <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -25,18 +26,30 @@
                         <div class="mb-3">
                             {{form.title.label(class_="col-form-label")}}:
                             {{form.title(class_="form-control")}}
+                            {% if form.title.errors %}
+                                <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                            {%endif%}
                         </div>
                         <div class="mb-3">
                             <label for="description" class="col-form-label">Description:</label>
                             {{form.description(class_="form-control")}}
+                            {% if form.description.errors %}
+                                <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                            {%endif%}
                         </div>
                         <div class="mb-3">
                             {{form.dead_line_date.label(class_="col-form-label")}}:
                             {{form.dead_line_date(class_="form-control")}}
+                            {% if form.dead_line_date.errors %}
+                                <div style="color: red;">{{form.dead_line_date.errors[0] | safe}}</div>
+                            {%endif%}
                         </div>
                         <div class="mb-3">
                             {{form.dead_line_time.label(class_="col-form-label")}}:
                             {{form.dead_line_time(class_="form-control")}}
+                            {% if form.dead_line_time.errors %}<div style="color: red;">{{form.dead_line_time.errors[0] | safe}}
+                                </div>
+                            {%endif%}
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -92,8 +105,9 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref } = Vue
+        const { createApp, ref, nextTick } = Vue
         import case_filter from '../../static/js/case/case_filter.js'
+        import {display_toast, message_list} from '../../static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -120,61 +134,68 @@
                     status_info.value = await res.json()
                 }
 
-                function delete_case(case_list, case_loc){
-                    fetch(
+                async function delete_case(case_list, case_loc){
+                    const res = await fetch(
                         '/case/delete',{
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
                             body: JSON.stringify({"case_id": case_loc.id.toString()})
                         }
                     )
-
-                    let index = case_list.cases.indexOf(case_loc)
-                    if(index > -1)
-                        case_list.cases.splice(index, 1)
+                    if(await res.status == 200){
+                        let index = case_list.cases.indexOf(case_loc)
+                        if(index > -1)
+                            case_list.cases.splice(index, 1)
+                    }
+                    display_toast(res)
                 }
 
-                function complete_case(case_loc, cases_list){
-                    case_loc.last_modif = Date.now()
-                    case_loc.completed = !case_loc.completed
-                    fetch('/case/complete_case/'+case_loc.id)
+                async function complete_case(case_loc, cases_list){
+                    const res = await fetch('/case/complete_case/'+case_loc.id)
+                    if(await res.status == 200){
+                        case_loc.last_modif = Date.now()
+                        case_loc.completed = !case_loc.completed
 
-                    if(status_info.value.status[case_loc.status_id -1].name == 'Finished'){
-                        for(let i in status_info.value.status){
-                            if(status_info.value.status[i].name == 'Revive')
-                            case_loc.status_id = status_info.value.status[i].id
-                        }
-                        if(case_loc.status_id == status)
-                            case_loc.status_id = 1
-
-                        fetch('/case/change_status/'+case_loc.id,{
-                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                            method: "POST",
-                            body: JSON.stringify({"status": case_loc.status_id})
-                        })
-                    }else{
-                        for(let i in status_info.value.status){
-                            if(status_info.value.status[i].name == 'Finished'){
+                        if(status_info.value.status[case_loc.status_id -1].name == 'Finished'){
+                            for(let i in status_info.value.status){
+                                if(status_info.value.status[i].name == 'Created')
                                 case_loc.status_id = status_info.value.status[i].id
-                                fetch('/case/change_status/'+case_loc.id,{
-                                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                    method: "POST",
-                                    body: JSON.stringify({"status": case_loc.status_id})
-                                })
-                                break
+                            }
+                            if(case_loc.status_id == status)
+                                case_loc.status_id = 1
+
+                            fetch('/case/change_status/'+case_loc.id,{
+                                headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                method: "POST",
+                                body: JSON.stringify({"status": case_loc.status_id})
+                            })
+                        }else{
+                            for(let i in status_info.value.status){
+                                if(status_info.value.status[i].name == 'Finished'){
+                                    case_loc.status_id = status_info.value.status[i].id
+                                    fetch('/case/change_status/'+case_loc.id,{
+                                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                        method: "POST",
+                                        body: JSON.stringify({"status": case_loc.status_id})
+                                    })
+                                    break
+                                }
                             }
                         }
-			        }
 
-                    let index = cases_list.indexOf(case_loc)
-                    if(index > -1)
-                        cases_list.splice(index, 1)
+                        let index = cases_list.indexOf(case_loc)
+                        if(index > -1)
+                            cases_list.splice(index, 1)
+                    }
+
+                    display_toast(res)
                 }
 
                 fetchCase()
                 fetchStatus()
 
                 return {
+                    message_list,
                     case_list,
                     status_info,
                     delete_case,
