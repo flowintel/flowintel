@@ -174,11 +174,11 @@ def get_task_by_case(cid):
 @editor_required
 def remove_task(cid, tid):
     """remove task form case"""
-    template = ToolsModel.get_task_template(tid)
-    if template:
+    if ToolsModel.get_task_template(tid):
         if ToolsModel.remove_task_case(cid, tid):
-            return {"message": "Task removed"}
-    return {"message": "Template not found"}
+            return {"message":"Task Template removed", "toast_class": "success-subtle"}, 200
+        return {"message":"Error Task Template removed", "toast_class": "danger-subtle"}, 400
+    return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
 
 
 @tools_blueprint.route("/template/delete_task/<tid>", methods=['GET'])
@@ -186,11 +186,11 @@ def remove_task(cid, tid):
 @editor_required
 def delete_task(tid):
     """delete a task template"""
-    template = ToolsModel.get_task_template(tid)
-    if template:
+    if ToolsModel.get_task_template(tid):
         if ToolsModel.delete_task_template(tid):
-            return {"message": "Task template deleted"}
-    return {"message": "Template not found"}
+            return {"message":"Task Template deleted", "toast_class": "success-subtle"}, 200
+        return {"message":"Error Task Template deleted", "toast_class": "danger-subtle"}, 400
+    return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
 
 
 @tools_blueprint.route("/template/delete_case/<cid>", methods=['GET'])
@@ -198,11 +198,11 @@ def delete_task(tid):
 @editor_required
 def delete_case(cid):
     """delete a case template"""
-    template = ToolsModel.get_case_template(cid)
-    if template:
+    if ToolsModel.get_case_template(cid):
         if ToolsModel.delete_case_template(cid):
-            return {"message": "Case template deleted"}
-    return {"message": "Template not found"}
+            return {"message":"Case Template deleted", "toast_class": "success-subtle"}, 200
+        return {"message":"Error Case Template deleted", "toast_class": "danger-subtle"}, 400
+    return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
 
 
 @tools_blueprint.route("/template/create_case_from_template/<cid>", methods=['POST'])

@@ -85,6 +85,7 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -100,20 +101,24 @@
 
                 async function delete_task(task){
                     const res = await fetch("/tools/template/delete_task/" + task.id)
-                    let index = task_templates_list.value.indexOf(task)
-                    if(index > -1)
-                        task_templates_list.value.splice(index, 1)
+                    if(await res.status == 200){
+                        let index = task_templates_list.value.indexOf(task)
+                        if(index > -1)
+                            task_templates_list.value.splice(index, 1)
+                    }
+                    display_toast(res)
                 }
 
 
                 fetch_template()
     
                 return {
+                    message_list,
                     task_templates_list,
                     delete_task
                 }
             }
-        }).mount('#container')
+        }).mount('.container')
 
     </script>
 {% endblock %}

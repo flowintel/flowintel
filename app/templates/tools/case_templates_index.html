@@ -49,6 +49,7 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -64,20 +65,24 @@
 
                 async function delete_case(case_template){
                     const res = await fetch("/tools/template/delete_case/" + case_template.id)
-                    let index = templates_list.value.indexOf(case_template)
-                    if(index > -1)
-                    templates_list.value.splice(index, 1)
+                    if(await res.status == 200){
+                        let index = templates_list.value.indexOf(case_template)
+                        if(index > -1)
+                            templates_list.value.splice(index, 1)
+                    }
+                    display_toast(res)
                 }
 
 
                 fetch_templates()
     
                 return {
+                    message_list,
                     templates_list,
                     delete_case
                 }
             }
-        }).mount('#container')
+        }).mount('.container')
 
     </script>
 {% endblock %}

@@ -138,6 +138,7 @@
 </script>
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -155,9 +156,12 @@
 
                 async function remove_task(case_id, task){
                     const res = await fetch("/tools/template/" + case_id + "/remove_task/" + task.id)
-                    let index = tasks_list.value.indexOf(task)
-                    if(index > -1)
-                        tasks_list.value.splice(index, 1)
+                    if(await res.status == 200){
+                        let index = tasks_list.value.indexOf(task)
+                        if(index > -1)
+                            tasks_list.value.splice(index, 1)
+                    }
+                    display_toast(res)
                 }
 
                 async function delete_case(case_template){
@@ -192,13 +196,14 @@
                 fetchTasks()
 
                 return {
+                    message_list,
                     tasks_list,
                     remove_task,
                     delete_case,
                     fork_case
                 }
             }
-        }).mount('#container')
+        }).mount('.container')
 
     </script>
 {% endblock %}
