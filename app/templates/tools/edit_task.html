@@ -14,15 +14,24 @@
                 <div class="mb-3">
                     {{form.title.label(class_="col-form-label")}}:
                     {{form.title(class_="form-control")}}
+                    {% if form.title.errors %}
+                        <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
                 <div class="mb-3">
                     <label for="description" class="col-form-label">Description:</label>
                     {{form.body(class_="form-control")}}
+                    {% if form.body.errors %}
+                        <div style="color: red;">{{form.body.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
 
                 <div class="mb-3">
                     {{form.url.label(class_="col-form-label")}}:
                     {{form.url(class_="form-control")}}
+                    {% if form.url.errors %}
+                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
                 
                 {{form.submit(class='btn btn-primary')}}

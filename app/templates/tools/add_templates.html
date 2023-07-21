@@ -14,10 +14,16 @@
                 <div class="mb-3">
                     {{form.title.label(class_="col-form-label")}}:
                     {{form.title(class_="form-control")}}
+                    {% if form.title.errors %}
+                        <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
                 <div class="mb-3">
                     <label for="description" class="col-form-label">Description:</label>
                     {{form.description(class_="form-control")}}
+                    {% if form.description.errors %}
+                        <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
 
                 <h4>Task</h4>
@@ -28,6 +34,9 @@
                             <option value="{{choice[0]}}">{{choice[1]}}</option>
                         {% endfor %}
                     </select>
+                    {% if form.tasks.errors %}
+                        <div style="color: red;">{{form.tasks.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
                 
                 {{form.submit(class='btn btn-primary')}}

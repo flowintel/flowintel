@@ -53,14 +53,23 @@
                                 <div class="mb-3">
                                     {{form_task.title.label(class_="col-form-label")}}:
                                     {{form_task.title(class_="form-control")}}
+                                    {% if form_task.title.errors %}
+                                        <div style="color: red;">{{form_task.title.errors[0] | safe}}</div>
+                                    {%endif%}
                                 </div>
                                 <div class="mb-3">
                                     <label for="description" class="col-form-label">Description:</label>
                                     {{form_task.body(class_="form-control")}}
+                                    {% if form_task.body.errors %}
+                                        <div style="color: red;">{{form_task.body.errors[0] | safe}}</div>
+                                    {%endif%}
                                 </div>
                                 <div class="mb-3">
                                     {{form_task.url.label(class_="col-form-label")}}:
                                     {{form_task.url(class_="form-control")}}
+                                    {% if form_task.url.errors %}
+                                        <div style="color: red;">{{form_task.url.errors[0] | safe}}</div>
+                                    {%endif%}
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -87,6 +96,9 @@
                                             <option value="{{choice[0]}}">{{choice[1]}}</option>
                                         {% endfor %}
                                     </select>
+                                    {% if form_task.tasks.errors %}
+                                        <div style="color: red;">{{form_task.tasks.errors[0] | safe}}</div>
+                                    {%endif%}
                                 </div>
                                 {{form_task.submit(class='btn btn-primary')}}
                             </div>

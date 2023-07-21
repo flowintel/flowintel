@@ -106,22 +106,37 @@
                             <div class="mb-3">
                                 {{form.title.label(class_="col-form-label")}}:
                                 {{form.title(class_="form-control")}}
+                                {% if form.title.errors %}
+                                    <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                                {%endif%}
                             </div>
                             <div class="mb-3">
                                 <label for="description" class="col-form-label">Description:</label>
                                 {{form.description(class_="form-control")}}
+                                {% if form.description.errors %}
+                                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                                {%endif%}
                             </div>
                             <div class="mb-3">
                                 {{form.url.label(class_="col-form-label")}}:
                                 {{form.url(class_="form-control")}}
+                                {% if form.url.errors %}
+                                    <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                                {%endif%}
                             </div>
                             <div class="mb-3">
                                 {{form.dead_line_date.label(class_="col-form-label")}}:
                                 {{form.dead_line_date(class_="form-control")}}
+                                {% if form.dead_line_date.errors %}
+                                    <div style="color: red;">{{form.dead_line_date.errors[0] | safe}}</div>
+                                {%endif%}
                             </div>
                             <div class="mb-3">
                                 {{form.dead_line_time.label(class_="col-form-label")}}:
                                 {{form.dead_line_time(class_="form-control")}}
+                                {% if form.dead_line_time.errors %}
+                                    <div style="color: red;">{{form.dead_line_time.errors[0] | safe}}</div>
+                                {%endif%}
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

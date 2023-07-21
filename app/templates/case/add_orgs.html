@@ -18,6 +18,9 @@
                         <option value="{{choice[0]}}">{{choice[1]}}</option>
                     {% endfor %}
                 </select>
+                {% if form.org_id.errors %}
+                    <div style="color: red;">{{form.org_id.errors[0] | safe}}</div>
+                {%endif%}
             </div>
             <div class="modal-footer" style="margin-top: 10px;">
                 {{form.submit(class='btn btn-primary')}}

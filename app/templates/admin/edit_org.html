@@ -14,14 +14,23 @@
             <div class="mb-3">
                 {{form.name.label(class_="col-form-label")}}:
                 {{form.name(class_="form-control")}}
+                {% if form.name.errors %}
+                    <div style="color: red;">{{form.name.errors[0] | safe}}</div>
+                {%endif%}
             </div>
             <div class="mb-3">
                 <label for="description" class="col-form-label">Description:</label>
                 {{form.description(class_="form-control")}}
+                {% if form.description.errors %}
+                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                {%endif%}
             </div>
             <div class="mb-3">
                 {{form.uuid.label(class_="col-form-label")}}:
                 {{form.uuid(class_="form-control")}}
+                {% if form.uuid.errors %}
+                    <div style="color: red;">{{form.uuid.errors[0] | safe}}</div>
+                {%endif%}
             </div>
             <div class="modal-footer">
                 {{form.submit(class='btn btn-primary')}}

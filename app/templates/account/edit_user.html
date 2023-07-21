@@ -5,34 +5,38 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-            <h2 class="ui dividing header">Edit User</h2>
-
-            {% set flashes = {
-                'error':   get_flashed_messages(category_filter=['form-error']),
-                'warning': get_flashed_messages(category_filter=['form-check-email']),
-                'info':    get_flashed_messages(category_filter=['form-info']),
-                'success': get_flashed_messages(category_filter=['form-success'])
-            } %}
-
-            {{ f.begin_form(form, flashes) }}
-
-
-            {{ f.render_form_field(form.first_name) }}
-            {{ f.render_form_field(form.last_name) }}
-
-            {{ f.render_form_field(form.email) }}
-
-
-            {{ f.form_message(flashes['error'], header='Something went wrong.', class='error') }}
-            {{ f.form_message(flashes['warning'], header='Check your email.', class='warning') }}
-            {{ f.form_message(flashes['info'], header='Information', class='info') }}
-            {{ f.form_message(flashes['success'], header='Success!', class='success') }}
-
-            {% for field in form | selectattr('type', 'equalto', 'SubmitField') %}
-                {{ f.render_form_field(field) }}
-            {% endfor %}
-
-            {{ f.end_form(form) }}
+    <form action="" method="post">
+        {{ form.hidden_tag() }}
+        {% if not edit_mode %}
+            {{form.user_id}}
+        {%endif%}
+        <div class="modal-body">
+            <div class="row">
+                <div class="col">
+                    {{form.first_name.label(class_="col-form-label")}}:
+                    {{form.first_name(class_="form-control")}}
+                    {% if form.first_name.errors %}
+                        <div style="color: red;">{{form.first_name.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="col">
+                    {{form.last_name.label(class_="col-form-label")}}:
+                    {{form.last_name(class_="form-control")}}
+                    {% if form.last_name.errors %}
+                        <div style="color: red;">{{form.last_name.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+            </div>
+            <div class="mb-3">
+                {{form.email.label(class_="col-form-label")}}:
+                {{form.email(class_="form-control")}}
+                {% if form.email.errors %}
+                    <div style="color: red;">{{form.email.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div class="modal-footer" style="margin-top: 10px;">
+                {{form.submit(class='btn btn-primary')}}
+            </div>
         </div>
-    </div>
+    </form>
 {% endblock %}
