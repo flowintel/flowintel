@@ -25,7 +25,7 @@
             </div>
         </div>
 
-        <a class="btn btn-primary" href="/notification/mark_all_read">Mark all read</a>
+        <button v-if="!flag_is_read" class="btn btn-primary" @click="mark_all_read()">Mark all read</button>
         
         <template v-if="notif_list">
             <template v-for="notif in notif_list">
@@ -71,6 +71,7 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '../../static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -91,15 +92,18 @@
                     }
 			    }
 
-                function read_notification(notif){
-                    notif.is_read = !notif.is_read
-                    notif.read_date = Date.now()
+                async function read_notification(notif){
+                    const res = await fetch("/notification/read_notification/" + notif.id)
 
-                    fetch("/notification/read_notification/" + notif.id)
+                    if(await res.status == 200){
+                        notif.is_read = !notif.is_read
+                        notif.read_date = Date.now()
 
-                    let index = notif_list.value.indexOf(notif)
-                    if(index > -1)
-                        notif_list.value.splice(index, 1)
+                        let index = notif_list.value.indexOf(notif)
+                        if(index > -1)
+                            notif_list.value.splice(index, 1)
+                    }
+                    display_toast(res)
                 }
 
                 async function select_unread_read(unread_read){
@@ -110,12 +114,24 @@
                     }
                 }
 
-                function delete_notif(notif){
-                    fetch("/notification/delete/" + notif.id)
+                async function delete_notif(notif){
+                    const res = await fetch("/notification/delete/" + notif.id)
 
-                    let index = notif_list.value.indexOf(notif)
-                    if(index > -1)
-                        notif_list.value.splice(index, 1)
+                    if(await res.status == 200){
+                        let index = notif_list.value.indexOf(notif)
+                        if(index > -1)
+                            notif_list.value.splice(index, 1)
+                    }
+                    display_toast(res)
+                }
+
+                async function mark_all_read(){
+                    const res = await fetch("/notification/mark_all_read" )
+
+                    if(await res.status == 200){
+                        notif_list.value = []
+                    }
+                    display_toast(res)
                 }
 
 
@@ -123,15 +139,17 @@
                 // fetchNotif(false)
     
                 return {
+                    message_list,
                     notif_list,
                     flag_is_read,
                     read_notification,
                     select_unread_read,
                     delete_notif,
-                    moment
+                    moment,
+                    mark_all_read
                 }
             }
-        }).mount('#container')
+        }).mount('.container')
 
     </script>
 {% endblock %}

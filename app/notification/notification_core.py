@@ -138,3 +138,5 @@ def mark_all_read(user):
         notif.is_read = True
         notif.read_date = datetime.datetime.now()
         db.session.commit()
+
+    return True

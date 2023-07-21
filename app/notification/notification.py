@@ -46,20 +46,29 @@ def get_user_notifications_len():
 @login_required
 def read_notification(nid):
     """Read Notification"""
-    
-    return {"message": NotifModel.read_notification_core(nid)}
+    notif = NotifModel.get_notif(nid)
+    if notif:
+        if NotifModel.read_notification_core(nid):
+            return {"message": "Notification read", "toast_class": "success-subtle"}, 200
+        return {"message": "Error Notification read", "toast_class": "danger-subtle"}, 400
+    return {"message":"Notification not found", "toast_class": "danger-subtle"}, 404
 
 @notification_blueprint.route("/delete/<nid>", methods=['GET'])
 @login_required
 def delete_notification(nid):
     """Delete Notification"""
-    
-    return {"message": NotifModel.delete_notification_core(nid)}
+    notif = NotifModel.get_notif(nid)
+    if notif:
+        if NotifModel.delete_notification_core(nid):
+            return {"message": "Notification deleted", "toast_class": "success-subtle"}, 200
+        return {"message": "Error Notification deleted", "toast_class": "danger-subtle"}, 400
+    return {"message":"Notification not found", "toast_class": "danger-subtle"}, 404
 
 
 
 @notification_blueprint.route("/mark_all_read", methods=['GET'])
 @login_required
 def mark_all_read():
-    NotifModel.mark_all_read(current_user)
-    return redirect("/notification")
+    if NotifModel.mark_all_read(current_user):
+        return {"message": "Notifications all read", "toast_class": "success-subtle"}, 200
+    return {"message": "Error Notification all read", "toast_class": "danger-subtle"}, 400
