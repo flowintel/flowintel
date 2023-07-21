@@ -146,7 +146,7 @@ def delete():
                 return {"message": "Case deleted", "toast_class": "success-subtle"}, 200
             else:
                 return {"message": "Error case deleted", 'toast_class': "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case no found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -176,7 +176,7 @@ def complete_case(cid):
                 return {"message": "Case completed", "toast_class": "success-subtle"}, 200
             else:
                 return {"message": "Error case completed", 'toast_class': "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case no found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -191,7 +191,7 @@ def remove_org_case(cid, oid):
             if CaseModel.remove_org_case(cid, oid, current_user):
                 return {"message": "Org removed from case", "toast_class": "success-subtle"}, 200
             return {"message": "Error removing org from case", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -208,7 +208,7 @@ def change_status(cid):
         if CaseModel.get_present_in_case(cid, current_user):
             CaseModel.change_status_core(status, case)
             return {"message": "Status changed", "toast_class": "success-subtle"}, 200
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -279,23 +279,6 @@ def get_all_users(cid):
     return {"message": "Not in Case"}
 
 
-@case_blueprint.route("/assign_users_task", methods=['POST'])
-@login_required
-@editor_required
-def assign_user_task():
-    """Assign current user to the task"""
-
-    tid = request.json["task_id"]
-    users_list = request.json["users_id"]
-
-    task = CaseModel.get_task(tid)
-    if CaseModel.get_present_in_case(task.case_id, current_user):
-        for user in users_list:
-            CaseModel.assign_task(tid, user, flag_current_user=False)
-        return {"message": "Users Assigned"}, 201
-    return {"message": "Not in Case"}
-
-
 @case_blueprint.route("/<cid>/get_assigned_users/<tid>", methods=['GET'])
 @login_required
 def get_assigned_users(cid, tid):
@@ -304,22 +287,6 @@ def get_assigned_users(cid, tid):
     if CaseModel.get_present_in_case(cid, current_user):
         users, _ = CaseModel.get_users_assign_task(tid, current_user)
         return users
-    return {"message": "Not in Case"}
-
-
-@case_blueprint.route("/remove_assigned_user", methods=['POST'])
-@login_required
-@editor_required
-def remove_assigned_user():
-    """Assign current user to the task"""
-
-    tid = request.json["task_id"]
-    user_id = request.json["user_id"]
-
-    task = CaseModel.get_task(tid)
-    if CaseModel.get_present_in_case(task.case_id, current_user):
-        CaseModel.remove_assign_task(tid, user_id, flag_current_user=False)
-        return {"message": "Users Assigned"}, 201
     return {"message": "Not in Case"}
 
 

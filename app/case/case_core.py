@@ -242,7 +242,6 @@ def add_task_core(form_dict, cid):
 
 def add_file_core(task, files_list):
     create_upload_dir(UPLOAD_FOLDER)
-    return_files_list = list()
     for file in files_list:
         if files_list[file].filename:
             filename = f"({str(uuid.uuid4())}){secure_filename(files_list[file].filename)}"
@@ -262,8 +261,7 @@ def add_file_core(task, files_list):
             update_last_modif(task.case_id)
             update_last_modif_task(task.id)
             db.session.commit()
-            return_files_list.append(f.to_json())
-    return return_files_list
+    return True
 
 def edit_task_core(form_dict, tid):
     """Edit a task to the DB"""

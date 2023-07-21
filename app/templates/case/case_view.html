@@ -80,8 +80,6 @@
             <p style="display: inline-block;">{{case.description}}</p>
         </div>
         {%endif%}
-
-        <button type="button" class="btn btn-primary" @click="test_toast()">Toast</button>
         
         <hr style="margin-bottom: 40px;">
         <div id="top"></div>
@@ -142,7 +140,7 @@
         <template v-if="cases_info && cases_info.tasks && status_info" >
             <template v-for="task in cases_info.tasks" :key="task.id">
                 <div class="list-group" style="margin-bottom: 20px;">
-                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg" @prepare_toast="(msg) => prepare_toast(msg)"></case_tasks>
+                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
                 </div>
             </template>
         </template>
@@ -167,13 +165,10 @@
                 task_filter
             },
             setup() {
-                let c = 0
                 const edit_mode = ref(false)
                 const cases_info = ref(null)
                 const status_info = ref(null)
                 const users_in_case = ref(null)
-
-                // const message_list = ref([])
 
 
                 async function fetchCase() {
@@ -306,16 +301,6 @@
                     return false
                 }
 
-                async function prepare_toast(msg){
-                    await display_prepared_toast(msg)
-                }
-
-                async function test_toast(){
-                    let loc = {"message": `Hello ${c}`, "toast_class": "success-subtle", "id": Math.random()}
-                    c += 1
-                    prepare_toast(loc)
-                }
-
                 fetchCase()
                 fetchStatus()
                 get_all_users_case()
@@ -332,9 +317,7 @@
                     remove_org_case,
                     complete_case,
                     fork_case,
-                    create_template,
-                    prepare_toast,
-                    test_toast
+                    create_template
                 }
             }
         }).mount('.container')

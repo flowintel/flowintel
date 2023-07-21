@@ -1,4 +1,4 @@
-import {prepare_toast} from '../toaster.js'
+import {display_toast} from '../toaster.js'
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -38,99 +38,109 @@ export default {
 					task.completed = false
 				}
 			}
-			let result = await prepare_toast(res)
-			emit("prepare_toast", result)
+			await display_toast(res)
 		}
 
-		function take_task(task, current_user){
-			task.last_modif = Date.now()
-			task.is_current_user_assigned = true
-			task.users.push(current_user)
-			
-			fetch(
+		async function take_task(task, current_user){
+			const res = await fetch(
 				'/case/take_task',{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"task_id": task.id.toString()})
 				}
 			)
+
+			if( await res.status == 200){
+				task.last_modif = Date.now()
+				task.is_current_user_assigned = true
+				task.users.push(current_user)
+			}
+			await display_toast(res)
 		}
 
-		function remove_assign_task(task, current_user){
-			task.last_modif = Date.now()
-			task.is_current_user_assigned = false
-
-			let index = -1
-
-			for(let i=0;i<task.users.length;i++){
-				if (task.users[i].id==current_user.id)
-					index = i
-			}
-
-			if(index > -1)
-				task.users.splice(index, 1)
-		
-			fetch(
+		async function remove_assign_task(task, current_user){
+			const res = await fetch(
 				'/case/remove_assign_task',{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"task_id": task.id.toString()})
 				}
 			)
+			if( await res.status == 200){
+				task.last_modif = Date.now()
+				task.is_current_user_assigned = false
+	
+				let index = -1
+	
+				for(let i=0;i<task.users.length;i++){
+					if (task.users[i].id==current_user.id)
+						index = i
+				}
+	
+				if(index > -1)
+					task.users.splice(index, 1)
+			}
+			await display_toast(res)
 		}
 
 
 		async function assign_user_task(){
 			let users_select = $('#selectUser'+props.task.id).val()
 			if(users_select.length){
-				await fetch(
+				const res_msg = await fetch(
 					'/case/assign_users_task',{
 						headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 						method: "POST",
 						body: JSON.stringify({"task_id": props.task.id.toString(), "users_id": users_select})
 					}
 				)
-
-				if(users_select.includes(props.cases_info.current_user.id.toString())){
-					props.task.is_current_user_assigned = true
+				if( await res_msg.status == 200){
+					if(users_select.includes(props.cases_info.current_user.id.toString())){
+						props.task.is_current_user_assigned = true
+					}
+					const res = await fetch('/case/' + props.task.case_id + '/get_assigned_users/' +props.task.id)
+					let loc = await res.json()
+					props.task.users = loc
+					props.task.last_modif = Date.now()
+					emit('task', props.task)
 				}
-				const res = await fetch('/case/' + props.task.case_id + '/get_assigned_users/' +props.task.id)
-				let loc = await res.json()
-				props.task.users = loc
-				props.task.last_modif = Date.now()
-				emit('task', props.task)
+				await display_toast(res_msg)
 			}
 		}
 
 
 		async function remove_assigned_user(user_id){
-			props.task.last_modif = Date.now()
-
-			let index = -1
-			for(let i=0;i<props.task.users.length;i++){
-				if (props.task.users[i].id==user_id){
-					if(user_id == props.cases_info.current_user.id.toString()){
-						props.task.is_current_user_assigned = true
-					}
-					props.task.is_current_user_assigned = false
-					index = i
-				}
-			}
-
-			if(index > -1)
-				props.task.users.splice(index, 1)
-		
-			fetch(
+			const res = await fetch(
 				'/case/remove_assigned_user',{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"task_id": props.task.id.toString(), "user_id": user_id})
 				}
 			)
+
+			if( await res.status == 200){
+				props.task.last_modif = Date.now()
+
+				let index = -1
+				for(let i=0;i<props.task.users.length;i++){
+					if (props.task.users[i].id==user_id){
+						if(user_id == props.cases_info.current_user.id.toString()){
+							props.task.is_current_user_assigned = true
+						}
+						props.task.is_current_user_assigned = false
+						index = i
+					}
+				}
+
+				if(index > -1)
+					props.task.users.splice(index, 1)
+			}
+			await display_toast(res)
 		}
 
-		function delete_task(task, task_array){
-			fetch(
+
+		async function delete_task(task, task_array){
+			const res = await fetch(
 				'/case/delete_task',{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
@@ -138,9 +148,12 @@ export default {
 				}
 			)
 
-			let index = task_array.indexOf(task)
-			if(index > -1)
-				task_array.splice(index, 1)
+			if( await res.status == 200){
+				let index = task_array.indexOf(task)
+				if(index > -1)
+					task_array.splice(index, 1)
+			}
+			await display_toast(res)
 		}
 
 		async function edit_note(task){
@@ -153,13 +166,8 @@ export default {
 		}
 
 		async function modif_note(task){
-			task.last_modif = Date.now()
-			emit('edit_mode', false)
-
 			let notes = this.$refs["ref_note_" + task.id].value
-			task.notes = notes
-
-			await fetch(
+			const res_msg = await fetch(
 				'/case/modif_note',{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
@@ -167,14 +175,21 @@ export default {
 				}
 			)
 
-			const res = await fetch('/case/get_note_markdown?id='+task.id)
-			let loc = await res.json()
-			task.notes = loc["note"]
+			if(await res_msg.status == 200){
+				task.last_modif = Date.now()
+				emit('edit_mode', false)
+	
+				task.notes = notes
+
+				const res = await fetch('/case/get_note_markdown?id='+task.id)
+				let loc = await res.json()
+				task.notes = loc["note"]
+			}
+			await display_toast(res_msg)
 		}
 
 
 		async function add_file(task){
-			task.last_modif = Date.now()
 			let files = document.getElementById('formFileMultiple'+task.id).files
 
 			let formData = new FormData();
@@ -191,58 +206,73 @@ export default {
 					body: formData
 				}
 			)
-			
-			let loc = await res.json()
-			for(let file in loc){
-				task.files.push(loc[file])
+			if(await res.status == 200){
+				const res_files = await fetch('/case/get_files/'+task.id)
+
+				if(await res_files.status == 200){
+					task.last_modif = Date.now()
+					let loc = await res_files.json()
+					task.files = []
+					for(let file in loc['files']){
+						task.files.push(loc['files'][file])
+					}
+				}else{
+					await display_toast(res_files)
+				}
 			}
 
+			await display_toast(res)
 		}
 
-		function delete_file(file, task){
-			task.last_modif = Date.now()
-			fetch('/case/task/' + task.id + '/delete_file/' + file.id)
+		async function delete_file(file, task){
+			const res = await fetch('/case/task/' + task.id + '/delete_file/' + file.id)
+			if(await res.status == 200){
+				task.last_modif = Date.now()
 
-			let index = task.files.indexOf(file)
-			if(index > -1)
-			task.files.splice(index, 1)
+				let index = task.files.indexOf(file)
+				if(index > -1)
+					task.files.splice(index, 1)
+			}
+			await display_toast(res)
 		}
 
-		function complete_task(task){
-			task.last_modif = Date.now()
-			task.completed = !task.completed
-			let status = task.status_id
-			fetch('/case/complete_task/'+task.id)
+		async function complete_task(task){
+			const res = await fetch('/case/complete_task/'+task.id)
+			if (await res.status == 200){
+				task.last_modif = Date.now()
+				task.completed = !task.completed
+				let status = task.status_id
+				if(props.status_info.status[task.status_id -1].name == 'Finished'){
+					for(let i in props.status_info.status){
+						if(props.status_info.status[i].name == 'Created')
+							task.status_id = props.status_info.status[i].id
+					}
+					if(task.status_id == status)
+						task.status_id = 1
 
-			if(props.status_info.status[task.status_id -1].name == 'Finished'){
-				for(let i in props.status_info.status){
-					if(props.status_info.status[i].name == 'Revive')
-						task.status_id = props.status_info.status[i].id
-				}
-				if(task.status_id == status)
-					task.status_id = 1
-
-				fetch('/case/change_status/task/'+task.id,{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-					method: "POST",
-					body: JSON.stringify({"status": task.status_id})
-				})
-			}else{
-				for(let i in props.status_info.status){
-					if(props.status_info.status[i].name == 'Finished'){
-						task.status_id = props.status_info.status[i].id
-						fetch('/case/change_status/task/'+task.id,{
-							headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-							method: "POST",
-							body: JSON.stringify({"status": task.status_id})
-						})
-						break
+					fetch('/case/change_status/task/'+task.id,{
+						headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+						method: "POST",
+						body: JSON.stringify({"status": task.status_id})
+					})
+				}else{
+					for(let i in props.status_info.status){
+						if(props.status_info.status[i].name == 'Finished'){
+							task.status_id = props.status_info.status[i].id
+							fetch('/case/change_status/task/'+task.id,{
+								headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+								method: "POST",
+								body: JSON.stringify({"status": task.status_id})
+							})
+							break
+						}
 					}
 				}
+				let index = props.cases_info.tasks.indexOf(task)
+				if(index > -1)
+					props.cases_info.tasks.splice(index, 1)
 			}
-			let index = props.cases_info.tasks.indexOf(task)
-			if(index > -1)
-				props.cases_info.tasks.splice(index, 1)
+			await display_toast(res)
 		}
 
 		function formatNow(dt) {
