@@ -69,16 +69,16 @@ def edit_user(uid):
     return render_template("admin/add_user.html", form=form, edit_mode=True)
 
 
-@admin_blueprint.route("/delete_user/<id>", methods=['GET','POST'])
+@admin_blueprint.route("/delete_user/<uid>", methods=['GET','POST'])
 @login_required
 @admin_required
-def delete_user(id):
+def delete_user(uid):
     """Delete the user"""
-    if AdminModel.delete_user_core(id):
-        flash("User deleted", 'success')
-    else:
-        flash("User not deleted", "error")
-    return redirect("/admin/orgs")
+    if AdminModel.get_user(uid):
+        if AdminModel.delete_user_core(uid):
+            return {"message":"User deleted", "toast_class": "success-subtle"}, 200
+        return {"message":"Error user deleted", "toast_class": "danger-subtle"}, 400
+    return {"message":"User not found", "toast_class": "danger-subtle"}, 404
 
 
 ########
@@ -117,16 +117,16 @@ def edit_org(id):
     return render_template("admin/edit_org.html", form=form)
 
 
-@admin_blueprint.route("/delete_org/<id>", methods=['GET','POST'])
+@admin_blueprint.route("/delete_org/<oid>", methods=['GET','POST'])
 @login_required
 @admin_required
-def delete_org(id):
+def delete_org(oid):
     """Delete the org"""
-    if AdminModel.delete_org_core(id):
-        flash("Org deleted", "success")
-    else:
-        flash("Org not deleted", "error")
-    return redirect("/admin/orgs")
+    if AdminModel.get_org(oid):
+        if AdminModel.delete_org_core(oid):
+            return {"message":"Org deleted", "toast_class": "success-subtle"}, 200
+        return {"message":"Error Org deleted", "toast_class": "danger-subtle"}, 400
+    return {"message":"Org not found", "toast_class": "danger-subtle"}, 404
 
 
 @admin_blueprint.route("/get_orgs", methods=['GET','POST'])

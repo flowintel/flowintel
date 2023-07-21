@@ -66,7 +66,7 @@
                         {% if current_user.is_admin() %}
                             <div style="display: grid;">
                                 <a class="btn btn-primary btn-sm" :href="`/admin/edit_org/${org.id}`" type="button" title="Edit the org"><i class="fa-solid fa-pen-to-square"></i></a>
-                                <a class="btn btn-danger btn-sm"  :href="`/admin/delete_org/${org.id}`" type="button" title="Delete the org"><i class="fa-solid fa-trash"></i></a>
+                                <button class="btn btn-danger btn-sm"  @click="delete_org(org)" title="Delete the org"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         {% endif %}
                     </div>
@@ -87,9 +87,9 @@
                                             <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
-                                            <a class="btn btn-danger btn-sm" :href='"/admin/delete_user/"+user.id' type="button" title="Delete the user">
+                                            <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
                                                 <i class="fa-solid fa-trash"></i>
-                                            </a>
+                                            </button>
                                         </td>
                                     </tr>
                                 </template>
@@ -113,7 +113,8 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
-        
+        import {display_toast, message_list} from '../../static/js/toaster.js'
+
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
@@ -137,17 +138,40 @@
                     const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
                 }
 
+                async function delete_org(org){
+                    const res = await fetch('/admin/delete_org/'+org.id)
+                    if(await res.status == 200){
+                        let index = orgs_list.value.indexOf(org)
+                        if(index > -1)
+                            orgs_list.value.splice(index, 1)
+                    }
+                    display_toast(res)
+                }
+
+                async function delete_user(user,org_id){
+                    const res = await fetch('/admin/delete_user/'+user.id)
+                    if(await res.status == 200){
+                        let index = users_table.value[org_id].indexOf(user)
+                        if(index > -1)
+                            users_table.value[org_id].splice(index, 1)
+                    }
+                    display_toast(res)
+                }
+
 
                 fetchOrgs()
 
     
                 return {
+                    message_list,
                     orgs_list,
                     users_table,
-                    extend_collapse
+                    extend_collapse,
+                    delete_org,
+                    delete_user
                 }
             }
-        }).mount('#container')
+        }).mount('.container')
 
     </script>
 {% endblock %}
