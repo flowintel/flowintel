@@ -68,7 +68,7 @@
         {% block script %}
         <script type="module">
             // Empty vue used for toast to declar vue is used in the rest of the project
-            const {} = Vue
+            const {createApp} = Vue
             createApp({
                 delimiters: ['[[', ']]'],
                 setup() {}

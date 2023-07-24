@@ -14,7 +14,8 @@
             </small>
 
             <div v-if="cases_info && !cases_info.permission.read_only && cases_info.present_in_case" style="float:right">
-                <button class="btn btn-success btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
+                <button v-if="cases_info.case.completed" class="btn btn-secondary btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-backward"></i></button>
+                <button v-else class="btn btn-success btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
                 <a class="btn btn-primary btn-sm" :href="`/case/edit/${cases_info.case.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
                 <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
                 <a class="btn btn-primary btn-sm"  :href="`/case/download/${cases_info.case.id}`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
