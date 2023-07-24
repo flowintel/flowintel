@@ -18,34 +18,55 @@
                     <div class="col">
                         {{form.first_name.label(class_="col-form-label")}}:
                         {{form.first_name(class_="form-control")}}
+                        {% if form.first_name.errors %}
+                            <div style="color: red;">{{form.first_name.errors[0] | safe}}</div>
+                        {%endif%}
                     </div>
                     <div class="col">
                         {{form.last_name.label(class_="col-form-label")}}:
                         {{form.last_name(class_="form-control")}}
+                        {% if form.last_name.errors %}
+                            <div style="color: red;">{{form.last_name.errors[0] | safe}}</div>
+                        {%endif%}
                     </div>
                 </div>
                 <div class="mb-3">
                     {{form.email.label(class_="col-form-label")}}:
                     {{form.email(class_="form-control")}}
+                    {% if form.email.errors %}
+                        <div style="color: red;">{{form.email.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
                 <div class="row">
                     <div class="col">
                         {{form.password.label(class_="col-form-label")}}:
                         {{form.password(class_="form-control")}}
+                        {% if form.password.errors %}
+                            <div style="color: red;">{{form.password.errors[0] | safe}}</div>
+                        {%endif%}
                     </div>
                     <div class="col">
                         {{form.password2.label(class_="col-form-label")}}:
                         {{form.password2(class_="form-control")}}
+                        {% if form.password2.errors %}
+                            <div style="color: red;">{{form.password2.errors[0] | safe}}</div>
+                        {%endif%}
                     </div>
                 </div>
                 <div class="row">
                     <div class="col">
                         {{form.role.label(class_="col-form-label")}}:
                         {{form.role(class_="form-control")}}
+                        {% if form.role.errors %}
+                            <div style="color: red;">{{form.role.errors[0] | safe}}</div>
+                        {%endif%}
                     </div>
                     <div class="col">
                         {{form.org.label(class_="col-form-label")}}:
                         {{form.org(class_="form-control")}}
+                        {% if form.org.errors %}
+                            <div style="color: red;">{{form.org.errors[0] | safe}}</div>
+                        {%endif%}
                     </div>
                 </div>
                 <div class="modal-footer" style="margin-top: 10px;">
