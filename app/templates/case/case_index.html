@@ -61,10 +61,23 @@
         </div>
     </div>
 
-    <case_filter @cases_list="(cases) => case_list.cases = cases['cases']"></case_filter>
+    <case_filter @cases_list="cases => emit_result(cases)" @current_filter="filter => current_filter = filter"></case_filter>
 
     <hr>
     <div id="top"></div>
+
+    <!-- pagination -->
+    <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchCase(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in case_list.nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchCase(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetchCase(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+    <!-- pagination -->
+
     <template v-if="case_list">
         <template v-for="case_loc in case_list.cases">
             <div class="list-group" style="margin-bottom: 20px;">
@@ -99,6 +112,17 @@
         </template>
 
     </template>
+
+    <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchCase(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in case_list.nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchCase(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetchCase(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+
     <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
 
@@ -107,7 +131,7 @@
     <script type="module">
         const { createApp, ref} = Vue
         import case_filter from '../../static/js/case/case_filter.js'
-        import {display_toast, message_list} from '../../static/js/toaster.js'
+        import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -117,13 +141,20 @@
             setup() {
                 const case_list = ref(null)
                 const status_info = ref(null)
+                const current_page = ref(1)
+                const current_filter = ref("")
 
-                async function fetchCase() {
+                async function fetchCase(page) {
+                    let url
+                    if(current_filter.value)
+                        url = `/case/ongoing?page=${page}&filter=${current_filter.value}`
+                    else
+                        url = 'case/get_cases?page='+page
+
                     case_list.value = null
-                    const res = await fetch(
-                        'case/get_cases'
-                    )
+                    const res = await fetch(url)
                     case_list.value = await res.json()
+                    current_page.value = page
                 }
 
                 async function fetchStatus() {
@@ -191,7 +222,13 @@
                     display_toast(res)
                 }
 
-                fetchCase()
+                function emit_result(res){
+                    case_list.value.cases = res.cases
+                    case_list.value.nb_pages = res.nb_pages
+                    current_page.value = 1
+                }
+
+                fetchCase(1)
                 fetchStatus()
 
                 return {
@@ -200,7 +237,11 @@
                     status_info,
                     delete_case,
                     complete_case,
-                    moment
+                    moment,
+                    fetchCase,
+                    emit_result,
+                    current_page,
+                    current_filter
                 }
             }
         }).mount('.container')

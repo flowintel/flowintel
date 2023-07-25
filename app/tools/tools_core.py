@@ -7,11 +7,17 @@ import datetime
 def get_all_case_templates():
     return Case_Template.query.all()
 
+def get_page_case_templates(page):
+    return Case_Template.query.paginate(page=page, per_page=20, max_per_page=50)
+
 def get_case_template(cid):
     return Case_Template.query.get(cid)
 
 def get_all_task_templates():
     return Task_Template.query.all()
+
+def get_page_task_templates(page):
+    return Task_Template.query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_task_template(tid):
     return Task_Template.query.get(tid)

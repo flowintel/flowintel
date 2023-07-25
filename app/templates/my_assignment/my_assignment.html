@@ -8,51 +8,76 @@
 
 <div style="margin-bottom: 10px;">
     <h1>My Assignment to Tasks</h1>
-    <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => tasks_list = tasks" ></my_assignment_filter>
+    <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => emit_result(tasks)" @current_filter="filter => current_filter = filter" ></my_assignment_filter>
 </div>
 <hr>
 <div id="top"></div>
-<!-- <template v-for="task in tasks_list"> -->
-<template v-for="(task, index) in tasks_list">
-    <div style="text-align: center;" v-if="index==0"><h4><i>[[task.case_title]]</i></h4></div>
-    <div style="text-align: center;" v-if="index != 0 && tasks_list[index].case_title != tasks_list[index-1].case_title">
-        <h4><i>[[task.case_title]]</i></h4>
-    </div>
-    <div class="list-group" style="margin-bottom: 20px;">                      
-        <a :href="'/case/view/' + task.case_id" class="list-group-item list-group-item-action">
-            <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">[[task.title]]</h5>
-                <small><i>Changed [[ moment(task.last_modif).fromNow() ]] </i></small>
-            </div>
 
-            <div class="d-flex w-100 justify-content-between">
-                <p v-if="task.description" class="card-text">[[ task.description ]]</p>
-                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+<!-- pagination -->
+<nav aria-label="Page navigation example" v-if="tasks_list && tasks_list.nb_pages > 1">
+    <ul class="pagination">
+        <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchAssignedTask(Math.max(1, current_page-1))">Previous</button></li>
+        <template v-for="cp in tasks_list.nb_pages">
+            <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchAssignedTask(cp)">[[cp]]</button></li>
+        </template>
+        <li :class="{'page-item': true, 'disabled': current_page == tasks_list.nb_pages}"><button class="page-link" @click="fetchAssignedTask(Math.min(current_page+1, tasks_list.nb_pages))">Next</button></li>
+    </ul>
+</nav>
+<!-- pagination -->
 
-                <small v-if="status_info">
-                    <span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">
-                        [[ status_info.status[task.status_id -1].name ]]
-                    </span>
-                </small>
-            </div>
-
-            <div class="d-flex w-100 justify-content-between">
-                <div v-if="task.users.length">
-                    Users: 
-                    <template v-for="user in task.users">
-                        [[user.first_name]] [[user.last_name]],
-                    </template>
+<template v-if="tasks_list">
+    <template v-for="(task, index) in tasks_list.tasks">
+        <div style="text-align: center;" v-if="index==0"><h4><i>[[task.case_title]]</i></h4></div>
+        <div style="text-align: center;" v-if="index != 0 && tasks_list.tasks[index].case_title != tasks_list.tasks[index-1].case_title">
+            <h4><i>[[task.case_title]]</i></h4>
+        </div>
+        <div class="list-group" style="margin-bottom: 20px;">                      
+            <a :href="'/case/view/' + task.case_id" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">[[task.title]]</h5>
+                    <small><i>Changed [[ moment(task.last_modif).fromNow() ]] </i></small>
                 </div>
 
-                <div v-else>
-                    <i>No user assigned</i>
+                <div class="d-flex w-100 justify-content-between">
+                    <p v-if="task.description" class="card-text">[[ task.description ]]</p>
+                    <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+
+                    <small v-if="status_info">
+                        <span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">
+                            [[ status_info.status[task.status_id -1].name ]]
+                        </span>
+                    </small>
                 </div>
-                <small v-if="task.dead_line" :title="task.dead_line"><i>Deadline [[moment(task.dead_line).endOf().fromNow()]]</i></small>
-                <small v-else><i>No deadline</i></small>
-            </div>
-        </a>
-    </div>
+
+                <div class="d-flex w-100 justify-content-between">
+                    <div v-if="task.users.length">
+                        Users: 
+                        <template v-for="user in task.users">
+                            [[user.first_name]] [[user.last_name]],
+                        </template>
+                    </div>
+
+                    <div v-else>
+                        <i>No user assigned</i>
+                    </div>
+                    <small v-if="task.dead_line" :title="task.dead_line"><i>Deadline [[moment(task.dead_line).endOf().fromNow()]]</i></small>
+                    <small v-else><i>No deadline</i></small>
+                </div>
+            </a>
+        </div>
+    </template>
 </template>
+
+<nav aria-label="Page navigation example" v-if="tasks_list && tasks_list.nb_pages > 1">
+    <ul class="pagination">
+        <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchAssignedTask(Math.max(1, current_page-1))">Previous</button></li>
+        <template v-for="cp in tasks_list.nb_pages">
+            <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchAssignedTask(cp)">[[cp]]</button></li>
+        </template>
+        <li :class="{'page-item': true, 'disabled': current_page == tasks_list.nb_pages}"><button class="page-link" @click="fetchAssignedTask(Math.min(current_page+1, tasks_list.nb_pages))">Next</button></li>
+    </ul>
+</nav>
+
 <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 
 {% endblock %}
@@ -61,6 +86,7 @@
     <script type="module">
         const { createApp, ref } = Vue
         import my_assignment_filter from '../../static/js/my_assignment/my_assignment_filter.js'
+        import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -70,14 +96,23 @@
             setup() {
                 const tasks_list = ref(null)
                 const status_info = ref(null)
+                const current_page = ref(1)
+                const current_filter = ref("")
 
-                async function fetchAssignedTask() {
+                async function fetchAssignedTask(page) {
+                    console.log(current_filter.value);
+                    let url
+                    if(current_filter.value)
+                        url = `/my_assignment/tasks/ongoing?page=${page}&filter=${current_filter.value}`
+                    else
+                        url = '/my_assignment/sort_by_ongoing?page='+page
+
+                    current_page.value = page
                     tasks_list.value = null
-                    const res = await fetch(
-                        '/my_assignment/data'
-                    )
-                    tasks_list.value = await res.json()
-                    tasks_list.value.sort(function(a,b){
+                    const res = await fetch(url)
+                    let loc = await res.json()
+                    tasks_list.value = loc
+                    tasks_list.value.tasks.sort(function(a,b){
                         if(a.case_title<b.case_title) return -1
                         if(a.case_title>b.case_title) return 1
                         return 0
@@ -92,15 +127,25 @@
                     status_info.value = await res.json()
                 }
 
+                function emit_result(tasks){
+                    tasks_list.value.nb_pages = tasks.nb_pages
+                    tasks_list.value.tasks = tasks.tasks
+                    current_page.value = 1
+                }
                 
 
-                fetchAssignedTask()
+                fetchAssignedTask(1)
                 fetchStatus()
 
                 return {
                     tasks_list,
                     status_info,
-                    moment
+                    moment,
+                    fetchAssignedTask,
+                    current_page,
+                    emit_result,
+                    current_filter,
+                    message_list // Avoid warning
                 }
             }
         }).mount('.container')

@@ -5,44 +5,60 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    
-    <div id="container">
-        <h1>
-            Case Templates
-            <span>
-                <a class="btn btn-primary btn-small" href="/tools/add_template" title="Add a Template"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        </h1>
-    
-        <hr>
+    <h1>
+        Case Templates
+        <span>
+            <a class="btn btn-primary btn-small" href="/tools/add_template" title="Add a Template"><i class="fa-solid fa-plus"></i></a>
+        </span>
+    </h1>
 
-        <div id="top"></div>
+    <hr>
 
-        <template v-if="templates_list">
-            <template v-for="template in templates_list">
-                <div class="list-group" style="margin-bottom: 20px;">
-                    <div style="display:flex">
-                        <a :href="`/tools/template/case/view/${template.id}`" class="list-group-item list-group-item-action">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h4 class="mb-1">[[ template.id ]]-[[ template.title ]]</h4>
-                            </div>
-                            <div class="d-flex w-100 justify-content-between">
-                                <p v-if="template.description" class="card-text">[[ template.description ]]</p>
-                                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
-                            </div>
-                        </a>
-                        <div v-if="!template.current_user_permission.read_only" style="display: grid;">
-                            <a class="btn btn-primary btn-sm" :href="" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
-                            <button class="btn btn-danger btn-sm"  @click="delete_case(template)" title="Delete the case"><i class="fa-solid fa-trash"></i></button>
+    <div id="top"></div>
+
+    <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in templates_list.nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_templates(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}"><button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+
+    <template v-if="templates_list">
+        <template v-for="template in templates_list.templates">
+            <div class="list-group" style="margin-bottom: 20px;">
+                <div style="display:flex">
+                    <a :href="`/tools/template/case/view/${template.id}`" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1">[[ template.id ]]-[[ template.title ]]</h4>
                         </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p v-if="template.description" class="card-text">[[ template.description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                        </div>
+                    </a>
+                    <div v-if="!template.current_user_permission.read_only" style="display: grid;">
+                        <a class="btn btn-primary btn-sm" :href="" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
+                        <button class="btn btn-danger btn-sm"  @click="delete_case(template)" title="Delete the case"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
-            </template>
+            </div>
         </template>
+    </template>
 
-        <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
-    </div>
-        
+    <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in templates_list.nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_templates(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}"><button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
 
 
@@ -55,12 +71,14 @@
             delimiters: ['[[', ']]'],
             setup() {
                 const templates_list = ref(null)
+                const current_page = ref(1)
 
-                async function fetch_templates(){
+                async function fetch_templates(page){
                     templates_list.value = null
-                    const res = await fetch("/tools/get_all_case_templates")
+                    const res = await fetch("/tools/get_all_case_templates?page=" + page)
                     let loc = await res.json()
-                    templates_list.value = loc["templates"]
+                    templates_list.value = loc
+                    current_page.value = page
                 }
 
                 async function delete_case(case_template){
@@ -74,12 +92,14 @@
                 }
 
 
-                fetch_templates()
+                fetch_templates(1)
     
                 return {
                     message_list,
                     templates_list,
-                    delete_case
+                    delete_case,
+                    fetch_templates,
+                    current_page
                 }
             }
         }).mount('.container')

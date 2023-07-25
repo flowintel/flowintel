@@ -5,117 +5,123 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    
-    <div id="container">
-        <h1>
-            Organisations
-            <span>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
-            </span>
-        </h1>
+    <h1>
+        Organisations
+        <span>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
+        </span>
+    </h1>
 
-        <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="FormModalLabel">Create a new org</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form action="" method="post">
-                        {{ form.hidden_tag() }}
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                {{form.name.label(class_="col-form-label")}}:
-                                {{form.name(class_="form-control")}}
-                                {% if form.name.errors %}
-                                    <div style="color: red;">{{form.name.errors[0] | safe}}</div>
-                                {%endif%}
-                            </div>
-                            <div class="mb-3">
-                                <label for="description" class="col-form-label">Description:</label>
-                                {{form.description(class_="form-control")}}
-                                {% if form.description.errors %}
-                                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                                {%endif%}
-                            </div>
-                            <div class="mb-3">
-                                {{form.uuid.label(class_="col-form-label")}}:
-                                {{form.uuid(class_="form-control")}}
-                                {% if form.uuid.errors %}
-                                    <div style="color: red;">{{form.uuid.errors[0] | safe}}</div>
-                                {%endif%}
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                {{form.submit(class='btn btn-primary')}}
-                            </div>
-                        </div>
-                    </form>
+    <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="FormModalLabel">Create a new org</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
+                <form action="" method="post">
+                    {{ form.hidden_tag() }}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            {{form.name.label(class_="col-form-label")}}:
+                            {{form.name(class_="form-control")}}
+                            {% if form.name.errors %}
+                                <div style="color: red;">{{form.name.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="col-form-label">Description:</label>
+                            {{form.description(class_="form-control")}}
+                            {% if form.description.errors %}
+                                <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <div class="mb-3">
+                            {{form.uuid.label(class_="col-form-label")}}:
+                            {{form.uuid(class_="form-control")}}
+                            {% if form.uuid.errors %}
+                                <div style="color: red;">{{form.uuid.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            {{form.submit(class='btn btn-primary')}}
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
-    
-        <hr>
-
-        <div id="top"></div>
-        <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New User</a>
-        <template v-if="orgs_list">
-            <template v-for="org in orgs_list">
-                <div class="list-group" style="margin-bottom: 10px;">
-                    <div style="display:flex">
-                        <a @click="extend_collapse(org.id)" class="list-group-item list-group-item-action">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h4 class="mb-1">[[ org.id ]]-[[ org.name ]]</h4>
-                            </div>
-                            <div class="d-flex w-100 justify-content-between">
-                                <p v-if="org.description" class="card-text">[[ org.description ]]</p>
-                                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
-                            </div>
-                        </a>
-                        {% if current_user.is_admin() %}
-                            <div style="display: grid;">
-                                <a class="btn btn-primary btn-sm" :href="`/admin/edit_org/${org.id}`" type="button" title="Edit the org"><i class="fa-solid fa-pen-to-square"></i></a>
-                                <button class="btn btn-danger btn-sm"  @click="delete_org(org)" title="Delete the org"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="collapse" :id="'collapse'+org.id" style="margin-bottom: 20px;">
-                    <div class="card card-body" :id="'card-body_'+org.id" style="background-color: whitesmoke;">
-                        <template v-if="users_table">
-                            <table>
-                                <template v-for="user in users_table[org.id]">
-                                    <tr>
-                                        <td title="Id">[[user.id]]</td>
-                                        <td title="First name">[[user.first_name]]</td>
-                                        <td title="last name">[[user.last_name]]</td>
-                                        <td title="Email">[[user.email]]</td>
-                                        <td title="Role">[[user.role]]</td>
-                                        <td>
-                                            <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
-                                                <i class="fa-solid fa-pen-to-square"></i>
-                                            </a>
-                                            <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </table>
-                        </template>
-                        <template v-else>
-                            Loading...
-                        </template>
-                    </div>
-                </div>
-            </template>
-    
-        </template>
-        <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
-
     </div>
-        
+
+    <hr>
+
+    <div id="top"></div>
+    <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New User</a>
+    <template v-if="orgs_list">
+        <template v-for="org in orgs_list.orgs">
+            <div class="list-group" style="margin-bottom: 10px;">
+                <div style="display:flex">
+                    <a @click="extend_collapse(org.id)" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1">[[ org.id ]]-[[ org.name ]]</h4>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p v-if="org.description" class="card-text">[[ org.description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                        </div>
+                    </a>
+                    {% if current_user.is_admin() %}
+                        <div style="display: grid;">
+                            <a class="btn btn-primary btn-sm" :href="`/admin/edit_org/${org.id}`" type="button" title="Edit the org"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <button class="btn btn-danger btn-sm"  @click="delete_org(org)" title="Delete the org"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="collapse" :id="'collapse'+org.id" style="margin-bottom: 20px;">
+                <div class="card card-body" :id="'card-body_'+org.id" style="background-color: whitesmoke;">
+                    <template v-if="users_table">
+                        <table>
+                            <template v-for="user in users_table[org.id]">
+                                <tr>
+                                    <td title="Id">[[user.id]]</td>
+                                    <td title="First name">[[user.first_name]]</td>
+                                    <td title="last name">[[user.last_name]]</td>
+                                    <td title="Email">[[user.email]]</td>
+                                    <td title="Role">[[user.role]]</td>
+                                    <td>
+                                        <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </a>
+                                        <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </table>
+                    </template>
+                    <template v-else>
+                        Loading...
+                    </template>
+                </div>
+            </div>
+        </template>
+
+    </template>
+
+    <nav aria-label="Page navigation example" v-if="orgs_list && orgs_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchOrgs(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in orgs_list.nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchOrgs(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == orgs_list.nb_pages}"><button class="page-link" @click="fetchOrgs(Math.min(current_page+1, orgs_list.nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
 
 
@@ -129,13 +135,15 @@
             setup() {
                 const orgs_list = ref(null)
                 const users_table = ref({})
+                const current_page = ref(1)
 
 
-                async function fetchOrgs() {
+                async function fetchOrgs(page) {
                     orgs_list.value = null
-                    const res = await fetch('get_orgs')
+                    const res = await fetch('get_orgs?page='+page)
                     let loc = await res.json()
-                    orgs_list.value = loc["orgs"]
+                    orgs_list.value = loc
+                    current_page.value = page
                 }
 
                 async function extend_collapse(org_id){
@@ -150,9 +158,9 @@
                 async function delete_org(org){
                     const res = await fetch('/admin/delete_org/'+org.id)
                     if(await res.status == 200){
-                        let index = orgs_list.value.indexOf(org)
+                        let index = orgs_list.value.orgs.indexOf(org)
                         if(index > -1)
-                            orgs_list.value.splice(index, 1)
+                            orgs_list.value.orgs.splice(index, 1)
                     }
                     display_toast(res)
                 }
@@ -168,7 +176,7 @@
                 }
 
 
-                fetchOrgs()
+                fetchOrgs(1)
 
     
                 return {
@@ -177,7 +185,9 @@
                     users_table,
                     extend_collapse,
                     delete_org,
-                    delete_user
+                    delete_user,
+                    current_page,
+                    fetchOrgs
                 }
             }
         }).mount('.container')

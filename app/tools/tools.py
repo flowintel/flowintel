@@ -106,13 +106,14 @@ def edit_task(tid):
 @login_required
 @editor_required
 def get_all_case_templates():
-    templates_list = list()
-    templates = ToolsModel.get_all_case_templates()
+    page = request.args.get('page', 1, type=int)
+    templates = ToolsModel.get_page_case_templates(page)
     for template in templates:
+        templates_list = list()
         loc_template = template.to_json()
         loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
-    return {"templates": templates_list}
+    return {"templates": templates_list, "nb_pages": templates.pages}
 
 
 @tools_blueprint.route("/get_case_template/<cid>", methods=['GET'])
@@ -142,14 +143,15 @@ def get_task_template(tid):
 @editor_required
 def get_all_task_templates():
     """View a Template"""
-    templates = ToolsModel.get_all_task_templates()
+    page = request.args.get('page', 1, type=int)
+    templates = ToolsModel.get_page_task_templates(page)
     if templates:
         templates_list = list()
         for template in templates:
             loc_template = template.to_json()
             loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
             templates_list.append(loc_template)
-        return {"templates": templates_list}
+        return {"templates": templates_list, "nb_pages": templates.pages}
     return {"message": "Template not found"}
 
 

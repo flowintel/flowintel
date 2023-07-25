@@ -16,6 +16,10 @@ def get_all_orgs():
     """Return all organisations"""
     return Org.query.all()
 
+def get_orgs_page(page):
+    """Return all organisations by page"""
+    return Org.query.paginate(page=page, per_page=20, max_per_page=50)
+
 def get_user(id):
     """Return the user"""
     return User.query.get(id)

@@ -498,6 +498,7 @@ def regroup_case_info(cases, user):
         case_loc["current_user_permission"] = get_role(user).to_json()
 
         loc["cases"].append(case_loc)
+        loc["nb_pages"] = cases.pages
 
     return loc
 
@@ -539,15 +540,15 @@ def sort_tasks_by_filter(case, user, completed, filter):
     return get_task_info(tasks_list, user)
 
 
-def sort_by_ongoing_core():
-    return Case.query.filter_by(completed=False).all()
+def sort_by_ongoing_core(page):
+    return Case.query.filter_by(completed=False).paginate(page=page, per_page=20, max_per_page=50)
     
-def sort_by_finished_core():
-    return Case.query.filter_by(completed=True).all()
+def sort_by_finished_core(page):
+    return Case.query.filter_by(completed=True).paginate(page=page, per_page=20, max_per_page=50)
 
 
-def sort_by_filter(completed, filter): 
-    return Case.query.filter_by(completed=completed).order_by(desc(filter)).all()
+def sort_by_filter(completed, filter, page): 
+    return Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=20, max_per_page=50)
 
 def get_all_users_core(case):
     return Org.query.join(Case_Org, Case_Org.case_id==case.id).where(Case_Org.org_id==Org.id).all()

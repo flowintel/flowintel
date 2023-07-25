@@ -126,11 +126,12 @@ def add_orgs(id):
 @login_required
 def get_cases():
     """Return all cases"""
-    cases = CaseModel.sort_by_ongoing_core()
+    page = request.args.get('page', 1, type=int)
+    cases = CaseModel.sort_by_ongoing_core(page)
     role = CaseModel.get_role(current_user).to_json()
 
     loc = CaseModel.regroup_case_info(cases, current_user)
-    return jsonify({"cases": loc["cases"], "role": role}), 201
+    return jsonify({"cases": loc["cases"], "role": role, "nb_pages": cases.pages}), 201
 
 
 @case_blueprint.route("/delete", methods=['POST'])
@@ -228,7 +229,8 @@ def get_status():
 @login_required
 def sort_by_ongoing():
     """Sort Case by living one"""
-    cases_list = CaseModel.sort_by_ongoing_core()
+    page = request.args.get('page', 1, type=int)
+    cases_list = CaseModel.sort_by_ongoing_core(page)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -237,7 +239,8 @@ def sort_by_ongoing():
 @login_required
 def sort_by_finished():
     """Sort Case by finished one"""
-    cases_list = CaseModel.sort_by_finished_core()
+    page = request.args.get('page', 1, type=int)
+    cases_list = CaseModel.sort_by_finished_core(page)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -247,8 +250,9 @@ def sort_by_finished():
 def ongoing_sort_by_filter():
     """Sort by filter for living case"""
     data_dict = dict(request.args)
+    page = request.args.get('page', 1, type=int)
     if "filter" in data_dict:
-        cases_list = CaseModel.sort_by_filter(False, data_dict["filter"])
+        cases_list = CaseModel.sort_by_filter(False, data_dict["filter"], page)
         return CaseModel.regroup_case_info(cases_list, current_user)
     return {"message": "No filter pass"}
 
@@ -258,8 +262,9 @@ def ongoing_sort_by_filter():
 def finished_sort_by_filter():
     """Sort by filter for finished task"""
     data_dict = dict(request.args)
+    page = request.args.get('page', 1, type=int)
     if "filter" in data_dict:
-        cases_list = CaseModel.sort_by_filter(True, data_dict["filter"])
+        cases_list = CaseModel.sort_by_filter(True, data_dict["filter"], page)
         return CaseModel.regroup_case_info(cases_list, current_user)
     return {"message": "No filter pass"}
 

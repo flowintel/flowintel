@@ -90,13 +90,12 @@ def delete_user(uid):
 @admin_required
 def orgs():
     """List all organisations"""
-    orgs = AdminModel.get_all_orgs()
     form = CreateOrgForm()
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_org_core(form_dict)
         return redirect("/admin/orgs")
-    return render_template("admin/orgs.html", orgs=orgs, form=form)
+    return render_template("admin/orgs.html", form=form)
 
 
 @admin_blueprint.route("/edit_org/<id>", methods=['GET','POST'])
@@ -134,12 +133,13 @@ def delete_org(oid):
 @admin_required
 def get_orgs():
     """get all orgs"""
-    orgs = AdminModel.get_all_orgs()
+    page = request.args.get('page', 1, type=int)
+    orgs = AdminModel.get_orgs_page(page)
     if orgs:
         orgs_list = list()
         for org in orgs:
             orgs_list.append(org.to_json())
-        return {"orgs": orgs_list}
+        return {"orgs": orgs_list, "nb_pages": orgs.pages}
     return {"message": "No orgs"}
 
 

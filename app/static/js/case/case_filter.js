@@ -10,11 +10,11 @@ export default {
 			show_ongoing = ongoing
 
 			if(show_ongoing){
-				const res = await fetch('/case/sort_by_ongoing')
+				const res = await fetch('/case/sort_by_ongoing?page=1')
 				let loc = await res.json()
 				emit('cases_list', loc)
 			}else{
-				const res = await fetch('/case/sort_by_finished')
+				const res = await fetch('/case/sort_by_finished?page=1')
 				let loc = await res.json()
 				emit('cases_list', loc)
 			}
@@ -42,15 +42,16 @@ export default {
 
 
 		async function asc_desc_filter(change=false){
+			emit('current_filter', current_filter)
 			if(change)
 				asc_desc = !asc_desc
 
 			let res
 			if (current_filter){
 				if(show_ongoing)
-					res = await fetch('/case/ongoing?filter=' + current_filter)
+					res = await fetch('/case/ongoing?page=1&filter=' + current_filter)
 				else
-					res = await fetch('/case/finished?filter=' + current_filter)
+					res = await fetch('/case/finished?page=1&filter=' + current_filter)
 				let loc = await res.json()
 				if(asc_desc)
 					emit('cases_list', loc)
