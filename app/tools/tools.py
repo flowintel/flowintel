@@ -17,15 +17,16 @@ tools_blueprint = Blueprint(
 # Render #
 ##########
 
-
 @tools_blueprint.route("/templates/case", methods=['GET'])
 @login_required
 def case_templates_index():
+    """View all case templates"""
     return render_template("tools/case_templates_index.html")
 
 @tools_blueprint.route("/templates/task", methods=['GET', "POST"])
 @login_required
 def task_template_view():
+    """View all task templates"""
     form = TaskTemplateForm()
     task_template_query_list = ToolsModel.get_all_task_templates()
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
@@ -40,7 +41,7 @@ def task_template_view():
 @login_required
 @editor_required
 def add_template():
-    """Add a new Template"""
+    """Add a new case Template"""
 
     form = CaseTemplateForm()
 
@@ -60,7 +61,7 @@ def add_template():
 @login_required
 @editor_required
 def case_template_view(cid):
-    """View a Template"""
+    """View a case Template"""
     template = ToolsModel.get_case_template(cid)
     if template:
         case = template.to_json()
@@ -83,7 +84,7 @@ def case_template_view(cid):
 @login_required
 @editor_required
 def edit_task(tid):
-    """edit a task Template"""
+    """Edit a task Template"""
     template = ToolsModel.get_task_template(tid)
     if template:
         form = TaskTemplateEditForm()
@@ -106,6 +107,7 @@ def edit_task(tid):
 @login_required
 @editor_required
 def get_all_case_templates():
+    """Get all case templates"""
     templates = ToolsModel.get_all_case_templates()
     templates_list = list()
     for template in templates:
@@ -119,6 +121,7 @@ def get_all_case_templates():
 @login_required
 @editor_required
 def get_page_case_templates():
+    """Get a page of case templates"""
     page = request.args.get('page', 1, type=int)
     templates = ToolsModel.get_page_case_templates(page)
     templates_list = list()
@@ -133,7 +136,7 @@ def get_page_case_templates():
 @login_required
 @editor_required
 def get_template(cid):
-    """View a Template"""
+    """Get a case template"""
     template = ToolsModel.get_case_template(cid)
     if template:
         return {"template": template.to_json()}
@@ -144,7 +147,7 @@ def get_template(cid):
 @login_required
 @editor_required
 def get_task_template(tid):
-    """View a Template"""
+    """Get a task template"""
     template = ToolsModel.get_task_template(tid)
     if template:
         return {"template": template.to_json()}
@@ -155,7 +158,7 @@ def get_task_template(tid):
 @login_required
 @editor_required
 def get_all_task_templates():
-    """View a Template"""
+    """Get all task templates"""
     templates = ToolsModel.get_all_task_templates()
     if templates:
         templates_list = list()
@@ -171,7 +174,7 @@ def get_all_task_templates():
 @login_required
 @editor_required
 def get_page_task_templates():
-    """View a Template"""
+    """Get a page of task template"""
     page = request.args.get('page', 1, type=int)
     templates = ToolsModel.get_page_task_templates(page)
     if templates:
@@ -188,7 +191,7 @@ def get_page_task_templates():
 @login_required
 @editor_required
 def get_task_by_case(cid):
-    """View a Template"""
+    """Get a task template by a case template"""
     templates = ToolsModel.get_task_by_case(cid)
     if templates:
         templates_list = list()
@@ -204,7 +207,7 @@ def get_task_by_case(cid):
 @login_required
 @editor_required
 def remove_task(cid, tid):
-    """remove task form case"""
+    """Remove a task template form a case template"""
     if ToolsModel.get_task_template(tid):
         if ToolsModel.remove_task_case(cid, tid):
             return {"message":"Task Template removed", "toast_class": "success-subtle"}, 200
@@ -216,7 +219,7 @@ def remove_task(cid, tid):
 @login_required
 @editor_required
 def delete_task(tid):
-    """delete a task template"""
+    """Delete a task template"""
     if ToolsModel.get_task_template(tid):
         if ToolsModel.delete_task_template(tid):
             return {"message":"Task Template deleted", "toast_class": "success-subtle"}, 200
@@ -228,7 +231,7 @@ def delete_task(tid):
 @login_required
 @editor_required
 def delete_case(cid):
-    """delete a case template"""
+    """Delete a case template"""
     if ToolsModel.get_case_template(cid):
         if ToolsModel.delete_case_template(cid):
             return {"message":"Case Template deleted", "toast_class": "success-subtle"}, 200
