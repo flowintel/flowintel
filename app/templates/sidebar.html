@@ -131,7 +131,7 @@
 				result_search.value = []
 				if(e.target.value){
 					for(let i in case_list.value.cases){
-						if(case_list.value.cases[i].title.toLowerCase().includes(e.target.value)){
+						if(case_list.value.cases[i].title.toLowerCase().includes(e.target.value.toLowerCase())){
 							result_search.value.push(case_list.value.cases[i])
 						}
 					}

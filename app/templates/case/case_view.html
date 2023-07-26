@@ -92,6 +92,12 @@
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
                 </span>
             {%endif%}
+
+            <!-- Search bar -->
+            <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center">
+                <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 350px;" />
+            </div>
+            <!-- Search bar -->
         </div>
 
         <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
@@ -185,6 +191,7 @@
                 const cases_info = ref(null)
                 const status_info = ref(null)
                 const users_in_case = ref(null)
+                let loc_tasks_list = []
 
 
                 async function fetchCase() {
@@ -193,6 +200,7 @@
                         'get_case_info/'+window.location.pathname.split("/").slice(-1)
                     )
                     cases_info.value = await res.json()
+                    loc_tasks_list = cases_info.value.tasks
                 }
 
                 async function fetchStatus() {
@@ -317,6 +325,19 @@
                     return false
                 }
 
+                function onInput(e){
+                    cases_info.value.tasks = []
+                    if(e.target.value){
+                        for(let i in loc_tasks_list){
+                            if(loc_tasks_list[i].title.toLowerCase().includes(e.target.value.toLowerCase())){
+                                cases_info.value.tasks.push(loc_tasks_list[i])
+                            }
+                        }
+                    }else{
+                        cases_info.value.tasks = loc_tasks_list
+                    }
+                }
+
                 fetchCase()
                 fetchStatus()
                 get_all_users_case()
@@ -333,7 +354,8 @@
                     remove_org_case,
                     complete_case,
                     fork_case,
-                    create_template
+                    create_template,
+                    onInput
                 }
             }
         }).mount('.container')

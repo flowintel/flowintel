@@ -56,18 +56,29 @@
         </div>
     </div>
 
-    <nav aria-label="Page navigation example" v-if="task_templates_list && task_templates_list.nb_pages > 1">
+    <!-- Search bar -->
+    <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center start-50 translate-middle-x top-0" style="max-width: 200px;">
+        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task template by title' style="min-width: 350px;"/>
+    </div>
+    <hr>
+    <!-- Search bar -->
+
+    <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_template(Math.max(1, current_page-1))">Previous</button></li>
-            <template v-for="cp in task_templates_list.nb_pages">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_template(Math.max(1, current_page-1))">Previous</button>
+            </li>
+            <template v-for="cp in templates_list.nb_pages">
                 <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_template(cp)">[[cp]]</button></li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == task_templates_list.nb_pages}"><button class="page-link" @click="fetch_template(Math.min(current_page+1, task_templates_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
+                <button class="page-link" @click="fetch_template(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 
-    <template v-if="task_templates_list">
-        <template v-for="template, key in task_templates_list.templates">
+    <template v-if="templates_list">
+        <template v-for="template, key in templates_list.templates">
             <div class="list-group" style="margin-bottom: 20px;">
                 <div style="display:flex">
                     <a class="list-group-item list-group-item-action">
@@ -84,7 +95,9 @@
                         </div>
                     </a>
                     <div v-if="!template.current_user_permission.read_only" style="display: grid;">
-                        <a class="btn btn-primary btn-sm" :href="`/tools/template/edit_task/${template.id}`" type="button" title="Edit the task template"><i class="fa-solid fa-pen-to-square"></i></a>
+                        <a class="btn btn-primary btn-sm" :href="`/tools/template/edit_task/${template.id}`" type="button" title="Edit the task template">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </a>
                         <button class="btn btn-danger btn-sm"  @click="delete_task(template)" title="Delete the task template"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
@@ -92,13 +105,17 @@
         </template>
     </template>
 
-    <nav aria-label="Page navigation example" v-if="task_templates_list && task_templates_list.nb_pages > 1">
+    <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_template(Math.max(1, current_page-1))">Previous</button></li>
-            <template v-for="cp in task_templates_list.nb_pages">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_template(Math.max(1, current_page-1))">Previous</button>
+            </li>
+            <template v-for="cp in templates_list.nb_pages">
                 <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_template(cp)">[[cp]]</button></li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == task_templates_list.nb_pages}"><button class="page-link" @click="fetch_template(Math.min(current_page+1, task_templates_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
+                <button class="page-link" @click="fetch_template(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 
@@ -114,36 +131,59 @@
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
-                const task_templates_list = ref(null)
+                const templates_list = ref(null)
                 const current_page = ref(1)
+                let all_templates_list = []
 
                 async function fetch_template(page){
-                    task_templates_list.value = null
-                    const res = await fetch("/tools/get_all_task_templates?page="+page)
+                    templates_list.value = null
+                    const res = await fetch("/tools/get_page_task_templates?page="+page)
                     let loc = await res.json()
-                    task_templates_list.value = loc
+                    templates_list.value = loc
                     current_page.value = page
+                }
+
+                async function fetch_all_templates(){
+                    all_templates_list = null
+                    const res = await fetch("/tools/get_all_task_templates")
+                    let loc = await res.json()
+                    all_templates_list = loc["templates"]
                 }
 
                 async function delete_task(task){
                     const res = await fetch("/tools/template/delete_task/" + task.id)
                     if(await res.status == 200){
-                        let index = task_templates_list.value.templates.indexOf(task)
+                        let index = templates_list.value.templates.indexOf(task)
                         if(index > -1)
-                            task_templates_list.value.templates.splice(index, 1)
+                            templates_list.value.templates.splice(index, 1)
                     }
                     display_toast(res)
                 }
 
+                function onInput(e){
+                    templates_list.value.templates = []
+                    if(e.target.value){
+                        for(let i in all_templates_list){
+                            if(all_templates_list[i].title.toLowerCase().includes(e.target.value.toLowerCase())){
+                                templates_list.value.templates.push(all_templates_list[i])
+                            }
+                        }
+                    }else{
+                        templates_list.value.templates = all_templates_list
+                    }
+                }
+
 
                 fetch_template(1)
+                fetch_all_templates()
     
                 return {
                     message_list,
-                    task_templates_list,
+                    templates_list,
                     delete_task,
                     fetch_template,
-                    current_page
+                    current_page,
+                    onInput
                 }
             }
         }).mount('.container')

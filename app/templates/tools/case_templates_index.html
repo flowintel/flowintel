@@ -16,13 +16,24 @@
 
     <div id="top"></div>
 
+    <!-- Search bar -->
+    <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center start-50 translate-middle-x top-0" style="max-width: 200px;">
+        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case template by title' style="min-width: 350px;"/>
+    </div>
+    <hr>
+    <!-- Search bar -->
+
     <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in templates_list.nb_pages">
                 <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_templates(cp)">[[cp]]</button></li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}"><button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
+                <button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 
@@ -50,11 +61,15 @@
 
     <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in templates_list.nb_pages">
                 <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_templates(cp)">[[cp]]</button></li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}"><button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
+                <button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 
@@ -71,35 +86,58 @@
             delimiters: ['[[', ']]'],
             setup() {
                 const templates_list = ref(null)
+                let all_templates_list = []
                 const current_page = ref(1)
 
                 async function fetch_templates(page){
                     templates_list.value = null
-                    const res = await fetch("/tools/get_all_case_templates?page=" + page)
+                    const res = await fetch("/tools/get_page_case_templates?page=" + page)
                     let loc = await res.json()
                     templates_list.value = loc
                     current_page.value = page
                 }
 
+                async function fetch_all_templates(){
+                    all_templates_list = null
+                    const res = await fetch("/tools/get_all_case_templates")
+                    let loc = await res.json()
+                    all_templates_list = loc["templates"]
+                }
+
                 async function delete_case(case_template){
                     const res = await fetch("/tools/template/delete_case/" + case_template.id)
                     if(await res.status == 200){
-                        let index = templates_list.value.indexOf(case_template)
+                        let index = templates_list.value.templates.indexOf(case_template)
                         if(index > -1)
-                            templates_list.value.splice(index, 1)
+                            templates_list.value.templates.splice(index, 1)
                     }
                     display_toast(res)
                 }
 
+                function onInput(e){
+                    templates_list.value.templates = []
+                    if(e.target.value){
+                        for(let i in all_templates_list){
+                            if(all_templates_list[i].title.toLowerCase().includes(e.target.value.toLowerCase())){
+                                templates_list.value.templates.push(all_templates_list[i])
+                            }
+                        }
+                    }else{
+                        templates_list.value.templates = all_templates_list
+                    }
+                }
+
 
                 fetch_templates(1)
+                fetch_all_templates()
     
                 return {
                     message_list,
                     templates_list,
                     delete_case,
                     fetch_templates,
-                    current_page
+                    current_page,
+                    onInput
                 }
             }
         }).mount('.container')

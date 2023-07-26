@@ -31,7 +31,7 @@ def task_template_view():
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
-        template = ToolsModel.add_task_template_core(form_dict)
+        ToolsModel.add_task_template_core(form_dict)
         return redirect(f"/tools/templates/task")
     return render_template("tools/task_template.html", form=form)
 
@@ -106,10 +106,23 @@ def edit_task(tid):
 @login_required
 @editor_required
 def get_all_case_templates():
+    templates = ToolsModel.get_all_case_templates()
+    templates_list = list()
+    for template in templates:
+        loc_template = template.to_json()
+        loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
+        templates_list.append(loc_template)
+    return {"templates": templates_list}
+
+
+@tools_blueprint.route("/get_page_case_templates", methods=['GET'])
+@login_required
+@editor_required
+def get_page_case_templates():
     page = request.args.get('page', 1, type=int)
     templates = ToolsModel.get_page_case_templates(page)
+    templates_list = list()
     for template in templates:
-        templates_list = list()
         loc_template = template.to_json()
         loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
@@ -142,6 +155,22 @@ def get_task_template(tid):
 @login_required
 @editor_required
 def get_all_task_templates():
+    """View a Template"""
+    templates = ToolsModel.get_all_task_templates()
+    if templates:
+        templates_list = list()
+        for template in templates:
+            loc_template = template.to_json()
+            loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
+            templates_list.append(loc_template)
+        return {"templates": templates_list}
+    return {"message": "Template not found"}
+
+
+@tools_blueprint.route("/get_page_task_templates", methods=['GET'])
+@login_required
+@editor_required
+def get_page_task_templates():
     """View a Template"""
     page = request.args.get('page', 1, type=int)
     templates = ToolsModel.get_page_task_templates(page)
