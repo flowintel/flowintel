@@ -177,12 +177,14 @@ class File(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True, unique=True)
     task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
+    uuid = db.Column(db.String(36), index=True)
 
     def to_json(self):
         return {
             "id": self.id, 
             "name": self.name,
-            "task_id": self.task_id
+            "task_id": self.task_id,
+            "uuid": self.uuid
         }
 
 class Status(db.Model):

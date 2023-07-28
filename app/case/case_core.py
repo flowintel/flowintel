@@ -94,7 +94,7 @@ def delete_task(tid):
     if task is not None:
         for file in task.files:
             try:
-                os.remove(os.path.join(UPLOAD_FOLDER, file.name))
+                os.remove(os.path.join(UPLOAD_FOLDER, file.uuid))
             except:
                 return False
             db.session.delete(file)
@@ -135,8 +135,12 @@ def complete_case(cid, current_user):
     if case is not None:
         case.completed = not case.completed
         if case.completed:
+            case.status_id = Status.query.filter_by(name="Finished").first().id
+            for task in case.tasks:
+                complete_task(task.id)
             NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' is now completed", cid, html_icon="fa-solid fa-square-check", current_user=current_user)
         else:
+            case.status_id = Status.query.filter_by(name="Created").first().id
             NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' is now revived", cid, html_icon="fa-solid fa-heart-circle-plus", current_user=current_user)
 
         update_last_modif(cid)
@@ -154,8 +158,10 @@ def complete_task(tid):
         case = get_case(task.case_id)
         task_users = Task_User.query.where(Task_User.task_id==task.id).all()
         if task.completed:
+            task.status_id = Status.query.filter_by(name="Finished").first().id
             message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
         else:
+            task.status_id = Status.query.filter_by(name="Created").first().id
             message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived"
         for task_user in task_users:
             user = User.query.get(task_user.user_id)
@@ -245,10 +251,11 @@ def add_file_core(task, files_list):
     create_upload_dir(UPLOAD_FOLDER)
     for file in files_list:
         if files_list[file].filename:
-            filename = f"({str(uuid.uuid4())}){secure_filename(files_list[file].filename)}"
+            uuid_loc = str(uuid.uuid4())
+            filename = secure_filename(files_list[file].filename)
             try:
                 file_data = request.files[file].read()
-                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as write_file:
+                with open(os.path.join(UPLOAD_FOLDER, uuid_loc), "wb") as write_file:
                     write_file.write(file_data)
             except Exception as e:
                 print(e)
@@ -256,7 +263,8 @@ def add_file_core(task, files_list):
 
             f = File(
                 name=filename,
-                task_id=task.id
+                task_id=task.id,
+                uuid = uuid_loc
             )
             db.session.add(f)
             update_last_modif(task.case_id)
@@ -453,13 +461,13 @@ def change_status_task(status, task):
     return True
 
 
-def download_file(filename):
-    return send_file(os.path.join(UPLOAD_FOLDER, filename), as_attachment=True, download_name=filename.split(")")[1])
+def download_file(file):
+    return send_file(os.path.join(UPLOAD_FOLDER, file.uuid), as_attachment=True, download_name=file.name)
 
 
 def delete_file(file):
     try:
-        os.remove(os.path.join(UPLOAD_FOLDER, file.name))
+        os.remove(os.path.join(UPLOAD_FOLDER, file.uuid))
     except:
         return False
 

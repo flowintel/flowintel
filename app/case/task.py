@@ -213,7 +213,7 @@ def download_file(tid, fid):
     file = CaseModel.get_file(fid)
     if file and file in task.files:
         if CaseModel.get_present_in_case(task.case_id, current_user):
-            return CaseModel.download_file(file.name)
+            return CaseModel.download_file(file)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "File not found", "toast_class": "danger-subtle"}, 404
 

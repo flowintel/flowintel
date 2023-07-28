@@ -456,7 +456,7 @@ export default {
 						<template v-for="file in task.files">
 							<div>
 								<a class="btn btn-link" :href="'/case/task/'+task.id+'/download_file/'+file.id">
-									[[ file.name.split(")")[1] ]]
+									[[ file.name ]]
 								</a>
 								<button class="btn btn-danger" @click="delete_file(file, task)"><i class="fa-solid fa-trash"></i></button>
 							</div>
