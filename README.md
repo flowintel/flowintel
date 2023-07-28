@@ -10,8 +10,8 @@ A flexible case management.
 
 ```
 pip install -r requirements
-python3 app.py -i # To init the db\
-python3 app.py
+./launch.sh -i # To init the db\
+./launch.sh -l
 ```
 
 ## Configuration
@@ -25,3 +25,13 @@ Go to `config.py` and change just like you want to.
 - password: `admin`
 
 After login go to `Users->New User` and create a new user with admin right. Then go back to `Users` and delete `admin` user
+
+
+
+## Screen
+
+A screen is created to notify recurrent case. To access it:
+
+```bash
+screen -r fcm
+```

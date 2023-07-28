@@ -10,6 +10,7 @@ from sqlalchemy import desc
 from flask import request, send_file
 from werkzeug.utils import secure_filename
 from ..notification import notification_core as NotifModel
+from dateutil import relativedelta
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 
@@ -624,3 +625,26 @@ def create_template_from_case(cid, case_title_template):
             db.session.commit()
 
     return new_template
+
+
+def change_recurring(form_dict, cid):
+    case = get_case(cid)
+    if form_dict["once"]:
+        case.recurring_type = "once"
+        case.recurring_date = form_dict["once"]
+    elif form_dict["daily"]:
+        case.recurring_type = "daily"
+    elif form_dict["weekly"]:
+        case.recurring_type = "weekly"
+        case.recurring_date = datetime.datetime.today() + datetime.timedelta(
+            days=(form_dict["weekly"].weekday() - datetime.datetime.today().weekday() + 7)
+            )
+    elif form_dict["monthly"]:
+        case.recurring_type = "monthly"
+        if form_dict["monthly"]<datetime.datetime.today().date():
+            case.recurring_date = form_dict["monthly"] + relativedelta.relativedelta(months=1)
+        else:
+            case.recurring_date = form_dict["monthly"]
+
+    db.session.commit()
+    return

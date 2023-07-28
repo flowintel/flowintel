@@ -61,6 +61,8 @@ class Case(db.Model):
     completed = db.Column(db.Boolean, default=False)
     owner_org_id = db.Column(db.Integer, index=True)
     notif_dead_line_id = db.Column(db.Integer, index=True)
+    recurring_date = db.Column(db.DateTime, index=True)
+    recurring_type = db.Column(db.String(30), index=True)
 
     def to_json(self):
         json_dict = {
@@ -73,7 +75,8 @@ class Case(db.Model):
             "status_id": self.status_id,
             "completed": self.completed,
             "owner_org_id": self.owner_org_id,
-            "notif_dead_line_id": self.notif_dead_line_id
+            "notif_dead_line_id": self.notif_dead_line_id,
+            "recurring_type": self.recurring_type
         }
         if self.dead_line:
             json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
@@ -84,6 +87,11 @@ class Case(db.Model):
             json_dict["finish_date"] = self.finish_date.strftime('%Y-%m-%d %H:%M')
         else:
             json_dict["finish_date"] = self.finish_date
+
+        if self.recurring_date:
+            json_dict["recurring_date"] = self.recurring_date.strftime('%Y-%m-%d')
+        else:
+            json_dict["recurring_date"] = self.recurring_date
 
         return json_dict
 

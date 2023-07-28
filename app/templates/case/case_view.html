@@ -5,169 +5,170 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div id="container">
-        <div>
-            <h1 style="display: inline-block; font-size: xxx-large;">{{case.id}} - {{case.title}}</h1>
-            <span><i style="font-size: 12px;">{{case.uuid}}</i></span>
-            <small v-if="status_info" style="margin-left: 10px;">
-                <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style">[[ status_info.status[ {{case.status_id}} -1].name ]]</span>
-            </small>
+    <h1 style="display: inline-block; font-size: xxx-large;">{{case.id}} - {{case.title}}</h1>
+    <span><i style="font-size: 12px;">{{case.uuid}}</i></span>
+    <small v-if="status_info" style="margin-left: 10px;">
+        <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style">[[ status_info.status[ {{case.status_id}} -1].name ]]</span>
+    </small>
 
-            <div v-if="cases_info && !cases_info.permission.read_only && cases_info.present_in_case" style="float:right">
-                <button v-if="cases_info.case.completed" class="btn btn-secondary btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-backward"></i></button>
-                <button v-else class="btn btn-success btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
-                <a class="btn btn-primary btn-sm" :href="`/case/edit/${cases_info.case.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
-                <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
-                <a class="btn btn-primary btn-sm"  :href="`/case/download/${cases_info.case.id}`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
-                <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseFork" role="button" aria-expanded="false" aria-controls="collapseExample">
-                    <i class="fa-solid fa-code-fork"></i>
-                </a>
-                <div class="collapse" id="collapseFork">
-                    <div class="card card-body" id="collapseForkBody" style="display: block;">
-                        <input id="case_title_fork" placeholder="Case title"/>
-                        <button class="btn btn-primary btn-sm" @click="fork_case(cases_info.case.id)">Fork</button>
-                    </div>
-                </div>
-                <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseTemplate" role="button" aria-expanded="false" aria-controls="collapseExample">
-                    <i class="fa-solid fa-bookmark"></i>
-                </a>
-                <div class="collapse" id="collapseTemplate">
-                    <div class="card card-body" id="collapseTemplateBody" style="display: block;">
-                        <input id="case_title_template" placeholder="Case title"/>
-                        <button class="btn btn-primary btn-sm" @click="create_template(cases_info.case)">Template</button>
-                    </div>
-                </div>
-            </div>
-
-            
-            <div>
-                <br/>
-                Creation: {{case.creation_date}}
-                <br/>
-                Last modification: {{case.last_modif}}
-                {% if case.dead_line %}
-                    <br/>
-                    Deadline: {{case.dead_line}}
-                {%endif%}
-
-                <div id="assign" style="float: right;" v-if="cases_info">
-                    <div class="dropdown" id="dropdown_user_case">
-                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Orgs</button>
-                        <ul class="dropdown-menu">
-                            <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
-                                <li>
-                                    <a class="btn btn-primary" :href="`/case/view/${cases_info.case.id}/add_orgs`" role="button">Add Orgs</a>
-                                </li>
-                            </template>
-                            <template v-for="org in cases_info.orgs_in_case">
-                                <li>
-                                    <div style="display: flex;">
-                                        <button class="dropdown-item">[[org.name]]</button>
-                                        <template v-if="org.id != cases_info.case.owner_org_id">
-                                            <button class="btn btn-danger" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case">Delete</button>
-                                        </template>
-                                    </div>
-                                </li>
-                            </template>
-                        </ul>
-                    </div>
-                </div>
+    <div v-if="cases_info && !cases_info.permission.read_only && cases_info.present_in_case" style="float:right">
+        <button v-if="cases_info.case.completed" class="btn btn-secondary btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-backward"></i></button>
+        <button v-else class="btn btn-success btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
+        <a class="btn btn-primary btn-sm" :href="`/case/edit/${cases_info.case.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
+        <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
+        <a class="btn btn-primary btn-sm"  :href="`/case/download/${cases_info.case.id}`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
+        <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseFork" role="button" aria-expanded="false" aria-controls="collapseExample" title="Fork the case">
+            <i class="fa-solid fa-code-fork"></i>
+        </a>
+        <div class="collapse" id="collapseFork">
+            <div class="card card-body" id="collapseForkBody" style="display: block;">
+                <input id="case_title_fork" placeholder="Case title"/>
+                <button class="btn btn-primary btn-sm" @click="fork_case(cases_info.case.id)">Fork</button>
             </div>
         </div>
-        
-        {% if case.description %}
-        <div>
-            <hr>
-            <p style="display: inline-block;">{{case.description}}</p>
+        <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseTemplate" role="button" aria-expanded="false" aria-controls="collapseExample" title="Create a template">
+            <i class="fa-solid fa-bookmark"></i>
+        </a>
+        <div class="collapse" id="collapseTemplate">
+            <div class="card card-body" id="collapseTemplateBody" style="display: block;">
+                <input id="case_title_template" placeholder="Case title"/>
+                <button class="btn btn-primary btn-sm" @click="create_template(cases_info.case)">Template</button>
+            </div>
         </div>
+        <a class="btn btn-secondary btn-sm"  :href="`/case/recurring/${cases_info.case.id}`" type="button" title="Recurring Case"><i class="fa-solid fa-clock"></i></a>
+    </div>    
+
+    <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
+        <i :title="cases_info.case.creation_date">Created: [[ moment( cases_info.case.creation_date ).fromNow() ]]</i>
+        <i :title="cases_info.case.last_modif">Changed: [[ moment( cases_info.case.last_modif ).fromNow() ]]</i>
+        {% if case.dead_line %}
+            <i :title="cases_info.case.dead_line">Deadline: [[ moment( cases_info.case.dead_line ).endOf().fromNow() ]]</i>
         {%endif%}
-        
-        <hr style="margin-bottom: 40px;">
-        <div id="top"></div>
-
-        <div style="display: flex;">
-            <h3>Tasks</h3>
-            {% if not current_user.read_only() and present_in_case %}
-                <span style="padding-left: 10px;">
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
-                </span>
-            {%endif%}
-
-            <!-- Search bar -->
-            <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center">
-                <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 350px;" />
-            </div>
-            <!-- Search bar -->
-        </div>
-
-        <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="FormModalLabel">Create a New Task</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form action="" method="post">
-                        {{ form.hidden_tag() }}
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                {{form.title.label(class_="col-form-label")}}:
-                                {{form.title(class_="form-control")}}
-                                {% if form.title.errors %}
-                                    <div style="color: red;">{{form.title.errors[0] | safe}}</div>
-                                {%endif%}
-                            </div>
-                            <div class="mb-3">
-                                <label for="description" class="col-form-label">Description:</label>
-                                {{form.description(class_="form-control")}}
-                                {% if form.description.errors %}
-                                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                                {%endif%}
-                            </div>
-                            <div class="mb-3">
-                                {{form.url.label(class_="col-form-label")}}:
-                                {{form.url(class_="form-control")}}
-                                {% if form.url.errors %}
-                                    <div style="color: red;">{{form.url.errors[0] | safe}}</div>
-                                {%endif%}
-                            </div>
-                            <div class="mb-3">
-                                {{form.dead_line_date.label(class_="col-form-label")}}:
-                                {{form.dead_line_date(class_="form-control")}}
-                                {% if form.dead_line_date.errors %}
-                                    <div style="color: red;">{{form.dead_line_date.errors[0] | safe}}</div>
-                                {%endif%}
-                            </div>
-                            <div class="mb-3">
-                                {{form.dead_line_time.label(class_="col-form-label")}}:
-                                {{form.dead_line_time(class_="form-control")}}
-                                {% if form.dead_line_time.errors %}
-                                    <div style="color: red;">{{form.dead_line_time.errors[0] | safe}}</div>
-                                {%endif%}
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                {{form.submit(class='btn btn-primary')}}
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <task_filter :cases_info="cases_info" @tasks_list="(tasks) => cases_info.tasks = tasks"></task_filter>
-
-        <hr>
-
-        <template v-if="cases_info && cases_info.tasks && status_info" >
-            <template v-for="task in cases_info.tasks" :key="task.id">
-                <div class="list-group" style="margin-bottom: 20px;">
-                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
-                </div>
-            </template>
-        </template>
-        <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
     </div>
+    {%if case.recurring_type %}
+        <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
+            <i>Recurring type: {{case.recurring_type}}</i>
+            {%if case.recurring_date %}
+                <i :title="cases_info.case.last_modif">Recurring Date: {{case.recurring_date}}</i>
+            {%endif%}
+        </div>
+    {%endif%}
+
+    <div id="assign" style="float: right;" v-if="cases_info">
+        <div class="dropdown" id="dropdown_user_case">
+            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Orgs</button>
+            <ul class="dropdown-menu">
+                <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+                    <li>
+                        <a class="btn btn-primary" :href="`/case/view/${cases_info.case.id}/add_orgs`" role="button">Add Orgs</a>
+                    </li>
+                </template>
+                <template v-for="org in cases_info.orgs_in_case">
+                    <li>
+                        <div style="display: flex;">
+                            <button class="dropdown-item">[[org.name]]</button>
+                            <template v-if="org.id != cases_info.case.owner_org_id">
+                                <button class="btn btn-danger" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case">Delete</button>
+                            </template>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </div>
+    
+    {% if case.description %}
+    <div>
+        <hr>
+        <p style="display: inline-block;">{{case.description}}</p>
+    </div>
+    {%endif%}
+    
+    <hr style="margin-bottom: 40px;">
+    <div id="top"></div>
+
+    <div style="display: flex;">
+        <h3>Tasks</h3>
+        {% if not current_user.read_only() and present_in_case %}
+            <span style="padding-left: 10px;">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
+            </span>
+        {%endif%}
+
+        <!-- Search bar -->
+        <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center">
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 350px;" />
+        </div>
+        <!-- Search bar -->
+    </div>
+
+    <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="FormModalLabel">Create a New Task</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="" method="post">
+                    {{ form.hidden_tag() }}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            {{form.title.label(class_="col-form-label")}}:
+                            {{form.title(class_="form-control")}}
+                            {% if form.title.errors %}
+                                <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="col-form-label">Description:</label>
+                            {{form.description(class_="form-control")}}
+                            {% if form.description.errors %}
+                                <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <div class="mb-3">
+                            {{form.url.label(class_="col-form-label")}}:
+                            {{form.url(class_="form-control")}}
+                            {% if form.url.errors %}
+                                <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <div class="mb-3">
+                            {{form.dead_line_date.label(class_="col-form-label")}}:
+                            {{form.dead_line_date(class_="form-control")}}
+                            {% if form.dead_line_date.errors %}
+                                <div style="color: red;">{{form.dead_line_date.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <div class="mb-3">
+                            {{form.dead_line_time.label(class_="col-form-label")}}:
+                            {{form.dead_line_time(class_="form-control")}}
+                            {% if form.dead_line_time.errors %}
+                                <div style="color: red;">{{form.dead_line_time.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            {{form.submit(class='btn btn-primary')}}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <task_filter :cases_info="cases_info" @tasks_list="(tasks) => cases_info.tasks = tasks"></task_filter>
+
+    <hr>
+
+    <template v-if="cases_info && cases_info.tasks && status_info" >
+        <template v-for="task in cases_info.tasks" :key="task.id">
+            <div :id="`task-${task.id}`"  class="list-group" style="margin-bottom: 20px;">
+                <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
+            </div>
+        </template>
+    </template>
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
 
 
@@ -175,7 +176,7 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, nextTick, onMounted } = Vue
+        const { createApp, ref, computed, nextTick } = Vue
         import case_tasks from '../../static/js/case/case_tasks.js'
         import task_filter from '../../static/js/case/task_filter.js'
         import {display_toast, display_prepared_toast, message_list} from '../../static/js/toaster.js'
@@ -201,6 +202,8 @@
                     )
                     cases_info.value = await res.json()
                     loc_tasks_list = cases_info.value.tasks
+                    await nextTick()
+                    scrollIntoSelectedElement()
                 }
 
                 async function fetchStatus() {
@@ -326,13 +329,10 @@
                 }
 
                 function onInput(e){
-                    cases_info.value.tasks = []
                     if(e.target.value){
-                        for(let i in loc_tasks_list){
-                            if(loc_tasks_list[i].title.toLowerCase().includes(e.target.value.toLowerCase())){
-                                cases_info.value.tasks.push(loc_tasks_list[i])
-                            }
-                        }
+                        cases_info.value.tasks = loc_tasks_list.filter((task) => {
+                            return task.title.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
                     }else{
                         cases_info.value.tasks = loc_tasks_list
                     }
@@ -342,6 +342,14 @@
                 fetchStatus()
                 get_all_users_case()
 
+                function scrollIntoSelectedElement() {
+                    const url = new URL(location.href)
+                    const task_id = url.hash.slice(1)
+                    const taskElem = document.getElementById(`${task_id}`)
+                    if (taskElem) {
+                        taskElem.scrollIntoView({ behavior: "smooth" });
+                    }
+                }
     
                 return {
                     cases_info,

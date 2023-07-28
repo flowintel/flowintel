@@ -7,7 +7,8 @@ from wtforms.fields import (
     TextAreaField,
     DateField,
     TimeField, 
-    HiddenField
+    HiddenField,
+    BooleanField
 )
 from wtforms.validators import InputRequired, Length, Optional
 from werkzeug.utils import secure_filename
@@ -89,4 +90,11 @@ class AddOrgsCase(FlaskForm):
             if Case_Org.query.filter_by(case_id = self.case_id.data, org_id=org).first():
                 raise ValidationError(f"Org {org} already in case")
 
-        
+
+class RecurringForm(FlaskForm):
+    case_id = HiddenField("")
+    once = DateField('One day', validators=[Optional()])
+    daily = BooleanField('Daily', validators=[Optional()])
+    weekly = DateField("Weekly (The date is to get the day of the week to give notification)", validators=[Optional()])
+    monthly = DateField("Monthly (The date is to get the day to give notification)", validators=[Optional()])
+    submit = SubmitField('Modify')

@@ -1,0 +1,75 @@
+<!-- 
+    Author: David Cruciani
+-->
+{% extends 'base.html' %}
+{% import 'macros/form_macros.html' as f %}
+
+{% block content %}
+    <h2 class="ui dividing header">Recurring case</h2>
+
+    <form action="" method="post">
+        {{ form.hidden_tag() }}
+        <div class="modal-body">
+            <div class="mb-3">
+                <select data-placeholder="recurring option" class="form-control" name="recurring" id="recurring">
+                    <option @click="recurring_mode=0" value="0"></option>
+                    <option @click="recurring_mode=1" value="1">One day</option>
+                    <option @click="recurring_mode=2" value="2">Daily</option>
+                    <option @click="recurring_mode=3" value="3">Weekly</option>
+                    <option @click="recurring_mode=4" value="4">Monthly</option>
+                </select>
+            </div>
+
+            <div v-if="recurring_mode==1">
+                {{form.once.label(class_="col-form-label")}}:
+                {{form.once(class_="form-control")}}
+                {% if form.once.errors %}
+                    <div style="color: red;">{{form.once.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div v-if="recurring_mode==2">
+                {{form.daily.label(class_="col-form-label")}}:
+                {{form.daily}}
+                {% if form.daily.errors %}
+                    <div style="color: red;">{{form.daily.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div v-if="recurring_mode==3">
+                {{form.weekly.label(class_="col-form-label")}}:
+                {{form.weekly(class_="form-control")}}
+                {% if form.weekly.errors %}
+                    <div style="color: red;">{{form.weekly.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div v-if="recurring_mode==4">
+                {{form.monthly.label(class_="col-form-label")}}:
+                {{form.monthly(class_="form-control")}}
+                {% if form.monthly.errors %}
+                    <div style="color: red;">{{form.monthly.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+
+            <div class="modal-footer" style="margin-top: 10px;">
+                {{form.submit(class='btn btn-primary')}}
+            </div>
+        </div>
+    </form>
+
+{% endblock %}
+
+{% block script %}
+
+<script type="module">
+    const {createApp, ref} = Vue
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const recurring_mode = ref(null)
+
+            return{
+                recurring_mode
+            }
+        }
+    }).mount('.container')
+</script>
+{% endblock %}

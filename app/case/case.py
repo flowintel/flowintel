@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
-from .form import CaseForm, TaskForm, CaseEditForm, AddOrgsCase
+from .form import CaseForm, TaskForm, CaseEditForm, AddOrgsCase, RecurringForm
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
 from ..db_class.db import Org, Case_Org
@@ -115,6 +115,28 @@ def add_orgs(id):
         flash("Access denied", "error")
     return redirect(f"/case/view/{id}")
 
+
+@case_blueprint.route("/recurring/<cid>", methods=['GET', 'POST'])
+@login_required
+@editor_required
+def recurring(cid):
+    """Recurring form"""
+
+    case = CaseModel.get_case(cid)
+    if case:
+        present_in_case = CaseModel.get_present_in_case(cid, current_user)
+        if present_in_case:
+            form = RecurringForm()
+            form.case_id.data = cid
+            if form.validate_on_submit():
+                form_dict = form_to_dict(form)
+                CaseModel.change_recurring(form_dict, cid)
+                flash("Recurring set", "success")
+                return redirect(f"/case/view/{case.id}")
+            return render_template("case/case_recurring.html", form=form)
+        flash("Action not allowed", "warning")
+        return redirect(f"/case/view/{cid}")
+    return render_template("404.html")
 
 
 ############
