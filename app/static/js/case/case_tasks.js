@@ -250,20 +250,10 @@ export default {
 					if(task.status_id == status)
 						task.status_id = 1
 
-					fetch('/case/change_status/task/'+task.id,{
-						headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-						method: "POST",
-						body: JSON.stringify({"status": task.status_id})
-					})
 				}else{
 					for(let i in props.status_info.status){
 						if(props.status_info.status[i].name == 'Finished'){
 							task.status_id = props.status_info.status[i].id
-							fetch('/case/change_status/task/'+task.id,{
-								headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-								method: "POST",
-								body: JSON.stringify({"status": task.status_id})
-							})
 							break
 						}
 					}

@@ -2,18 +2,19 @@
 isscripted=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1`
 source env/bin/activate
 
-function launch {
-    screen -dmS "fcm"
-    # screen -S "fcm" -X screen -t "recurring_notification" bash -c "python app/notification/recurring_notification.py; read x"
-    screen -S "fcm" -X screen -t "recurring_notification" bash -c "python startNotif.py; read x"
-    python app.py
-}
-
 function killscript {
     if  [ $isscripted ]; then
 		screen -X -S fcm quit
     fi
 }
+
+function launch {
+    killscript
+    screen -dmS "fcm"
+    screen -S "fcm" -X screen -t "recurring_notification" bash -c "python startNotif.py; read x"
+    python app.py
+}
+
 
 function init_db {
 	python app.py -i

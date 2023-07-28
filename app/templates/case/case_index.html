@@ -195,20 +195,10 @@
                             if(case_loc.status_id == status)
                                 case_loc.status_id = 1
 
-                            fetch('/case/change_status/'+case_loc.id,{
-                                headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                method: "POST",
-                                body: JSON.stringify({"status": case_loc.status_id})
-                            })
                         }else{
                             for(let i in status_info.value.status){
                                 if(status_info.value.status[i].name == 'Finished'){
                                     case_loc.status_id = status_info.value.status[i].id
-                                    fetch('/case/change_status/'+case_loc.id,{
-                                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                        method: "POST",
-                                        body: JSON.stringify({"status": case_loc.status_id})
-                                    })
                                     break
                                 }
                             }
