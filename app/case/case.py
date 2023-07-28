@@ -196,6 +196,7 @@ def complete_case(cid):
     if CaseModel.get_case(cid):
         if CaseModel.get_present_in_case(cid, current_user):
             if CaseModel.complete_case(cid, current_user):
+                flash("Case Completed")
                 return {"message": "Case completed", "toast_class": "success-subtle"}, 200
             else:
                 return {"message": "Error case completed", 'toast_class': "danger-subtle"}, 400
@@ -301,7 +302,8 @@ def get_all_users(cid):
         orgs = CaseModel.get_all_users_core(case)
         for org in orgs:
             for user in org.users:
-                users_list.append(user.to_json())
+                if not user == current_user:
+                    users_list.append(user.to_json())
         return {"users_list": users_list}
     return {"message": "Not in Case"}
 

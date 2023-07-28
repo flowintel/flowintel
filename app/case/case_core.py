@@ -648,3 +648,9 @@ def change_recurring(form_dict, cid):
 
     db.session.commit()
     return
+
+def notify_user(task, user_id):
+    case = get_case(task.case_id)
+    message = f"Notify for task '{task.id}-{task.title}' of case '{case.id}-{case.title}'"
+    NotifModel.create_notification_user(message, task.case_id, user_id=user_id, html_icon="fa-solid fa-bell")
+    return True

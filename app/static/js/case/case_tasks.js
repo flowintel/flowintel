@@ -275,6 +275,17 @@ export default {
 			await display_toast(res)
 		}
 
+		async function notify_user(user_id){
+			const res = await fetch(
+				'/case/' + props.task.case_id + '/task/' + props.task.id + '/notify_user',{
+					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+					method: "POST",
+					body: JSON.stringify({"task_id": props.task.id, "user_id": user_id})
+				}
+			)
+			await display_toast(res)
+		}
+
 		function formatNow(dt) {
 			return moment(dt).fromNow()
 		}
@@ -312,6 +323,7 @@ export default {
 			add_file,
 			delete_file,
 			complete_task,
+			notify_user,
 			formatNow,
 			endOf,
 			present_user_in_task
@@ -393,6 +405,7 @@ export default {
 						<h5>Remove assign</h5>
 						<div v-for="user in task.users">
 							<span style="margin-right: 5px">[[user.first_name]] [[user.last_name]]</span>
+							<button v-if="cases_info.current_user.id != user.id" class="btn btn-primary btn-sm" @click="notify_user(user.id)"><i class="fa-solid fa-bell"></i></button>
 							<button class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
 						</div>
 					</div>

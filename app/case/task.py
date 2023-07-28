@@ -310,3 +310,19 @@ def finished_tasks_sort_by_filter(cid):
             return CaseModel.sort_tasks_by_filter(case, current_user, True, data_dict["filter"])
         return {"message": "Not in Case"}
     return {"message": "No filter pass"}
+
+
+@task_blueprint.route("/<cid>/task/<tid>/notify_user", methods=['POST'])
+@login_required
+@editor_required
+def notify_user(cid, tid):
+    """Notify a user about a task"""
+    user = request.json["user_id"]
+    task = CaseModel.get_task(tid)
+    if task:
+        if CaseModel.get_present_in_case(cid, current_user):
+            if CaseModel.notify_user(task, user):
+                return {"message":"User notified", "toast_class": "success-subtle"}, 200
+            return {"message":"Something goes wrong", "toast_class": "danger-subtle"}, 400
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 400
+    return {"message":"No Task given", "toast_class": "warning-subtle"}, 400
