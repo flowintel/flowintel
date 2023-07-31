@@ -8,8 +8,13 @@ function killscript {
     fi
 }
 
+function db_upgrade {
+    flask db upgrade
+}
+
 function launch {
     killscript
+    db_upgrade
     screen -dmS "fcm"
     screen -S "fcm" -X screen -t "recurring_notification" bash -c "python startNotif.py; read x"
     python app.py
