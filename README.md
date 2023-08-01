@@ -26,8 +26,6 @@ Go to `config.py` and change just like you want to.
 
 After login go to `Users->New User` and create a new user with admin right. Then go back to `Users` and delete `admin` user
 
-
-
 ## Screen
 
 A screen is created to notify recurrent case. To access it:
@@ -35,3 +33,11 @@ A screen is created to notify recurrent case. To access it:
 ```bash
 screen -r fcm
 ```
+
+
+
+## Api
+
+`/api/case/doc`
+
+`/api/admin/doc`

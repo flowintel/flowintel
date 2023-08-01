@@ -37,7 +37,7 @@ def get_user_notifications():
 @login_required
 def get_user_notifications_len():
     """Return notification for current_user"""
-    NotifModel.create_notification_dead_line(current_user)
+    NotifModel.create_notification_deadline(current_user)
     user_notif = NotifModel.get_user_notif(current_user, "true")
     return {"notif": len(user_notif)}
 

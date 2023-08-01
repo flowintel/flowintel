@@ -21,16 +21,16 @@ class CaseForm(FlaskForm):
         'Title', validators=[InputRequired(),
                                   Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
-    dead_line_date = DateField('Dead_line_date', validators=[Optional()])
-    dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
+    deadline_date = DateField('deadline_date', validators=[Optional()])
+    deadline_time = TimeField("deadline_time", validators=[Optional()])
     submit = SubmitField('Register')
 
     def validate_title(self, field):
         if Case.query.filter_by(title=field.data).first():
             raise ValidationError("The title already exist")
     
-    def validate_dead_line_time(self, field):
-        if field.data and not self.dead_line_date.data:
+    def validate_deadline_time(self, field):
+        if field.data and not self.deadline_date.data:
             raise ValidationError("Choose a date")
 
 class CaseEditForm(FlaskForm):
@@ -38,12 +38,12 @@ class CaseEditForm(FlaskForm):
         'Title', validators=[InputRequired(),
                                   Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
-    dead_line_date = DateField('Dead_line_date', validators=[Optional()])
-    dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
+    deadline_date = DateField('deadline_date', validators=[Optional()])
+    deadline_time = TimeField("deadline_time", validators=[Optional()])
     submit = SubmitField('Modify')
 
-    def validate_dead_line_time(self, field):
-        if field.data and not self.dead_line_date.data:
+    def validate_deadline_time(self, field):
+        if field.data and not self.deadline_date.data:
             raise ValidationError("Choose a date")
 
 
@@ -54,12 +54,12 @@ class TaskForm(FlaskForm):
     description = TextAreaField('Description', validators=[Optional()])
     # group_id = SelectField(u'Category', coerce=str, validators=[InputRequired()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
-    dead_line_date = DateField('Dead_line_date', validators=[Optional()])
-    dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
+    deadline_date = DateField('deadline_date', validators=[Optional()])
+    deadline_time = TimeField("deadline_time", validators=[Optional()])
     submit = SubmitField('Register')
 
-    def validate_dead_line_time(self, field):
-        if field.data and not self.dead_line_date.data:
+    def validate_deadline_time(self, field):
+        if field.data and not self.deadline_date.data:
             raise ValidationError("Choose a date")
 
 
@@ -70,12 +70,12 @@ class TaskEditForm(FlaskForm):
                                   Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
-    dead_line_date = DateField('Dead_line_date', validators=[Optional()])
-    dead_line_time = TimeField("Dead_line_time", validators=[Optional()])
+    deadline_date = DateField('deadline_date', validators=[Optional()])
+    deadline_time = TimeField("deadline_time", validators=[Optional()])
     submit = SubmitField('Modify')
 
-    def validate_dead_line_time(self, field):
-        if field.data and not self.dead_line_date.data:
+    def validate_deadline_time(self, field):
+        if field.data and not self.deadline_date.data:
             raise ValidationError("Choose a date")
 
 

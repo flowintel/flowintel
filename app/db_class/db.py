@@ -53,14 +53,14 @@ class Case(db.Model):
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String)
     creation_date = db.Column(db.DateTime, index=True)
-    dead_line = db.Column(db.DateTime, index=True)
+    deadline = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
     finish_date = db.Column(db.DateTime, index=True)
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade="all, delete-orphan")
     status_id = db.Column(db.Integer, index=True)
     completed = db.Column(db.Boolean, default=False)
     owner_org_id = db.Column(db.Integer, index=True)
-    notif_dead_line_id = db.Column(db.Integer, index=True)
+    notif_deadline_id = db.Column(db.Integer, index=True)
     recurring_date = db.Column(db.DateTime, index=True)
     recurring_type = db.Column(db.String(30), index=True)
 
@@ -75,13 +75,13 @@ class Case(db.Model):
             "status_id": self.status_id,
             "completed": self.completed,
             "owner_org_id": self.owner_org_id,
-            "notif_dead_line_id": self.notif_dead_line_id,
+            "notif_deadline_id": self.notif_deadline_id,
             "recurring_type": self.recurring_type
         }
-        if self.dead_line:
-            json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
+        if self.deadline:
+            json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
         else:
-            json_dict["dead_line"] = self.dead_line
+            json_dict["deadline"] = self.deadline
 
         if self.finish_date:
             json_dict["finish_date"] = self.finish_date.strftime('%Y-%m-%d %H:%M')
@@ -104,13 +104,13 @@ class Task(db.Model):
     url = db.Column(db.String(64), index=True)
     notes = db.Column(db.String, nullable=True)
     creation_date = db.Column(db.DateTime, index=True)
-    dead_line = db.Column(db.DateTime, index=True)
+    deadline = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
     finish_date = db.Column(db.DateTime, index=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete="CASCADE"))
     status_id = db.Column(db.Integer, index=True)
     completed = db.Column(db.Boolean, default=False)
-    notif_dead_line_id = db.Column(db.Integer, index=True)
+    notif_deadline_id = db.Column(db.Integer, index=True)
     files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
@@ -124,12 +124,12 @@ class Task(db.Model):
             "case_id": self.case_id,
             "status_id": self.status_id,
             "completed": self.completed,
-            "notif_dead_line_id": self.notif_dead_line_id
+            "notif_deadline_id": self.notif_deadline_id
         }
-        if self.dead_line:
-            json_dict["dead_line"] = self.dead_line.strftime('%Y-%m-%d %H:%M')
+        if self.deadline:
+            json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
         else:
-            json_dict["dead_line"] = self.dead_line
+            json_dict["deadline"] = self.deadline
 
         if self.finish_date:
             json_dict["finish_date"] = self.finish_date.strftime('%Y-%m-%d %H:%M')
@@ -217,7 +217,7 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, index=True)
     case_id = db.Column(db.Integer, index=True)
     creation_date = db.Column(db.DateTime, index=True)
-    for_dead_line = db.Column(db.DateTime, index=True)
+    for_deadline = db.Column(db.DateTime, index=True)
     read_date = db.Column(db.DateTime, index=True)
     html_icon = db.Column(db.String(60), index=True)
 
@@ -236,10 +236,10 @@ class Notification(db.Model):
         else:
             json_dict["read_date"] = self.read_date
 
-        if self.for_dead_line:
-            json_dict["for_dead_line"] = self.for_dead_line.strftime('%Y-%m-%d %H:%M')
+        if self.for_deadline:
+            json_dict["for_deadline"] = self.for_deadline.strftime('%Y-%m-%d %H:%M')
         else:
-            json_dict["for_dead_line"] = self.for_dead_line
+            json_dict["for_deadline"] = self.for_deadline
         
         return json_dict
 

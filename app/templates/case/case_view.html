@@ -41,8 +41,8 @@
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
         <i :title="cases_info.case.creation_date">Created: [[ moment( cases_info.case.creation_date ).fromNow() ]]</i>
         <i :title="cases_info.case.last_modif">Changed: [[ moment( cases_info.case.last_modif ).fromNow() ]]</i>
-        {% if case.dead_line %}
-            <i :title="cases_info.case.dead_line">Deadline: [[ moment( cases_info.case.dead_line ).endOf().fromNow() ]]</i>
+        {% if case.deadline %}
+            <i :title="cases_info.case.deadline">Deadline: [[ moment( cases_info.case.deadline ).endOf().fromNow() ]]</i>
         {%endif%}
     </div>
     {%if case.recurring_type %}
@@ -134,17 +134,17 @@
                             {%endif%}
                         </div>
                         <div class="mb-3">
-                            {{form.dead_line_date.label(class_="col-form-label")}}:
-                            {{form.dead_line_date(class_="form-control")}}
-                            {% if form.dead_line_date.errors %}
-                                <div style="color: red;">{{form.dead_line_date.errors[0] | safe}}</div>
+                            {{form.deadline_date.label(class_="col-form-label")}}:
+                            {{form.deadline_date(class_="form-control")}}
+                            {% if form.deadline_date.errors %}
+                                <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
                             {%endif%}
                         </div>
                         <div class="mb-3">
-                            {{form.dead_line_time.label(class_="col-form-label")}}:
-                            {{form.dead_line_time(class_="form-control")}}
-                            {% if form.dead_line_time.errors %}
-                                <div style="color: red;">{{form.dead_line_time.errors[0] | safe}}</div>
+                            {{form.deadline_time.label(class_="col-form-label")}}:
+                            {{form.deadline_time(class_="form-control")}}
+                            {% if form.deadline_time.errors %}
+                                <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
                             {%endif%}
                         </div>
                         <div class="modal-footer">

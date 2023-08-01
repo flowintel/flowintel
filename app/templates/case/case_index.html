@@ -38,16 +38,16 @@
                             {%endif%}
                         </div>
                         <div class="mb-3">
-                            {{form.dead_line_date.label(class_="col-form-label")}}:
-                            {{form.dead_line_date(class_="form-control")}}
-                            {% if form.dead_line_date.errors %}
-                                <div style="color: red;">{{form.dead_line_date.errors[0] | safe}}</div>
+                            {{form.deadline_date.label(class_="col-form-label")}}:
+                            {{form.deadline_date(class_="form-control")}}
+                            {% if form.deadline_date.errors %}
+                                <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
                             {%endif%}
                         </div>
                         <div class="mb-3">
-                            {{form.dead_line_time.label(class_="col-form-label")}}:
-                            {{form.dead_line_time(class_="form-control")}}
-                            {% if form.dead_line_time.errors %}<div style="color: red;">{{form.dead_line_time.errors[0] | safe}}
+                            {{form.deadline_time.label(class_="col-form-label")}}:
+                            {{form.deadline_time(class_="form-control")}}
+                            {% if form.deadline_time.errors %}<div style="color: red;">{{form.deadline_time.errors[0] | safe}}
                                 </div>
                             {%endif%}
                         </div>
@@ -96,7 +96,7 @@
                         <div class="d-flex w-100 justify-content-between">
                             <div class="d-flex w-100 justify-content-between">
                                 <div></div>
-                                <small v-if="case_loc.dead_line" :title="case_loc.dead_line"><i>Deadline [[moment(case_loc.dead_line).endOf().fromNow()]]</i></small>
+                                <small v-if="case_loc.deadline" :title="case_loc.deadline"><i>Deadline [[moment(case_loc.deadline).endOf().fromNow()]]</i></small>
                                 <small v-else><i>No deadline</i></small>
                             </div>
                         </div>

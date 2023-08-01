@@ -26,17 +26,17 @@
             </div>
             <div class="row">
                 <div class="col">
-                    {{form.dead_line_date.label(class_="col-form-label")}}:
-                    {{form.dead_line_date(class_="form-control")}}
-                    {% if form.dead_line_date.errors %}
-                        <div style="color: red;">{{form.dead_line_date.errors[0] | safe}}</div>
+                    {{form.deadline_date.label(class_="col-form-label")}}:
+                    {{form.deadline_date(class_="form-control")}}
+                    {% if form.deadline_date.errors %}
+                        <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
                 <div class="col">
-                    {{form.dead_line_time.label(class_="col-form-label")}}:
-                    {{form.dead_line_time(class_="form-control")}}
-                    {% if form.dead_line_time.errors %}
-                        <div style="color: red;">{{form.dead_line_time.errors[0] | safe}}</div>
+                    {{form.deadline_time.label(class_="col-form-label")}}:
+                    {{form.deadline_time(class_="form-control")}}
+                    {% if form.deadline_time.errors %}
+                        <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
             </div>

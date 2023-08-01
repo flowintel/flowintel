@@ -114,7 +114,7 @@
 
                 let loc_var
                 for (let i=0; i<tasks.value.length; i++){
-                    if(flag_dead_creation_loc) loc_var = tasks.value[i]["dead_line"]
+                    if(flag_dead_creation_loc) loc_var = tasks.value[i]["deadline"]
                     else loc_var = tasks.value[i]["creation_date"]
                     var e = new DayPilot.Event({
                         start: date_parser(loc_var, true),
@@ -137,7 +137,7 @@
 
                 let loc_var
                 for (let i=0; i<cases.value.length; i++){
-                    if(flag_dead_creation_loc) loc_var = cases.value[i]["dead_line"]
+                    if(flag_dead_creation_loc) loc_var = cases.value[i]["deadline"]
                     else loc_var = cases.value[i]["creation_date"]
                     var e = new DayPilot.Event({
                         start: date_parser(loc_var, true),

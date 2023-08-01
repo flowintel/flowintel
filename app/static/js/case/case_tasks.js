@@ -349,7 +349,7 @@ export default {
                 <div v-else>
                     <i>No user assigned</i>
                 </div>
-                <small v-if="task.dead_line" :title="task.dead_line"><i>Deadline [[endOf(task.dead_line)]]</i></small>
+                <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[endOf(task.deadline)]]</i></small>
                 <small v-else><i>No deadline</i></small>
             </div>
 		</a>

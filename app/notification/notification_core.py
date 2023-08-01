@@ -86,47 +86,47 @@ def create_notification_user(message, case_id, user_id, html_icon):
     return notif
 
 
-def case_task_dead_line_notif(case_or_task, msg, html_icon, now, current_user, flag_task=False):
-    if case_or_task.dead_line:
-        notif_dead_line = None
-        if case_or_task.notif_dead_line_id:
-            notif_dead_line = get_notif(case_or_task.notif_dead_line_id)
+def case_task_deadline_notif(case_or_task, msg, html_icon, now, current_user, flag_task=False):
+    if case_or_task.deadline:
+        notif_deadline = None
+        if case_or_task.notif_deadline_id:
+            notif_deadline = get_notif(case_or_task.notif_deadline_id)
 
-        case_dead_line = datetime.datetime.strptime(case_or_task.dead_line.strftime("%Y-%m-%d"), "%Y-%m-%d")
-        loc = case_dead_line - now
+        case_deadline = datetime.datetime.strptime(case_or_task.deadline.strftime("%Y-%m-%d"), "%Y-%m-%d")
+        loc = case_deadline - now
 
         if loc.days > 0:
             if loc.days <= 10:
-                if notif_dead_line:
-                    if (case_dead_line - notif_dead_line.for_dead_line).days > loc.days:
-                        notif_dead_line.message = f"{loc.days} {msg}"
-                        notif_dead_line.for_dead_line = now
-                        notif_dead_line.is_read = False
+                if notif_deadline:
+                    if (case_deadline - notif_deadline.for_deadline).days > loc.days:
+                        notif_deadline.message = f"{loc.days} {msg}"
+                        notif_deadline.for_deadline = now
+                        notif_deadline.is_read = False
                         db.session.commit()
                 else:
                     if flag_task:
-                        notif_dead_line = create_notification_user(f"{loc.days} {msg}", case_or_task.case_id, current_user.id, html_icon)
+                        notif_deadline = create_notification_user(f"{loc.days} {msg}", case_or_task.case_id, current_user.id, html_icon)
                     else:
-                        notif_dead_line = create_notification_user(f"{loc.days} {msg}", case_or_task.id, current_user.id, html_icon)
-                    notif_dead_line.for_dead_line = now
-                    case_or_task.notif_dead_line_id = notif_dead_line.id
+                        notif_deadline = create_notification_user(f"{loc.days} {msg}", case_or_task.id, current_user.id, html_icon)
+                    notif_deadline.for_deadline = now
+                    case_or_task.notif_deadline_id = notif_deadline.id
                     db.session.commit()
 
 
-def create_notification_dead_line(current_user):
+def create_notification_deadline(current_user):
     now = datetime.datetime.strptime(datetime.datetime.now().strftime("%Y-%m-%d"), "%Y-%m-%d")
     # now = datetime.datetime.strptime("2023-07-01", "%Y-%m-%d")
 
     cases = Case.query.join(Case_Org, Case_Org.org_id==current_user.org_id).all()
     for case in cases:
         msg = f"days remains for case '{case.id}-{case.title}'"
-        case_task_dead_line_notif(case, msg, "fa-solid fa-radiation", now, current_user)
+        case_task_deadline_notif(case, msg, "fa-solid fa-radiation", now, current_user)
     
     tasks = Task.query.join(Task_User, Task_User.user_id==current_user.id).all()
     for task in tasks:
         case = Case.query.get(task.case_id)
         msg = f"days remains for task '{task.title}' of case '{case.id}-{case.title}'"
-        case_task_dead_line_notif(task, msg, "fa-solid fa-skull-crossbones", now, current_user, True)
+        case_task_deadline_notif(task, msg, "fa-solid fa-skull-crossbones", now, current_user, True)
 
     return True
 

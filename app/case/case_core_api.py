@@ -68,8 +68,8 @@ def common_verif(data_dict, case_task):
             data_dict["deadline_date"] = datetime.strptime(data_dict["deadline_date"], '%Y-%m-%d') 
         except:
             return {"message": "date bad format"}
-    elif case_task.dead_line:
-        data_dict["deadline_date"] = case_task.dead_line.strftime('%Y-%m-%d')
+    elif case_task.deadline:
+        data_dict["deadline_date"] = case_task.deadline.strftime('%Y-%m-%d')
     else:
         data_dict["deadline_date"] = ""
 
@@ -78,8 +78,8 @@ def common_verif(data_dict, case_task):
             data_dict["deadline_time"] = datetime.strptime(data_dict["deadline_time"], '%H-%M') 
         except:
             return {"message": "time bad format"}
-    elif case_task.dead_line:
-        data_dict["deadline_time"] = case_task.dead_line.strftime('%H-%M')
+    elif case_task.deadline:
+        data_dict["deadline_time"] = case_task.deadline.strftime('%H-%M')
     else:
         data_dict["deadline_time"] = ""
     

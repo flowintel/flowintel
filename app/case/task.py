@@ -32,8 +32,8 @@ def edit_task(case_id, id):
             form.description.data = task_modif.description
             form.title.data = task_modif.title
             form.url.data = task_modif.url
-            form.dead_line_date.data = task_modif.dead_line
-            form.dead_line_time.data = task_modif.dead_line
+            form.deadline_date.data = task_modif.deadline
+            form.deadline_time.data = task_modif.deadline
         
         return render_template("case/edit_task.html", form=form)
     else:

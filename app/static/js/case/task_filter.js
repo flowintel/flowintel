@@ -33,8 +33,8 @@ export default {
 			asc_desc_filter()
 		}
 
-		function sort_by_dead_line(){
-			current_filter = "dead_line"
+		function sort_by_deadline(){
+			current_filter = "deadline"
 			asc_desc_filter()
 		}
 
@@ -77,7 +77,7 @@ export default {
 			filter_ongoing,
 			sort_by_last_modif,
 			sort_by_title,
-			sort_by_dead_line,
+			sort_by_deadline,
 			sort_by_status,
 			sort_by_assigned_tasks,
 			sort_by_my_assignment,
@@ -112,7 +112,7 @@ export default {
 						<label class="form-check-label" for="radioOrderAsc">Last Modif</label>
 					</div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_dead_line()">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_deadline()">
 						<label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
 					</div>
 					<div class="form-check">

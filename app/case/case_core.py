@@ -185,7 +185,7 @@ def complete_task(tid):
 def add_case_core(form_dict, user):
     """Add a case to the DB"""
 
-    dead_line = dead_line_check(form_dict["deadline_date"], form_dict["deadline_time"])
+    deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
     case = Case(
         title=bleach.clean(form_dict["title"]),
@@ -193,7 +193,7 @@ def add_case_core(form_dict, user):
         uuid=str(uuid.uuid4()),
         creation_date=datetime.datetime.now(),
         last_modif=datetime.datetime.now(),
-        dead_line=dead_line,
+        deadline=deadline,
         status_id=1,
         owner_org_id=user.org_id
     )
@@ -217,11 +217,11 @@ def edit_case_core(form_dict, cid):
     """Edit a case to the DB"""
     case = get_case(cid)
 
-    dead_line = dead_line_check(form_dict["deadline_date"], form_dict["deadline_time"])
+    deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
     case.title = bleach.clean(form_dict["title"])
     case.description=bleach.clean(form_dict["description"])
-    case.dead_line=dead_line
+    case.deadline=deadline
 
     update_last_modif(cid)
     db.session.commit()
@@ -229,7 +229,7 @@ def edit_case_core(form_dict, cid):
 
 def add_task_core(form_dict, cid):
     """Add a task to the DB"""
-    dead_line = dead_line_check(form_dict["deadline_date"], form_dict["deadline_time"])
+    deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
     task = Task(
         uuid=str(uuid.uuid4()),
@@ -238,7 +238,7 @@ def add_task_core(form_dict, cid):
         url=bleach.clean(form_dict["url"]),
         creation_date=datetime.datetime.now(),
         last_modif=datetime.datetime.now(),
-        dead_line=dead_line,
+        deadline=deadline,
         case_id=cid,
         status_id=1
     )
@@ -278,27 +278,27 @@ def add_file_core(task, files_list):
 def edit_task_core(form_dict, tid):
     """Edit a task to the DB"""
     task = get_task(tid)
-    dead_line = dead_line_check(form_dict["deadline_date"], form_dict["deadline_time"])
+    deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
     task.title = bleach.clean(form_dict["title"])
     task.description=bleach.clean(form_dict["description"])
     task.url=bleach.clean(form_dict["url"])
-    task.dead_line=dead_line
+    task.deadline=deadline
 
     update_last_modif(task.case_id)
     update_last_modif_task(task.id)
     db.session.commit()
 
 
-def dead_line_check(date, time):
+def deadline_check(date, time):
     """Combine the date and the time if time exist"""
-    dead_line = None
+    deadline = None
     if date and time:
-        dead_line = datetime.datetime.combine(date, time)
+        deadline = datetime.datetime.combine(date, time)
     elif date:
-        dead_line = date
+        deadline = date
     
-    return dead_line
+    return deadline
 
 
 def modif_note_core(tid, notes):
@@ -574,9 +574,9 @@ def fork_case_core(cid, case_title_fork, user):
     case_json = case.to_json()
     case_json["title"] = case_title_fork
 
-    if case.dead_line:
-        case_json["deadline_date"] = datetime.datetime.strptime(case_json["dead_line"].split(" ")[0], "%Y-%m-%d").date()
-        case_json["deadline_time"] = datetime.datetime.strptime(case_json["dead_line"].split(" ")[1], "%H:%M").time()
+    if case.deadline:
+        case_json["deadline_date"] = datetime.datetime.strptime(case_json["deadline"].split(" ")[0], "%Y-%m-%d").date()
+        case_json["deadline_time"] = datetime.datetime.strptime(case_json["deadline"].split(" ")[1], "%H:%M").time()
     else:
         case_json["deadline_date"] = None
         case_json["deadline_time"] = None
@@ -585,9 +585,9 @@ def fork_case_core(cid, case_title_fork, user):
 
     for task in case.tasks:
         task_json = task.to_json()
-        if task.dead_line:
-            task_json["deadline_date"] = datetime.datetime.strptime(task_json["dead_line"].split(" ")[0], "%Y-%m-%d").date()
-            task_json["deadline_time"] = datetime.datetime.strptime(task_json["dead_line"].split(" ")[1], "%H:%M").time()
+        if task.deadline:
+            task_json["deadline_date"] = datetime.datetime.strptime(task_json["deadline"].split(" ")[0], "%Y-%m-%d").date()
+            task_json["deadline_time"] = datetime.datetime.strptime(task_json["deadline"].split(" ")[1], "%H:%M").time()
         else:
             task_json["deadline_date"] = None
             task_json["deadline_time"] = None

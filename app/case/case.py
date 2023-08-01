@@ -71,8 +71,8 @@ def edit_case(id):
             case_modif = CaseModel.get_case(id)
             form.description.data = case_modif.description
             form.title.data = case_modif.title
-            form.dead_line_date.data = case_modif.dead_line
-            form.dead_line_time.data = case_modif.dead_line
+            form.deadline_date.data = case_modif.deadline
+            form.deadline_time.data = case_modif.deadline
         return render_template("case/edit_case.html", form=form)
 
     return redirect(f"/case/view/{id}")

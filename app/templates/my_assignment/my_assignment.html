@@ -60,7 +60,7 @@
                     <div v-else>
                         <i>No user assigned</i>
                     </div>
-                    <small v-if="task.dead_line" :title="task.dead_line"><i>Deadline [[moment(task.dead_line).endOf().fromNow()]]</i></small>
+                    <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[moment(task.deadline).endOf().fromNow()]]</i></small>
                     <small v-else><i>No deadline</i></small>
                 </div>
             </a>
