@@ -46,7 +46,6 @@ class AddUser(Resource):
     def post(self):
         if request.json:
             verif_dict = AdminModelApi.verif_add_user(request.json)
-            print(verif_dict)
             if "message" not in verif_dict:
                 user = AdminModel.add_user_core(verif_dict)
                 return {"message": f"User created: {user.id}"}, 400
