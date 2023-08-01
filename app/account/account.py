@@ -54,8 +54,8 @@ def login():
             login_user(user, form.remember_me.data)
             flash('You are now logged in. Welcome back!', 'success')
             return redirect(request.args.get('next') or "/")
-        else:
-            flash('Invalid email or password.', 'error')
+    else:
+        flash('Invalid email or password.', 'error')
     return render_template('account/login.html', form=form)
 
 @account_blueprint.route('/logout')
