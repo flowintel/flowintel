@@ -50,7 +50,8 @@ def view(id):
                 else:
                     flash("Error File", "error")
                 return redirect(f"/case/view/{id}")
-        return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case, form=form)
+            return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case, form=form)
+        return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case)
     return render_template("404.html")
 
 

@@ -93,6 +93,60 @@
             <span style="padding-left: 10px;">
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
             </span>
+            <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="FormModalLabel">Create a New Task</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="" method="post">
+                            {{ form.hidden_tag() }}
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    {{form.title.label(class_="col-form-label")}}:
+                                    {{form.title(class_="form-control")}}
+                                    {% if form.title.errors %}
+                                        <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                                    {%endif%}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="description" class="col-form-label">Description:</label>
+                                    {{form.description(class_="form-control")}}
+                                    {% if form.description.errors %}
+                                        <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                                    {%endif%}
+                                </div>
+                                <div class="mb-3">
+                                    {{form.url.label(class_="col-form-label")}}:
+                                    {{form.url(class_="form-control")}}
+                                    {% if form.url.errors %}
+                                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                                    {%endif%}
+                                </div>
+                                <div class="mb-3">
+                                    {{form.deadline_date.label(class_="col-form-label")}}:
+                                    {{form.deadline_date(class_="form-control")}}
+                                    {% if form.deadline_date.errors %}
+                                        <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
+                                    {%endif%}
+                                </div>
+                                <div class="mb-3">
+                                    {{form.deadline_time.label(class_="col-form-label")}}:
+                                    {{form.deadline_time(class_="form-control")}}
+                                    {% if form.deadline_time.errors %}
+                                        <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
+                                    {%endif%}
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    {{form.submit(class='btn btn-primary')}}
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         {%endif%}
 
         <!-- Search bar -->
@@ -102,60 +156,7 @@
         <!-- Search bar -->
     </div>
 
-    <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="FormModalLabel">Create a New Task</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="" method="post">
-                    {{ form.hidden_tag() }}
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            {{form.title.label(class_="col-form-label")}}:
-                            {{form.title(class_="form-control")}}
-                            {% if form.title.errors %}
-                                <div style="color: red;">{{form.title.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="col-form-label">Description:</label>
-                            {{form.description(class_="form-control")}}
-                            {% if form.description.errors %}
-                                <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            {{form.url.label(class_="col-form-label")}}:
-                            {{form.url(class_="form-control")}}
-                            {% if form.url.errors %}
-                                <div style="color: red;">{{form.url.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            {{form.deadline_date.label(class_="col-form-label")}}:
-                            {{form.deadline_date(class_="form-control")}}
-                            {% if form.deadline_date.errors %}
-                                <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            {{form.deadline_time.label(class_="col-form-label")}}:
-                            {{form.deadline_time(class_="form-control")}}
-                            {% if form.deadline_time.errors %}
-                                <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            {{form.submit(class='btn btn-primary')}}
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    
 
     <task_filter :cases_info="cases_info" @tasks_list="(tasks) => cases_info.tasks = tasks"></task_filter>
 
