@@ -122,6 +122,7 @@ def update_last_modif(case_id):
     """Update 'last_modif' of a case"""
     case = Case.query.get(case_id)
     case.last_modif = datetime.datetime.now()
+    db.session.commit()
 
 
 
@@ -130,6 +131,7 @@ def update_last_modif_task(task_id):
     if task_id:
         task = Task.query.get(task_id)
         task.last_modif = datetime.datetime.now()
+        db.session.commit()
 
 
 def complete_case(cid, current_user):
