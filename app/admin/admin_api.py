@@ -46,9 +46,10 @@ class AddUser(Resource):
     def post(self):
         if request.json:
             verif_dict = AdminModelApi.verif_add_user(request.json)
+            print(verif_dict)
             if "message" not in verif_dict:
                 user = AdminModel.add_user_core(verif_dict)
-                return {"message": f"User created: {user.id}"}
+                return {"message": f"User created: {user.id}"}, 400
             return verif_dict
         return {"message": "Please give data"}
 
@@ -158,53 +159,3 @@ class GetRoles(Resource):
         roles = AdminModel.get_all_roles()
         return {"roles": [role.to_json() for role in roles]}
 
-
-@api.route('/add_role')
-@api.doc(description='Add new role')
-class AddRole(Resource):
-    method_decorators = [admin_required, api_required]
-    @api.doc(params={
-        "name": "Required. Name for the role",
-        "description": "Description of the role",
-        "admin": "Boolean(0,1). Can do and see everythings",
-        "read_only": "Boolean(0,1). Can only see cases with no rigth to modify them"
-    })
-
-    def post(self):
-        if request.json:
-            verif_dict = AdminModelApi.verif_add_role(request.json)
-            if "message" not in verif_dict:
-                role = AdminModel.add_role_core(verif_dict)
-                return {"message": f"Role created: {role.id}"}
-            return verif_dict
-        return {"message": "Please give data"}
-
-
-@api.route('/edit_role/<id>')
-@api.doc(description='Edit role')
-class EditRole(Resource):
-    method_decorators = [admin_required, api_required]
-    @api.doc(params={
-        "name": "Name for the org",
-        "description": "Description of the org",
-        "admin": "Boolean(0,1). Can do and see everythings",
-        "read_only": "Boolean(0,1). Can only see cases with no rigth to modify them"
-        })
-
-    def post(self, id):
-        if request.json:
-            verif_dict = AdminModelApi.verif_edit_role(request.json, id)
-            if "message" not in verif_dict:
-                AdminModel.edit_org_core(verif_dict, id)
-                return {"message": f"Role edited"}
-            return verif_dict
-        return {"message": "Please give data"}
-
-@api.route('/delete_role/<id>')
-@api.doc(description='Delete role')
-class DeleteRole(Resource):
-    method_decorators = [admin_required, api_required]
-    def get(self, id):
-        if AdminModel.delete_role_core(id):
-            return {"message": "Role deleted"}
-        return {"message": "Error Role deleted"}

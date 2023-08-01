@@ -19,8 +19,7 @@ def verif_add_user(data_dict):
     if "role" not in data_dict:
         return {"message": "Please give a role for the user"}
     elif not Role.query.get(data_dict["role"]):
-        if not Role.query.filter_by(name=data_dict["role"]):
-            return {"message": "Role not identified"}
+        return {"message": "Role not identified"}
     
     if "org" not in data_dict:
         data_dict["org"] = "None"
