@@ -109,4 +109,3 @@ def verif_edit_task(data_dict, task_id):
         data_dict["url"] = task.url
 
     return data_dict
-=
