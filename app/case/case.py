@@ -365,10 +365,10 @@ def get_all_case_title():
 def create_template(cid):
     case_title_template = request.json["case_title_template"]
 
-    new_case = CaseModel.create_template_from_case(cid, case_title_template)
-    if type(new_case) == dict:
-        return new_case
-    return {"new_case_id": new_case.id}, 201
+    new_template = CaseModel.create_template_from_case(cid, case_title_template)
+    if type(new_template) == dict:
+        return new_template
+    return {"template_id": new_template.id}, 201
 
 
 @case_blueprint.route("/get_all_case_template_title", methods=['GET'])

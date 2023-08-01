@@ -40,6 +40,9 @@ def get_all_cases():
     cases = Case.query.order_by(desc(Case.last_modif))
     return cases
 
+def get_case_by_completed(completed):
+    return Case.query.filter_by(completed=completed)
+
 def get_case_by_title(title):
     return Case.query.filter_by(title=title).first()
 
@@ -182,7 +185,7 @@ def complete_task(tid):
 def add_case_core(form_dict, user):
     """Add a case to the DB"""
 
-    dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
+    dead_line = dead_line_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
     case = Case(
         title=bleach.clean(form_dict["title"]),
@@ -214,7 +217,7 @@ def edit_case_core(form_dict, cid):
     """Edit a case to the DB"""
     case = get_case(cid)
 
-    dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
+    dead_line = dead_line_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
     case.title = bleach.clean(form_dict["title"])
     case.description=bleach.clean(form_dict["description"])
@@ -226,7 +229,7 @@ def edit_case_core(form_dict, cid):
 
 def add_task_core(form_dict, cid):
     """Add a task to the DB"""
-    dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
+    dead_line = dead_line_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
     task = Task(
         uuid=str(uuid.uuid4()),
@@ -275,7 +278,7 @@ def add_file_core(task, files_list):
 def edit_task_core(form_dict, tid):
     """Edit a task to the DB"""
     task = get_task(tid)
-    dead_line = dead_line_check(form_dict["dead_line_date"], form_dict["dead_line_time"])
+    dead_line = dead_line_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
     task.title = bleach.clean(form_dict["title"])
     task.description=bleach.clean(form_dict["description"])
@@ -379,7 +382,7 @@ def assign_task(tid, user, flag_current_user):
     task = get_task(tid)
     case = get_case(task.case_id)
     if task:
-        if type(user) == str:
+        if type(user) == str or type(user) == int:
             task_user = Task_User(task_id=task.id, user_id=user)
             if not flag_current_user:
                 NotifModel.create_notification_user(f"You have been assign to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user, html_icon="fa-solid fa-hand")
@@ -414,7 +417,7 @@ def remove_assign_task(tid, user, flag_current_user):
     task = get_task(tid)
     case = get_case(task.case_id)
     if task:
-        if type(user) == int:
+        if type(user) == int or type(user) == str:
             task_users = Task_User.query.filter_by(task_id=task.id, user_id=user).all()
             if not flag_current_user:
                 NotifModel.create_notification_user(f"Your assignment have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user, html_icon="fa-solid fa-handshake-slash")
@@ -572,22 +575,22 @@ def fork_case_core(cid, case_title_fork, user):
     case_json["title"] = case_title_fork
 
     if case.dead_line:
-        case_json["dead_line_date"] = datetime.datetime.strptime(case_json["dead_line"].split(" ")[0], "%Y-%m-%d").date()
-        case_json["dead_line_time"] = datetime.datetime.strptime(case_json["dead_line"].split(" ")[1], "%H:%M").time()
+        case_json["deadline_date"] = datetime.datetime.strptime(case_json["dead_line"].split(" ")[0], "%Y-%m-%d").date()
+        case_json["deadline_time"] = datetime.datetime.strptime(case_json["dead_line"].split(" ")[1], "%H:%M").time()
     else:
-        case_json["dead_line_date"] = None
-        case_json["dead_line_time"] = None
+        case_json["deadline_date"] = None
+        case_json["deadline_time"] = None
 
     new_case = add_case_core(case_json, user)
 
     for task in case.tasks:
         task_json = task.to_json()
         if task.dead_line:
-            task_json["dead_line_date"] = datetime.datetime.strptime(task_json["dead_line"].split(" ")[0], "%Y-%m-%d").date()
-            task_json["dead_line_time"] = datetime.datetime.strptime(task_json["dead_line"].split(" ")[1], "%H:%M").time()
+            task_json["deadline_date"] = datetime.datetime.strptime(task_json["dead_line"].split(" ")[0], "%Y-%m-%d").date()
+            task_json["deadline_time"] = datetime.datetime.strptime(task_json["dead_line"].split(" ")[1], "%H:%M").time()
         else:
-            task_json["dead_line_date"] = None
-            task_json["dead_line_time"] = None
+            task_json["deadline_date"] = None
+            task_json["deadline_time"] = None
 
         add_task_core(task_json, new_case.id)
     return new_case
