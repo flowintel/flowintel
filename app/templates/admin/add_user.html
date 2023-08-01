@@ -6,7 +6,11 @@
 {% import 'macros/check_password.html' as check %}
 
 {% block content %}
-        <h2 class="ui dividing header">Create an account</h2>
+        {% if not edit_mode %}
+            <h2 class="ui dividing header">Create an account</h2>
+        {%else%}
+            <h2 class="ui dividing header">Edit an account</h2>
+        {%endif%}
 
         <form action="" method="post">
             {{ form.hidden_tag() }}
@@ -74,6 +78,9 @@
                 </div>
             </div>
         </form>
+{% endblock %}
+
+{% block script %}
     {% if not edit_mode %}
         {{ check.password_check('password', 0) }}
     {%endif%}
