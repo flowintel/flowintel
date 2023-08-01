@@ -51,7 +51,7 @@
                         </div>
                     </a>
                     <div v-if="!template.current_user_permission.read_only" style="display: grid;">
-                        <a class="btn btn-primary btn-sm" :href="" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
+                        <a class="btn btn-primary btn-sm" :href="`/tools/template/edit_case/${template.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
                         <button class="btn btn-danger btn-sm"  @click="delete_case(template)" title="Delete the case"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>

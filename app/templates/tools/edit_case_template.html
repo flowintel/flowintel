@@ -6,7 +6,7 @@
 
 {% block content %}
     <div id="container">
-            <h2 class="ui dividing header">edit Task</h2>
+            <h2 class="ui dividing header">Create a Template</h2>
 
             <form action="" method="post">
                 {{ form.hidden_tag() }}
@@ -21,17 +21,9 @@
                 </div>
                 <div class="mb-3">
                     <label for="description" class="col-form-label">Description:</label>
-                    {{form.body(class_="form-control")}}
-                    {% if form.body.errors %}
-                        <div style="color: red;">{{form.body.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-
-                <div class="mb-3">
-                    {{form.url.label(class_="col-form-label")}}:
-                    {{form.url(class_="form-control")}}
-                    {% if form.url.errors %}
-                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                    {{form.description(class_="form-control")}}
+                    {% if form.description.errors %}
+                        <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
                 

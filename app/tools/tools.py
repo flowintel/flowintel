@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..decorators import editor_required
-from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm
+from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
 from ..utils.utils import form_to_dict
 
 tools_blueprint = Blueprint(
@@ -80,6 +80,28 @@ def case_template_view(cid):
     return render_template("404.html")
 
 
+@tools_blueprint.route("/template/edit_case/<cid>", methods=['GET','POST'])
+@login_required
+@editor_required
+def edit_case(cid):
+    """Edit a case Template"""
+    template = ToolsModel.get_case_template(cid)
+    if template:
+        form = CaseTemplateEditForm()
+        form.template_id.data = cid
+        if form.validate_on_submit():
+            form_dict = form_to_dict(form)
+            template = ToolsModel.edit_case_template(form_dict, cid)
+            flash("Template edited", "success")
+            return redirect(f"/tools/templates/case")
+        else:
+            form.title.data = template.title
+            form.description.data = template.description
+
+        return render_template("tools/edit_case_template.html", form=form)
+    return render_template("404.html")
+
+
 @tools_blueprint.route("/template/edit_task/<tid>", methods=['GET','POST'])
 @login_required
 @editor_required
@@ -88,7 +110,7 @@ def edit_task(tid):
     template = ToolsModel.get_task_template(tid)
     if template:
         form = TaskTemplateEditForm()
-        
+        form.template_id.data = tid
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             template = ToolsModel.edit_task_template(form_dict, tid)

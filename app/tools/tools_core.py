@@ -86,13 +86,19 @@ def add_task_case_template(form_dict, cid):
         return "No info"
     
 
+
+
+def edit_case_template(form_dict, cid):
+    template = get_case_template(cid)
+
+    template.title=bleach.clean(form_dict["title"])
+    template.description=bleach.clean(form_dict["description"])
+    db.session.commit()
+
 def edit_task_template(form_dict, tid):
     template = get_task_template(tid)
-    if not template.title == form_dict["title"]:
-        if Task_Template.query.filter_by(title=form_dict["title"]).first():
-            return "Title already exist"
-        template.title=bleach.clean(form_dict["title"])
 
+    template.title=bleach.clean(form_dict["title"])
     template.description=bleach.clean(form_dict["body"])
     template.url=bleach.clean(form_dict["url"])
     db.session.commit()
