@@ -20,7 +20,7 @@ Go to `config.py` and change just like you want to.
 
 ## Account
 
-- email: `admin@admin`
+- email: `admin@admin.admin`
 
 - password: `admin`
 
