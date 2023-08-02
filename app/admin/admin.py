@@ -110,15 +110,16 @@ def get_users_page():
 
 @admin_blueprint.route("/orgs", methods=['GET', 'POST'])
 @login_required
-@admin_required
 def orgs():
     """List all organisations"""
-    form = CreateOrgForm()
-    if form.validate_on_submit():
-        form_dict = form_to_dict(form)
-        AdminModel.add_org_core(form_dict)
-        return redirect("/admin/orgs")
-    return render_template("admin/orgs.html", form=form)
+    if current_user.is_admin():
+        form = CreateOrgForm()
+        if form.validate_on_submit():
+            form_dict = form_to_dict(form)
+            AdminModel.add_org_core(form_dict)
+            return redirect("/admin/orgs")
+        return render_template("admin/orgs.html", form=form)
+    return render_template("admin/orgs.html")
 
 
 @admin_blueprint.route("/edit_org/<id>", methods=['GET','POST'])
@@ -153,7 +154,6 @@ def delete_org(oid):
 
 @admin_blueprint.route("/get_orgs", methods=['GET','POST'])
 @login_required
-@admin_required
 def get_orgs():
     """get all orgs"""
     page = request.args.get('page', 1, type=int)
@@ -168,7 +168,6 @@ def get_orgs():
 
 @admin_blueprint.route("/get_org_users", methods=['GET','POST'])
 @login_required
-@admin_required
 def get_org_users():
     """get all user of an org"""
     data_dict = dict(request.args)

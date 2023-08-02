@@ -7,56 +7,64 @@
 {% block content %}
     <h1>
         Organisations
-        <span>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
-        </span>
+
+        {% if current_user.is_admin() %}
+            <span>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
+            </span>
+        {% endif %}
     </h1>
 
-    <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="FormModalLabel">Create a new org</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="" method="post">
-                    {{ form.hidden_tag() }}
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            {{form.name.label(class_="col-form-label")}}:
-                            {{form.name(class_="form-control")}}
-                            {% if form.name.errors %}
-                                <div style="color: red;">{{form.name.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="col-form-label">Description:</label>
-                            {{form.description(class_="form-control")}}
-                            {% if form.description.errors %}
-                                <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            {{form.uuid.label(class_="col-form-label")}}:
-                            {{form.uuid(class_="form-control")}}
-                            {% if form.uuid.errors %}
-                                <div style="color: red;">{{form.uuid.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            {{form.submit(class='btn btn-primary')}}
-                        </div>
+    {% if current_user.is_admin() %}
+        <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="FormModalLabel">Create a new org</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                </form>
+                    <form action="" method="post">
+                        {{ form.hidden_tag() }}
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                {{form.name.label(class_="col-form-label")}}:
+                                {{form.name(class_="form-control")}}
+                                {% if form.name.errors %}
+                                    <div style="color: red;">{{form.name.errors[0] | safe}}</div>
+                                {%endif%}
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="col-form-label">Description:</label>
+                                {{form.description(class_="form-control")}}
+                                {% if form.description.errors %}
+                                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                                {%endif%}
+                            </div>
+                            <div class="mb-3">
+                                {{form.uuid.label(class_="col-form-label")}}:
+                                {{form.uuid(class_="form-control")}}
+                                {% if form.uuid.errors %}
+                                    <div style="color: red;">{{form.uuid.errors[0] | safe}}</div>
+                                {%endif%}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                {{form.submit(class='btn btn-primary')}}
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
+    {% endif %}
 
     <hr>
 
     <div id="top"></div>
-    <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New User</a>
+    {% if current_user.is_admin() %}
+        <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New User</a>
+    {% endif %}
+
     <template v-if="orgs_list">
         <template v-for="org in orgs_list.orgs">
             <div class="list-group" style="margin-bottom: 10px;">
@@ -90,14 +98,16 @@
                                     <td title="last name">[[user.last_name]]</td>
                                     <td title="Email">[[user.email]]</td>
                                     <td title="Role">[[user.role]]</td>
-                                    <td>
-                                        <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
-                                            <i class="fa-solid fa-pen-to-square"></i>
-                                        </a>
-                                        <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
-                                    </td>
+                                    {% if current_user.is_admin() %}
+                                        <td>
+                                            <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </a>
+                                            <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    {% endif %}
                                 </tr>
                             </template>
                         </table>

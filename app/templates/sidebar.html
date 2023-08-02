@@ -29,11 +29,9 @@
 						<a href="/tools/templates/task" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Task</a>
 					</div>
 				</div>
-				{% if current_user.is_admin() %}
 				<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fa-solid fa-users fa-fw me-3"></i><span>Orgs</span>
 				</a>
-				{% endif %}
 				<a href="/admin/users" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fa-solid fa-user fa-fw me-3"></i><span>Users</span>
 				</a>
@@ -92,9 +90,6 @@
 					<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownMenuLink">
 						<li>
 							<a class="dropdown-item" href="/account">My profile</a>
-						</li>
-						<li>
-							<a class="dropdown-item" href="#">Settings</a>
 						</li>
 						{% if current_user.is_authenticated %}
 							<li>
