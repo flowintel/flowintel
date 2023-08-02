@@ -8,6 +8,10 @@ def get_all_users():
     """Return all users"""
     return User.query.all()
 
+def get_users_page(page):
+    """Return all users by page"""
+    return User.query.paginate(page=page, per_page=20, max_per_page=50)
+
 def get_all_roles():
     """Return all roles"""
     return Role.query.all()
@@ -178,27 +182,3 @@ def delete_org_core(id):
     else:
         return False
 
-
-def add_role_core(form_dict):
-    """Add a role to the DB"""
-    role = Role(
-        name = bleach.clean(form_dict["name"]),
-        description = bleach.clean(form_dict["description"]),
-        admin = form_dict["admin"],
-        read_only = form_dict["read_only"]
-    )
-    db.session.add(role)
-    db.session.commit()
-
-    return role
-
-
-def delete_role_core(id):
-    """Delete a role to the DB"""
-    role = get_role(id)
-    if role:
-        db.session.delete(role)
-        db.session.commit()
-        return True
-    else:
-        return False

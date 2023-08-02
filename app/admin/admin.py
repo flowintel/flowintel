@@ -20,6 +20,12 @@ admin_blueprint = Blueprint(
 # Users #
 #########
 
+@admin_blueprint.route("/users", methods=['GET'])
+@login_required
+def users():
+    """List all users"""
+    return render_template("admin/users.html")
+
 @admin_blueprint.route("/add_user", methods=['GET','POST'])
 @login_required
 @admin_required
@@ -79,6 +85,23 @@ def delete_user(uid):
             return {"message":"User deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error user deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"User not found", "toast_class": "danger-subtle"}, 404
+
+
+@admin_blueprint.route("/get_users_page", methods=['GET'])
+@login_required
+def get_users_page():
+    """Delete the user"""
+    page = request.args.get('page', 1, type=int)
+    users = AdminModel.get_users_page(page)
+    if users:
+        users_list = list()
+        for user in users:
+            u = user.to_json()
+            r = AdminModel.get_role(user.role_id)
+            u["role"] = r.name
+            users_list.append(u)
+        return {"users": users_list, "nb_pages": users.pages}
+    return {"message": "No Users"}, 404
 
 
 ########

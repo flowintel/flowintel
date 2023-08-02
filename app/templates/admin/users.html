@@ -1,0 +1,106 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>
+        Users
+        {% if current_user.is_admin() %}
+            <span>
+                <a type="button" class="btn btn-primary" href="/admin/add_user"><i class="fa-solid fa-plus"></i></a>
+            </span>
+        {% endif %}
+    </h1>
+
+    <hr>
+
+    <div id="top"></div>
+    <template v-if="users_list">
+        <template v-for="user in users_list.users">
+            <div class="list-group" style="margin-bottom: 10px;">
+                <div style="display:flex">
+                    <a class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1">[[ user.id ]]- [[ user.first_name ]] [[ user.last_name ]]</h4>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p class="card-text">[[ user.email ]]</p>
+                        </div>
+                        <div class="d-flex w-100 justify-content-center">
+                            <p class="card-text" title="Role">[[ user.role ]]</p>
+                        </div>
+                    </a>
+                    {% if current_user.is_admin() %}
+                        <div style="display: grid;">
+                            <a class="btn btn-primary btn-sm" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <button class="btn btn-danger btn-sm"  @click="delete_user(user)" title="Delete the user"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </template>
+
+    </template>
+
+    <nav aria-label="Page navigation example" v-if="users_list && users_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchUsers(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in users_list.nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchUsers(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == users_list.nb_pages}"><button class="page-link" @click="fetchUsers(Math.min(current_page+1, users_list.nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref } = Vue
+        import {display_toast, message_list} from '../../static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const users_list = ref(null)
+                const current_page = ref(1)
+
+
+                async function fetchUsers(page) {
+                    users_list.value = null
+                    const res = await fetch('get_users_page?page='+page)
+                    let loc = await res.json()
+                    users_list.value = loc
+                    current_page.value = page
+                }
+
+                async function delete_user(user){
+                    const res = await fetch('/admin/delete_user/'+user.id)
+                    if(await res.status == 200){
+                        let index = users_list.value.users.indexOf(user)
+                        if(index > -1)
+                            users_list.value.users.splice(index, 1)
+                    }
+                    display_toast(res)
+                }
+
+
+                fetchUsers(1)
+
+    
+                return {
+                    message_list,
+                    users_list,
+                    delete_user,
+                    current_page,
+                    fetchUsers
+                }
+            }
+        }).mount('.container')
+
+    </script>
+{% endblock %}

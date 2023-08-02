@@ -31,9 +31,12 @@
 				</div>
 				{% if current_user.is_admin() %}
 				<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fas fa-users fa-fw me-3"></i><span>Org</span>
+					<i class="fa-solid fa-users fa-fw me-3"></i><span>Orgs</span>
 				</a>
 				{% endif %}
+				<a href="/admin/users" class="list-group-item list-group-item-action py-2 ripple">
+					<i class="fa-solid fa-user fa-fw me-3"></i><span>Users</span>
+				</a>
 			</div>
 		</div>
   	</nav>
