@@ -166,15 +166,19 @@ def edit_org_core(form_dict, id):
     db.session.commit()
 
 
-def delete_org_core(id):
+def delete_org_core(oid):
     """Delete the org to the DB"""
-    org = get_org(id)
+    org = get_org(oid)
     if org:
         for user in org.users:
             tasks_users = Task_User.query.filter_by(user_id=user.id)
             for task_user in tasks_users:
                 db.session.delete(task_user)
                 db.session.commit()
+        
+        for case_org in Case_Org.query.filter_by(org_id=org.id):
+            db.session.delete(case_org)
+            db.session.commit()
 
         db.session.delete(org)
         db.session.commit()
