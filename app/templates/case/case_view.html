@@ -11,7 +11,7 @@
         <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style">[[ status_info.status[ {{case.status_id}} -1].name ]]</span>
     </small>
 
-    <div v-if="cases_info && !cases_info.permission.read_only && cases_info.present_in_case" style="float:right">
+    <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right">
         <button v-if="cases_info.case.completed" class="btn btn-secondary btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-backward"></i></button>
         <button v-else class="btn btn-success btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
         <a class="btn btn-primary btn-sm" :href="`/case/edit/${cases_info.case.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
@@ -58,7 +58,7 @@
         <div class="dropdown" id="dropdown_user_case">
             <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Orgs</button>
             <ul class="dropdown-menu">
-                <template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+                <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
                     <li>
                         <a class="btn btn-primary" :href="`/case/view/${cases_info.case.id}/add_orgs`" role="button">Add Orgs</a>
                     </li>
@@ -67,8 +67,8 @@
                     <li>
                         <div style="display: flex;">
                             <button class="dropdown-item">[[org.name]]</button>
-                            <template v-if="org.id != cases_info.case.owner_org_id">
-                                <button class="btn btn-danger" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case">Delete</button>
+                            <template v-if="org.id != cases_info.case.owner_org_id || cases_info.permission.admin">
+                                <button class="btn btn-danger" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">Delete</button>
                             </template>
                         </div>
                     </li>
@@ -89,7 +89,7 @@
 
     <div style="display: flex;">
         <h3>Tasks</h3>
-        {% if not current_user.read_only() and present_in_case %}
+        {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
             <span style="padding-left: 10px;">
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
             </span>
@@ -150,7 +150,7 @@
         {%endif%}
 
         <!-- Search bar -->
-        <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center">
+        <div class="input-group justify-content-center start-50 translate-middle-x top-0">
             <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 350px;" />
         </div>
         <!-- Search bar -->
@@ -270,7 +270,7 @@
                 }
 
                 async function remove_org_case(cases_info, org){
-                    const res = awaitfetch('/case/' + cases_info.case.id + '/remove_org/' + org.id)
+                    const res = await fetch('/case/' + cases_info.case.id + '/remove_org/' + org.id)
                     if (await res.status == 200){
                         let index = cases_info.orgs_in_case.indexOf(org)
                         if(index > -1)

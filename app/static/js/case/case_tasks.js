@@ -353,7 +353,7 @@ export default {
                 <small v-else><i>No deadline</i></small>
             </div>
 		</a>
-		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case" style="display: grid;">
+		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin" style="display: grid;">
 			<button v-if="task.completed" class="btn btn-secondary btn-sm"  @click="complete_task(task)" title="Revive the task">
 				<i class="fa-solid fa-backward"></i>
 			</button>
@@ -380,7 +380,7 @@ export default {
 	<div class="collapse" :id="'collapse'+task.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
 			<div class="d-flex w-100 justify-content-between">
-				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 					<div v-if="users_in_case">
 						<h5>Assign</h5>
 						<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
@@ -400,7 +400,7 @@ export default {
 						</div>
 					</div>
 				</div>
-				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 					<div>
 						<h5>Change Status</h5>
 					</div>
@@ -471,7 +471,7 @@ export default {
 							<textarea class="w-100" :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" maxlength="5000" v-html="task.notes"></textarea>
 						</template>
 						<template v-else>
-							<template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+							<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 								<button class="btn btn-primary" @click="edit_note(task)" type="button" :id="'note_'+task.id">
 									<div hidden>[[task.title]]</div>
 									Edit
@@ -481,7 +481,7 @@ export default {
 						</template>
 					</div>
 					<div v-else>
-						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case">
+						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 							<div>
 								<button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
 									<div hidden>[[task.title]]</div>

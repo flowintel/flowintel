@@ -65,7 +65,7 @@ class CompleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
         current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             case = CaseModel.get_case(cid)
             if case:
                 if CaseModel.complete_case(cid, current_user):
@@ -150,7 +150,7 @@ class DeleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
         current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_case(cid, current_user):
                 return {"message": "Case deleted"}, 200
             else:
@@ -163,7 +163,8 @@ class DeleteCase(Resource):
 class DeleteTask(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, tid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
@@ -213,7 +214,8 @@ class AddTask(Resource):
         "deadline_time": "Time(%H-%M)"
     })
     def post(self, cid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_add_case_task(request.json, False)
 
@@ -232,7 +234,8 @@ class EditCase(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"title": "Title for a case", "description": "Description of a case", "deadline_date": "Date(%Y-%m-%d)", "deadline_time": "Time(%H-%M)"})
     def post(self, id):
-        if CaseModel.get_present_in_case(id, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_edit_case(request.json, id, True)
 
@@ -251,7 +254,8 @@ class EditTake(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"title": "Title for a case", "description": "Description of a case", "deadline_date": "Date(%Y-%m-%d)", "deadline_time": "Time(%H-%M)"})
     def post(self, cid, tid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user):
             if request.json:
                 task = CaseModel.get_task(tid)
                 if task:
@@ -276,7 +280,8 @@ class EditTake(Resource):
 class CompleteTake(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, tid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
@@ -310,7 +315,8 @@ class ModifNoteTask(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"note": "note to create or modify"})
     def post(self, cid, tid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "note" in request.json:
                 task = CaseModel.get_task(tid)
                 if task:
@@ -332,7 +338,8 @@ class AddOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
     def post(self, cid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "name" in request.json:
                 org = CaseModel.get_org_by_name(request.json["name"])
             elif "id" in request.json:
@@ -357,7 +364,8 @@ class AddOrgCase(Resource):
 class RemoveOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, oid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             org = CaseModel.get_org(oid)
 
             if org:
@@ -376,7 +384,8 @@ class RemoveOrgCase(Resource):
 class AssignTask(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, tid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CaseModel.get_task(tid)
 
             if task:
@@ -397,7 +406,8 @@ class AssignTask(Resource):
 class RemoveOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, tid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
@@ -417,7 +427,7 @@ class GetAllUsers(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
         current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             case = CaseModel.get_case(cid)
             if case:
                 users_list = list()
@@ -437,7 +447,8 @@ class AssignUser(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"users_id": "List of user id"})
     def post(self, cid, tid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
@@ -456,7 +467,8 @@ class AssignUser(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"user_id": "Id of a user"})
     def post(self, cid, tid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
@@ -475,7 +487,8 @@ class ChangeStatus(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"status_id": "Id of the new status"})
     def post(self, cid, tid):
-        if CaseModel.get_present_in_case(cid, CaseModelApi.get_user_api(request.headers["X-API-KEY"])):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:

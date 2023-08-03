@@ -41,7 +41,7 @@ def view(id):
     
     if case:
         present_in_case = CaseModel.get_present_in_case(id, current_user)
-        if present_in_case:
+        if present_in_case or current_user.is_admin():
             form = TaskForm()
             if form.validate_on_submit():
                 form_dict = form_to_dict(form)
@@ -60,7 +60,7 @@ def view(id):
 @editor_required
 def edit_case(id):
     """Edit the case"""
-    if CaseModel.get_present_in_case(id, current_user):
+    if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
         form = CaseEditForm()
 
         if form.validate_on_submit():
@@ -85,7 +85,7 @@ def edit_case(id):
 def add_orgs(id):
     """Add orgs to the case"""
 
-    if CaseModel.get_present_in_case(id, current_user):
+    if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
         form = AddOrgsCase()
         case_org = Case_Org.query.filter_by(case_id=id).all()
 
@@ -125,8 +125,7 @@ def recurring(cid):
 
     case = CaseModel.get_case(cid)
     if case:
-        present_in_case = CaseModel.get_present_in_case(cid, current_user)
-        if present_in_case:
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             form = RecurringForm()
             form.case_id.data = cid
             if form.validate_on_submit():
@@ -165,7 +164,7 @@ def delete():
     cid = request.json["case_id"]
 
     if CaseModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_case(cid, current_user):
                 return {"message": "Case deleted", "toast_class": "success-subtle"}, 200
             else:
@@ -195,7 +194,7 @@ def get_case_info(cid):
 def complete_case(cid):
     """Complete the case"""
     if CaseModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.complete_case(cid, current_user):
                 flash("Case Completed")
                 return {"message": "Case completed", "toast_class": "success-subtle"}, 200
@@ -212,7 +211,7 @@ def remove_org_case(cid, oid):
     """Remove an org to the case"""
 
     if CaseModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.remove_org_case(cid, oid, current_user):
                 return {"message": "Org removed from case", "toast_class": "success-subtle"}, 200
             return {"message": "Error removing org from case", "toast_class": "danger-subtle"}, 400
@@ -230,7 +229,7 @@ def change_status(cid):
     case = CaseModel.get_case(cid)
 
     if CaseModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             CaseModel.change_status_core(status, case)
             return {"message": "Status changed", "toast_class": "success-subtle"}, 200
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
@@ -299,7 +298,7 @@ def get_all_users(cid):
     """Sort Task by finished one"""
     users_list = list()
     case = CaseModel.get_case(cid)
-    if CaseModel.get_present_in_case(cid, current_user):
+    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
         orgs = CaseModel.get_all_users_core(case)
         for org in orgs:
             for user in org.users:
@@ -314,7 +313,7 @@ def get_all_users(cid):
 def get_assigned_users(cid, tid):
     """Get assigned users to the task"""
 
-    if CaseModel.get_present_in_case(cid, current_user):
+    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
         users, _ = CaseModel.get_users_assign_task(tid, current_user)
         return users
     return {"message": "Not in Case"}

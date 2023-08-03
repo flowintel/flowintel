@@ -19,7 +19,7 @@ task_blueprint = Blueprint(
 @editor_required
 def edit_task(case_id, id):
     """Edit the task"""
-    if CaseModel.get_present_in_case(case_id, current_user):
+    if CaseModel.get_present_in_case(case_id, current_user) or current_user.is_admin():
         form = TaskEditForm()
 
         if form.validate_on_submit():
@@ -50,7 +50,7 @@ def complete_task(tid):
 
     task = CaseModel.get_task(str(tid))
     if task:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if CaseModel.complete_task(tid):
                 return {"message": "Task completed", "toast_class": "success-subtle"}, 200
             return {"message": "Error task completed", "toast_class": "danger-subtle"}, 400
@@ -67,7 +67,7 @@ def delete_task():
     id = request.json["task_id"]
     task = CaseModel.get_task(id)
     if task:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if CaseModel.delete_task(id):
                 return {"message": "Task deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Error task deleted", "toast_class": "danger-subtle"}, 400
@@ -84,7 +84,7 @@ def modif_note():
 
     task = CaseModel.get_task(id)
     if task:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             notes = request.json["notes"]
             if CaseModel.modif_note_core(id, notes):
                 return {"message": "Note added", "toast_class": "success-subtle"}, 200
@@ -124,7 +124,7 @@ def take_task():
 
     task = CaseModel.get_task(id)
     if task:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if CaseModel.assign_task(id, current_user, flag_current_user=True):
                 return {"message": "User Assigned", "toast_class": "success-subtle"}, 200
             return {"message": "Error assignment", "toast_class": "danger-subtle"}, 400
@@ -143,7 +143,7 @@ def assign_user_task():
 
     task = CaseModel.get_task(tid)
     if task:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             for user in users_list:
                 CaseModel.assign_task(tid, user, flag_current_user=False)
             return {"message": "Users Assigned", "toast_class": "success-subtle"}, 200
@@ -160,7 +160,7 @@ def remove_assign_task():
     id = request.json["task_id"]
     task = CaseModel.get_task(id)
     if task:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if CaseModel.remove_assign_task(id, current_user, flag_current_user=True):
                 return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
             return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
@@ -179,7 +179,7 @@ def remove_assigned_user():
 
     task = CaseModel.get_task(tid)
     if task:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if CaseModel.remove_assign_task(tid, user_id, flag_current_user=False):
                 return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
             return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
@@ -196,7 +196,7 @@ def change_status_task(tid):
     status = request.json["status"]
     task = CaseModel.get_task(tid)
     if task:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if CaseModel.change_status_task(status, task):
                 return {"message": "Status changed", "toast_class": "success-subtle"}, 200
             return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
@@ -212,7 +212,7 @@ def download_file(tid, fid):
     task = CaseModel.get_task(tid)
     file = CaseModel.get_file(fid)
     if file and file in task.files:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             return CaseModel.download_file(file)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "File not found", "toast_class": "danger-subtle"}, 404
@@ -226,7 +226,7 @@ def delete_file(tid, fid):
     task = CaseModel.get_task(tid)
     file = CaseModel.get_file(fid)
     if file and file in task.files:
-        if CaseModel.get_present_in_case(task.case_id, current_user):
+        if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if CaseModel.delete_file(file):
                 return {"message": "File Deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Error deleting file"}, 400
@@ -269,7 +269,7 @@ def get_files(tid):
 def sort_by_ongoing_task(cid):
     """Sort Task by living one"""
     case = CaseModel.get_case(cid)
-    if CaseModel.get_present_in_case(cid, current_user):
+    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
         return CaseModel.sort_by_ongoing_task_core(case, current_user)
     return {"message": "Not in Case"}
 
@@ -279,7 +279,7 @@ def sort_by_ongoing_task(cid):
 def sort_by_finished_task(cid):
     """Sort task by finished one"""
     case = CaseModel.get_case(cid)
-    if CaseModel.get_present_in_case(cid, current_user):
+    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
         return CaseModel.sort_by_finished_task_core(case, current_user)
     return {"message": "Not in Case"}
 
@@ -293,7 +293,7 @@ def ongoing_tasks_sort_by_filter(cid):
     data_dict = dict(request.args)
     if "filter" in data_dict:
         case = CaseModel.get_case(cid)
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             return CaseModel.sort_tasks_by_filter(case, current_user, False, data_dict["filter"])
         return {"message": "Not in Case"}
     return {"message": "No filter pass"}
@@ -306,7 +306,7 @@ def finished_tasks_sort_by_filter(cid):
     data_dict = dict(request.args)
     if "filter" in data_dict:
         case = CaseModel.get_case(cid)
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             return CaseModel.sort_tasks_by_filter(case, current_user, True, data_dict["filter"])
         return {"message": "Not in Case"}
     return {"message": "No filter pass"}
@@ -320,7 +320,7 @@ def notify_user(cid, tid):
     user = request.json["user_id"]
     task = CaseModel.get_task(tid)
     if task:
-        if CaseModel.get_present_in_case(cid, current_user):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.notify_user(task, user):
                 return {"message":"User notified", "toast_class": "success-subtle"}, 200
             return {"message":"Something goes wrong", "toast_class": "danger-subtle"}, 400
