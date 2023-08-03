@@ -182,14 +182,12 @@ def get_task_template(tid):
 def get_all_task_templates():
     """Get all task templates"""
     templates = ToolsModel.get_all_task_templates()
-    if templates:
-        templates_list = list()
-        for template in templates:
-            loc_template = template.to_json()
-            loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
-            templates_list.append(loc_template)
-        return {"templates": templates_list}
-    return {"message": "Template not found"}
+    templates_list = list()
+    for template in templates:
+        loc_template = template.to_json()
+        loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
+        templates_list.append(loc_template)
+    return {"templates": templates_list}
 
 
 @tools_blueprint.route("/get_page_task_templates", methods=['GET'])

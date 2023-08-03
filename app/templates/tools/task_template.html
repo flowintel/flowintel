@@ -57,7 +57,7 @@
     </div>
 
     <!-- Search bar -->
-    <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center start-50 translate-middle-x top-0" style="max-width: 200px;">
+    <div class="input-group justify-content-center start-50 translate-middle-x top-0" id="search_template" style="max-width: 200px;">
         <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task template by title' style="min-width: 350px;"/>
     </div>
     <hr>
@@ -83,7 +83,7 @@
                 <div style="display:flex">
                     <a class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">[[ key+1 ]]-[[ template.title ]]</h4>
+                            <h4 class="mb-1">[[ key+1 ]]- [[ template.title ]]</h4>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
                             <p v-if="template.description" class="card-text">[[ template.description ]]</p>
@@ -103,6 +103,10 @@
                 </div>
             </div>
         </template>
+    </template>
+
+    <template v-if="is_searching && length_all_templates > templates_list.templates.length">
+        <button class="btn btn-primary" @click="show_more_search(templates_list.templates.length)">Show more</button>
     </template>
 
     <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
@@ -134,6 +138,10 @@
                 const templates_list = ref(null)
                 const current_page = ref(1)
                 let all_templates_list = []
+                let all_templates_searching = []
+                const per_page = ref(20)
+                const is_searching = ref(false)
+                const length_all_templates = ref(0)
 
                 async function fetch_template(page){
                     templates_list.value = null
@@ -163,13 +171,37 @@
                 function onInput(e){
                     templates_list.value.templates = []
                     if(e.target.value){
-                        for(let i in all_templates_list){
-                            if(all_templates_list[i].title.toLowerCase().includes(e.target.value.toLowerCase())){
-                                templates_list.value.templates.push(all_templates_list[i])
+                        is_searching.value = true
+
+                        all_templates_searching = all_templates_list.filter((template) => {
+                            return template.title.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                        length_all_templates.value = all_templates_searching.length
+
+                        let cp = 1
+                        for(let i in all_templates_searching){
+                            if(cp < per_page.value + 1){
+                                templates_list.value.templates.push(all_templates_searching[i])
+                                cp += 1
                             }
                         }
+
+                        templates_list.value.nb_pages = 1
                     }else{
-                        templates_list.value.templates = all_templates_list
+                        is_searching.value = false
+                        templates_list.value.templates = fetch_template(1)
+                    }
+                }
+
+                function show_more_search(templates_list_length){
+                    templates_list.value.templates = []
+                    let e = $("#search_template").val()
+                    let cp = 1
+                    for(let i in all_templates_searching){
+                        if(cp < templates_list_length + per_page.value + 1){
+                            templates_list.value.templates.push(all_templates_searching[i])
+                            cp += 1
+                        }
                     }
                 }
 
@@ -183,7 +215,10 @@
                     delete_task,
                     fetch_template,
                     current_page,
-                    onInput
+                    onInput,
+                    is_searching,
+                    show_more_search,
+                    length_all_templates
                 }
             }
         }).mount('.container')
