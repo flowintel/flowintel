@@ -150,8 +150,8 @@
         {%endif%}
 
         <!-- Search bar -->
-        <div class="input-group w-auto justify-content-center start-50 translate-middle-x top-0">
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 350px;" />
+        <div class="input-group w-auto start-50 translate-middle-x">
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 400px;" />
         </div>
         <!-- Search bar -->
     </div>
@@ -177,7 +177,7 @@
 
 				<div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')" checked>
 						<label class="form-check-label" for="radioOtherTitle">Title</label>
 					</div>
 					<div class="form-check">
@@ -285,6 +285,8 @@
                             cases_info.value.tasks = loc.reverse()
                         else
                             cases_info.value.tasks = loc
+
+                        loc_tasks_list = cases_info.value.tasks
                     }
                     
                 }
