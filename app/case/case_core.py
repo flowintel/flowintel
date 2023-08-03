@@ -528,28 +528,27 @@ def sort_by_finished_task_core(case, user):
 
 def sort_tasks_by_filter(case, user, completed, filter):
     if filter == "assigned_tasks":
-        final_tasks = list()
-        tasks_list_query = Task.query.filter_by(case_id=case.id, completed=completed).all()
-        for task in tasks_list_query:
-            users, _ = get_users_assign_task(task.id, user)
-            if users:
-                task.len_u = len(users)
-            else:
-                task.len_u = 0
-            final_tasks.append(task)
-        tasks_list = sorted(final_tasks, key=lambda t: t.len_u)
+        tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
+                        .where(Task.case_id==case.id, Task.completed==completed)\
+                        .order_by(desc('title')).all()
 
     elif filter == "my_assignment":
-        final_tasks = list()
-        tasks_list_query = Task.query.filter_by(case_id=case.id, completed=completed).all()
-        for task in tasks_list_query:
-            _, is_current_user_assigned = get_users_assign_task(task.id, user)
-            task.is_current_user_assigned = is_current_user_assigned
-            final_tasks.append(task)
-        tasks_list = sorted(final_tasks, key=lambda t: t.is_current_user_assigned)
-
+        tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
+                        .where(Task_User.user_id==user.id)\
+                        .where(Task.case_id==case.id, Task.completed==completed)\
+                        .order_by(desc('title')).all()
+        loc = list()
+        for task in tasks_list:
+            task.is_current_user_assigned = True
+            loc.append(task)
+        tasks_list = loc
     else:
         tasks_list = Task.query.filter_by(case_id=case.id, completed=completed).order_by(desc(filter)).all()
+        loc = list()
+        for task in tasks_list:
+            if getattr(task, filter):
+                loc.append(task)
+        tasks_list = loc
 
     return get_task_info(tasks_list, user)
 

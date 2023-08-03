@@ -150,7 +150,7 @@
         {%endif%}
 
         <!-- Search bar -->
-        <div class="input-group justify-content-center start-50 translate-middle-x top-0">
+        <div class="input-group w-auto justify-content-center start-50 translate-middle-x top-0">
             <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 350px;" />
         </div>
         <!-- Search bar -->
@@ -158,7 +158,61 @@
 
     
 
-    <task_filter :cases_info="cases_info" @tasks_list="(tasks) => cases_info.tasks = tasks"></task_filter>
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
+		filter
+	</button>
+	<div class="collapse " id="collapsefiltertask">
+		<div class="card card-body">
+			<div class="d-flex w-100 justify-content-between">
+				<div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_ongoing(true)" checked>
+						<label class="form-check-label" for="radioStatusOngoing">Ongoing Tasks</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_ongoing(false)">
+						<label class="form-check-label" for="radioStatusFinished">Finished Tasks</label>
+					</div>
+				</div>
+
+				<div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')">
+						<label class="form-check-label" for="radioOtherTitle">Title</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
+						<label class="form-check-label" for="radioOrderAsc">Last Modif</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
+						<label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
+						<label class="form-check-label" for="radioOtherStatus">Status</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherAssign" @click="sort_by_filter('assigned_tasks')">
+						<label class="form-check-label" for="radioOtherAssign">Assigned tasks</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherCurrentAssign" @click="sort_by_filter('my_assignment')">
+						<label class="form-check-label" for="radioOtherCurrentAssign">My assignment</label>
+					</div>
+				</div>
+
+				<div style="display:flex">
+				<span style="margin-right: 10px">Asc</span>
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="asc_desc_filter(true)">
+						<label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
+					</div>
+			  
+				</div>
+			</div>
+		</div>
+	</div>
 
     <hr>
 
@@ -179,14 +233,12 @@
     <script type="module">
         const { createApp, ref, computed, nextTick } = Vue
         import case_tasks from '../../static/js/case/case_tasks.js'
-        import task_filter from '../../static/js/case/task_filter.js'
         import {display_toast, display_prepared_toast, message_list} from '../../static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
-                case_tasks,
-                task_filter
+                case_tasks
             },
             setup() {
                 const edit_mode = ref(false)
@@ -194,6 +246,48 @@
                 const status_info = ref(null)
                 const users_in_case = ref(null)
                 let loc_tasks_list = []
+
+                let show_ongoing = true
+                let current_filter = ""
+                let asc_desc = true
+
+                async function filter_ongoing(ongoing){
+                    show_ongoing = ongoing
+
+                    if(show_ongoing){
+                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_ongoing_task')
+                        let loc = await res.json()
+                        cases_info.value.tasks = loc
+                    }else{
+                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_finished_task')
+                        let loc = await res.json()
+                        cases_info.value.tasks = loc
+                    }
+                }
+
+                function sort_by_filter(filter){
+                    current_filter = filter
+                    asc_desc_filter()
+                }
+
+                async function asc_desc_filter(change=false){
+                    if(change)
+                        asc_desc = !asc_desc
+
+                    let res
+                    if (current_filter){
+                        if(show_ongoing)
+                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/ongoing?filter=' + current_filter)
+                        else
+                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/finished?filter=' + current_filter)
+                        let loc = await res.json()
+                        if(asc_desc)
+                            cases_info.value.tasks = loc.reverse()
+                        else
+                            cases_info.value.tasks = loc
+                    }
+                    
+                }
 
 
                 async function fetchCase() {
@@ -364,7 +458,11 @@
                     complete_case,
                     fork_case,
                     create_template,
-                    onInput
+                    onInput,
+
+                    filter_ongoing,
+                    sort_by_filter,
+                    asc_desc_filter
                 }
             }
         }).mount('.container')

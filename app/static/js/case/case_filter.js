@@ -20,26 +20,10 @@ export default {
 			}
 		}
 
-		function sort_by_title(){
-			current_filter = "title"
+		function sort_by_filter(filter){
+			current_filter = filter
 			asc_desc_filter()
 		}
-
-		function sort_by_last_modif(){
-			current_filter = "last_modif"
-			asc_desc_filter()
-		}
-
-		function sort_by_deadline(){
-			current_filter = "deadline"
-			asc_desc_filter()
-		}
-
-		function sort_by_status(){
-			current_filter = "status_id"
-			asc_desc_filter()
-		}
-
 
 		async function asc_desc_filter(change=false){
 			emit('current_filter', current_filter)
@@ -66,10 +50,7 @@ export default {
 		
 		return {
 			filter_ongoing,
-			sort_by_last_modif,
-			sort_by_title,
-			sort_by_deadline,
-			sort_by_status,
+			sort_by_filter,
 			asc_desc_filter
 		}
 	},
@@ -93,19 +74,19 @@ export default {
 
 				<div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_title()">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')">
 						<label class="form-check-label" for="radioOtherTitle">Title</label>
 					</div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_last_modif()">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
 						<label class="form-check-label" for="radioOrderAsc">Last modification</label>
 					</div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_deadline()">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
 						<label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
 					</div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_status()">
+						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
 						<label class="form-check-label" for="radioOtherStatus">Status</label>
 					</div>
 				</div>
