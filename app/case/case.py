@@ -144,7 +144,7 @@ def recurring(cid):
 #  Route   #
 ############
 
-@case_blueprint.route("case/get_cases", methods=['GET'])
+@case_blueprint.route("/get_cases_page", methods=['GET'])
 @login_required
 def get_cases():
     """Return all cases"""
@@ -295,17 +295,15 @@ def finished_sort_by_filter():
 @case_blueprint.route("/<cid>/get_all_users", methods=['GET'])
 @login_required
 def get_all_users(cid):
-    """Sort Task by finished one"""
+    """Get all user in case"""
     users_list = list()
     case = CaseModel.get_case(cid)
-    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-        orgs = CaseModel.get_all_users_core(case)
-        for org in orgs:
-            for user in org.users:
-                if not user == current_user:
-                    users_list.append(user.to_json())
-        return {"users_list": users_list}
-    return {"message": "Not in Case"}
+    orgs = CaseModel.get_all_users_core(case)
+    for org in orgs:
+        for user in org.users:
+            if not user == current_user:
+                users_list.append(user.to_json())
+    return {"users_list": users_list}
 
 
 @case_blueprint.route("/<cid>/get_assigned_users/<tid>", methods=['GET'])

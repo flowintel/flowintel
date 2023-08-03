@@ -149,7 +149,7 @@
                     if(current_filter.value)
                         url = `/case/ongoing?page=${page}&filter=${current_filter.value}`
                     else
-                        url = 'case/get_cases?page='+page
+                        url = '/case/get_cases_page?page='+page
 
                     case_list.value = null
                     const res = await fetch(url)

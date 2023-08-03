@@ -120,7 +120,7 @@
 			async function fetchCase() {
 				case_list.value = null
 				const res = await fetch(
-					'/case/case/get_cases'
+					'/case/get_cases_page'
 				)
 				case_list.value = await res.json()
 			}

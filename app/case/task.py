@@ -269,9 +269,7 @@ def get_files(tid):
 def sort_by_ongoing_task(cid):
     """Sort Task by living one"""
     case = CaseModel.get_case(cid)
-    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-        return CaseModel.sort_by_ongoing_task_core(case, current_user)
-    return {"message": "Not in Case"}
+    return CaseModel.sort_by_ongoing_task_core(case, current_user)
 
 
 @task_blueprint.route("/<cid>/sort_by_finished_task", methods=['GET'])
@@ -279,10 +277,7 @@ def sort_by_ongoing_task(cid):
 def sort_by_finished_task(cid):
     """Sort task by finished one"""
     case = CaseModel.get_case(cid)
-    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-        return CaseModel.sort_by_finished_task_core(case, current_user)
-    return {"message": "Not in Case"}
-
+    return CaseModel.sort_by_finished_task_core(case, current_user)
 
 
 
@@ -293,9 +288,7 @@ def ongoing_tasks_sort_by_filter(cid):
     data_dict = dict(request.args)
     if "filter" in data_dict:
         case = CaseModel.get_case(cid)
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            return CaseModel.sort_tasks_by_filter(case, current_user, False, data_dict["filter"])
-        return {"message": "Not in Case"}
+        return CaseModel.sort_tasks_by_filter(case, current_user, False, data_dict["filter"])
     return {"message": "No filter pass"}
 
 
@@ -306,9 +299,7 @@ def finished_tasks_sort_by_filter(cid):
     data_dict = dict(request.args)
     if "filter" in data_dict:
         case = CaseModel.get_case(cid)
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            return CaseModel.sort_tasks_by_filter(case, current_user, True, data_dict["filter"])
-        return {"message": "Not in Case"}
+        return CaseModel.sort_tasks_by_filter(case, current_user, True, data_dict["filter"])
     return {"message": "No filter pass"}
 
 
