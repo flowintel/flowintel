@@ -501,7 +501,7 @@ def get_task_info(tasks_list, user):
     return tasks
 
 
-def regroup_case_info(cases, user):
+def regroup_case_info(cases, user, nb_pages=None):
     loc = dict()
     loc["cases"] = list()
     
@@ -512,7 +512,13 @@ def regroup_case_info(cases, user):
         case_loc["current_user_permission"] = get_role(user).to_json()
 
         loc["cases"].append(case_loc)
-        loc["nb_pages"] = cases.pages
+    if nb_pages:
+        loc["nb_pages"] = nb_pages
+    else:
+        try:
+            loc["nb_pages"] = cases.pages
+        except:
+            pass
 
     return loc
 
@@ -543,6 +549,7 @@ def sort_tasks_by_filter(case, user, completed, filter):
             loc.append(task)
         tasks_list = loc
     else:
+        # for deadline filter, only task with a deadline defined is required
         tasks_list = Task.query.filter_by(case_id=case.id, completed=completed).order_by(desc(filter)).all()
         loc = list()
         for task in tasks_list:
@@ -561,7 +568,13 @@ def sort_by_finished_core(page):
 
 
 def sort_by_filter(completed, filter, page): 
-    return Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=20, max_per_page=50)
+    cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=20, max_per_page=50)
+    # for deadline filter, only case with a deadline defined is required
+    loc = list()
+    for case in cases:
+        if getattr(case, filter):
+            loc.append(case)
+    return loc, cases.pages
 
 def get_all_users_core(case):
     return Org.query.join(Case_Org, Case_Org.case_id==case.id).where(Case_Org.org_id==Org.id).all()

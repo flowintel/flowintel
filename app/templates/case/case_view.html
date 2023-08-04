@@ -254,15 +254,16 @@
                 async function filter_ongoing(ongoing){
                     show_ongoing = ongoing
 
+                    let loc
                     if(show_ongoing){
                         const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_ongoing_task')
-                        let loc = await res.json()
-                        cases_info.value.tasks = loc
+                        loc = await res.json()
                     }else{
                         const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_finished_task')
-                        let loc = await res.json()
-                        cases_info.value.tasks = loc
+                        loc = await res.json()
                     }
+                    cases_info.value.tasks = loc
+                    loc_tasks_list = cases_info.value.tasks
                 }
 
                 function sort_by_filter(filter){
@@ -287,6 +288,8 @@
                             cases_info.value.tasks = loc
 
                         loc_tasks_list = cases_info.value.tasks
+                    }else{
+                        filter_ongoing(show_ongoing)   
                     }
                     
                 }
@@ -426,12 +429,13 @@
                 }
 
                 function onInput(e){
+                    cases_info.value.tasks = []
                     if(e.target.value){
                         cases_info.value.tasks = loc_tasks_list.filter((task) => {
                             return task.title.toLowerCase().includes(e.target.value.toLowerCase())
                         })
                     }else{
-                        cases_info.value.tasks = loc_tasks_list
+                        cases_info.value.tasks = asc_desc_filter()
                     }
                 }
 

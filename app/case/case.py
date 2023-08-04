@@ -275,8 +275,8 @@ def ongoing_sort_by_filter():
     data_dict = dict(request.args)
     page = request.args.get('page', 1, type=int)
     if "filter" in data_dict:
-        cases_list = CaseModel.sort_by_filter(False, data_dict["filter"], page)
-        return CaseModel.regroup_case_info(cases_list, current_user)
+        cases_list, nb_pages = CaseModel.sort_by_filter(False, data_dict["filter"], page)
+        return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 
 
@@ -287,8 +287,8 @@ def finished_sort_by_filter():
     data_dict = dict(request.args)
     page = request.args.get('page', 1, type=int)
     if "filter" in data_dict:
-        cases_list = CaseModel.sort_by_filter(True, data_dict["filter"], page)
-        return CaseModel.regroup_case_info(cases_list, current_user)
+        cases_list, nb_pages = CaseModel.sort_by_filter(True, data_dict["filter"], page)
+        return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 
 
