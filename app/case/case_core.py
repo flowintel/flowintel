@@ -231,22 +231,35 @@ def edit_case_core(form_dict, cid):
 
 def add_task_core(form_dict, cid):
     """Add a task to the DB"""
-    deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
+    if not 0 in form_dict["template_select"]:
+        template = Task_Template.query.get(form_dict["template_select"])
+        task = Task(
+            uuid=str(uuid.uuid4()),
+            title=template.title,
+            description=template.description,
+            url=template.url,
+            creation_date=datetime.datetime.now(),
+            last_modif=datetime.datetime.now(),
+            case_id=cid,
+            status_id=1
+        )
+    else:
+        deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
-    task = Task(
-        uuid=str(uuid.uuid4()),
-        title=bleach.clean(form_dict["title"]),
-        description=bleach.clean(form_dict["description"]),
-        url=bleach.clean(form_dict["url"]),
-        creation_date=datetime.datetime.now(),
-        last_modif=datetime.datetime.now(),
-        deadline=deadline,
-        case_id=cid,
-        status_id=1
-    )
+        task = Task(
+            uuid=str(uuid.uuid4()),
+            title=bleach.clean(form_dict["title"]),
+            description=bleach.clean(form_dict["description"]),
+            url=bleach.clean(form_dict["url"]),
+            creation_date=datetime.datetime.now(),
+            last_modif=datetime.datetime.now(),
+            deadline=deadline,
+            case_id=cid,
+            status_id=1
+        )
+
     db.session.add(task)
     db.session.commit()
-
     update_last_modif(cid)
 
     return task

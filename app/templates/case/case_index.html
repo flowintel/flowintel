@@ -154,8 +154,8 @@
                         </div>
                     </a>
                     <div v-if="(!case_loc.current_user_permission.read_only && case_loc.present_in_case) || case_loc.current_user_permission.admin" style="display: grid;">
-                        <button v-if="case_loc.completed" class="btn btn-secondary btn-sm"  @click="complete_case(case_loc, case_list.cases)" title="Revive the case"><i class="fa-solid fa-backward"></i></button>
-                        <button v-else class="btn btn-success btn-sm"  @click="complete_case(case_loc, case_list.cases)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
+                        <button v-if="case_loc.completed" class="btn btn-secondary btn-sm"  @click="complete_case(case_loc, case_list.cases, true)" title="Revive the case"><i class="fa-solid fa-backward"></i></button>
+                        <button v-else class="btn btn-success btn-sm"  @click="complete_case(case_loc, case_list.cases, false)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
                         <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
                         <button class="btn btn-danger btn-sm"  @click="delete_case(case_list, case_loc)" title="Delete the case"><i class="fa-solid fa-trash"></i></button>
                     </div>
@@ -235,8 +235,13 @@
                     display_toast(res)
                 }
 
-                async function complete_case(case_loc, cases_list){
-                    const res = await fetch('/case/complete_case/'+case_loc.id)
+                async function complete_case(case_loc, cases_list, is_revived){
+                    let url
+                    if (is_revived)
+                        url = '/case/complete_case/'+case_loc.id + '?revived=true'
+                    else
+                        url = '/case/complete_case/'+case_loc.id + '?revived=false'
+                    const res = await fetch(url)
                     if(await res.status == 200){
                         case_loc.last_modif = Date.now()
                         case_loc.completed = !case_loc.completed

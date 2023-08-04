@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from .form import CaseForm, TaskForm, CaseEditForm, AddOrgsCase, RecurringForm
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
-from ..db_class.db import Org, Case_Org
+from ..db_class.db import Org, Case_Org, Task_Template, Case_Template
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
 
@@ -38,17 +38,19 @@ def index():
 def view(id):
     """View of a case"""
     case = CaseModel.get_case(id)
-    
     if case:
         present_in_case = CaseModel.get_present_in_case(id, current_user)
         if present_in_case or current_user.is_admin():
             form = TaskForm()
+            form.template_select.choices = [(template.id, template.title) for template in Task_Template.query.all()]
+            form.template_select.choices.insert(0, (0," "))
+
             if form.validate_on_submit():
                 form_dict = form_to_dict(form)
                 if CaseModel.add_task_core(form_dict, id):
                     flash("Task created", "success")
                 else:
-                    flash("Error File", "error")
+                    flash("Error Task Created", "error")
                 return redirect(f"/case/view/{id}")
             return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case, form=form)
         return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case)
@@ -197,8 +199,12 @@ def complete_case(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.complete_case(cid, current_user):
                 flash("Case Completed")
+                if request.args.get('revived', 1) == "true":
+                    return {"message": "Case Revived", "toast_class": "success-subtle"}, 200
                 return {"message": "Case completed", "toast_class": "success-subtle"}, 200
             else:
+                if request.args.get('revived', 1) == "true":
+                    return {"message": "Error case revived", 'toast_class': "danger-subtle"}, 400
                 return {"message": "Error case completed", 'toast_class': "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case no found", 'toast_class': "danger-subtle"}, 404

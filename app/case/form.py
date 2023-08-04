@@ -49,14 +49,22 @@ class CaseEditForm(FlaskForm):
 
 class TaskForm(FlaskForm):
     title = StringField(
-        'Title', validators=[InputRequired(),
+        'Title', validators=[Optional(),
                                   Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
-    # group_id = SelectField(u'Category', coerce=str, validators=[InputRequired()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     deadline_date = DateField('deadline_date', validators=[Optional()])
     deadline_time = TimeField("deadline_time", validators=[Optional()])
+    template_select = SelectMultipleField(u'Templates', coerce=int)
     submit = SubmitField('Register')
+
+    def validate_title(self, field):
+        if not field.data and 0 in self.template_select.data:
+            raise ValidationError("Need to select a title or a template")
+        
+    def validate_template_select(self, field):
+        if 0 in field.data and not self.title.data:
+            raise ValidationError("Need to select a template or a title")
 
     def validate_deadline_time(self, field):
         if field.data and not self.deadline_date.data:

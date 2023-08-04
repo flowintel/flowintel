@@ -104,6 +104,18 @@
                             {{ form.hidden_tag() }}
                             <div class="modal-body">
                                 <div class="mb-3">
+                                    <p>Select from Template:</p>
+                                    <select data-placeholder="Templates" class="select2-select form-control" name="template_select" id="template_select">
+                                        {% for choice in form.template_select.choices %}
+                                            <option value="{{choice[0]}}">{{choice[1]}}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if form.template_select.errors %}
+                                        <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                                    {%endif%}
+                                </div>
+                                <hr>
+                                <div class="mb-3">
                                     {{form.title.label(class_="col-form-label")}}:
                                     {{form.title(class_="form-control")}}
                                     {% if form.title.errors %}
@@ -230,6 +242,13 @@
 
 
 {% block script %}
+<script type="text/javascript">
+    $(document).ready(function(){
+        $('.select2-select').select2({
+            dropdownParent: $("#FormModal")
+        })
+    });
+</script>
     <script type="module">
         const { createApp, ref, computed, nextTick } = Vue
         import case_tasks from '../../static/js/case/case_tasks.js'
