@@ -16,6 +16,14 @@
 
     <hr>
 
+     <!-- Search bar -->
+    <div class="input-group w-auto start-50 translate-middle-x" id="search_user" style="max-width: 200px;">
+        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Users by lastname' style="min-width: 400px;" />
+    </div>
+    <!-- Search bar -->
+
+    <hr>
+
     <div id="top"></div>
     <template v-if="users_list">
         <template v-for="user in users_list.users">
@@ -68,6 +76,7 @@
             setup() {
                 const users_list = ref(null)
                 const current_page = ref(1)
+                let temp_users_list = []
 
 
                 async function fetchUsers(page) {
@@ -76,6 +85,7 @@
                     let loc = await res.json()
                     users_list.value = loc
                     current_page.value = page
+                    temp_users_list = users_list.value.users
                 }
 
                 async function delete_user(user){
@@ -88,6 +98,17 @@
                     display_toast(res)
                 }
 
+                function onInput(e){
+                    users_list.value.users = []
+                    if(e.target.value){
+                        users_list.value.users = temp_users_list.filter((orgs) => {
+                            return orgs.last_name.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                    }else{
+                        users_list.value.users = fetchUsers(1)
+                    }
+                }
+
 
                 fetchUsers(1)
 
@@ -97,7 +118,8 @@
                     users_list,
                     delete_user,
                     current_page,
-                    fetchUsers
+                    fetchUsers,
+                    onInput
                 }
             }
         }).mount('.container')

@@ -60,6 +60,14 @@
 
     <hr>
 
+    <!-- Search bar -->
+    <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
+        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Org by name' style="min-width: 400px;" />
+    </div>
+    <!-- Search bar -->
+
+    <hr>
+
     <div id="top"></div>
     {% if current_user.is_admin() %}
         <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New User</a>
@@ -146,6 +154,7 @@
                 const orgs_list = ref(null)
                 const users_table = ref({})
                 const current_page = ref(1)
+                let temp_orgs_list = []
 
 
                 async function fetchOrgs(page) {
@@ -154,6 +163,7 @@
                     let loc = await res.json()
                     orgs_list.value = loc
                     current_page.value = page
+                    temp_orgs_list = orgs_list.value.orgs
                 }
 
                 async function extend_collapse(org_id){
@@ -185,6 +195,17 @@
                     display_toast(res)
                 }
 
+                function onInput(e){
+                    orgs_list.value.orgs = []
+                    if(e.target.value){
+                        orgs_list.value.orgs = temp_orgs_list.filter((orgs) => {
+                            return orgs.name.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                    }else{
+                        orgs_list.value.orgs = fetchOrgs(1)
+                    }
+                }
+
 
                 fetchOrgs(1)
 
@@ -197,7 +218,8 @@
                     delete_org,
                     delete_user,
                     current_page,
-                    fetchOrgs
+                    fetchOrgs,
+                    onInput
                 }
             }
         }).mount('.container')
