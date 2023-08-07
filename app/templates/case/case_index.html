@@ -24,6 +24,26 @@
                     {{ form.hidden_tag() }}
                     <div class="modal-body">
                         <div class="mb-3">
+                            <p>Select from Template:</p>
+                            <select data-placeholder="Templates" class="select2-select form-control" name="template_select" id="template_select">
+                                {% for choice in form.template_select.choices %}
+                                    <option value="{{choice[0]}}">{{choice[1]}}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.template_select.errors %}
+                                <div style="color: red;">{{form.template_select.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <div class="mb-3">
+                            {{form.title_template.label(class_="col-form-label")}}:
+                            {{form.title_template(class_="form-control")}}
+                            {% if form.title_template.errors %}
+                                <div style="color: red;">{{form.title_template.errors[0] | safe}}</div>
+                            {%endif%}
+                        </div>
+                        <hr>
+
+                        <div class="mb-3">
                             {{form.title.label(class_="col-form-label")}}:
                             {{form.title(class_="form-control")}}
                             {% if form.title.errors %}
@@ -49,6 +69,19 @@
                             {{form.deadline_time(class_="form-control")}}
                             {% if form.deadline_time.errors %}<div style="color: red;">{{form.deadline_time.errors[0] | safe}}
                                 </div>
+                            {%endif%}
+                        </div>
+                        <hr>
+                        
+                        <div class="mb-3">
+                            <p>Add tasks from templates:</p>
+                            <select data-placeholder="Templates" class="select2-select form-control" name="tasks_templates" id="tasks_templates">
+                                {% for choice in form.tasks_templates.choices %}
+                                    <option value="{{choice[0]}}">{{choice[1]}}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.tasks_templates.errors %}
+                                <div style="color: red;">{{form.tasks_templates.errors[0] | safe}}</div>
                             {%endif%}
                         </div>
                         <div class="modal-footer">
@@ -180,6 +213,14 @@
 
 
 {% block script %}
+<script type="text/javascript">
+    $(document).ready(function(){
+        $('.select2-select').select2({
+            dropdownParent: $("#FormModal"),
+            width: '50%'
+        })
+    });
+</script>
     <script type="module">
         const { createApp, ref} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'

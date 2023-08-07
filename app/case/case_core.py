@@ -11,6 +11,7 @@ from flask import request, send_file
 from werkzeug.utils import secure_filename
 from ..notification import notification_core as NotifModel
 from dateutil import relativedelta
+from ..tools.tools_core import create_case_from_template
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 
@@ -187,21 +188,40 @@ def complete_task(tid):
 def add_case_core(form_dict, user):
     """Add a case to the DB"""
 
-    deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
+    if not 0 in form_dict["template_select"]:
+        if Case_Template.query.get(form_dict["template_select"]):
+            case = create_case_from_template(form_dict["template_select"][0], form_dict["title_template"], user)
+    else:
+        deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
+        case = Case(
+            title=bleach.clean(form_dict["title"]),
+            description=bleach.clean(form_dict["description"]),
+            uuid=str(uuid.uuid4()),
+            creation_date=datetime.datetime.now(),
+            last_modif=datetime.datetime.now(),
+            deadline=deadline,
+            status_id=1,
+            owner_org_id=user.org_id
+        )
+        
+        db.session.add(case)
+        db.session.commit()
 
-    case = Case(
-        title=bleach.clean(form_dict["title"]),
-        description=bleach.clean(form_dict["description"]),
-        uuid=str(uuid.uuid4()),
-        creation_date=datetime.datetime.now(),
-        last_modif=datetime.datetime.now(),
-        deadline=deadline,
-        status_id=1,
-        owner_org_id=user.org_id
-    )
-    
-    db.session.add(case)
-    db.session.commit()
+        if form_dict["tasks_templates"]:
+            for tid in form_dict["tasks_templates"]:
+                task = Task_Template.query.get(tid)
+                t = Task(
+                    uuid=str(uuid.uuid4()),
+                    title=task.title,
+                    description=task.description,
+                    url=task.url,
+                    creation_date=datetime.datetime.now(),
+                    last_modif=datetime.datetime.now(),
+                    case_id=case.id,
+                    status_id=1
+                )
+                db.session.add(t)
+                db.session.commit()
 
     # Add the current user's org to the case
     case_org = Case_Org(

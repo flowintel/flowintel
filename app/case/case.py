@@ -26,6 +26,12 @@ case_blueprint.register_blueprint(task_blueprint)
 def index():
     """List all cases"""
     form = CaseForm()
+    form.template_select.choices = [(template.id, template.title) for template in Case_Template.query.all()]
+    form.template_select.choices.insert(0, (0," "))
+
+    form.tasks_templates.choices = [(template.id, template.title) for template in Task_Template.query.all()]
+    form.tasks_templates.choices.insert(0, (0," "))
+    
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         case = CaseModel.add_case_core(form_dict, current_user)

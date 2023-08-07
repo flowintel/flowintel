@@ -17,21 +17,35 @@ from ..db_class.db import Case, Case_Org
 
 
 class CaseForm(FlaskForm):
-    title = StringField(
-        'Title', validators=[InputRequired(),
-                                  Length(1, 64)])
+    title = StringField('Title', validators=[Optional(), Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
     deadline_date = DateField('deadline_date', validators=[Optional()])
     deadline_time = TimeField("deadline_time", validators=[Optional()])
+    template_select = SelectMultipleField(u'Templates', coerce=int)
+    title_template = StringField('Title Template', validators=[Optional(), Length(1, 64)])
+
+    tasks_templates = SelectMultipleField(u'Tasks Templates', coerce=int)
     submit = SubmitField('Register')
 
     def validate_title(self, field):
+        if not field.data and 0 in self.template_select.data:
+            raise ValidationError("Need to select a title or a template")
         if Case.query.filter_by(title=field.data).first():
             raise ValidationError("The title already exist")
+        
+    def validate_template_select(self, field):
+        if 0 in field.data and not self.title.data:
+            raise ValidationError("Need to select a template or a title")
     
     def validate_deadline_time(self, field):
         if field.data and not self.deadline_date.data:
             raise ValidationError("Choose a date")
+        
+    def validate_title_template(self, field):
+        if field.data and not self.template_select.data or 0 in self.template_select.data:
+            raise ValidationError("A template need to be selected")
+        if Case.query.filter_by(title=field.data).first():
+            raise ValidationError("The title already exist")
 
 class CaseEditForm(FlaskForm):
     title = StringField(
