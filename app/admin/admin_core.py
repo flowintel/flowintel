@@ -113,9 +113,9 @@ def admin_edit_user_core(form_dict, id):
     user.first_name=bleach.clean(form_dict["first_name"])
     user.last_name=bleach.clean(form_dict["last_name"])
     user.email=bleach.clean(form_dict["email"])
-    if form_dict["password"]:
+    if "password" in form_dict:
         user.password=bleach.clean(form_dict["password"])
-    user.role_id = bleach.clean(form_dict["role"])
+    user.role_id = form_dict["role"]
     user.org_id = org_change
 
     db.session.commit()
@@ -150,6 +150,7 @@ def add_org_core(form_dict):
     )
     db.session.add(org)
     db.session.commit()
+    return org
 
 
 def edit_org_core(form_dict, id):

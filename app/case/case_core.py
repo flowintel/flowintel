@@ -79,7 +79,7 @@ def get_status(sid):
 def delete_case(cid, current_user):
     """Delete a case by is id"""
     case = get_case(cid)
-    if case is not None:
+    if case:
         # Delete all tasks in the case
         for task in case.tasks:
             delete_task(task.id)
@@ -187,8 +187,8 @@ def complete_task(tid):
 
 def add_case_core(form_dict, user):
     """Add a case to the DB"""
-
-    if not 0 in form_dict["template_select"]:
+    print(form_dict)
+    if "template_select" in form_dict and not 0 in form_dict["template_select"]:
         if Case_Template.query.get(form_dict["template_select"]):
             case = create_case_from_template(form_dict["template_select"][0], form_dict["title_template"], user)
     else:
@@ -207,7 +207,7 @@ def add_case_core(form_dict, user):
         db.session.add(case)
         db.session.commit()
 
-        if form_dict["tasks_templates"]:
+        if "tasks_templates" in form_dict and not 0 in form_dict["tasks_templates"]:
             for tid in form_dict["tasks_templates"]:
                 task = Task_Template.query.get(tid)
                 t = Task(
@@ -251,7 +251,7 @@ def edit_case_core(form_dict, cid):
 
 def add_task_core(form_dict, cid):
     """Add a task to the DB"""
-    if not 0 in form_dict["template_select"]:
+    if "template_select" in form_dict and not 0 in form_dict["template_select"]:
         template = Task_Template.query.get(form_dict["template_select"])
         task = Task(
             uuid=str(uuid.uuid4()),
@@ -418,19 +418,21 @@ def assign_task(tid, user, flag_current_user):
     case = get_case(task.case_id)
     if task:
         if type(user) == str or type(user) == int:
-            task_user = Task_User(task_id=task.id, user_id=user)
-            if not flag_current_user:
-                NotifModel.create_notification_user(f"You have been assign to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user, html_icon="fa-solid fa-hand")
+            user_id = user
         else:
-            task_user = Task_User(task_id=task.id, user_id=user.id)
-            if not flag_current_user:
-                NotifModel.create_notification_user(f"You have been assign to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-hand")
+            user_id = user.id
 
-        db.session.add(task_user)
-        update_last_modif(task.case_id)
-        update_last_modif_task(task.id)
-        db.session.commit()
-        return True
+        task_user = Task_User(task_id=task.id, user_id=user_id)
+        if not flag_current_user:
+            NotifModel.create_notification_user(f"You have been assign to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user_id, html_icon="fa-solid fa-hand")
+   
+        if not Task_User.query.filter_by(task_id=task.id, user_id=user_id).first():
+            db.session.add(task_user)
+            update_last_modif(task.case_id)
+            update_last_modif_task(task.id)
+            db.session.commit()
+            return True
+        return False
     return False
 
 def get_users_assign_task(task_id, user):
@@ -687,19 +689,19 @@ def create_template_from_case(cid, case_title_template):
 
 def change_recurring(form_dict, cid):
     case = get_case(cid)
-    if form_dict["once"]:
+    if "once" in form_dict and form_dict["once"]:
         case.recurring_type = "once"
         case.recurring_date = form_dict["once"]
-    elif form_dict["daily"]:
+    elif "daily" in form_dict and form_dict["daily"]:
         case.recurring_type = "daily"
-    elif form_dict["weekly"]:
+    elif "weekly" in form_dict and form_dict["weekly"]:
         case.recurring_type = "weekly"
         case.recurring_date = datetime.datetime.today() + datetime.timedelta(
             days=(form_dict["weekly"].weekday() - datetime.datetime.today().weekday() + 7)
             )
-    elif form_dict["monthly"]:
+    elif "monthly" in form_dict and form_dict["monthly"]:
         case.recurring_type = "monthly"
-        if form_dict["monthly"]<datetime.datetime.today().date():
+        if form_dict["monthly"].date()<datetime.datetime.today().date():
             case.recurring_date = form_dict["monthly"] + relativedelta.relativedelta(months=1)
         else:
             case.recurring_date = form_dict["monthly"]

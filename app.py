@@ -24,6 +24,8 @@ parser.add_argument("-r", "--recreate_db", help="Delete and initialise the db", 
 parser.add_argument("-d", "--delete_db", help="Delete and initialise the db", action="store_true")
 args = parser.parse_args()
 
+os.environ.setdefault('FLASKENV', 'development')
+
 app = create_app()
 
 @app.errorhandler(404)

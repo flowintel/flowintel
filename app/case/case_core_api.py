@@ -30,7 +30,7 @@ def verif_add_case_task(data_dict, isCase):
     if "title" not in data_dict:
         return {"message": "Please give a title to the case"}
     elif Case.query.filter_by(title=data_dict["title"]).first():
-        return {"message": "Title already in use"}
+        return {"message": "Title already exist"}
 
     if "description" not in data_dict:
         data_dict["description"] = ""
@@ -39,7 +39,7 @@ def verif_add_case_task(data_dict, isCase):
         try:
             data_dict["deadline_date"] = datetime.strptime(data_dict["deadline_date"], '%Y-%m-%d') 
         except:
-            return {"message": "date bad format"}
+            return {"message": "deadline_date bad format"}
     else:
         data_dict["deadline_date"] = ""
 
@@ -47,7 +47,7 @@ def verif_add_case_task(data_dict, isCase):
         try:
             data_dict["deadline_time"] = datetime.strptime(data_dict["deadline_time"], '%H-%M') 
         except:
-            return {"message": "time bad format"}
+            return {"message": "deadline_time bad format"}
     else:
         data_dict["deadline_time"] = ""
 
@@ -91,7 +91,7 @@ def verif_edit_case(data_dict, case_id):
     if "title" not in data_dict or data_dict["title"] == case.title:
         data_dict["title"] = case.title
     elif Case.query.filter_by(title=data_dict["title"]).first():
-        return {"message": "Title already in use"}
+        return {"message": "Title already exist"}
 
     data_dict = common_verif(data_dict, case)
 

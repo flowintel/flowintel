@@ -13,6 +13,7 @@ function db_upgrade {
 }
 
 function launch {
+    export FLASKENV="development"
     killscript
     db_upgrade
     screen -dmS "fcm"

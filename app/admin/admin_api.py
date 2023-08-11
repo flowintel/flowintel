@@ -24,10 +24,20 @@ api = Api(api_admin_blueprint,
 @api.route('/users')
 @api.doc(description='Get all users')
 class GetUsers(Resource):
-    method_decorators = [admin_required, api_required]
+    method_decorators = [api_required]
     def get(self):
         users = AdminModel.get_all_users()
-        return {"users": [user.to_json() for user in users]}
+        return {"users": [user.to_json() for user in users]}, 200
+    
+@api.route('/user/<uid>')
+@api.doc(description='Get a users', params={'uid': 'id of a user'})
+class GetUsers(Resource):
+    method_decorators = [api_required]
+    def get(self, uid):
+        user = AdminModel.get_user(uid)
+        if user:
+            return user.to_json(), 200
+        return {"message": "User not found"}, 404
 
 
 @api.route('/add_user')
@@ -48,13 +58,13 @@ class AddUser(Resource):
             verif_dict = AdminModelApi.verif_add_user(request.json)
             if "message" not in verif_dict:
                 user = AdminModel.add_user_core(verif_dict)
-                return {"message": f"User created: {user.id}"}, 400
-            return verif_dict
-        return {"message": "Please give data"}
+                return {"message": f"User created, id: {user.id}"}, 201
+            return verif_dict, 400
+        return {"message": "Please give data"}, 400
 
                 
 @api.route('/edit_user/<id>')
-@api.doc(description='Edit user')
+@api.doc(description='Edit user', params={'id': 'id of a user'})
 class EditUser(Resource):
     method_decorators = [admin_required, api_required]
     @api.doc(params={
@@ -68,20 +78,22 @@ class EditUser(Resource):
         if request.json:
             verif_dict = AdminModelApi.verif_edit_user(request.json, id)
             if "message" not in verif_dict:
-                AdminModel.edit_user_core(verif_dict, id)
-                return {"message": f"User edited"}
-            return verif_dict
-        return {"message": "Please give data"}
+                AdminModel.admin_edit_user_core(verif_dict, id)
+                return {"message": "User edited"}, 200
+            return verif_dict, 400
+        return {"message": "Please give data"}, 400
 
 
 @api.route('/delete_user/<id>')
-@api.doc(description='Delete user')
+@api.doc(description='Delete user' , params={'id': 'id of a user'})
 class DeleteUser(Resource):
     method_decorators = [admin_required, api_required]
     def get(self, id):
-        if AdminModel.delete_user_core(id):
-            return {"message": "User deleted"}
-        return {"message": "Error User deleted"}
+        if AdminModel.get_user(id):
+            if AdminModel.delete_user_core(id):
+                return {"message": "User deleted"}, 200
+            return {"message": "Error User deleted"}, 400
+        return {"message", "User not found"}, 404
 
 
 ########
@@ -91,10 +103,21 @@ class DeleteUser(Resource):
 @api.route('/orgs')
 @api.doc(description='Get all orgs')
 class GetOrgs(Resource):
-    method_decorators = [admin_required, api_required]
+    method_decorators = [api_required]
     def get(self):
         orgs = AdminModel.get_all_orgs()
-        return {"orgs": [org.to_json() for org in orgs]}
+        return {"orgs": [org.to_json() for org in orgs]}, 200
+
+
+@api.route('/org/<oid>')
+@api.doc(description='Get an org', params={'oid': 'id of an org'})
+class GetOrgs(Resource):
+    method_decorators = [api_required]
+    def get(self, oid):
+        org = AdminModel.get_org(oid)
+        if org:
+            return org.to_json(), 200
+        return {"message", "Org not found"}, 404
 
 
 @api.route('/add_org')
@@ -112,13 +135,13 @@ class AddOrg(Resource):
             verif_dict = AdminModelApi.verif_add_org(request.json)
             if "message" not in verif_dict:
                 org = AdminModel.add_org_core(verif_dict)
-                return {"message": f"Org created: {org.id}"}
-            return verif_dict
-        return {"message": "Please give data"}
+                return {"message": f"Org created: {org.id}"}, 201
+            return verif_dict, 400
+        return {"message": "Please give data"}, 400
 
 
 @api.route('/edit_org/<id>')
-@api.doc(description='Edit org')
+@api.doc(description='Edit org', params={'oid': "id of an org"})
 class EditOrg(Resource):
     method_decorators = [admin_required, api_required]
     @api.doc(params={
@@ -132,18 +155,20 @@ class EditOrg(Resource):
             verif_dict = AdminModelApi.verif_edit_org(request.json, id)
             if "message" not in verif_dict:
                 AdminModel.edit_org_core(verif_dict, id)
-                return {"message": f"Org edited"}
-            return verif_dict
-        return {"message": "Please give data"}
+                return {"message": f"Org edited"}, 200
+            return verif_dict, 400
+        return {"message": "Please give data"}, 400
 
-@api.route('/delete_org/<id>')
-@api.doc(description='Delete Org')
+@api.route('/delete_org/<oid>')
+@api.doc(description='Delete Org', params={'oid': "id of an org"})
 class DeleteOrg(Resource):
     method_decorators = [admin_required, api_required]
-    def get(self, id):
-        if AdminModel.delete_org_core(id):
-            return {"message": "Org deleted"}
-        return {"message": "Error Org deleted"}
+    def get(self, oid):
+        if AdminModel.get_org(oid):
+            if AdminModel.delete_org_core(oid):
+                return {"message": "Org deleted"}, 200
+            return {"message": "Error Org deleted"}, 400
+        return {"message": "Org not found"}, 404
 
 
 #########
@@ -153,8 +178,8 @@ class DeleteOrg(Resource):
 @api.route('/roles')
 @api.doc(description='Get all roles')
 class GetRoles(Resource):
-    method_decorators = [admin_required, api_required]
+    method_decorators = [api_required]
     def get(self):
         roles = AdminModel.get_all_roles()
-        return {"roles": [role.to_json() for role in roles]}
+        return {"roles": [role.to_json() for role in roles]}, 200
 

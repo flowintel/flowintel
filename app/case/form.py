@@ -36,6 +36,8 @@ class CaseForm(FlaskForm):
     def validate_template_select(self, field):
         if 0 in field.data and not self.title.data:
             raise ValidationError("Need to select a template or a title")
+        if not 0 in field.data and not self.title_template.data:
+            raise ValidationError("Need a title for the case")
     
     def validate_deadline_time(self, field):
         if field.data and not self.deadline_date.data:

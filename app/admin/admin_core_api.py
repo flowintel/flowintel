@@ -34,8 +34,15 @@ def verif_edit_user(data_dict, user_id):
     if "last_name" not in data_dict:
         data_dict["last_name"] = user.last_name
 
+    if "email" not in data_dict:
+        data_dict["email"] = user.email
+    elif User.query.filter_by(email=data_dict["email"]).first():
+        return {"message": "Email already exist"}
+
     if "role" not in data_dict:
-        data_dict["role"] = user.role
+        data_dict["role"] = user.role_id
+    elif not Role.query.get(data_dict["role"]):
+        return {"message": "Role not identified"}
     
     if "org" not in data_dict:
         data_dict["org"] = user.org_id

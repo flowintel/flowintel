@@ -229,9 +229,9 @@
     <hr>
 
     <template v-if="cases_info && cases_info.tasks && status_info" >
-        <template v-for="task in cases_info.tasks" :key="task.id">
+        <template v-for="task, key in cases_info.tasks" :key="task.id">
             <div :id="`task-${task.id}`"  class="list-group" style="margin-bottom: 20px;">
-                <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
+                <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" :key_loop="key" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
             </div>
         </template>
     </template>
@@ -435,7 +435,7 @@
                             body: JSON.stringify({"case_title_template": $("#case_title_template").val()})
                         })
                         let loc = await res.json()
-                        window.location.href="/tools/template/case/view/" + loc["new_case_id"]
+                        window.location.href="/tools/template/case/view/" + loc["template_id"]
                     }
                 }
                 async function fetch_case_template_title(case_title_template){

@@ -9,7 +9,7 @@ A flexible case management.
 ## Installation
 
 ```
-pip install -r requirements
+./install.sh
 ./launch.sh -i # To init the db\
 ./launch.sh -l
 ```
@@ -33,8 +33,6 @@ A screen is created to notify recurrent case. To access it:
 ```bash
 screen -r fcm
 ```
-
-
 
 ## Api
 

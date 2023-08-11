@@ -65,7 +65,7 @@ def edit_user(uid):
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.admin_edit_user_core(form_dict, uid)
-        return redirect("/admin/orgs")
+        return redirect("/admin/users")
     else:
         user_modif = AdminModel.get_user(uid)
         form.first_name.data = user_modif.first_name

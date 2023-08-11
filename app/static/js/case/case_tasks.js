@@ -6,7 +6,8 @@ export default {
 		status_info: Object,
 		users_in_case: Object,
 		edit_mode: Boolean,
-		task: Object
+		task: Object,
+		key_loop: Object
 	},
 	emits: ['edit_mode', 'task'],
 	setup(props, {emit}) {
@@ -323,7 +324,7 @@ export default {
 	<div style="display: flex;">                          
 		<a :href="'#collapse'+task.id" class="list-group-item list-group-item-action" data-bs-toggle="collapse" role="button" aria-expanded="false" :aria-controls="'collapse'+task.id">
 			<div class="d-flex w-100 justify-content-between">
-				<h5 class="mb-1">[[task.title]]</h5>
+				<h5 class="mb-1">[[ key_loop ]]- [[task.title]]</h5>
 				<small><i>Changed [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
 
