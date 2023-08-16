@@ -99,7 +99,8 @@ class RecurringCase(Resource):
         "once": "Date(%Y-%m-%d)", 
         "daily": "Boolean", 
         "weekly": "Date(%Y-%m-%d). Only the day of the week will be keep.", 
-        "monthly": "Date(%Y-%m-%d). Only the day will be keep."
+        "monthly": "Date(%Y-%m-%d). Only the day will be keep.",
+        "remove": "Boolean"
     })
     def post(self, cid):
         current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])

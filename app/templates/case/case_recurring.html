@@ -17,6 +17,7 @@
                     <option @click="recurring_mode=2" value="2">Daily</option>
                     <option @click="recurring_mode=3" value="3">Weekly</option>
                     <option @click="recurring_mode=4" value="4">Monthly</option>
+                    <option @click="recurring_mode=5" value="4">Remove</option>
                 </select>
             </div>
 
@@ -29,7 +30,7 @@
             </div>
             <div v-if="recurring_mode==2">
                 {{form.daily.label(class_="col-form-label")}}:
-                {{form.daily}}
+                {{form.daily(checked=True)}}
                 {% if form.daily.errors %}
                     <div style="color: red;">{{form.daily.errors[0] | safe}}</div>
                 {%endif%}
@@ -48,7 +49,13 @@
                     <div style="color: red;">{{form.monthly.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-
+            <div v-if="recurring_mode==5">
+                {{form.remove.label(class_="col-form-label")}}:
+                {{form.remove(checked=True)}}
+                {% if form.remove.errors %}
+                    <div style="color: red;">{{form.remove.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
             <div class="modal-footer" style="margin-top: 10px;">
                 {{form.submit(class='btn btn-primary')}}
             </div>

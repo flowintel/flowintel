@@ -689,25 +689,38 @@ def create_template_from_case(cid, case_title_template):
 
 def change_recurring(form_dict, cid):
     case = get_case(cid)
+    recurring_status = Status.query.filter_by(name="Recurring").first()
+    created_status = Status.query.filter_by(name="Created").first()
+
     if "once" in form_dict and form_dict["once"]:
         case.recurring_type = "once"
         case.recurring_date = form_dict["once"]
+        case.status_id = recurring_status.id
     elif "daily" in form_dict and form_dict["daily"]:
         case.recurring_type = "daily"
+        case.status_id = recurring_status.id
     elif "weekly" in form_dict and form_dict["weekly"]:
         case.recurring_type = "weekly"
         case.recurring_date = datetime.datetime.today() + datetime.timedelta(
             days=(form_dict["weekly"].weekday() - datetime.datetime.today().weekday() + 7)
             )
+        case.status_id = recurring_status.id
     elif "monthly" in form_dict and form_dict["monthly"]:
         case.recurring_type = "monthly"
         if form_dict["monthly"].date()<datetime.datetime.today().date():
             case.recurring_date = form_dict["monthly"] + relativedelta.relativedelta(months=1)
         else:
             case.recurring_date = form_dict["monthly"]
+        case.status_id = recurring_status.id
+    elif "remove" in form_dict and form_dict["remove"]:
+        case.recurring_type = None
+        case.recurring_date = None
+        case.status_id = created_status.id
+
+    print(case.to_json())
 
     db.session.commit()
-    return
+
 
 def notify_user(task, user_id):
     case = get_case(task.case_id)

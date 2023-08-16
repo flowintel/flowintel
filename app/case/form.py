@@ -121,4 +121,5 @@ class RecurringForm(FlaskForm):
     daily = BooleanField('Daily', validators=[Optional()])
     weekly = DateField("Weekly (The date is to get the day of the week to give notification)", validators=[Optional()])
     monthly = DateField("Monthly (The date is to get the day to give notification)", validators=[Optional()])
+    remove = BooleanField('Remove', validators=[Optional()])
     submit = SubmitField('Modify')

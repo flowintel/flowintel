@@ -70,6 +70,9 @@ def test_case_recurring_once(client):
     response = client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
                            json={"once": "2023-09-11"})
     assert response.status_code == 200 and b'Recurring changed' in response.data
+    
+    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["recurring_type"] and response.json["recurring_date"]
 
 def test_case_recurring_daily(client):
     test_create_case(client)
@@ -77,17 +80,37 @@ def test_case_recurring_daily(client):
                            json={"daily": "True"})
     assert response.status_code == 200 and b'Recurring changed' in response.data
 
+    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["recurring_type"]
+
 def test_case_recurring_weekly(client):
     test_create_case(client)
     response = client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
                            json={"weekly": "2023-09-09"})
     assert response.status_code == 200 and b'Recurring changed' in response.data
 
+    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["recurring_type"] and response.json["recurring_date"]
+
 def test_case_recurring_monthly(client):
     test_create_case(client)
     response = client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
                            json={"monthly": "2023-09-09"})
     assert response.status_code == 200 and b'Recurring changed' in response.data
+
+    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["recurring_type"] and response.json["recurring_date"]
+
+def test_case_recurring_remove(client):
+    test_create_case(client)
+    client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
+                           json={"monthly": "2023-09-09"})
+    response = client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
+                           json={"remove": "True"})
+    assert response.status_code == 200 and b'Recurring changed' in response.data
+
+    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and not response.json["recurring_type"] and not response.json["recurring_date"]
 
 
 def test_edit_case(client):
