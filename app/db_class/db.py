@@ -215,6 +215,7 @@ class Case_Org(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer)
     org_id = db.Column(db.Integer)
+    db.UniqueConstraint('case_id', 'org_id', name="case_org")
 
 
 class Notification(db.Model):

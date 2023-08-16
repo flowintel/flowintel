@@ -35,7 +35,7 @@ def add_user():
 
     form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
     form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
-    form.org.choices.insert(0, ("None", "--"))
+    form.org.choices.insert(0, ("None", "New org"))
 
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
