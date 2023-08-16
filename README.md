@@ -39,3 +39,11 @@ screen -r fcm
 `/api/case/doc`
 
 `/api/admin/doc`
+
+## License
+
+
+This software is licensed under [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.html)
+
+Copyright (C) 2022-2023 CIRCL - Computer Incident Response Center Luxembourg
+Copyright (C) 2022-2023 David Cruciani
