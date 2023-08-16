@@ -58,6 +58,11 @@
             </div>
         </template>
     </template>
+    <template v-else>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </template>
 
     <template v-if="is_searching && length_all_templates > templates_list.templates.length">
         <button class="btn btn-primary" @click="show_more_search(templates_list.templates.length)">Show more</button>

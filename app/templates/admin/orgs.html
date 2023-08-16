@@ -98,27 +98,32 @@
             <div class="collapse" :id="'collapse'+org.id" style="margin-bottom: 20px;">
                 <div class="card card-body" :id="'card-body_'+org.id" style="background-color: whitesmoke;">
                     <template v-if="users_table">
-                        <table>
-                            <template v-for="user in users_table[org.id]">
-                                <tr>
-                                    <td title="Id">[[user.id]]</td>
-                                    <td title="First name">[[user.first_name]]</td>
-                                    <td title="last name">[[user.last_name]]</td>
-                                    <td title="Email">[[user.email]]</td>
-                                    <td title="Role">[[user.role]]</td>
-                                    {% if current_user.is_admin() %}
-                                        <td>
-                                            <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
-                                                <i class="fa-solid fa-pen-to-square"></i>
-                                            </a>
-                                            <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    {% endif %}
-                                </tr>
-                            </template>
-                        </table>
+                        <template v-if="users_table[org.id]">
+                            <table>
+                                <template v-for="user in users_table[org.id]">
+                                    <tr>
+                                        <td title="Id">[[user.id]]</td>
+                                        <td title="First name">[[user.first_name]]</td>
+                                        <td title="last name">[[user.last_name]]</td>
+                                        <td title="Email">[[user.email]]</td>
+                                        <td title="Role">[[user.role]]</td>
+                                        {% if current_user.is_admin() %}
+                                            <td>
+                                                <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                </a>
+                                                <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        {% endif %}
+                                    </tr>
+                                </template>
+                            </table>
+                        </template>
+                        <template v-else>
+                            <i>No users</i>
+                        </template>
                     </template>
                     <template v-else>
                         Loading...
@@ -126,7 +131,11 @@
                 </div>
             </div>
         </template>
-
+    </template>
+    <template v-else>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </template>
 
     <nav aria-label="Page navigation example" v-if="orgs_list && orgs_list.nb_pages > 1">
