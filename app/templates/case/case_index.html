@@ -8,91 +8,13 @@
     <h1>
         Cases
         <span>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button>
+            <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button> -->
+            <a type="button" class="btn btn-primary" href="/case/add_case"><i class="fa-solid fa-plus"></i></a>
         </span>
     </h1>
 
 
-    <div class="modal fade" id="FormModal" tabindex="-1" aria-labelledby="FormModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="FormModalLabel">Create a new case</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="" method="post">
-                    {{ form.hidden_tag() }}
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <p>Select from Template:</p>
-                            <select data-placeholder="Templates" class="select2-select form-control" name="template_select" id="template_select">
-                                {% for choice in form.template_select.choices %}
-                                    <option value="{{choice[0]}}">{{choice[1]}}</option>
-                                {% endfor %}
-                            </select>
-                            {% if form.template_select.errors %}
-                                <div style="color: red;">{{form.template_select.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            {{form.title_template.label(class_="col-form-label")}}:
-                            {{form.title_template(class_="form-control")}}
-                            {% if form.title_template.errors %}
-                                <div style="color: red;">{{form.title_template.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <hr>
 
-                        <div class="mb-3">
-                            {{form.title.label(class_="col-form-label")}}:
-                            {{form.title(class_="form-control")}}
-                            {% if form.title.errors %}
-                                <div style="color: red;">{{form.title.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="col-form-label">Description:</label>
-                            {{form.description(class_="form-control")}}
-                            {% if form.description.errors %}
-                                <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            {{form.deadline_date.label(class_="col-form-label")}}:
-                            {{form.deadline_date(class_="form-control")}}
-                            {% if form.deadline_date.errors %}
-                                <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            {{form.deadline_time.label(class_="col-form-label")}}:
-                            {{form.deadline_time(class_="form-control")}}
-                            {% if form.deadline_time.errors %}<div style="color: red;">{{form.deadline_time.errors[0] | safe}}
-                                </div>
-                            {%endif%}
-                        </div>
-                        <hr>
-                        
-                        <div class="mb-3">
-                            <p>Add tasks from templates:</p>
-                            <select data-placeholder="Templates" class="select2-select form-control" name="tasks_templates" id="tasks_templates">
-                                {% for choice in form.tasks_templates.choices %}
-                                    <option value="{{choice[0]}}">{{choice[1]}}</option>
-                                {% endfor %}
-                            </select>
-                            {% if form.tasks_templates.errors %}
-                                <div style="color: red;">{{form.tasks_templates.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            {{form.submit(class='btn btn-primary')}}
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <!-- Search bar -->
     <div class="input-group w-auto start-50 translate-middle-x" id="search_case" style="max-width: 200px;">
@@ -195,7 +117,11 @@
                 </div>
             </div>
         </template>
-
+    </template>
+    <template v-else>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </template>
 
     <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">

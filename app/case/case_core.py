@@ -187,10 +187,10 @@ def complete_task(tid):
 
 def add_case_core(form_dict, user):
     """Add a case to the DB"""
-    print(form_dict)
     if "template_select" in form_dict and not 0 in form_dict["template_select"]:
-        if Case_Template.query.get(form_dict["template_select"]):
-            case = create_case_from_template(form_dict["template_select"][0], form_dict["title_template"], user)
+        for template in form_dict["template_select"]:
+            if Case_Template.query.get(template):
+                case = create_case_from_template(template, form_dict["title_template"], user)
     else:
         deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
         case = Case(
@@ -223,14 +223,14 @@ def add_case_core(form_dict, user):
                 db.session.add(t)
                 db.session.commit()
 
-    # Add the current user's org to the case
-    case_org = Case_Org(
-        case_id=case.id, 
-        org_id=user.org_id
-    )
+        # Add the current user's org to the case
+        case_org = Case_Org(
+            case_id=case.id, 
+            org_id=user.org_id
+        )
 
-    db.session.add(case_org)
-    db.session.commit()
+        db.session.add(case_org)
+        db.session.commit()
 
     return case
 

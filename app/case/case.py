@@ -25,6 +25,12 @@ case_blueprint.register_blueprint(task_blueprint)
 @login_required
 def index():
     """List all cases"""
+    return render_template("case/case_index.html")
+
+@case_blueprint.route("/add_case", methods=['GET', 'POST'])
+@login_required
+def add_case():
+    """List all cases"""
     form = CaseForm()
     form.template_select.choices = [(template.id, template.title) for template in Case_Template.query.all()]
     form.template_select.choices.insert(0, (0," "))
@@ -37,7 +43,7 @@ def index():
         case = CaseModel.add_case_core(form_dict, current_user)
         flash("Case created", "success")
         return redirect(f"/case/view/{case.id}")
-    return render_template("case/case_index.html", form=form)
+    return render_template("case/add_case.html", form=form)
 
 @case_blueprint.route("/view/<id>", methods=['GET', 'POST'])
 @login_required
