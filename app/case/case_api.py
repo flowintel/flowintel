@@ -53,7 +53,7 @@ class GetCase(Resource):
             orgs = CaseModel.get_orgs_in_case(cid)
             case_json["orgs"] = list()
             for org in orgs:
-                case_json["orgs"].append({"id": org["id"], "uuid": org["uuid"], "name": org["name"]})
+                case_json["orgs"].append({"id": org.id, "uuid": org.uuid, "name": org.name})
             
             return case_json, 200
         return {"message": "Case not found"}, 404

@@ -56,6 +56,51 @@
                     <div style="color: red;">{{form.remove.errors[0] | safe}}</div>
                 {%endif%}
             </div>
+            
+            <hr>
+            <h4>Choose who to notify</h4>
+
+            {% for org in orgs %}
+                <div class="list-group" style="margin-bottom: 10px;">
+                    <div class="d-flex align-items-center">
+                        {% if org.checked %}
+                            <input class="form-check-input me-2" type="checkbox" name="check_{{org.id}}" id="check_{{org.id}}" @click="check_org({{org}})" checked>
+                        {% else %}
+                            <input class="form-check-input me-2" type="checkbox" name="check_{{org.id}}" id="check_{{org.id}}" @click="check_org({{org}})">
+                        {%endif%}
+
+                        <a href="#collapse_{{org.id}}" data-bs-toggle="collapse" role="button" aria-expanded="false" class="list-group-item list-group-item-action" style="background-color: whitesmoke;">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">{{org.id}}- {{org.name}}</h5>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <div class="collapse" id="collapse_{{org.id}}" style="margin-bottom: 20px;">
+                    <div class="card card-body" style="background-color: whitesmoke;">
+                        {% if org.users %}
+                            <table>
+                                {% for user in org.users %}
+                                    <tr>
+                                        {% if user.checked %}
+                                            <td><input class="form-check-input me-2" type="checkbox" name="check_{{org.id}}_user_{{user.id}}" id="check_{{org.id}}_user_{{user.id}}" @click="check_user({{org}}, {{user}})" checked></td>
+                                        {%else%}
+                                            <td><input class="form-check-input me-2" type="checkbox" name="check_{{org.id}}_user_{{user.id}}" id="check_{{org.id}}_user_{{user.id}}" @click="check_user({{org}}, {{user}})"></td>
+                                        {%endif%}
+                                        <td title="Id">{{user.id}}</td>
+                                        <td title="First name">{{user.first_name}}</td>
+                                        <td title="last name">{{user.last_name}}</td>
+                                        <td title="Email">{{user.email}}</td>
+                                    </tr>
+                                {%endfor%}
+                            </table>
+                        {%else%}
+                            <i>No users</i>
+                        {%endif%}
+                    </div>
+                </div>
+            {% endfor %}
+
             <div class="modal-footer" style="margin-top: 10px;">
                 {{form.submit(class='btn btn-primary')}}
             </div>
@@ -65,7 +110,6 @@
 {% endblock %}
 
 {% block script %}
-
 <script type="module">
     const {createApp, ref} = Vue
     createApp({
@@ -73,8 +117,28 @@
         setup() {
             const recurring_mode = ref(null)
 
+            function check_org(org){
+                if (document.getElementById("check_" + org.id).checked){
+                    for(let i in org.users){
+                        $('#check_'+org.id+'_user_'+org.users[i].id).prop('checked', true);
+                    }
+                }else{
+                    for(let i in org.users){
+                        $('#check_'+org.id+'_user_'+org.users[i].id).prop('checked', false);
+                    }
+                }
+            }
+
+            function check_user(org, user){
+                if (!document.getElementById('check_'+org.id+'_user_'+user.id).checked){
+                    $("#check_"+org.id).prop('checked', false)
+                }
+            }
+
             return{
-                recurring_mode
+                recurring_mode,
+                check_org,
+                check_user
             }
         }
     }).mount('.container')

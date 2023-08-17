@@ -142,14 +142,44 @@ def recurring(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             form = RecurringForm()
             form.case_id.data = cid
+
+            orgs_in_case = CaseModel.get_orgs_in_case(cid)
+            orgs_to_return = list()
+            for org in orgs_in_case:
+                loc = org.to_json()
+                loc["users"] = list()
+                cp_checked_user = 0
+                cp_users = 0
+                for user in org.users:
+                    cp_users += 1
+                    loc_user = user.to_json()
+                    if CaseModel.get_recu_notif_user(cid, user.id):
+                        loc_user["checked"] = True
+                        cp_checked_user += 1
+                    else:
+                        loc_user["checked"] = False
+                    loc["users"].append(loc_user)
+                if cp_checked_user == cp_users:
+                    loc["checked"] = True
+                else:
+                    loc["checked"] = False
+                orgs_to_return.append(loc)
+
             if form.validate_on_submit():
                 form_dict = form_to_dict(form)
-                CaseModel.change_recurring(form_dict, cid)
+                if not CaseModel.change_recurring(form_dict, cid):
+                    flash("Recurring empty", "error")
+                    return redirect(f"/case/recurring/{case.id}")
+                if not form_dict["remove"]:
+                    CaseModel.notify_user_recurring(request.form.to_dict(), cid, orgs_in_case)
                 flash("Recurring set", "success")
                 return redirect(f"/case/view/{case.id}")
-            return render_template("case/case_recurring.html", form=form)
+            
+            return render_template("case/case_recurring.html", form=form, orgs=orgs_to_return)
+        
         flash("Action not allowed", "warning")
         return redirect(f"/case/view/{cid}")
+    
     return render_template("404.html")
 
 
@@ -195,7 +225,8 @@ def get_case_info(cid):
     
     tasks = CaseModel.sort_by_ongoing_task_core(case, current_user)
 
-    orgs_in_case = CaseModel.get_orgs_in_case(case.id)
+    o_in_c = CaseModel.get_orgs_in_case(case.id)
+    orgs_in_case = [o_c.to_json() for o_c in o_in_c]
     permission = CaseModel.get_role(current_user).to_json()
     present_in_case = CaseModel.get_present_in_case(cid, current_user)
 

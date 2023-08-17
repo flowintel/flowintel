@@ -5,20 +5,20 @@ from dateutil import relativedelta
 import schedule
 import time
 
-from ..db_class.db import Case, Case_Org, Org, Notification
+from ..db_class.db import Case, Notification, Recurring_Notification
 
 engine = create_engine("sqlite:///instance/flowintel-cm.sqlite")
 
 session = Session(engine)
 
 def create_notification(case, message, html_icon):
-    stmt = select(Org).join(Case_Org, Org.id==Case_Org.org_id).where(Case_Org.id == case.id)
-    org = session.scalars(stmt).one()
-    for user in org.users:
+    stmt = select(Recurring_Notification).where(Recurring_Notification.case_id == case.id)
+    recur_notif = session.scalars(stmt).all()
+    for r_n in recur_notif:
         notif = Notification(
             message=message,
             is_read=False,
-            user_id=user.id,
+            user_id=r_n.user_id,
             case_id=str(case.id),
             creation_date=datetime.now(),
             html_icon=html_icon
@@ -42,7 +42,7 @@ def job():
                     cp += 1
             elif case.recurring_type == "daily":
                 create_notification(case, f"Daily reminder for '{case.id}-{case.title}'", "fa-solid fa-clock")
-                case.recurring_date = datetime.today() - timedelta(days=1)
+                case.recurring_date = datetime.today() + timedelta(days=1)
                 cp += 1
             elif case.recurring_type == "weekly":
                 if case.recurring_date.date() == today.date():

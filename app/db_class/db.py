@@ -250,6 +250,21 @@ class Notification(db.Model):
             json_dict["for_deadline"] = self.for_deadline
         
         return json_dict
+    
+class Recurring_Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, index=True)
+    case_id = db.Column(db.Integer, index=True)
+    db.UniqueConstraint('case_id', 'user_id', name="recurring_notif")
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "user_id": self.user_id,
+            "case_id": self.case_id
+        }
+        
+        return json_dict
 
 
 class Case_Template(db.Model):

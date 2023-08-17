@@ -1,6 +1,6 @@
 import os
 from .. import db
-from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status, Task_Template, Case_Task_Template, Case_Template
+from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status, Task_Template, Case_Task_Template, Case_Template, Recurring_Notification
 from ..utils.utils import isUUID, create_upload_dir
 import uuid
 import bleach
@@ -388,13 +388,14 @@ def add_orgs_case(form_dict, cid, current_user):
 def get_orgs_in_case(case_id):
     """Return orgs present in a case"""
     case_org = Case_Org.query.filter_by(case_id=case_id).all()
-    orgs = list()
+    return [Org.query.get(c_o.org_id) for c_o in case_org ]
+    # orgs = list()
 
-    for c_o in case_org:
-        o = Org.query.get(c_o.org_id)
-        orgs.append(o.to_json())
+    # for c_o in case_org:
+    #     o = Org.query.get(c_o.org_id)
+    #     orgs.append(o.to_json())
 
-    return orgs
+    # return orgs
 
 
 def remove_org_case(case_id, org_id, current_user):
@@ -478,7 +479,7 @@ def get_present_in_case(case_id, user):
 
     present_in_case = False
     for org in orgs_in_case:
-        if org["id"] == user.org_id:
+        if org.id == user.org_id:
             present_in_case = True
 
     return present_in_case
@@ -698,6 +699,7 @@ def change_recurring(form_dict, cid):
         case.status_id = recurring_status.id
     elif "daily" in form_dict and form_dict["daily"]:
         case.recurring_type = "daily"
+        case.recurring_date = datetime.datetime.today() + datetime.timedelta(days=1)
         case.status_id = recurring_status.id
     elif "weekly" in form_dict and form_dict["weekly"]:
         case.recurring_type = "weekly"
@@ -717,9 +719,14 @@ def change_recurring(form_dict, cid):
         case.recurring_date = None
         case.status_id = created_status.id
 
-    print(case.to_json())
+        for notif in Recurring_Notification.query.filter_by(case_id=cid).all():
+            db.session.delete(notif)
+            db.session.commit()
+    else:
+        return False
 
     db.session.commit()
+    return True
 
 
 def notify_user(task, user_id):
@@ -727,3 +734,30 @@ def notify_user(task, user_id):
     message = f"Notify for task '{task.id}-{task.title}' of case '{case.id}-{case.title}'"
     NotifModel.create_notification_user(message, task.case_id, user_id=user_id, html_icon="fa-solid fa-bell")
     return True
+
+
+def notify_user_recurring(form_dict, case_id, orgs):
+    for org in orgs:
+        if f"check_{org.id}" in form_dict:
+            for user in org.users:
+                if not Recurring_Notification.query.filter_by(case_id=case_id, user_id=user.id).first():
+                    rec_notif = Recurring_Notification(case_id=case_id, user_id=user.id)
+                    db.session.add(rec_notif)
+                    db.session.commit()
+        else:
+            for user in org.users:
+                if f"check_{org.id}_user_{user.id}" in form_dict:
+                    if not Recurring_Notification.query.filter_by(case_id=case_id, user_id=user.id).first():
+                        rec_notif = Recurring_Notification(case_id=case_id, user_id=user.id)
+                        db.session.add(rec_notif)
+                        db.session.commit()
+                else:
+                    notif = Recurring_Notification.query.filter_by(case_id=case_id, user_id=user.id).first()
+                    if notif:
+                        db.session.delete(notif)
+                        db.session.commit()
+
+
+
+def get_recu_notif_user(case_id, user_id):
+    return Recurring_Notification.query.filter_by(case_id=case_id, user_id=user_id).first()
