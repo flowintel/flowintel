@@ -76,7 +76,6 @@
     </head>
 
     <body>
-
         <main class="form-signin">
             {% include 'macros/_flashes.html' %}
             {% set flashes = {
@@ -100,9 +99,9 @@
                     {{form.remember_me}}
                 </div>
                 {{ f.form_message(flashes['error'], header='Something went wrong.', class='error') }}
-            {{ f.form_message(flashes['warning'], header='Check your email.', class='warning') }}
-            {{ f.form_message(flashes['info'], header='Information', class='info') }}
-            {{ f.form_message(flashes['success'], header='Success!', class='success') }}
+                {{ f.form_message(flashes['warning'], header='Check your email.', class='warning') }}
+                {{ f.form_message(flashes['info'], header='Information', class='info') }}
+                {{ f.form_message(flashes['success'], header='Success!', class='success') }}
                 {{form.submit(class='btn btn-primary')}}
             </form>
         </main>
@@ -116,4 +115,16 @@
         {% endif %}
 
     </body>
+    <script>
+        $('.message').each((i, el) => {
+              const $el = $(el);
+              const $xx = $el.find('.close');
+              const sec = $el.data('autohide');
+              const triggerRemove = () => clearTimeout($el.trigger('remove').T);
+          
+              $el.one('remove', () => $el.remove());
+              $xx.one('click', triggerRemove);
+              if (sec) $el.T = setTimeout(triggerRemove, sec * 1000);
+            });
+    </script>
 </html>

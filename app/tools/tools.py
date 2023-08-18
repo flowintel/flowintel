@@ -27,14 +27,7 @@ def case_templates_index():
 @login_required
 def task_template_view():
     """View all task templates"""
-    form = TaskTemplateForm()
-    task_template_query_list = ToolsModel.get_all_task_templates()
-    form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
-    if form.validate_on_submit():
-        form_dict = form_to_dict(form)
-        ToolsModel.add_task_template_core(form_dict)
-        return redirect(f"/tools/templates/task")
-    return render_template("tools/task_template.html", form=form)
+    return render_template("tools/task_template.html")
 
 
 @tools_blueprint.route("/add_template", methods=['GET','POST'])
@@ -57,6 +50,23 @@ def add_template():
     return render_template("tools/add_templates.html", form=form)
 
 
+@tools_blueprint.route("/add_task_template", methods=['GET','POST'])
+@login_required
+@editor_required
+def add_task():
+    """Add a task Template"""
+    form = TaskTemplateForm()
+    task_template_query_list = ToolsModel.get_all_task_templates()
+    form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
+    if form.validate_on_submit():
+        form_dict = form_to_dict(form)
+        template = ToolsModel.add_task_template_core(form_dict)
+        flash("Template added", "success")
+        return redirect(f"/tools/templates/task")
+
+    return render_template("tools/add_edit_task.html", form=form, edit_mode=False)
+
+
 @tools_blueprint.route("/template/case/view/<cid>", methods=['GET','POST'])
 @login_required
 @editor_required
@@ -66,18 +76,25 @@ def case_template_view(cid):
     if template:
         case = template.to_json()
 
-        form_task = TaskTemplateForm()
-        task_template_query_list = ToolsModel.get_all_task_templates()
-        task_by_case = ToolsModel.get_task_by_case(cid)
-        task_id_list = [tid.id for tid in task_by_case]
-        form_task.tasks.choices = [(template.id, template.title) for template in task_template_query_list if template.id not in task_id_list]
-        if form_task.validate_on_submit():
-            form_dict = form_to_dict(form_task)
-            ToolsModel.add_task_case_template(form_dict, cid)
-            return redirect(f"/tools/template/case/view/{cid}")
-
-        return render_template("tools/case_template_view.html", case=case, form_task=form_task)
+        return render_template("tools/case_template_view.html", case=case)
     return render_template("404.html")
+
+@tools_blueprint.route("/template/case/<cid>/add_task", methods=['GET','POST'])
+@login_required
+@editor_required
+def add_task_case(cid):
+    """Add a task Template"""
+    form = TaskTemplateForm()
+    task_template_query_list = ToolsModel.get_all_task_templates()
+    task_by_case = ToolsModel.get_task_by_case(cid)
+    task_id_list = [tid.id for tid in task_by_case]
+    form.tasks.choices = [(template.id, template.title) for template in task_template_query_list if template.id not in task_id_list]
+    if form.validate_on_submit():
+        form_dict = form_to_dict(form)
+        ToolsModel.add_task_case_template(form_dict, cid)
+        flash("Template added", "success")
+        return redirect(f"/tools/template/case/view/{cid}")
+    return render_template("tools/add_task_case.html", form=form)
 
 
 @tools_blueprint.route("/template/edit_case/<cid>", methods=['GET','POST'])
@@ -121,7 +138,7 @@ def edit_task(tid):
             form.body.data = template.description
             form.url.data = template.url
 
-        return render_template("tools/edit_task.html", form=form)
+        return render_template("tools/add_edit_task.html", form=form, edit_mode=True)
     return render_template("404.html")
 
 
@@ -220,7 +237,7 @@ def get_task_by_case(cid):
             loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
             templates_list.append(loc_template)
         return {"tasks": templates_list}
-    return {"message": "Template not found"}
+    return {"tasks": []}
 
 
 @tools_blueprint.route("/template/<cid>/remove_task/<tid>", methods=['GET'])

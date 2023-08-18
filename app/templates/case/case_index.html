@@ -8,7 +8,6 @@
     <h1>
         Cases
         <span>
-            <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#FormModal"><i class="fa-solid fa-plus"></i></button> -->
             <a type="button" class="btn btn-primary" href="/case/add_case"><i class="fa-solid fa-plus"></i></a>
         </span>
     </h1>
@@ -139,14 +138,6 @@
 
 
 {% block script %}
-<script type="text/javascript">
-    $(document).ready(function(){
-        $('.select2-select').select2({
-            dropdownParent: $("#FormModal"),
-            width: '50%'
-        })
-    });
-</script>
     <script type="module">
         const { createApp, ref} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'

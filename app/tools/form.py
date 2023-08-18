@@ -32,7 +32,7 @@ class TaskTemplateEditForm(FlaskForm):
     body = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
 
-    submit = SubmitField('Edit')
+    submit = SubmitField('Save')
 
     def validate_title(self, field):
         template = Task_Template.query.get(self.template_id.data)

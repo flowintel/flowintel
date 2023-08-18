@@ -7,54 +7,13 @@
     <h1>
         Task Templates
         <span>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal"><i class="fa-solid fa-plus"></i></button>
+            <a class="btn btn-primary" href="/tools/add_task_template"><i class="fa-solid fa-plus"></i></a>
         </span>
     </h1>
 
     <hr>
 
     <div id="top"></div>
-
-    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="exampleModalLabel">New message</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="" method="post">
-                    {{ form.hidden_tag() }}
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            {{form.title.label(class_="col-form-label")}}:
-                            {{form.title(class_="form-control")}}
-                            {% if form.title.errors %}
-                                <div style="color: red;">{{form.title.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="col-form-label">Description:</label>
-                            {{form.body(class_="form-control")}}
-                            {% if form.body.errors %}
-                                <div style="color: red;">{{form.body.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="mb-3">
-                            {{form.url.label(class_="col-form-label")}}:
-                            {{form.url(class_="form-control")}}
-                            {% if form.url.errors %}
-                                <div style="color: red;">{{form.url.errors[0] | safe}}</div>
-                            {%endif%}
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            {{form.submit(class='btn btn-primary')}}
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <!-- Search bar -->
     <div class="input-group justify-content-center start-50 translate-middle-x top-0" id="search_template" style="max-width: 200px;">

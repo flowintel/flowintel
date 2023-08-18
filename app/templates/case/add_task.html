@@ -8,7 +8,7 @@
 <form action="" method="post">
     {{ form.hidden_tag() }}
     <div class="modal-body">
-        <button class="btn btn-primary" @click="hide_case_creation()" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
+        <button class="btn btn-primary" @click="hide_task_creation()" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
             Create from template
         </button>        
         <div class="collapse" id="collapseTemplate">
@@ -24,18 +24,11 @@
                         <div style="color: red;">{{form.template_select.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
-                <div class="mb-3 w-50">
-                    {{form.title_template.label(class_="col-form-label")}}:
-                    {{form.title_template(class_="form-control")}}
-                    {% if form.title_template.errors %}
-                        <div style="color: red;">{{form.title_template.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
             </div>
         </div>
         
         <hr>
-        <div id="create_case">
+        <div id="create_task">
             <div class="mb-3 w-50">
                 {{form.title.label(class_="col-form-label")}}:
                 {{form.title(class_="form-control")}}
@@ -50,6 +43,13 @@
                     <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                 {%endif%}
             </div>
+            <div class="mb-3 w-50">
+                {{form.url.label(class_="col-form-label")}}:
+                {{form.url(class_="form-control")}}
+                {% if form.url.errors %}
+                    <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
             <div class="row">
                 <div class="mb-3 w-25">
                     {{form.deadline_date.label(class_="col-form-label")}}:
@@ -61,23 +61,10 @@
                 <div class="mb-3 w-25">
                     {{form.deadline_time.label(class_="col-form-label")}}:
                     {{form.deadline_time(class_="form-control")}}
-                    {% if form.deadline_time.errors %}<div style="color: red;">{{form.deadline_time.errors[0] | safe}}
-                        </div>
+                    {% if form.deadline_time.errors %}
+                        <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
-            </div>
-            <hr>
-            
-            <div class="mb-3">
-                <p>Add tasks from templates:</p>
-                <select data-placeholder="Templates" multiple class="select2-select form-control" name="tasks_templates" id="tasks_templates">
-                    {% for choice in form.tasks_templates.choices %}
-                        <option value="{{choice[0]}}">{{choice[1]}}</option>
-                    {% endfor %}
-                </select>
-                {% if form.tasks_templates.errors %}
-                    <div style="color: red;">{{form.tasks_templates.errors[0] | safe}}</div>
-                {%endif%}
             </div>
         </div>
         <div class="modal-footer">
@@ -105,16 +92,16 @@
         delimiters: ['[[', ']]'],
         setup() {
             let to_hide = true
-            function hide_case_creation(){
+            function hide_task_creation(){
                 if(to_hide)
-                    $("#create_case").hide()
+                    $("#create_task").hide()
                 else
-                    $("#create_case").show()
+                    $("#create_task").show()
                 to_hide = !to_hide
             }
 
             return {
-                hide_case_creation
+                hide_task_creation
             }
         }
     }).mount('.container')

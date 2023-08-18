@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
-from .form import TaskEditForm
+from .form import TaskEditForm, TaskForm
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
+from ..db_class.db import Task_Template
 
 task_blueprint = Blueprint(
     'task',
@@ -13,6 +14,28 @@ task_blueprint = Blueprint(
 )
 
 
+@task_blueprint.route("/<cid>/add_task", methods=['GET', 'POST'])
+@login_required
+def add_task(cid):
+    """View of a case"""
+    case = CaseModel.get_case(cid)
+    if case:
+        present_in_case = CaseModel.get_present_in_case(cid, current_user)
+        if present_in_case or current_user.is_admin():
+            form = TaskForm()
+            form.template_select.choices = [(template.id, template.title) for template in Task_Template.query.all()]
+            form.template_select.choices.insert(0, (0," "))
+
+            if form.validate_on_submit():
+                form_dict = form_to_dict(form)
+                if CaseModel.add_task_core(form_dict, cid):
+                    flash("Task created", "success")
+                else:
+                    flash("Error Task Created", "error")
+                return redirect(f"/case/view/{cid}")
+            return render_template("case/add_task.html", form=form)
+        return redirect(f"/case/view/{cid}")
+    return render_template("404.html")
 
 @task_blueprint.route("view/<case_id>/edit_task/<id>", methods=['GET','POST'])
 @login_required

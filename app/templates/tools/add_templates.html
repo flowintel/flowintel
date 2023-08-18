@@ -11,7 +11,7 @@
             <form action="" method="post">
                 {{ form.hidden_tag() }}
                 
-                <div class="mb-3">
+                <div class="mb-3 w-50">
                     {{form.title.label(class_="col-form-label")}}:
                     {{form.title(class_="form-control")}}
                     {% if form.title.errors %}
@@ -28,7 +28,7 @@
 
                 <h4>Task</h4>
 
-                <div class="mb-3">
+                <div class="mb-3 w-50">
                     <select data-placeholder="Task Template" multiple class="select2-select form-control" name="tasks" id="tasks">
                         {% for choice in form.tasks.choices %}
                             <option value="{{choice[0]}}">{{choice[1]}}</option>
