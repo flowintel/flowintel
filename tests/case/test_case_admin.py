@@ -18,6 +18,22 @@ def test_create_case(client):
                         )
     assert response.status_code == 201 and b"Case created, id: 1" in response.data
 
+def test_create_case_empty_title(client):
+    response = client.post("/api/case/add", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"title": ""}
+                        )
+    assert response.status_code == 400 and b"Please give a title" in response.data
+
+def test_create_case_no_data(client):
+    response = client.post("/api/case/add", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={}
+                        )
+    assert response.status_code == 400 and b"Please give data" in response.data
+
 def test_create_case_deadline(client):
     response = client.post("/api/case/add", 
                            content_type='application/json',
@@ -124,6 +140,30 @@ def test_edit_case(client):
 
     response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Test edit Case admin" in response.data
+
+def test_create_edit_empty_title(client):
+    test_create_case(client)
+    response = client.post("/api/case/1/edit", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"title": ""}
+                        )
+    assert response.status_code == 200 and b"Case 1 edited" in response.data
+
+    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["title"] == "Test Case admin"
+
+def test_create_edit_no_data(client):
+    test_create_case(client)
+    response = client.post("/api/case/1/edit", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={}
+                        )
+    assert response.status_code == 400 and b"Please give data" in response.data
+
+    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["title"] == "Test Case admin"
 
 def test_edit_case_exist_title(client):
     test_create_case(client)

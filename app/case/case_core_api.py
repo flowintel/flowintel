@@ -27,12 +27,12 @@ def verif_set_recurring(data_dict):
 
 
 def verif_add_case_task(data_dict, isCase):
-    if "title" not in data_dict:
-        return {"message": "Please give a title to the case"}
+    if "title" not in data_dict or not data_dict["title"]:
+        return {"message": "Please give a title"}
     elif Case.query.filter_by(title=data_dict["title"]).first():
         return {"message": "Title already exist"}
 
-    if "description" not in data_dict:
+    if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = ""
 
     if "deadline_date" in data_dict:
@@ -52,7 +52,7 @@ def verif_add_case_task(data_dict, isCase):
         data_dict["deadline_time"] = ""
 
     if not isCase:
-        if "url" not in data_dict:
+        if "url" not in data_dict or not data_dict["url"]:
             data_dict["url"] = ""
 
     return data_dict
@@ -60,7 +60,7 @@ def verif_add_case_task(data_dict, isCase):
 
 
 def common_verif(data_dict, case_task):
-    if "description" not in data_dict:
+    if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = case_task.description
 
     if "deadline_date" in data_dict:
@@ -88,7 +88,7 @@ def common_verif(data_dict, case_task):
 
 def verif_edit_case(data_dict, case_id):
     case = CaseModel.get_case(case_id)
-    if "title" not in data_dict or data_dict["title"] == case.title:
+    if "title" not in data_dict or data_dict["title"] == case.title or not data_dict["title"]:
         data_dict["title"] = case.title
     elif Case.query.filter_by(title=data_dict["title"]).first():
         return {"message": "Title already exist"}
@@ -100,12 +100,12 @@ def verif_edit_case(data_dict, case_id):
 
 def verif_edit_task(data_dict, task_id):
     task = CaseModel.get_task(task_id)
-    if "title" not in data_dict or data_dict["title"] == task.title:
+    if "title" not in data_dict or data_dict["title"] == task.title or not data_dict["title"]:
         data_dict["title"] = task.title
 
     data_dict = common_verif(data_dict, task)
 
-    if "url" not in data_dict:
+    if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = task.url
 
     return data_dict
