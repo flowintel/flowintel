@@ -101,6 +101,25 @@ class Case(db.Model):
             json_dict["recurring_date"] = self.recurring_date
 
         return json_dict
+    
+    def download(self):
+        json_dict = {
+            "uuid": self.uuid,
+            "title": self.title,
+            "description": self.description,
+            "recurring_type": self.recurring_type
+        }
+        if self.deadline:
+            json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
+        else:
+            json_dict["deadline"] = self.deadline
+
+        if self.recurring_date:
+            json_dict["recurring_date"] = self.recurring_date.strftime('%Y-%m-%d')
+        else:
+            json_dict["recurring_date"] = self.recurring_date
+
+        return json_dict
 
 
 class Task(db.Model):
@@ -142,6 +161,21 @@ class Task(db.Model):
             json_dict["finish_date"] = self.finish_date.strftime('%Y-%m-%d %H:%M')
         else:
             json_dict["finish_date"] = self.finish_date
+
+        return json_dict
+    
+    def download(self):
+        json_dict = {
+            "uuid": self.uuid, 
+            "title": self.title, 
+            "description": self.description,
+            "url": self.url,
+            "notes": self.notes
+        }
+        if self.deadline:
+            json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
+        else:
+            json_dict["deadline"] = self.deadline
 
         return json_dict
 

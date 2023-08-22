@@ -361,8 +361,8 @@ def download_case(cid):
     case = CaseModel.get_case(cid)
     task_list = list()
     for task in case.tasks:
-        task_list.append(task.to_json())
-    return_dict = case.to_json()
+        task_list.append(task.download())
+    return_dict = case.download()
     return_dict["tasks"] = task_list
     return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=case_{case.title}.json'}
 
