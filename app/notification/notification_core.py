@@ -19,7 +19,7 @@ def read_notification_core(notif_id):
     if notif:
         notif.is_read = not notif.is_read
         if notif.is_read:
-            notif.read_date = datetime.datetime.now()
+            notif.read_date = datetime.datetime.now(tz=datetime.timezone.utc)
         else:
             notif.read_date = None
         db.session.commit()
@@ -44,7 +44,7 @@ def create_notification_org(message, case_id, org_id, html_icon, current_user):
                 is_read=False,
                 user_id=user.id,
                 case_id=bleach.clean(str(case_id)),
-                creation_date=datetime.datetime.now(),
+                creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
                 html_icon=html_icon
             )
             db.session.add(notif)
@@ -63,7 +63,7 @@ def create_notification_all_orgs(message, case_id, html_icon, current_user):
                     is_read=False,
                     user_id=user.id,
                     case_id=bleach.clean(str(case_id)),
-                    creation_date=datetime.datetime.now(),
+                    creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
                     html_icon=html_icon
                 )
                 db.session.add(notif)
@@ -77,7 +77,7 @@ def create_notification_user(message, case_id, user_id, html_icon):
         is_read=False,
         user_id=bleach.clean(str(user_id)),
         case_id=bleach.clean(str(case_id)),
-        creation_date=datetime.datetime.now(),
+        creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
         html_icon=html_icon
     )
     db.session.add(notif)
@@ -114,7 +114,7 @@ def case_task_deadline_notif(case_or_task, msg, html_icon, now, current_user, fl
 
 
 def create_notification_deadline(current_user):
-    now = datetime.datetime.strptime(datetime.datetime.now().strftime("%Y-%m-%d"), "%Y-%m-%d")
+    now = datetime.datetime.strptime(datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d"), "%Y-%m-%d")
     # now = datetime.datetime.strptime("2023-07-01", "%Y-%m-%d")
 
     cases = Case.query.join(Case_Org, Case_Org.org_id==current_user.org_id).all()
@@ -136,7 +136,7 @@ def mark_all_read(user):
 
     for notif in notif_list:
         notif.is_read = True
-        notif.read_date = datetime.datetime.now()
+        notif.read_date = datetime.datetime.now(tz=datetime.timezone.utc)
         db.session.commit()
 
     return True

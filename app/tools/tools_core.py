@@ -141,8 +141,8 @@ def create_case_from_template(cid, case_title_fork, user):
         title=bleach.clean(case_title_fork),
         description=case_template.description,
         uuid=str(uuid.uuid4()),
-        creation_date=datetime.datetime.now(),
-        last_modif=datetime.datetime.now(),
+        creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
         status_id=1,
         owner_org_id=user.org_id
     )
@@ -165,8 +165,8 @@ def create_case_from_template(cid, case_title_fork, user):
             title=task.title,
             description=task.description,
             url=task.url,
-            creation_date=datetime.datetime.now(),
-            last_modif=datetime.datetime.now(),
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             case_id=case.id,
             status_id=1
         )

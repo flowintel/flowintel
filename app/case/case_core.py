@@ -122,7 +122,7 @@ def delete_task(tid):
 def update_last_modif(case_id):
     """Update 'last_modif' of a case"""
     case = Case.query.get(case_id)
-    case.last_modif = datetime.datetime.now()
+    case.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
     db.session.commit()
 
 
@@ -131,7 +131,7 @@ def update_last_modif_task(task_id):
     """Update 'last_modif' of a task"""
     if task_id:
         task = Task.query.get(task_id)
-        task.last_modif = datetime.datetime.now()
+        task.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
         db.session.commit()
 
 
@@ -197,8 +197,8 @@ def create_case(form_dict, user):
             title=bleach.clean(form_dict["title"]),
             description=bleach.clean(form_dict["description"]),
             uuid=str(uuid.uuid4()),
-            creation_date=datetime.datetime.now(),
-            last_modif=datetime.datetime.now(),
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             deadline=deadline,
             status_id=1,
             owner_org_id=user.org_id
@@ -215,8 +215,8 @@ def create_case(form_dict, user):
                     title=task.title,
                     description=task.description,
                     url=task.url,
-                    creation_date=datetime.datetime.now(),
-                    last_modif=datetime.datetime.now(),
+                    creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+                    last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
                     case_id=case.id,
                     status_id=1
                 )
@@ -258,8 +258,8 @@ def create_task(form_dict, cid):
             title=template.title,
             description=template.description,
             url=template.url,
-            creation_date=datetime.datetime.now(),
-            last_modif=datetime.datetime.now(),
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             case_id=cid,
             status_id=1
         )
@@ -271,8 +271,8 @@ def create_task(form_dict, cid):
             title=bleach.clean(form_dict["title"]),
             description=bleach.clean(form_dict["description"]),
             url=bleach.clean(form_dict["url"]),
-            creation_date=datetime.datetime.now(),
-            last_modif=datetime.datetime.now(),
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             deadline=deadline,
             case_id=cid,
             status_id=1

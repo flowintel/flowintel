@@ -35,7 +35,7 @@
             <a :href="`/case/${task.case_id}#task-${task.id}`" class="list-group-item list-group-item-action">
                 <div class="d-flex w-100 justify-content-between">
                     <h5 class="mb-1">[[task.title]]</h5>
-                    <small><i>Changed [[ moment(task.last_modif).fromNow() ]] </i></small>
+                    <small><i>Changed [[ moment.utc(task.last_modif).from(moment.utc()) ]] </i></small>
                 </div>
 
                 <div class="d-flex w-100 justify-content-between">
@@ -60,7 +60,7 @@
                     <div v-else>
                         <i>No user assigned</i>
                     </div>
-                    <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[moment(task.deadline).endOf().fromNow()]]</i></small>
+                    <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[moment.utc(task.deadline).endOf().from(moment.utc())]]</i></small>
                     <small v-else><i>No deadline</i></small>
                 </div>
             </a>

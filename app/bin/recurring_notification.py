@@ -20,7 +20,7 @@ def create_notification(case, message, html_icon):
             is_read=False,
             user_id=r_n.user_id,
             case_id=str(case.id),
-            creation_date=datetime.now(),
+            creation_date=datetime.now(tz=datetime.timezone.utc),
             html_icon=html_icon
         )
         session.add(notif)

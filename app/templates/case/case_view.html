@@ -39,10 +39,10 @@
     </div>    
 
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
-        <i :title="cases_info.case.creation_date">Created: [[ moment( cases_info.case.creation_date ).fromNow() ]]</i>
-        <i :title="cases_info.case.last_modif">Changed: [[ moment( cases_info.case.last_modif ).fromNow() ]]</i>
+        <i :title="cases_info.case.creation_date">Created: [[ moment.utc( cases_info.case.creation_date ).from(moment.utc()) ]]</i>
+        <i :title="cases_info.case.last_modif">Changed: [[ moment.utc( cases_info.case.last_modif ).from(moment.utc()) ]]</i>
         {% if case.deadline %}
-            <i :title="cases_info.case.deadline">Deadline: [[ moment( cases_info.case.deadline ).endOf().fromNow() ]]</i>
+            <i :title="cases_info.case.deadline">Deadline: [[ moment.utc( cases_info.case.deadline ).endOf().from(moment.utc()) ]]</i>
         {%endif%}
     </div>
     {%if case.recurring_type %}

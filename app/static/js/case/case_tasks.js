@@ -78,7 +78,7 @@ export default {
 			let users_select = $('#selectUser'+props.task.id).val()
 			if(users_select.length){
 				const res_msg = await fetch(
-					'/case/' + props.task.case_id + '/assign_users' + props.task.id,{
+					'/case/' + props.task.case_id + '/assign_users/' + props.task.id,{
 						headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 						method: "POST",
 						body: JSON.stringify({"users_id": users_select})
@@ -260,11 +260,11 @@ export default {
 		}
 
 		function formatNow(dt) {
-			return moment(dt).fromNow()
+			return moment.utc(dt).from(moment.utc())
 		}
 
 		function endOf(dt){
-			return moment(dt).endOf().fromNow()
+			return moment.utc(dt).endOf().from(moment.utc())
 		}
 
 

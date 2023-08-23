@@ -1,10 +1,4 @@
-import os
-from .. import db
-from ..db_class.db import Case, Task, Task_User, User, Case_Org, Org, Status
-from ..utils.utils import isUUID
-import uuid
-import datetime
-from sqlalchemy import desc
+from ..db_class.db import Case, Task, Task_User, Case_Org
 
 def get_task_month_core(date_month, flag_dead_creation, user):
     if flag_dead_creation == 'true':
