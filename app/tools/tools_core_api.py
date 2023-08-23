@@ -4,7 +4,7 @@ from ..db_class.db import Case_Template, User, Task_Template
 def get_user_api(api_key):
     return User.query.filter_by(api_key=api_key).first()
 
-def verif_add_case_template(data_dict):
+def verif_create_case_template(data_dict):
     if "title" not in data_dict or not data_dict["title"]:
         return {"message": "Please give a title to the case"}
     elif Case_Template.query.filter_by(title=data_dict["title"]).first():

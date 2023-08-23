@@ -8,7 +8,7 @@
     <h1>
         Cases
         <span>
-            <a type="button" class="btn btn-primary" href="/case/add_case"><i class="fa-solid fa-plus"></i></a>
+            <a type="button" class="btn btn-primary" href="/case/create_case"><i class="fa-solid fa-plus"></i></a>
         </span>
     </h1>
 
@@ -88,7 +88,7 @@
         <template v-for="case_loc in case_list.cases">
             <div class="list-group" style="margin-bottom: 20px;">
                 <div style="display:flex">
-                    <a :href="`/case/view/${case_loc.id}`" class="list-group-item list-group-item-action">
+                    <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">[[ case_loc.id ]]-[[ case_loc.title ]]</h4>
                             <small><i>Changed [[ moment(case_loc.last_modif).fromNow() ]]</i></small>
@@ -178,13 +178,7 @@
                 }
 
                 async function delete_case(case_list, case_loc){
-                    const res = await fetch(
-                        '/case/delete',{
-                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                            method: "POST",
-                            body: JSON.stringify({"case_id": case_loc.id.toString()})
-                        }
-                    )
+                    const res = await fetch('/case/' + case_loc.id.toString() + '/delete')
                     if(await res.status == 200){
                         let index = case_list.cases.indexOf(case_loc)
                         if(index > -1)
@@ -196,9 +190,9 @@
                 async function complete_case(case_loc, cases_list, is_revived){
                     let url
                     if (is_revived)
-                        url = '/case/complete_case/'+case_loc.id + '?revived=true'
+                        url = '/case/' + case_loc.id + '/complete_case?revived=true'
                     else
-                        url = '/case/complete_case/'+case_loc.id + '?revived=false'
+                        url = '/case/' + case_loc.id + '/complete_case?revived=false'
                     const res = await fetch(url)
                     if(await res.status == 200){
                         case_loc.last_modif = Date.now()

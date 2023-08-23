@@ -108,7 +108,7 @@
 
                 async function delete_case(case_template){
                     const res = await fetch("/tools/template/delete_case/" + case_template.id)
-                    return window.location.href = "/tools/templates/case"
+                    return window.location.href = "/tools/template/cases"
                 }
 
                 async function fork_case(case_id){
@@ -123,7 +123,7 @@
                                 body: JSON.stringify({"case_title_fork": $("#case_title_fork").val()})
                             })
                         let loc = await res.json()
-                        window.location.href="/case/view/" + loc["new_case_id"]
+                        window.location.href="/case/" + loc["new_case_id"]
                     }
                 }
                 async function fetch_case_title(case_title_fork){

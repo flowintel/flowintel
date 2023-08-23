@@ -33,7 +33,7 @@
                     <div class="d-flex align-items-center">
                         <input class="form-check-input me-2" type="checkbox" name="radioReadNotif" id="radioReadNotif" @click="read_notification(notif)">
 
-                        <a v-if="flag_is_read" :href="`/case/view/${notif.case_id}`" class="list-group-item list-group-item-action" style="background-color: whitesmoke;">
+                        <a v-if="flag_is_read" :href="`/case/${notif.case_id}`" class="list-group-item list-group-item-action" style="background-color: whitesmoke;">
                             <div class="d-flex w-100 justify-content-between">
                                 <h5 class="mb-1"><i v-if="notif.html_icon" :class="notif.html_icon"></i>  [[ notif.message ]]</h5>
                             </div>
@@ -45,7 +45,7 @@
                                 <small><i v-if="notif.read_date" class="card-text" :title="notif.read_date">Read [[ moment(notif.read_date).fromNow() ]]</i></small>
                             </div>
                         </a>
-                        <a v-else :href="`/case/view/${notif.case_id}`" class="list-group-item list-group-item-action">
+                        <a v-else :href="`/case/${notif.case_id}`" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
                                 
                                 <h5 class="mb-1"> <i v-if="notif.html_icon" :class="notif.html_icon"></i>  [[ notif.message ]]</h5>

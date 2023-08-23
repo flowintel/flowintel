@@ -33,7 +33,7 @@ def get_task_by_case(cid):
     return [get_task_template(case_task.task_id) for case_task in case_task_template]
 
 
-def add_case_template_core(form_dict):
+def create_case_template(form_dict):
     case_template = Case_Template(
         title=bleach.clean(form_dict["title"]),
         description=bleach.clean(form_dict["description"]),

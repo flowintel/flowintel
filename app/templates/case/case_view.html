@@ -16,7 +16,7 @@
         <button v-else class="btn btn-success btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
         <a class="btn btn-primary btn-sm" :href="`/case/edit/${cases_info.case.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
         <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
-        <a class="btn btn-primary btn-sm"  :href="`/case/download/${cases_info.case.id}`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
+        <a class="btn btn-primary btn-sm"  :href="`/case/${cases_info.case.id}/download`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
         <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseFork" role="button" aria-expanded="false" aria-controls="collapseExample" title="Fork the case">
             <i class="fa-solid fa-code-fork"></i>
         </a>
@@ -35,7 +35,7 @@
                 <button class="btn btn-primary btn-sm" @click="create_template(cases_info.case)">Template</button>
             </div>
         </div>
-        <a class="btn btn-secondary btn-sm"  :href="`/case/recurring/${cases_info.case.id}`" type="button" title="Recurring Case"><i class="fa-solid fa-clock"></i></a>
+        <a class="btn btn-secondary btn-sm"  :href="`/case/${cases_info.case.id}/recurring`" type="button" title="Recurring Case"><i class="fa-solid fa-clock"></i></a>
     </div>    
 
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
@@ -60,7 +60,7 @@
             <ul class="dropdown-menu">
                 <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
                     <li>
-                        <a class="btn btn-primary" :href="`/case/view/${cases_info.case.id}/add_orgs`" role="button">Add Orgs</a>
+                        <a class="btn btn-primary" :href="`/case/${cases_info.case.id}/add_orgs`" role="button">Add Orgs</a>
                     </li>
                 </template>
                 <template v-for="org in cases_info.orgs_in_case">
@@ -91,7 +91,7 @@
         <h3>Tasks</h3>
         {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
             <span style="padding-left: 10px;">
-                <a href="/case/{{case.id}}/add_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
+                <a href="/case/{{case.id}}/create_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
             </span>
         {%endif%}
 
@@ -250,7 +250,7 @@
                 async function fetchCase() {
                     cases_info.value = null
                     const res = await fetch(
-                        'get_case_info/'+window.location.pathname.split("/").slice(-1)
+                        window.location.pathname.split("/").slice(-1)+'/get_case_info'
                     )
                     cases_info.value = await res.json()
                     loc_tasks_list = cases_info.value.tasks
@@ -274,20 +274,14 @@
 
 
                 async function delete_case(case_id){
-                    const res = await fetch(
-                        '/case/delete',{
-                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                            method: "POST",
-                            body: JSON.stringify({"case_id": case_id.toString()})
-                        }
-                    )
+                    const res = await fetch('/case/' + case_id.toString() + '/delete')
                     if (await res.status == 200)
                         return window.location.href="/case"
                     display_toast(res)
                 }
 
                 async function complete_case(case_loc){
-                    const res = await fetch('/case/complete_case/'+case_loc.id)
+                    const res = await fetch('/case/' + case_loc.id + '/complete_case')
                     if (await res.status == 200){
                         if(status_info.value.status[case_loc.status_id -1].name == 'Finished'){
                             for(let i in status_info.value.status){
@@ -297,7 +291,7 @@
                             if(case_loc.status_id == status)
                                 case_loc.status_id = 1
 
-                                await fetch('/case/change_status/'+case_loc.id,{
+                                await fetch('/case/' + case_loc.id + '/change_status',{
                                 headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                                 method: "POST",
                                 body: JSON.stringify({"status": case_loc.status_id})
@@ -306,7 +300,7 @@
                             for(let i in status_info.value.status){
                                 if(status_info.value.status[i].name == 'Finished'){
                                     case_loc.status_id = status_info.value.status[i].id
-                                    await fetch('/case/change_status/'+case_loc.id,{
+                                    await fetch('/case/' + case_loc.id + '/change_status',{
                                         headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                                         method: "POST",
                                         body: JSON.stringify({"status": case_loc.status_id})
@@ -336,13 +330,13 @@
                             $("<span>").text("Already exist").css("color", 'red')
                         )
                     }else{
-                        const res = await fetch("/case/fork/"+case_id,{
+                        const res = await fetch("/case/" + case_id + "/fork",{
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
                             body: JSON.stringify({"case_title_fork": $("#case_title_fork").val()})
                         })
                         let loc = await res.json()
-                        window.location.href="/case/view/" + loc["new_case_id"]
+                        window.location.href="/case/" + loc["new_case_id"]
                     }
                 }
 
@@ -362,13 +356,13 @@
                             $("<span>").text("Already exist").css("color", 'red')
                         )
                     }else{
-                        const res = await fetch("/case/create_template/"+case_loc.id,{
+                        const res = await fetch("/case/" + case_loc.id + "/create_template",{
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
                             body: JSON.stringify({"case_title_template": $("#case_title_template").val()})
                         })
                         let loc = await res.json()
-                        window.location.href="/tools/template/case/view/" + loc["template_id"]
+                        window.location.href="/tools/template/case/" + loc["template_id"]
                     }
                 }
                 async function fetch_case_template_title(case_title_template){

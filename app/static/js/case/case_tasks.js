@@ -21,7 +21,7 @@ export default {
 
 		async function change_status(status, task){
 			const res = await fetch(
-				'/case/change_status/task/'+task.id,{
+				'/case/' + task.case_id + '/change_task_status/'+task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"status": status})
@@ -43,13 +43,7 @@ export default {
 		}
 
 		async function take_task(task, current_user){
-			const res = await fetch(
-				'/case/take_task',{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-					method: "POST",
-					body: JSON.stringify({"task_id": task.id.toString()})
-				}
-			)
+			const res = await fetch('/case/' + task.case_id + '/take_task/' + task.id)
 
 			if( await res.status == 200){
 				task.last_modif = Date.now()
@@ -60,13 +54,8 @@ export default {
 		}
 
 		async function remove_assign_task(task, current_user){
-			const res = await fetch(
-				'/case/remove_assign_task',{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-					method: "POST",
-					body: JSON.stringify({"task_id": task.id.toString()})
-				}
-			)
+			const res = await fetch('/case/' + task.case_id + '/remove_assignment/' + task.id)
+
 			if( await res.status == 200){
 				task.last_modif = Date.now()
 				task.is_current_user_assigned = false
@@ -89,10 +78,10 @@ export default {
 			let users_select = $('#selectUser'+props.task.id).val()
 			if(users_select.length){
 				const res_msg = await fetch(
-					'/case/assign_users_task',{
+					'/case/' + props.task.case_id + '/assign_users' + props.task.id,{
 						headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 						method: "POST",
-						body: JSON.stringify({"task_id": props.task.id.toString(), "users_id": users_select})
+						body: JSON.stringify({"users_id": users_select})
 					}
 				)
 				if( await res_msg.status == 200){
@@ -112,10 +101,10 @@ export default {
 
 		async function remove_assigned_user(user_id){
 			const res = await fetch(
-				'/case/remove_assigned_user',{
+				'/case/' + props.task.case_id + '/remove_assigned_user/' + props.task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
-					body: JSON.stringify({"task_id": props.task.id.toString(), "user_id": user_id})
+					body: JSON.stringify({"user_id": user_id})
 				}
 			)
 
@@ -141,13 +130,7 @@ export default {
 
 
 		async function delete_task(task, task_array){
-			const res = await fetch(
-				'/case/delete_task',{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-					method: "POST",
-					body: JSON.stringify({"task_id": task.id.toString()})
-				}
-			)
+			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
 
 			if( await res.status == 200){
 				let index = task_array.indexOf(task)
@@ -161,7 +144,7 @@ export default {
 			task.last_modif = Date.now()
 			emit('edit_mode', true)
 
-			const res = await fetch('/case/get_note_text?id='+task.id)
+			const res = await fetch('/case/' + task.case_id + '/get_note_text/' + task.id)
 			let loc = await res.json()
 			task.notes = loc["note"]
 		}
@@ -169,7 +152,7 @@ export default {
 		async function modif_note(task){
 			let notes = this.$refs["ref_note_" + task.id].value
 			const res_msg = await fetch(
-				'/case/modif_note',{
+				'/case/' + task.case_id + '/modif_note/' + task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"task_id": task.id.toString(), "notes": notes})
@@ -182,7 +165,7 @@ export default {
 	
 				task.notes = notes
 
-				const res = await fetch('/case/get_note_markdown?id='+task.id)
+				const res = await fetch('/case/' + task.case_id + '/get_note_markdown/' + task.id)
 				let loc = await res.json()
 				task.notes = loc["note"]
 			}
@@ -197,10 +180,9 @@ export default {
 			for(let i=0;i<files.length;i++){
 				formData.append("files"+i, files[i]);
 			}
-			formData.append("task_id", task.id.toString());
 
 			const res = await fetch(
-				'/case/add_files',{
+				'/case/' + task.case_id + '/add_files/' + task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val() },
 					method: "POST",
 					files: files,
@@ -208,7 +190,7 @@ export default {
 				}
 			)
 			if(await res.status == 200){
-				const res_files = await fetch('/case/get_files/'+task.id)
+				const res_files = await fetch('/case/' + task.case_id + '/get_files/'+task.id)
 
 				if(await res_files.status == 200){
 					task.last_modif = Date.now()
@@ -367,7 +349,7 @@ export default {
 			<button v-else class="btn btn-secondary btn-sm" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
 				<i class="fa-solid fa-handshake-slash"></i>
 			</button>
-			<a class="btn btn-primary btn-sm" :href="'/case/view/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
+			<a class="btn btn-primary btn-sm" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
 				<i class="fa-solid fa-pen-to-square"></i>
 			</a>
 			<button class="btn btn-danger btn-sm" @click="delete_task(task, cases_info.tasks)" title="Delete the task">

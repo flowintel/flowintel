@@ -185,7 +185,7 @@ def complete_task(tid):
     return False
 
 
-def add_case_core(form_dict, user):
+def create_case(form_dict, user):
     """Add a case to the DB"""
     if "template_select" in form_dict and not 0 in form_dict["template_select"]:
         for template in form_dict["template_select"]:
@@ -235,7 +235,7 @@ def add_case_core(form_dict, user):
     return case
 
 
-def edit_case_core(form_dict, cid):
+def edit_case(form_dict, cid):
     """Edit a case to the DB"""
     case = get_case(cid)
 
@@ -249,7 +249,7 @@ def edit_case_core(form_dict, cid):
     db.session.commit()
     
 
-def add_task_core(form_dict, cid):
+def create_task(form_dict, cid):
     """Add a task to the DB"""
     if "template_select" in form_dict and not 0 in form_dict["template_select"]:
         template = Task_Template.query.get(form_dict["template_select"])
@@ -389,13 +389,6 @@ def get_orgs_in_case(case_id):
     """Return orgs present in a case"""
     case_org = Case_Org.query.filter_by(case_id=case_id).all()
     return [Org.query.get(c_o.org_id) for c_o in case_org ]
-    # orgs = list()
-
-    # for c_o in case_org:
-    #     o = Org.query.get(c_o.org_id)
-    #     orgs.append(o.to_json())
-
-    # return orgs
 
 
 def remove_org_case(case_id, org_id, current_user):
@@ -493,7 +486,7 @@ def change_status_core(status, case):
     return True
 
 
-def change_status_task(status, task):
+def change_task_status(status, task):
     task.status_id = status
     update_last_modif(task.case_id)
     update_last_modif_task(task.id)
@@ -631,7 +624,7 @@ def fork_case_core(cid, case_title_fork, user):
         case_json["deadline_date"] = None
         case_json["deadline_time"] = None
 
-    new_case = add_case_core(case_json, user)
+    new_case = create_case(case_json, user)
 
     for task in case.tasks:
         task_json = task.to_json()
@@ -642,7 +635,7 @@ def fork_case_core(cid, case_title_fork, user):
             task_json["deadline_date"] = None
             task_json["deadline_time"] = None
 
-        add_task_core(task_json, new_case.id)
+        create_task(task_json, new_case.id)
     return new_case
 
 

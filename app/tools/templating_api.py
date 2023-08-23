@@ -40,7 +40,7 @@ class GetCaseTemplate(Resource):
         return {"message": "Case template not found"}, 404
 
 
-@api.route('/add_case')
+@api.route('/create_case')
 @api.doc(description='Add new case template')
 class AddCaseTemaplte(Resource):
     method_decorators = [api_required]
@@ -50,9 +50,9 @@ class AddCaseTemaplte(Resource):
         })
     def post(self):
         if request.json:
-            verif_dict = ApiToolModel.verif_add_case_template(request.json)
+            verif_dict = ApiToolModel.verif_create_case_template(request.json)
             if "message" not in verif_dict:
-                template = ToolModel.add_case_template_core(verif_dict)
+                template = ToolModel.create_case_template(verif_dict)
                 return {"message": f"Template created, id: {template.id}"}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400

@@ -25,8 +25,8 @@
 						<span>Templates</span>
 					</button>
 					<div class="collapse" id="template-collapse">
-						<a href="/tools/templates/case" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Case</a>
-						<a href="/tools/templates/task" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Task</a>
+						<a href="/tools/template/cases" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Case</a>
+						<a href="/tools/template/tasks" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Task</a>
 					</div>
 				</div>
 				<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
@@ -63,7 +63,7 @@
 				</div>
 				<div v-if="result_search && result_search.length" style="position: absolute; background-color: white; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); min-width: 160px;">
 					<ul v-for="case_search in result_search">
-						<div><a :href="'/case/view/'+case_search.id">[[case_search.title]]</a></div>
+						<div><a :href="'/case/'+case_search.id">[[case_search.title]]</a></div>
 					</ul>
 				</div>
 			</div>

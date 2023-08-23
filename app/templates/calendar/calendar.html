@@ -265,9 +265,9 @@
                 )
                 $("#modal_body").text(args.e.data.toJson.description)
                 if(args.e.data.toJson.case_id)
-                    $("#see_case").attr("href", "/case/view/" + args.e.data.toJson.case_id)
+                    $("#see_case").attr("href", "/case/" + args.e.data.toJson.case_id)
                 else
-                    $("#see_case").attr("href", "/case/view/" + args.e.data.toJson.id)
+                    $("#see_case").attr("href", "/case/" + args.e.data.toJson.id)
                 
                 openModal()
             };

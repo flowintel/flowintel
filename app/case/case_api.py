@@ -195,17 +195,17 @@ class AddCase(Resource):
         user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
 
         if request.json:
-            verif_dict = CaseModelApi.verif_add_case_task(request.json, True)
+            verif_dict = CaseModelApi.verif_create_case_task(request.json, True)
 
             if "message" not in verif_dict:
-                case = CaseModel.add_case_core(verif_dict, user)
+                case = CaseModel.create_case(verif_dict, user)
                 return {"message": f"Case created, id: {case.id}"}, 201
 
             return verif_dict, 400
         return {"message": "Please give data"}, 400
 
 
-@api.route('/<cid>/add_task', methods=['POST'])
+@api.route('/<cid>/create_task', methods=['POST'])
 @api.doc(description='Add a task to a case', params={'cid': 'id of a case'})
 class AddTask(Resource):
     method_decorators = [editor_required, api_required]
@@ -220,10 +220,10 @@ class AddTask(Resource):
         current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
-                verif_dict = CaseModelApi.verif_add_case_task(request.json, False)
+                verif_dict = CaseModelApi.verif_create_case_task(request.json, False)
 
                 if "message" not in verif_dict:
-                    task = CaseModel.add_task_core(verif_dict, cid)
+                    task = CaseModel.create_task(verif_dict, cid)
                     return {"message": f"Task created for case id: {cid}"}, 201
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
@@ -242,7 +242,7 @@ class EditCase(Resource):
                 verif_dict = CaseModelApi.verif_edit_case(request.json, id)
 
                 if "message" not in verif_dict:
-                    CaseModel.edit_case_core(verif_dict, id)
+                    CaseModel.edit_case(verif_dict, id)
                     return {"message": f"Case {id} edited"}, 200
 
                 return verif_dict, 400
@@ -397,7 +397,7 @@ class AssignTask(Resource):
         return {"message": "Permission denied"}, 403
 
 
-@api.route('/<cid>/remove_assign_task/<tid>', methods=['GET'])
+@api.route('/<cid>/remove_assignment/<tid>', methods=['GET'])
 @api.doc(description='Remove assigment of current user to the task', params={'cid': 'id of a case', "tid": "id of a task"})
 class RemoveOrgCase(Resource):
     method_decorators = [editor_required, api_required]
@@ -483,7 +483,7 @@ class ChangeStatus(Resource):
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
-                    if CaseModel.change_status_task(request.json["status_id"], task):
+                    if CaseModel.change_task_status(request.json["status_id"], task):
                         return {"message": "Status changed"}, 200
                 return {"message": "Task not in this case"}, 404
             return {"message": "Task not found"}, 404

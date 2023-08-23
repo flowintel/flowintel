@@ -26,7 +26,7 @@ def verif_set_recurring(data_dict):
     return data_dict
 
 
-def verif_add_case_task(data_dict, isCase):
+def verif_create_case_task(data_dict, isCase):
     if "title" not in data_dict or not data_dict["title"]:
         return {"message": "Please give a title"}
     elif Case.query.filter_by(title=data_dict["title"]).first():

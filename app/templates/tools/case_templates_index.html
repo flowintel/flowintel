@@ -8,7 +8,7 @@
     <h1>
         Case Templates
         <span>
-            <a class="btn btn-primary btn-small" href="/tools/add_template" title="Add a Template"><i class="fa-solid fa-plus"></i></a>
+            <a class="btn btn-primary btn-small" href="/tools/template/create_case" title="Add a Template"><i class="fa-solid fa-plus"></i></a>
         </span>
     </h1>
 
@@ -41,7 +41,7 @@
         <template v-for="template in templates_list.templates">
             <div class="list-group" style="margin-bottom: 20px;">
                 <div style="display:flex">
-                    <a :href="`/tools/template/case/view/${template.id}`" class="list-group-item list-group-item-action">
+                    <a :href="`/tools/template/case/${template.id}`" class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">[[ template.id ]]- [[ template.title ]]</h4>
                         </div>

@@ -17,24 +17,24 @@ tools_blueprint = Blueprint(
 # Render #
 ##########
 
-@tools_blueprint.route("/templates/case", methods=['GET'])
+@tools_blueprint.route("/template/cases", methods=['GET'])
 @login_required
 def case_templates_index():
     """View all case templates"""
     return render_template("tools/case_templates_index.html")
 
-@tools_blueprint.route("/templates/task", methods=['GET', "POST"])
+@tools_blueprint.route("/template/tasks", methods=['GET', "POST"])
 @login_required
 def task_template_view():
     """View all task templates"""
     return render_template("tools/task_template.html")
 
 
-@tools_blueprint.route("/add_template", methods=['GET','POST'])
+@tools_blueprint.route("/template/create_case", methods=['GET','POST'])
 @login_required
 @editor_required
-def add_template():
-    """Add a new case Template"""
+def create_case_template():
+    """Create a case Template"""
 
     form = CaseTemplateForm()
 
@@ -43,31 +43,31 @@ def add_template():
     
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
-        template = ToolsModel.add_case_template_core(form_dict)
+        template = ToolsModel.create_case_template(form_dict)
         flash("Template created", "success")
-        return redirect(f"/tools/template/case/view/{template.id}")
+        return redirect(f"/tools/template/case/{template.id}")
 
-    return render_template("tools/add_templates.html", form=form)
+    return render_template("tools/create_case_template.html", form=form)
 
 
-@tools_blueprint.route("/add_task_template", methods=['GET','POST'])
+@tools_blueprint.route("/template/create_task", methods=['GET','POST'])
 @login_required
 @editor_required
-def add_task():
-    """Add a task Template"""
+def create_task_template():
+    """Create a task Template"""
     form = TaskTemplateForm()
     task_template_query_list = ToolsModel.get_all_task_templates()
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         template = ToolsModel.add_task_template_core(form_dict)
-        flash("Template added", "success")
-        return redirect(f"/tools/templates/task")
+        flash("Template created", "success")
+        return redirect(f"/tools/template/tasks")
 
-    return render_template("tools/add_edit_task.html", form=form, edit_mode=False)
+    return render_template("tools/create_edit_task.html", form=form, edit_mode=False)
 
 
-@tools_blueprint.route("/template/case/view/<cid>", methods=['GET','POST'])
+@tools_blueprint.route("/template/case/<cid>", methods=['GET','POST'])
 @login_required
 @editor_required
 def case_template_view(cid):
@@ -93,7 +93,7 @@ def add_task_case(cid):
         form_dict = form_to_dict(form)
         ToolsModel.add_task_case_template(form_dict, cid)
         flash("Template added", "success")
-        return redirect(f"/tools/template/case/view/{cid}")
+        return redirect(f"/tools/template/case/{cid}")
     return render_template("tools/add_task_case.html", form=form)
 
 
@@ -110,7 +110,7 @@ def edit_case(cid):
             form_dict = form_to_dict(form)
             template = ToolsModel.edit_case_template(form_dict, cid)
             flash("Template edited", "success")
-            return redirect(f"/tools/templates/case")
+            return redirect(f"/tools/template/cases")
         else:
             form.title.data = template.title
             form.description.data = template.description
@@ -132,7 +132,7 @@ def edit_task(tid):
             form_dict = form_to_dict(form)
             template = ToolsModel.edit_task_template(form_dict, tid)
             flash("Template edited", "success")
-            return redirect(f"/tools/templates/task")
+            return redirect(f"/tools/template/tasks")
         else:
             form.title.data = template.title
             form.body.data = template.description

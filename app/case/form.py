@@ -11,7 +11,6 @@ from wtforms.fields import (
     BooleanField
 )
 from wtforms.validators import InputRequired, Length, Optional
-from werkzeug.utils import secure_filename
 
 from ..db_class.db import Case, Case_Org
 
@@ -23,9 +22,8 @@ class CaseForm(FlaskForm):
     deadline_time = TimeField("deadline_time", validators=[Optional()])
     template_select = SelectMultipleField(u'Templates', coerce=int)
     title_template = StringField('Title Template', validators=[Optional(), Length(1, 64)])
-
     tasks_templates = SelectMultipleField(u'Tasks Templates', coerce=int)
-    submit = SubmitField('Register')
+    submit = SubmitField('Create')
 
     def validate_title(self, field):
         if not field.data and 0 in self.template_select.data:
@@ -50,13 +48,11 @@ class CaseForm(FlaskForm):
             raise ValidationError("The title already exist")
 
 class CaseEditForm(FlaskForm):
-    title = StringField(
-        'Title', validators=[InputRequired(),
-                                  Length(1, 64)])
+    title = StringField('Title', validators=[InputRequired(), Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
     deadline_date = DateField('deadline_date', validators=[Optional()])
     deadline_time = TimeField("deadline_time", validators=[Optional()])
-    submit = SubmitField('Modify')
+    submit = SubmitField('Save')
 
     def validate_deadline_time(self, field):
         if field.data and not self.deadline_date.data:
@@ -64,15 +60,13 @@ class CaseEditForm(FlaskForm):
 
 
 class TaskForm(FlaskForm):
-    title = StringField(
-        'Title', validators=[Optional(),
-                                  Length(1, 64)])
+    title = StringField('Title', validators=[Optional(), Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     deadline_date = DateField('deadline_date', validators=[Optional()])
     deadline_time = TimeField("deadline_time", validators=[Optional()])
     template_select = SelectMultipleField(u'Templates', coerce=int)
-    submit = SubmitField('Register')
+    submit = SubmitField('Create')
 
     def validate_title(self, field):
         if not field.data and 0 in self.template_select.data:
@@ -89,14 +83,12 @@ class TaskForm(FlaskForm):
 
 
 class TaskEditForm(FlaskForm):
-    title = StringField(
-        'Title', validators=[InputRequired(),
-                                  Length(1, 64)])
+    title = StringField('Title', validators=[InputRequired(), Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     deadline_date = DateField('deadline_date', validators=[Optional()])
     deadline_time = TimeField("deadline_time", validators=[Optional()])
-    submit = SubmitField('Modify')
+    submit = SubmitField('Save')
 
     def validate_deadline_time(self, field):
         if field.data and not self.deadline_date.data:
@@ -106,7 +98,6 @@ class TaskEditForm(FlaskForm):
 class AddOrgsCase(FlaskForm):
     org_id = SelectMultipleField(u'Orgs', coerce=int)
     case_id = HiddenField("")
-
     submit = SubmitField('Add')
 
     def validate_org_id(self, field):
@@ -122,4 +113,4 @@ class RecurringForm(FlaskForm):
     weekly = DateField("Weekly (The date is to get the day of the week to give notification)", validators=[Optional()])
     monthly = DateField("Monthly (The date is to get the day to give notification)", validators=[Optional()])
     remove = BooleanField('Remove', validators=[Optional()])
-    submit = SubmitField('Modify')
+    submit = SubmitField('Save')

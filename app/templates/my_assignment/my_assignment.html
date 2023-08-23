@@ -32,7 +32,7 @@
             <h4><i>[[task.case_title]]</i></h4>
         </div>
         <div class="list-group" style="margin-bottom: 20px;">                      
-            <a :href="`/case/view/${task.case_id}#task-${task.id}`" class="list-group-item list-group-item-action">
+            <a :href="`/case/${task.case_id}#task-${task.id}`" class="list-group-item list-group-item-action">
                 <div class="d-flex w-100 justify-content-between">
                     <h5 class="mb-1">[[task.title]]</h5>
                     <small><i>Changed [[ moment(task.last_modif).fromNow() ]] </i></small>

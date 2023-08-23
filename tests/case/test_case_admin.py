@@ -223,7 +223,7 @@ def test_delete_case(client):
 def test_create_task(client, flag=True):
     if flag:
         test_create_case(client)
-    response = client.post("/api/case/1/add_task",
+    response = client.post("/api/case/1/create_task",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task admin"}
@@ -233,7 +233,7 @@ def test_create_task(client, flag=True):
 def test_create_task_deadline(client, flag=True):
     if flag:
         test_create_case(client)
-    response = client.post("/api/case/1/add_task",
+    response = client.post("/api/case/1/create_task",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task admin", "description": "Test", "url": "test", "deadline_date": "2023-09-30"}
@@ -243,7 +243,7 @@ def test_create_task_deadline(client, flag=True):
 def test_create_task_wrong_deadline(client, flag=True):
     if flag:
         test_create_case(client)
-    response = client.post("/api/case/1/add_task",
+    response = client.post("/api/case/1/create_task",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task admin", "description": "Test", "url": "test", "deadline_date": "2023/09/30"}
@@ -302,7 +302,7 @@ def test_take_task(client):
 
 def test_remove_assign_task(client):
     test_take_task(client)
-    response = client.get("/api/case/1/remove_assign_task/1", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/case/1/remove_assignment/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Removed from assignment" in response.data
 
 def test_assign_user_task(client):

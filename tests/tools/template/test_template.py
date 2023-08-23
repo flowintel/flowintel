@@ -1,7 +1,7 @@
 API_KEY = "admin_api_key"
 
 def test_create_case_template(client):
-    response = client.post("/api/template/add_case", 
+    response = client.post("/api/template/create_case", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case template admin"}
@@ -9,7 +9,7 @@ def test_create_case_template(client):
     assert response.status_code == 201 and b"Template created, id: 1" in response.data
 
 def test_create_case_template_empty_title(client):
-    response = client.post("/api/template/add_case", 
+    response = client.post("/api/template/create_case", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": ""}
@@ -17,7 +17,7 @@ def test_create_case_template_empty_title(client):
     assert response.status_code == 400 and b"Please give a title to the case" in response.data
 
 def test_create_case_template_no_data(client):
-    response = client.post("/api/template/add_case", 
+    response = client.post("/api/template/create_case", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={}

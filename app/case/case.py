@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
-from .form import CaseForm, TaskForm, CaseEditForm, AddOrgsCase, RecurringForm
+from .form import CaseForm, CaseEditForm, AddOrgsCase, RecurringForm
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
 from ..db_class.db import Org, Case_Org, Task_Template, Case_Template
@@ -27,10 +27,10 @@ def index():
     """List all cases"""
     return render_template("case/case_index.html")
 
-@case_blueprint.route("/add_case", methods=['GET', 'POST'])
+@case_blueprint.route("/create_case", methods=['GET', 'POST'])
 @login_required
-def add_case():
-    """List all cases"""
+def create_case():
+    """Create a case"""
     form = CaseForm()
     form.template_select.choices = [(template.id, template.title) for template in Case_Template.query.all()]
     form.template_select.choices.insert(0, (0," "))
@@ -40,55 +40,55 @@ def add_case():
     
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
-        case = CaseModel.add_case_core(form_dict, current_user)
+        case = CaseModel.create_case(form_dict, current_user)
         flash("Case created", "success")
-        return redirect(f"/case/view/{case.id}")
-    return render_template("case/add_case.html", form=form)
+        return redirect(f"/case/{case.id}")
+    return render_template("case/create_case.html", form=form)
 
-@case_blueprint.route("/view/<id>", methods=['GET', 'POST'])
+@case_blueprint.route("/<cid>", methods=['GET', 'POST'])
 @login_required
-def view(id):
-    """View of a case"""
-    case = CaseModel.get_case(id)
+def view(cid):
+    """View a case"""
+    case = CaseModel.get_case(cid)
     if case:
-        present_in_case = CaseModel.get_present_in_case(id, current_user)
-        return render_template("case/case_view.html", id=id, case=case.to_json(), present_in_case=present_in_case)
+        present_in_case = CaseModel.get_present_in_case(cid, current_user)
+        return render_template("case/case_view.html", id=cid, case=case.to_json(), present_in_case=present_in_case)
     return render_template("404.html")
 
 
-@case_blueprint.route("/edit/<id>", methods=['GET','POST'])
+@case_blueprint.route("/edit/<cid>", methods=['GET','POST'])
 @login_required
 @editor_required
-def edit_case(id):
+def edit_case(cid):
     """Edit the case"""
-    if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
+    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
         form = CaseEditForm()
 
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            CaseModel.edit_case_core(form_dict, id)
+            CaseModel.edit_case(form_dict, cid)
             flash("Case edited", "success")
-            return redirect(f"/case/view/{id}")
+            return redirect(f"/case/{cid}")
         else:
-            case_modif = CaseModel.get_case(id)
+            case_modif = CaseModel.get_case(cid)
             form.description.data = case_modif.description
             form.title.data = case_modif.title
             form.deadline_date.data = case_modif.deadline
             form.deadline_time.data = case_modif.deadline
+
         return render_template("case/edit_case.html", form=form)
+    return redirect(f"/case/{id}")
 
-    return redirect(f"/case/view/{id}")
 
-
-@case_blueprint.route("/view/<id>/add_orgs", methods=['GET', 'POST'])
+@case_blueprint.route("/<cid>/add_orgs", methods=['GET', 'POST'])
 @login_required
 @editor_required
-def add_orgs(id):
+def add_orgs(cid):
     """Add orgs to the case"""
 
-    if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
+    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
         form = AddOrgsCase()
-        case_org = Case_Org.query.filter_by(case_id=id).all()
+        case_org = Case_Org.query.filter_by(case_id=cid).all()
 
         org_list = list()
 
@@ -104,21 +104,21 @@ def add_orgs(id):
                 org_list.append((org.id, f"{org.name}"))
 
         form.org_id.choices = org_list
-        form.case_id.data=id
+        form.case_id.data = cid
 
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            CaseModel.add_orgs_case(form_dict, id, current_user)
+            CaseModel.add_orgs_case(form_dict, cid, current_user)
             flash("Orgs added", "success")
-            return redirect(f"/case/view/{id}")
+            return redirect(f"/case/{cid}")
 
         return render_template("case/add_orgs.html", form=form)
     else:
         flash("Access denied", "error")
-    return redirect(f"/case/view/{id}")
+    return redirect(f"/case/{cid}")
 
 
-@case_blueprint.route("/recurring/<cid>", methods=['GET', 'POST'])
+@case_blueprint.route("/<cid>/recurring", methods=['GET', 'POST'])
 @login_required
 @editor_required
 def recurring(cid):
@@ -130,6 +130,7 @@ def recurring(cid):
             form = RecurringForm()
             form.case_id.data = cid
 
+            # List orgs and users in and verify if all users of an org are currently notify
             orgs_in_case = CaseModel.get_orgs_in_case(cid)
             orgs_to_return = list()
             for org in orgs_in_case:
@@ -146,6 +147,7 @@ def recurring(cid):
                     else:
                         loc_user["checked"] = False
                     loc["users"].append(loc_user)
+                # if all users in an org are notify, then check the org checkbox
                 if cp_checked_user == cp_users:
                     loc["checked"] = True
                 else:
@@ -156,16 +158,16 @@ def recurring(cid):
                 form_dict = form_to_dict(form)
                 if not CaseModel.change_recurring(form_dict, cid):
                     flash("Recurring empty", "error")
-                    return redirect(f"/case/recurring/{case.id}")
+                    return redirect(f"/case/{case.id}/recurring")
                 if not form_dict["remove"]:
                     CaseModel.notify_user_recurring(request.form.to_dict(), cid, orgs_in_case)
                 flash("Recurring set", "success")
-                return redirect(f"/case/view/{case.id}")
+                return redirect(f"/case/{case.id}")
             
             return render_template("case/case_recurring.html", form=form, orgs=orgs_to_return)
         
         flash("Action not allowed", "warning")
-        return redirect(f"/case/view/{cid}")
+        return redirect(f"/case/{cid}")
     
     return render_template("404.html")
 
@@ -187,12 +189,11 @@ def get_cases():
     return jsonify({"cases": loc["cases"], "role": role, "nb_pages": cases.pages}), 201
 
 
-@case_blueprint.route("/delete", methods=['POST'])
+@case_blueprint.route("/<cid>/delete", methods=['GET'])
 @login_required
 @editor_required
-def delete():
+def delete(cid):
     """Delete the case"""
-    cid = request.json["case_id"]
 
     if CaseModel.get_case(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
@@ -204,7 +205,7 @@ def delete():
     return {"message": "Case no found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("view/get_case_info/<cid>", methods=['GET'])
+@case_blueprint.route("/<cid>/get_case_info", methods=['GET'])
 @login_required
 def get_case_info(cid):
     """Return all info of the case"""
@@ -220,7 +221,7 @@ def get_case_info(cid):
     return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 201
 
 
-@case_blueprint.route("/complete_case/<cid>", methods=['GET'])
+@case_blueprint.route("/<cid>/complete_case", methods=['GET'])
 @login_required
 @editor_required
 def complete_case(cid):
@@ -255,7 +256,7 @@ def remove_org_case(cid, oid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/change_status/<cid>", methods=['POST'])
+@case_blueprint.route("/<cid>/change_status", methods=['POST'])
 @login_required
 @editor_required
 def change_status(cid):
@@ -353,7 +354,7 @@ def get_assigned_users(cid, tid):
     return {"message": "Not in Case"}
 
 
-@case_blueprint.route("/download/<cid>", methods=['GET'])
+@case_blueprint.route("/<cid>/download", methods=['GET'])
 @login_required
 def download_case(cid):
     """Download a case"""
@@ -368,7 +369,7 @@ def download_case(cid):
 
 
 
-@case_blueprint.route("/fork/<cid>", methods=['POST'])
+@case_blueprint.route("/<cid>/fork", methods=['POST'])
 @login_required
 def fork_case(cid):
     """Assign current user to the task"""
@@ -393,7 +394,7 @@ def get_all_case_title():
     return {"title_already_exist": flag}
 
 
-@case_blueprint.route("/create_template/<cid>", methods=['POST'])
+@case_blueprint.route("/<cid>/create_template", methods=['POST'])
 @login_required
 @editor_required
 def create_template(cid):
