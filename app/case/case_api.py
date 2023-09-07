@@ -98,8 +98,8 @@ class RecurringCase(Resource):
     @api.doc(params={
         "once": "Date(%Y-%m-%d)", 
         "daily": "Boolean", 
-        "weekly": "Date(%Y-%m-%d). Only the day of the week will be keep.", 
-        "monthly": "Date(%Y-%m-%d). Only the day will be keep.",
+        "weekly": "Date(%Y-%m-%d). Start date.", 
+        "monthly": "Date(%Y-%m-%d). Start date.",
         "remove": "Boolean"
     })
     def post(self, cid):

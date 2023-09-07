@@ -12,17 +12,17 @@ def verif_set_recurring(data_dict):
         try:
             data_dict["once"] = datetime.strptime(data_dict["once"], '%Y-%m-%d') 
         except:
-            return {"message": "once date bad format"}
+            return {"message": "once date bad format, YYYY-mm-dd"}
     if "weekly" in data_dict:
         try:
-            data_dict["weekly"] = datetime.strptime(data_dict["weekly"], '%Y-%m-%d') 
+            data_dict["weekly"] = datetime.strptime(data_dict["weekly"], '%Y-%m-%d').date()
         except:
-            return {"message": "weekly date bad format"}
+            return {"message": "weekly date bad format, YYYY-mm-dd"}
     if "monthly" in data_dict:
         try:
-            data_dict["monthly"] = datetime.strptime(data_dict["monthly"], '%Y-%m-%d') 
+            data_dict["monthly"] = datetime.strptime(data_dict["monthly"], '%Y-%m-%d').date()
         except:
-            return {"message": "monthly date bad format"}
+            return {"message": "monthly date bad format, YYYY-mm-dd"}
     return data_dict
 
 

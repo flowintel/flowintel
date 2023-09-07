@@ -10,7 +10,7 @@
     <form action="" method="post">
         {{ form.hidden_tag() }}
         <div class="modal-body">
-            <div class="mb-3">
+            <div class="mb-3 w-50">
                 <select data-placeholder="recurring option" class="form-control" name="recurring" id="recurring">
                     <option @click="recurring_mode=0" value="0"></option>
                     <option @click="recurring_mode=1" value="1">One day</option>
@@ -35,14 +35,14 @@
                     <div style="color: red;">{{form.daily.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div v-if="recurring_mode==3">
+            <div v-if="recurring_mode==3" class="w-25">
                 {{form.weekly.label(class_="col-form-label")}}:
                 {{form.weekly(class_="form-control")}}
                 {% if form.weekly.errors %}
                     <div style="color: red;">{{form.weekly.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div v-if="recurring_mode==4">
+            <div v-if="recurring_mode==4" class="w-25">
                 {{form.monthly.label(class_="col-form-label")}}:
                 {{form.monthly(class_="form-control")}}
                 {% if form.monthly.errors %}
@@ -61,7 +61,7 @@
             <h4>Choose who to notify</h4>
 
             {% for org in orgs %}
-                <div class="list-group" style="margin-bottom: 10px;">
+                <div class="list-group w-50" style="margin-bottom: 10px;">
                     <div class="d-flex align-items-center">
                         {% if org.checked %}
                             <input class="form-check-input me-2" type="checkbox" name="check_{{org.id}}" id="check_{{org.id}}" @click="check_org({{org}})" checked>
@@ -76,7 +76,7 @@
                         </a>
                     </div>
                 </div>
-                <div class="collapse" id="collapse_{{org.id}}" style="margin-bottom: 20px;">
+                <div class="collapse w-50" id="collapse_{{org.id}}" style="margin-bottom: 20px;">
                     <div class="card card-body" style="background-color: whitesmoke;">
                         {% if org.users %}
                             <table>
@@ -101,7 +101,7 @@
                 </div>
             {% endfor %}
 
-            <div class="modal-footer" style="margin-top: 10px;">
+            <div style="margin-top: 20px;">
                 {{form.submit(class='btn btn-primary')}}
             </div>
         </div>

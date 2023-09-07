@@ -696,13 +696,16 @@ def change_recurring(form_dict, cid):
         case.status_id = recurring_status.id
     elif "weekly" in form_dict and form_dict["weekly"]:
         case.recurring_type = "weekly"
-        case.recurring_date = datetime.datetime.today() + datetime.timedelta(
-            days=(form_dict["weekly"].weekday() - datetime.datetime.today().weekday() + 7)
-            )
+        if form_dict["weekly"]<datetime.datetime.today().date():
+            case.recurring_date = datetime.datetime.today() + datetime.timedelta(
+                days=(form_dict["weekly"].weekday() - datetime.datetime.today().weekday() + 7)
+                )
+        else:
+            case.recurring_date = form_dict["weekly"]
         case.status_id = recurring_status.id
     elif "monthly" in form_dict and form_dict["monthly"]:
         case.recurring_type = "monthly"
-        if form_dict["monthly"].date()<datetime.datetime.today().date():
+        if form_dict["monthly"]<datetime.datetime.today().date():
             case.recurring_date = form_dict["monthly"] + relativedelta.relativedelta(months=1)
         else:
             case.recurring_date = form_dict["monthly"]
