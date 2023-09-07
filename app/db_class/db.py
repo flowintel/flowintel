@@ -315,6 +315,13 @@ class Case_Template(db.Model):
             "description": self.description
         }
     
+    def download(self):
+        return {
+            "uuid": self.uuid,
+            "title": self.title,
+            "description": self.description
+        }
+    
 
 class Task_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -326,6 +333,14 @@ class Task_Template(db.Model):
     def to_json(self):
         return {
             "id": self.id,
+            "uuid": self.uuid,
+            "title": self.title,
+            "description": self.description,
+            "url": self.url
+        }
+    
+    def download(self):
+        return {
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,

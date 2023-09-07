@@ -12,6 +12,7 @@
         <div style="float:right">
             <a class="btn btn-primary btn-sm" href="/tools/template/edit_case/{{case.id}}" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
             <button class="btn btn-danger btn-sm"  @click="delete_case({{case}})" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
+            <a class="btn btn-primary btn-sm"  href="/tools/template/case/{{case.id}}/download" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
             <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseFork" title="Create a Case from template" role="button" aria-expanded="false" aria-controls="collapseExample">
                 <i class="fa-solid fa-code-fork"></i>
             </a>

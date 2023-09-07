@@ -289,3 +289,16 @@ def create_case_from_template(cid):
             return new_case
         return {"new_case_id": new_case.id}, 201
     return {"message": "Template not found"}
+
+
+@tools_blueprint.route("/template/case/<cid>/download", methods=['GET'])
+@login_required
+@editor_required
+def download_case(cid):
+    """Download a case template"""
+
+    case = ToolsModel.get_case_template(cid)
+    task_list = [task.download() for task in ToolsModel.get_task_by_case(cid)]
+    return_dict = case.download()
+    return_dict["tasks_template"] = task_list
+    return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=template_case_{case.title}.json'}
