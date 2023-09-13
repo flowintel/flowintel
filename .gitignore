@@ -1,2 +1,4 @@
 *.pyc
 *.sqlite
+history/*
+uploads/*

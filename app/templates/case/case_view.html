@@ -87,92 +87,119 @@
     <hr style="margin-bottom: 40px;">
     <div id="top"></div>
 
-    <div style="display: flex;">
-        <h3>Tasks</h3>
-        {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
-            <span style="padding-left: 10px;">
-                <a href="/case/{{case.id}}/create_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        {%endif%}
 
-        <!-- Search bar -->
-        <div class="input-group w-auto start-50 translate-middle-x">
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 400px;" />
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab(true)">Main</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-history" @click="active_tab(false)">History</button>
+        </li>
+    </ul>
+
+
+    <template v-if="main_tab">
+        <div style="display: flex;">
+            <h3>Tasks</h3>
+            {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
+                <span style="padding-left: 10px;">
+                    <a href="/case/{{case.id}}/create_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
+                </span>
+            {%endif%}
+
+            <!-- Search bar -->
+            <div class="input-group w-auto start-50 translate-middle-x">
+                <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 400px;" />
+            </div>
+            <!-- Search bar -->
         </div>
-        <!-- Search bar -->
-    </div>
 
-    
+        
 
-    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
-		filter
-	</button>
-	<div class="collapse " id="collapsefiltertask">
-		<div class="card card-body">
-			<div class="d-flex w-100 justify-content-between">
-				<div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_ongoing(true)" checked>
-						<label class="form-check-label" for="radioStatusOngoing">Ongoing Tasks</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_ongoing(false)">
-						<label class="form-check-label" for="radioStatusFinished">Finished Tasks</label>
-					</div>
-				</div>
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
+            filter
+        </button>
+        <div class="collapse " id="collapsefiltertask">
+            <div class="card card-body">
+                <div class="d-flex w-100 justify-content-between">
+                    <div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_ongoing(true)" checked>
+                            <label class="form-check-label" for="radioStatusOngoing">Ongoing Tasks</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_ongoing(false)">
+                            <label class="form-check-label" for="radioStatusFinished">Finished Tasks</label>
+                        </div>
+                    </div>
 
-				<div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')" checked>
-						<label class="form-check-label" for="radioOtherTitle">Title</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
-						<label class="form-check-label" for="radioOrderAsc">Last Modif</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
-						<label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
-						<label class="form-check-label" for="radioOtherStatus">Status</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherAssign" @click="sort_by_filter('assigned_tasks')">
-						<label class="form-check-label" for="radioOtherAssign">Assigned tasks</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherCurrentAssign" @click="sort_by_filter('my_assignment')">
-						<label class="form-check-label" for="radioOtherCurrentAssign">My assignment</label>
-					</div>
-				</div>
+                    <div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')" checked>
+                            <label class="form-check-label" for="radioOtherTitle">Title</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
+                            <label class="form-check-label" for="radioOrderAsc">Last Modif</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
+                            <label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
+                            <label class="form-check-label" for="radioOtherStatus">Status</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherAssign" @click="sort_by_filter('assigned_tasks')">
+                            <label class="form-check-label" for="radioOtherAssign">Assigned tasks</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherCurrentAssign" @click="sort_by_filter('my_assignment')">
+                            <label class="form-check-label" for="radioOtherCurrentAssign">My assignment</label>
+                        </div>
+                    </div>
 
-				<div style="display:flex">
-				<span style="margin-right: 10px">Asc</span>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="asc_desc_filter(true)">
-						<label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
-					</div>
-			  
-				</div>
-			</div>
-		</div>
-	</div>
+                    <div style="display:flex">
+                    <span style="margin-right: 10px">Asc</span>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="asc_desc_filter(true)">
+                            <label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
+                        </div>
+                
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <hr>
+        <hr>
 
-    <template v-if="cases_info && cases_info.tasks && status_info" >
-        <template v-for="task, key in cases_info.tasks" :key="task.id">
-            <div :id="`task-${task.id}`"  class="list-group" style="margin-bottom: 20px;">
-                <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" :key_loop="key" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
+        <template v-if="cases_info && cases_info.tasks && status_info" >
+            <template v-for="task, key in cases_info.tasks" :key="task.id">
+                <div :id="`task-${task.id}`"  class="list-group" style="margin-bottom: 20px;">
+                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" :key_loop="key" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
+                </div>
+            </template>
+        </template>
+        <template v-else>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
         </template>
     </template>
+
+
+
+
     <template v-else>
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
+        <template v-if="history">
+            <div v-for="h in history">
+                [[h]]
+            </div>
+        </template>
+        <template v-else>
+            <i>No history</i>
+        </template>
     </template>
     
     <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
@@ -202,6 +229,15 @@
                 let show_ongoing = true
                 let current_filter = ""
                 let asc_desc = true
+
+                const main_tab = ref(true)
+                const history = ref(null)
+
+                async function fetch_history(){
+                    const res = await fetch("/case/history/" + cases_info.value.case.id)
+                    let loc = await res.json()
+                    history.value = loc["history"]
+                }
 
                 async function filter_ongoing(ongoing){
                     show_ongoing = ongoing
@@ -254,6 +290,7 @@
                     )
                     cases_info.value = await res.json()
                     loc_tasks_list = cases_info.value.tasks
+                    fetch_history()
                     await nextTick()
                     scrollIntoSelectedElement()
                 }
@@ -385,9 +422,6 @@
                     }
                 }
 
-                fetchCase()
-                fetchStatus()
-                get_all_users_case()
 
                 function scrollIntoSelectedElement() {
                     const url = new URL(location.href)
@@ -397,6 +431,28 @@
                         taskElem.scrollIntoView({ behavior: "smooth" });
                     }
                 }
+
+                function active_tab(is_main){
+                    if(is_main){
+                        main_tab.value = true
+                        if ( !document.getElementById("tab-main").classList.contains("active") ){
+                            document.getElementById("tab-main").classList.add("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                        }
+                    }else{
+                        main_tab.value = false
+                        if ( !document.getElementById("tab-history").classList.contains("active") ){
+                            document.getElementById("tab-history").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                        }
+                    }
+                }
+
+
+                fetchCase()
+                fetchStatus()
+                get_all_users_case()
+                
     
                 return {
                     cases_info,
@@ -405,16 +461,18 @@
                     message_list,
                     edit_mode,
                     moment,
+                    main_tab,
+                    history,
                     delete_case,
                     remove_org_case,
                     complete_case,
                     fork_case,
                     create_template,
                     onInput,
-
                     filter_ongoing,
                     sort_by_filter,
-                    asc_desc_filter
+                    asc_desc_filter,
+                    active_tab
                 }
             }
         }).mount('.container')

@@ -28,7 +28,7 @@ def create_task(cid):
 
             if form.validate_on_submit():
                 form_dict = form_to_dict(form)
-                if CaseModel.create_task(form_dict, cid):
+                if CaseModel.create_task(form_dict, cid, current_user):
                     flash("Task created", "success")
                 else:
                     flash("Error Task Created", "error")
@@ -37,21 +37,21 @@ def create_task(cid):
         return redirect(f"/case/{cid}")
     return render_template("404.html")
 
-@task_blueprint.route("<cid>/edit_task/<id>", methods=['GET','POST'])
+@task_blueprint.route("<cid>/edit_task/<tid>", methods=['GET','POST'])
 @login_required
 @editor_required
-def edit_task(cid, id):
+def edit_task(cid, tid):
     """Edit the task"""
     if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
         form = TaskEditForm()
 
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            CaseModel.edit_task_core(form_dict, id)
+            CaseModel.edit_task_core(form_dict, tid, current_user)
             flash("Task edited", "success")
             return redirect(f"/case/{cid}")
         else:
-            task_modif = CaseModel.get_task(id)
+            task_modif = CaseModel.get_task(tid)
             form.description.data = task_modif.description
             form.title.data = task_modif.title
             form.url.data = task_modif.url
@@ -74,7 +74,7 @@ def complete_task(tid):
     task = CaseModel.get_task(str(tid))
     if task:
         if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-            if CaseModel.complete_task(tid):
+            if CaseModel.complete_task(tid, current_user):
                 return {"message": "Task completed", "toast_class": "success-subtle"}, 200
             return {"message": "Error task completed", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
@@ -89,7 +89,7 @@ def delete_task(cid, tid):
     """Delete the task"""
     if CaseModel.get_task(tid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.delete_task(tid):
+            if CaseModel.delete_task(tid, current_user):
                 return {"message": "Task deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Error task deleted", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
@@ -105,7 +105,7 @@ def modif_note(cid, tid):
     if CaseModel.get_task(tid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             notes = request.json["notes"]
-            if CaseModel.modif_note_core(tid, notes):
+            if CaseModel.modif_note_core(tid, current_user, notes):
                 return {"message": "Note added", "toast_class": "success-subtle"}, 200
             return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
@@ -135,7 +135,7 @@ def take_task(cid, tid):
 
     if CaseModel.get_task(tid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.assign_task(tid, current_user, flag_current_user=True):
+            if CaseModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                 return {"message": "User Assigned", "toast_class": "success-subtle"}, 200
             return {"message": "Error assignment", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
@@ -153,7 +153,7 @@ def assign_user(cid, tid):
     if CaseModel.get_task(tid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             for user in users_list:
-                CaseModel.assign_task(tid, user, flag_current_user=False)
+                CaseModel.assign_task(tid, user=user, current_user=current_user, flag_current_user=False)
             return {"message": "Users Assigned", "toast_class": "success-subtle"}, 200
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Task not found", "toast_class": "danger-subtle"}, 400
@@ -167,7 +167,7 @@ def remove_assign_task(cid, tid):
     
     if CaseModel.get_task(tid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.remove_assign_task(tid, current_user, flag_current_user=True):
+            if CaseModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                 return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
             return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
@@ -183,7 +183,7 @@ def remove_assigned_user(cid, tid):
     user_id = request.json["user_id"]
     if CaseModel.get_task(tid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.remove_assign_task(tid, user_id, flag_current_user=False):
+            if CaseModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
                 return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
             return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
@@ -200,7 +200,7 @@ def change_task_status(cid, tid):
     task = CaseModel.get_task(tid)
     if task:
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.change_task_status(status, task):
+            if CaseModel.change_task_status(status, task, current_user):
                 return {"message": "Status changed", "toast_class": "success-subtle"}, 200
             return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
@@ -230,7 +230,7 @@ def delete_file(tid, fid):
     file = CaseModel.get_file(fid)
     if file and file in task.files:
         if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-            if CaseModel.delete_file(file):
+            if CaseModel.delete_file(file, task, current_user):
                 return {"message": "File Deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Error deleting file"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
@@ -247,7 +247,7 @@ def add_files(cid, tid):
         if task:
             if len(request.files) > 0:
 
-                if CaseModel.add_file_core(task=task, files_list=request.files):
+                if CaseModel.add_file_core(task=task, files_list=request.files, current_user=current_user):
                     return {"message":"Files added", "toast_class": "success-subtle"}, 200
                 return {"message":"Something goes wrong adding files", "toast_class": "danger-subtle"}, 400
             return {"message":"No Files given", "toast_class": "warning-subtle"}, 400

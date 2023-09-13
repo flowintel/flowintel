@@ -40,6 +40,6 @@ def form_to_dict(form):
             loc_dict[field] = form._fields[field].data
     return loc_dict
 
-def create_upload_dir(upload_dir):
-    if not os.path.isdir(upload_dir):
-        os.mkdir(upload_dir)
+def create_specific_dir(specific_dir):
+    if not os.path.isdir(specific_dir):
+        os.mkdir(specific_dir)

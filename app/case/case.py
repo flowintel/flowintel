@@ -66,7 +66,7 @@ def edit_case(cid):
 
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            CaseModel.edit_case(form_dict, cid)
+            CaseModel.edit_case(form_dict, cid, current_user)
             flash("Case edited", "success")
             return redirect(f"/case/{cid}")
         else:
@@ -156,7 +156,7 @@ def recurring(cid):
 
             if form.validate_on_submit():
                 form_dict = form_to_dict(form)
-                if not CaseModel.change_recurring(form_dict, cid):
+                if not CaseModel.change_recurring(form_dict, cid, current_user):
                     flash("Recurring empty", "error")
                     return redirect(f"/case/{case.id}/recurring")
                 if not form_dict["remove"]:
@@ -267,7 +267,7 @@ def change_status(cid):
 
     if CaseModel.get_case(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            CaseModel.change_status_core(status, case)
+            CaseModel.change_status_core(status, case, current_user)
             return {"message": "Status changed", "toast_class": "success-subtle"}, 200
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -416,3 +416,14 @@ def get_all_case_template_title():
         flag = False
     
     return {"title_already_exist": flag}
+
+
+@case_blueprint.route("/history/<cid>", methods=['GET'])
+@login_required
+def history(cid):
+    if CaseModel.get_case(cid):
+        history = CaseModel.get_history(cid)
+        if history:
+            return {"history": history}
+        return {"history": None}
+    return {"message": "Case Not found"}, 404

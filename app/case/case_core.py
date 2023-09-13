@@ -1,7 +1,7 @@
 import os
 from .. import db
 from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status, Task_Template, Case_Task_Template, Case_Template, Recurring_Notification
-from ..utils.utils import isUUID, create_upload_dir
+from ..utils.utils import isUUID, create_specific_dir
 import uuid
 import bleach
 import markdown
@@ -14,6 +14,7 @@ from dateutil import relativedelta
 from ..tools.tools_core import create_case_from_template
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+HISTORY_FOLDER = os.path.join(os.getcwd(), "history")
 
 
 def get_case(cid):
@@ -76,13 +77,36 @@ def get_status(sid):
     return Status.query.get(sid).first()
 
 
+def get_history(cid):
+    try:
+        path_history = os.path.join(HISTORY_FOLDER, str(cid))
+        with open(path_history, "r") as read_file:
+            loc_file = read_file.read().splitlines()
+        return loc_file
+    except:
+        return False
+
+def save_history(cid, current_user, message):
+    create_specific_dir(HISTORY_FOLDER)
+    path_history = os.path.join(HISTORY_FOLDER, str(cid))
+    with open(path_history, "a") as write_history:
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+        write_history.write(f"[{now}]({current_user.first_name} {current_user.last_name}): {message}\n")
+
+
 def delete_case(cid, current_user):
     """Delete a case by is id"""
     case = get_case(cid)
     if case:
+        history_path = os.path.join(HISTORY_FOLDER, str(cid))
+        if os.path.isfile(history_path):
+            try:
+                os.remove(history_path)
+            except:
+                return False
         # Delete all tasks in the case
         for task in case.tasks:
-            delete_task(task.id)
+            delete_task(task.id, current_user)
 
         NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", cid, html_icon="fa-solid fa-trash", current_user=current_user)
 
@@ -92,7 +116,7 @@ def delete_case(cid, current_user):
         return True
     return False
 
-def delete_task(tid):
+def delete_task(tid, current_user):
     """Delete a task by is id"""
     task = get_task(tid)
     if task is not None:
@@ -108,13 +132,14 @@ def delete_task(tid):
         task_users = Task_User.query.where(Task_User.task_id==task.id).all()
         for task_user in task_users:
             user = User.query.get(task_user.user_id)
-            print(user.to_json())
             NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
         Task_User.query.filter_by(task_id=task.id).delete()
         db.session.delete(task)
         update_last_modif(task.case_id)
         db.session.commit()
+
+        save_history(task.case_id, current_user, f"Task {task.id}-{task.title} deleted")
         return True
     return False
 
@@ -143,7 +168,7 @@ def complete_case(cid, current_user):
         if case.completed:
             case.status_id = Status.query.filter_by(name="Finished").first().id
             for task in case.tasks:
-                complete_task(task.id)
+                complete_task(task.id, current_user)
             NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' is now completed", cid, html_icon="fa-solid fa-square-check", current_user=current_user)
         else:
             case.status_id = Status.query.filter_by(name="Created").first().id
@@ -151,11 +176,12 @@ def complete_case(cid, current_user):
 
         update_last_modif(cid)
         db.session.commit()
+        save_history(cid, current_user, "Case completed")
         return True
     return False
 
 
-def complete_task(tid):
+def complete_task(tid, current_user):
     """Complete task by is id"""
     task = get_task(tid)
     if task is not None:
@@ -181,6 +207,7 @@ def complete_task(tid):
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
+        save_history(case.id, current_user, f"Task {task.id}-{task.title} completed")
         return True
     return False
 
@@ -232,10 +259,12 @@ def create_case(form_dict, user):
         db.session.add(case_org)
         db.session.commit()
 
+    save_history(case.id, user, "Case Created")
+
     return case
 
 
-def edit_case(form_dict, cid):
+def edit_case(form_dict, cid, current_user):
     """Edit a case to the DB"""
     case = get_case(cid)
 
@@ -247,9 +276,11 @@ def edit_case(form_dict, cid):
 
     update_last_modif(cid)
     db.session.commit()
+
+    save_history(cid, current_user, f"Case edited")
     
 
-def create_task(form_dict, cid):
+def create_task(form_dict, cid, current_user):
     """Add a task to the DB"""
     if "template_select" in form_dict and not 0 in form_dict["template_select"]:
         template = Task_Template.query.get(form_dict["template_select"])
@@ -282,11 +313,13 @@ def create_task(form_dict, cid):
     db.session.commit()
     update_last_modif(cid)
 
+    save_history(cid, current_user, f"Task {task.id}-{task.title} Created")
+
     return task
 
 
-def add_file_core(task, files_list):
-    create_upload_dir(UPLOAD_FOLDER)
+def add_file_core(task, files_list, current_user):
+    create_specific_dir(UPLOAD_FOLDER)
     for file in files_list:
         if files_list[file].filename:
             uuid_loc = str(uuid.uuid4())
@@ -308,9 +341,10 @@ def add_file_core(task, files_list):
             update_last_modif(task.case_id)
             update_last_modif_task(task.id)
             db.session.commit()
+    save_history(task.case_id, current_user, f"File added for task '{task.id}-{task.title}'")
     return True
 
-def edit_task_core(form_dict, tid):
+def edit_task_core(form_dict, tid, current_user):
     """Edit a task to the DB"""
     task = get_task(tid)
     deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
@@ -324,6 +358,8 @@ def edit_task_core(form_dict, tid):
     update_last_modif_task(task.id)
     db.session.commit()
 
+    save_history(task.case_id, current_user, f"Task {task.id}-{task.title} edited")
+
 
 def deadline_check(date, time):
     """Combine the date and the time if time exist"""
@@ -336,7 +372,7 @@ def deadline_check(date, time):
     return deadline
 
 
-def modif_note_core(tid, notes):
+def modif_note_core(tid, current_user, notes):
     """Modify a noe of a task to the DB"""
     task = get_task(tid)
     if task:
@@ -344,6 +380,7 @@ def modif_note_core(tid, notes):
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
+        save_history(task.case_id, current_user, f"Notes for '{task.id}-{task.title}' modify")
         return True
     return False
 
@@ -383,6 +420,7 @@ def add_orgs_case(form_dict, cid, current_user):
 
     update_last_modif(cid)
     db.session.commit()
+    save_history(cid, current_user, f"Org {org_id} added")
     return True
 
 def get_orgs_in_case(case_id):
@@ -402,29 +440,29 @@ def remove_org_case(case_id, org_id, current_user):
 
         update_last_modif(case_id)
         db.session.commit()
+        save_history(case_id, current_user, f"Org {org_id} removed")
         return True
     return False
 
 
-def assign_task(tid, user, flag_current_user):
+def assign_task(tid, user, current_user, flag_current_user):
     """Assign current user to a task"""
     task = get_task(tid)
     case = get_case(task.case_id)
     if task:
         if type(user) == str or type(user) == int:
-            user_id = user
-        else:
-            user_id = user.id
+            user = User.query.get(user)
 
-        task_user = Task_User(task_id=task.id, user_id=user_id)
+        task_user = Task_User(task_id=task.id, user_id=user.id)
         if not flag_current_user:
-            NotifModel.create_notification_user(f"You have been assign to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user_id, html_icon="fa-solid fa-hand")
+            NotifModel.create_notification_user(f"You have been assign to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-hand")
    
-        if not Task_User.query.filter_by(task_id=task.id, user_id=user_id).first():
+        if not Task_User.query.filter_by(task_id=task.id, user_id=user.id).first():
             db.session.add(task_user)
             update_last_modif(task.case_id)
             update_last_modif_task(task.id)
             db.session.commit()
+            save_history(case.id, current_user, f"Task '{task.id}-{task.title}' assigned to {user.first_name} {user.last_name}")
             return True
         return False
     return False
@@ -443,25 +481,24 @@ def get_users_assign_task(task_id, user):
     return users, flag
 
 
-def remove_assign_task(tid, user, flag_current_user):
+def remove_assign_task(tid, user, current_user, flag_current_user):
     """Remove current user to the assignement to a task"""
     task = get_task(tid)
     case = get_case(task.case_id)
     if task:
         if type(user) == int or type(user) == str:
-            task_users = Task_User.query.filter_by(task_id=task.id, user_id=user).all()
-            if not flag_current_user:
-                NotifModel.create_notification_user(f"Your assignment have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user, html_icon="fa-solid fa-handshake-slash")
-        else:
-            task_users = Task_User.query.filter_by(task_id=task.id, user_id=user.id).all()
-            if not flag_current_user:
-                NotifModel.create_notification_user(f"Your assignment have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-handshake-slash")
+            user = User.query.get(user)
+        task_users = Task_User.query.filter_by(task_id=task.id, user_id=user.id).all()
+        if not flag_current_user:
+            NotifModel.create_notification_user(f"Your assignment have been removed: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-handshake-slash")
+        
         for task_user in task_users:
             db.session.delete(task_user)
 
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
+        save_history(case.id, current_user, f"Assignment '{task.id}-{task.title}' removed to {user.first_name} {user.last_name}")
         return True
     return False
 
@@ -478,19 +515,22 @@ def get_present_in_case(case_id, user):
     return present_in_case
 
 
-def change_status_core(status, case):
+def change_status_core(status, case, current_user):
     case.status_id = status
     update_last_modif(case.id)
     db.session.commit()
+    save_history(case.id, current_user, "Case Status changed")
 
     return True
 
 
-def change_task_status(status, task):
+def change_task_status(status, task, current_user):
     task.status_id = status
     update_last_modif(task.case_id)
     update_last_modif_task(task.id)
     db.session.commit()
+
+    save_history(task.case_id, current_user, f"Status changed for task '{task.id}-{task.title}'")
 
     return True
 
@@ -499,7 +539,7 @@ def download_file(file):
     return send_file(os.path.join(UPLOAD_FOLDER, file.uuid), as_attachment=True, download_name=file.name)
 
 
-def delete_file(file):
+def delete_file(file, task, current_user):
     try:
         os.remove(os.path.join(UPLOAD_FOLDER, file.uuid))
     except:
@@ -507,6 +547,7 @@ def delete_file(file):
 
     db.session.delete(file)
     db.session.commit()
+    save_history(task.case_id, current_user, f"File deleted for task '{task.id}-{task.title}'")
     return True
 
 
@@ -635,7 +676,7 @@ def fork_case_core(cid, case_title_fork, user):
             task_json["deadline_date"] = None
             task_json["deadline_time"] = None
 
-        create_task(task_json, new_case.id)
+        create_task(task_json, new_case.id, user)
     return new_case
 
 
@@ -681,7 +722,7 @@ def create_template_from_case(cid, case_title_template):
     return new_template
 
 
-def change_recurring(form_dict, cid):
+def change_recurring(form_dict, cid, current_user):
     case = get_case(cid)
     recurring_status = Status.query.filter_by(name="Recurring").first()
     created_status = Status.query.filter_by(name="Created").first()
@@ -722,6 +763,7 @@ def change_recurring(form_dict, cid):
         return False
 
     db.session.commit()
+    save_history(cid, current_user, "Recurring changed")
     return True
 
 
