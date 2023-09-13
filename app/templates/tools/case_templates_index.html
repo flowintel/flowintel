@@ -20,6 +20,28 @@
     <div class="input-group justify-content-center start-50 translate-middle-x top-0" id="search_template" style="max-width: 200px;">
         <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case template by title' style="min-width: 350px;"/>
     </div>
+    <br>
+	<div class="collapse show" id="collapsefiltercase">
+		<div class="card card-body">
+			<div class="d-flex w-100 justify-content-evenly">
+				<div>
+					<div class="form-check">
+						<input class="form-check-input" type="checkbox" name="radioOther" id="radioOtherTitle" @click="sort_by_title()">
+						<label class="form-check-label" for="radioOtherTitle">Title</label>
+					</div>
+				</div>
+
+				<div style="display:flex">
+				<span style="margin-right: 10px">Asc</span>
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="asc_desc_filter(true)">
+						<label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
+					</div>
+			  
+				</div>
+			</div>
+		</div>
+	</div>
     <hr>
     <!-- Search bar -->
 
@@ -64,10 +86,6 @@
         </div>
     </template>
 
-    <template v-if="is_searching && length_all_templates > templates_list.templates.length">
-        <button class="btn btn-primary" @click="show_more_search(templates_list.templates.length)">Show more</button>
-    </template>
-
     <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
         <ul class="pagination">
             <li :class="{'page-item': true, 'disabled': current_page == 1}">
@@ -95,27 +113,21 @@
             delimiters: ['[[', ']]'],
             setup() {
                 const templates_list = ref(null)
-                let all_templates_list = []
-                let all_templates_searching = []
                 const current_page = ref(1)
-                const per_page = ref(20)
-                const is_searching = ref(false)
-                const length_all_templates = ref(0)
+
+                let title_filter = false
+                let asc_desc = true
+                let temp_case_list = []
 
                 async function fetch_templates(page){
                     templates_list.value = null
-                    const res = await fetch("/tools/get_page_case_templates?page=" + page)
+                    const res = await fetch("/tools/get_page_case_templates?page=" + page + "&title=" + title_filter)
                     let loc = await res.json()
                     templates_list.value = loc
                     current_page.value = page
+                    temp_case_list = templates_list.value.templates
                 }
 
-                async function fetch_all_templates(){
-                    all_templates_list = null
-                    const res = await fetch("/tools/get_all_case_templates")
-                    let loc = await res.json()
-                    all_templates_list = loc["templates"]
-                }
 
                 async function delete_case(case_template){
                     const res = await fetch("/tools/template/delete_case/" + case_template.id)
@@ -127,57 +139,52 @@
                     display_toast(res)
                 }
 
+                function sort_by_title(){
+                    title_filter = !title_filter
+                    asc_desc_filter()
+                }
+
+                async function asc_desc_filter(change=false){
+                    if(change)
+                        asc_desc = !asc_desc
+
+                    let res = await fetch('/tools/get_page_case_templates?page=1&title=' + title_filter)
+                    
+                    let loc = await res.json()
+                    if(asc_desc){
+                        templates_list.value.templates = loc.templates
+                    }
+                    else{
+                        templates_list.value.templates = loc.templates.reverse()
+                    }
+                    templates_list.value.nb_pages = loc.nb_pages
+                    temp_case_list = templates_list.value.templates
+                    
+                }
+
                 function onInput(e){
                     templates_list.value.templates = []
                     if(e.target.value){
-                        is_searching.value = true
-
-                        all_templates_searching = all_templates_list.filter((template) => {
+                        templates_list.value.templates = temp_case_list.filter((template) => {
                             return template.title.toLowerCase().includes(e.target.value.toLowerCase())
                         })
-                        length_all_templates.value = all_templates_searching.length
-
-                        let cp = 1
-                        for(let i in all_templates_searching){
-                            if(cp < per_page.value + 1){
-                                templates_list.value.templates.push(all_templates_searching[i])
-                                cp += 1
-                            }
-                        }
-
-                        templates_list.value.nb_pages = 1
                     }else{
-                        is_searching.value = false
-                        templates_list.value.templates = fetch_templates(1)
-                    }
-                }
-
-                function show_more_search(templates_list_length){
-                    templates_list.value.templates = []
-                    let e = $("#search_template").val()
-                    let cp = 1
-                    for(let i in all_templates_searching){
-                        if(cp < templates_list_length + per_page.value + 1){
-                            templates_list.value.templates.push(all_templates_searching[i])
-                            cp += 1
-                        }
+                        templates_list.value.templates = asc_desc_filter()
                     }
                 }
 
 
                 fetch_templates(1)
-                fetch_all_templates()
     
                 return {
                     message_list,
                     templates_list,
+                    current_page,
                     delete_case,
                     fetch_templates,
-                    current_page,
-                    onInput,
-                    is_searching,
-                    show_more_search,
-                    length_all_templates
+                    sort_by_title,
+                    asc_desc_filter,
+                    onInput
                 }
             }
         }).mount('.container')

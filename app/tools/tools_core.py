@@ -7,7 +7,9 @@ import datetime
 def get_all_case_templates():
     return Case_Template.query.all()
 
-def get_page_case_templates(page):
+def get_page_case_templates(page, title_filter):
+    if title_filter == 'true':
+        return Case_Template.query.order_by(('title')).paginate(page=page, per_page=20, max_per_page=50)
     return Case_Template.query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_case_template(cid):
@@ -16,7 +18,9 @@ def get_case_template(cid):
 def get_all_task_templates():
     return Task_Template.query.all()
 
-def get_page_task_templates(page):
+def get_page_task_templates(page, title_filter):
+    if title_filter == 'true':
+        return Task_Template.query.order_by(('title')).paginate(page=page, per_page=20, max_per_page=50)
     return Task_Template.query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_task_template(tid):

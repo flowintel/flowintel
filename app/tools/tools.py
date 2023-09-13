@@ -162,7 +162,8 @@ def get_all_case_templates():
 def get_page_case_templates():
     """Get a page of case templates"""
     page = request.args.get('page', 1, type=int)
-    templates = ToolsModel.get_page_case_templates(page)
+    title_filter = request.args.get('title')
+    templates = ToolsModel.get_page_case_templates(page, title_filter)
     templates_list = list()
     for template in templates:
         loc_template = template.to_json()
@@ -213,7 +214,8 @@ def get_all_task_templates():
 def get_page_task_templates():
     """Get a page of task template"""
     page = request.args.get('page', 1, type=int)
-    templates = ToolsModel.get_page_task_templates(page)
+    title_filter = request.args.get('title')
+    templates = ToolsModel.get_page_task_templates(page, title_filter)
     if templates:
         templates_list = list()
         for template in templates:
@@ -296,7 +298,6 @@ def create_case_from_template(cid):
 @editor_required
 def download_case(cid):
     """Download a case template"""
-
     case = ToolsModel.get_case_template(cid)
     task_list = [task.download() for task in ToolsModel.get_task_by_case(cid)]
     return_dict = case.download()
