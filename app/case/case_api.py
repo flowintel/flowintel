@@ -109,7 +109,7 @@ class RecurringCase(Resource):
                 verif_dict = CaseModelApi.verif_set_recurring(request.json)
 
                 if "message" not in verif_dict:
-                    CaseModel.change_recurring(verif_dict, cid)
+                    CaseModel.change_recurring(verif_dict, cid, current_user)
                     return {"message": "Recurring changed"}, 200
                 return verif_dict
             return {"message": "Please give data"}, 400
@@ -171,7 +171,7 @@ class DeleteTask(Resource):
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
-                    if CaseModel.delete_task(tid):
+                    if CaseModel.delete_task(tid, current_user):
                         return {"message": "Task deleted"}, 200
                     else:
                         return {"message": "Error task deleted"}, 400
@@ -223,7 +223,7 @@ class AddTask(Resource):
                 verif_dict = CaseModelApi.verif_create_case_task(request.json, False)
 
                 if "message" not in verif_dict:
-                    task = CaseModel.create_task(verif_dict, cid)
+                    task = CaseModel.create_task(verif_dict, cid, current_user)
                     return {"message": f"Task created for case id: {cid}"}, 201
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
@@ -242,7 +242,7 @@ class EditCase(Resource):
                 verif_dict = CaseModelApi.verif_edit_case(request.json, id)
 
                 if "message" not in verif_dict:
-                    CaseModel.edit_case(verif_dict, id)
+                    CaseModel.edit_case(verif_dict, id, current_user)
                     return {"message": f"Case {id} edited"}, 200
 
                 return verif_dict, 400
@@ -265,7 +265,7 @@ class EditTake(Resource):
                         verif_dict = CaseModelApi.verif_edit_task(request.json, tid)
 
                         if "message" not in verif_dict:
-                            CaseModel.edit_task_core(verif_dict, tid)
+                            CaseModel.edit_task_core(verif_dict, tid, current_user)
                             return {"message": f"Task {tid} edited"}, 200
 
                         return verif_dict, 400
@@ -287,7 +287,7 @@ class CompleteTake(Resource):
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
-                    if CaseModel.complete_task(tid):
+                    if CaseModel.complete_task(tid, current_user):
                         return {"message": f"Task {tid} completed"}, 200
                     return {"message": f"Error task {tid} completed"}, 400
                 else:
@@ -323,7 +323,7 @@ class ModifNoteTask(Resource):
                 task = CaseModel.get_task(tid)
                 if task:
                     if int(cid) == task.case_id:
-                        if CaseModel.modif_note_core(tid, request.json["note"]):
+                        if CaseModel.modif_note_core(tid, current_user, request.json["note"]):
                             return {"message": f"Note for task {tid} edited"}, 200
                         return {"message": f"Error Note for task {tid} edited"}, 400
                     else:
@@ -389,7 +389,7 @@ class AssignTask(Resource):
 
             if task:
                 if int(cid) == task.case_id:
-                    if CaseModel.assign_task(tid, current_user, True):
+                    if CaseModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                         return {"message": f"Task Take"}, 200
                     return {"message": f"Error Task Take"}, 400
                 return {"message": "Task not in this case"}, 404
@@ -407,7 +407,7 @@ class RemoveOrgCase(Resource):
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
-                    if CaseModel.remove_assign_task(tid, current_user, True):
+                    if CaseModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                         return {"message": f"Removed from assignment"}, 200
                     return {"message": f"Error Removed from assignment"}, 400
                 return {"message": "Task not in this case"}, 404
@@ -445,7 +445,7 @@ class AssignUser(Resource):
                 if int(cid) == task.case_id:
                     users_list = request.json["users_id"]
                     for user in users_list:
-                        CaseModel.assign_task(tid, user, flag_current_user=False)
+                        CaseModel.assign_task(tid, user=user, current_user=current_user, flag_current_user=False)
                     return {"message": "Users Assigned"}, 200
                 return {"message": "Task not in this case"}, 404
             return {"message": "Task not found"}, 404
@@ -464,7 +464,7 @@ class AssignUser(Resource):
             if task:
                 if int(cid) == task.case_id:
                     user_id = request.json["user_id"]
-                    if CaseModel.remove_assign_task(tid, user_id, flag_current_user=False):
+                    if CaseModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
                         return {"message": "User Removed from assignment"}, 200
                 return {"message": "Task not in this case"}, 404
             return {"message": "Task not found"}, 404
@@ -483,7 +483,7 @@ class ChangeStatus(Resource):
             task = CaseModel.get_task(tid)
             if task:
                 if int(cid) == task.case_id:
-                    if CaseModel.change_task_status(request.json["status_id"], task):
+                    if CaseModel.change_task_status(request.json["status_id"], task, current_user):
                         return {"message": "Status changed"}, 200
                 return {"message": "Task not in this case"}, 404
             return {"message": "Task not found"}, 404
@@ -496,3 +496,16 @@ class ChangeStatus(Resource):
     method_decorators = [api_required]
     def get(self):
         return [status.to_json() for status in CaseModel.get_all_status()], 200
+    
+
+@api.route('/<cid>/history', methods=['GET'])
+@api.doc(description='Get history of a case', params={'cid': 'id of a case'})
+class ChangeStatus(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        if CaseModel.get_case(cid):
+            history = CaseModel.get_history(cid)
+            if history:
+                return {"history": history}
+            return {"history": None}
+        return {"message": "Case Not found"}, 404
