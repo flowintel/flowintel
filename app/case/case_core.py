@@ -77,18 +77,18 @@ def get_status(sid):
     return Status.query.get(sid).first()
 
 
-def get_history(cid):
+def get_history(case_uuid):
     try:
-        path_history = os.path.join(HISTORY_FOLDER, str(cid))
+        path_history = os.path.join(HISTORY_FOLDER, str(case_uuid))
         with open(path_history, "r") as read_file:
             loc_file = read_file.read().splitlines()
         return loc_file
     except:
         return False
 
-def save_history(cid, current_user, message):
+def save_history(case_uuid, current_user, message):
     create_specific_dir(HISTORY_FOLDER)
-    path_history = os.path.join(HISTORY_FOLDER, str(cid))
+    path_history = os.path.join(HISTORY_FOLDER, str(case_uuid))
     with open(path_history, "a") as write_history:
         now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
         write_history.write(f"[{now}]({current_user.first_name} {current_user.last_name}): {message}\n")
@@ -102,7 +102,7 @@ def delete_case(cid, current_user):
         for task in case.tasks:
             delete_task(task.id, current_user)
 
-        history_path = os.path.join(HISTORY_FOLDER, str(cid))
+        history_path = os.path.join(HISTORY_FOLDER, str(case.uuid))
         if os.path.isfile(history_path):
             try:
                 os.remove(history_path)
@@ -140,7 +140,7 @@ def delete_task(tid, current_user):
         update_last_modif(task.case_id)
         db.session.commit()
 
-        save_history(task.case_id, current_user, f"Task '{task.title}' deleted")
+        save_history(case.uuid, current_user, f"Task '{task.title}' deleted")
         return True
     return False
 
@@ -177,7 +177,7 @@ def complete_case(cid, current_user):
 
         update_last_modif(cid)
         db.session.commit()
-        save_history(cid, current_user, "Case completed")
+        save_history(case.uuid, current_user, "Case completed")
         return True
     return False
 
@@ -208,7 +208,7 @@ def complete_task(tid, current_user):
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
-        save_history(case.id, current_user, f"Task '{task.title}' completed")
+        save_history(case.uuid, current_user, f"Task '{task.title}' completed")
         return True
     return False
 
@@ -260,7 +260,7 @@ def create_case(form_dict, user):
         db.session.add(case_org)
         db.session.commit()
 
-    save_history(case.id, user, "Case Created")
+    save_history(case.uuid, user, "Case Created")
 
     return case
 
@@ -278,7 +278,7 @@ def edit_case(form_dict, cid, current_user):
     update_last_modif(cid)
     db.session.commit()
 
-    save_history(cid, current_user, f"Case edited")
+    save_history(case.uuid, current_user, f"Case edited")
     
 
 def create_task(form_dict, cid, current_user):
@@ -314,7 +314,8 @@ def create_task(form_dict, cid, current_user):
     db.session.commit()
     update_last_modif(cid)
 
-    save_history(cid, current_user, f"Task '{task.title}' Created")
+    case = get_case(cid)
+    save_history(case.uuid, current_user, f"Task '{task.title}' Created")
 
     return task
 
@@ -342,7 +343,8 @@ def add_file_core(task, files_list, current_user):
             update_last_modif(task.case_id)
             update_last_modif_task(task.id)
             db.session.commit()
-    save_history(task.case_id, current_user, f"File added for task '{task.title}'")
+    case = get_case(task.case_id)
+    save_history(case.uuid, current_user, f"File added for task '{task.title}'")
     return True
 
 def edit_task_core(form_dict, tid, current_user):
@@ -359,7 +361,8 @@ def edit_task_core(form_dict, tid, current_user):
     update_last_modif_task(task.id)
     db.session.commit()
 
-    save_history(task.case_id, current_user, f"Task '{task.title}' edited")
+    case = get_case(task.case_id)
+    save_history(case.uuid, current_user, f"Task '{task.title}' edited")
 
 
 def deadline_check(date, time):
@@ -381,7 +384,8 @@ def modif_note_core(tid, current_user, notes):
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
-        save_history(task.case_id, current_user, f"Notes for '{task.title}' modify")
+        case = get_case(task.case_id)
+        save_history(case.uuid, current_user, f"Notes for '{task.title}' modify")
         return True
     return False
 
@@ -421,7 +425,8 @@ def add_orgs_case(form_dict, cid, current_user):
 
     update_last_modif(cid)
     db.session.commit()
-    save_history(cid, current_user, f"Org {org_id} added")
+    case = get_case(cid)
+    save_history(case.uuid, current_user, f"Org {org_id} added")
     return True
 
 def get_orgs_in_case(case_id):
@@ -441,7 +446,8 @@ def remove_org_case(case_id, org_id, current_user):
 
         update_last_modif(case_id)
         db.session.commit()
-        save_history(case_id, current_user, f"Org {org_id} removed")
+        case = get_case(case_id)
+        save_history(case.uuid, current_user, f"Org {org_id} removed")
         return True
     return False
 
@@ -463,7 +469,7 @@ def assign_task(tid, user, current_user, flag_current_user):
             update_last_modif(task.case_id)
             update_last_modif_task(task.id)
             db.session.commit()
-            save_history(case.id, current_user, f"Task '{task.id}-{task.title}' assigned to {user.first_name} {user.last_name}")
+            save_history(case.uuid, current_user, f"Task '{task.id}-{task.title}' assigned to {user.first_name} {user.last_name}")
             return True
         return False
     return False
@@ -499,7 +505,7 @@ def remove_assign_task(tid, user, current_user, flag_current_user):
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
-        save_history(case.id, current_user, f"Assignment '{task.title}' removed to {user.first_name} {user.last_name}")
+        save_history(case.uuid, current_user, f"Assignment '{task.title}' removed to {user.first_name} {user.last_name}")
         return True
     return False
 
@@ -520,7 +526,7 @@ def change_status_core(status, case, current_user):
     case.status_id = status
     update_last_modif(case.id)
     db.session.commit()
-    save_history(case.id, current_user, "Case Status changed")
+    save_history(case.uuid, current_user, "Case Status changed")
 
     return True
 
@@ -531,7 +537,8 @@ def change_task_status(status, task, current_user):
     update_last_modif_task(task.id)
     db.session.commit()
 
-    save_history(task.case_id, current_user, f"Status changed for task '{task.title}'")
+    case = get_case(task.case_id)
+    save_history(case.uuid, current_user, f"Status changed for task '{task.title}'")
 
     return True
 
@@ -548,7 +555,8 @@ def delete_file(file, task, current_user):
 
     db.session.delete(file)
     db.session.commit()
-    save_history(task.case_id, current_user, f"File deleted for task '{task.title}'")
+    case = get_case(task.case_id)
+    save_history(case.uuid, current_user, f"File deleted for task '{task.title}'")
     return True
 
 
@@ -764,7 +772,7 @@ def change_recurring(form_dict, cid, current_user):
         return False
 
     db.session.commit()
-    save_history(cid, current_user, "Recurring changed")
+    save_history(case.uuid, current_user, "Recurring changed")
     return True
 
 

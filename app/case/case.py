@@ -421,8 +421,9 @@ def get_all_case_template_title():
 @case_blueprint.route("/history/<cid>", methods=['GET'])
 @login_required
 def history(cid):
-    if CaseModel.get_case(cid):
-        history = CaseModel.get_history(cid)
+    case = CaseModel.get_case(cid)
+    if case:
+        history = CaseModel.get_history(case.uuid)
         if history:
             return {"history": history}
         return {"history": None}

@@ -503,8 +503,9 @@ class ChangeStatus(Resource):
 class ChangeStatus(Resource):
     method_decorators = [api_required]
     def get(self, cid):
-        if CaseModel.get_case(cid):
-            history = CaseModel.get_history(cid)
+        case = CaseModel.get_case(cid)
+        if case:
+            history = CaseModel.get_history(case.uuid)
             if history:
                 return {"history": history}
             return {"history": None}
