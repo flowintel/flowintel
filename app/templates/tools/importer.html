@@ -1,0 +1,59 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>
+        Importer
+    </h1>
+
+    <hr>
+
+    <div>
+        <input class="form-control" type="file" id="importer" />
+        <button class="btn btn-primary" @click="read_json()" style="margin-top: 10px;">Add</button>
+    </div>
+
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+
+                async function read_json(){
+                    let files = document.getElementById('importer').files
+
+                    let formData = new FormData();
+                    for(let i=0;i<files.length;i++){
+                        formData.append("files"+i, files[i]);
+                    }
+
+                    const res = await fetch(
+                        '/tools/importer',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val() },
+                            method: "POST",
+                            files: files,
+                            body: formData
+                        }
+                    )
+                    display_toast(res)
+                }
+                
+    
+                return {
+                    message_list,
+                    read_json
+                }
+            }
+        }).mount('.container')
+
+    </script>
+{% endblock %}

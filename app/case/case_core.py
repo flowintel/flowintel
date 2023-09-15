@@ -98,15 +98,16 @@ def delete_case(cid, current_user):
     """Delete a case by is id"""
     case = get_case(cid)
     if case:
+        # Delete all tasks in the case
+        for task in case.tasks:
+            delete_task(task.id, current_user)
+
         history_path = os.path.join(HISTORY_FOLDER, str(cid))
         if os.path.isfile(history_path):
             try:
                 os.remove(history_path)
             except:
                 return False
-        # Delete all tasks in the case
-        for task in case.tasks:
-            delete_task(task.id, current_user)
 
         NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", cid, html_icon="fa-solid fa-trash", current_user=current_user)
 
@@ -139,7 +140,7 @@ def delete_task(tid, current_user):
         update_last_modif(task.case_id)
         db.session.commit()
 
-        save_history(task.case_id, current_user, f"Task {task.id}-{task.title} deleted")
+        save_history(task.case_id, current_user, f"Task '{task.title}' deleted")
         return True
     return False
 
@@ -207,7 +208,7 @@ def complete_task(tid, current_user):
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
-        save_history(case.id, current_user, f"Task {task.id}-{task.title} completed")
+        save_history(case.id, current_user, f"Task '{task.title}' completed")
         return True
     return False
 
@@ -313,7 +314,7 @@ def create_task(form_dict, cid, current_user):
     db.session.commit()
     update_last_modif(cid)
 
-    save_history(cid, current_user, f"Task {task.id}-{task.title} Created")
+    save_history(cid, current_user, f"Task '{task.title}' Created")
 
     return task
 
@@ -341,7 +342,7 @@ def add_file_core(task, files_list, current_user):
             update_last_modif(task.case_id)
             update_last_modif_task(task.id)
             db.session.commit()
-    save_history(task.case_id, current_user, f"File added for task '{task.id}-{task.title}'")
+    save_history(task.case_id, current_user, f"File added for task '{task.title}'")
     return True
 
 def edit_task_core(form_dict, tid, current_user):
@@ -358,7 +359,7 @@ def edit_task_core(form_dict, tid, current_user):
     update_last_modif_task(task.id)
     db.session.commit()
 
-    save_history(task.case_id, current_user, f"Task {task.id}-{task.title} edited")
+    save_history(task.case_id, current_user, f"Task '{task.title}' edited")
 
 
 def deadline_check(date, time):
@@ -380,7 +381,7 @@ def modif_note_core(tid, current_user, notes):
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
-        save_history(task.case_id, current_user, f"Notes for '{task.id}-{task.title}' modify")
+        save_history(task.case_id, current_user, f"Notes for '{task.title}' modify")
         return True
     return False
 
@@ -498,7 +499,7 @@ def remove_assign_task(tid, user, current_user, flag_current_user):
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
-        save_history(case.id, current_user, f"Assignment '{task.id}-{task.title}' removed to {user.first_name} {user.last_name}")
+        save_history(case.id, current_user, f"Assignment '{task.title}' removed to {user.first_name} {user.last_name}")
         return True
     return False
 
@@ -530,7 +531,7 @@ def change_task_status(status, task, current_user):
     update_last_modif_task(task.id)
     db.session.commit()
 
-    save_history(task.case_id, current_user, f"Status changed for task '{task.id}-{task.title}'")
+    save_history(task.case_id, current_user, f"Status changed for task '{task.title}'")
 
     return True
 
@@ -547,7 +548,7 @@ def delete_file(file, task, current_user):
 
     db.session.delete(file)
     db.session.commit()
-    save_history(task.case_id, current_user, f"File deleted for task '{task.id}-{task.title}'")
+    save_history(task.case_id, current_user, f"File deleted for task '{task.title}'")
     return True
 
 

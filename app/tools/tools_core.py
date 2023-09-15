@@ -3,6 +3,8 @@ import bleach
 import uuid
 from .. import db
 import datetime
+from ..utils import utils
+from ..case import case_core
 
 def get_all_case_templates():
     return Case_Template.query.all()
@@ -178,3 +180,73 @@ def create_case_from_template(cid, case_title_fork, user):
         db.session.commit()
     
     return case
+
+
+
+def core_read_json_file(case, current_user):
+    if utils.validateCaseJson(case):
+        if Case.query.filter_by(title=case["title"]).first():
+            return {"message": f"Case Title '{case['title']}' already exist"}
+        if case["deadline"]:
+            try:
+                case["deadline_date"] = datetime.datetime.strptime(case["deadline"], "%Y-%m-%d")
+                case["deadline_time"] = datetime.datetime.strptime(case["deadline"], "%H:%M")
+            except:
+                return {"message": f"'{case['title']}': deadline bad format, %Y-%m-%d %H:%M"}
+        else:
+            case["deadline_date"] = ""
+            case["deadline_time"] = ""
+        if case["recurring_date"]:
+            if case["recurring_type"]:
+                try:
+                    datetime.datetime.strptime(case["recurring_date"], "%Y-%m-%d")
+                except:
+                    return {"message": f"'{case['title']}': recurring_date bad format, %Y-%m-%d"}
+            else:
+                return {"message": f"'{case['title']}': recurring_type is missing"}
+        if case["recurring_type"] and not case["recurring_date"]:
+            return {"message": f"'{case['title']}': recurring_date is missing"}
+        if Case.query.filter_by(uuid=case["uuid"]).first():
+            case["uuid"] = str(uuid.uuid4())
+
+        case_created = case_core.create_case(case, current_user)
+
+        for task in case["tasks"]:
+            if utils.validateTaseJson(task):
+                if Task.query.filter_by(uuid=task["uuid"]).first():
+                    task["uuid"] = str(uuid.uuid4())
+
+                if task["deadline"]:
+                    try:
+                        task["deadline_date"] = datetime.datetime.strptime(task["deadline"], "%Y-%m-%d")
+                        task["deadline_time"] = datetime.datetime.strptime(task["deadline"], "%H:%M")
+                    except:
+                        return {"message": f"Task '{task['title']}': deadline bad format, %Y-%m-%d %H:%M"}
+                else:
+                    task["deadline_date"] = ""
+                    task["deadline_time"] = ""
+
+                task_created = case_core.create_task(task, case_created.id, current_user)
+                if task["notes"]:
+                    case_core.modif_note_core(task_created.id, current_user, task["notes"])
+            else:
+                return {"message": f"Task '{task['title']}' format not okay"}
+    else:
+        return {"message": f"Case '{case['title']}' format not okay"}
+    
+
+import json
+def read_json_file(files_list, current_user):
+    for file in files_list:
+        if files_list[file].filename:
+            try:
+                file_data = json.loads(files_list[file].read().decode())
+                if type(file_data) == list:
+                    for case in file_data:
+                        res = core_read_json_file(case, current_user)
+                        if res: return res
+                else:
+                    return core_read_json_file(file_data, current_user)
+            except Exception as e:
+                print(e)
+                return {"message": "Something went wrong"}

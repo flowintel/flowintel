@@ -3,6 +3,7 @@ import random
 import string
 from ..db_class.db import User
 import uuid
+import jsonschema
 
 def isUUID(uid):
     try:
@@ -43,3 +44,48 @@ def form_to_dict(form):
 def create_specific_dir(specific_dir):
     if not os.path.isdir(specific_dir):
         os.mkdir(specific_dir)
+
+
+caseSchema = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "uuid": {"type": "string"},
+        "deadline:": {"type": "string"},
+        "recurring_date:": {"type": "string"},
+        "recurring_type:": {"type": "string"},
+        "tasks": {"type": "array"},
+        "items": {
+            "type": "object"
+        }
+    },
+    "required": ['title']
+}
+
+taskSchema = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "uuid": {"type": "string"},
+        "deadline:": {"type": "string"},
+        "url:": {"type": "string"},
+        "notes:": {"type": "string"},
+    },
+    "required": ['title']
+}
+
+def validateCaseJson(json_data):
+    try:
+        jsonschema.validate(instance=json_data, schema=caseSchema)
+    except jsonschema.exceptions.ValidationError as err:
+        return False
+    return True
+
+def validateTaseJson(json_data):
+    try:
+        jsonschema.validate(instance=json_data, schema=taskSchema)
+    except jsonschema.exceptions.ValidationError as err:
+        return False
+    return True

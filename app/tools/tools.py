@@ -303,3 +303,28 @@ def download_case(cid):
     return_dict = case.download()
     return_dict["tasks_template"] = task_list
     return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=template_case_{case.title}.json'}
+
+
+
+
+
+@tools_blueprint.route("/importer_view", methods=['GET'])
+@login_required
+@editor_required
+def importer_view():
+    """Importer view"""
+    return render_template("tools/importer.html")
+
+
+@tools_blueprint.route("/importer", methods=['POST'])
+@login_required
+@editor_required
+def importer():
+    """Import case and task"""
+    if len(request.files) > 0:
+        message = ToolsModel.read_json_file(request.files, current_user)
+        if message:
+            message["toast_class"] = "danger-subtle"
+            return message, 400
+
+        return {"message": "All created", "toast_class": "success-subtle"}, 200
