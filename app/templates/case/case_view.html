@@ -5,38 +5,45 @@
 {% extends 'base.html' %}
 
 {% block content %}
+    <div id="top"></div>
+    <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/case"><i class="fa-solid fa-arrow-left"></i></a></h1>
+
     <h1 style="display: inline-block; font-size: xxx-large;">{{case.id}} - {{case.title}}</h1>
     <span><i style="font-size: 12px;">{{case.uuid}}</i></span>
     <small v-if="status_info" style="margin-left: 10px;">
         <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style">[[ status_info.status[ {{case.status_id}} -1].name ]]</span>
     </small>
 
+    <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right; display: grid;">
+        <a class="btn btn-primary btn-sm"  :href="`/case/${cases_info.case.id}/download`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
+        <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
+    </div>
     <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right">
         <button v-if="cases_info.case.completed" class="btn btn-secondary btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-backward"></i></button>
         <button v-else class="btn btn-success btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
         <a class="btn btn-primary btn-sm" :href="`/case/edit/${cases_info.case.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
-        <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
-        <a class="btn btn-primary btn-sm"  :href="`/case/${cases_info.case.id}/download`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
-        <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseFork" role="button" aria-expanded="false" aria-controls="collapseExample" title="Fork the case">
+        <a class="btn btn-secondary btn-sm"  :href="`/case/${cases_info.case.id}/recurring`" type="button" title="Recurring Case"><i class="fa-solid fa-clock"></i></a>
+
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Fork the case">
             <i class="fa-solid fa-code-fork"></i>
-        </a>
-        <div class="collapse" id="collapseFork">
-            <div class="card card-body" id="collapseForkBody" style="display: block;">
+        </button>
+        <ul class="dropdown-menu">
+            <li>
                 <input id="case_title_fork" placeholder="Case title"/>
                 <button class="btn btn-primary btn-sm" @click="fork_case(cases_info.case.id)">Fork</button>
-            </div>
-        </div>
-        <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseTemplate" role="button" aria-expanded="false" aria-controls="collapseExample" title="Create a template">
+            </li>
+        </ul>
+
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Create a template from the case">
             <i class="fa-solid fa-bookmark"></i>
-        </a>
-        <div class="collapse" id="collapseTemplate">
-            <div class="card card-body" id="collapseTemplateBody" style="display: block;">
+        </button>
+        <ul class="dropdown-menu">
+            <li>
                 <input id="case_title_template" placeholder="Case title"/>
                 <button class="btn btn-primary btn-sm" @click="create_template(cases_info.case)">Template</button>
-            </div>
-        </div>
-        <a class="btn btn-secondary btn-sm"  :href="`/case/${cases_info.case.id}/recurring`" type="button" title="Recurring Case"><i class="fa-solid fa-clock"></i></a>
-    </div>    
+            </li>
+        </ul>
+    </div>
 
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
         <i :title="cases_info.case.creation_date">Created: [[ moment.utc( cases_info.case.creation_date ).from(moment.utc()) ]]</i>
@@ -85,8 +92,6 @@
     {%endif%}
     
     <hr style="margin-bottom: 40px;">
-    <div id="top"></div>
-
 
     <ul class="nav nav-tabs">
         <li class="nav-item">

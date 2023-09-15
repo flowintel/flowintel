@@ -4,76 +4,80 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    
-    <div id="container">
-        <h1 style="font-size: xxx-large;">Template</h1>
-        <h2 style="display: inline-block;">{{case.id}} - {{case.title}}</h2>
+    <div>
+    <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/tools/template/cases"><i class="fa-solid fa-arrow-left"></i></a></h1>
+    <h1 style="display: inline-block; font-size: xxx-large;">Template</h1>
+    </div>
+    <h2 style="display: inline-block;">{{case.id}} - {{case.title}}</h2>
 
-        <div style="float:right">
-            <a class="btn btn-primary btn-sm" href="/tools/template/edit_case/{{case.id}}" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
-            <button class="btn btn-danger btn-sm"  @click="delete_case({{case}})" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
-            <a class="btn btn-primary btn-sm"  href="/tools/template/case/{{case.id}}/download" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
-            <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseFork" title="Create a Case from template" role="button" aria-expanded="false" aria-controls="collapseExample">
-                <i class="fa-solid fa-code-fork"></i>
-            </a>
-            <div class="collapse" id="collapseFork">
-                <div class="card card-body" id="collapseForkBody" style="display: block;">
-                    <input id="case_title_fork" placeholder="Case title"/>
-                    <button class="btn btn-primary btn-sm" @click="fork_case({{case.id}})">Create</button>
-                </div>
-            </div>
-        </div>
+    <div style="float:right; display: grid;">
+        <a class="btn btn-primary btn-sm"  href="/tools/template/case/{{case.id}}/download" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
+        <button class="btn btn-danger btn-sm"  @click="delete_case({{case}})" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
+    </div>
 
+    <div style="float:right">
+        <a class="btn btn-primary btn-sm" href="/tools/template/edit_case/{{case.id}}" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
+        
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Create a Case from template">
+            <i class="fa-solid fa-file"></i>
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <input id="case_title_fork" placeholder="Case title"/>
+                <button class="btn btn-primary btn-sm" @click="fork_case({{case.id}})">Create</button>
+            </li>
+        </ul>
+    </div>
+
+    <hr>
+
+    {% if case.description %}
+    <div>
+        <p>{{case.description}}</p>
         <hr>
+    </div>
+    {%endif%}
 
-        {% if case.description %}
-        <div>
-            <p>{{case.description}}</p>
-            <hr>
-        </div>
-        {%endif%}
+    <div id="top"></div>
+    <div style="display: flex;">
+        <h3>Tasks</h3>
+        <span style="padding-left: 10px;">
+            <a href="/tools/template/case/{{case.id}}/add_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
+        </span>
+    </div>
 
-        <div id="top"></div>
-        <div style="display: flex;">
-            <h3>Tasks</h3>
-            <span style="padding-left: 10px;">
-                <a href="/tools/template/case/{{case.id}}/add_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        </div>
-
-        <template v-if="tasks_list">
-            <div v-for="task,key in tasks_list" class="list-group" style="margin-bottom: 20px;">
-                <div style="display:flex">
-                    <a class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">[[key+1]]-[[ task.title ]]</h4>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p v-if="task.description" class="card-text">[[ task.description ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p v-if="task.url" class="card-text">[[ task.url ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No url</i></p>
-                        </div>
-                    </a>
-                    <div v-if="!task.current_user_permission.read_only" style="display: grid;">
-                        <div style="display: grid;">
-                            <a class="btn btn-primary btn-sm" :href="`/tools/template/edit_task/${task.id}`" type="button" title="Edit the template"><i class="fa-solid fa-pen-to-square"></i></a>
-                            <button class="btn btn-danger btn-sm" @click="remove_task({{case.id}}, task)" title="Remove the task"><i class="fa-solid fa-trash"></i></button>
-                        </div>
+    <template v-if="tasks_list">
+        <div v-for="task,key in tasks_list" class="list-group" style="margin-bottom: 20px;">
+            <div style="display:flex">
+                <a class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h4 class="mb-1">[[key+1]]-[[ task.title ]]</h4>
+                    </div>
+                    <div class="d-flex w-100 justify-content-between">
+                        <p v-if="task.description" class="card-text">[[ task.description ]]</p>
+                        <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                    </div>
+                    <div class="d-flex w-100 justify-content-between">
+                        <p v-if="task.url" class="card-text">[[ task.url ]]</p>
+                        <p v-else class="card-text"><i style="font-size: 12px;">No url</i></p>
+                    </div>
+                </a>
+                <div v-if="!task.current_user_permission.read_only" style="display: grid;">
+                    <div style="display: grid;">
+                        <a class="btn btn-primary btn-sm" :href="`/tools/template/edit_task/${task.id}`" type="button" title="Edit the template"><i class="fa-solid fa-pen-to-square"></i></a>
+                        <button class="btn btn-danger btn-sm" @click="remove_task({{case.id}}, task)" title="Remove the task"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
             </div>
-        </template>
-        <template v-else>
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </template>
+        </div>
+    </template>
+    <template v-else>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </template>
 
-        <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
-    </div>
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
         
 {% endblock %}
 
