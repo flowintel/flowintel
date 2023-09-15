@@ -9,7 +9,7 @@ body {
   }
 }
 
-span#goTop{
+span#goTop, span#project-version{
   position: fixed;
   right: 1em;
   bottom: 1em;
