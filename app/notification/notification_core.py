@@ -2,7 +2,6 @@ from .. import db
 from ..db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_User
 from sqlalchemy import desc
 import datetime
-import bleach
 
 
 def get_notif(nid):
@@ -40,10 +39,10 @@ def create_notification_org(message, case_id, org_id, html_icon, current_user):
     for user in org.users:
         if not user == current_user:
             notif = Notification(
-                message=bleach.clean(message),
+                message=message,
                 is_read=False,
                 user_id=user.id,
-                case_id=bleach.clean(str(case_id)),
+                case_id=str(case_id),
                 creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
                 html_icon=html_icon
             )
@@ -59,10 +58,10 @@ def create_notification_all_orgs(message, case_id, html_icon, current_user):
         for user in org.users:
             if not user == current_user:
                 notif = Notification(
-                    message=bleach.clean(message),
+                    message=message,
                     is_read=False,
                     user_id=user.id,
-                    case_id=bleach.clean(str(case_id)),
+                    case_id=str(case_id),
                     creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
                     html_icon=html_icon
                 )
@@ -73,10 +72,10 @@ def create_notification_all_orgs(message, case_id, html_icon, current_user):
 
 def create_notification_user(message, case_id, user_id, html_icon):
     notif = Notification(
-        message=bleach.clean(message),
+        message=message,
         is_read=False,
-        user_id=bleach.clean(str(user_id)),
-        case_id=bleach.clean(str(case_id)),
+        user_id=str(user_id),
+        case_id=str(case_id),
         creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
         html_icon=html_icon
     )

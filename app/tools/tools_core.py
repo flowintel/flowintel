@@ -1,5 +1,4 @@
 from ..db_class.db import Case_Template, Task_Template, Case_Task_Template, Role, Case, Task, Case_Org
-import bleach
 import uuid
 from .. import db
 import datetime
@@ -41,8 +40,8 @@ def get_task_by_case(cid):
 
 def create_case_template(form_dict):
     case_template = Case_Template(
-        title=bleach.clean(form_dict["title"]),
-        description=bleach.clean(form_dict["description"]),
+        title=form_dict["title"],
+        description=form_dict["description"],
         uuid=str(uuid.uuid4())
     )
     db.session.add(case_template)
@@ -59,9 +58,9 @@ def create_case_template(form_dict):
 
 def add_task_template_core(form_dict):
     template = Task_Template(
-        title=bleach.clean(form_dict["title"]),
-        description=bleach.clean(form_dict["body"]),
-        url=bleach.clean(form_dict["url"]),
+        title=form_dict["title"],
+        description=form_dict["body"],
+        url=form_dict["url"],
         uuid=str(uuid.uuid4())
     )
     
@@ -97,16 +96,16 @@ def add_task_case_template(form_dict, cid):
 def edit_case_template(form_dict, cid):
     template = get_case_template(cid)
 
-    template.title=bleach.clean(form_dict["title"])
-    template.description=bleach.clean(form_dict["description"])
+    template.title=form_dict["title"]
+    template.description=form_dict["description"]
     db.session.commit()
 
 def edit_task_template(form_dict, tid):
     template = get_task_template(tid)
 
-    template.title=bleach.clean(form_dict["title"])
-    template.description=bleach.clean(form_dict["body"])
-    template.url=bleach.clean(form_dict["url"])
+    template.title=form_dict["title"]
+    template.description=form_dict["body"]
+    template.url=form_dict["url"]
     db.session.commit()
 
 def delete_case_template(cid):
@@ -144,7 +143,7 @@ def create_case_from_template(cid, case_title_fork, user):
     case_template = get_case_template(cid)
 
     case = Case(
-        title=bleach.clean(case_title_fork),
+        title=case_title_fork,
         description=case_template.description,
         uuid=str(uuid.uuid4()),
         creation_date=datetime.datetime.now(tz=datetime.timezone.utc),

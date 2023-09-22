@@ -1,6 +1,5 @@
 from .. import db
-from ..db_class.db import User, Role, Org, Case_Org, Task_User
-import bleach
+from ..db_class.db import User, Role, Org
 
 def get_all_roles():
     """Return all roles"""
@@ -24,8 +23,8 @@ def edit_user_core(form_dict, id):
     """Edit the user to the DB"""
     user = get_user(id)
 
-    user.first_name=bleach.clean(form_dict["first_name"])
-    user.last_name=bleach.clean(form_dict["last_name"])
-    user.email=bleach.clean(form_dict["email"])
+    user.first_name=form_dict["first_name"]
+    user.last_name=form_dict["last_name"]
+    user.email=form_dict["email"]
 
     db.session.commit()

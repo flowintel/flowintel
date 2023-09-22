@@ -8,7 +8,7 @@
     <div id="top"></div>
     <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/case"><i class="fa-solid fa-arrow-left"></i></a></h1>
 
-    <h1 style="display: inline-block; font-size: xxx-large;">{{case.id}} - {{case.title}}</h1>
+    <h1 style="display: inline-block; font-size: xx-large;">{{case.id}}- {{case.title}}</h1>
     <span><i style="font-size: 12px;">{{case.uuid}}</i></span>
     <small v-if="status_info" style="margin-left: 10px;">
         <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style">[[ status_info.status[ {{case.status_id}} -1].name ]]</span>

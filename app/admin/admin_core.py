@@ -1,6 +1,5 @@
 from .. import db
 from ..db_class.db import User, Role, Org, Case_Org, Task_User
-import bleach
 from ..utils.utils import generate_api_key
 import uuid
 
@@ -46,8 +45,8 @@ def create_default_org(user):
     o_d = Org.query.filter_by(name=f"{user.first_name} {user.last_name}").first()
     if not o_d:
         org = Org(
-            name = bleach.clean(f"{user.first_name} {user.last_name}"),
-            description = bleach.clean(f"Org for user: {user.id}-{user.first_name} {user.last_name}"),
+            name = f"{user.first_name} {user.last_name}",
+            description = f"Org for user: {user.id}-{user.first_name} {user.last_name}",
             uuid = str(uuid.uuid4()),
             default_org = True
         )
@@ -74,12 +73,12 @@ def delete_default_org(user_org_id):
 def add_user_core(form_dict):
     """Add a user to the DB"""
     user = User(
-        first_name=bleach.clean(form_dict["first_name"]),
-        last_name=bleach.clean(form_dict["last_name"]),
-        email=bleach.clean(form_dict["email"]),
-        password=bleach.clean(form_dict["password"]),
-        role_id = bleach.clean(form_dict["role"]),
-        org_id = bleach.clean(form_dict["org"]),
+        first_name=form_dict["first_name"],
+        last_name=form_dict["last_name"],
+        email=form_dict["email"],
+        password=form_dict["password"],
+        role_id = form_dict["role"],
+        org_id = form_dict["org"],
         api_key = generate_api_key()
     )
     db.session.add(user)
@@ -110,11 +109,11 @@ def admin_edit_user_core(form_dict, id):
         if not get_org(form_dict["org"]).id == prev_user_org_id:
             flag = True
 
-    user.first_name=bleach.clean(form_dict["first_name"])
-    user.last_name=bleach.clean(form_dict["last_name"])
-    user.email=bleach.clean(form_dict["email"])
+    user.first_name=form_dict["first_name"]
+    user.last_name=form_dict["last_name"]
+    user.email=form_dict["email"]
     if "password" in form_dict:
-        user.password=bleach.clean(form_dict["password"])
+        user.password=form_dict["password"]
     user.role_id = form_dict["role"]
     user.org_id = org_change
 
@@ -143,8 +142,8 @@ def add_org_core(form_dict):
     else:
         uuid_field = str(uuid.uuid4())
     org = Org(
-        name = bleach.clean(form_dict["name"]),
-        description = bleach.clean(form_dict["description"]),
+        name = form_dict["name"],
+        description = form_dict["description"],
         uuid = uuid_field,
         default_org = False
     )
@@ -161,8 +160,8 @@ def edit_org_core(form_dict, id):
     else:
         org.uuid = str(uuid.uuid4())
 
-    org.name = bleach.clean(form_dict["name"])
-    org.description = bleach.clean(form_dict["description"])
+    org.name = form_dict["name"]
+    org.description = form_dict["description"]
     
     db.session.commit()
 

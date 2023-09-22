@@ -3,7 +3,6 @@ from .. import db
 from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status, Task_Template, Case_Task_Template, Case_Template, Recurring_Notification
 from ..utils.utils import isUUID, create_specific_dir
 import uuid
-import bleach
 import markdown
 import datetime
 from sqlalchemy import desc
@@ -222,8 +221,8 @@ def create_case(form_dict, user):
     else:
         deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
         case = Case(
-            title=bleach.clean(form_dict["title"]),
-            description=bleach.clean(form_dict["description"]),
+            title=form_dict["title"],
+            description=form_dict["description"],
             uuid=str(uuid.uuid4()),
             creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
@@ -271,8 +270,8 @@ def edit_case(form_dict, cid, current_user):
 
     deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
-    case.title = bleach.clean(form_dict["title"])
-    case.description=bleach.clean(form_dict["description"])
+    case.title = form_dict["title"]
+    case.description=form_dict["description"]
     case.deadline=deadline
 
     update_last_modif(cid)
@@ -300,9 +299,9 @@ def create_task(form_dict, cid, current_user):
 
         task = Task(
             uuid=str(uuid.uuid4()),
-            title=bleach.clean(form_dict["title"]),
-            description=bleach.clean(form_dict["description"]),
-            url=bleach.clean(form_dict["url"]),
+            title=form_dict["title"],
+            description=form_dict["description"],
+            url=form_dict["url"],
             creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             deadline=deadline,
@@ -352,9 +351,9 @@ def edit_task_core(form_dict, tid, current_user):
     task = get_task(tid)
     deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
-    task.title = bleach.clean(form_dict["title"])
-    task.description=bleach.clean(form_dict["description"])
-    task.url=bleach.clean(form_dict["url"])
+    task.title = form_dict["title"]
+    task.description=form_dict["description"]
+    task.url=form_dict["url"]
     task.deadline=deadline
 
     update_last_modif(task.case_id)
@@ -380,7 +379,7 @@ def modif_note_core(tid, current_user, notes):
     """Modify a noe of a task to the DB"""
     task = get_task(tid)
     if task:
-        task.notes = bleach.clean(notes)
+        task.notes = notes
         update_last_modif(task.case_id)
         update_last_modif_task(task.id)
         db.session.commit()
