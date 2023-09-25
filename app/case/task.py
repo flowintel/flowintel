@@ -263,9 +263,7 @@ def get_files(cid, tid):
     if CaseModel.get_case(cid):
         task = CaseModel.get_task(tid)
         if task:
-            file_list = list()
-            for file in task.files:
-                file_list.append(file.to_json())
+            file_list = [file.to_json() for file in task.files]
             return {"files": file_list}, 200
         return {"message":"Task not found", "toast_class": "danger-subtle"}, 404
     return {"message":"Case not found", "toast_class": "danger-subtle"}, 404

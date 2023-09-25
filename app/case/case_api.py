@@ -510,3 +510,76 @@ class ChangeStatus(Resource):
                 return {"history": history}
             return {"history": None}
         return {"message": "Case Not found"}, 404
+
+ 
+@api.route('/<cid>/task/<tid>/files')
+@api.doc(description='Get list of files', params={"cid": "id of a case", "tid": "id of a task"})
+class DownloadFile(Resource):
+    method_decorators = [api_required]
+    def get(self, cid, tid):
+        case = CaseModel.get_case(cid)
+        if case:
+            task = CaseModel.get_task(tid)
+            if task:
+                file_list = [file.to_json() for file in task.files]
+                return {"files": file_list}, 200
+            return {"message": "Task Not found"}, 404
+        return {"message": "Case Not found"}, 404
+
+@api.route('/<cid>/task/<tid>/upload_file')
+@api.doc(description='Upload a file')
+class UploadFile(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={})
+    def post(self, cid, tid):
+        case = CaseModel.get_case(cid)
+        if case:
+            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                task = CaseModel.get_task(tid)
+                if task:
+                    if CaseModel.add_file_core(task, request.files, current_user):
+                        return {"message": "File added"}, 200
+                return {"message": "Task Not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case Not found"}, 404
+    
+
+@api.route('/<cid>/task/<tid>/download_file/<fid>')
+@api.doc(description='Download a file', params={"cid": "id of a case", "tid": "id of a task", "fid": "id of a file"})
+class DownloadFile(Resource):
+    method_decorators = [api_required]
+    def get(self, cid, tid, fid):
+        case = CaseModel.get_case(cid)
+        if case:
+            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                task = CaseModel.get_task(tid)
+                if task:
+                    file = CaseModel.get_file(fid)
+                    if file and file in task.files:
+                        return CaseModel.download_file(file)
+                return {"message": "Task Not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case Not found"}, 404
+    
+@api.route('/<cid>/task/<tid>/delete_file/<fid>')
+@api.doc(description='Delete a file', params={"cid": "id of a case", "tid": "id of a task", "fid": "id of a file"})
+class DeleteFile(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        })
+    def get(self, cid, tid, fid):
+        case = CaseModel.get_case(cid)
+        if case:
+            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                task = CaseModel.get_task(tid)
+                if task:
+                    file = CaseModel.get_file(fid)
+                    if file and file in task.files:
+                        if CaseModel.delete_file(file, task, current_user):
+                            return {"message": "File Deleted"}, 200
+                return {"message": "Task Not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case Not found"}, 404
