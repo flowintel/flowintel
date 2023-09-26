@@ -89,10 +89,14 @@ export default {
 						props.task.is_current_user_assigned = true
 					}
 					const res = await fetch('/case/' + props.task.case_id + '/get_assigned_users/' +props.task.id)
-					let loc = await res.json()
-					props.task.users = loc
-					props.task.last_modif = Date.now()
-					emit('task', props.task)
+					if(await res.status == 404){
+						display_toast(res)
+					}else{
+						let loc = await res.json()
+						props.task.users = loc
+						props.task.last_modif = Date.now()
+						emit('task', props.task)
+					}
 				}
 				await display_toast(res_msg)
 			}

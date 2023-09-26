@@ -18,8 +18,7 @@ task_blueprint = Blueprint(
 @login_required
 def create_task(cid):
     """View of a case"""
-    case = CaseModel.get_case(cid)
-    if case:
+    if CaseModel.get_case(cid):
         present_in_case = CaseModel.get_present_in_case(cid, current_user)
         if present_in_case or current_user.is_admin():
             form = TaskForm()
@@ -42,27 +41,28 @@ def create_task(cid):
 @editor_required
 def edit_task(cid, tid):
     """Edit the task"""
-    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-        form = TaskEditForm()
+    if CaseModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            form = TaskEditForm()
 
-        if form.validate_on_submit():
-            form_dict = form_to_dict(form)
-            CaseModel.edit_task_core(form_dict, tid, current_user)
-            flash("Task edited", "success")
-            return redirect(f"/case/{cid}")
+            if form.validate_on_submit():
+                form_dict = form_to_dict(form)
+                CaseModel.edit_task_core(form_dict, tid, current_user)
+                flash("Task edited", "success")
+                return redirect(f"/case/{cid}")
+            else:
+                task_modif = CaseModel.get_task(tid)
+                form.description.data = task_modif.description
+                form.title.data = task_modif.title
+                form.url.data = task_modif.url
+                form.deadline_date.data = task_modif.deadline
+                form.deadline_time.data = task_modif.deadline
+            
+            return render_template("case/edit_task.html", form=form)
         else:
-            task_modif = CaseModel.get_task(tid)
-            form.description.data = task_modif.description
-            form.title.data = task_modif.title
-            form.url.data = task_modif.url
-            form.deadline_date.data = task_modif.deadline
-            form.deadline_time.data = task_modif.deadline
-        
-        return render_template("case/edit_task.html", form=form)
-    else:
-        flash("Access denied", "error")
-    
-    return redirect(f"/case/{cid}")
+            flash("Access denied", "error")
+        return redirect(f"/case/{cid}")
+    return render_template("404.html")
 
 
 @task_blueprint.route("/complete_task/<tid>", methods=['GET'])
@@ -78,7 +78,7 @@ def complete_task(tid):
                 return {"message": "Task completed", "toast_class": "success-subtle"}, 200
             return {"message": "Error task completed", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Task not found", "toast_class": "danger-subtle"}, 400
+    return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     
 
 
@@ -87,13 +87,15 @@ def complete_task(tid):
 @editor_required
 def delete_task(cid, tid):
     """Delete the task"""
-    if CaseModel.get_task(tid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.delete_task(tid, current_user):
-                return {"message": "Task deleted", "toast_class": "success-subtle"}, 200
-            return {"message": "Error task deleted", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Task not found", "toast_class": "danger-subtle"}, 400
+    if CaseModel.get_case(cid):
+        if CaseModel.get_task(tid):
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if CaseModel.delete_task(tid, current_user):
+                    return {"message": "Task deleted", "toast_class": "success-subtle"}, 200
+                return {"message": "Error task deleted", "toast_class": "danger-subtle"}, 400
+            return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @task_blueprint.route("/<cid>/modif_note/<tid>", methods=['POST'])
@@ -101,30 +103,33 @@ def delete_task(cid, tid):
 @editor_required
 def modif_note(cid, tid):
     """Modify note of the task"""
-
-    if CaseModel.get_task(tid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            notes = request.json["notes"]
-            if CaseModel.modif_note_core(tid, current_user, notes):
-                return {"message": "Note added", "toast_class": "success-subtle"}, 200
-            return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Task not found", "toast_class": "danger-subtle"}, 400
+    if CaseModel.get_case(cid):
+        if CaseModel.get_task(tid):
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                notes = request.json["notes"]
+                if CaseModel.modif_note_core(tid, current_user, notes):
+                    return {"message": "Note added", "toast_class": "success-subtle"}, 200
+                return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+            return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @task_blueprint.route("/<cid>/get_note_text/<tid>", methods=['GET'])
 @editor_required
 def get_note_text(cid, tid):
     """Get not of a task in text format"""
-
-    return {"note": CaseModel.get_note_text(tid)}, 201
+    if CaseModel.get_case(cid):
+        return {"note": CaseModel.get_note_text(tid)}, 201
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @task_blueprint.route("/<cid>/get_note_markdown/<tid>", methods=['GET'])
 def get_note_markdown(cid, tid):
     """Get not of a task in markdown format"""
-
-    return {"note": CaseModel.get_note_markdown(tid)}, 201
+    if CaseModel.get_case(cid):
+        return {"note": CaseModel.get_note_markdown(tid)}, 201
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @task_blueprint.route("/<cid>/take_task/<tid>", methods=['GET'])
@@ -132,14 +137,15 @@ def get_note_markdown(cid, tid):
 @editor_required
 def take_task(cid, tid):
     """Assign current user to the task"""
-
-    if CaseModel.get_task(tid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
-                return {"message": "User Assigned", "toast_class": "success-subtle"}, 200
-            return {"message": "Error assignment", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Task not found", "toast_class": "danger-subtle"}, 400
+    if CaseModel.get_case(cid):
+        if CaseModel.get_task(tid):
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if CaseModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
+                    return {"message": "User Assigned", "toast_class": "success-subtle"}, 200
+                return {"message": "Error assignment", "toast_class": "danger-subtle"}, 400
+            return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
     
 
 @task_blueprint.route("/<cid>/assign_users/<tid>", methods=['POST'])
@@ -147,16 +153,19 @@ def take_task(cid, tid):
 @editor_required
 def assign_user(cid, tid):
     """Assign a list of users to the task"""
+    if CaseModel.get_case(cid):
+        if "users_id" in request.json:
+            users_list = request.json["users_id"]
 
-    users_list = request.json["users_id"]
-
-    if CaseModel.get_task(tid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            for user in users_list:
-                CaseModel.assign_task(tid, user=user, current_user=current_user, flag_current_user=False)
-            return {"message": "Users Assigned", "toast_class": "success-subtle"}, 200
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Task not found", "toast_class": "danger-subtle"}, 400
+            if CaseModel.get_task(tid):
+                if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    for user in users_list:
+                        CaseModel.assign_task(tid, user=user, current_user=current_user, flag_current_user=False)
+                    return {"message": "Users Assigned", "toast_class": "success-subtle"}, 200
+                return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+            return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+        return {"message": "'users_id' is missing", "toast_class": "danger-subtle"}, 400
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @task_blueprint.route("/<cid>/remove_assignment/<tid>", methods=['GET'])
@@ -164,14 +173,15 @@ def assign_user(cid, tid):
 @editor_required
 def remove_assign_task(cid, tid):
     """Remove current user assignment to the task"""
-    
-    if CaseModel.get_task(tid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
-                return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
-            return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Task not found", "toast_class": "danger-subtle"}, 400
+    if CaseModel.get_case(cid):
+        if CaseModel.get_task(tid):
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if CaseModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
+                    return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
+                return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
+            return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @task_blueprint.route("/<cid>/remove_assigned_user/<tid>", methods=['POST'])
@@ -179,15 +189,18 @@ def remove_assign_task(cid, tid):
 @editor_required
 def remove_assigned_user(cid, tid):
     """Assign current user to the task"""
-
-    user_id = request.json["user_id"]
-    if CaseModel.get_task(tid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
-                return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
-            return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Task not found", "toast_class": "danger-subtle"}, 400
+    if CaseModel.get_case(cid):
+        if "user_id" in request.json:
+            user_id = request.json["user_id"]
+            if CaseModel.get_task(tid):
+                if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    if CaseModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
+                        return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
+                    return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
+                return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+            return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+        return {"message": "'user_id' is missing", "toast_class": "danger-subtle"}, 400
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @task_blueprint.route("/<cid>/change_task_status/<tid>", methods=['POST'])
@@ -195,16 +208,19 @@ def remove_assigned_user(cid, tid):
 @editor_required
 def change_task_status(cid, tid):
     """Change the status of the task"""
-    
-    status = request.json["status"]
-    task = CaseModel.get_task(tid)
-    if task:
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.change_task_status(status, task, current_user):
-                return {"message": "Status changed", "toast_class": "success-subtle"}, 200
-            return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+    if CaseModel.get_case(cid):
+        if "status" not in request.json:
+            status = request.json["status"]
+            task = CaseModel.get_task(tid)
+            if task:
+                if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    if CaseModel.change_task_status(status, task, current_user):
+                        return {"message": "Status changed", "toast_class": "success-subtle"}, 200
+                    return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
+                return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+            return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+        return {"message": "'status' is missing", "toast_class": "danger-subtle"}, 400
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @task_blueprint.route("/task/<tid>/download_file/<fid>", methods=['GET'])
@@ -313,12 +329,16 @@ def finished_tasks_sort_by_filter(cid):
 @editor_required
 def notify_user(cid, tid):
     """Notify a user about a task"""
-    user = request.json["user_id"]
-    task = CaseModel.get_task(tid)
-    if task:
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.notify_user(task, user):
-                return {"message":"User notified", "toast_class": "success-subtle"}, 200
-            return {"message":"Something goes wrong", "toast_class": "danger-subtle"}, 400
-        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 400
-    return {"message":"No Task given", "toast_class": "warning-subtle"}, 400
+    if CaseModel.get_case(cid):
+        if "user_id" in request.json:
+            user = request.json["user_id"]
+            task = CaseModel.get_task(tid)
+            if task:
+                if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    if CaseModel.notify_user(task, user):
+                        return {"message":"User notified", "toast_class": "success-subtle"}, 200
+                    return {"message":"Something goes wrong", "toast_class": "danger-subtle"}, 400
+                return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 400
+            return {"message":"Task not found", "toast_class": "danger-subtle"}, 404
+        return {"message": "'user_id' is missing", "toast_class": "danger-subtle"}, 404
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404

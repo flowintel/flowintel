@@ -61,22 +61,27 @@ def view(cid):
 @editor_required
 def edit_case(cid):
     """Edit the case"""
-    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-        form = CaseEditForm()
+    if CaseModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            form = CaseEditForm()
 
-        if form.validate_on_submit():
-            form_dict = form_to_dict(form)
-            CaseModel.edit_case(form_dict, cid, current_user)
-            flash("Case edited", "success")
-            return redirect(f"/case/{cid}")
+            if form.validate_on_submit():
+                form_dict = form_to_dict(form)
+                CaseModel.edit_case(form_dict, cid, current_user)
+                flash("Case edited", "success")
+                return redirect(f"/case/{cid}")
+            else:
+                case_modif = CaseModel.get_case(cid)
+                form.description.data = case_modif.description
+                form.title.data = case_modif.title
+                form.deadline_date.data = case_modif.deadline
+                form.deadline_time.data = case_modif.deadline
+
+            return render_template("case/edit_case.html", form=form)
         else:
-            case_modif = CaseModel.get_case(cid)
-            form.description.data = case_modif.description
-            form.title.data = case_modif.title
-            form.deadline_date.data = case_modif.deadline
-            form.deadline_time.data = case_modif.deadline
-
-        return render_template("case/edit_case.html", form=form)
+            flash("Access denied", "error")
+    else:
+        return render_template("404.html")
     return redirect(f"/case/{id}")
 
 
@@ -86,35 +91,38 @@ def edit_case(cid):
 def add_orgs(cid):
     """Add orgs to the case"""
 
-    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-        form = AddOrgsCase()
-        case_org = Case_Org.query.filter_by(case_id=cid).all()
+    if CaseModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            form = AddOrgsCase()
+            case_org = Case_Org.query.filter_by(case_id=cid).all()
 
-        org_list = list()
+            org_list = list()
 
-        for org in Org.query.order_by('name'):
-            if case_org:
-                flag = False
-                for c_o in case_org:
-                    if c_o.org_id == org.id:
-                        flag = True
-                if not flag:
+            for org in Org.query.order_by('name'):
+                if case_org:
+                    flag = False
+                    for c_o in case_org:
+                        if c_o.org_id == org.id:
+                            flag = True
+                    if not flag:
+                        org_list.append((org.id, f"{org.name}"))
+                else:
                     org_list.append((org.id, f"{org.name}"))
-            else:
-                org_list.append((org.id, f"{org.name}"))
 
-        form.org_id.choices = org_list
-        form.case_id.data = cid
+            form.org_id.choices = org_list
+            form.case_id.data = cid
 
-        if form.validate_on_submit():
-            form_dict = form_to_dict(form)
-            CaseModel.add_orgs_case(form_dict, cid, current_user)
-            flash("Orgs added", "success")
-            return redirect(f"/case/{cid}")
+            if form.validate_on_submit():
+                form_dict = form_to_dict(form)
+                CaseModel.add_orgs_case(form_dict, cid, current_user)
+                flash("Orgs added", "success")
+                return redirect(f"/case/{cid}")
 
-        return render_template("case/add_orgs.html", form=form)
+            return render_template("case/add_orgs.html", form=form)
+        else:
+            flash("Access denied", "error")
     else:
-        flash("Access denied", "error")
+        return render_template("404.html")
     return redirect(f"/case/{cid}")
 
 
@@ -124,8 +132,7 @@ def add_orgs(cid):
 def recurring(cid):
     """Recurring form"""
 
-    case = CaseModel.get_case(cid)
-    if case:
+    if CaseModel.get_case(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             form = RecurringForm()
             form.case_id.data = cid
@@ -158,11 +165,11 @@ def recurring(cid):
                 form_dict = form_to_dict(form)
                 if not CaseModel.change_recurring(form_dict, cid, current_user):
                     flash("Recurring empty", "error")
-                    return redirect(f"/case/{case.id}/recurring")
+                    return redirect(f"/case/{cid}/recurring")
                 if not form_dict["remove"]:
                     CaseModel.notify_user_recurring(request.form.to_dict(), cid, orgs_in_case)
                 flash("Recurring set", "success")
-                return redirect(f"/case/{case.id}")
+                return redirect(f"/case/{cid}")
             
             return render_template("case/case_recurring.html", form=form, orgs=orgs_to_return)
         
@@ -210,15 +217,16 @@ def delete(cid):
 def get_case_info(cid):
     """Return all info of the case"""
     case = CaseModel.get_case(cid)
-    
-    tasks = CaseModel.sort_by_ongoing_task_core(case, current_user)
+    if case:    
+        tasks = CaseModel.sort_by_ongoing_task_core(case, current_user)
 
-    o_in_c = CaseModel.get_orgs_in_case(case.id)
-    orgs_in_case = [o_c.to_json() for o_c in o_in_c]
-    permission = CaseModel.get_role(current_user).to_json()
-    present_in_case = CaseModel.get_present_in_case(cid, current_user)
+        o_in_c = CaseModel.get_orgs_in_case(case.id)
+        orgs_in_case = [o_c.to_json() for o_c in o_in_c]
+        permission = CaseModel.get_role(current_user).to_json()
+        present_in_case = CaseModel.get_present_in_case(cid, current_user)
 
-    return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 201
+        return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 200
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/<cid>/complete_case", methods=['GET'])
@@ -238,7 +246,7 @@ def complete_case(cid):
                     return {"message": "Error case revived", 'toast_class': "danger-subtle"}, 400
                 return {"message": "Error case completed", 'toast_class': "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Case no found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/<cid>/remove_org/<oid>", methods=['GET'])
@@ -333,14 +341,17 @@ def finished_sort_by_filter():
 @login_required
 def get_all_users(cid):
     """Get all user in case"""
-    users_list = list()
+
     case = CaseModel.get_case(cid)
-    orgs = CaseModel.get_all_users_core(case)
-    for org in orgs:
-        for user in org.users:
-            if not user == current_user:
-                users_list.append(user.to_json())
-    return {"users_list": users_list}
+    if case:
+        users_list = list()
+        orgs = CaseModel.get_all_users_core(case)
+        for org in orgs:
+            for user in org.users:
+                if not user == current_user:
+                    users_list.append(user.to_json())
+        return {"users_list": users_list}
+    return {"message": "Case not found"}, 404
 
 
 @case_blueprint.route("/<cid>/get_assigned_users/<tid>", methods=['GET'])
@@ -348,10 +359,10 @@ def get_all_users(cid):
 def get_assigned_users(cid, tid):
     """Get assigned users to the task"""
 
-    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+    if CaseModel.get_case(cid):
         users, _ = CaseModel.get_users_assign_task(tid, current_user)
         return users
-    return {"message": "Not in Case"}
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/<cid>/download", methods=['GET'])
@@ -360,12 +371,14 @@ def download_case(cid):
     """Download a case"""
 
     case = CaseModel.get_case(cid)
-    task_list = list()
-    for task in case.tasks:
-        task_list.append(task.download())
-    return_dict = case.download()
-    return_dict["tasks"] = task_list
-    return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=case_{case.title}.json'}
+    if case:
+        task_list = list()
+        for task in case.tasks:
+            task_list.append(task.download())
+        return_dict = case.download()
+        return_dict["tasks"] = task_list
+        return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=case_{case.title}.json'}
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
 
@@ -374,12 +387,16 @@ def download_case(cid):
 def fork_case(cid):
     """Assign current user to the task"""
 
-    case_title_fork = request.json["case_title_fork"]
+    if CaseModel.get_case(cid):
+        if "case_title_fork" in request.json:
+            case_title_fork = request.json["case_title_fork"]
 
-    new_case = CaseModel.fork_case_core(cid, case_title_fork, current_user)
-    if type(new_case) == dict:
-        return new_case
-    return {"new_case_id": new_case.id}, 201
+            new_case = CaseModel.fork_case_core(cid, case_title_fork, current_user)
+            if type(new_case) == dict:
+                return new_case
+            return {"new_case_id": new_case.id}, 201
+        return {"message": "'case_title_fork' is missing", 'toast_class': "danger-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/get_all_case_title", methods=['GET'])
@@ -398,12 +415,16 @@ def get_all_case_title():
 @login_required
 @editor_required
 def create_template(cid):
-    case_title_template = request.json["case_title_template"]
+    if CaseModel.get_case(cid):
+        if "case_title_template" in request.json:
+            case_title_template = request.json["case_title_template"]
 
-    new_template = CaseModel.create_template_from_case(cid, case_title_template)
-    if type(new_template) == dict:
-        return new_template
-    return {"template_id": new_template.id}, 201
+            new_template = CaseModel.create_template_from_case(cid, case_title_template)
+            if type(new_template) == dict:
+                return new_template
+            return {"template_id": new_template.id}, 201
+        return {"message": "'case_title_template' is missing", 'toast_class': "danger-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/get_all_case_template_title", methods=['GET'])
@@ -427,4 +448,4 @@ def history(cid):
         if history:
             return {"history": history}
         return {"history": None}
-    return {"message": "Case Not found"}, 404
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404

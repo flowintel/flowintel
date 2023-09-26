@@ -70,7 +70,7 @@
                         <a class="btn btn-primary" :href="`/case/${cases_info.case.id}/add_orgs`" role="button">Add Orgs</a>
                     </li>
                 </template>
-                <template v-for="org in cases_info.orgs_in_case">
+                <template v-for="org in cases_info.orgs_in_case" :key="org.id">
                     <li>
                         <div style="display: flex;">
                             <button class="dropdown-item">[[org.name]]</button>
@@ -240,8 +240,12 @@
 
                 async function fetch_history(){
                     const res = await fetch("/case/history/" + cases_info.value.case.id)
-                    let loc = await res.json()
-                    history.value = loc["history"]
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        history.value = loc["history"]
+                    }
                 }
 
                 async function filter_ongoing(ongoing){
@@ -284,7 +288,6 @@
                     }else{
                         filter_ongoing(show_ongoing)   
                     }
-                    
                 }
 
 
@@ -293,11 +296,16 @@
                     const res = await fetch(
                         window.location.pathname.split("/").slice(-1)+'/get_case_info'
                     )
-                    cases_info.value = await res.json()
-                    loc_tasks_list = cases_info.value.tasks
-                    fetch_history()
-                    await nextTick()
-                    scrollIntoSelectedElement()
+
+                    if(await res.status == 404){
+                        display_toast(res)
+                    }else{
+                        cases_info.value = await res.json()
+                        loc_tasks_list = cases_info.value.tasks
+                        fetch_history()
+                        await nextTick()
+                        scrollIntoSelectedElement()
+                    }
                 }
 
                 async function fetchStatus() {
@@ -311,7 +319,11 @@
                 async function get_all_users_case(){
                     users_in_case.value = null
                     const res = await fetch('/case/' + window.location.pathname.split("/").slice(-1) + '/get_all_users')
-                    users_in_case.value = await res.json()
+                    if(await res.status == 404){
+                        display_toast(res)
+                    }else{
+                        users_in_case.value = await res.json()
+                    }
                 }
 
 
@@ -431,9 +443,11 @@
                 function scrollIntoSelectedElement() {
                     const url = new URL(location.href)
                     const task_id = url.hash.slice(1)
-                    const taskElem = document.getElementById(`${task_id}`)
-                    if (taskElem) {
-                        taskElem.scrollIntoView({ behavior: "smooth" });
+                    if(task_id){
+                        const taskElem = document.getElementById(`${task_id}`)
+                        if (taskElem) {
+                            taskElem.scrollIntoView({ behavior: "smooth" });
+                        }
                     }
                 }
 
