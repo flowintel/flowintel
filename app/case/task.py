@@ -209,7 +209,7 @@ def remove_assigned_user(cid, tid):
 def change_task_status(cid, tid):
     """Change the status of the task"""
     if CaseModel.get_case(cid):
-        if "status" not in request.json:
+        if "status" in request.json:
             status = request.json["status"]
             task = CaseModel.get_task(tid)
             if task:
