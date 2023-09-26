@@ -34,14 +34,31 @@ A screen is created to notify recurrent case. To access it:
 screen -r fcm
 ```
 
+
+
 ## Api
+
+#### Case
 
 `/api/case/doc`
 
+##### Admin
+
 `/api/admin/doc`
 
-## License
+#### Templating
 
+`/api/template/doc`
+
+#### Importer
+
+`/api/importer/doc`
+
+
+
+
+
+## License
 
 This software is licensed under [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.html)
 
