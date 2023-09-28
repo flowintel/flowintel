@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>Flowintel-cm</title>
+        <link rel="icon" href="{{ url_for('static',filename='image/flowintel-cm.png') }}">
         <script src="{{ url_for('static',filename='js/popper.min.js') }}"></script>
         <script src="{{ url_for('static',filename='bootstrap-5.3.0/js/bootstrap.min.js') }}"></script>
         <script src="{{ url_for('static',filename='js/jquery.min.js') }}"></script>
@@ -29,7 +30,7 @@
         {% include 'sidebar.html' %}
 
         <!--Main layout-->
-        <main style="margin-top: 50px;">
+        <main style="margin-top: 65px;">
             <div class="container pt-4" style="max-width: 90%;">
                 {% include 'macros/_flashes.html' %}
 
