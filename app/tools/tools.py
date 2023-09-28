@@ -138,7 +138,7 @@ def edit_task(tid):
             form.body.data = template.description
             form.url.data = template.url
 
-        return render_template("tools/add_edit_task.html", form=form, edit_mode=True)
+        return render_template("tools/create_edit_task.html", form=form, edit_mode=True)
     return render_template("404.html")
 
 
