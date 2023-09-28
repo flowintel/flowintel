@@ -64,3 +64,19 @@
     {% endif %}
     <span id="project-version"><a href="https://github.com/flowintel/flowintel-cm"><i>version 0.5.1</i></a></span>
 {% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp} = Vue
+    import {message_list} from '../../static/js/toaster.js'
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            return {
+                message_list
+            }
+        }
+    }).mount('.container')
+
+</script>
+{% endblock %}

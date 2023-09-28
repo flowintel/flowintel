@@ -3,7 +3,7 @@ export default {
 	props: {
 		tasks_list: Object
 	},
-	emits: ['tasks_list'],
+	emits: ['tasks_list', 'current_filter'],
 	setup(props, {emit}) {
 		let show_ongoing = true
 		let current_filter = ""

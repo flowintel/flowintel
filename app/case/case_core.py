@@ -384,7 +384,7 @@ def modif_note_core(tid, current_user, notes):
         update_last_modif_task(task.id)
         db.session.commit()
         case = get_case(task.case_id)
-        save_history(case.uuid, current_user, f"Notes for '{task.title}' modify")
+        save_history(case.uuid, current_user, f"Notes for '{task.title}' modified")
         return True
     return False
 

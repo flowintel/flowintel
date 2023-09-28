@@ -105,7 +105,6 @@
                 const current_filter = ref("")
 
                 async function fetchAssignedTask(page) {
-                    console.log(current_filter.value);
                     let url
                     if(current_filter.value)
                         url = `/my_assignment/tasks/ongoing?page=${page}&filter=${current_filter.value}`

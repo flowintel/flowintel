@@ -7,7 +7,7 @@ export default {
 		users_in_case: Object,
 		edit_mode: Boolean,
 		task: Object,
-		key_loop: Object
+		key_loop: Number
 	},
 	emits: ['edit_mode', 'task'],
 	setup(props, {emit}) {
