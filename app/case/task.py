@@ -128,7 +128,9 @@ def get_note_text(cid, tid):
 def get_note_markdown(cid, tid):
     """Get not of a task in markdown format"""
     if CaseModel.get_case(cid):
-        return {"note": CaseModel.get_note_markdown(tid)}, 201
+        task = CaseModel.get_task(tid)
+        if task:
+            return {"note": task.notes}, 201
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 

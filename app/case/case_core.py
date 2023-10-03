@@ -3,7 +3,6 @@ from .. import db
 from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status, Task_Template, Case_Task_Template, Case_Template, Recurring_Notification
 from ..utils.utils import isUUID, create_specific_dir
 import uuid
-import markdown
 import datetime
 from sqlalchemy import desc
 from flask import request, send_file
@@ -396,20 +395,6 @@ def get_note_text(tid):
     else:
         return ""
 
-def get_note_markdown(tid):
-    """Return a markdown note by task's id"""
-    task = get_task(tid)
-    if task:
-        return markdown_notes(task.notes)
-    else:
-        return ""
-
-def markdown_notes(notes):
-    """Return a markdown version of a note"""
-    if notes:
-        return markdown.markdown(notes)
-    return notes
-
 
 def add_orgs_case(form_dict, cid, current_user):
     """Add orgs to case in th DB"""
@@ -565,7 +550,6 @@ def get_task_info(tasks_list, user):
     for task in tasks_list:
         case = get_case(task.case_id)
         users, is_current_user_assigned = get_users_assign_task(task.id, user)
-        task.notes = markdown_notes(task.notes)
         file_list = list()
         for file in task.files:
             file_list.append(file.to_json())

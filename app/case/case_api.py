@@ -141,7 +141,6 @@ class GetTask(Resource):
             if int(cid) == task.case_id:
                 loc = dict()
                 loc["users_assign"], loc["is_current_user_assign"] = CaseModel.get_users_assign_task(task.id, CaseModelApi.get_user_api(request.headers["X-API-KEY"]))
-                task.notes = CaseModel.markdown_notes(task.notes)
                 loc["task"] = task.to_json()
                 return loc, 200
             else:

@@ -1,4 +1,5 @@
 import {display_toast} from '../toaster.js'
+const { ref } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -17,6 +18,8 @@ export default {
 		  Vue.onUpdated(async () => {
 			select2_change(props.task.id)
 		})
+
+		const notes = ref(props.task.notes)
 
 
 		async function change_status(status, task){
@@ -154,12 +157,12 @@ export default {
 		}
 
 		async function modif_note(task){
-			let notes = this.$refs["ref_note_" + task.id].value
+			let notes_loc = this.$refs["ref_note_" + task.id].value
 			const res_msg = await fetch(
 				'/case/' + task.case_id + '/modif_note/' + task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
-					body: JSON.stringify({"task_id": task.id.toString(), "notes": notes})
+					body: JSON.stringify({"task_id": task.id.toString(), "notes": notes_loc})
 				}
 			)
 
@@ -167,7 +170,8 @@ export default {
 				task.last_modif = Date.now()
 				emit('edit_mode', false)
 	
-				task.notes = notes
+				task.notes = notes_loc
+				notes.value = notes_loc
 
 				const res = await fetch('/case/' + task.case_id + '/get_note_markdown/' + task.id)
 				let loc = await res.json()
@@ -288,7 +292,8 @@ export default {
 			$('.select2-container').css("min-width", "200px")
 		}
 
-		return {
+		return { md : window.markdownit(),
+			notes,
 			change_status,
 			take_task,
 			remove_assign_task,
@@ -464,7 +469,7 @@ export default {
 									Edit
 								</button>
 							</template> 
-							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="task.notes"></p>
+							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(notes)"></p>
 						</template>
 					</div>
 					<div v-else>
