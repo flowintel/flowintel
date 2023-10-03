@@ -25,7 +25,7 @@ def test_create_template(client):
     test_create_case(client)
     response = client.post("/api/case/1/create_template", headers={"X-API-KEY": API_KEY},
                            json={"title_template": "Template from case 1 admin"})
-    assert response.status_code == 201 and b'{"template_id": 1}\n' in response.data
+    assert response.status_code == 201 and response.json["template_id"] == 1
 
 
 def test_case_recurring_once(client):
