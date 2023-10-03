@@ -3,7 +3,7 @@ sqlalchemy
 flask-sqlalchemy
 Flask-WTF
 WTForms
-Werkzeug
+Werkzeug==2.3.7
 email_validator
 Flask-Migrate
 Flask-Login
