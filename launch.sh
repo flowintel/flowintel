@@ -21,6 +21,20 @@ function launch {
     python app.py
 }
 
+function test {
+    export FLASKENV="testing"
+    pytest
+}
+
+function production {
+    export FLASKENV="development"
+    killscript
+    db_upgrade
+    screen -dmS "fcm"
+    screen -S "fcm" -X screen -t "recurring_notification" bash -c "python startNotif.py; read x"
+    gunicorn -w 4 'app:create_app()' -b 127.0.0.1:7006 --access-logfile -
+}
+
 
 function init_db {
 	python app.py -i
@@ -39,7 +53,11 @@ if [ "$1" ]; then
                                         ;;
 		-r | --reload_db )          reload_db;
                                         ;;
-        -ks | --killscript )            killscript;
+        -p | --production )         production;
+                                        ;;
+        -t | --test )               test;
+                                        ;;                                
+        -ks | --killscript )        killscript;
     esac
     shift
 else
