@@ -1,5 +1,5 @@
 import {display_toast} from '../toaster.js'
-const { ref } = Vue
+const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -14,12 +14,20 @@ export default {
 	setup(props, {emit}) {
 		Vue.onMounted(async () => {
 			select2_change(props.task.id)
+			
+			const targetElement = document.getElementById('editor_' + props.task.id)
+			editor = new Editor.EditorView({
+				extensions: [Editor.basicSetup, Editor.markdown()],
+				parent: targetElement
+			})
 		})
 		  Vue.onUpdated(async () => {
 			select2_change(props.task.id)
 		})
 
 		const notes = ref(props.task.notes)
+		let editor
+		
 
 
 		async function change_status(status, task){
@@ -151,13 +159,21 @@ export default {
 			task.last_modif = Date.now()
 			emit('edit_mode', true)
 
-			const res = await fetch('/case/' + task.case_id + '/get_note_text/' + task.id)
+			const res = await fetch('/case/' + task.case_id + '/get_note/' + task.id)
 			let loc = await res.json()
 			task.notes = loc["note"]
+
+			const targetElement = document.getElementById('editor1_' + props.task.id)
+			editor = new Editor.EditorView({
+				doc: task.notes,
+				extensions: [Editor.basicSetup, Editor.markdown()],
+				parent: targetElement
+			})
+			
 		}
 
 		async function modif_note(task){
-			let notes_loc = this.$refs["ref_note_" + task.id].value
+			let notes_loc = editor.state.doc.toString()
 			const res_msg = await fetch(
 				'/case/' + task.case_id + '/modif_note/' + task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
@@ -167,15 +183,22 @@ export default {
 			)
 
 			if(await res_msg.status == 200){
-				task.last_modif = Date.now()
 				emit('edit_mode', false)
-	
+				task.last_modif = Date.now()
 				task.notes = notes_loc
 				notes.value = notes_loc
-
-				const res = await fetch('/case/' + task.case_id + '/get_note_markdown/' + task.id)
-				let loc = await res.json()
-				task.notes = loc["note"]
+				await nextTick()
+				
+				if(!notes_loc){
+					const targetElement = document.getElementById('editor_' + props.task.id)
+					if(targetElement.innerHTML === ""){
+						editor = new Editor.EditorView({
+							doc: "",
+							extensions: [Editor.basicSetup, Editor.markdown()],
+							parent: targetElement
+						})
+					}
+				}
 			}
 			await display_toast(res_msg)
 		}
@@ -292,7 +315,8 @@ export default {
 			$('.select2-container').css("min-width", "200px")
 		}
 
-		return { md : window.markdownit(),
+		return {
+			md : window.markdownit(),
 			notes,
 			change_status,
 			take_task,
@@ -460,7 +484,7 @@ export default {
 									Save
 								</button>
 							</div>
-							<textarea class="w-100" :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" maxlength="5000" v-html="task.notes"></textarea>
+							<div :id="'editor1_'+task.id"></div>
 						</template>
 						<template v-else>
 							<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
@@ -480,13 +504,12 @@ export default {
 									Create
 								</button>
 							</div>
-							<textarea class="w-100" :ref="'ref_note_'+task.id" :id="'note_area_'+task.id" rows="5" maxlength="5000"></textarea>
+							<div :id="'editor_'+task.id"></div>
 						</template>
 					</div>
 				</div>
 			</div>
 		</div>
 	</div>
-
 	`
 }

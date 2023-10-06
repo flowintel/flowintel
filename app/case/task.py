@@ -115,22 +115,15 @@ def modif_note(cid, tid):
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
-@task_blueprint.route("/<cid>/get_note_text/<tid>", methods=['GET'])
+@task_blueprint.route("/<cid>/get_note/<tid>", methods=['GET'])
 @editor_required
-def get_note_text(cid, tid):
+def get_note(cid, tid):
     """Get not of a task in text format"""
-    if CaseModel.get_case(cid):
-        return {"note": CaseModel.get_note_text(tid)}, 201
-    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
-
-
-@task_blueprint.route("/<cid>/get_note_markdown/<tid>", methods=['GET'])
-def get_note_markdown(cid, tid):
-    """Get not of a task in markdown format"""
     if CaseModel.get_case(cid):
         task = CaseModel.get_task(tid)
         if task:
             return {"note": task.notes}, 201
+        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 

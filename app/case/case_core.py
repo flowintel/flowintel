@@ -387,14 +387,6 @@ def modif_note_core(tid, current_user, notes):
         return True
     return False
 
-def get_note_text(tid):
-    """Return a text note by task's id"""
-    task = get_task(tid)
-    if task:
-        return task.notes
-    else:
-        return ""
-
 
 def add_orgs_case(form_dict, cid, current_user):
     """Add orgs to case in th DB"""

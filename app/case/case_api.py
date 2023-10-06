@@ -303,8 +303,7 @@ class GetNoteTask(Resource):
         task = CaseModel.get_task(tid)
         if task:
             if int(cid) == task.case_id:
-                note = CaseModel.get_note_text(tid)
-                return {"note": note}, 200
+                return {"note": task.notes}, 200
             else:
                 return {"message": "Task not in this case"}, 404
         return {"message": "Task not found"}, 404
