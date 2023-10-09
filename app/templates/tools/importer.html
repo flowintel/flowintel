@@ -5,13 +5,17 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>
-        Importer
-    </h1>
+
+    <div style="display:flex;">
+        <h1>
+            Import Case
+        </h1>
+        <i class="fa fa-question" title="Import a case and its tasks"></i>
+    </div>
 
     <hr>
 
-    <div>
+    <div class="w-50">
         <input class="form-control" type="file" id="importer" />
         <button class="btn btn-primary" @click="read_json()" style="margin-top: 10px;">Add</button>
     </div>
