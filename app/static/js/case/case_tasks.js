@@ -17,6 +17,7 @@ export default {
 			
 			const targetElement = document.getElementById('editor_' + props.task.id)
 			editor = new Editor.EditorView({
+				doc: "\n\n",
 				extensions: [Editor.basicSetup, Editor.markdown()],
 				parent: targetElement
 			})
@@ -174,6 +175,9 @@ export default {
 
 		async function modif_note(task){
 			let notes_loc = editor.state.doc.toString()
+			if(notes_loc.trim().length == 0){
+				notes_loc = notes_loc.trim()
+			}
 			const res_msg = await fetch(
 				'/case/' + task.case_id + '/modif_note/' + task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
@@ -193,7 +197,7 @@ export default {
 					const targetElement = document.getElementById('editor_' + props.task.id)
 					if(targetElement.innerHTML === ""){
 						editor = new Editor.EditorView({
-							doc: "",
+							doc: "\n\n",
 							extensions: [Editor.basicSetup, Editor.markdown()],
 							parent: targetElement
 						})
@@ -484,7 +488,7 @@ export default {
 									Save
 								</button>
 							</div>
-							<div :id="'editor1_'+task.id"></div>
+							<div style="background-color: white; border-width: 1px; border-style: solid" :id="'editor1_'+task.id"></div>
 						</template>
 						<template v-else>
 							<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
@@ -504,7 +508,7 @@ export default {
 									Create
 								</button>
 							</div>
-							<div :id="'editor_'+task.id"></div>
+							<div style="background-color: white; border-width: 1px; border-style: solid" :id="'editor_'+task.id"></div>
 						</template>
 					</div>
 				</div>
