@@ -1,5 +1,5 @@
 import {display_toast} from '../toaster.js'
-const { ref, nextTick } = Vue
+const { ref, nextTick, computed } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -21,15 +21,26 @@ export default {
 				extensions: [Editor.basicSetup, Editor.markdown()],
 				parent: targetElement
 			})
+
+			const allCollapses = document.querySelector('.collapsetest')
+			allCollapses.addEventListener('shown.bs.collapse', event => {
+				md.mermaid.init()
+			})
 		})
-		  Vue.onUpdated(async () => {
+		Vue.onUpdated(async () => {
 			select2_change(props.task.id)
+			md.mermaid.init()
 		})
 
 		const notes = ref(props.task.notes)
 		let editor
-		
+		const md = window.markdownit()
+		md.use(mermaidMarkdown.default)
 
+		const note_render = computed(() => {
+			return md.render(props.task.notes)
+		})
+		
 
 		async function change_status(status, task){
 			const res = await fetch(
@@ -318,9 +329,10 @@ export default {
 			$('.select2-selectUser'+tid).select2({width: 'element'})
 			$('.select2-container').css("min-width", "200px")
 		}
+		
 
 		return {
-			md : window.markdownit(),
+			note_render,
 			notes,
 			change_status,
 			take_task,
@@ -397,7 +409,7 @@ export default {
 
 	
 	<!-- Collapse Part -->
-	<div class="collapse" :id="'collapse'+task.id">
+	<div class="collapse collapsetest" :id="'collapse'+task.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
 			<div class="d-flex w-100 justify-content-between">
 				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
@@ -497,7 +509,7 @@ export default {
 									Edit
 								</button>
 							</template> 
-							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(notes)"></p>
+							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="note_render"></p>
 						</template>
 					</div>
 					<div v-else>
