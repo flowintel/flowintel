@@ -18,11 +18,15 @@ export default {
 			const targetElement = document.getElementById('editor_' + props.task.id)
 			editor = new Editor.EditorView({
 				doc: "\n\n",
-				extensions: [Editor.basicSetup, Editor.markdown()],
+				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+					if (v.docChanged) {
+						note_editor_render.value = editor.state.doc.toString()
+					}
+				})],
 				parent: targetElement
 			})
 
-			const allCollapses = document.querySelector('.collapsetest')
+			const allCollapses = document.getElementById('collapse' + props.task.id)
 			allCollapses.addEventListener('shown.bs.collapse', event => {
 				md.mermaid.init()
 			})
@@ -33,13 +37,13 @@ export default {
 		})
 
 		const notes = ref(props.task.notes)
+		const note_editor_render = ref("")
 		let editor
 		const md = window.markdownit()
 		md.use(mermaidMarkdown.default)
 
-		const note_render = computed(() => {
-			return md.render(props.task.notes)
-		})
+		if(props.task.notes)
+			note_editor_render.value = props.task.notes
 		
 
 		async function change_status(status, task){
@@ -178,7 +182,11 @@ export default {
 			const targetElement = document.getElementById('editor1_' + props.task.id)
 			editor = new Editor.EditorView({
 				doc: task.notes,
-				extensions: [Editor.basicSetup, Editor.markdown()],
+				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+					if (v.docChanged) {
+						note_editor_render.value = editor.state.doc.toString()
+					}
+				})],
 				parent: targetElement
 			})
 			
@@ -209,7 +217,11 @@ export default {
 					if(targetElement.innerHTML === ""){
 						editor = new Editor.EditorView({
 							doc: "\n\n",
-							extensions: [Editor.basicSetup, Editor.markdown()],
+							extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+								if (v.docChanged) {
+									note_editor_render.value = editor.state.doc.toString()
+								}
+							})],
 							parent: targetElement
 						})
 					}
@@ -332,8 +344,9 @@ export default {
 		
 
 		return {
-			note_render,
 			notes,
+			note_editor_render,
+			md,
 			change_status,
 			take_task,
 			remove_assign_task,
@@ -500,7 +513,10 @@ export default {
 									Save
 								</button>
 							</div>
-							<div style="background-color: white; border-width: 1px; border-style: solid" :id="'editor1_'+task.id"></div>
+							<div style="display: flex;">
+								<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor1_'+task.id"></div>
+								<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+							</div>
 						</template>
 						<template v-else>
 							<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
@@ -509,7 +525,7 @@ export default {
 									Edit
 								</button>
 							</template> 
-							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="note_render"></p>
+							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(notes)"></p>
 						</template>
 					</div>
 					<div v-else>
@@ -520,7 +536,10 @@ export default {
 									Create
 								</button>
 							</div>
-							<div style="background-color: white; border-width: 1px; border-style: solid" :id="'editor_'+task.id"></div>
+							<div style="display: flex;">
+								<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_'+task.id"></div>
+								<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+							</div>
 						</template>
 					</div>
 				</div>
