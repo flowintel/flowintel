@@ -12,6 +12,7 @@ from dateutil import relativedelta
 from ..tools.tools_core import create_case_from_template
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
 HISTORY_FOLDER = os.path.join(os.getcwd(), "history")
 
 
@@ -783,3 +784,25 @@ def notify_user_recurring(form_dict, case_id, orgs):
 
 def get_recu_notif_user(case_id, user_id):
     return Recurring_Notification.query.filter_by(case_id=case_id, user_id=user_id).first()
+
+
+import subprocess
+def export_notes(task):
+    if not os.path.isdir(TEMP_FOLDER):
+        os.mkdir(TEMP_FOLDER)
+    temp_md = os.path.join(TEMP_FOLDER, "index.md")
+    temp_pdf = os.path.join(TEMP_FOLDER, "output.pdf")
+    with open(temp_md, "w")as write_file:
+        write_file.write(task.notes)
+    process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=red", "-V", "tocolor=gray"\
+                                    "--number-sections", "--toc", "--template", "eisvogel", "-o", temp_pdf, "--filter=mermaid-filter"], stdout=subprocess.PIPE)
+    
+    # process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=red", "-V", "tocolor=gray"\
+    #                                 "--number-sections", "--toc", "--template", "eisvogel", "-o", temp_pdf], stdout=subprocess.PIPE)
+    process.wait()
+    
+    return send_file(temp_pdf, as_attachment=True, download_name=f'export_note_task_{task.id}.pdf')
+
+import shutil
+def delete_temp_folder():
+    shutil.rmtree(TEMP_FOLDER)

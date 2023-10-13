@@ -524,6 +524,7 @@ export default {
 									<div hidden>[[task.title]]</div>
 									Edit
 								</button>
+								<a class="btn btn-primary" :href="'/case/'+task.case_id+'/task/'+task.id+'/export_notes'" type="button" title="Export markdown as pdf">Export as pdf</a>
 							</template> 
 							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(notes)"></p>
 						</template>

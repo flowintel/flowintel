@@ -337,3 +337,20 @@ def notify_user(cid, tid):
             return {"message":"Task not found", "toast_class": "danger-subtle"}, 404
         return {"message": "'user_id' is missing", "toast_class": "danger-subtle"}, 404
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/task/<tid>/export_notes", methods=['GET'])
+@login_required
+def export_notes(cid, tid):
+    """Export note of a task as pdf"""
+
+    case = CaseModel.get_case(cid)
+    if case:
+        task = CaseModel.get_task(tid)
+        if task:
+            res = CaseModel.export_notes(task)
+            CaseModel.delete_temp_folder()
+            return res
+        return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
