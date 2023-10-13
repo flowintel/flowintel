@@ -2,3 +2,4 @@
 *.sqlite
 history/*
 uploads/*
+mermaid-filter.err

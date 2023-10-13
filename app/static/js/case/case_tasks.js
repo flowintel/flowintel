@@ -36,6 +36,8 @@ export default {
 			md.mermaid.init()
 		})
 
+		const is_exporting = ref(false)
+
 		const notes = ref(props.task.notes)
 		const note_editor_render = ref("")
 		let editor
@@ -337,6 +339,24 @@ export default {
 			return index
 		}
 
+		async function export_notes(task){
+			is_exporting.value = true
+			let filename = ""
+			await fetch('/case/'+task.case_id+'/task/'+task.id+'/export_notes')
+			.then(res =>{
+				filename = res.headers.get("content-disposition").split("=")
+				filename = filename[filename.length - 1]
+				return res.blob() 
+			})
+			.then(data =>{
+				var a = document.createElement("a")
+				a.href = window.URL.createObjectURL(data);
+				a.download = filename;
+				a.click();
+			})
+			is_exporting.value = false
+		}
+
 		function select2_change(tid){
 			$('.select2-selectUser'+tid).select2({width: 'element'})
 			$('.select2-container').css("min-width", "200px")
@@ -347,6 +367,7 @@ export default {
 			notes,
 			note_editor_render,
 			md,
+			is_exporting,
 			change_status,
 			take_task,
 			remove_assign_task,
@@ -361,6 +382,7 @@ export default {
 			notify_user,
 			formatNow,
 			endOf,
+			export_notes,
 			present_user_in_task
 		}
 	},
@@ -524,7 +546,11 @@ export default {
 									<div hidden>[[task.title]]</div>
 									Edit
 								</button>
-								<a class="btn btn-primary" :href="'/case/'+task.case_id+'/task/'+task.id+'/export_notes'" type="button" title="Export markdown as pdf">Export as pdf</a>
+								<button v-if="!is_exporting" class="btn btn-primary" @click="export_notes(task)" title="Export markdown as pdf">Export as pdf</button>
+								<button v-else class="btn btn-primary" type="button" disabled>
+									<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+									<span role="status">Loading...</span>
+								</button>
 							</template> 
 							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(notes)"></p>
 						</template>
