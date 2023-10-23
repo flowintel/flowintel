@@ -23,10 +23,7 @@ rm -r Eisvogel
 rm Eisvogel.tar.gz
 
 pip install -r requirements.txt
-git clone https://github.com/DavidCruciani/pandoc-mermaid-filter
-cd pandoc-mermaid-filter
-pip install .
-cd ..
-sudo rm -r pandoc-mermaid-filter
+pip install git+https://github.com/DavidCruciani/pandoc-mermaid-filter
+
 python app.py -i
 deactivate

@@ -188,9 +188,11 @@ def core_read_json_file(case, current_user):
             return {"message": f"Case Title '{case['title']}' already exist"}
         if case["deadline"]:
             try:
-                case["deadline_date"] = datetime.datetime.strptime(case["deadline"], "%Y-%m-%d")
-                case["deadline_time"] = datetime.datetime.strptime(case["deadline"], "%H:%M")
-            except:
+                loc_date = datetime.datetime.strptime(case["deadline"], "%Y-%m-%d %H:%M")
+                case["deadline_date"] = loc_date.date()
+                case["deadline_time"] = loc_date.time()
+            except Exception as e:
+                print(e)
                 return {"message": f"'{case['title']}': deadline bad format, %Y-%m-%d %H:%M"}
         else:
             case["deadline_date"] = ""
@@ -198,7 +200,7 @@ def core_read_json_file(case, current_user):
         if case["recurring_date"]:
             if case["recurring_type"]:
                 try:
-                    datetime.datetime.strptime(case["recurring_date"], "%Y-%m-%d")
+                    datetime.datetime.strptime(case["recurring_date"], "%Y-%m-%d %H:%M")
                 except:
                     return {"message": f"'{case['title']}': recurring_date bad format, %Y-%m-%d"}
             else:
@@ -217,8 +219,9 @@ def core_read_json_file(case, current_user):
 
                 if task["deadline"]:
                     try:
-                        task["deadline_date"] = datetime.datetime.strptime(task["deadline"], "%Y-%m-%d")
-                        task["deadline_time"] = datetime.datetime.strptime(task["deadline"], "%H:%M")
+                        loc_date = datetime.datetime.strptime(task["deadline"], "%Y-%m-%d %H:%M")
+                        task["deadline_date"] = loc_date.date()
+                        task["deadline_time"] = loc_date.time()
                     except:
                         return {"message": f"Task '{task['title']}': deadline bad format, %Y-%m-%d %H:%M"}
                 else:
