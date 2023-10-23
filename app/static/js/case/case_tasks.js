@@ -30,12 +30,16 @@ export default {
 			allCollapses.addEventListener('shown.bs.collapse', event => {
 				md.mermaid.init()
 			})
+			is_mounted.value = true
 		})
 		Vue.onUpdated(async () => {
 			select2_change(props.task.id)
-			md.mermaid.init()
+			// do not initialize mermaid before the page is mounted
+			if(is_mounted)
+				md.mermaid.init()
 		})
 
+		const is_mounted = ref(false)
 		const is_exporting = ref(false)
 
 		const notes = ref(props.task.notes)
@@ -339,10 +343,10 @@ export default {
 			return index
 		}
 
-		async function export_notes(task){
+		async function export_notes(task, type){
 			is_exporting.value = true
 			let filename = ""
-			await fetch('/case/'+task.case_id+'/task/'+task.id+'/export_notes')
+			await fetch('/case/'+task.case_id+'/task/'+task.id+'/export_notes?type=' + type)
 			.then(res =>{
 				filename = res.headers.get("content-disposition").split("=")
 				filename = filename[filename.length - 1]
@@ -546,11 +550,28 @@ export default {
 									<div hidden>[[task.title]]</div>
 									Edit
 								</button>
-								<button v-if="!is_exporting" class="btn btn-primary" @click="export_notes(task)" title="Export markdown as pdf">Export as pdf</button>
-								<button v-else class="btn btn-primary" type="button" disabled>
-									<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-									<span role="status">Loading...</span>
-								</button>
+								<div class="btn-group">
+									<button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+										Export
+									</button>
+									<ul class="dropdown-menu">
+										<li>
+											<button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'pdf')" title="Export markdown as pdf">PDF</button>
+											<button v-else class="btn btn-link" disabled>
+												<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+												<span role="status">Loading...</span>
+											</button>
+										</li>
+										<li>
+											<button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'docx')" title="Export markdown as docx">DOCX</button>
+											<button v-else class="btn btn-link" disabled>
+												<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+												<span role="status">Loading...</span>
+											</button>
+										</li>
+									</ul>
+								</div>
+
 							</template> 
 							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(notes)"></p>
 						</template>

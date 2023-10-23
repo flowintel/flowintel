@@ -348,9 +348,13 @@ def export_notes(cid, tid):
     if case:
         task = CaseModel.get_task(tid)
         if task:
-            res = CaseModel.export_notes(task)
-            CaseModel.delete_temp_folder()
-            return res
+            data_dict = dict(request.args)
+            if "type" in data_dict:
+                type_req = data_dict["type"]
+                res = CaseModel.export_notes(task, type_req)
+                CaseModel.delete_temp_folder()
+                return res
+            return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
         return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 

@@ -787,22 +787,31 @@ def get_recu_notif_user(case_id, user_id):
 
 
 import subprocess
-def export_notes(task):
+import shutil
+def export_notes(task, type_req):
     if not os.path.isdir(TEMP_FOLDER):
         os.mkdir(TEMP_FOLDER)
+
+    download_filename = f"export_note_task_{task.id}.{type_req}"
     temp_md = os.path.join(TEMP_FOLDER, "index.md")
-    temp_pdf = os.path.join(TEMP_FOLDER, "output.pdf")
+    temp_export = os.path.join(TEMP_FOLDER, f"output.{type_req}")
+
     with open(temp_md, "w")as write_file:
         write_file.write(task.notes)
-    process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=red", "-V", "tocolor=gray"\
-                                    "--number-sections", "--toc", "--template", "eisvogel", "-o", temp_pdf, "--filter=mermaid-filter"], stdout=subprocess.PIPE)
-    
-    # process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=red", "-V", "tocolor=gray"\
-    #                                 "--number-sections", "--toc", "--template", "eisvogel", "-o", temp_pdf], stdout=subprocess.PIPE)
+    if type_req == "pdf":
+        process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=red", "-V", "tocolor=gray"\
+                                    "--number-sections", "--toc", "--template", "eisvogel", "-o", temp_export, "--filter=pandoc-mermaid"], stdout=subprocess.PIPE)
+    elif type_req == "docx":
+        process = subprocess.Popen(["pandoc", temp_md, "-o", temp_export, "--filter=mermaid-filter"], stdout=subprocess.PIPE)
     process.wait()
-    
-    return send_file(temp_pdf, as_attachment=True, download_name=f'export_note_task_{task.id}.pdf')
 
-import shutil
+    try:
+        shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
+    except:
+        pass
+    
+    return send_file(temp_export, as_attachment=True, download_name=download_filename)
+
+
 def delete_temp_folder():
     shutil.rmtree(TEMP_FOLDER)
