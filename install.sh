@@ -1,7 +1,7 @@
 #!/bin/bash
 
 sudo apt-get update -y
-sudo apt-get install python3-pip git screen virtualenv pandoc npm texlive-full -y
+sudo apt-get install python3-pip git screen virtualenv pandoc npm librsvg2-bin texlive-full -y
 
 virtualenv env
 source env/bin/activate
@@ -20,6 +20,7 @@ mkdir Eisvogel
 tar -xf Eisvogel.tar.gz -C Eisvogel
 sudo mv Eisvogel/eisvogel.latex /usr/share/pandoc/data/templates/
 rm -r Eisvogel
+rm Eisvogel.tar.gz
 
 pip install -r requirements.txt
 git clone https://github.com/DavidCruciani/pandoc-mermaid-filter
