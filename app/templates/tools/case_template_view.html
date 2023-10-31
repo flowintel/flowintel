@@ -29,6 +29,14 @@
         </ul>
     </div>
 
+    {% if case.tags %}
+        <div style="display: flex;">
+            {% for tag in case.tags%}
+                <div style="margin-right: 5px; font-size: smaller; background-color: peachpuff;">{{tag}}</div>
+            {%endfor%}
+        </div>
+    {%endif%}
+
     <hr>
 
     {% if case.description %}
@@ -60,6 +68,14 @@
                     <div class="d-flex w-100 justify-content-between">
                         <p v-if="task.url" class="card-text">[[ task.url ]]</p>
                         <p v-else class="card-text"><i style="font-size: 12px;">No url</i></p>
+                    </div>
+                    <div class="d-flex w-100 justify-content-between">
+                        <div style="display: flex;" v-if="task.tags">
+                            <template v-for="tag in task.tags">
+                                <div style="margin-right: 5px; font-size: smaller; background-color: peachpuff;">[[tag]]</div>
+                            </template>
+                        </div>
+                        <div v-else></div>
                     </div>
                 </a>
                 <div v-if="!task.current_user_permission.read_only" style="display: grid;">

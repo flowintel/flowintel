@@ -408,6 +408,15 @@ export default {
 					</span>
 				</small>
 			</div>
+			
+			<div class="d-flex w-100 justify-content-between">
+				<div style="display: flex;" v-if="task.tags">
+					<template v-for="tag in task.tags">
+						<div style="margin-right: 5px; font-size: smaller; background-color: peachpuff;">[[tag]]</div>
+					</template>
+				</div>
+				<div v-else></div>
+			</div>
 
 			<div class="d-flex w-100 justify-content-between">
                 <div v-if="task.users.length">

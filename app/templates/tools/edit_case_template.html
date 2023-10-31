@@ -6,7 +6,7 @@
 
 {% block content %}
     <div id="container">
-            <h2 class="ui dividing header">Create a Template</h2>
+            <h2 class="ui dividing header">Edit a Template</h2>
 
             <form action="" method="post">
                 {{ form.hidden_tag() }}
@@ -26,6 +26,28 @@
                         <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
+
+                <template v-if="taxonomies">
+                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                        <template v-for="taxonomy in taxonomies">
+                            <option :value="[[taxonomy]]" v-if="check_taxo_exist(taxonomy)" selected>[[taxonomy]]</option>
+                            <option :value="[[taxonomy]]" v-else>[[taxonomy]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="tags_list">
+                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                        <template v-for="(tags, taxo) in tags_list">
+                            <optgroup :label="[[taxo]]">
+                                <template v-for="tag in tags">
+                                    <option :value="[[tag]]" v-if="check_tag_exist(tag)" selected>[[tag]]</option>
+                                    <option :value="[[tag]]" v-else>[[tag]]</option>
+                                </template>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
                 
                 {{form.submit(class='btn btn-primary')}}
             </form>
@@ -34,9 +56,90 @@
 
 
 {% block script %}
-<script type="text/javascript">
-    $(document).ready(function(){
-        $('.select2-select').select2()
-    });
+<script type="module">
+    const { createApp, onMounted, nextTick, ref} = Vue
+    import {message_list} from '/static/js/toaster.js'
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const taxonomies = ref([])
+            const tags_list = ref([])
+            const taxonomies_case = ref([])
+            const tags_case = ref([])
+            const selected_taxo = ref([])
+
+            async function fetch_taxonomies(){
+                const res = await fetch("/case/get_taxonomies")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    taxonomies.value = loc["taxonomies"]
+                }
+            }
+            fetch_taxonomies()
+
+            async function fetch_taxonomies_case(){
+                const res = await fetch("/tools/template/get_taxonomies_case/" +window.location.pathname.split("/").slice(-1))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    tags_case.value = loc["tags"]
+                    taxonomies_case.value = loc["taxonomies"]
+                }
+                if(taxonomies_case.value.length > 0){
+                    fetch_tags(taxonomies_case.value)
+                }
+            }
+            fetch_taxonomies_case()
+
+            async function fetch_tags(s_taxo){
+                const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(s_taxo))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    tags_list.value = loc["tags"]
+                    await nextTick()
+                    $('#tags_select').trigger('change');
+                }
+            }
+
+            function check_taxo_exist(taxo){
+                return taxonomies_case.value.some(function(field) {
+                    return taxo === field
+                })
+            }
+
+            function check_tag_exist(tag){
+                return tags_case.value.some(function(field) {
+                    return tag === field
+                })
+            }
+            
+
+            onMounted(() => {
+                $('.select2-select').select2({
+                    width: '50%'
+                })
+
+                $('#taxonomies_select').on('change.select2', function (e) {
+                    selected_taxo.value = $(this).select2('data').map(item => item.id);
+                    fetch_tags(selected_taxo.value)
+                })
+            })
+
+            return {
+                selected_taxo,
+                message_list,
+                taxonomies,
+                tags_list,
+                check_taxo_exist,
+                check_tag_exist
+            }
+        }
+    }).mount('.container')
+
 </script>
 {% endblock %}

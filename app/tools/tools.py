@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..decorators import editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
-from ..utils.utils import form_to_dict
+from ..utils.utils import form_to_dict, taxonomies, check_tag
 
 tools_blueprint = Blueprint(
     'tools',
@@ -35,14 +35,24 @@ def task_template_view():
 @editor_required
 def create_case_template():
     """Create a case Template"""
-
     form = CaseTemplateForm()
 
     task_template_query_list = ToolsModel.get_all_task_templates()
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     
     if form.validate_on_submit():
+        if "tags_select" in request.form:
+            flag = True
+            tag_list = request.form.getlist("tags_select")
+            for tag in tag_list:
+                if not check_tag(tag):
+                    flag = False
+            if not flag:
+                flash("tag doesn't exist")
+                return render_template("case/create_case_template.html", form=form)
+            
         form_dict = form_to_dict(form)
+        form_dict["tags"] = request.form.getlist("tags_select")
         template = ToolsModel.create_case_template(form_dict)
         flash("Template created", "success")
         return redirect(f"/tools/template/case/{template.id}")
@@ -59,12 +69,23 @@ def create_task_template():
     task_template_query_list = ToolsModel.get_all_task_templates()
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     if form.validate_on_submit():
+        if "tags_select" in request.form:
+            flag = True
+            tag_list = request.form.getlist("tags_select")
+            for tag in tag_list:
+                if not check_tag(tag):
+                    flag = False
+            if not flag:
+                flash("tag doesn't exist")
+                return render_template("case/create_task_template.html", form=form)
+            
         form_dict = form_to_dict(form)
+        form_dict["tags"] = request.form.getlist("tags_select")
         template = ToolsModel.add_task_template_core(form_dict)
         flash("Template created", "success")
         return redirect(f"/tools/template/tasks")
 
-    return render_template("tools/create_edit_task.html", form=form, edit_mode=False)
+    return render_template("tools/create_task_template.html", form=form)
 
 
 @tools_blueprint.route("/template/case/<cid>", methods=['GET','POST'])
@@ -75,7 +96,6 @@ def case_template_view(cid):
     template = ToolsModel.get_case_template(cid)
     if template:
         case = template.to_json()
-
         return render_template("tools/case_template_view.html", case=case)
     return render_template("404.html")
 
@@ -107,7 +127,17 @@ def edit_case(cid):
         form = CaseTemplateEditForm()
         form.template_id.data = cid
         if form.validate_on_submit():
+            if "tags_select" in request.form:
+                flag = True
+                tag_list = request.form.getlist("tags_select")
+                for tag in tag_list:
+                    if not check_tag(tag):
+                        flag = False
+                if not flag:
+                    flash("tag doesn't exist")
+                    return render_template("case/edit_case_template.html", form=form)
             form_dict = form_to_dict(form)
+            form_dict["tags"] = request.form.getlist("tags_select")
             template = ToolsModel.edit_case_template(form_dict, cid)
             flash("Template edited", "success")
             return redirect(f"/tools/template/cases")
@@ -129,7 +159,17 @@ def edit_task(tid):
         form = TaskTemplateEditForm()
         form.template_id.data = tid
         if form.validate_on_submit():
+            if "tags_select" in request.form:
+                flag = True
+                tag_list = request.form.getlist("tags_select")
+                for tag in tag_list:
+                    if not check_tag(tag):
+                        flag = False
+                if not flag:
+                    flash("tag doesn't exist")
+                    return render_template("case/edit_task_template.html", form=form)
             form_dict = form_to_dict(form)
+            form_dict["tags"] = request.form.getlist("tags_select")
             template = ToolsModel.edit_task_template(form_dict, tid)
             flash("Template edited", "success")
             return redirect(f"/tools/template/tasks")
@@ -138,7 +178,7 @@ def edit_task(tid):
             form.body.data = template.description
             form.url.data = template.url
 
-        return render_template("tools/create_edit_task.html", form=form, edit_mode=True)
+        return render_template("tools/edit_task_template.html", form=form)
     return render_template("404.html")
 
 
@@ -328,3 +368,28 @@ def importer():
             return message, 400
 
         return {"message": "All created", "toast_class": "success-subtle"}, 200
+    
+
+@tools_blueprint.route("/template/get_taxonomies_case/<cid>", methods=['GET'])
+@login_required
+def get_taxonomies_case(cid):
+    case = ToolsModel.get_case_template(cid)
+    if case:
+        tags = ToolsModel.get_case_template_tags(case.id)
+        taxonomies = []
+        if tags:
+            taxonomies = [tag.split(":")[0] for tag in tags]
+        return {"tags": tags, "taxonomies": taxonomies}
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+@tools_blueprint.route("/template/get_taxonomies_task/<tid>", methods=['GET'])
+@login_required
+def get_taxonomies_task(tid):
+    task = ToolsModel.get_task_template(tid)
+    if task:
+        tags = ToolsModel.get_task_template_tags(task.id)
+        taxonomies = []
+        if tags:
+            taxonomies = [tag.split(":")[0] for tag in tags]
+        return {"tags": tags, "taxonomies": taxonomies}
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404

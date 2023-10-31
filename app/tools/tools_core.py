@@ -1,4 +1,4 @@
-from ..db_class.db import Case_Template, Task_Template, Case_Task_Template, Role, Case, Task, Case_Org
+from ..db_class.db import *
 import uuid
 from .. import db
 import datetime
@@ -38,6 +38,22 @@ def get_task_by_case(cid):
     return [get_task_template(case_task.task_id) for case_task in case_task_template]
 
 
+def get_case_template_tags(cid):
+    return [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
+
+def get_task_template_tags(tid):
+    return [tag.name for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
+
+
+def create_tag(tag):
+    tag = Tags.query.filter_by(name=tag).first()
+    if not tag:
+        tag = Tags(name=tag)
+        db.session.add(tag)
+        db.session.commit()
+    return tag
+
+
 def create_case_template(form_dict):
     case_template = Case_Template(
         title=form_dict["title"],
@@ -46,6 +62,16 @@ def create_case_template(form_dict):
     )
     db.session.add(case_template)
     db.session.commit()
+
+    for tag in form_dict["tags"]:
+        tag = create_tag(tag)
+        
+        case_tag = Case_Template_Tags(
+            tag_id=tag.id,
+            case_id=case_template.id
+        )
+        db.session.add(case_tag)
+        db.session.commit()
 
     for tid in form_dict["tasks"]:
         case_task_template = Case_Task_Template(
@@ -63,6 +89,16 @@ def add_task_template_core(form_dict):
         url=form_dict["url"],
         uuid=str(uuid.uuid4())
     )
+
+    for tag in form_dict["tags"]:
+        tag = create_tag(tag)
+        
+        task_tag = Task_Template_Tags(
+            tag_id=tag.id,
+            task_id=template.id
+        )
+        db.session.add(task_tag)
+        db.session.commit()
     
     db.session.add(template)
     db.session.commit()
@@ -98,6 +134,25 @@ def edit_case_template(form_dict, cid):
 
     template.title=form_dict["title"]
     template.description=form_dict["description"]
+
+    case_tag_db = Case_Template_Tags.query.filter_by(case_id=template.id).all()
+
+    for tag in form_dict["tags"]:
+        tag = create_tag(tag)
+
+        if not tag in case_tag_db:
+            case_tag = Case_Template_Tags(
+                tag_id=tag.id,
+                case_id=template.id
+            )
+            db.session.add(case_tag)
+            db.session.commit()
+    
+    for c_t_db in case_tag_db:
+        if not c_t_db in form_dict["tags"]:
+            Case_Template_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
     db.session.commit()
 
 def edit_task_template(form_dict, tid):
@@ -106,6 +161,25 @@ def edit_task_template(form_dict, tid):
     template.title=form_dict["title"]
     template.description=form_dict["body"]
     template.url=form_dict["url"]
+    
+    task_tag_db = Task_Template_Tags.query.filter_by(task_id=template.id).all()
+
+    for tag in form_dict["tags"]:
+        tag = create_tag(tag)
+
+        if not tag in task_tag_db:
+            task_tag = Task_Template_Tags(
+                tag_id=tag.id,
+                task_id=template.id
+            )
+            db.session.add(task_tag)
+            db.session.commit()
+    
+    for c_t_db in task_tag_db:
+        if not c_t_db in form_dict["tags"]:
+            Task_Template_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
     db.session.commit()
 
 def delete_case_template(cid):
@@ -113,6 +187,7 @@ def delete_case_template(cid):
     for to_do in to_deleted:
         db.session.delete(to_do)
         db.session.commit()
+    Case_Template_Tags.query.filter_by(case_id=cid).delete() 
     template = get_case_template(cid)
     db.session.delete(template)
     db.session.commit()
@@ -129,6 +204,7 @@ def delete_task_template(tid):
     for to_do in to_deleted:
         db.session.delete(to_do)
         db.session.commit()
+    Task_Template_Tags.query.filter_by(task_id=tid).delete()
     template = get_task_template(tid)
     db.session.delete(template)
     db.session.commit()
@@ -154,6 +230,14 @@ def create_case_from_template(cid, case_title_fork, user):
     db.session.add(case)
     db.session.commit()
 
+    for c_t in Case_Template_Tags.query.filter_by(case_id=case_template.id).all():
+        case_tag = Case_Tags(
+            case_id=case.id,
+            tag_id=c_t.tag_id
+        )
+        db.session.add(case_tag)
+        db.session.commit()
+
     # Add the current user's org to the case
     case_org = Case_Org(
         case_id=case.id, 
@@ -177,64 +261,83 @@ def create_case_from_template(cid, case_title_fork, user):
         )
         db.session.add(t)
         db.session.commit()
+
+        for t_t in Task_Template_Tags.query.filter_by(task_id=task.id).all():
+            task_tag = Task_Tags(
+                task_id=t.id,
+                tag_id=t_t.tag_id
+            )
+            db.session.add(task_tag)
+            db.session.commit()
     
     return case
 
 
 
 def core_read_json_file(case, current_user):
-    if utils.validateCaseJson(case):
-        if Case.query.filter_by(title=case["title"]).first():
-            return {"message": f"Case Title '{case['title']}' already exist"}
-        if case["deadline"]:
-            try:
-                loc_date = datetime.datetime.strptime(case["deadline"], "%Y-%m-%d %H:%M")
-                case["deadline_date"] = loc_date.date()
-                case["deadline_time"] = loc_date.time()
-            except Exception as e:
-                print(e)
-                return {"message": f"'{case['title']}': deadline bad format, %Y-%m-%d %H:%M"}
-        else:
-            case["deadline_date"] = ""
-            case["deadline_time"] = ""
-        if case["recurring_date"]:
-            if case["recurring_type"]:
-                try:
-                    datetime.datetime.strptime(case["recurring_date"], "%Y-%m-%d %H:%M")
-                except:
-                    return {"message": f"'{case['title']}': recurring_date bad format, %Y-%m-%d"}
-            else:
-                return {"message": f"'{case['title']}': recurring_type is missing"}
-        if case["recurring_type"] and not case["recurring_date"]:
-            return {"message": f"'{case['title']}': recurring_date is missing"}
-        if Case.query.filter_by(uuid=case["uuid"]).first():
-            case["uuid"] = str(uuid.uuid4())
-
-        case_created = case_core.create_case(case, current_user)
-
-        for task in case["tasks"]:
-            if utils.validateTaseJson(task):
-                if Task.query.filter_by(uuid=task["uuid"]).first():
-                    task["uuid"] = str(uuid.uuid4())
-
-                if task["deadline"]:
-                    try:
-                        loc_date = datetime.datetime.strptime(task["deadline"], "%Y-%m-%d %H:%M")
-                        task["deadline_date"] = loc_date.date()
-                        task["deadline_time"] = loc_date.time()
-                    except:
-                        return {"message": f"Task '{task['title']}': deadline bad format, %Y-%m-%d %H:%M"}
-                else:
-                    task["deadline_date"] = ""
-                    task["deadline_time"] = ""
-
-                task_created = case_core.create_task(task, case_created.id, current_user)
-                if task["notes"]:
-                    case_core.modif_note_core(task_created.id, current_user, task["notes"])
-            else:
-                return {"message": f"Task '{task['title']}' format not okay"}
-    else:
+    if not utils.validateCaseJson(case):
         return {"message": f"Case '{case['title']}' format not okay"}
+    for task in case["tasks"]:
+        if not utils.validateTaskJson(task):
+            return {"message": f"Task '{task['title']}' format not okay"}
+            
+
+    ## Case format is valid
+    if Case.query.filter_by(title=case["title"]).first():
+        return {"message": f"Case Title '{case['title']}' already exist"}
+    if case["deadline"]:
+        try:
+            loc_date = datetime.datetime.strptime(case["deadline"], "%Y-%m-%d %H:%M")
+            case["deadline_date"] = loc_date.date()
+            case["deadline_time"] = loc_date.time()
+        except Exception as e:
+            print(e)
+            return {"message": f"Case '{case['title']}': deadline bad format, %Y-%m-%d %H:%M"}
+    else:
+        case["deadline_date"] = ""
+        case["deadline_time"] = ""
+    if case["recurring_date"]:
+        if case["recurring_type"]:
+            try:
+                datetime.datetime.strptime(case["recurring_date"], "%Y-%m-%d %H:%M")
+            except:
+                return {"message": f"Case '{case['title']}': recurring_date bad format, %Y-%m-%d"}
+        else:
+            return {"message": f"Case '{case['title']}': recurring_type is missing"}
+    if case["recurring_type"] and not case["recurring_date"]:
+        return {"message": f"Case '{case['title']}': recurring_date is missing"}
+    if Case.query.filter_by(uuid=case["uuid"]).first():
+        case["uuid"] = str(uuid.uuid4())
+
+    for tag in case["tags"]:
+        if not utils.check_tag(tag):
+            return {"message": f"Case '{case['title']}': tag '{tag}' doesn't exist"}
+
+    case_created = case_core.create_case(case, current_user)
+
+    ## Task format is valid
+    for task in case["tasks"]:
+        if Task.query.filter_by(uuid=task["uuid"]).first():
+            task["uuid"] = str(uuid.uuid4())
+
+        if task["deadline"]:
+            try:
+                loc_date = datetime.datetime.strptime(task["deadline"], "%Y-%m-%d %H:%M")
+                task["deadline_date"] = loc_date.date()
+                task["deadline_time"] = loc_date.time()
+            except:
+                return {"message": f"Task '{task['title']}': deadline bad format, %Y-%m-%d %H:%M"}
+        else:
+            task["deadline_date"] = ""
+            task["deadline_time"] = ""
+
+        task_created = case_core.create_task(task, case_created.id, current_user)
+        if task["notes"]:
+            case_core.modif_note_core(task_created.id, current_user, task["notes"])
+        
+        for tag in task["tags"]:
+            if not utils.check_tag(tag):
+                return {"message": f"Task '{task['title']}': tag '{tag}' doesn't exist"}
     
 
 import json

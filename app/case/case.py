@@ -1,10 +1,11 @@
+import json
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from .form import CaseForm, CaseEditForm, AddOrgsCase, RecurringForm
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
 from ..db_class.db import Org, Case_Org, Task_Template, Case_Template
 from ..decorators import editor_required
-from ..utils.utils import form_to_dict
+from ..utils.utils import form_to_dict, check_tag
 
 case_blueprint = Blueprint(
     'case',
@@ -39,10 +40,20 @@ def create_case():
     form.tasks_templates.choices.insert(0, (0," "))
     
     if form.validate_on_submit():
-        form_dict = form_to_dict(form)
-        case = CaseModel.create_case(form_dict, current_user)
-        flash("Case created", "success")
-        return redirect(f"/case/{case.id}")
+        flag = True
+        tag_list = request.form.getlist("tags_select")
+        for tag in tag_list:
+            if not check_tag(tag):
+                flag = False
+        if not flag:
+            flash("tag doesn't exist")
+        else:
+            form_dict = form_to_dict(form)
+            form_dict["tags"] = tag_list
+            case = CaseModel.create_case(form_dict, current_user)
+            flash("Case created", "success")
+            return redirect(f"/case/{case.id}")
+        return render_template("case/create_case.html", form=form)
     return render_template("case/create_case.html", form=form)
 
 @case_blueprint.route("/<cid>", methods=['GET', 'POST'])
@@ -66,10 +77,20 @@ def edit_case(cid):
             form = CaseEditForm()
 
             if form.validate_on_submit():
-                form_dict = form_to_dict(form)
-                CaseModel.edit_case(form_dict, cid, current_user)
-                flash("Case edited", "success")
-                return redirect(f"/case/{cid}")
+                flag = True
+                tag_list = request.form.getlist("tags_select")
+                for tag in tag_list:
+                    if not check_tag(tag):
+                        flag = False
+                if not flag:
+                    flash("tag doesn't exist")
+                else:
+                    form_dict = form_to_dict(form)
+                    form_dict["tags"] = tag_list
+                    CaseModel.edit_case(form_dict, cid, current_user)
+                    flash("Case edited", "success")
+                    return redirect(f"/case/{cid}")
+                return render_template("case/edit_case.html", form=form)
             else:
                 case_modif = CaseModel.get_case(cid)
                 form.description.data = case_modif.description
@@ -448,4 +469,32 @@ def history(cid):
         if history:
             return {"history": history}
         return {"history": None}
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/get_taxonomies", methods=['GET'])
+@login_required
+def get_taxonomies():
+    return {"taxonomies": CaseModel.get_taxonomies()}, 200
+
+@case_blueprint.route("/get_tags", methods=['GET'])
+@login_required
+def get_tags():
+    data_dict = dict(request.args)
+    if "taxonomies" in data_dict:
+        taxos = json.loads(data_dict["taxonomies"])
+        return {"tags": CaseModel.get_tags(taxos)}, 200
+    return {"message": "'taxonomies' is missing", 'toast_class': "warning-subtle"}, 400
+
+
+@case_blueprint.route("/get_taxonomies_case/<cid>", methods=['GET'])
+@login_required
+def get_taxonomies_case(cid):
+    case = CaseModel.get_case(cid)
+    if case:
+        tags = CaseModel.get_case_tags(case.id)
+        taxonomies = []
+        if tags:
+            taxonomies = [tag.split(":")[0] for tag in tags]
+        return {"tags": tags, "taxonomies": taxonomies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404

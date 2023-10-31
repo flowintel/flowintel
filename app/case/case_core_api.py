@@ -1,6 +1,7 @@
 from ..db_class.db import Case, User
 from datetime import datetime
 from . import case_core as CaseModel
+from ..utils.utils import check_tag
 
 
 def get_user_api(api_key):
@@ -51,6 +52,13 @@ def verif_create_case_task(data_dict, isCase):
     else:
         data_dict["deadline_time"] = ""
 
+    if "tags" in data_dict:
+        for tag in data_dict["tags"]:
+            if not check_tag(tag):
+                return {"message": f"Tag '{tag}' doesn't exist"}
+    else:
+        data_dict["tags"] = []
+
     if not isCase:
         if "url" not in data_dict or not data_dict["url"]:
             data_dict["url"] = ""
@@ -82,6 +90,15 @@ def common_verif(data_dict, case_task):
         data_dict["deadline_time"] = case_task.deadline.strftime('%H-%M')
     else:
         data_dict["deadline_time"] = ""
+
+    if "tags" in data_dict:
+        for tag in data_dict["tags"]:
+            if not check_tag(tag):
+                return {"message": f"Tag '{tag}' doesn't exist"}
+    elif case_task.to_json()["tags"]:
+        data_dict["tags"] = case_task.to_json()["tags"]
+    else:
+        data_dict["tags"] = []
     
     return data_dict
 

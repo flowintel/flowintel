@@ -45,6 +45,14 @@
         </ul>
     </div>
 
+    {% if case.tags %}
+        <div style="display: flex;">
+            {% for tag in case.tags%}
+                <div style="margin-right: 5px; font-size: smaller; background-color: peachpuff;">{{tag}}</div>
+            {%endfor%}
+        </div>
+    {%endif%}
+
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
         <i :title="cases_info.case.creation_date">Created: [[ moment.utc( cases_info.case.creation_date ).from(moment.utc()) ]]</i>
         <i :title="cases_info.case.last_modif">Changed: [[ moment.utc( cases_info.case.last_modif ).from(moment.utc()) ]]</i>

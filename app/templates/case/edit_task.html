@@ -48,9 +48,120 @@
                     {%endif%}
                 </div>
             </div>
+
+            <template v-if="taxonomies">
+                <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                    <template v-for="taxonomy in taxonomies">
+                        <option :value="[[taxonomy]]" v-if="check_taxo_exist(taxonomy)" selected>[[taxonomy]]</option>
+                        <option :value="[[taxonomy]]" v-else>[[taxonomy]]</option>
+                    </template>
+                </select>
+            </template>
+            
+            <template v-if="tags_list">
+                <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                    <template v-for="(tags, taxo) in tags_list">
+                        <optgroup :label="[[taxo]]">
+                            <template v-for="tag in tags">
+                                <option :value="[[tag]]" v-if="check_tag_exist(tag)" selected>[[tag]]</option>
+                                <option :value="[[tag]]" v-else>[[tag]]</option>
+                            </template>
+                        </optgroup>
+                    </template>
+                </select>
+            </template>
             <div class="modal-footer" style="margin-top: 10px;">
                 {{form.submit(class='btn btn-primary')}}
             </div>
         </div>
     </form>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, onMounted, nextTick, ref} = Vue
+    import {message_list} from '/static/js/toaster.js'
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const taxonomies = ref([])
+            const tags_list = ref([])
+            const taxonomies_task = ref([])
+            const tags_task = ref([])
+            const selected_taxo = ref([])
+
+            async function fetch_taxonomies(){
+                const res = await fetch("/case/get_taxonomies")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    taxonomies.value = loc["taxonomies"]
+                }
+            }
+            fetch_taxonomies()
+
+            async function fetch_taxonomies_task(){
+                const res = await fetch("/case/get_taxonomies_task/" +window.location.pathname.split("/").slice(-1))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    tags_task.value = loc["tags"]
+                    taxonomies_task.value = loc["taxonomies"]
+                }
+                if(taxonomies_task.value.length > 0){
+                    fetch_tags(taxonomies_task.value)
+                }
+            }
+            fetch_taxonomies_task()
+
+            async function fetch_tags(s_taxo){
+                const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(s_taxo))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    tags_list.value = loc["tags"]
+                    await nextTick()
+                    $('#tags_select').trigger('change');
+                }
+            }
+
+            function check_taxo_exist(taxo){
+                return taxonomies_task.value.some(function(field) {
+                    return taxo === field
+                })
+            }
+
+            function check_tag_exist(tag){
+                return tags_task.value.some(function(field) {
+                    return tag === field
+                })
+            }
+            
+
+            onMounted(() => {
+                $('.select2-select').select2({
+                    width: '50%'
+                })
+
+                $('#taxonomies_select').on('change.select2', function (e) {
+                    selected_taxo.value = $(this).select2('data').map(item => item.id);
+                    fetch_tags(selected_taxo.value)
+                })
+            })
+
+            return {
+                selected_taxo,
+                message_list,
+                taxonomies,
+                tags_list,
+                check_taxo_exist,
+                check_tag_exist
+            }
+        }
+    }).mount('.container')
+
+</script>
 {% endblock %}

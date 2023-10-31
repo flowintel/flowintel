@@ -100,6 +100,8 @@ class Case(db.Model):
         else:
             json_dict["recurring_date"] = self.recurring_date
 
+        json_dict["tags"] = [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+
         return json_dict
     
     def download(self):
@@ -118,6 +120,8 @@ class Case(db.Model):
             json_dict["recurring_date"] = self.recurring_date.strftime('%Y-%m-%d')
         else:
             json_dict["recurring_date"] = self.recurring_date
+
+        json_dict["tags"] = [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
 
         return json_dict
 
@@ -162,6 +166,8 @@ class Task(db.Model):
         else:
             json_dict["finish_date"] = self.finish_date
 
+        json_dict["tags"] = [tag.name for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+
         return json_dict
     
     def download(self):
@@ -176,6 +182,8 @@ class Task(db.Model):
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
         else:
             json_dict["deadline"] = self.deadline
+
+        json_dict["tags"] = [tag.name for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
 
         return json_dict
 
@@ -308,19 +316,26 @@ class Case_Template(db.Model):
     description = db.Column(db.String, nullable=True)
 
     def to_json(self):
-        return {
+        json_dict =  {
             "id": self.id,
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description
         }
+
+        json_dict["tags"] = [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+
+        return json_dict
     
     def download(self):
-        return {
+        json_dict = {
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description
         }
+        json_dict["tags"] = [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+
+        return json_dict
     
 
 class Task_Template(db.Model):
@@ -331,21 +346,28 @@ class Task_Template(db.Model):
     url = db.Column(db.String(64), index=True)
 
     def to_json(self):
-        return {
+        json_dict =  {
             "id": self.id,
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
             "url": self.url
         }
+
+        json_dict["tags"] = [tag.name for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+
+        return json_dict
     
     def download(self):
-        return {
+        json_dict =  {
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
             "url": self.url
         }
+        json_dict["tags"] = [tag.name for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+
+        return json_dict
     
 
 class Case_Task_Template(db.Model):
@@ -353,6 +375,36 @@ class Case_Task_Template(db.Model):
     case_id = db.Column(db.Integer, index=True)
     task_id = db.Column(db.Integer, index=True)
 
+
+class Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "name": self.name
+        }
+
+class Case_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    tag_id = db.Column(db.Integer, index=True)
+    case_id = db.Column(db.Integer, index=True)
+
+class Task_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    tag_id = db.Column(db.Integer, index=True)
+    task_id = db.Column(db.Integer, index=True)
+
+class Case_Template_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    tag_id = db.Column(db.Integer, index=True)
+    case_id = db.Column(db.Integer, index=True)
+
+class Task_Template_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    tag_id = db.Column(db.Integer, index=True)
+    task_id = db.Column(db.Integer, index=True)
 
 
 login_manager.anonymous_user = AnonymousUser

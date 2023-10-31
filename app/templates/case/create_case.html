@@ -61,12 +61,30 @@
                 <div class="mb-3 w-25">
                     {{form.deadline_time.label(class_="col-form-label")}}:
                     {{form.deadline_time(class_="form-control")}}
-                    {% if form.deadline_time.errors %}<div style="color: red;">{{form.deadline_time.errors[0] | safe}}
-                        </div>
+                    {% if form.deadline_time.errors %}
+                        <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
             </div>
             <hr>
+
+            <template v-if="taxonomies">
+                <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                    <template v-for="taxonomy, key in taxonomies">
+                        <option :value="[[taxonomy]]">[[taxonomy]]</option>
+                    </template>
+                </select>
+            </template>
+            
+            <template v-if="tags_list">
+                <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                    <template v-for="(tags, taxo) in tags_list">
+                        <optgroup :label="[[taxo]]">
+                            <option :value="[[tag]]" v-for="tag in tags">[[tag]]</option>
+                        </optgroup>
+                    </template>
+                </select>
+            </template>
             
             <div class="mb-3">
                 <p>Add tasks from templates:</p>
@@ -89,21 +107,16 @@
 
 
 {% block script %}
-<script type="text/javascript">
-    $(document).ready(function(){
-        $('.select2-select').select2({
-            width: '50%'
-        })
-    });
-
-</script>
-
 <script type="module">
-    const { createApp, ref} = Vue
+    const { createApp, onMounted, ref} = Vue
     import {message_list} from '../../static/js/toaster.js'
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
+            const taxonomies = ref([])
+            const tags_list = ref([])
+            const selected_taxo = ref([])
+
             let to_hide = true
             function hide_case_creation(){
                 if(to_hide)
@@ -113,8 +126,44 @@
                 to_hide = !to_hide
             }
 
+            async function fetch_taxonomies(){
+                const res = await fetch("/case/get_taxonomies")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    taxonomies.value = loc["taxonomies"]
+                }
+            }
+
+            async function fetch_tags(){
+                const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    tags_list.value = loc["tags"]
+                    $('#tags_select').trigger('change');
+                }
+            }
+            fetch_taxonomies()
+
+            onMounted(() => {
+                $('.select2-select').select2({
+                    width: '50%'
+                })
+
+                $('#taxonomies_select').on('change.select2', function (e) {
+                    selected_taxo.value = $(this).select2('data').map(item => item.id);
+                    fetch_tags()
+                })
+            })
+
             return {
+                selected_taxo,
                 message_list,
+                taxonomies,
+                tags_list,
                 hide_case_creation
             }
         }

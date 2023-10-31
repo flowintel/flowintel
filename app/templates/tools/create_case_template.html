@@ -26,6 +26,24 @@
                     {%endif%}
                 </div>
 
+                <template v-if="taxonomies">
+                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                        <template v-for="taxonomy, key in taxonomies">
+                            <option :value="[[taxonomy]]">[[taxonomy]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="tags_list">
+                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                        <template v-for="(tags, taxo) in tags_list">
+                            <optgroup :label="[[taxo]]">
+                                <option :value="[[tag]]" v-for="tag in tags">[[tag]]</option>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+
                 <h4>Task</h4>
 
                 <div class="mb-3 w-50">
@@ -46,9 +64,57 @@
 
 
 {% block script %}
-<script type="text/javascript">
-    $(document).ready(function(){
-        $('.select2-select').select2()
-    });
+<script type="module">
+    const { createApp, onMounted, ref} = Vue
+    import {message_list} from '/static/js/toaster.js'
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const taxonomies = ref([])
+            const tags_list = ref([])
+            const selected_taxo = ref([])
+
+            async function fetch_taxonomies(){
+                const res = await fetch("/case/get_taxonomies")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    taxonomies.value = loc["taxonomies"]
+                }
+            }
+
+            async function fetch_tags(){
+                const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    tags_list.value = loc["tags"]
+                    $('#tags_select').trigger('change');
+                }
+            }
+            fetch_taxonomies()
+
+            onMounted(() => {
+                $('.select2-select').select2({
+                    width: '50%'
+                })
+
+                $('#taxonomies_select').on('change.select2', function (e) {
+                    selected_taxo.value = $(this).select2('data').map(item => item.id);
+                    fetch_tags()
+                })
+            })
+
+            return {
+                selected_taxo,
+                message_list,
+                taxonomies,
+                tags_list
+            }
+        }
+    }).mount('.container')
+
 </script>
 {% endblock %}

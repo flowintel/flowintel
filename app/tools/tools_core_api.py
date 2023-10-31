@@ -1,4 +1,5 @@
 from ..db_class.db import Case_Template, User, Task_Template
+from ..utils.utils import check_tag
 
 
 def get_user_api(api_key):
@@ -15,6 +16,13 @@ def verif_create_case_template(data_dict):
 
     data_dict["tasks"] = []
 
+    if "tags" in data_dict:
+        for tag in data_dict["tags"]:
+            if not check_tag(tag):
+                return {"message": f"Tag '{tag}' doesn't exist"}
+    else:
+        data_dict["tags"] = []
+
     return data_dict
 
 def verif_edit_case_template(data_dict, case_id):
@@ -24,6 +32,15 @@ def verif_edit_case_template(data_dict, case_id):
     
     if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = case_template.description
+
+    if "tags" in data_dict:
+        for tag in data_dict["tags"]:
+            if not check_tag(tag):
+                return {"message": f"Tag '{tag}' doesn't exist"}
+    elif case_template.to_json()["tags"]:
+        data_dict["tags"] = case_template.to_json()["tags"]
+    else:
+        data_dict["tags"] = []
 
     return data_dict
 
@@ -40,6 +57,13 @@ def verif_add_task_template(data_dict):
     if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = ""
 
+    if "tags" in data_dict:
+        for tag in data_dict["tags"]:
+            if not check_tag(tag):
+                return {"message": f"Tag '{tag}' doesn't exist"}
+    else:
+        data_dict["tags"] = []
+
     return data_dict
 
 def verif_edit_task_template(data_dict, task_id):
@@ -52,5 +76,14 @@ def verif_edit_task_template(data_dict, task_id):
 
     if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = task_template.url
+
+    if "tags" in data_dict:
+        for tag in data_dict["tags"]:
+            if not check_tag(tag):
+                return {"message": f"Tag '{tag}' doesn't exist"}
+    elif task_template.to_json()["tags"]:
+        data_dict["tags"] = task_template.to_json()["tags"]
+    else:
+        data_dict["tags"] = []
 
     return data_dict

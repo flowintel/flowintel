@@ -3,7 +3,7 @@ from .form import TaskEditForm, TaskForm
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
 from ..decorators import editor_required
-from ..utils.utils import form_to_dict
+from ..utils.utils import form_to_dict, check_tag
 from ..db_class.db import Task_Template
 
 task_blueprint = Blueprint(
@@ -26,7 +26,17 @@ def create_task(cid):
             form.template_select.choices.insert(0, (0," "))
 
             if form.validate_on_submit():
+                if "tags_select" in request.form:
+                    flag = True
+                    tag_list = request.form.getlist("tags_select")
+                    for tag in tag_list:
+                        if not check_tag(tag):
+                            flag = False
+                    if not flag:
+                        flash("tag doesn't exist")
+                        return render_template("case/create_task.html", form=form)
                 form_dict = form_to_dict(form)
+                form_dict["tags"] = tag_list
                 if CaseModel.create_task(form_dict, cid, current_user):
                     flash("Task created", "success")
                 else:
@@ -36,7 +46,7 @@ def create_task(cid):
         return redirect(f"/case/{cid}")
     return render_template("404.html")
 
-@task_blueprint.route("<cid>/edit_task/<tid>", methods=['GET','POST'])
+@task_blueprint.route("/<cid>/edit_task/<tid>", methods=['GET','POST'])
 @login_required
 @editor_required
 def edit_task(cid, tid):
@@ -46,7 +56,17 @@ def edit_task(cid, tid):
             form = TaskEditForm()
 
             if form.validate_on_submit():
+                if "tags_select" in request.form:
+                    flag = True
+                    tag_list = request.form.getlist("tags_select")
+                    for tag in tag_list:
+                        if not check_tag(tag):
+                            flag = False
+                    if not flag:
+                        flash("tag doesn't exist")
+                        return render_template("case/edit_task.html", form=form)
                 form_dict = form_to_dict(form)
+                form_dict["tags"] = tag_list
                 CaseModel.edit_task_core(form_dict, tid, current_user)
                 flash("Task edited", "success")
                 return redirect(f"/case/{cid}")
@@ -358,3 +378,15 @@ def export_notes(cid, tid):
         return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
+
+@task_blueprint.route("/get_taxonomies_task/<tid>", methods=['GET'])
+@login_required
+def get_taxonomies_case(tid):
+    task = CaseModel.get_task(tid)
+    if task:
+        tags = CaseModel.get_task_tags(task.id)
+        taxonomies = []
+        if tags:
+            taxonomies = [tag.split(":")[0] for tag in tags]
+        return {"tags": tags, "taxonomies": taxonomies}
+    return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404

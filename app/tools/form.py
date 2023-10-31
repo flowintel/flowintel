@@ -59,7 +59,7 @@ class CaseTemplateEditForm(FlaskForm):
     title = StringField('Title', validators=[InputRequired(),Length(1, 64)])
     description = TextAreaField('Description', validators=[Optional()])
     
-    submit = SubmitField('Create')
+    submit = SubmitField('Save')
 
     def validate_title(self, field):
         template = Case_Template.query.get(self.template_id.data)

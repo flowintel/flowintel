@@ -1,7 +1,7 @@
 import os
 from .. import db
-from ..db_class.db import Case, Task, Task_User, User, Case_Org, Role, Org, File, Status, Task_Template, Case_Task_Template, Case_Template, Recurring_Notification
-from ..utils.utils import isUUID, create_specific_dir
+from ..db_class.db import *
+from ..utils.utils import isUUID, create_specific_dir, taxonomies
 import uuid
 import datetime
 from sqlalchemy import desc
@@ -76,6 +76,29 @@ def get_status(sid):
     return Status.query.get(sid).first()
 
 
+def get_taxonomies():
+    return list(taxonomies.keys())
+
+def get_tags(taxos):
+    return {taxo: taxonomies.get(taxo).machinetags() for taxo in taxos}
+
+def check_tags(tag, taxo):
+    return tag in taxonomies.get(taxo).machinetags()
+
+def create_tag(tag):
+    tag = Tags.query.filter_by(name=tag).first()
+    if not tag:
+        tag = Tags(name=tag)
+        db.session.add(tag)
+        db.session.commit()
+    return tag
+
+def get_case_tags(cid):
+    return [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
+
+def get_task_tags(tid):
+    return [tag.name for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
+
 def get_history(case_uuid):
     try:
         path_history = os.path.join(HISTORY_FOLDER, str(case_uuid))
@@ -110,6 +133,7 @@ def delete_case(cid, current_user):
 
         NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", cid, html_icon="fa-solid fa-trash", current_user=current_user)
 
+        Case_Tags.query.filter_by(case_id=case.id).delete()
         Case_Org.query.filter_by(case_id=case.id).delete()
         db.session.delete(case)
         db.session.commit()
@@ -134,6 +158,7 @@ def delete_task(tid, current_user):
             user = User.query.get(task_user.user_id)
             NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
+        Task_Tags.query.filter_by(task_id=task.id).delete()
         Task_User.query.filter_by(task_id=task.id).delete()
         db.session.delete(task)
         update_last_modif(task.case_id)
@@ -234,6 +259,16 @@ def create_case(form_dict, user):
         db.session.add(case)
         db.session.commit()
 
+        for tags in form_dict["tags"]:
+            tag = create_tag(tags)
+            
+            case_tag = Case_Tags(
+                tag_id=tag.id,
+                case_id=case.id
+            )
+            db.session.add(case_tag)
+            db.session.commit()
+
         if "tasks_templates" in form_dict and not 0 in form_dict["tasks_templates"]:
             for tid in form_dict["tasks_templates"]:
                 task = Task_Template.query.get(tid)
@@ -249,6 +284,14 @@ def create_case(form_dict, user):
                 )
                 db.session.add(t)
                 db.session.commit()
+
+                for t_t in Task_Template_Tags.query.filter_by(task_id=task.id).all():
+                    task_tag = Task_Tags(
+                        task_id=t.id,
+                        tag_id=t_t.tag_id
+                    )
+                    db.session.add(task_tag)
+                    db.session.commit()
 
         # Add the current user's org to the case
         case_org = Case_Org(
@@ -274,6 +317,24 @@ def edit_case(form_dict, cid, current_user):
     case.description=form_dict["description"]
     case.deadline=deadline
 
+    case_tag_db = Case_Tags.query.filter_by(case_id=case.id).all()
+
+    for tags in form_dict["tags"]:
+        tag = create_tag(tags)
+
+        if not tags in case_tag_db:
+            case_tag = Case_Tags(
+                tag_id=tag.id,
+                case_id=case.id
+            )
+            db.session.add(case_tag)
+            db.session.commit()
+    
+    for c_t_db in case_tag_db:
+        if not c_t_db in form_dict["tags"]:
+            Case_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
     update_last_modif(cid)
     db.session.commit()
 
@@ -294,6 +355,16 @@ def create_task(form_dict, cid, current_user):
             case_id=cid,
             status_id=1
         )
+        db.session.add(task)
+        db.session.commit()
+
+        for t_t in Task_Template_Tags.query.filter_by(task_id=task.id).all():
+            task_tag = Task_Tags(
+                task_id=task.id,
+                tag_id=t_t.tag_id
+            )
+            db.session.add(task_tag)
+            db.session.commit()
     else:
         deadline = deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
@@ -308,9 +379,19 @@ def create_task(form_dict, cid, current_user):
             case_id=cid,
             status_id=1
         )
+        db.session.add(task)
+        db.session.commit()
 
-    db.session.add(task)
-    db.session.commit()
+        for tags in form_dict["tags"]:
+            tag = create_tag(tags)
+            
+            task_tag = Task_Tags(
+                tag_id=tag.id,
+                task_id=task.id
+            )
+            db.session.add(task_tag)
+            db.session.commit()
+
     update_last_modif(cid)
 
     case = get_case(cid)
@@ -355,6 +436,24 @@ def edit_task_core(form_dict, tid, current_user):
     task.description=form_dict["description"]
     task.url=form_dict["url"]
     task.deadline=deadline
+
+    task_tag_db = Task_Tags.query.filter_by(task_id=task.id).all()
+
+    for tags in form_dict["tags"]:
+        tag = create_tag(tags)
+
+        if not tags in task_tag_db:
+            task_tag = Task_Tags(
+                tag_id=tag.id,
+                task_id=task.id
+            )
+            db.session.add(task_tag)
+            db.session.commit()
+    
+    for c_t_db in task_tag_db:
+        if not c_t_db in form_dict["tags"]:
+            Task_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
 
     update_last_modif(task.case_id)
     update_last_modif_task(task.id)
@@ -678,6 +777,14 @@ def create_template_from_case(cid, case_title_template):
     db.session.add(new_template)
     db.session.commit()
 
+    for c_t in Case_Tags.query.filter_by(case_id=case.id).all():
+        case_tag = Case_Template_Tags(
+            case_id=new_template.id,
+            tag_id=c_t.tag_id
+        )
+        db.session.add(case_tag)
+        db.session.commit()
+
     for task in case.tasks:
         task_exist = Task_Template.query.filter_by(title=task.title).first()
         if not task_exist:
@@ -689,6 +796,14 @@ def create_template_from_case(cid, case_title_template):
             )
             db.session.add(task_template)
             db.session.commit()
+
+            for t_t in Task_Tags.query.filter_by(task_id=task.id).all():
+                task_tag = Task_Template_Tags(
+                    task_id=task_template.id,
+                    tag_id=t_t.tag_id
+                )
+                db.session.add(task_tag)
+                db.session.commit()
 
             case_task_template = Case_Task_Template(
                     case_id=new_template.id,

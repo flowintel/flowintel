@@ -2,9 +2,9 @@
     {% with msgs = get_flashed_messages(category_filter=[class]) %}
         {% for msg in msgs %}
             {% if class == 'error'%}
-                <div class="alert alert-danger alert-dismissible fade show message" data-autohide="2">
+                <div class="alert alert-danger alert-dismissible fade show message" data-autohide="3">
             {%else%}
-                <div class="alert alert-{{ class }} alert-dismissible fade show message" data-autohide="2">
+                <div class="alert alert-{{ class }} alert-dismissible fade show message" data-autohide="3">
             {%endif%}
                 {{ msg }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
