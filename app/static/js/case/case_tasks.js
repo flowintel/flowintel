@@ -372,6 +372,7 @@ export default {
 			note_editor_render,
 			md,
 			is_exporting,
+			getTextColor,
 			change_status,
 			take_task,
 			remove_assign_task,
@@ -412,7 +413,10 @@ export default {
 			<div class="d-flex w-100 justify-content-between">
 				<div style="display: flex;" v-if="task.tags">
 					<template v-for="tag in task.tags">
-						<div style="margin-right: 5px; font-size: smaller; background-color: peachpuff;">[[tag]]</div>
+						<div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+							<i class="fa-regular fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+							[[tag.name]]
+						</div>
 					</template>
 				</div>
 				<div v-else></div>

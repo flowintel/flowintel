@@ -13,8 +13,6 @@
     </h1>
 
 
-
-
     <!-- Search bar -->
     <div class="input-group w-auto start-50 translate-middle-x" id="search_case" style="max-width: 200px;">
         <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 400px;" />
@@ -102,7 +100,10 @@
                         <div class="d-flex w-100 justify-content-between">
                             <div style="display: flex;" v-if="case_loc.tags">
                                 <template v-for="tag in case_loc.tags">
-                                    <div style="margin-right: 5px; font-size: smaller; background-color: peachpuff;">[[tag]]</div>
+                                    <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                        <i class="fa-regular fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                                        [[tag.name]]
+                                    </div>
                                 </template>
                             </div>
                             <div v-else></div>
@@ -298,6 +299,7 @@
                     filter_ongoing,
                     sort_by_filter,
                     asc_desc_filter,
+                    getTextColor,
                     onInput
                 }
             }

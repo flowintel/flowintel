@@ -100,7 +100,7 @@ class Case(db.Model):
         else:
             json_dict["recurring_date"] = self.recurring_date
 
-        json_dict["tags"] = [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
 
         return json_dict
     
@@ -121,7 +121,7 @@ class Case(db.Model):
         else:
             json_dict["recurring_date"] = self.recurring_date
 
-        json_dict["tags"] = [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
 
         return json_dict
 
@@ -166,7 +166,7 @@ class Task(db.Model):
         else:
             json_dict["finish_date"] = self.finish_date
 
-        json_dict["tags"] = [tag.name for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
 
         return json_dict
     
@@ -183,7 +183,7 @@ class Task(db.Model):
         else:
             json_dict["deadline"] = self.deadline
 
-        json_dict["tags"] = [tag.name for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
 
         return json_dict
 
@@ -323,7 +323,7 @@ class Case_Template(db.Model):
             "description": self.description
         }
 
-        json_dict["tags"] = [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
 
         return json_dict
     
@@ -333,7 +333,7 @@ class Case_Template(db.Model):
             "title": self.title,
             "description": self.description
         }
-        json_dict["tags"] = [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
 
         return json_dict
     
@@ -354,7 +354,7 @@ class Task_Template(db.Model):
             "url": self.url
         }
 
-        json_dict["tags"] = [tag.name for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
 
         return json_dict
     
@@ -365,7 +365,7 @@ class Task_Template(db.Model):
             "description": self.description,
             "url": self.url
         }
-        json_dict["tags"] = [tag.name for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
 
         return json_dict
     
@@ -379,11 +379,13 @@ class Case_Task_Template(db.Model):
 class Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
+    color = db.Column(db.String)
 
     def to_json(self):
         return {
             "id": self.id,
-            "name": self.name
+            "name": self.name,
+            "color": self.color
         }
 
 class Case_Tags(db.Model):

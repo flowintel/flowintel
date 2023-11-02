@@ -48,7 +48,10 @@
     {% if case.tags %}
         <div style="display: flex;">
             {% for tag in case.tags%}
-                <div style="margin-right: 5px; font-size: smaller; background-color: peachpuff;">{{tag}}</div>
+                <div class="tag" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
+                    <i class="fa-regular fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                    {{tag.name}}
+                </div>
             {%endfor%}
         </div>
     {%endif%}
@@ -497,7 +500,8 @@
                     filter_ongoing,
                     sort_by_filter,
                     asc_desc_filter,
-                    active_tab
+                    active_tab,
+                    getTextColor
                 }
             }
         }).mount('.container')

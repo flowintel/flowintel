@@ -46,12 +46,25 @@ def get_task_template_tags(tid):
 
 
 def create_tag(tag):
-    tag = Tags.query.filter_by(name=tag).first()
-    if not tag:
-        tag = Tags(name=tag)
-        db.session.add(tag)
+    tag_db = Tags.query.filter_by(name=tag).first()
+    if not tag_db:
+        revert_match = utils.taxonomies.revert_machinetag(tag)[1].colour
+        if not revert_match:
+            namespace = tag.split(":")[0]
+            
+            list_to_search = list(utils.taxonomies.get(namespace).machinetags())
+            taxo_len = len(list_to_search)
+            index = list_to_search.index(tag)
+                
+            color_list = utils.generate_palette_from_string(namespace, taxo_len)
+            color_tag = color_list[index]
+        else:
+            color_tag = revert_match
+
+        tag_db = Tags(name=tag, color=color_tag)
+        db.session.add(tag_db)
         db.session.commit()
-    return tag
+    return tag_db
 
 
 def create_case_template(form_dict):

@@ -109,3 +109,55 @@ def check_tag(tag):
         return tag in taxonomies.get(name).machinetags()
     except:
         return False
+
+
+def generate_palette_from_string(s, items):
+    hue = str_to_num(s)
+    saturation = 1
+    steps = 80 / items
+    results = []
+    for i in range(items):
+        value = (20 + (steps * (i + 1))) / 100
+        rgb = hsv_to_rgb([hue, saturation, value])
+        results.append(rgb)
+    return results
+
+def str_to_num(s):
+    char_code_sum = 0
+    for char in s:
+        char_code_sum += ord(char)
+    return (char_code_sum % 100) / 100
+
+def hsv_to_rgb(hsv):
+    H, S, V = hsv
+    H = H * 6
+    I = int(H)
+    F = H - I
+    M = V * (1 - S)
+    N = V * (1 - S * F)
+    K = V * (1 - S * (1 - F))
+    rgb = []
+    
+    if I == 0:
+        rgb = [V, K, M]
+    elif I == 1:
+        rgb = [N, V, M]
+    elif I == 2:
+        rgb = [M, V, K]
+    elif I == 3:
+        rgb = [M, N, V]
+    elif I == 4:
+        rgb = [K, M, V]
+    elif I == 5 or I == 6:
+        rgb = [V, M, N]
+    return convert_to_hex(rgb)
+
+def convert_to_hex(color_list):
+    color = "#"
+    for element in color_list:
+        element = round(element * 255)
+        element = format(element, '02x')
+        if len(element) == 1:
+            element = '0' + element
+        color += element
+    return color
