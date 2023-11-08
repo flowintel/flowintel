@@ -1,0 +1,186 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>
+        Taxonomies
+    </h1>
+
+    <hr>
+
+    <!-- Search bar -->
+    <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
+        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search taxonomies by name' style="min-width: 400px;" />
+    </div>
+    <!-- Search bar -->
+
+    <hr>
+    
+    <nav aria-label="Page navigation example" v-if="taxonomies_list && nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchTaxonomies(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchTaxonomies(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}"><button class="page-link" @click="fetchTaxonomies(Math.min(current_page+1, nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+
+    <template v-if="taxonomies_list">
+        <template v-for="taxonomy in taxonomies_list.taxonomies">
+            <div class="list-group" style="margin-bottom: 10px;">
+                <div class="d-flex align-items-center">
+                    <input v-if="taxonomy.exclude" class="form-check-input me-2" type="checkbox" name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)">
+                    <input v-else class="form-check-input me-2" type="checkbox" checked name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)">
+                    <a @click="extend_collapse(taxonomy.id)" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1">[[taxonomy.name]]</h4>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p class="mb-1">[[taxonomy.description]]</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="collapse" :id="'collapse'+taxonomy.id" style="margin-bottom: 20px;">
+                <div class="card card-body" :id="'card-body_'+taxonomy.id" style="background-color: whitesmoke;">
+                    <template v-if="tags_table">
+                        <template v-if="tags_table[taxonomy.id]">
+                            <table>
+                                <template v-for="tag in tags_table[taxonomy.id]">
+                                    <tr>
+                                        <td title="Tag">
+                                            <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                                <i class="fa-regular fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                                                [[tag.name]]
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </table>
+                            <hr>
+                            <div>
+                                <button class="btn btn-primary" @click="save_taxo(taxonomy.id)">Save</button>
+                            </div>
+                            
+                        </template>
+                        <template v-else>
+                            <i>No tags</i>
+                        </template>
+                    </template>
+                    <template v-else>
+                        Loading...
+                    </template>
+                </div>
+            </div>
+        </template>
+    </template>
+    <template v-else>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </template>
+
+    <nav aria-label="Page navigation example" v-if="taxonomies_list && nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchTaxonomies(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchTaxonomies(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}"><button class="page-link" @click="fetchTaxonomies(Math.min(current_page+1, nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '../../static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const taxonomies_list = ref(null)
+                const tags_table = ref({})
+                const current_page = ref(1)
+                const all_taxo = ref([])
+                const nb_pages = ref(0)
+
+
+                async function fetchTaxonomies(page) {
+                    taxonomies_list.value = null
+                    const res = await fetch('get_taxonomies_page?page='+page)
+                    let loc = await res.json()
+                    taxonomies_list.value = loc
+                    current_page.value = page
+                }
+
+                async function fetchAllTaxonomies() {
+                    const res = await fetch('get_taxonomies')
+                    let loc = await res.json()
+                    all_taxo.value = loc["taxonomies"]
+                }
+
+                async function fetchNbPage() {
+                    const res = await fetch('nb_page_taxo')
+                    let loc = await res.json()
+                    nb_pages.value = loc["nb_page"]
+                }
+
+                async function extend_collapse(taxo_id){
+                    const res = await fetch('get_tags?taxonomy='+taxo_id)
+                    let loc = await res.json()
+                    tags_table.value[taxo_id] = loc["tags"]
+
+                    const collapseElementList = document.querySelectorAll('#collapse'+taxo_id)
+                    const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
+                }
+
+
+                function onInput(e){
+                    taxonomies_list.value.taxonomies = []
+                    if(e.target.value){
+                        taxonomies_list.value.taxonomies = all_taxo.value.filter((taxonomies) => {
+                            return taxonomies.name.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                    }else{
+                        taxonomies_list.value.taxonomies = fetchTaxonomies(1)
+                    }
+                }
+
+
+                async function deactivate_taxo(taxonomy_id){
+                    const res = await fetch('taxonomy_status?taxonomy='+taxonomy_id)
+                    display_toast(res)
+                }
+
+
+                fetchTaxonomies(1)
+                fetchAllTaxonomies()
+                fetchNbPage()
+
+    
+                return {
+                    message_list,
+                    taxonomies_list,
+                    tags_table,
+                    nb_pages,
+                    extend_collapse,
+                    current_page,
+                    fetchTaxonomies,
+                    onInput,
+                    getTextColor,
+                    deactivate_taxo
+                }
+            }
+        }).mount('.container')
+
+    </script>
+{% endblock %}

@@ -29,7 +29,7 @@
                 <template v-if="taxonomies">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                         <template v-for="taxonomy, key in taxonomies">
-                            <option :value="[[taxonomy]]">[[taxonomy]]</option>
+                            <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
                         </template>
                     </select>
                 </template>
@@ -38,7 +38,7 @@
                     <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
                         <template v-for="(tags, taxo) in tags_list">
                             <optgroup :label="[[taxo]]">
-                                <option :value="[[tag]]" v-for="tag in tags">[[tag]]</option>
+                                <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
                             </optgroup>
                         </template>
                     </select>

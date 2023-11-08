@@ -12,3 +12,4 @@ python-dateutil
 schedule
 pytest
 gunicorn
+git+https://github.com/MISP/PyTaxonomies

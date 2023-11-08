@@ -1,5 +1,5 @@
 from .. import db
-from ..db_class.db import User, Role, Org, Case_Org, Task_User
+from ..db_class.db import User, Role, Org, Case_Org, Task_User, Taxonomy
 from ..utils.utils import generate_api_key
 import uuid
 
@@ -185,4 +185,34 @@ def delete_org_core(oid):
         return True
     else:
         return False
+    
+def get_taxonomies():
+    return [taxo.to_json() for taxo in Taxonomy.query.all()]
 
+def get_taxonomies_page(page):
+    nb_taxo = 25
+    to_give = nb_taxo * page
+    taxo_list = get_taxonomies()
+    
+    if to_give > len(taxo_list):
+        limit = len(taxo_list)
+    else:
+        limit = to_give
+    to_start = limit - nb_taxo
+
+    out_list = list()
+    for i in range(to_start, limit):
+        out_list.append(taxo_list[i])
+    return out_list
+
+def get_nb_page_taxo():
+    return int(len(get_taxonomies())/25)+1
+
+def get_tags(taxonomy_id):
+    return [tag.to_json() for tag in Taxonomy.query.get(taxonomy_id).tags]
+
+
+def taxonomy_status(taxonomy_id):
+    taxo = Taxonomy.query.get(taxonomy_id)
+    taxo.exclude = not taxo.exclude
+    db.session.commit()

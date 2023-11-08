@@ -1,7 +1,7 @@
 import os
 from .. import db
 from ..db_class.db import *
-from ..utils.utils import isUUID, create_specific_dir, taxonomies, generate_palette_from_string
+from ..utils.utils import isUUID, create_specific_dir
 import uuid
 import datetime
 from sqlalchemy import desc
@@ -77,34 +77,17 @@ def get_status(sid):
 
 
 def get_taxonomies():
-    return list(taxonomies.keys())
+    return [taxo.to_json() for taxo in Taxonomy.query.filter_by(exclude=False).all()]
 
 def get_tags(taxos):
-    return {taxo: taxonomies.get(taxo).machinetags() for taxo in taxos}
+    out = dict()
+    for taxo in taxos:
+        out[taxo] = [tag.to_json() for tag in Taxonomy.query.filter_by(name=taxo).first().tags if not tag.exclude]
+    return out
 
-def check_tags(tag, taxo):
-    return tag in taxonomies.get(taxo).machinetags()
+def get_tag(tag):
+    return Tags.query.filter_by(name=tag).first()
 
-def create_tag(tag):
-    tag_db = Tags.query.filter_by(name=tag).first()
-    if not tag_db:
-        revert_match = taxonomies.revert_machinetag(tag)[1].colour
-        if not revert_match:
-            namespace = tag.split(":")[0]
-            
-            list_to_search = list(taxonomies.get(namespace).machinetags())
-            taxo_len = len(list_to_search)
-            index = list_to_search.index(tag)
-                
-            color_list = generate_palette_from_string(namespace, taxo_len)
-            color_tag = color_list[index]
-        else:
-            color_tag = revert_match
-
-        tag_db = Tags(name=tag, color=color_tag)
-        db.session.add(tag_db)
-        db.session.commit()
-    return tag_db
 
 def get_case_tags(cid):
     return [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
@@ -273,7 +256,7 @@ def create_case(form_dict, user):
         db.session.commit()
 
         for tags in form_dict["tags"]:
-            tag = create_tag(tags)
+            tag = get_tag(tags)
             
             case_tag = Case_Tags(
                 tag_id=tag.id,
@@ -333,7 +316,7 @@ def edit_case(form_dict, cid, current_user):
     case_tag_db = Case_Tags.query.filter_by(case_id=case.id).all()
 
     for tags in form_dict["tags"]:
-        tag = create_tag(tags)
+        tag = get_tag(tags)
 
         if not tags in case_tag_db:
             case_tag = Case_Tags(
@@ -396,7 +379,7 @@ def create_task(form_dict, cid, current_user):
         db.session.commit()
 
         for tags in form_dict["tags"]:
-            tag = create_tag(tags)
+            tag = get_tag(tags)
             
             task_tag = Task_Tags(
                 tag_id=tag.id,
@@ -453,7 +436,7 @@ def edit_task_core(form_dict, tid, current_user):
     task_tag_db = Task_Tags.query.filter_by(task_id=task.id).all()
 
     for tags in form_dict["tags"]:
-        tag = create_tag(tags)
+        tag = get_tag(tags)
 
         if not tags in task_tag_db:
             task_tag = Task_Tags(

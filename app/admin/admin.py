@@ -189,3 +189,45 @@ def get_org_users():
     return {"message": "No user in the org"}
 
 
+@admin_blueprint.route("/taxonomies", methods=['GET'])
+@login_required
+def taxonomies():
+    """List all taxonomies"""
+    return render_template("admin/taxonomies.html")
+
+
+@admin_blueprint.route("/get_taxonomies", methods=['GET'])
+@login_required
+def get_taxonomies():
+    """List all taxonomies"""
+    return {"taxonomies": AdminModel.get_taxonomies()}
+
+@admin_blueprint.route("/get_taxonomies_page", methods=['GET'])
+@login_required
+def get_taxonomies_page():
+    """List all taxonomies"""
+    page = request.args.get('page', 1, type=int)
+    return {"taxonomies": AdminModel.get_taxonomies_page(page)}
+
+@admin_blueprint.route("/nb_page_taxo", methods=['GET'])
+@login_required
+def nb_page_taxo():
+    """List all taxonomies"""
+    return {"nb_page": AdminModel.get_nb_page_taxo()}
+
+@admin_blueprint.route("/get_tags", methods=['GET'])
+@login_required
+def get_tags():
+    """List all taxonomies"""
+    taxonomy = request.args.get('taxonomy')
+    tags = AdminModel.get_tags(taxonomy)
+    return {"tags": tags}
+
+@admin_blueprint.route("/taxonomy_status", methods=['GET'])
+@login_required
+@admin_required
+def taxonomy_status():
+    """Active or deactive a taxonomy"""
+    taxonomy_id = request.args.get('taxonomy', type=int)
+    AdminModel.taxonomy_status(taxonomy_id)
+    return {"message":"Taxonomy changed", "toast_class": "success-subtle"}, 200

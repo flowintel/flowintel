@@ -376,16 +376,34 @@ class Case_Task_Template(db.Model):
     task_id = db.Column(db.Integer, index=True)
 
 
-class Tags(db.Model):
+class Taxonomy(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String)
-    color = db.Column(db.String)
+    description = db.Column(db.String)
+    exclude = db.Column(db.Boolean, default=False)
+    tags = db.relationship('Tags', backref='taxonomy', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
         return {
             "id": self.id,
             "name": self.name,
-            "color": self.color
+            "description": self.description,
+            "exclude": self.exclude
+        }
+
+class Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String)
+    color = db.Column(db.String)
+    exclude = db.Column(db.Boolean, default=False)
+    taxonomy_id = db.Column(db.Integer, db.ForeignKey('taxonomy.id', ondelete="CASCADE"))
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "color": self.color,
+            "exclude": self.exclude
         }
 
 class Case_Tags(db.Model):

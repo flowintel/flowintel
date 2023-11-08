@@ -44,27 +44,8 @@ def get_case_template_tags(cid):
 def get_task_template_tags(tid):
     return [tag.name for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
 
-
-def create_tag(tag):
-    tag_db = Tags.query.filter_by(name=tag).first()
-    if not tag_db:
-        revert_match = utils.taxonomies.revert_machinetag(tag)[1].colour
-        if not revert_match:
-            namespace = tag.split(":")[0]
-            
-            list_to_search = list(utils.taxonomies.get(namespace).machinetags())
-            taxo_len = len(list_to_search)
-            index = list_to_search.index(tag)
-                
-            color_list = utils.generate_palette_from_string(namespace, taxo_len)
-            color_tag = color_list[index]
-        else:
-            color_tag = revert_match
-
-        tag_db = Tags(name=tag, color=color_tag)
-        db.session.add(tag_db)
-        db.session.commit()
-    return tag_db
+def get_tag(tag):
+    return Tags.query.filter_by(name=tag).first()
 
 
 def create_case_template(form_dict):
@@ -77,7 +58,7 @@ def create_case_template(form_dict):
     db.session.commit()
 
     for tag in form_dict["tags"]:
-        tag = create_tag(tag)
+        tag = get_tag(tag)
         
         case_tag = Case_Template_Tags(
             tag_id=tag.id,
@@ -102,9 +83,11 @@ def add_task_template_core(form_dict):
         url=form_dict["url"],
         uuid=str(uuid.uuid4())
     )
+    db.session.add(template)
+    db.session.commit()
 
     for tag in form_dict["tags"]:
-        tag = create_tag(tag)
+        tag = get_tag(tag)
         
         task_tag = Task_Template_Tags(
             tag_id=tag.id,
@@ -113,8 +96,6 @@ def add_task_template_core(form_dict):
         db.session.add(task_tag)
         db.session.commit()
     
-    db.session.add(template)
-    db.session.commit()
     return template
 
 
@@ -151,7 +132,7 @@ def edit_case_template(form_dict, cid):
     case_tag_db = Case_Template_Tags.query.filter_by(case_id=template.id).all()
 
     for tag in form_dict["tags"]:
-        tag = create_tag(tag)
+        tag = get_tag(tag)
 
         if not tag in case_tag_db:
             case_tag = Case_Template_Tags(
@@ -178,7 +159,7 @@ def edit_task_template(form_dict, tid):
     task_tag_db = Task_Template_Tags.query.filter_by(task_id=template.id).all()
 
     for tag in form_dict["tags"]:
-        tag = create_tag(tag)
+        tag = get_tag(tag)
 
         if not tag in task_tag_db:
             task_tag = Task_Template_Tags(

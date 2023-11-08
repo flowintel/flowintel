@@ -16,6 +16,7 @@ function launch {
     export FLASKENV="development"
     killscript
     db_upgrade
+    python app.py -t
     screen -dmS "fcm"
     screen -S "fcm" -X screen -t "recurring_notification" bash -c "python startNotif.py; read x"
     python app.py

@@ -52,8 +52,8 @@
             <template v-if="taxonomies">
                 <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                     <template v-for="taxonomy in taxonomies">
-                        <option :value="[[taxonomy]]" v-if="check_taxo_exist(taxonomy)" selected>[[taxonomy]]</option>
-                        <option :value="[[taxonomy]]" v-else>[[taxonomy]]</option>
+                        <option :value="[[taxonomy.name]]" v-if="check_taxo_exist(taxonomy.name)" selected>[[taxonomy.name]]</option>
+                        <option :value="[[taxonomy.name]]" v-else>[[taxonomy.name]]</option>
                     </template>
                 </select>
             </template>
@@ -63,8 +63,8 @@
                     <template v-for="(tags, taxo) in tags_list">
                         <optgroup :label="[[taxo]]">
                             <template v-for="tag in tags">
-                                <option :value="[[tag]]" v-if="check_tag_exist(tag)" selected>[[tag]]</option>
-                                <option :value="[[tag]]" v-else>[[tag]]</option>
+                                <option :value="[[tag.name]]" v-if="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
+                                <option :value="[[tag.name]]" v-else>[[tag.name]]</option>
                             </template>
                         </optgroup>
                     </template>

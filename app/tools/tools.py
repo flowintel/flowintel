@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..decorators import editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
-from ..utils.utils import form_to_dict, taxonomies, check_tag
+from ..utils.utils import form_to_dict, check_tag
 
 tools_blueprint = Blueprint(
     'tools',
