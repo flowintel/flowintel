@@ -37,9 +37,28 @@
 						<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="asc_desc_filter(true)">
 						<label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
 					</div>
-			  
 				</div>
 			</div>
+            <hr>
+            <div>
+                <template v-if="taxonomies">
+                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                        <template v-for="taxonomy, key in taxonomies">
+                            <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="tags_list">
+                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                        <template v-for="(tags, taxo) in tags_list">
+                            <optgroup :label="[[taxo]]">
+                                <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
 		</div>
 	</div>
     <hr>
@@ -129,10 +148,18 @@
                 let title_filter = false
                 let asc_desc = true
                 let temp_case_list = []
+                const taxonomies = ref([])
+                const tags_list = ref([])
+                const selected_taxo = ref([])
+                const selected_tags = ref([])
 
                 async function fetch_templates(page){
                     templates_list.value = null
-                    const res = await fetch("/tools/get_page_case_templates?page=" + page + "&title=" + title_filter)
+                    let tags = ""
+                    if(selected_tags.value.length){
+                        tags = "&tags=" + JSON.stringify(selected_tags.value)
+                    }
+                    const res = await fetch("/tools/get_page_case_templates?page=" + page + "&title=" + title_filter + tags)
                     let loc = await res.json()
                     templates_list.value = loc
                     current_page.value = page
@@ -159,7 +186,11 @@
                     if(change)
                         asc_desc = !asc_desc
 
-                    let res = await fetch('/tools/get_page_case_templates?page=1&title=' + title_filter)
+                    let tags = ""
+                    if(selected_tags.value.length){
+                        tags = "&tags=" + JSON.stringify(selected_tags.value)
+                    }
+                    const res = await fetch('/tools/get_page_case_templates?page=1&title=' + title_filter + tags)
                     
                     let loc = await res.json()
                     if(asc_desc){
@@ -184,8 +215,47 @@
                     }
                 }
 
-
                 fetch_templates(1)
+
+                
+
+                async function fetch_taxonomies(){
+                    const res = await fetch("/case/get_taxonomies")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        taxonomies.value = loc["taxonomies"]
+                    }
+                }
+
+                async function fetch_tags(){
+                    const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        tags_list.value = loc["tags"]
+                        $('#tags_select').trigger('change');
+                    }
+                }
+                fetch_taxonomies()
+
+
+                onMounted(() => {
+                    $('.select2-select').select2({
+                        width: '50%'
+                    })
+
+                    $('#taxonomies_select').on('change.select2', function (e) {
+                        selected_taxo.value = $(this).select2('data').map(item => item.id);
+                        fetch_tags()
+                    })
+                    $('#tags_select').on('change.select2', function (e) {
+                        selected_tags.value = $(this).select2('data').map(item => item.id);
+                        asc_desc_filter()
+                    })
+                })
     
                 return {
                     message_list,
@@ -197,6 +267,8 @@
                     asc_desc_filter,
                     onInput,
                     getTextColor,
+                    taxonomies,
+                    tags_list,
                 }
             }
         }).mount('.container')

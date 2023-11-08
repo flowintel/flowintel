@@ -1,4 +1,5 @@
 import os
+import ast
 from .. import db
 from ..db_class.db import *
 from ..utils.utils import isUUID, create_specific_dir
@@ -673,23 +674,50 @@ def regroup_case_info(cases, user, nb_pages=None):
     return loc
 
 
-def sort_by_ongoing_task_core(case, user):
-    tasks_list = Task.query.filter_by(case_id=case.id, completed=False).all()
+def sort_by_ongoing_task_core(case, user, tags=[]):
+    if tags:
+        tags = ast.literal_eval(tags)
+        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id).join(Tags, Task_Tags.tag_id==Tags.id)\
+        .where(Task.case_id==case.id, Task.completed==False, Tags.name.in_(list(tags)))
+    else:
+        tasks_list = Task.query.filter_by(case_id=case.id, completed=False).all()
     return get_task_info(tasks_list, user)
     
-def sort_by_finished_task_core(case, user):
-    tasks_list = Task.query.filter_by(case_id=case.id, completed=True).all()
+def sort_by_finished_task_core(case, user, tags=[]):
+    if tags:
+        tags = ast.literal_eval(tags)
+        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id).join(Tags, Task_Tags.tag_id==Tags.id)\
+        .where(Task.case_id==case.id, Task.completed==True, Tags.name.in_(list(tags)))
+    else:
+        tasks_list = Task.query.filter_by(case_id=case.id, completed=True).all()
     return get_task_info(tasks_list, user)
 
 
-def sort_tasks_by_filter(case, user, completed, filter):
+def sort_tasks_by_filter(case, user, completed, filter, tags=[]):
+    if tags:
+        tags = ast.literal_eval(tags)
     if filter == "assigned_tasks":
-        tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
+        if tags:
+            tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
+                        .join(Task_Tags, Task_Tags.task_id==Task.id)\
+                        .join(Tags, Task_Tags.tag_id==Tags.id)\
+                        .where(Task.case_id==case.id, Task.completed==completed, Tags.name.in_(list(tags)))\
+                        .order_by(desc('title')).all()
+        else:
+            tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
                         .where(Task.case_id==case.id, Task.completed==completed)\
                         .order_by(desc('title')).all()
 
     elif filter == "my_assignment":
-        tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
+        if tags:
+            tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
+                        .join(Task_Tags, Task_Tags.task_id==Task.id)\
+                        .join(Tags, Task_Tags.tag_id==Tags.id)\
+                        .where(Task_User.user_id==user.id)\
+                        .where(Task.case_id==case.id, Task.completed==completed, Tags.name.in_(list(tags)))\
+                        .order_by(desc('title')).all()
+        else:
+            tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
                         .where(Task_User.user_id==user.id)\
                         .where(Task.case_id==case.id, Task.completed==completed)\
                         .order_by(desc('title')).all()
@@ -700,7 +728,14 @@ def sort_tasks_by_filter(case, user, completed, filter):
         tasks_list = loc
     else:
         # for deadline filter, only task with a deadline defined is required
-        tasks_list = Task.query.filter_by(case_id=case.id, completed=completed).order_by(desc(filter)).all()
+        if tags:
+            tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id)\
+                            .join(Tags, Task_Tags.tag_id==Tags.id)\
+                            .where(Task.case_id==case.id, Task.completed==False, Tags.name.in_(list(tags)))\
+                            .order_by(desc(filter)).all()
+        else:
+            tasks_list = Task.query.filter_by(case_id=case.id, completed=completed).order_by(desc(filter)).all()
+
         loc = list()
         for task in tasks_list:
             if getattr(task, filter):
@@ -710,15 +745,35 @@ def sort_tasks_by_filter(case, user, completed, filter):
     return get_task_info(tasks_list, user)
 
 
-def sort_by_ongoing_core(page):
-    return Case.query.filter_by(completed=False).paginate(page=page, per_page=20, max_per_page=50)
+def sort_by_ongoing_core(page, tags=[]):
+    if tags:
+        tags = ast.literal_eval(tags)
+        return Case.query.join(Case_Tags, Case_Tags.case_id==Case.id).join(Tags, Case_Tags.tag_id==Tags.id)\
+        .where(Case.completed==False, Tags.name.in_(list(tags)))\
+        .paginate(page=page, per_page=20, max_per_page=50)
     
-def sort_by_finished_core(page):
+    return Case.query.filter_by(completed=False).paginate(page=page, per_page=20, max_per_page=50)
+
+
+def sort_by_finished_core(page, tags=[]):
+    if tags:
+        tags = ast.literal_eval(tags)
+        return Case.query.join(Case_Tags, Case_Tags.case_id==Case.id).join(Tags, Case_Tags.tag_id==Tags.id)\
+        .where(Case.completed==True, Tags.name.in_(list(tags)))\
+        .paginate(page=page, per_page=20, max_per_page=50)
+    
     return Case.query.filter_by(completed=True).paginate(page=page, per_page=20, max_per_page=50)
 
 
-def sort_by_filter(completed, filter, page): 
-    cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=20, max_per_page=50)
+def sort_by_filter(completed, filter, page, tags=[]): 
+    if tags:
+        tags = ast.literal_eval(tags)
+        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id).join(Tags, Case_Tags.tag_id==Tags.id)\
+        .where(Case.completed==completed, Tags.name.in_(list(tags)))\
+        .paginate(page=page, per_page=20, max_per_page=50)
+    else:
+        cases = Case.query.filter_by(completed=completed).paginate(page=page, per_page=20, max_per_page=50)
+
     # for deadline filter, only case with a deadline defined is required
     loc = list()
     for case in cases:

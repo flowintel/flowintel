@@ -183,6 +183,26 @@
                 
                     </div>
                 </div>
+                <hr>
+                <div>
+                    <template v-if="taxonomies">
+                        <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                            <template v-for="taxonomy, key in taxonomies">
+                                <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                            </template>
+                        </select>
+                    </template>
+                    
+                    <template v-if="tags_list">
+                        <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                            <template v-for="(tags, taxo) in tags_list">
+                                <optgroup :label="[[taxo]]">
+                                    <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                                </optgroup>
+                            </template>
+                        </select>
+                    </template>
+                </div>
             </div>
         </div>
 
@@ -224,7 +244,7 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, nextTick } = Vue
+        const { createApp, ref, computed, nextTick, onMounted } = Vue
         import case_tasks from '../../static/js/case/case_tasks.js'
         import {display_toast, display_prepared_toast, message_list} from '../../static/js/toaster.js'
         
@@ -261,11 +281,15 @@
                     show_ongoing = ongoing
 
                     let loc
+                    let tags = ""
+                    if(selected_tags.value.length){
+                        tags = "?tags=" + JSON.stringify(selected_tags.value)
+                    }
                     if(show_ongoing){
-                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_ongoing_task')
+                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_ongoing_task' + tags)
                         loc = await res.json()
                     }else{
-                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_finished_task')
+                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_finished_task' + tags)
                         loc = await res.json()
                     }
                     cases_info.value.tasks = loc
@@ -283,10 +307,14 @@
 
                     let res
                     if (current_filter){
+                        let tags = ""
+                        if(selected_tags.value.length){
+                            tags = "&tags=" + JSON.stringify(selected_tags.value)
+                        }
                         if(show_ongoing)
-                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/ongoing?filter=' + current_filter)
+                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/ongoing?filter=' + current_filter + tags)
                         else
-                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/finished?filter=' + current_filter)
+                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/finished?filter=' + current_filter + tags)
                         let loc = await res.json()
                         if(asc_desc)
                             cases_info.value.tasks = loc.reverse()
@@ -480,6 +508,49 @@
                 fetchCase()
                 fetchStatus()
                 get_all_users_case()
+
+                const taxonomies = ref([])
+                const tags_list = ref([])
+                const selected_taxo = ref([])
+                const selected_tags = ref([])
+
+                async function fetch_taxonomies(){
+                    const res = await fetch("/case/get_taxonomies")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        taxonomies.value = loc["taxonomies"]
+                    }
+                }
+
+                async function fetch_tags(){
+                    const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        tags_list.value = loc["tags"]
+                        $('#tags_select').trigger('change');
+                    }
+                }
+                fetch_taxonomies()
+
+
+                onMounted(() => {
+                    $('.select2-select').select2({
+                        width: '50%'
+                    })
+
+                    $('#taxonomies_select').on('change.select2', function (e) {
+                        selected_taxo.value = $(this).select2('data').map(item => item.id);
+                        fetch_tags()
+                    })
+                    $('#tags_select').on('change.select2', function (e) {
+                        selected_tags.value = $(this).select2('data').map(item => item.id);
+                        asc_desc_filter()
+                    })
+                })
                 
     
                 return {
@@ -501,7 +572,9 @@
                     sort_by_filter,
                     asc_desc_filter,
                     active_tab,
-                    getTextColor
+                    getTextColor,
+                    taxonomies,
+                    tags_list,
                 }
             }
         }).mount('.container')

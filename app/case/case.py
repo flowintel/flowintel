@@ -210,7 +210,11 @@ def recurring(cid):
 def get_cases():
     """Return all cases"""
     page = request.args.get('page', 1, type=int)
-    cases = CaseModel.sort_by_ongoing_core(page)
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
+    cases = CaseModel.sort_by_ongoing_core(page, tags)
     role = CaseModel.get_role(current_user).to_json()
 
     loc = CaseModel.regroup_case_info(cases, current_user)
@@ -319,7 +323,11 @@ def get_status():
 def sort_by_ongoing():
     """Sort Case by living one"""
     page = request.args.get('page', 1, type=int)
-    cases_list = CaseModel.sort_by_ongoing_core(page)
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
+    cases_list = CaseModel.sort_by_ongoing_core(page, tags)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -329,7 +337,11 @@ def sort_by_ongoing():
 def sort_by_finished():
     """Sort Case by finished one"""
     page = request.args.get('page', 1, type=int)
-    cases_list = CaseModel.sort_by_finished_core(page)
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
+    cases_list = CaseModel.sort_by_finished_core(page, tags)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -338,10 +350,14 @@ def sort_by_finished():
 @login_required
 def ongoing_sort_by_filter():
     """Sort by filter for living case"""
-    data_dict = dict(request.args)
     page = request.args.get('page', 1, type=int)
-    if "filter" in data_dict:
-        cases_list, nb_pages = CaseModel.sort_by_filter(False, data_dict["filter"], page)
+    filter = request.args.get('filter')
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
+    if filter:
+        cases_list, nb_pages = CaseModel.sort_by_filter(False, filter, page, tags)
         return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 
@@ -350,10 +366,14 @@ def ongoing_sort_by_filter():
 @login_required
 def finished_sort_by_filter():
     """Sort by filter for finished task"""
-    data_dict = dict(request.args)
     page = request.args.get('page', 1, type=int)
-    if "filter" in data_dict:
-        cases_list, nb_pages = CaseModel.sort_by_filter(True, data_dict["filter"], page)
+    filter = request.args.get('filter')
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
+    if filter:
+        cases_list, nb_pages = CaseModel.sort_by_filter(True, filter, page, tags)
         return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 

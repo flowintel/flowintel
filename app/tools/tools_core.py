@@ -1,5 +1,6 @@
 from ..db_class.db import *
 import uuid
+import ast
 from .. import db
 import datetime
 from ..utils import utils
@@ -8,10 +9,21 @@ from ..case import case_core
 def get_all_case_templates():
     return Case_Template.query.all()
 
-def get_page_case_templates(page, title_filter):
-    if title_filter == 'true':
-        return Case_Template.query.order_by(('title')).paginate(page=page, per_page=20, max_per_page=50)
-    return Case_Template.query.paginate(page=page, per_page=20, max_per_page=50)
+def get_page_case_templates(page, title_filter, tags=[]):
+    if tags:
+        tags = ast.literal_eval(tags)
+        if title_filter == 'true':
+            return Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id).join(Tags, Case_Template_Tags.tag_id==Tags.id)\
+                            .where(Tags.name.in_(list(tags)))\
+                            .order_by(('title'))\
+                            .paginate(page=page, per_page=20, max_per_page=50)
+        return Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id).join(Tags, Case_Template_Tags.tag_id==Tags.id)\
+                            .where(Tags.name.in_(list(tags)))\
+                            .paginate(page=page, per_page=20, max_per_page=50)
+    else:
+        if title_filter == 'true':
+            return Case_Template.query.order_by(('title')).paginate(page=page, per_page=20, max_per_page=50)
+        return Case_Template.query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_case_template(cid):
     return Case_Template.query.get(cid)
@@ -19,10 +31,21 @@ def get_case_template(cid):
 def get_all_task_templates():
     return Task_Template.query.all()
 
-def get_page_task_templates(page, title_filter):
-    if title_filter == 'true':
-        return Task_Template.query.order_by(('title')).paginate(page=page, per_page=20, max_per_page=50)
-    return Task_Template.query.paginate(page=page, per_page=20, max_per_page=50)
+def get_page_task_templates(page, title_filter, tags=[]):
+    if tags:
+        tags = ast.literal_eval(tags)
+        if title_filter == 'true':
+            return Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id).join(Tags, Task_Template_Tags.tag_id==Tags.id)\
+                            .where(Tags.name.in_(list(tags)))\
+                            .order_by(('title'))\
+                            .paginate(page=page, per_page=20, max_per_page=50)
+        return Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id).join(Tags, Task_Template_Tags.tag_id==Tags.id)\
+                            .where(Tags.name.in_(list(tags)))\
+                            .paginate(page=page, per_page=20, max_per_page=50)
+    else:
+        if title_filter == 'true':
+            return Task_Template.query.order_by(('title')).paginate(page=page, per_page=20, max_per_page=50)
+        return Task_Template.query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_task_template(tid):
     return Task_Template.query.get(tid)

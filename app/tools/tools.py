@@ -203,7 +203,11 @@ def get_page_case_templates():
     """Get a page of case templates"""
     page = request.args.get('page', 1, type=int)
     title_filter = request.args.get('title')
-    templates = ToolsModel.get_page_case_templates(page, title_filter)
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
+    templates = ToolsModel.get_page_case_templates(page, title_filter, tags)
     templates_list = list()
     for template in templates:
         loc_template = template.to_json()
@@ -255,7 +259,11 @@ def get_page_task_templates():
     """Get a page of task template"""
     page = request.args.get('page', 1, type=int)
     title_filter = request.args.get('title')
-    templates = ToolsModel.get_page_task_templates(page, title_filter)
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
+    templates = ToolsModel.get_page_task_templates(page, title_filter, tags)
     if templates:
         templates_list = list()
         for template in templates:

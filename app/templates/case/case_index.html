@@ -64,6 +64,26 @@
 			  
 				</div>
 			</div>
+            <hr>
+            <div>
+                <template v-if="taxonomies">
+                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                        <template v-for="taxonomy, key in taxonomies">
+                            <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="tags_list">
+                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                        <template v-for="(tags, taxo) in tags_list">
+                            <optgroup :label="[[taxo]]">
+                                <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
 		</div>
 	</div>
 
@@ -143,7 +163,7 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref} = Vue
+        const { createApp, ref, onMounted} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
@@ -162,10 +182,14 @@
 
                 async function fetchCase(page) {
                     let url
+                    let tags = ""
+                    if(selected_tags.value.length){
+                        tags = "&tags=" + JSON.stringify(selected_tags.value)
+                    }
                     if(current_filter.value)
-                        url = `/case/ongoing?page=${page}&filter=${current_filter.value}`
+                        url = `/case/ongoing?page=${page}&filter=${current_filter.value}${tags}`
                     else
-                        url = '/case/get_cases_page?page='+page
+                        url = '/case/get_cases_page?page=' + page + tags
 
                     case_list.value = null
                     const res = await fetch(url)
@@ -231,11 +255,15 @@
                     show_ongoing = ongoing
 
                     let loc
+                    let tags = ""
+                    if(selected_tags.value.length){
+                        tags = "&tags=" + JSON.stringify(selected_tags.value)
+                    }
                     if(show_ongoing){
-                        const res = await fetch('/case/sort_by_ongoing?page=1')
+                        const res = await fetch('/case/sort_by_ongoing?page=1' + tags)
                         loc = await res.json()
                     }else{
-                        const res = await fetch('/case/sort_by_finished?page=1')
+                        const res = await fetch('/case/sort_by_finished?page=1' + tags)
                         loc = await res.json()
                     }
                     case_list.value.cases = loc.cases
@@ -254,10 +282,14 @@
 
                     let res
                     if (current_filter.value){
+                        let tags = ""
+                        if(selected_tags.value.length){
+                            tags = "&tags=" + JSON.stringify(selected_tags.value)
+                        }
                         if(show_ongoing)
-                            res = await fetch('/case/ongoing?page=1&filter=' + current_filter.value)
+                            res = await fetch('/case/ongoing?page=1&filter=' + current_filter.value + tags)
                         else
-                            res = await fetch('/case/finished?page=1&filter=' + current_filter.value)
+                            res = await fetch('/case/finished?page=1&filter=' + current_filter.value + tags)
                         let loc = await res.json()
                         if(asc_desc){
                             case_list.value.cases = loc.cases.reverse()
@@ -286,6 +318,49 @@
                 fetchCase(1)
                 fetchStatus()
 
+                const taxonomies = ref([])
+                const tags_list = ref([])
+                const selected_taxo = ref([])
+                const selected_tags = ref([])
+
+                async function fetch_taxonomies(){
+                    const res = await fetch("/case/get_taxonomies")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        taxonomies.value = loc["taxonomies"]
+                    }
+                }
+
+                async function fetch_tags(){
+                    const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        tags_list.value = loc["tags"]
+                        $('#tags_select').trigger('change');
+                    }
+                }
+                fetch_taxonomies()
+
+
+                onMounted(() => {
+                    $('.select2-select').select2({
+                        width: '50%'
+                    })
+
+                    $('#taxonomies_select').on('change.select2', function (e) {
+                        selected_taxo.value = $(this).select2('data').map(item => item.id);
+                        fetch_tags()
+                    })
+                    $('#tags_select').on('change.select2', function (e) {
+                        selected_tags.value = $(this).select2('data').map(item => item.id);
+                        asc_desc_filter()
+                    })
+                })
+
                 return {
                     message_list,
                     case_list,
@@ -300,7 +375,9 @@
                     sort_by_filter,
                     asc_desc_filter,
                     getTextColor,
-                    onInput
+                    onInput,
+                    taxonomies,
+                    tags_list,
                 }
             }
         }).mount('.container')

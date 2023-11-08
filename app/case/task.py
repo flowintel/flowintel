@@ -304,16 +304,24 @@ def get_files(cid, tid):
 @login_required
 def sort_by_ongoing_task(cid):
     """Sort Task by living one"""
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
     case = CaseModel.get_case(cid)
-    return CaseModel.sort_by_ongoing_task_core(case, current_user)
+    return CaseModel.sort_by_ongoing_task_core(case, current_user, tags)
 
 
 @task_blueprint.route("/<cid>/sort_by_finished_task", methods=['GET'])
 @login_required
 def sort_by_finished_task(cid):
     """Sort task by finished one"""
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
     case = CaseModel.get_case(cid)
-    return CaseModel.sort_by_finished_task_core(case, current_user)
+    return CaseModel.sort_by_finished_task_core(case, current_user, tags)
 
 
 
@@ -321,10 +329,14 @@ def sort_by_finished_task(cid):
 @login_required
 def ongoing_tasks_sort_by_filter(cid):
     """Sort by filter for living task"""
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
     data_dict = dict(request.args)
     if "filter" in data_dict:
         case = CaseModel.get_case(cid)
-        return CaseModel.sort_tasks_by_filter(case, current_user, False, data_dict["filter"])
+        return CaseModel.sort_tasks_by_filter(case, current_user, False, data_dict["filter"], tags)
     return {"message": "No filter pass"}
 
 
@@ -332,10 +344,14 @@ def ongoing_tasks_sort_by_filter(cid):
 @login_required
 def finished_tasks_sort_by_filter(cid):
     """Sort by filter for finished task"""
+    if "tags" in request.args:
+        tags = request.args.get('tags')
+    else:
+        tags = []
     data_dict = dict(request.args)
     if "filter" in data_dict:
         case = CaseModel.get_case(cid)
-        return CaseModel.sort_tasks_by_filter(case, current_user, True, data_dict["filter"])
+        return CaseModel.sort_tasks_by_filter(case, current_user, True, data_dict["filter"], tags)
     return {"message": "No filter pass"}
 
 
