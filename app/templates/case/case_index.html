@@ -176,8 +176,12 @@
 
                 let show_ongoing = true
                 let asc_desc = true
-
                 let temp_case_list = []
+
+                const taxonomies = ref([])
+                const tags_list = ref([])
+                const selected_taxo = ref([])
+                const selected_tags = ref([])
 
 
                 async function fetchCase(page) {
@@ -318,10 +322,6 @@
                 fetchCase(1)
                 fetchStatus()
 
-                const taxonomies = ref([])
-                const tags_list = ref([])
-                const selected_taxo = ref([])
-                const selected_tags = ref([])
 
                 async function fetch_taxonomies(){
                     const res = await fetch("/case/get_taxonomies")
