@@ -110,7 +110,16 @@ def add_task_case(cid):
     task_id_list = [tid.id for tid in task_by_case]
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list if template.id not in task_id_list]
     if form.validate_on_submit():
+        flag = True
+        tag_list = request.form.getlist("tags_select")
+        for tag in tag_list:
+            if not check_tag(tag):
+                flag = False
+        if not flag:
+            flash("tag doesn't exist")
+            return render_template("tools/add_task_case.html", form=form)
         form_dict = form_to_dict(form)
+        form_dict["tags"] = tag_list
         ToolsModel.add_task_case_template(form_dict, cid)
         flash("Template added", "success")
         return redirect(f"/tools/template/case/{cid}")
@@ -140,7 +149,7 @@ def edit_case(cid):
             form_dict["tags"] = request.form.getlist("tags_select")
             template = ToolsModel.edit_case_template(form_dict, cid)
             flash("Template edited", "success")
-            return redirect(f"/tools/template/cases")
+            return redirect(f"/tools/template/case/{cid}")
         else:
             form.title.data = template.title
             form.description.data = template.description
