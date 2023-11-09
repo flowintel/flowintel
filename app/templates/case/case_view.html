@@ -184,7 +184,8 @@
                     </div>
                 </div>
                 <hr>
-                <div>
+                <div>Taxonomies:</div>
+                <div style="display: flex;">
                     <template v-if="taxonomies">
                         <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                             <template v-for="taxonomy, key in taxonomies">
@@ -539,7 +540,9 @@
 
                 onMounted(() => {
                     $('.select2-select').select2({
-                        width: '50%'
+                        theme: 'bootstrap-5',
+                        width: '50%',
+                        closeOnSelect: false
                     })
 
                     $('#taxonomies_select').on('change.select2', function (e) {
