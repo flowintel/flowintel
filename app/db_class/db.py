@@ -121,7 +121,7 @@ class Case(db.Model):
         else:
             json_dict["recurring_date"] = self.recurring_date
 
-        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["tags"] = [tag.download() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
 
         return json_dict
 
@@ -183,7 +183,7 @@ class Task(db.Model):
         else:
             json_dict["deadline"] = self.deadline
 
-        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
 
         return json_dict
 
@@ -405,6 +405,9 @@ class Tags(db.Model):
             "color": self.color,
             "exclude": self.exclude
         }
+    
+    def download(self):
+        return self.name
 
 class Case_Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

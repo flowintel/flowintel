@@ -383,7 +383,6 @@ def importer():
         if message:
             message["toast_class"] = "danger-subtle"
             return message, 400
-
         return {"message": "All created", "toast_class": "success-subtle"}, 200
     
 

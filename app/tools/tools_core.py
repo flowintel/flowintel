@@ -1,6 +1,7 @@
 from ..db_class.db import *
 import uuid
 import ast
+import json
 from .. import db
 import datetime
 from ..utils import utils
@@ -297,11 +298,17 @@ def core_read_json_file(case, current_user):
     for task in case["tasks"]:
         if not utils.validateTaskJson(task):
             return {"message": f"Task '{task['title']}' format not okay"}
-            
 
-    ## Case format is valid
+
+    #######################
+    ## Case Verification ##
+    #######################
+
+    ## Caseformat is valid
+    # title
     if Case.query.filter_by(title=case["title"]).first():
         return {"message": f"Case Title '{case['title']}' already exist"}
+    # deadline
     if case["deadline"]:
         try:
             loc_date = datetime.datetime.strptime(case["deadline"], "%Y-%m-%d %H:%M")
@@ -313,6 +320,7 @@ def core_read_json_file(case, current_user):
     else:
         case["deadline_date"] = ""
         case["deadline_time"] = ""
+    # recurring_date
     if case["recurring_date"]:
         if case["recurring_type"]:
             try:
@@ -321,16 +329,22 @@ def core_read_json_file(case, current_user):
                 return {"message": f"Case '{case['title']}': recurring_date bad format, %Y-%m-%d"}
         else:
             return {"message": f"Case '{case['title']}': recurring_type is missing"}
+    # recurring_type
     if case["recurring_type"] and not case["recurring_date"]:
         return {"message": f"Case '{case['title']}': recurring_date is missing"}
+    # uuid
     if Case.query.filter_by(uuid=case["uuid"]).first():
         case["uuid"] = str(uuid.uuid4())
 
+    # tags
     for tag in case["tags"]:
         if not utils.check_tag(tag):
             return {"message": f"Case '{case['title']}': tag '{tag}' doesn't exist"}
-
-    case_created = case_core.create_case(case, current_user)
+        
+    
+    #######################
+    ## Task Verification ##
+    #######################
 
     ## Task format is valid
     for task in case["tasks"]:
@@ -348,16 +362,25 @@ def core_read_json_file(case, current_user):
             task["deadline_date"] = ""
             task["deadline_time"] = ""
 
-        task_created = case_core.create_task(task, case_created.id, current_user)
-        if task["notes"]:
-            case_core.modif_note_core(task_created.id, current_user, task["notes"])
-        
         for tag in task["tags"]:
             if not utils.check_tag(tag):
                 return {"message": f"Task '{task['title']}': tag '{tag}' doesn't exist"}
-    
 
-import json
+
+    #################
+    ## DB Creation ##
+    ################
+
+    ## Case creation
+    case_created = case_core.create_case(case, current_user)
+
+    ## Task creation
+    for task in case["tasks"]:
+        task_created = case_core.create_task(task, case_created.id, current_user)
+        if task["notes"]:
+            case_core.modif_note_core(task_created.id, current_user, task["notes"])
+
+    
 def read_json_file(files_list, current_user):
     for file in files_list:
         if files_list[file].filename:
