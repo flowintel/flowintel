@@ -6,26 +6,30 @@
 
 {% block content %}
     <div id="container">
-            <h2 class="ui dividing header">Create a Template</h2>
+        <h2 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/tools/template/cases"><i class="fa-solid fa-arrow-left"></i></a></h2>
+        <h2 style="display: inline-block;">Create a Case template</h2>
 
-            <form action="" method="post">
-                {{ form.hidden_tag() }}
-                
-                <div class="mb-3 w-50">
-                    {{form.title.label(class_="col-form-label")}}:
-                    {{form.title(class_="form-control")}}
-                    {% if form.title.errors %}
-                        <div style="color: red;">{{form.title.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                <div class="mb-3">
-                    <label for="description" class="col-form-label">Description:</label>
-                    {{form.description(class_="form-control")}}
-                    {% if form.description.errors %}
-                        <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
+        <form action="" method="post">
+            {{ form.hidden_tag() }}
+            
+            <div class="mb-3 w-50">
+                {{form.title.label(class_="col-form-label")}}:
+                {{form.title(class_="form-control")}}
+                {% if form.title.errors %}
+                    <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div class="mb-3">
+                <label for="description" class="col-form-label">Description:</label>
+                {{form.description(class_="form-control")}}
+                {% if form.description.errors %}
+                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
 
+            <hr>
+            <h5>Taxonomies:</h5>
+            <div style="display: flex;">
                 <template v-if="taxonomies">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                         <template v-for="taxonomy, key in taxonomies">
@@ -43,22 +47,24 @@
                         </template>
                     </select>
                 </template>
+            </div>
 
-                <h4>Task</h4>
+            <hr>
+            <h5>Task</h5>
 
-                <div class="mb-3 w-50">
-                    <select data-placeholder="Task Template" multiple class="select2-select form-control" name="tasks" id="tasks">
-                        {% for choice in form.tasks.choices %}
-                            <option value="{{choice[0]}}">{{choice[1]}}</option>
-                        {% endfor %}
-                    </select>
-                    {% if form.tasks.errors %}
-                        <div style="color: red;">{{form.tasks.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                
-                {{form.submit(class='btn btn-primary')}}
-            </form>
+            <div class="mb-3">
+                <select data-placeholder="Task Template" multiple class="select2-select form-control" name="tasks" id="tasks">
+                    {% for choice in form.tasks.choices %}
+                        <option value="{{choice[0]}}">{{choice[1]}}</option>
+                    {% endfor %}
+                </select>
+                {% if form.tasks.errors %}
+                    <div style="color: red;">{{form.tasks.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            
+            {{form.submit(class='btn btn-primary')}}
+        </form>
     </div>
 {% endblock %}
 
@@ -98,7 +104,9 @@
 
             onMounted(() => {
                 $('.select2-select').select2({
-                    width: '50%'
+                    theme: 'bootstrap-5',
+                    width: '50%',
+                    closeOnSelect: false
                 })
 
                 $('#taxonomies_select').on('change.select2', function (e) {

@@ -68,26 +68,30 @@
             </div>
             <hr>
 
-            <template v-if="taxonomies">
-                <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                    <template v-for="taxonomy, key in taxonomies">
-                        <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
-                    </template>
-                </select>
-            </template>
-            
-            <template v-if="tags_list">
-                <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                    <template v-for="(tags, taxo) in tags_list">
-                        <optgroup :label="[[taxo]]">
-                            <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
-                        </optgroup>
-                    </template>
-                </select>
-            </template>
+            <h5>Taxonomies:</h5>
+            <div style="display: flex;">
+                <template v-if="taxonomies">
+                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                        <template v-for="taxonomy, key in taxonomies">
+                            <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="tags_list">
+                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                        <template v-for="(tags, taxo) in tags_list">
+                            <optgroup :label="[[taxo]]">
+                                <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
+            <hr>
             
             <div class="mb-3">
-                <p>Add tasks from templates:</p>
+                <div>Add tasks from templates:</div>
                 <select data-placeholder="Templates" multiple class="select2-select form-control" name="tasks_templates" id="tasks_templates">
                     {% for choice in form.tasks_templates.choices %}
                         <option value="{{choice[0]}}">{{choice[1]}}</option>
@@ -150,7 +154,9 @@
 
             onMounted(() => {
                 $('.select2-select').select2({
-                    width: '50%'
+                    theme: 'bootstrap-5',
+                    width: '50%',
+                    closeOnSelect: false
                 })
 
                 $('#taxonomies_select').on('change.select2', function (e) {

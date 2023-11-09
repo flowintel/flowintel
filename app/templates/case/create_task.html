@@ -66,23 +66,28 @@
                     {%endif%}
                 </div>
             </div>
-            <template v-if="taxonomies">
-                <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                    <template v-for="taxonomy, key in taxonomies">
-                        <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
-                    </template>
-                </select>
-            </template>
-            
-            <template v-if="tags_list">
-                <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                    <template v-for="(tags, taxo) in tags_list">
-                        <optgroup :label="[[taxo]]">
-                            <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
-                        </optgroup>
-                    </template>
-                </select>
-            </template>
+            <hr>
+
+            <div>Taxonomies:</div>
+            <div style="display: flex;">
+                <template v-if="taxonomies">
+                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                        <template v-for="taxonomy, key in taxonomies">
+                            <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="tags_list">
+                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                        <template v-for="(tags, taxo) in tags_list">
+                            <optgroup :label="[[taxo]]">
+                                <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
         </div>
         <div class="modal-footer">
             {{form.submit(class='btn btn-primary')}}
@@ -136,7 +141,9 @@
 
             onMounted(() => {
                 $('.select2-select').select2({
-                    width: '50%'
+                    theme: 'bootstrap-5',
+                    width: '50%',
+                    closeOnSelect: false
                 })
 
                 $('#taxonomies_select').on('change.select2', function (e) {
