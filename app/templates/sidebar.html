@@ -20,7 +20,6 @@
 					<i class="fa-solid fa-toolbox fa-fw me-3"></i><span>Tools</span>
 				</button>
 				<div class="collapse" id="tools-collapse">
-					<!-- <a href="/tools/templates" class="list-group-item list-group-item-action py-2 ripple">Templates</a> -->
 					<button class="list-group-item list-group-item-action py-2 ripple" data-bs-toggle="collapse" data-bs-target="#template-collapse" aria-expanded="true">
 						<i class="fa-solid fa-bookmark fa-fw me-2"></i><span>Templates</span>
 					</button>
@@ -67,10 +66,12 @@
 				<div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
 					<input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
 				</div>
-				<div v-if="result_search && result_search.length" style="position: absolute; background-color: white; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); min-width: 160px;">
-					<ul v-for="case_search in result_search">
-						<div><a :href="'/case/'+case_search.id">[[case_search.title]]</a></div>
-					</ul>
+				<div v-if="result_search && result_search.length" class="search-result justify-content-center" >
+					<div v-for="case_search in result_search" style="margin-bottom: 2px;">
+						<i class="fa-solid fa-circle fa-2xs"></i>
+						<a v-if="case_search.description" :href="'/case/'+case_search.id" :title="case_search.description">[[case_search.title]]</a>
+						<a v-else :href="'/case/'+case_search.id" title="No description">[[case_search.title]]</a>
+					</div>
 				</div>
 			</div>
 
@@ -114,30 +115,25 @@
 
 <script type="module">
 	const { createApp, ref, computed, onMounted } = Vue
+	import {display_toast, message_list} from '/static/js/toaster.js'
 
 	createApp({
 		delimiters: ['[[', ']]'],
 		setup() {
-			const case_list = ref(null)
 			const result_search = ref([])
-			
 			const notif_list = ref(null)
 
-			async function fetchCase() {
-				case_list.value = null
-				const res = await fetch(
-					'/case/get_cases_page'
-				)
-				case_list.value = await res.json()
-			}
 
-			function onInput(e){
+			async function onInput(e){
 				result_search.value = []
 				if(e.target.value){
-					for(let i in case_list.value.cases){
-						if(case_list.value.cases[i].title.toLowerCase().includes(e.target.value.toLowerCase())){
-							result_search.value.push(case_list.value.cases[i])
-						}
+					const res = await fetch('/case/search?text='+e.target.value)
+					if (await res.status == 200){
+						let loc = await res.json()
+						result_search.value = loc["cases"]
+					}
+					else{
+						display_toast(res)
 					}
 				}
 			}
@@ -149,13 +145,24 @@
 				notif_list.value = loc["notif"]
 			}
 
-			fetchCase()
 			fetchNotif()
+
+			// hide search result when click out 
+			$(document).mouseup(function(e) {
+				var container = $(".search-result");
+
+				// if the target of the click isn't the container nor a descendant of the container
+				if (!container.is(e.target) && container.has(e.target).length === 0) 
+				{
+					container.hide();
+				}
+			});
 
 			return {
 				onInput,
 				result_search,
-				notif_list
+				notif_list,
+				message_list
 			}
 		}
 	}).mount('.navbar')

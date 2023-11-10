@@ -51,6 +51,10 @@ def get_case_by_title(title):
 def get_case_template_by_title(title):
     return Case_Template.query.filter_by(title=title).first()
 
+def search(text):
+    """Return cases containing text"""
+    return Case.query.where(Case.title.contains(text), Case.completed==False).paginate(page=1, per_page=30, max_per_page=50)
+
 def get_role(user):
     """Return role for the current user"""
     return Role.query.get(user.role_id)

@@ -40,3 +40,22 @@
 .navbar {
     box-shadow: 0 2px 5px 0 rgb(0 0 0 / 5%), 0 2px 10px 0 rgb(0 0 0 / 5%);
 }
+
+.search-result {
+	position: absolute;
+	background-color: white;
+	box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	padding: 17px;
+  overflow-y: scroll;
+  height: 50vh;
+}
+
+.search-result a {
+	text-decoration: none;
+}
+
+.fa-circle {
+	font-size: 40%;
+	margin-right: 3px;
+	vertical-align: middle;
+}

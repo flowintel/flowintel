@@ -246,8 +246,8 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed, nextTick, onMounted } = Vue
-        import case_tasks from '../../static/js/case/case_tasks.js'
-        import {display_toast, display_prepared_toast, message_list} from '../../static/js/toaster.js'
+        import case_tasks from '/static/js/case/case_tasks.js'
+        import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],

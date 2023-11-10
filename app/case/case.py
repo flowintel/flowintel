@@ -218,7 +218,18 @@ def get_cases():
     role = CaseModel.get_role(current_user).to_json()
 
     loc = CaseModel.regroup_case_info(cases, current_user)
-    return jsonify({"cases": loc["cases"], "role": role, "nb_pages": cases.pages}), 201
+    return jsonify({"cases": loc["cases"], "role": role, "nb_pages": cases.pages}), 200
+
+
+@case_blueprint.route("/search", methods=['GET'])
+@login_required
+def search():
+    """Return cases matching search terms"""
+    text_search = request.args.get("text")
+    cases = CaseModel.search(text_search)
+    if cases:
+        return {"cases": [case.to_json() for case in cases]}, 200
+    return {"message": "No case", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/<cid>/delete", methods=['GET'])
