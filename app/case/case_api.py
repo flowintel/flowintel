@@ -12,7 +12,7 @@ api = Api(api_case_blueprint,
         version='0.1', 
         default='GenericAPI', 
         default_label='Generic Flowintel-cm API', 
-        doc='/doc'
+        doc='/doc/'
     )
 
 
@@ -57,6 +57,23 @@ class GetCase(Resource):
             
             return case_json, 200
         return {"message": "Case not found"}, 404
+    
+    
+@api.route('/title', methods=["POST"])
+@api.doc(description='Get a case by title')
+class GetCaseTitle(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={"title": "Title of a case"})
+    def post(self):
+        if "title" in request.json:
+            case = CaseModel.get_case_by_title(request.json["title"])
+            if case:
+                case_json = case.to_json()
+                orgs = CaseModel.get_orgs_in_case(case.id)
+                case_json["orgs"] = [{"id": org.id, "uuid": org.uuid, "name": org.name} for org in orgs]            
+                return case_json, 200
+            return {"message": "Case not found"}, 404
+        return {"message": "Need to pass a title"}, 404
     
 
 @api.route('/<cid>/complete')
@@ -180,9 +197,9 @@ class DeleteTask(Resource):
         return {"message": "Permission denied"}, 403
         
 
-@api.route('/add', methods=['POST'])
-@api.doc(description='Add a case')
-class AddCase(Resource):
+@api.route('/create', methods=['POST'])
+@api.doc(description='Create a case')
+class CreateCase(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={
         "title": "Required. Title for a case", 
@@ -205,8 +222,8 @@ class AddCase(Resource):
 
 
 @api.route('/<cid>/create_task', methods=['POST'])
-@api.doc(description='Add a task to a case', params={'cid': 'id of a case'})
-class AddTask(Resource):
+@api.doc(description='Create a new task to a case', params={'cid': 'id of a case'})
+class CreateTask(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={
         "title": "Required. Title for a task", 

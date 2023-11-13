@@ -2,14 +2,14 @@
 API_KEY = "admin_api_key"
 
 def test_create_case_no_api(client):
-    response = client.post("/api/case/add", data={
+    response = client.post("/api/case/create", data={
         'title': "Test Case admin"
     })
     assert response.status_code == 403
 
 def test_create_case(client):
     """Case create by an other user"""
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": "editor_api_key"},
                            json={"title": "Test Case editor"}

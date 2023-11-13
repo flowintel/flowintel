@@ -6,6 +6,7 @@ from .. import db
 import datetime
 from ..utils import utils
 from ..case import case_core
+from sqlalchemy import func
 
 def get_all_case_templates():
     return Case_Template.query.all()
@@ -28,6 +29,9 @@ def get_page_case_templates(page, title_filter, tags=[]):
 
 def get_case_template(cid):
     return Case_Template.query.get(cid)
+
+def get_case_by_title(title):
+    return Case_Template.query.where(func.lower(Case_Template.title)==func.lower(title)).first()
 
 def get_all_task_templates():
     return Task_Template.query.all()

@@ -89,7 +89,7 @@ def test_create_case_from_template(client):
 ##########
 
 def test_create_task_template(client):
-    response = client.post("/api/template/add_task", 
+    response = client.post("/api/template/create_task", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task template admin"}

@@ -38,11 +38,26 @@ class GetCaseTemplate(Resource):
             loc_case["tasks"] = [task_template.to_json() for task_template in tasks_template]
             return loc_case, 200
         return {"message": "Case template not found"}, 404
+    
+
+@api.route('/case/title', methods=["POST"])
+@api.doc(description='Get a case by title')
+class GetCaseTitle(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={"title": "Title of a case"})
+    def post(self):
+        if "title" in request.json:
+            case = ToolModel.get_case_by_title(request.json["title"])
+            if case:
+                case_json = case.to_json()          
+                return case_json, 200
+            return {"message": "Case not found"}, 404
+        return {"message": "Need to pass a title"}, 404
 
 
 @api.route('/create_case')
-@api.doc(description='Add new case template')
-class AddCaseTemaplte(Resource):
+@api.doc(description='Create a new case template')
+class CreateCaseTemaplte(Resource):
     method_decorators = [api_required]
     @api.doc(params={
         "title": "Required. Title for the template",
@@ -58,7 +73,7 @@ class AddCaseTemaplte(Resource):
         return {"message": "Please give data"}, 400
     
 @api.route('/edit_case/<cid>')
-@api.doc(description='Edit new case template', params={'cid': 'id of a case template'})
+@api.doc(description='Edit a case template', params={'cid': 'id of a case template'})
 class EditCaseTemaplte(Resource):
     method_decorators = [api_required]
     @api.doc(params={
@@ -76,7 +91,7 @@ class EditCaseTemaplte(Resource):
     
 
 @api.route('/case/<cid>/add_tasks')
-@api.doc(description='Add a task template to the case template', params={'cid': 'id of a case template'})
+@api.doc(description='Add a task template to a case template', params={'cid': 'id of a case template'})
 class AddTaskCase(Resource):
     method_decorators = [api_required]
     @api.doc(params={
@@ -166,9 +181,9 @@ class GetTaskTemplate(Resource):
             return template.to_json(), 200
         return {"message": "Task template not found"}, 404
 
-@api.route('/add_task')
-@api.doc(description='Add new task template')
-class AddTaskTemaplte(Resource):
+@api.route('/create_task')
+@api.doc(description='Create new task template')
+class CreateTaskTemaplte(Resource):
     method_decorators = [api_required]
     @api.doc(params={
         "title": "Required. Title for the template",

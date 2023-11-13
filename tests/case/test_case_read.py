@@ -2,13 +2,13 @@ from flask import url_for
 
 API_KEY = "read_api_key"
 def test_create_case_no_api(client):
-    response = client.post("/api/case/add", data={
+    response = client.post("/api/case/create", data={
         'title': "Test Case read"
     })
     assert response.status_code == 403
 
 def test_create_case_read(client):
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case read"}
@@ -16,7 +16,7 @@ def test_create_case_read(client):
     assert response.status_code == 403
 
 def test_create_case(client):
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": "admin_api_key"},
                            json={"title": "Test Case admin"}

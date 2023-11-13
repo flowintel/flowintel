@@ -3,7 +3,7 @@ from flask import url_for
 API_KEY = "admin_api_key"
 
 def test_create_case_no_api(client):
-    response = client.post("/api/case/add", data={
+    response = client.post("/api/case/create", data={
         'title': "Test Case admin"
     })
     # response = client.get(url_for("account.login"))
@@ -11,7 +11,7 @@ def test_create_case_no_api(client):
 
 def test_create_case(client):
     # response = client.post(url_for("api_case.add_case/"), data={
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case admin"}
@@ -19,7 +19,7 @@ def test_create_case(client):
     assert response.status_code == 201 and b"Case created, id: 1" in response.data
 
 def test_create_case_empty_title(client):
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": ""}
@@ -27,7 +27,7 @@ def test_create_case_empty_title(client):
     assert response.status_code == 400 and b"Please give a title" in response.data
 
 def test_create_case_no_data(client):
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={}
@@ -35,7 +35,7 @@ def test_create_case_no_data(client):
     assert response.status_code == 400 and b"Please give data" in response.data
 
 def test_create_case_deadline(client):
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case admin", "description": "Test case", "deadline_date": "2023-09-30"}
@@ -43,7 +43,7 @@ def test_create_case_deadline(client):
     assert response.status_code == 201 and b"Case created, id: 1" in response.data
 
 def test_create_case_wrong_deadline(client):
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case admin", "description": "Test case", "deadline_date": "2023/09/30"}
@@ -52,7 +52,7 @@ def test_create_case_wrong_deadline(client):
 
 def test_create_case_existing_title(client):
     test_create_case(client)
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case admin"}
@@ -167,7 +167,7 @@ def test_create_edit_no_data(client):
 
 def test_edit_case_exist_title(client):
     test_create_case(client)
-    response = client.post("/api/case/add", 
+    response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case 2 admin"}
