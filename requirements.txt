@@ -7,7 +7,7 @@ Werkzeug==2.3.7
 email_validator
 Flask-Migrate
 Flask-Login
-git+https://github.com/python-restx/flask-restx.git
+flask-restx
 python-dateutil
 schedule
 pytest
