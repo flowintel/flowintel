@@ -56,16 +56,24 @@
 				</div>
 
 				<div style="display:flex">
-				<span style="margin-right: 10px">Asc</span>
+				    <span style="margin-right: 10px">Asc</span>
 					<div class="form-check form-switch">
 						<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="asc_desc_filter(true)">
 						<label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
-					</div>
-			  
+                    </div>
 				</div>
 			</div>
             <hr>
             <div>Taxonomies:</div>
+            <div class="d-flex w-100 justify-content-center">
+                <div style="display:flex">
+				    <span style="margin-right: 10px">OR</span>
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false,true)">
+						<label class="form-check-label" for="switchOperator">AND</label>
+                    </div>
+				</div>
+            </div>
             <div style="display: flex;">
                 <template v-if="taxonomies">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
@@ -178,6 +186,7 @@
                 let show_ongoing = true
                 let asc_desc = true
                 let temp_case_list = []
+                let or_and = true
 
                 const taxonomies = ref([])
                 const tags_list = ref([])
@@ -261,14 +270,19 @@
 
                     let loc
                     let tags = ""
+                    let taxo = ""
                     if(selected_tags.value.length){
                         tags = "&tags=" + JSON.stringify(selected_tags.value)
                     }
+                    if(selected_taxo.value.length){
+                        taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                    }
+
                     if(show_ongoing){
-                        const res = await fetch('/case/sort_by_ongoing?page=1' + tags)
+                        const res = await fetch('/case/sort_by_ongoing?page=1&or_and=' + or_and + tags + taxo)
                         loc = await res.json()
                     }else{
-                        const res = await fetch('/case/sort_by_finished?page=1' + tags)
+                        const res = await fetch('/case/sort_by_finished?page=1&or_and=' + or_and + tags + taxo)
                         loc = await res.json()
                     }
                     case_list.value.cases = loc.cases
@@ -281,20 +295,28 @@
                     asc_desc_filter()
                 }
 
-                async function asc_desc_filter(change=false){
+                async function asc_desc_filter(change=false, changeOperator=false){
                     if(change)
                         asc_desc = !asc_desc
+                    
+                    if (changeOperator)
+                        or_and = !or_and
 
                     let res
                     if (current_filter.value){
                         let tags = ""
+                        let taxo = ""
                         if(selected_tags.value.length){
                             tags = "&tags=" + JSON.stringify(selected_tags.value)
                         }
+                        if(selected_taxo.value.length){
+                            taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                        }
+
                         if(show_ongoing)
-                            res = await fetch('/case/ongoing?page=1&filter=' + current_filter.value + tags)
+                            res = await fetch('/case/ongoing?page=1&or_and=' + or_and + '&filter=' + current_filter.value + tags + taxo)
                         else
-                            res = await fetch('/case/finished?page=1&filter=' + current_filter.value + tags)
+                            res = await fetch('/case/finished?page=1&or_and=' + or_and + '&filter=' + current_filter.value + tags + taxo)
                         let loc = await res.json()
                         if(asc_desc){
                             case_list.value.cases = loc.cases.reverse()
@@ -356,6 +378,7 @@
 
                     $('#taxonomies_select').on('change.select2', function (e) {
                         selected_taxo.value = $(this).select2('data').map(item => item.id);
+                        // asc_desc_filter()
                         fetch_tags()
                     })
                     $('#tags_select').on('change.select2', function (e) {

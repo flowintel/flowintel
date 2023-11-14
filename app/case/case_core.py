@@ -5,7 +5,7 @@ from ..db_class.db import *
 from ..utils.utils import isUUID, create_specific_dir
 import uuid
 import datetime
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from flask import request, send_file
 from werkzeug.utils import secure_filename
 from ..notification import notification_core as NotifModel
@@ -39,14 +39,13 @@ def get_task(tid):
 
 def get_all_cases():
     """Return all cases"""
-    cases = Case.query.order_by(desc(Case.last_modif))
-    return cases
+    return Case.query.filter_by(completed=False).order_by(desc(Case.last_modif))
 
 def get_case_by_completed(completed):
     return Case.query.filter_by(completed=completed)
 
 def get_case_by_title(title):
-    return Case.query.filter_by(title=title).first()
+    return Case.query.where(func.lower(Case.title)==func.lower(title)).first()
 
 def get_case_template_by_title(title):
     return Case_Template.query.filter_by(title=title).first()
@@ -749,34 +748,134 @@ def sort_tasks_by_filter(case, user, completed, filter, tags=[]):
     return get_task_info(tasks_list, user)
 
 
-def sort_by_ongoing_core(page, tags=[]):
+def sort_by_status(page, tags=[], taxonomies=[], or_and="true", completed = False):
+    if tags and taxonomies:
+        tags = ast.literal_eval(tags)
+        taxonomies = ast.literal_eval(taxonomies)
+
+        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
+                        .join(Tags, Case_Tags.tag_id==Tags.id)\
+                        .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                        .where(Case.completed==completed, Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
+                        .paginate(page=page, per_page=25, max_per_page=50)
+        if or_and == "false":
+            glob_list = list()
+            for case in cases:
+                tags_db = case.to_json()["tags"]
+                loc_tag = [tag["name"] for tag in tags_db]
+
+                if all(item in loc_tag for item in tags):
+                    taxo_list = list()
+                    for tag in tags_db:
+                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                        taxo_list.append(taxo.name)
+
+                    if all(item in taxo_list for item in taxonomies):
+                        glob_list.append(case)
+            return glob_list
+        return cases
+                    
     if tags:
         tags = ast.literal_eval(tags)
-        return Case.query.join(Case_Tags, Case_Tags.case_id==Case.id).join(Tags, Case_Tags.tag_id==Tags.id)\
-        .where(Case.completed==False, Tags.name.in_(list(tags)))\
-        .paginate(page=page, per_page=20, max_per_page=50)
+        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
+                        .join(Tags, Case_Tags.tag_id==Tags.id)\
+                        .where(Case.completed==completed, Tags.name.in_(list(tags)))\
+                        .paginate(page=page, per_page=25, max_per_page=50)
+        if or_and == "false":
+            glob_list = list()
+            for case in cases:
+                loc_tag = [tag["name"] for tag in case.to_json()["tags"]]
+
+                if all(item in loc_tag for item in tags):
+                    glob_list.append(case)
+            return glob_list
+        return cases
+
+    if taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
+        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
+                    .join(Tags, Case_Tags.tag_id==Tags.id)\
+                    .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                    .where(Case.completed==completed, Taxonomy.name.in_(list(taxonomies)))\
+                    .paginate(page=page, per_page=25, max_per_page=50)
+        if or_and == "false":
+            glob_list = list()
+            for case in cases:
+                taxo_list = list()
+                for tag in case.to_json()["tags"]:
+                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                    taxo_list.append(taxo.name)
+
+                if all(item in taxo_list for item in taxonomies):
+                    glob_list.append(case)
+            return glob_list
+        return cases
     
-    return Case.query.filter_by(completed=False).paginate(page=page, per_page=20, max_per_page=50)
+    return Case.query.filter_by(completed=completed).paginate(page=page, per_page=25, max_per_page=50)
 
 
-def sort_by_finished_core(page, tags=[]):
-    if tags:
+def sort_by_filter(filter, page, tags=[], taxonomies=[], or_and="true", completed = False): 
+    if tags and taxonomies:
         tags = ast.literal_eval(tags)
-        return Case.query.join(Case_Tags, Case_Tags.case_id==Case.id).join(Tags, Case_Tags.tag_id==Tags.id)\
-        .where(Case.completed==True, Tags.name.in_(list(tags)))\
-        .paginate(page=page, per_page=20, max_per_page=50)
-    
-    return Case.query.filter_by(completed=True).paginate(page=page, per_page=20, max_per_page=50)
+        taxonomies = ast.literal_eval(taxonomies)
 
+        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
+                        .join(Tags, Case_Tags.tag_id==Tags.id)\
+                        .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                        .where(Case.completed==completed, Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
+                        .order_by(desc(filter))\
+                        .paginate(page=page, per_page=25, max_per_page=50)
+        if or_and == "false":
+            glob_list = list()
+            for case in cases:
+                tags_db = case.to_json()["tags"]
+                loc_tag = [tag["name"] for tag in tags_db]
 
-def sort_by_filter(completed, filter, page, tags=[]): 
-    if tags:
+                if all(item in loc_tag for item in tags):
+                    taxo_list = list()
+                    for tag in tags_db:
+                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                        taxo_list.append(taxo.name)
+
+                    if all(item in taxo_list for item in taxonomies):
+                        glob_list.append(case)
+            cases = glob_list                    
+    elif tags:
         tags = ast.literal_eval(tags)
-        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id).join(Tags, Case_Tags.tag_id==Tags.id)\
-        .where(Case.completed==completed, Tags.name.in_(list(tags)))\
-        .paginate(page=page, per_page=20, max_per_page=50)
+        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
+                        .join(Tags, Case_Tags.tag_id==Tags.id)\
+                        .where(Case.completed==completed, Tags.name.in_(list(tags)))\
+                        .order_by(desc(filter))\
+                        .paginate(page=page, per_page=25, max_per_page=50)
+        if or_and == "false":
+            glob_list = list()
+            for case in cases:
+                loc_tag = [tag["name"] for tag in case.to_json()["tags"]]
+
+                if all(item in loc_tag for item in tags):
+                    glob_list.append(case)
+            cases = glob_list
+    elif taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
+        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
+                    .join(Tags, Case_Tags.tag_id==Tags.id)\
+                    .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                    .where(Case.completed==completed, Taxonomy.name.in_(list(taxonomies)))\
+                    .order_by(desc(filter))\
+                    .paginate(page=page, per_page=25, max_per_page=50)
+        if or_and == "false":
+            glob_list = list()
+            for case in cases:
+                taxo_list = list()
+                for tag in case.to_json()["tags"]:
+                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                    taxo_list.append(taxo.name)
+
+                if all(item in taxo_list for item in taxonomies):
+                    glob_list.append(case)
+            cases = glob_list
     else:
-        cases = Case.query.filter_by(completed=completed).paginate(page=page, per_page=20, max_per_page=50)
+        cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=25, max_per_page=50)
 
     # for deadline filter, only case with a deadline defined is required
     loc = list()

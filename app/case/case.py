@@ -214,7 +214,7 @@ def get_cases():
         tags = request.args.get('tags')
     else:
         tags = []
-    cases = CaseModel.sort_by_ongoing_core(page, tags)
+    cases = CaseModel.sort_by_status(page, tags, completed=False)
     role = CaseModel.get_role(current_user).to_json()
 
     loc = CaseModel.regroup_case_info(cases, current_user)
@@ -334,11 +334,11 @@ def get_status():
 def sort_by_ongoing():
     """Sort Case by living one"""
     page = request.args.get('page', 1, type=int)
-    if "tags" in request.args:
-        tags = request.args.get('tags')
-    else:
-        tags = []
-    cases_list = CaseModel.sort_by_ongoing_core(page, tags)
+    tags = request.args.get('tags')
+    taxonomies = request.args.get('taxonomies')
+    or_and = request.args.get("or_and")
+
+    cases_list = CaseModel.sort_by_status(page, tags, taxonomies, or_and, completed=False)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -348,13 +348,12 @@ def sort_by_ongoing():
 def sort_by_finished():
     """Sort Case by finished one"""
     page = request.args.get('page', 1, type=int)
-    if "tags" in request.args:
-        tags = request.args.get('tags')
-    else:
-        tags = []
-    cases_list = CaseModel.sort_by_finished_core(page, tags)
-    return CaseModel.regroup_case_info(cases_list, current_user)
+    tags = request.args.get('tags')
+    taxonomies = request.args.get('taxonomies')
+    or_and = request.args.get("or_and")
 
+    cases_list = CaseModel.sort_by_status(page, tags, taxonomies, or_and, completed=True)
+    return CaseModel.regroup_case_info(cases_list, current_user)
 
 
 @case_blueprint.route("/ongoing", methods=['GET'])
@@ -363,12 +362,12 @@ def ongoing_sort_by_filter():
     """Sort by filter for living case"""
     page = request.args.get('page', 1, type=int)
     filter = request.args.get('filter')
-    if "tags" in request.args:
-        tags = request.args.get('tags')
-    else:
-        tags = []
+    tags = request.args.get('tags')
+    taxonomies = request.args.get('taxonomies')
+    or_and = request.args.get("or_and")
+
     if filter:
-        cases_list, nb_pages = CaseModel.sort_by_filter(False, filter, page, tags)
+        cases_list, nb_pages = CaseModel.sort_by_filter(filter, page, tags, taxonomies, or_and, completed=False)
         return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 
@@ -379,12 +378,12 @@ def finished_sort_by_filter():
     """Sort by filter for finished task"""
     page = request.args.get('page', 1, type=int)
     filter = request.args.get('filter')
-    if "tags" in request.args:
-        tags = request.args.get('tags')
-    else:
-        tags = []
+    tags = request.args.get('tags')
+    taxonomies = request.args.get('taxonomies')
+    or_and = request.args.get("or_and")
+
     if filter:
-        cases_list, nb_pages = CaseModel.sort_by_filter(True, filter, page, tags)
+        cases_list, nb_pages = CaseModel.sort_by_filter(filter, page, tags, taxonomies, or_and, completed=True)
         return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 

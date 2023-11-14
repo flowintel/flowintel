@@ -403,7 +403,8 @@ class Tags(db.Model):
             "id": self.id,
             "name": self.name,
             "color": self.color,
-            "exclude": self.exclude
+            "exclude": self.exclude,
+            "taxonomy_id": self.taxonomy_id
         }
     
     def download(self):
