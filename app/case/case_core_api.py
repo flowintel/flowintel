@@ -1,6 +1,6 @@
 from ..db_class.db import Case, User
 from datetime import datetime
-from . import case_core as CaseModel
+from . import common_core as CommonModel
 from ..utils.utils import check_tag
 
 
@@ -104,7 +104,7 @@ def common_verif(data_dict, case_task):
 
 
 def verif_edit_case(data_dict, case_id):
-    case = CaseModel.get_case(case_id)
+    case = CommonModel.get_case(case_id)
     if "title" not in data_dict or data_dict["title"] == case.title or not data_dict["title"]:
         data_dict["title"] = case.title
     elif Case.query.filter_by(title=data_dict["title"]).first():
@@ -116,7 +116,7 @@ def verif_edit_case(data_dict, case_id):
 
 
 def verif_edit_task(data_dict, task_id):
-    task = CaseModel.get_task(task_id)
+    task = CommonModel.get_task(task_id)
     if "title" not in data_dict or data_dict["title"] == task.title or not data_dict["title"]:
         data_dict["title"] = task.title
 

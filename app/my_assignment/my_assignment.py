@@ -1,6 +1,6 @@
-from flask import Blueprint, render_template, redirect, jsonify, request, flash
+from flask import Blueprint, render_template, request
 from flask_login import login_required, current_user
-from ..case import case_core as CaseModel
+from ..case import task_core as TaskModel
 from . import my_assignment_core as AssignModel
 
 my_assignment_blueprint = Blueprint(
@@ -25,7 +25,7 @@ def my_assignment_sort_by_ongoing():
     """Sort Task by living one"""
     page = request.args.get('page', 1, type=int)
     tasks_list = AssignModel.my_assignment_sort_by_status(user=current_user, completed=False, page=page)
-    return {"tasks": CaseModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}
+    return {"tasks": TaskModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}
 
 
 
@@ -35,7 +35,7 @@ def my_assignment_sort_by_finished():
     """Sort Task by finished one"""
     page = request.args.get('page', 1, type=int)
     tasks_list = AssignModel.my_assignment_sort_by_status(user=current_user, completed=True, page=page)
-    return {"tasks": CaseModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}
+    return {"tasks": TaskModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}
 
 
 @my_assignment_blueprint.route("/tasks/ongoing", methods=['GET'])
@@ -46,7 +46,7 @@ def my_assignment_ongoing_sort_by_filter():
     if "filter" in data_dict:
         page = request.args.get('page', 1, type=int)
         tasks_list = AssignModel.my_assignment_sort_by_filter(user=current_user, completed=False, filter=data_dict["filter"], page=page)
-        return {"tasks": CaseModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}
+        return {"tasks": TaskModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}
     return {"message": "No filter pass"}
 
 
@@ -58,5 +58,5 @@ def my_assignment_finished_sort_by_filter():
     if "filter" in data_dict:
         page = request.args.get('page', 1, type=int)
         tasks_list = AssignModel.my_assignment_sort_by_filter(user=current_user, completed=False, filter=data_dict["filter"], page=page)
-        return {"tasks": CaseModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}
+        return {"tasks": TaskModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}
     return {"message": "No filter pass"}

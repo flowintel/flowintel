@@ -6,6 +6,7 @@ from .. import db
 import datetime
 from ..utils import utils
 from ..case import case_core
+from ..case import task_core
 from sqlalchemy import func
 
 def get_all_case_templates():
@@ -380,9 +381,9 @@ def core_read_json_file(case, current_user):
 
     ## Task creation
     for task in case["tasks"]:
-        task_created = case_core.create_task(task, case_created.id, current_user)
+        task_created = task_core.create_task(task, case_created.id, current_user)
         if task["notes"]:
-            case_core.modif_note_core(task_created.id, current_user, task["notes"])
+            task_core.modif_note_core(task_created.id, current_user, task["notes"])
 
     
 def read_json_file(files_list, current_user):
