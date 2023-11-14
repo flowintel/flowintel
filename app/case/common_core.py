@@ -68,8 +68,15 @@ def get_org_by_name(name):
     """Return an org by is name"""
     return Org.query.filter_by(name=name).first()
 
+def get_org_order_by_name():
+    """Return all orgs order by name"""
+    return Org.query.order_by("name")
+
 def get_org_in_case(org_id, case_id):
     return Case_Org.query.filter_by(case_id=case_id, org_id=org_id).first()
+
+def get_org_in_case_by_case_id(case_id):
+    return Case_Org.query.filter_by(case_id=case_id).all()
 
 def get_orgs_in_case(case_id):
     """Return orgs present in a case"""

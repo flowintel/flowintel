@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 from . import case_core as CaseModel
 from . import common_core as CommonModel
 from . import task_core as TaskModel
-from ..db_class.db import Org, Case_Org, Task_Template, Case_Template
+from ..db_class.db import Task_Template, Case_Template
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict, check_tag
 
@@ -117,11 +117,9 @@ def add_orgs(cid):
     if CommonModel.get_case(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             form = AddOrgsCase()
-            case_org = Case_Org.query.filter_by(case_id=cid).all()
-
+            case_org = CommonModel.get_org_in_case_by_case_id(cid)
             org_list = list()
-
-            for org in Org.query.order_by('name'):
+            for org in CommonModel.get_org_order_by_name():
                 if case_org:
                     flag = False
                     for c_o in case_org:
