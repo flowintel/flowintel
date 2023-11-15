@@ -185,6 +185,15 @@
                 </div>
                 <hr>
                 <div>Taxonomies:</div>
+                <div class="d-flex w-100 justify-content-center">
+                    <div style="display:flex">
+                        <span style="margin-right: 10px">OR</span>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false,true)">
+                            <label class="form-check-label" for="switchOperator">AND</label>
+                        </div>
+                    </div>
+                </div>
                 <div style="display: flex;">
                     <template v-if="taxonomies">
                         <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
@@ -264,9 +273,15 @@
                 let show_ongoing = true
                 let current_filter = ""
                 let asc_desc = true
+                let or_and = true
 
                 const main_tab = ref(true)
                 const history = ref(null)
+
+                const taxonomies = ref([])
+                const tags_list = ref([])
+                const selected_taxo = ref([])
+                const selected_tags = ref([])
 
                 async function fetch_history(){
                     const res = await fetch("/case/history/" + cases_info.value.case.id)
@@ -283,14 +298,19 @@
 
                     let loc
                     let tags = ""
+                    let taxo = ""
                     if(selected_tags.value.length){
-                        tags = "?tags=" + JSON.stringify(selected_tags.value)
+                        tags = "&tags=" + JSON.stringify(selected_tags.value)
                     }
+                    if(selected_taxo.value.length){
+                        taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                    }
+
                     if(show_ongoing){
-                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_ongoing_task' + tags)
+                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_ongoing_task?or_and=' + or_and + tags + taxo)
                         loc = await res.json()
                     }else{
-                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_finished_task' + tags)
+                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_finished_task?or_and=' + or_and + tags + taxo)
                         loc = await res.json()
                     }
                     cases_info.value.tasks = loc
@@ -302,20 +322,27 @@
                     asc_desc_filter()
                 }
 
-                async function asc_desc_filter(change=false){
+                async function asc_desc_filter(change=false, changeOperator=false){
                     if(change)
                         asc_desc = !asc_desc
+                    if (changeOperator)
+                        or_and = !or_and
 
                     let res
                     if (current_filter){
                         let tags = ""
+                        let taxo = ""
                         if(selected_tags.value.length){
                             tags = "&tags=" + JSON.stringify(selected_tags.value)
                         }
+                        if(selected_taxo.value.length){
+                            taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                        }
+
                         if(show_ongoing)
-                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/ongoing?filter=' + current_filter + tags)
+                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/ongoing?or_and=' + or_and + '&filter=' + current_filter + tags + taxo)
                         else
-                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/finished?filter=' + current_filter + tags)
+                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/finished?or_and=' + or_and + '&filter=' + current_filter + tags + taxo)
                         let loc = await res.json()
                         if(asc_desc)
                             cases_info.value.tasks = loc.reverse()
@@ -510,10 +537,6 @@
                 fetchStatus()
                 get_all_users_case()
 
-                const taxonomies = ref([])
-                const tags_list = ref([])
-                const selected_taxo = ref([])
-                const selected_tags = ref([])
 
                 async function fetch_taxonomies(){
                     const res = await fetch("/case/get_taxonomies")

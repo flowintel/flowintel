@@ -210,11 +210,11 @@ def recurring(cid):
 def get_cases():
     """Return all cases"""
     page = request.args.get('page', 1, type=int)
-    if "tags" in request.args:
-        tags = request.args.get('tags')
-    else:
-        tags = []
-    cases = CaseModel.sort_by_status(page, tags, completed=False)
+    tags = request.args.get('tags')
+    taxonomies = request.args.get('taxonomies')
+    or_and = request.args.get("or_and")
+
+    cases = CaseModel.sort_by_status(page, tags, taxonomies, or_and, completed=False)
     role = CommonModel.get_role(current_user).to_json()
 
     loc = CaseModel.regroup_case_info(cases, current_user)
@@ -254,7 +254,7 @@ def get_case_info(cid):
     """Return all info of the case"""
     case = CommonModel.get_case(cid)
     if case:    
-        tasks = TaskModel.sort_by_ongoing_task_core(case, current_user)
+        tasks = TaskModel.sort_by_status_task_core(case, current_user, completed=False)
 
         o_in_c = CommonModel.get_orgs_in_case(case.id)
         orgs_in_case = [o_c.to_json() for o_c in o_in_c]

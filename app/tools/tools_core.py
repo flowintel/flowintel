@@ -12,21 +12,98 @@ from sqlalchemy import func
 def get_all_case_templates():
     return Case_Template.query.all()
 
-def get_page_case_templates(page, title_filter, tags=[]):
-    if tags:
+def get_page_case_templates(page, title_filter, tags=[], taxonomies=[], or_and="true"):
+    if tags and taxonomies:
+        tags = ast.literal_eval(tags)
+        taxonomies = ast.literal_eval(taxonomies)
+        if title_filter == 'true':
+            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
+                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                            .where(Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
+                            .order_by(('title'))\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        else:
+            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
+                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                            .where(Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = cases.pages
+        if or_and == "false":
+            glob_list = list()
+            for case in cases:
+                tags_db = case.to_json()["tags"]
+                loc_tag = [tag["name"] for tag in tags_db]
+
+                if all(item in loc_tag for item in tags):
+                    taxo_list = list()
+                    for tag in tags_db:
+                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                        taxo_list.append(taxo.name)
+
+                    if all(item in taxo_list for item in taxonomies):
+                        glob_list.append(case)
+            cases = glob_list
+
+    elif tags:
         tags = ast.literal_eval(tags)
         if title_filter == 'true':
-            return Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id).join(Tags, Case_Template_Tags.tag_id==Tags.id)\
+            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
+                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
                             .where(Tags.name.in_(list(tags)))\
                             .order_by(('title'))\
-                            .paginate(page=page, per_page=20, max_per_page=50)
-        return Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id).join(Tags, Case_Template_Tags.tag_id==Tags.id)\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        else:
+            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
+                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
                             .where(Tags.name.in_(list(tags)))\
-                            .paginate(page=page, per_page=20, max_per_page=50)
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = cases.pages
+        if or_and == "false":
+            glob_list = list()
+            for case in cases:
+                loc_tag = [tag["name"] for tag in case.to_json()["tags"]]
+
+                if all(item in loc_tag for item in tags):
+                    glob_list.append(case)
+            cases = glob_list
+    
+    elif taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
+        if title_filter == 'true':
+            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
+                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                            .where(Taxonomy.name.in_(list(taxonomies)))\
+                            .order_by(('title'))\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        else:
+            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
+                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id==Tags.taxonomy_id)\
+                            .where(Taxonomy.name.in_(list(taxonomies)))\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = cases.pages
+        if or_and == "false":
+            glob_list = list()
+            for case in cases:
+                taxo_list = list()
+                for tag in case.to_json()["tags"]:
+                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                    taxo_list.append(taxo.name)
+
+                if all(item in taxo_list for item in taxonomies):
+                    glob_list.append(case)
+            cases = glob_list
     else:
         if title_filter == 'true':
-            return Case_Template.query.order_by(('title')).paginate(page=page, per_page=20, max_per_page=50)
-        return Case_Template.query.paginate(page=page, per_page=20, max_per_page=50)
+            cases = Case_Template.query.order_by(('title')).paginate(page=page, per_page=25, max_per_page=50)
+        else:
+            cases = Case_Template.query.paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = cases.pages
+
+    return cases, nb_pages
 
 def get_case_template(cid):
     return Case_Template.query.get(cid)
@@ -37,21 +114,99 @@ def get_case_by_title(title):
 def get_all_task_templates():
     return Task_Template.query.all()
 
-def get_page_task_templates(page, title_filter, tags=[]):
-    if tags:
+def get_page_task_templates(page, title_filter, tags=[], taxonomies=[], or_and="true"):
+    if tags and taxonomies:
+        tags = ast.literal_eval(tags)
+        taxonomies = ast.literal_eval(taxonomies)
+        if title_filter == 'true':
+            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
+                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                            .where(Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
+                            .order_by(('title'))\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        else:
+            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
+                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                            .where(Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = tasks.pages
+        if or_and == "false":
+            glob_list = list()
+            for task in tasks:
+                tags_db = task.to_json()["tags"]
+                loc_tag = [tag["name"] for tag in tags_db]
+
+                if all(item in loc_tag for item in tags):
+                    taxo_list = list()
+                    for tag in tags_db:
+                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                        taxo_list.append(taxo.name)
+
+                    if all(item in taxo_list for item in taxonomies):
+                        glob_list.append(task)
+            tasks = glob_list
+
+    elif tags:
         tags = ast.literal_eval(tags)
         if title_filter == 'true':
-            return Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id).join(Tags, Task_Template_Tags.tag_id==Tags.id)\
+            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
+                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
                             .where(Tags.name.in_(list(tags)))\
                             .order_by(('title'))\
-                            .paginate(page=page, per_page=20, max_per_page=50)
-        return Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id).join(Tags, Task_Template_Tags.tag_id==Tags.id)\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        else:
+            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
+                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
                             .where(Tags.name.in_(list(tags)))\
-                            .paginate(page=page, per_page=20, max_per_page=50)
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = tasks.pages
+        if or_and == "false":
+            glob_list = list()
+            for task in tasks:
+                loc_tag = [tag["name"] for tag in task.to_json()["tags"]]
+
+                if all(item in loc_tag for item in tags):
+                    glob_list.append(task)
+            tasks = glob_list
+    
+    elif taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
+        if title_filter == 'true':
+            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
+                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                            .where(Taxonomy.name.in_(list(taxonomies)))\
+                            .order_by(('title'))\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        else:
+            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
+                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id==Tags.taxonomy_id)\
+                            .where(Taxonomy.name.in_(list(taxonomies)))\
+                            .paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = tasks.pages
+        if or_and == "false":
+            glob_list = list()
+            for task in tasks:
+                taxo_list = list()
+                for tag in task.to_json()["tags"]:
+                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                    taxo_list.append(taxo.name)
+
+                if all(item in taxo_list for item in taxonomies):
+                    glob_list.append(task)
+            tasks = glob_list
     else:
         if title_filter == 'true':
-            return Task_Template.query.order_by(('title')).paginate(page=page, per_page=20, max_per_page=50)
-        return Task_Template.query.paginate(page=page, per_page=20, max_per_page=50)
+            tasks = Task_Template.query.order_by(('title')).paginate(page=page, per_page=25, max_per_page=50)
+        else:
+            tasks = Task_Template.query.paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = tasks.pages
+
+    return tasks, nb_pages
+
 
 def get_task_template(tid):
     return Task_Template.query.get(tid)

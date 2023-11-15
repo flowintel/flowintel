@@ -212,17 +212,17 @@ def get_page_case_templates():
     """Get a page of case templates"""
     page = request.args.get('page', 1, type=int)
     title_filter = request.args.get('title')
-    if "tags" in request.args:
-        tags = request.args.get('tags')
-    else:
-        tags = []
-    templates = ToolsModel.get_page_case_templates(page, title_filter, tags)
+    tags = request.args.get('tags')
+    or_and = request.args.get("or_and")
+    taxonomies = request.args.get('taxonomies')
+
+    templates, nb_pages = ToolsModel.get_page_case_templates(page, title_filter, tags, taxonomies, or_and)
     templates_list = list()
     for template in templates:
         loc_template = template.to_json()
         loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
-    return {"templates": templates_list, "nb_pages": templates.pages}
+    return {"templates": templates_list, "nb_pages": nb_pages}
 
 
 @tools_blueprint.route("/get_case_template/<cid>", methods=['GET'])
@@ -268,18 +268,18 @@ def get_page_task_templates():
     """Get a page of task template"""
     page = request.args.get('page', 1, type=int)
     title_filter = request.args.get('title')
-    if "tags" in request.args:
-        tags = request.args.get('tags')
-    else:
-        tags = []
-    templates = ToolsModel.get_page_task_templates(page, title_filter, tags)
+    tags = request.args.get('tags')
+    or_and = request.args.get("or_and")
+    taxonomies = request.args.get('taxonomies')
+
+    templates, nb_pages = ToolsModel.get_page_task_templates(page, title_filter, tags, taxonomies, or_and)
     if templates:
         templates_list = list()
         for template in templates:
             loc_template = template.to_json()
             loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
             templates_list.append(loc_template)
-        return {"templates": templates_list, "nb_pages": templates.pages}
+        return {"templates": templates_list, "nb_pages": nb_pages}
     return {"message": "Template not found"}
 
 

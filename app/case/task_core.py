@@ -321,73 +321,101 @@ def get_task_info(tasks_list, user):
     return tasks
 
 
-def sort_by_ongoing_task_core(case, user, tags=[]):
-    if tags:
+def sort_by_status_task_core(case, user, tags=[], taxonomies=[], or_and="true", completed=False, no_info=False):
+    if tags and taxonomies:
         tags = ast.literal_eval(tags)
-        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id).join(Tags, Task_Tags.tag_id==Tags.id)\
-        .where(Task.case_id==case.id, Task.completed==False, Tags.name.in_(list(tags)))
-    else:
-        tasks_list = Task.query.filter_by(case_id=case.id, completed=False).all()
-    return get_task_info(tasks_list, user)
-    
-def sort_by_finished_task_core(case, user, tags=[]):
-    if tags:
+        taxonomies = ast.literal_eval(taxonomies)
+
+        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id)\
+                            .join(Tags, Task_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                            .where(Task.case_id==case.id, Task.completed==completed, Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))
+        
+        if or_and == "false":
+            glob_list = list()
+            for task in tasks_list:
+                tags_db = task.to_json()["tags"]
+                loc_tag = [tag["name"] for tag in tags_db]
+
+                if all(item in loc_tag for item in tags):
+                    taxo_list = list()
+                    for tag in tags_db:
+                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                        taxo_list.append(taxo.name)
+
+                    if all(item in taxo_list for item in taxonomies):
+                        glob_list.append(task)
+            tasks_list = glob_list
+        
+    elif tags:
         tags = ast.literal_eval(tags)
-        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id).join(Tags, Task_Tags.tag_id==Tags.id)\
-        .where(Task.case_id==case.id, Task.completed==True, Tags.name.in_(list(tags)))
+
+        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id)\
+                            .join(Tags, Task_Tags.tag_id==Tags.id)\
+                            .where(Task.case_id==case.id, Task.completed==completed, Tags.name.in_(list(tags)))
+        if or_and == "false":
+            glob_list = list()
+            for task in tasks_list:
+                loc_tag = [tag["name"] for tag in task.to_json()["tags"]]
+
+                if all(item in loc_tag for item in tags):
+                    glob_list.append(task)
+            tasks_list = glob_list
+
+    elif taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
+
+        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id)\
+                            .join(Tags, Task_Tags.tag_id==Tags.id)\
+                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
+                            .where(Task.case_id==case.id, Task.completed==completed, Taxonomy.name.in_(list(taxonomies)))
+        
+        if or_and == "false":
+            glob_list = list()
+            for task in tasks_list:
+                taxo_list = list()
+                for tag in task.to_json()["tags"]:
+                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
+                    taxo_list.append(taxo.name)
+
+                if all(item in taxo_list for item in taxonomies):
+                    glob_list.append(task)
+            tasks_list = glob_list
     else:
-        tasks_list = Task.query.filter_by(case_id=case.id, completed=True).all()
+        tasks_list = Task.query.filter_by(case_id=case.id, completed=completed).all()
+
+    if no_info:
+        return tasks_list
     return get_task_info(tasks_list, user)
 
 
-def sort_tasks_by_filter(case, user, completed, filter, tags=[]):
-    if tags:
-        tags = ast.literal_eval(tags)
+def sort_tasks_by_filter(case, user, filter, tags=[], taxonomies=[], or_and="true", completed=False):
+    tasks_list = sort_by_status_task_core(case, user, tags, taxonomies, or_and, completed, no_info=True)
+
+    loc_list = list()
     if filter == "assigned_tasks":
-        if tags:
-            tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
-                        .join(Task_Tags, Task_Tags.task_id==Task.id)\
-                        .join(Tags, Task_Tags.tag_id==Tags.id)\
-                        .where(Task.case_id==case.id, Task.completed==completed, Tags.name.in_(list(tags)))\
-                        .order_by(desc('title')).all()
-        else:
-            tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
-                        .where(Task.case_id==case.id, Task.completed==completed)\
-                        .order_by(desc('title')).all()
+        for task in tasks_list:
+            if Task_User.query.filter_by(task_id=task.id).first():
+                loc_list.append(task)
+        tasks_list = loc_list
 
     elif filter == "my_assignment":
-        if tags:
-            tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
-                        .join(Task_Tags, Task_Tags.task_id==Task.id)\
-                        .join(Tags, Task_Tags.tag_id==Tags.id)\
-                        .where(Task_User.user_id==user.id)\
-                        .where(Task.case_id==case.id, Task.completed==completed, Tags.name.in_(list(tags)))\
-                        .order_by(desc('title')).all()
-        else:
-            tasks_list = Task.query.join(Task_User,Task_User.task_id==Task.id)\
-                        .where(Task_User.user_id==user.id)\
-                        .where(Task.case_id==case.id, Task.completed==completed)\
-                        .order_by(desc('title')).all()
-        loc = list()
         for task in tasks_list:
-            task.is_current_user_assigned = True
-            loc.append(task)
-        tasks_list = loc
-    else:
-        # for deadline filter, only task with a deadline defined is required
-        if tags:
-            tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id)\
-                            .join(Tags, Task_Tags.tag_id==Tags.id)\
-                            .where(Task.case_id==case.id, Task.completed==False, Tags.name.in_(list(tags)))\
-                            .order_by(desc(filter)).all()
-        else:
-            tasks_list = Task.query.filter_by(case_id=case.id, completed=completed).order_by(desc(filter)).all()
+            if Task_User.query.filter_by(task_id=task.id, user_id=user.id).first():
+                task.is_current_user_assigned = True
+                loc_list.append(task)
+        tasks_list = loc_list
 
+    elif filter == "deadline":
+        # for deadline filter, only task with a deadline defined is required
         loc = list()
         for task in tasks_list:
             if getattr(task, filter):
                 loc.append(task)
         tasks_list = loc
+    else:
+        # status, last_modif, title
+        tasks_list.sort(key=lambda x: getattr(x, filter))
 
     return get_task_info(tasks_list, user)
 
