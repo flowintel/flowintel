@@ -197,13 +197,18 @@
                 async function fetchCase(page) {
                     let url
                     let tags = ""
+                    let taxo = ""
                     if(selected_tags.value.length){
                         tags = "&tags=" + JSON.stringify(selected_tags.value)
                     }
+                    if(selected_taxo.value.length){
+                        taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                    }
+
                     if(current_filter.value)
-                        url = `/case/ongoing?page=${page}&filter=${current_filter.value}${tags}`
+                        url = `/case/ongoing?page=${page}&filter=${current_filter.value}${tags}${taxo}`
                     else
-                        url = '/case/get_cases_page?page=' + page + tags
+                        url = '/case/get_cases_page?page=' + page + tags + taxo
 
                     case_list.value = null
                     const res = await fetch(url)
@@ -298,7 +303,6 @@
                 async function asc_desc_filter(change=false, changeOperator=false){
                     if(change)
                         asc_desc = !asc_desc
-                    
                     if (changeOperator)
                         or_and = !or_and
 

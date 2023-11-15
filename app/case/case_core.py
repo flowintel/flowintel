@@ -315,6 +315,7 @@ def sort_by_filter(filter, page, tags=[], taxonomies=[], or_and="true", complete
                         .where(Case.completed==completed, Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
                         .order_by(desc(filter))\
                         .paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = cases.pages
         if or_and == "false":
             glob_list = list()
             for case in cases:
@@ -337,6 +338,7 @@ def sort_by_filter(filter, page, tags=[], taxonomies=[], or_and="true", complete
                         .where(Case.completed==completed, Tags.name.in_(list(tags)))\
                         .order_by(desc(filter))\
                         .paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = cases.pages
         if or_and == "false":
             glob_list = list()
             for case in cases:
@@ -353,6 +355,7 @@ def sort_by_filter(filter, page, tags=[], taxonomies=[], or_and="true", complete
                     .where(Case.completed==completed, Taxonomy.name.in_(list(taxonomies)))\
                     .order_by(desc(filter))\
                     .paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = cases.pages
         if or_and == "false":
             glob_list = list()
             for case in cases:
@@ -366,13 +369,14 @@ def sort_by_filter(filter, page, tags=[], taxonomies=[], or_and="true", complete
             cases = glob_list
     else:
         cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=25, max_per_page=50)
+        nb_pages = cases.pages
 
     # for deadline filter, only case with a deadline defined is required
     loc = list()
     for case in cases:
         if getattr(case, filter):
             loc.append(case)
-    return loc, cases.pages
+    return loc, nb_pages
 
 
 def fork_case_core(cid, case_title_fork, user):
