@@ -41,22 +41,18 @@ def create_case_template():
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     
     if form.validate_on_submit():
-        if "tags_select" in request.form:
-            flag = True
-            tag_list = request.form.getlist("tags_select")
-            for tag in tag_list:
-                if not check_tag(tag):
-                    flag = False
-            if not flag:
-                flash("tag doesn't exist")
-                return render_template("case/create_case_template.html", form=form)
-            
-        form_dict = form_to_dict(form)
-        form_dict["tags"] = request.form.getlist("tags_select")
-        template = ToolsModel.create_case_template(form_dict)
-        flash("Template created", "success")
-        return redirect(f"/tools/template/case/{template.id}")
-
+        tag_list = request.form.getlist("tags_select")
+        cluster_list = request.form.getlist("clusters_select")
+        if ToolsModel.check_tag(tag_list):
+            if ToolsModel.check_cluster(cluster_list):
+                form_dict = form_to_dict(form)
+                form_dict["tags"] = tag_list
+                form_dict["clusters"] = cluster_list
+                template = ToolsModel.create_case_template(form_dict)
+                flash("Template created", "success")
+                return redirect(f"/tools/template/case/{template.id}")
+            return render_template("case/create_case_template.html", form=form)
+        return render_template("case/create_case_template.html", form=form)
     return render_template("tools/create_case_template.html", form=form)
 
 
@@ -69,22 +65,18 @@ def create_task_template():
     task_template_query_list = ToolsModel.get_all_task_templates()
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     if form.validate_on_submit():
-        if "tags_select" in request.form:
-            flag = True
-            tag_list = request.form.getlist("tags_select")
-            for tag in tag_list:
-                if not check_tag(tag):
-                    flag = False
-            if not flag:
-                flash("tag doesn't exist")
-                return render_template("case/create_task_template.html", form=form)
-            
-        form_dict = form_to_dict(form)
-        form_dict["tags"] = request.form.getlist("tags_select")
-        template = ToolsModel.add_task_template_core(form_dict)
-        flash("Template created", "success")
-        return redirect(f"/tools/template/tasks")
-
+        tag_list = request.form.getlist("tags_select")
+        cluster_list = request.form.getlist("clusters_select")
+        if ToolsModel.check_tag(tag_list):
+            if ToolsModel.check_cluster(cluster_list):
+                form_dict = form_to_dict(form)
+                form_dict["tags"] = tag_list
+                form_dict["clusters"] = cluster_list
+                template = ToolsModel.add_task_template_core(form_dict)
+                flash("Template created", "success")
+                return redirect(f"/tools/template/tasks")
+            return render_template("case/create_task_template.html", form=form)
+        return render_template("case/create_task_template.html", form=form)
     return render_template("tools/create_task_template.html", form=form)
 
 
@@ -110,19 +102,18 @@ def add_task_case(cid):
     task_id_list = [tid.id for tid in task_by_case]
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list if template.id not in task_id_list]
     if form.validate_on_submit():
-        flag = True
         tag_list = request.form.getlist("tags_select")
-        for tag in tag_list:
-            if not check_tag(tag):
-                flag = False
-        if not flag:
-            flash("tag doesn't exist")
+        cluster_list = request.form.getlist("clusters_select")
+        if ToolsModel.check_tag(tag_list):
+            if ToolsModel.check_cluster(cluster_list):
+                form_dict = form_to_dict(form)
+                form_dict["tags"] = tag_list
+                form_dict["clusters"] = cluster_list
+                ToolsModel.add_task_case_template(form_dict, cid)
+                flash("Template added", "success")
+                return redirect(f"/tools/template/case/{cid}")
             return render_template("tools/add_task_case.html", form=form)
-        form_dict = form_to_dict(form)
-        form_dict["tags"] = tag_list
-        ToolsModel.add_task_case_template(form_dict, cid)
-        flash("Template added", "success")
-        return redirect(f"/tools/template/case/{cid}")
+        return render_template("tools/add_task_case.html", form=form)
     return render_template("tools/add_task_case.html", form=form)
 
 
@@ -136,20 +127,18 @@ def edit_case(cid):
         form = CaseTemplateEditForm()
         form.template_id.data = cid
         if form.validate_on_submit():
-            if "tags_select" in request.form:
-                flag = True
-                tag_list = request.form.getlist("tags_select")
-                for tag in tag_list:
-                    if not check_tag(tag):
-                        flag = False
-                if not flag:
-                    flash("tag doesn't exist")
-                    return render_template("case/edit_case_template.html", form=form)
-            form_dict = form_to_dict(form)
-            form_dict["tags"] = request.form.getlist("tags_select")
-            template = ToolsModel.edit_case_template(form_dict, cid)
-            flash("Template edited", "success")
-            return redirect(f"/tools/template/case/{cid}")
+            tag_list = request.form.getlist("tags_select")
+            cluster_list = request.form.getlist("clusters_select")
+            if ToolsModel.check_tag(tag_list):
+                if ToolsModel.check_cluster(cluster_list):
+                    form_dict = form_to_dict(form)
+                    form_dict["tags"] = tag_list
+                    form_dict["clusters"] = cluster_list
+                    template = ToolsModel.edit_case_template(form_dict, cid)
+                    flash("Template edited", "success")
+                    return redirect(f"/tools/template/case/{cid}")
+                return render_template("tools/edit_case_template.html", form=form)
+            return render_template("tools/edit_case_template.html", form=form)
         else:
             form.title.data = template.title
             form.description.data = template.description
@@ -168,20 +157,18 @@ def edit_task(tid):
         form = TaskTemplateEditForm()
         form.template_id.data = tid
         if form.validate_on_submit():
-            if "tags_select" in request.form:
-                flag = True
-                tag_list = request.form.getlist("tags_select")
-                for tag in tag_list:
-                    if not check_tag(tag):
-                        flag = False
-                if not flag:
-                    flash("tag doesn't exist")
-                    return render_template("case/edit_task_template.html", form=form)
-            form_dict = form_to_dict(form)
-            form_dict["tags"] = request.form.getlist("tags_select")
-            template = ToolsModel.edit_task_template(form_dict, tid)
-            flash("Template edited", "success")
-            return redirect(f"/tools/template/tasks")
+            tag_list = request.form.getlist("tags_select")
+            cluster_list = request.form.getlist("clusters_select")
+            if ToolsModel.check_tag(tag_list):
+                if ToolsModel.check_cluster(cluster_list):
+                    form_dict = form_to_dict(form)
+                    form_dict["tags"] = tag_list
+                    form_dict["clusters"] = cluster_list
+                    template = ToolsModel.edit_task_template(form_dict, tid)
+                    flash("Template edited", "success")
+                    return redirect(f"/tools/template/tasks")
+                return render_template("tools/edit_task_template.html", form=form)
+            return render_template("tools/edit_task_template.html", form=form)
         else:
             form.title.data = template.title
             form.body.data = template.description
@@ -408,4 +395,39 @@ def get_taxonomies_task(tid):
         if tags:
             taxonomies = [tag.split(":")[0] for tag in tags]
         return {"tags": tags, "taxonomies": taxonomies}
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@tools_blueprint.route("/template/get_galaxies_case/<cid>", methods=['GET'])
+@login_required
+def get_galaxies_case(cid):
+    case = ToolsModel.get_case_template(cid)
+    if case:
+        clusters = ToolsModel.get_case_clusters(case.id)
+        galaxies = []
+        if clusters:
+            for cluster in clusters:
+                loc_g = ToolsModel.get_galaxy(cluster.galaxy_id)
+                if not loc_g.name in galaxies:
+                    galaxies.append(loc_g.name)
+                index = clusters.index(cluster)
+                clusters[index] = cluster.tag
+        return {"clusters": clusters, "galaxies": galaxies}
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+@tools_blueprint.route("/template/get_galaxies_task/<tid>", methods=['GET'])
+@login_required
+def get_galaxies_task(tid):
+    task = ToolsModel.get_task_template(tid)
+    if task:
+        clusters = ToolsModel.get_task_clusters(task.id)
+        galaxies = []
+        if clusters:
+            for cluster in clusters:
+                loc_g = ToolsModel.get_galaxy(cluster.galaxy_id)
+                if not loc_g.name in galaxies:
+                    galaxies.append(loc_g.name)
+                index = clusters.index(cluster)
+                clusters[index] = cluster.tag
+        return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404

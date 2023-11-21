@@ -1,0 +1,184 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>
+        Galaxies
+    </h1>
+
+    <hr>
+
+    <!-- Search bar -->
+    <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
+        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search galaxies by name' style="min-width: 400px;" />
+    </div>
+    <!-- Search bar -->
+
+    <hr>
+    
+    <nav aria-label="Page navigation example" v-if="galaxies_list && nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchGalaxies(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchGalaxies(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}"><button class="page-link" @click="fetchGalaxies(Math.min(current_page+1, nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+
+    <template v-if="galaxies_list">
+        <template v-for="galaxy in galaxies_list.galaxies">
+            <div class="list-group" style="margin-bottom: 10px;">
+                <div class="d-flex align-items-center">
+                    <input v-if="galaxy.exclude" class="form-check-input me-2" type="checkbox" name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)">
+                    <input v-else class="form-check-input me-2" type="checkbox" checked name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)">
+                    <a @click="extend_collapse(galaxy.id)" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1">[[galaxy.name]]</h4>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p class="mb-1">[[galaxy.description]]</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="collapse" :id="'collapse'+galaxy.id" style="margin-bottom: 20px;">
+                <div class="card card-body" :id="'card-body_'+galaxy.id" style="background-color: whitesmoke;">
+                    <template v-if="clusters_table">
+                        <template v-if="clusters_table[galaxy.id]">
+                            <table>
+                                <template v-for="cluster in clusters_table[galaxy.id]">
+                                    <tr>
+                                        <td title="Cluster">
+                                            [[cluster.tag]]
+                                            <ul>
+                                                <li v-if="cluster.description">Description: [[cluster.description]]</li>
+                                                <li v-if="cluster.meta">Metadata: [[JSON.parse(cluster.meta)]]</li>
+                                            </ul>
+                                            
+                                        </td>
+                                    </tr>
+                                </template>
+                            </table>
+                            
+                        </template>
+                        <template v-else>
+                            <i>No Cluster</i>
+                        </template>
+                    </template>
+                    <template v-else>
+                        Loading...
+                    </template>
+                </div>
+            </div>
+        </template>
+    </template>
+    <template v-else>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </template>
+
+    <nav aria-label="Page navigation example" v-if="galaxies_list && nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchGalaxies(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchGalaxies(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}"><button class="page-link" @click="fetchGalaxies(Math.min(current_page+1, nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const galaxies_list = ref(null)
+                const clusters_table = ref({})
+                const current_page = ref(1)
+                const all_galax = ref([])
+                const nb_pages = ref(0)
+
+
+                async function fetchGalaxies(page) {
+                    galaxies_list.value = null
+                    const res = await fetch('get_galaxies_page?page='+page)
+                    let loc = await res.json()
+                    galaxies_list.value = loc
+                    current_page.value = page
+                }
+
+                async function fetchAllGalaxies() {
+                    const res = await fetch('get_galaxies')
+                    let loc = await res.json()
+                    all_galax.value = loc["galaxies"]
+                }
+
+                async function fetchNbPage() {
+                    const res = await fetch('nb_page_galaxies')
+                    let loc = await res.json()
+                    nb_pages.value = loc["nb_page"]
+                }
+
+                async function extend_collapse(galaxy_id){
+                    const res = await fetch('get_clusters?galaxy='+galaxy_id)
+                    let loc = await res.json()
+
+                    clusters_table.value[galaxy_id] = loc["clusters"]
+
+                    const collapseElementList = document.querySelectorAll('#collapse'+galaxy_id)
+                    const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
+                }
+
+
+                function onInput(e){
+                    galaxies_list.value.galaxies = []
+                    if(e.target.value){
+                        galaxies_list.value.galaxies = all_galax.value.filter((galaxies) => {
+                            return galaxies.name.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                    }else{
+                        galaxies_list.value.galaxies = fetchGalaxies(1)
+                    }
+                }
+
+
+                async function deactivate_galaxy(galaxy_id){
+                    const res = await fetch('galaxy_status?galaxy='+galaxy_id)
+                    display_toast(res)
+                }
+
+
+                fetchGalaxies(1)
+                fetchAllGalaxies()
+                fetchNbPage()
+
+    
+                return {
+                    message_list,
+                    galaxies_list,
+                    clusters_table,
+                    nb_pages,
+                    extend_collapse,
+                    current_page,
+                    fetchGalaxies,
+                    onInput,
+                    deactivate_galaxy
+                }
+            }
+        }).mount('.container')
+
+    </script>
+{% endblock %}

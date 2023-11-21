@@ -28,22 +28,20 @@ def create_task(cid):
             form.template_select.choices.insert(0, (0," "))
 
             if form.validate_on_submit():
-                if "tags_select" in request.form:
-                    flag = True
-                    tag_list = request.form.getlist("tags_select")
-                    for tag in tag_list:
-                        if not check_tag(tag):
-                            flag = False
-                    if not flag:
-                        flash("tag doesn't exist")
-                        return render_template("case/create_task.html", form=form)
-                form_dict = form_to_dict(form)
-                form_dict["tags"] = tag_list
-                if TaskModel.create_task(form_dict, cid, current_user):
-                    flash("Task created", "success")
-                else:
-                    flash("Error Task Created", "error")
-                return redirect(f"/case/{cid}")
+                tag_list = request.form.getlist("tags_select")
+                cluster_list = request.form.getlist("clusters_select")
+                if CommonModel.check_tag(tag_list):
+                    if CommonModel.check_cluster(cluster_list):
+                        form_dict = form_to_dict(form)
+                        form_dict["tags"] = tag_list
+                        form_dict["clusters"] = cluster_list
+                        if TaskModel.create_task(form_dict, cid, current_user):
+                            flash("Task created", "success")
+                        else:
+                            flash("Error Task Created", "error")
+                        return redirect(f"/case/{cid}")
+                    return render_template("case/create_task.html", form=form)
+                return render_template("case/create_task.html", form=form)
             return render_template("case/create_task.html", form=form)
         return redirect(f"/case/{cid}")
     return render_template("404.html")
@@ -58,20 +56,18 @@ def edit_task(cid, tid):
             form = TaskEditForm()
 
             if form.validate_on_submit():
-                if "tags_select" in request.form:
-                    flag = True
-                    tag_list = request.form.getlist("tags_select")
-                    for tag in tag_list:
-                        if not check_tag(tag):
-                            flag = False
-                    if not flag:
-                        flash("tag doesn't exist")
-                        return render_template("case/edit_task.html", form=form)
-                form_dict = form_to_dict(form)
-                form_dict["tags"] = tag_list
-                TaskModel.edit_task_core(form_dict, tid, current_user)
-                flash("Task edited", "success")
-                return redirect(f"/case/{cid}")
+                tag_list = request.form.getlist("tags_select")
+                cluster_list = request.form.getlist("clusters_select")
+                if CommonModel.check_tag(tag_list):
+                    if CommonModel.check_cluster(cluster_list):
+                        form_dict = form_to_dict(form)
+                        form_dict["tags"] = tag_list
+                        form_dict["clusters"] = cluster_list
+                        TaskModel.edit_task_core(form_dict, tid, current_user)
+                        flash("Task edited", "success")
+                        return redirect(f"/case/{cid}")
+                    return render_template("case/create_task.html", form=form)
+                return render_template("case/create_task.html", form=form)
             else:
                 task_modif = CommonModel.get_task(tid)
                 form.description.data = task_modif.description
@@ -405,4 +401,21 @@ def get_taxonomies_case(tid):
         if tags:
             taxonomies = [tag.split(":")[0] for tag in tags]
         return {"tags": tags, "taxonomies": taxonomies}
+    return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/get_galaxies_task/<tid>", methods=['GET'])
+@login_required
+def get_galaxies_case(tid):
+    task = CommonModel.get_task(tid)
+    if task:
+        clusters = CommonModel.get_task_clusters(task.id)
+        galaxies = []
+        if clusters:
+            for cluster in clusters:
+                loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
+                if not loc_g.name in galaxies:
+                    galaxies.append(loc_g.name)
+                index = clusters.index(cluster)
+                clusters[index] = cluster.tag
+        return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404

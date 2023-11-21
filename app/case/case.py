@@ -42,19 +42,17 @@ def create_case():
     form.tasks_templates.choices.insert(0, (0," "))
     
     if form.validate_on_submit():
-        flag = True
         tag_list = request.form.getlist("tags_select")
-        for tag in tag_list:
-            if not check_tag(tag):
-                flag = False
-        if not flag:
-            flash("tag doesn't exist")
-        else:
-            form_dict = form_to_dict(form)
-            form_dict["tags"] = tag_list
-            case = CaseModel.create_case(form_dict, current_user)
-            flash("Case created", "success")
-            return redirect(f"/case/{case.id}")
+        cluster_list = request.form.getlist("clusters_select")
+        if CommonModel.check_tag(tag_list):
+            if CommonModel.check_cluster(cluster_list):
+                form_dict = form_to_dict(form)
+                form_dict["tags"] = tag_list
+                form_dict["clusters"] = cluster_list
+                case = CaseModel.create_case(form_dict, current_user)
+                flash("Case created", "success")
+                return redirect(f"/case/{case.id}")
+            return render_template("case/create_case.html", form=form)
         return render_template("case/create_case.html", form=form)
     return render_template("case/create_case.html", form=form)
 
@@ -79,19 +77,17 @@ def edit_case(cid):
             form = CaseEditForm()
 
             if form.validate_on_submit():
-                flag = True
                 tag_list = request.form.getlist("tags_select")
-                for tag in tag_list:
-                    if not check_tag(tag):
-                        flag = False
-                if not flag:
-                    flash("tag doesn't exist")
-                else:
-                    form_dict = form_to_dict(form)
-                    form_dict["tags"] = tag_list
-                    CaseModel.edit_case(form_dict, cid, current_user)
-                    flash("Case edited", "success")
-                    return redirect(f"/case/{cid}")
+                cluster_list = request.form.getlist("cluster_select")
+                if CommonModel.check_tag(tag_list):
+                    if CommonModel.check_cluster(cluster_list):
+                        form_dict = form_to_dict(form)
+                        form_dict["tags"] = tag_list
+                        form_dict["clusters"] = cluster_list
+                        CaseModel.edit_case(form_dict, cid, current_user)
+                        flash("Case edited", "success")
+                        return redirect(f"/case/{cid}")
+                    return render_template("case/edit_case.html", form=form)
                 return render_template("case/edit_case.html", form=form)
             else:
                 case_modif = CommonModel.get_case(cid)
@@ -527,4 +523,38 @@ def get_taxonomies_case(cid):
         if tags:
             taxonomies = [tag.split(":")[0] for tag in tags]
         return {"tags": tags, "taxonomies": taxonomies}
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/get_galaxies", methods=['GET'])
+@login_required
+def get_galaxies():
+    return {"galaxies": CommonModel.get_galaxies()}, 200
+
+
+@case_blueprint.route("/get_clusters", methods=['GET'])
+@login_required
+def get_clusters():
+    if "galaxies" in request.args:
+        galaxies = request.args.get("galaxies")
+        galaxies = json.loads(galaxies)
+        return {"clusters": CommonModel.get_clusters_galaxy(galaxies)}, 200
+    return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
+
+
+@case_blueprint.route("/get_galaxies_case/<cid>", methods=['GET'])
+@login_required
+def get_galaxies_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        clusters = CommonModel.get_case_clusters(case.id)
+        galaxies = []
+        if clusters:
+            for cluster in clusters:
+                loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
+                if not loc_g.name in galaxies:
+                    galaxies.append(loc_g.name)
+                index = clusters.index(cluster)
+                clusters[index] = cluster.tag
+        return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404

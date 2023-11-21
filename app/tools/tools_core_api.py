@@ -1,5 +1,6 @@
 from ..db_class.db import Case_Template, User, Task_Template
 from ..utils.utils import check_tag
+from . import tools_core as ToolModel
 
 
 def get_user_api(api_key):
@@ -23,6 +24,13 @@ def verif_create_case_template(data_dict):
     else:
         data_dict["tags"] = []
 
+    if "clusters" in data_dict:
+        for cluster in data_dict["clusters"]:
+            if not ToolModel.check_cluster_db(cluster):
+                return {"message": f"Cluster '{cluster}' doesn't exist"}
+    else:
+        data_dict["clusters"] = []
+
     return data_dict
 
 def verif_edit_case_template(data_dict, case_id):
@@ -41,6 +49,15 @@ def verif_edit_case_template(data_dict, case_id):
         data_dict["tags"] = case_template.to_json()["tags"]
     else:
         data_dict["tags"] = []
+
+    if "clusters" in data_dict:
+        for cluster in data_dict["clusters"]:
+            if not ToolModel.check_cluster_db(cluster):
+                return {"message": f"Cluster '{cluster}' doesn't exist"}
+    elif case_template.to_json()["clusters"]:
+        data_dict["clusters"] = case_template.to_json()["clusters"]
+    else:
+        data_dict["clusters"] = []
 
     return data_dict
 
@@ -64,6 +81,13 @@ def verif_add_task_template(data_dict):
     else:
         data_dict["tags"] = []
 
+    if "clusters" in data_dict:
+        for cluster in data_dict["clusters"]:
+            if not ToolModel.check_cluster_db(cluster):
+                return {"message": f"Cluster '{cluster}' doesn't exist"}
+    else:
+        data_dict["clusters"] = []
+
     return data_dict
 
 def verif_edit_task_template(data_dict, task_id):
@@ -85,5 +109,14 @@ def verif_edit_task_template(data_dict, task_id):
         data_dict["tags"] = task_template.to_json()["tags"]
     else:
         data_dict["tags"] = []
+
+    if "clusters" in data_dict:
+        for cluster in data_dict["clusters"]:
+            if not ToolModel.check_cluster_db(cluster):
+                return {"message": f"Cluster '{cluster}' doesn't exist"}
+    elif task_template.to_json()["clusters"]:
+        data_dict["clusters"] = task_template.to_json()["clusters"]
+    else:
+        data_dict["clusters"] = []
 
     return data_dict

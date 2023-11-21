@@ -17,6 +17,7 @@ function launch {
     killscript
     db_upgrade
     python app.py -t
+    python app.py -g
     screen -dmS "fcm"
     screen -S "fcm" -X screen -t "recurring_notification" bash -c "python startNotif.py; read x"
     python app.py

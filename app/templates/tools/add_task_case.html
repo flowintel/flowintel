@@ -71,6 +71,29 @@
                     </select>
                 </template>
             </div>
+            <hr>
+
+            <h5>Galaxies:</h5>
+            <div style="display: flex;">
+                <template v-if="galaxies">
+                    <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                        <template v-for="galaxy, key in galaxies">
+                            <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="cluster_list">
+                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                        <template v-for="(clusters, galaxy) in cluster_list">
+                            <optgroup :label="[[galaxy]]">
+                                <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
+
         </div>
         {{form.submit(class='btn btn-primary')}}
     </div>
@@ -88,6 +111,10 @@
             const taxonomies = ref([])
             const tags_list = ref([])
             const selected_taxo = ref([])
+
+            const galaxies = ref([])
+            const cluster_list = ref([])
+            const selected_galaxies = ref([])
             
             let to_hide = true
             function hide_task_creation(){
@@ -107,6 +134,18 @@
                     taxonomies.value = loc["taxonomies"]
                 }
             }
+            fetch_taxonomies()
+
+            async function fetch_galaxies(){
+                const res = await fetch("/case/get_galaxies")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    galaxies.value = loc["galaxies"]
+                }
+            }
+            fetch_galaxies()
 
             async function fetch_tags(){
                 const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
@@ -118,7 +157,17 @@
                     $('#tags_select').trigger('change');
                 }
             }
-            fetch_taxonomies()
+
+            async function fetch_cluster(){
+                const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    cluster_list.value = loc["clusters"]
+                    $('#clusters_select').trigger('change');
+                }
+            }
 
             onMounted(() => {
                 $('.select2-select').select2({
@@ -131,13 +180,19 @@
                     selected_taxo.value = $(this).select2('data').map(item => item.id);
                     fetch_tags()
                 })
+                $('#galaxies_select').on('change.select2', function (e) {
+                    selected_galaxies.value = $(this).select2('data').map(item => item.id);
+                    fetch_cluster()
+                })
             })
 
             return {
                 selected_taxo,
                 message_list,
                 taxonomies,
+                galaxies,
                 tags_list,
+                cluster_list,
                 hide_task_creation
             }
         }

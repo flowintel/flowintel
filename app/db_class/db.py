@@ -101,6 +101,8 @@ class Case(db.Model):
             json_dict["recurring_date"] = self.recurring_date
 
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id==self.id)\
+                                                    .where(Cluster.id==Case_Galaxy_Tags.cluster_id).all()]
 
         return json_dict
     
@@ -122,6 +124,9 @@ class Case(db.Model):
             json_dict["recurring_date"] = self.recurring_date
 
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id==self.id)\
+                                                    .where(Cluster.id==Case_Galaxy_Tags.cluster_id).all()]
+
 
         return json_dict
 
@@ -167,6 +172,8 @@ class Task(db.Model):
             json_dict["finish_date"] = self.finish_date
 
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id==self.id)\
+                                                    .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
 
         return json_dict
     
@@ -184,6 +191,8 @@ class Task(db.Model):
             json_dict["deadline"] = self.deadline
 
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id==self.id)\
+                                                    .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
 
         return json_dict
 
@@ -324,6 +333,9 @@ class Case_Template(db.Model):
         }
 
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
+                                                    .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
+
 
         return json_dict
     
@@ -334,6 +346,9 @@ class Case_Template(db.Model):
             "description": self.description
         }
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
+                                                    .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
+
 
         return json_dict
     
@@ -355,6 +370,8 @@ class Task_Template(db.Model):
         }
 
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
+                                                    .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
 
         return json_dict
     
@@ -366,6 +383,8 @@ class Task_Template(db.Model):
             "url": self.url
         }
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
+                                                    .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
 
         return json_dict
     
@@ -397,6 +416,7 @@ class Tags(db.Model):
     color = db.Column(db.String)
     exclude = db.Column(db.Boolean, default=False)
     taxonomy_id = db.Column(db.Integer, db.ForeignKey('taxonomy.id', ondelete="CASCADE"))
+    cluster_id = db.Column(db.Integer, db.ForeignKey('cluster.id', ondelete="CASCADE"))
 
     def to_json(self):
         return {
@@ -404,7 +424,8 @@ class Tags(db.Model):
             "name": self.name,
             "color": self.color,
             "exclude": self.exclude,
-            "taxonomy_id": self.taxonomy_id
+            "taxonomy_id": self.taxonomy_id,
+            "cluster_id": self.cluster_id
         }
     
     def download(self):
@@ -430,6 +451,77 @@ class Task_Template_Tags(db.Model):
     tag_id = db.Column(db.Integer, index=True)
     task_id = db.Column(db.Integer, index=True)
 
+
+class Galaxy(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String)
+    uuid = db.Column(db.String(36), index=True)
+    version = db.Column(db.Integer, index=True)
+    description = db.Column(db.String)
+    icon = db.Column(db.String)
+    type = db.Column(db.String)
+    exclude = db.Column(db.Boolean, default=False)
+    clusters = db.relationship('Cluster', backref='galaxy', lazy='dynamic', cascade="all, delete-orphan")
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "name": self.name,
+            "uuid": self.uuid,
+            "version": self.version,
+            "description": self.description,
+            "icon": self.icon,
+            "exclude": self.exclude,
+            "type": self.type
+        }
+        return json_dict
+
+class Cluster(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String)
+    uuid = db.Column(db.String(36), index=True)
+    version = db.Column(db.Integer, index=True)
+    description = db.Column(db.String)
+    meta = db.Column(db.String)
+    exclude = db.Column(db.Boolean, default=False)
+    tag = db.Column(db.String)
+    galaxy_id = db.Column(db.Integer, db.ForeignKey('galaxy.id', ondelete="CASCADE"))
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "name": self.name,
+            "uuid": self.uuid,
+            "version": self.version,
+            "description": self.description,
+            "meta": self.meta,
+            "exclude": self.exclude,
+            "galaxy_id": self.galaxy_id,
+            "tag": self.tag
+        }
+        json_dict["icon"] = Galaxy.query.get(self.galaxy_id).icon
+        return json_dict
+    
+
+class Case_Galaxy_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    cluster_id = db.Column(db.Integer, index=True)
+    case_id = db.Column(db.Integer, index=True)
+
+class Task_Galaxy_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    cluster_id = db.Column(db.Integer, index=True)
+    task_id = db.Column(db.Integer, index=True)
+
+class Case_Template_Galaxy_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    cluster_id = db.Column(db.Integer, index=True)
+    template_id = db.Column(db.Integer, index=True)
+
+class Task_Template_Galaxy_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    cluster_id = db.Column(db.Integer, index=True)
+    template_id = db.Column(db.Integer, index=True)
 
 login_manager.anonymous_user = AnonymousUser
 

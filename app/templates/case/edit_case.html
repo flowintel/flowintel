@@ -66,6 +66,32 @@
                     </select>
                 </template>
             </div>
+            <hr>
+
+            <h5>Galaxies:</h5>
+            <div style="display: flex;">
+                <template v-if="galaxies">
+                    <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                        <template v-for="galaxy, key in galaxies">
+                            <option :value="[[galaxy.name]]" v-if="check_galaxy_exist(galaxy.name)" selected>[[galaxy.name]]</option>
+                            <option :value="[[galaxy.name]]" v-else>[[galaxy.name]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="cluster_list">
+                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                        <template v-for="(clusters, galaxy) in cluster_list">
+                            <optgroup :label="[[galaxy]]">
+                                <template v-for="cluster in clusters">
+                                    <option v-if="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description" selected>[[cluster.tag]]</option>
+                                    <option v-else :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
+                                </template>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
             <div class="modal-footer" style="margin-top: 10px;">
                 {{form.submit(class='btn btn-primary')}}
             </div>
@@ -82,10 +108,15 @@
         delimiters: ['[[', ']]'],
         setup() {
             const taxonomies = ref([])
+            const galaxies = ref([])
             const tags_list = ref([])
+            const cluster_list = ref([])
             const taxonomies_case = ref([])
+            const galaxies_case = ref([])
             const tags_case = ref([])
+            const clusters_case = ref([])
             const selected_taxo = ref([])
+            const selected_galaxies = ref([])
 
             async function fetch_taxonomies(){
                 const res = await fetch("/case/get_taxonomies")
@@ -97,6 +128,17 @@
                 }
             }
             fetch_taxonomies()
+
+            async function fetch_galaxies(){
+                const res = await fetch("/case/get_galaxies")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    galaxies.value = loc["galaxies"]
+                }
+            }
+            fetch_galaxies()
 
             async function fetch_taxonomies_case(){
                 const res = await fetch("/case/get_taxonomies_case/" +window.location.pathname.split("/").slice(-1))
@@ -113,6 +155,21 @@
             }
             fetch_taxonomies_case()
 
+            async function fetch_galaxies_case(){
+                const res = await fetch("/case/get_galaxies_case/" +window.location.pathname.split("/").slice(-1))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    clusters_case.value = loc["clusters"]
+                    galaxies_case.value = loc["galaxies"]
+                }
+                if(galaxies_case.value.length > 0){
+                    fetch_cluster(galaxies_case.value)
+                }
+            }
+            fetch_galaxies_case()
+
             async function fetch_tags(s_taxo){
                 const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(s_taxo))
                 if(await res.status==400 ){
@@ -125,15 +182,36 @@
                 }
             }
 
+            async function fetch_cluster(s_galaxies){
+                const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(s_galaxies))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    cluster_list.value = loc["clusters"]
+                    await nextTick()
+                    $('#clusters_select').trigger('change');
+                }
+            }
+
             function check_taxo_exist(taxo){
                 return taxonomies_case.value.some(function(field) {
                     return taxo === field
                 })
             }
-
+            function check_galaxy_exist(galaxy){
+                return galaxies_case.value.some(function(field) {
+                    return galaxy === field
+                })
+            }
             function check_tag_exist(tag){
                 return tags_case.value.some(function(field) {
                     return tag === field
+                })
+            }
+            function check_cluster_exist(cluster){
+                return clusters_case.value.some(function(field) {
+                    return cluster === field
                 })
             }
             
@@ -149,15 +227,23 @@
                     selected_taxo.value = $(this).select2('data').map(item => item.id);
                     fetch_tags(selected_taxo.value)
                 })
+                $('#galaxies_select').on('change.select2', function (e) {
+                    selected_galaxies.value = $(this).select2('data').map(item => item.id);
+                    fetch_cluster(selected_galaxies.value)
+                })
             })
 
             return {
                 selected_taxo,
                 message_list,
                 taxonomies,
+                galaxies,
                 tags_list,
+                cluster_list,
                 check_taxo_exist,
-                check_tag_exist
+                check_galaxy_exist,
+                check_tag_exist,
+                check_cluster_exist
             }
         }
     }).mount('.container')

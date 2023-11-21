@@ -1,12 +1,13 @@
 import os
 import shutil
 import datetime
+
+from flask import flash
 from .. import db
 from ..db_class.db import *
 from ..utils.utils import isUUID, create_specific_dir
 from sqlalchemy import desc, func
-from ..notification import notification_core as NotifModel
-
+from ..utils import utils
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
@@ -101,6 +102,25 @@ def get_recu_notif_user(case_id, user_id):
 def get_taxonomies():
     return [taxo.to_json() for taxo in Taxonomy.query.filter_by(exclude=False).all()]
 
+def get_galaxy(galaxy_id):
+    return Galaxy.query.get(galaxy_id)
+
+def get_galaxies():
+    return [galax.to_json() for galax in Galaxy.query.filter_by(exclude=False).order_by('name').all()]
+
+def get_clusters():
+    return [cluster.to_json() for cluster in Cluster.query.all()]
+
+def get_cluster_by_name(cluster):
+    return Cluster.query.filter_by(name=cluster).first()
+
+def get_clusters_galaxy(galaxies):
+    out = dict()
+    for galaxy in galaxies:
+        out[galaxy] = [cluster.to_json() for cluster in Cluster.query.join(Galaxy, Galaxy.id==Cluster.galaxy_id).where(Galaxy.name==galaxy).all() if not cluster.exclude]
+    return out
+
+
 def get_tags(taxos):
     out = dict()
     for taxo in taxos:
@@ -114,8 +134,14 @@ def get_tag(tag):
 def get_case_tags(cid):
     return [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
 
+def get_case_clusters(cid):
+    return [cluster for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id).filter_by(case_id=cid).all()]
+
 def get_task_tags(tid):
     return [tag.name for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
+
+def get_task_clusters(tid):
+    return [cluster for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id).filter_by(task_id=tid).all()]
 
 def get_history(case_uuid):
     try:
@@ -162,3 +188,25 @@ def deadline_check(date, time):
 
 def delete_temp_folder():
     shutil.rmtree(TEMP_FOLDER)
+
+
+def check_cluster_db(cluster):
+    return Cluster.query.filter_by(name=cluster).first()
+
+def check_tag(tag_list):
+    flag = True
+    for tag in tag_list:
+        if not utils.check_tag(tag):
+            flag = False
+    if not flag:
+        flash("tag doesn't exist")
+    return flag
+
+def check_cluster(cluster_list):
+    flag = True
+    for cluster in cluster_list:
+        if not check_cluster_db(cluster):
+            flag = False
+    if not flag:
+        flash("cluster doesn't exist")
+    return flag

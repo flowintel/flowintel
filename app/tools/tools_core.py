@@ -1,3 +1,4 @@
+from flask import flash
 from ..db_class.db import *
 import uuid
 import ast
@@ -11,6 +12,18 @@ from sqlalchemy import func
 
 def get_all_case_templates():
     return Case_Template.query.all()
+
+def get_case_clusters(cid):
+    return [cluster for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.cluster_id==Cluster.id).filter_by(template_id=cid).all()]
+
+def get_task_clusters(tid):
+    return [cluster for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.cluster_id==Cluster.id).filter_by(template_id=tid).all()]
+
+def get_galaxy(galaxy_id):
+    return Galaxy.query.get(galaxy_id)
+
+def check_cluster_db(cluster):
+    return Cluster.query.filter_by(name=cluster).first()
 
 def get_page_case_templates(page, title_filter, tags=[], taxonomies=[], or_and="true"):
     if tags and taxonomies:
@@ -232,6 +245,10 @@ def get_tag(tag):
     return Tags.query.filter_by(name=tag).first()
 
 
+def get_cluster_by_name(cluster):
+    return Cluster.query.filter_by(name=cluster).first()
+
+
 def create_case_template(form_dict):
     case_template = Case_Template(
         title=form_dict["title"],
@@ -247,6 +264,16 @@ def create_case_template(form_dict):
         case_tag = Case_Template_Tags(
             tag_id=tag.id,
             case_id=case_template.id
+        )
+        db.session.add(case_tag)
+        db.session.commit()
+
+    for cluster in form_dict["clusters"]:
+        cluster = get_cluster_by_name(cluster)
+        
+        case_tag = Case_Template_Galaxy_Tags(
+            cluster_id=cluster.id,
+            template_id=case_template.id
         )
         db.session.add(case_tag)
         db.session.commit()
@@ -276,6 +303,16 @@ def add_task_template_core(form_dict):
         task_tag = Task_Template_Tags(
             tag_id=tag.id,
             task_id=template.id
+        )
+        db.session.add(task_tag)
+        db.session.commit()
+
+    for cluster in form_dict["clusters"]:
+        cluster = get_cluster_by_name(cluster)
+        
+        task_tag = Task_Template_Galaxy_Tags(
+            cluster_id=cluster.id,
+            template_id=template.id
         )
         db.session.add(task_tag)
         db.session.commit()
@@ -313,8 +350,8 @@ def edit_case_template(form_dict, cid):
     template.title=form_dict["title"]
     template.description=form_dict["description"]
 
+    ## Tags
     case_tag_db = Case_Template_Tags.query.filter_by(case_id=template.id).all()
-
     for tag in form_dict["tags"]:
         tag = get_tag(tag)
 
@@ -331,6 +368,24 @@ def edit_case_template(form_dict, cid):
             Case_Template_Tags.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
+    ## Clusters
+    case_tag_db = Case_Template_Galaxy_Tags.query.filter_by(template_id=template.id).all()
+    for cluster in form_dict["clusters"]:
+        cluster = get_cluster_by_name(cluster)
+
+        if not cluster in case_tag_db:
+            case_tag = Case_Template_Galaxy_Tags(
+                cluster_id=cluster.id,
+                template_id=template.id
+            )
+            db.session.add(case_tag)
+            db.session.commit()
+    
+    for c_t_db in case_tag_db:
+        if not c_t_db in form_dict["clusters"]:
+            Case_Template_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
     db.session.commit()
 
 def edit_task_template(form_dict, tid):
@@ -340,8 +395,8 @@ def edit_task_template(form_dict, tid):
     template.description=form_dict["body"]
     template.url=form_dict["url"]
     
+    ## Tags
     task_tag_db = Task_Template_Tags.query.filter_by(task_id=template.id).all()
-
     for tag in form_dict["tags"]:
         tag = get_tag(tag)
 
@@ -358,6 +413,24 @@ def edit_task_template(form_dict, tid):
             Task_Template_Tags.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
+    ## Clusters
+    task_tag_db = Task_Template_Galaxy_Tags.query.filter_by(template_id=template.id).all()
+    for cluster in form_dict["clusters"]:
+        cluster = get_cluster_by_name(cluster)
+
+        if not cluster in task_tag_db:
+            task_tag = Task_Template_Galaxy_Tags(
+                cluster_id=cluster.id,
+                template_id=template.id
+            )
+            db.session.add(task_tag)
+            db.session.commit()
+    
+    for c_t_db in task_tag_db:
+        if not c_t_db in form_dict["clusters"]:
+            Task_Template_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
     db.session.commit()
 
 def delete_case_template(cid):
@@ -366,6 +439,7 @@ def delete_case_template(cid):
         db.session.delete(to_do)
         db.session.commit()
     Case_Template_Tags.query.filter_by(case_id=cid).delete() 
+    Case_Template_Galaxy_Tags.query.filter_by(template_id=cid).delete() 
     template = get_case_template(cid)
     db.session.delete(template)
     db.session.commit()
@@ -383,6 +457,7 @@ def delete_task_template(tid):
         db.session.delete(to_do)
         db.session.commit()
     Task_Template_Tags.query.filter_by(task_id=tid).delete()
+    Task_Template_Galaxy_Tags.query.filter_by(template_id=tid).delete()
     template = get_task_template(tid)
     db.session.delete(template)
     db.session.commit()
@@ -408,12 +483,22 @@ def create_case_from_template(cid, case_title_fork, user):
     db.session.add(case)
     db.session.commit()
 
+    ## Case Tags
     for c_t in Case_Template_Tags.query.filter_by(case_id=case_template.id).all():
         case_tag = Case_Tags(
             case_id=case.id,
             tag_id=c_t.tag_id
         )
         db.session.add(case_tag)
+        db.session.commit()
+
+    ## Case Clusters
+    for c_t in Case_Template_Galaxy_Tags.query.filter_by(template_id=case_template.id).all():
+        case_cluster = Case_Galaxy_Tags(
+            case_id=case.id,
+            cluster_id=c_t.cluster_id
+        )
+        db.session.add(case_cluster)
         db.session.commit()
 
     # Add the current user's org to the case
@@ -440,12 +525,22 @@ def create_case_from_template(cid, case_title_fork, user):
         db.session.add(t)
         db.session.commit()
 
+        ## Task Tags
         for t_t in Task_Template_Tags.query.filter_by(task_id=task.id).all():
             task_tag = Task_Tags(
                 task_id=t.id,
                 tag_id=t_t.tag_id
             )
             db.session.add(task_tag)
+            db.session.commit()
+        
+        ## Task Clusters
+        for t_t in Task_Template_Galaxy_Tags.query.filter_by(template_id=task.id).all():
+            task_cluster = Task_Galaxy_Tags(
+                task_id=t.id,
+                cluster_id=t_t.cluster_id
+            )
+            db.session.add(task_cluster)
             db.session.commit()
     
     return case
@@ -555,3 +650,21 @@ def read_json_file(files_list, current_user):
             except Exception as e:
                 print(e)
                 return {"message": "Something went wrong"}
+            
+def check_tag(tag_list):
+    flag = True
+    for tag in tag_list:
+        if not utils.check_tag(tag):
+            flag = False
+    if not flag:
+        flash("tag doesn't exist")
+    return flag
+
+def check_cluster(cluster_list):
+    flag = True
+    for cluster in cluster_list:
+        if not check_cluster_db(cluster):
+            flag = False
+    if not flag:
+        flash("cluster doesn't exist")
+    return flag

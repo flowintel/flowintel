@@ -59,6 +59,13 @@ def verif_create_case_task(data_dict, isCase):
     else:
         data_dict["tags"] = []
 
+    if "clusters" in data_dict:
+        for cluster in data_dict["clusters"]:
+            if not CommonModel.check_cluster(cluster):
+                return {"message": f"Cluster '{cluster}' doesn't exist"}
+    else:
+        data_dict["clusters"] = []
+
     if not isCase:
         if "url" not in data_dict or not data_dict["url"]:
             data_dict["url"] = ""
@@ -99,6 +106,15 @@ def common_verif(data_dict, case_task):
         data_dict["tags"] = case_task.to_json()["tags"]
     else:
         data_dict["tags"] = []
+
+    if "clusters" in data_dict:
+        for cluster in data_dict["clusters"]:
+            if not CommonModel.check_cluster(cluster):
+                return {"message": f"Cluster '{cluster}' doesn't exist"}
+    elif case_task.to_json()["clusters"]:
+        data_dict["clusters"] = case_task.to_json()["clusters"]
+    else:
+        data_dict["clusters"] = []
     
     return data_dict
 

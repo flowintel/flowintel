@@ -39,6 +39,7 @@ def delete_task(tid, current_user):
             NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
         Task_Tags.query.filter_by(task_id=task.id).delete()
+        Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
         Task_User.query.filter_by(task_id=task.id).delete()
         db.session.delete(task)
         CommonModel.update_last_modif(task.case_id)
@@ -104,6 +105,14 @@ def create_task(form_dict, cid, current_user):
             )
             db.session.add(task_tag)
             db.session.commit()
+
+        for t_t in Task_Template_Galaxy_Tags.query.filter_by(task_id=task.id).all():
+            task_tag = Task_Galaxy_Tags(
+                task_id=task.id,
+                cluster_id=t_t.cluster_id
+            )
+            db.session.add(task_tag)
+            db.session.commit()
     else:
         deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
@@ -131,6 +140,16 @@ def create_task(form_dict, cid, current_user):
             db.session.add(task_tag)
             db.session.commit()
 
+        for clusters in form_dict["clusters"]:
+            cluster = CommonModel.get_cluster_by_name(clusters)
+            
+            task_galaxy_tag = Task_Galaxy_Tags(
+                cluster_id=cluster.id,
+                task_id=task.id
+            )
+            db.session.add(task_galaxy_tag)
+            db.session.commit()
+
     CommonModel.update_last_modif(cid)
 
     case = CommonModel.get_case(cid)
@@ -149,8 +168,8 @@ def edit_task_core(form_dict, tid, current_user):
     task.url=form_dict["url"]
     task.deadline=deadline
 
+    ## Tags
     task_tag_db = Task_Tags.query.filter_by(task_id=task.id).all()
-
     for tags in form_dict["tags"]:
         tag = CommonModel.get_tag(tags)
 
@@ -165,6 +184,24 @@ def edit_task_core(form_dict, tid, current_user):
     for c_t_db in task_tag_db:
         if not c_t_db in form_dict["tags"]:
             Task_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
+    ## Clusters
+    task_tag_db = Task_Galaxy_Tags.query.filter_by(task_id=task.id).all()
+    for clusters in form_dict["clusters"]:
+        cluster = CommonModel.get_cluster_by_name(clusters)
+
+        if not clusters in task_tag_db:
+            task_tag = Task_Galaxy_Tags(
+                cluster_id=cluster.id,
+                task_id=task.id
+            )
+            db.session.add(task_tag)
+            db.session.commit()
+    
+    for c_t_db in task_tag_db:
+        if not c_t_db in form_dict["clusters"]:
+            Task_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
     CommonModel.update_last_modif(task.case_id)

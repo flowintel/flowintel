@@ -1,10 +1,11 @@
+import json
+import os
 from ..db_class.db import db
-from ..db_class.db import Taxonomy, Tags
-from .utils import taxonomies
+from ..db_class.db import Taxonomy, Tags, Galaxy, Cluster
+from .utils import taxonomies, galaxies, clusters, check_tag
 
 
 def create_tag(tag, taxo_id):
-    # if not Tags.query.filter_by(name=tag).first():
     revert_match = taxonomies.revert_machinetag(tag)[1].colour
     if not revert_match:
         namespace = tag.split(":")[0]
@@ -22,6 +23,7 @@ def create_tag(tag, taxo_id):
     db.session.add(tag_db)
     db.session.commit()
 
+
 def create_taxonomies():
     for taxonomy in list(taxonomies.keys()):
         if not Taxonomy.query.filter_by(name=taxonomy).first():
@@ -34,6 +36,65 @@ def create_taxonomies():
 
             for tag in taxonomies.get(taxonomy).machinetags():
                 create_tag(tag, taxo.id)
+
+
+def create_galaxies():
+    for galaxy in list(galaxies.keys()):
+        current_galaxy = galaxies.get(galaxy)
+        galaxy_db = Galaxy.query.filter_by(uuid=current_galaxy.uuid).first()
+        if not galaxy_db:
+            galax = Galaxy(
+                name = galaxy,
+                uuid = current_galaxy.uuid,
+                version = current_galaxy.version,
+                description = current_galaxy.description,
+                icon = current_galaxy.icon,
+                type = current_galaxy.type
+            )
+            db.session.add(galax)
+            db.session.commit()
+        elif galaxy_db.version < current_galaxy.version:
+            galaxy_db.name = current_galaxy.name
+            galaxy_db.version = current_galaxy.version
+            galaxy_db.description = current_galaxy.description
+            galaxy_db.icon = current_galaxy.icon
+            galaxy_db.type = current_galaxy.type
+            db.session.commit()
+
+    for cluster in list(clusters.keys()):
+        current_cluster_info = clusters.get(cluster)
+        for cl in list(current_cluster_info.keys()):
+            current_cluster = current_cluster_info.get(cl)
+            cluster_db = Cluster.query.filter_by(uuid=current_cluster.uuid).first()
+            if not cluster_db:
+                if current_cluster.meta:
+                    meta = json.dumps(current_cluster.meta.to_json())
+                else:
+                    meta = ""
+
+                cluster_created = Cluster(
+                    name = cl,
+                    uuid = current_cluster.uuid,
+                    version = current_cluster_info.version,
+                    description = current_cluster.description,
+                    galaxy_id = Galaxy.query.filter_by(type=current_cluster_info.type).first().id,
+                    tag = f'misp-galaxy:{cluster}="{cl}"',
+                    meta = meta
+                )
+
+                db.session.add(cluster_created)
+                db.session.commit()
+
+            elif cluster_db.version < current_cluster_info.version:
+                if current_cluster.meta:
+                    meta = json.dumps(current_cluster.meta.to_json())
+                else:
+                    meta = ""
+                cluster_db.name = cluster
+                cluster_db.version = current_cluster_info.version
+                cluster_db.description = current_cluster.description
+                cluster_db.meta = meta
+                db.session.commit()
 
 
 

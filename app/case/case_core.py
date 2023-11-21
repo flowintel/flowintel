@@ -31,6 +31,7 @@ def delete_case(cid, current_user):
         NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", cid, html_icon="fa-solid fa-trash", current_user=current_user)
 
         Case_Tags.query.filter_by(case_id=case.id).delete()
+        Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
         Case_Org.query.filter_by(case_id=case.id).delete()
         db.session.delete(case)
         db.session.commit()
@@ -89,6 +90,16 @@ def create_case(form_dict, user):
             )
             db.session.add(case_tag)
             db.session.commit()
+        
+        for clusters in form_dict["clusters"]:
+            cluster = CommonModel.get_cluster_by_name(clusters)
+            
+            case_galaxy = Case_Galaxy_Tags(
+                cluster_id=cluster.id,
+                case_id=case.id
+            )
+            db.session.add(case_galaxy)
+            db.session.commit()
 
         if "tasks_templates" in form_dict and not 0 in form_dict["tasks_templates"]:
             for tid in form_dict["tasks_templates"]:
@@ -114,6 +125,14 @@ def create_case(form_dict, user):
                     db.session.add(task_tag)
                     db.session.commit()
 
+                for t_t in Task_Template_Galaxy_Tags.query.filter_by(task_id=task.id).all():
+                    task_galaxy = Task_Galaxy_Tags(
+                        task_id=t.id,
+                        cluster_id=t_t.cluster_id
+                    )
+                    db.session.add(task_galaxy)
+                    db.session.commit()
+
         # Add the current user's org to the case
         case_org = Case_Org(
             case_id=case.id, 
@@ -136,8 +155,8 @@ def edit_case(form_dict, cid, current_user):
     case.description=form_dict["description"]
     case.deadline=deadline
 
+    ## Tags
     case_tag_db = Case_Tags.query.filter_by(case_id=case.id).all()
-
     for tags in form_dict["tags"]:
         tag = CommonModel.get_tag(tags)
 
@@ -152,6 +171,24 @@ def edit_case(form_dict, cid, current_user):
     for c_t_db in case_tag_db:
         if not c_t_db in form_dict["tags"]:
             Case_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
+    ## Clusters
+    case_cluster_db = Case_Galaxy_Tags.query.filter_by(case_id=case.id).all()
+    for clusters in form_dict["clusters"]:
+        cluster = CommonModel.get_cluster_by_name(clusters)
+
+        if not clusters in case_cluster_db:
+            case_galaxy_tag = Case_Galaxy_Tags(
+                cluster_id=cluster.id,
+                case_id=case.id
+            )
+            db.session.add(case_galaxy_tag)
+            db.session.commit()
+    
+    for c_t_db in case_cluster_db:
+        if not c_t_db in form_dict["clusters"]:
+            Case_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
     CommonModel.update_last_modif(cid)
@@ -431,6 +468,14 @@ def create_template_from_case(cid, case_title_template):
         db.session.add(case_tag)
         db.session.commit()
 
+    for c_t in Case_Galaxy_Tags.query.filter_by(case_id=case.id).all():
+        case_cluster = Case_Template_Galaxy_Tags(
+            template_id=new_template.id,
+            cluster_id=c_t.cluster_id
+        )
+        db.session.add(case_cluster)
+        db.session.commit()
+
     for task in case.tasks:
         task_exist = Task_Template.query.filter_by(title=task.title).first()
         if not task_exist:
@@ -449,6 +494,14 @@ def create_template_from_case(cid, case_title_template):
                     tag_id=t_t.tag_id
                 )
                 db.session.add(task_tag)
+                db.session.commit()
+
+            for t_t in Task_Galaxy_Tags.query.filter_by(task_id=task.id).all():
+                task_cluster = Task_Template_Galaxy_Tags(
+                    template_id=task_template.id,
+                    cluster_id=t_t.cluster_id
+                )
+                db.session.add(task_cluster)
                 db.session.commit()
 
             case_task_template = Case_Task_Template(

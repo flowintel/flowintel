@@ -1,7 +1,7 @@
 from app import create_app, db
 import argparse
 from app.utils.init_db import create_admin
-from app.utils.init_taxonomies import create_taxonomies
+from app.utils.init_taxonomies import create_taxonomies, create_galaxies
 from flask import render_template, request, Response
 import json
 
@@ -24,6 +24,7 @@ parser.add_argument("-i", "--init_db", help="Initialise the db if it not exist",
 parser.add_argument("-r", "--recreate_db", help="Delete and initialise the db", action="store_true")
 parser.add_argument("-d", "--delete_db", help="Delete and initialise the db", action="store_true")
 parser.add_argument("-t", "--taxonomies", help="Delete and initialise the db", action="store_true")
+parser.add_argument("-g", "--galaxies", help="Delete and initialise the db", action="store_true")
 args = parser.parse_args()
 
 os.environ.setdefault('FLASKENV', 'development')
@@ -52,5 +53,8 @@ elif args.delete_db:
 elif args.taxonomies:
     with app.app_context():
         create_taxonomies()
+elif args.galaxies:
+    with app.app_context():
+        create_galaxies()
 else:
     app.run(host=app.config.get("FLASK_URL"), port=app.config.get("FLASK_PORT"))

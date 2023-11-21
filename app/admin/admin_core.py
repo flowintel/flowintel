@@ -1,5 +1,5 @@
 from .. import db
-from ..db_class.db import User, Role, Org, Case_Org, Task_User, Taxonomy
+from ..db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy
 from ..utils.utils import generate_api_key
 import uuid
 
@@ -215,4 +215,47 @@ def get_tags(taxonomy_id):
 def taxonomy_status(taxonomy_id):
     taxo = Taxonomy.query.get(taxonomy_id)
     taxo.exclude = not taxo.exclude
+    db.session.commit()
+
+
+def get_galaxies():
+    return [galax.to_json() for galax in Galaxy.query.order_by('name').all()]
+
+def get_galaxy(galaxy_id):
+    return Galaxy.query.get(galaxy_id)
+
+def get_clusters():
+    return [cluster.to_json() for cluster in Cluster.query.all()]
+
+def get_clusters_galaxy(galaxy_id):
+    return [cluster.to_json() for cluster in get_galaxy(galaxy_id).clusters]
+
+def get_galaxies_page(page):
+    nb_galaxies = 25
+    to_give = nb_galaxies * page
+    galaxies_list = get_galaxies()
+    
+    if to_give > len(galaxies_list):
+        limit = len(galaxies_list)
+    else:
+        limit = to_give
+    to_start = limit - nb_galaxies
+
+    out_list = list()
+    for i in range(to_start, limit):
+        out_list.append(galaxies_list[i])
+    return out_list
+
+def get_nb_page_galaxies():
+    return int(len(get_galaxies()) / 25) + 1
+
+def get_tags_galaxy(galaxy_id):
+    return [cluster.tag for cluster in get_galaxy(galaxy_id).clusters]
+
+def get_tag_cluster(cluster_id):
+    return Cluster.query.get(cluster_id).tag
+
+def galaxy_status(galaxy_id):
+    gal = get_galaxy(galaxy_id)
+    gal.exclude = not gal.exclude
     db.session.commit()

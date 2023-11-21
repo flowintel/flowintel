@@ -1,0 +1,6 @@
+[submodule "modules/misp-galaxy"]
+	path = modules/misp-galaxy
+	url = https://github.com/MISP/misp-galaxy
+[submodule "modules/misp-taxonomies"]
+	path = modules/misp-taxonomies
+	url = https://github.com/MISP/misp-taxonomies

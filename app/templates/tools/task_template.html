@@ -107,10 +107,20 @@
                         <div class="d-flex w-100 justify-content-between">
                             <div style="display: flex;" v-if="template.tags">
                                 <template v-for="tag in template.tags">
-                                    <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}"><i class="fa-regular fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>[[tag.name]]</div>
+                                    <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}"><i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>[[tag.name]]</div>
                                 </template>
                             </div>
                             <div v-else></div>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <div v-if="template.clusters">
+                                <template v-for="cluster in template.clusters">
+                                    <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
+                                        <span v-html="mapIcon(cluster.icon)"></span>
+                                        [[cluster.tag]]
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                     </a>
                     <div v-if="!template.current_user_permission.read_only" style="display: grid;">
@@ -293,6 +303,7 @@
                     asc_desc_filter,
                     onInput,
                     getTextColor,
+                    mapIcon,
                     taxonomies,
                     tags_list,
                 }

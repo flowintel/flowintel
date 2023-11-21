@@ -13,3 +13,5 @@ schedule
 pytest
 gunicorn
 git+https://github.com/MISP/PyTaxonomies
+git+https://github.com/MISP/PyMISPGalaxies
+jsonschema==4.17.3

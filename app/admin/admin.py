@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, jsonify, render_template, redirect, url_for, request, flash
 from flask_login import (
     current_user,
     login_required,
@@ -189,10 +189,15 @@ def get_org_users():
     return {"message": "No user in the org"}
 
 
+
+##############
+# Taxonomies #
+##############
+
 @admin_blueprint.route("/taxonomies", methods=['GET'])
 @login_required
 def taxonomies():
-    """List all taxonomies"""
+    """Taxonomies' index page"""
     return render_template("admin/taxonomies.html")
 
 
@@ -205,20 +210,20 @@ def get_taxonomies():
 @admin_blueprint.route("/get_taxonomies_page", methods=['GET'])
 @login_required
 def get_taxonomies_page():
-    """List all taxonomies"""
+    """Get taxonomies of a specific page"""
     page = request.args.get('page', 1, type=int)
     return {"taxonomies": AdminModel.get_taxonomies_page(page)}
 
 @admin_blueprint.route("/nb_page_taxo", methods=['GET'])
 @login_required
 def nb_page_taxo():
-    """List all taxonomies"""
+    """Get number of page to list all taxonomies"""
     return {"nb_page": AdminModel.get_nb_page_taxo()}
 
 @admin_blueprint.route("/get_tags", methods=['GET'])
 @login_required
 def get_tags():
-    """List all taxonomies"""
+    """Get tags of a taxonomy"""
     taxonomy = request.args.get('taxonomy')
     tags = AdminModel.get_tags(taxonomy)
     return {"tags": tags}
@@ -231,3 +236,63 @@ def taxonomy_status():
     taxonomy_id = request.args.get('taxonomy', type=int)
     AdminModel.taxonomy_status(taxonomy_id)
     return {"message":"Taxonomy changed", "toast_class": "success-subtle"}, 200
+
+
+
+############
+# Galaxies #
+############
+
+@admin_blueprint.route("/galaxies", methods=['GET'])
+@login_required
+def galaxies():
+    """Galaxies' index page"""
+    return render_template("admin/galaxies.html")
+
+
+@admin_blueprint.route("/get_galaxies", methods=['GET'])
+@login_required
+def get_galaxies():
+    """List all galaxies"""
+    return {"galaxies": AdminModel.get_galaxies()}
+
+@admin_blueprint.route("/get_galaxies_page", methods=['GET'])
+@login_required
+def get_galaxies_page():
+    """Get galaxies of a specific page"""
+    page = request.args.get('page', 1, type=int)
+    gal = AdminModel.get_galaxies_page(page)
+    return {"galaxies": gal}
+
+@admin_blueprint.route("/nb_page_galaxies", methods=['GET'])
+@login_required
+def nb_page_galaxies():
+    """Get number of page to list all galaxies"""
+    return {"nb_page": AdminModel.get_nb_page_galaxies()}
+
+@admin_blueprint.route("/get_tags_galaxy", methods=['GET'])
+@login_required
+def get_tags_galaxy():
+    """Get tags of a galaxy"""
+    galaxy = request.args.get('galaxy')
+    tags = AdminModel.get_tags_galaxy(galaxy)
+    return {"tags": tags}
+
+
+@admin_blueprint.route("/get_clusters", methods=['GET'])
+@login_required
+def get_clusters():
+    """Get clusers of a galaxy"""
+    galaxy_id = request.args.get('galaxy')
+    clusters = AdminModel.get_clusters_galaxy(galaxy_id)
+    clusters.sort(key=lambda x: x["name"])
+    return jsonify({"clusters": clusters})
+
+@admin_blueprint.route("/galaxy_status", methods=['GET'])
+@login_required
+@admin_required
+def galaxy_status():
+    """Active or deactive a galaxy"""
+    galaxy_id = request.args.get('galaxy', type=int)
+    AdminModel.galaxy_status(galaxy_id)
+    return {"message":"Galaxy changed", "toast_class": "success-subtle"}, 200

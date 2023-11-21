@@ -1,12 +1,25 @@
 import os
+import glob
+import json
+import uuid
 import random
 import string
-from ..db_class.db import User
-import uuid
 import jsonschema
+from ..db_class.db import User
 from pytaxonomies import Taxonomies
+from pymispgalaxies import Galaxies, Clusters
 
-taxonomies = Taxonomies()
+manifest = os.path.join(os.getcwd(), "modules/misp-taxonomies/MANIFEST.json")
+
+galaxies_list = []
+root_dir_galaxies = os.path.join(os.getcwd(), 'modules/misp-galaxy/galaxies')
+for galaxy_file in glob.glob(os.path.join(root_dir_galaxies, '*.json')):
+    with open(galaxy_file, 'r') as f:
+        galaxies_list.append(json.load(f))
+
+taxonomies = Taxonomies(manifest_path=manifest)
+galaxies = Galaxies(galaxies=galaxies_list)
+clusters = Clusters()
 
 def isUUID(uid):
     try:
@@ -18,7 +31,6 @@ def isUUID(uid):
 
 def generate_api_key(length=60):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
-
 
 
 def get_user_api(api_key):

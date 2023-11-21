@@ -373,6 +373,7 @@ export default {
 			md,
 			is_exporting,
 			getTextColor,
+			mapIcon,
 			change_status,
 			take_task,
 			remove_assign_task,
@@ -414,7 +415,7 @@ export default {
 				<div style="display: flex;" v-if="task.tags">
 					<template v-for="tag in task.tags">
 						<div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-							<i class="fa-regular fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+							<i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
 							[[tag.name]]
 						</div>
 					</template>
@@ -436,6 +437,17 @@ export default {
                 <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[endOf(task.deadline)]]</i></small>
                 <small v-else><i>No deadline</i></small>
             </div>
+			<div class="d-flex w-100 justify-content-between">
+				<div style="display: flex;" v-if="task.clusters">
+					<template v-for="cluster in task.clusters">
+						<div :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
+							<span v-html="mapIcon(cluster.icon)"></span>
+							[[cluster.tag]]
+						</div>
+					</template>
+				</div>
+				<div v-else></div>
+			</div>
 		</a>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin" style="display: grid;">
 			<button v-if="task.completed" class="btn btn-secondary btn-sm"  @click="complete_task(task)" title="Revive the task">
