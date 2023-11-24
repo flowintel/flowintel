@@ -48,7 +48,16 @@
                         </span>
                     </small>
                 </div>
-
+                <div class="d-flex w-100 justify-content-between" style="margin-bottom: 7px;">
+                    <div style="display: flex;" v-if="task.tags">
+                        <template v-for="tag in task.tags">
+                            <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                                [[tag.name]]
+                            </div>
+                        </template>
+                    </div>
+                </div>
                 <div class="d-flex w-100 justify-content-between">
                     <div v-if="task.users.length">
                         Users: 
@@ -62,6 +71,16 @@
                     </div>
                     <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[moment.utc(task.deadline).endOf().from(moment.utc())]]</i></small>
                     <small v-else><i>No deadline</i></small>
+                </div>
+                <div class="d-flex w-100 justify-content-between" style="margin-top: 5px;">
+                    <div style="display: flex;" v-if="task.clusters">
+                        <template v-for="cluster in task.clusters">
+                            <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
+                                <span v-html="mapIcon(cluster.icon)"></span>
+                                [[cluster.tag]]
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </a>
         </div>
@@ -149,7 +168,9 @@
                     current_page,
                     emit_result,
                     current_filter,
-                    message_list // Avoid warning
+                    message_list, // Avoid warning
+                    getTextColor,
+                    mapIcon
                 }
             }
         }).mount('.container')
