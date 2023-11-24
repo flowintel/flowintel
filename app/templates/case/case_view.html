@@ -563,12 +563,18 @@
                     }
                 }
 
-                function active_tab(is_main){
+                async function active_tab(is_main){
                     if(is_main){
                         main_tab.value = true
                         if ( !document.getElementById("tab-main").classList.contains("active") ){
                             document.getElementById("tab-main").classList.add("active")
                             document.getElementById("tab-history").classList.remove("active")
+                            await nextTick()
+                            $('.select2-select').select2({
+                                theme: 'bootstrap-5',
+                                width: '50%',
+                                closeOnSelect: false
+                            })
                         }
                     }else{
                         main_tab.value = false
