@@ -124,7 +124,7 @@ class Case(db.Model):
             json_dict["recurring_date"] = self.recurring_date
 
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
-        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id==self.id)\
+        json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id==self.id)\
                                                     .where(Cluster.id==Case_Galaxy_Tags.cluster_id).all()]
 
 
@@ -191,7 +191,7 @@ class Task(db.Model):
             json_dict["deadline"] = self.deadline
 
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
-        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id==self.id)\
+        json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id==self.id)\
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
 
         return json_dict
@@ -345,8 +345,8 @@ class Case_Template(db.Model):
             "title": self.title,
             "description": self.description
         }
-        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
-        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
+        json_dict["tags"] = [tag.download() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
+        json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
 
 
@@ -382,8 +382,8 @@ class Task_Template(db.Model):
             "description": self.description,
             "url": self.url
         }
-        json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
-        json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
+        json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
+        json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
 
         return json_dict
@@ -500,6 +500,17 @@ class Cluster(db.Model):
             "tag": self.tag
         }
         json_dict["icon"] = Galaxy.query.get(self.galaxy_id).icon
+        return json_dict
+    
+    def download(self):
+        json_dict = {
+            "name": self.name,
+            "uuid": self.uuid,
+            "version": self.version,
+            "description": self.description,
+            "meta": self.meta,
+            "tag": self.tag
+        }
         return json_dict
     
 
