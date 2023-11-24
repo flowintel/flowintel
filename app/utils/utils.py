@@ -17,9 +17,15 @@ for galaxy_file in glob.glob(os.path.join(root_dir_galaxies, '*.json')):
     with open(galaxy_file, 'r') as f:
         galaxies_list.append(json.load(f))
 
+clusters_list = []
+root_dir_clusters = os.path.join(os.getcwd(), 'modules/misp-galaxy/clusters')
+for galaxy_file in glob.glob(os.path.join(root_dir_clusters, '*.json')):
+    with open(galaxy_file, 'r') as f:
+        clusters_list.append(json.load(f))
+
 taxonomies = Taxonomies(manifest_path=manifest)
 galaxies = Galaxies(galaxies=galaxies_list)
-clusters = Clusters()
+clusters = Clusters(clusters=clusters_list)
 
 def isUUID(uid):
     try:

@@ -1,6 +1,6 @@
 from ..db_class.db import Case_Template, User, Task_Template
 from ..utils.utils import check_tag
-from . import tools_core as ToolModel
+from . import common_template_core as CommonModel
 
 
 def get_user_api(api_key):
@@ -26,7 +26,7 @@ def verif_create_case_template(data_dict):
 
     if "clusters" in data_dict:
         for cluster in data_dict["clusters"]:
-            if not ToolModel.check_cluster_db(cluster):
+            if not CommonModel.check_cluster_db(cluster):
                 return {"message": f"Cluster '{cluster}' doesn't exist"}
     else:
         data_dict["clusters"] = []
@@ -52,7 +52,7 @@ def verif_edit_case_template(data_dict, case_id):
 
     if "clusters" in data_dict:
         for cluster in data_dict["clusters"]:
-            if not ToolModel.check_cluster_db(cluster):
+            if not CommonModel.check_cluster_db(cluster):
                 return {"message": f"Cluster '{cluster}' doesn't exist"}
     elif case_template.to_json()["clusters"]:
         data_dict["clusters"] = case_template.to_json()["clusters"]
@@ -83,7 +83,7 @@ def verif_add_task_template(data_dict):
 
     if "clusters" in data_dict:
         for cluster in data_dict["clusters"]:
-            if not ToolModel.check_cluster_db(cluster):
+            if not CommonModel.check_cluster_db(cluster):
                 return {"message": f"Cluster '{cluster}' doesn't exist"}
     else:
         data_dict["clusters"] = []
@@ -112,7 +112,7 @@ def verif_edit_task_template(data_dict, task_id):
 
     if "clusters" in data_dict:
         for cluster in data_dict["clusters"]:
-            if not ToolModel.check_cluster_db(cluster):
+            if not CommonModel.check_cluster_db(cluster):
                 return {"message": f"Cluster '{cluster}' doesn't exist"}
     elif task_template.to_json()["clusters"]:
         data_dict["clusters"] = task_template.to_json()["clusters"]

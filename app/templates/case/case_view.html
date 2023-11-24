@@ -144,7 +144,7 @@
         <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
             filter
         </button>
-        <div class="collapse " id="collapsefiltertask">
+        <div class="collapse show" id="collapsefiltertask">
             <div class="card card-body">
                 <div class="d-flex w-100 justify-content-between">
                     <div>
@@ -224,6 +224,37 @@
                         </select>
                     </template>
                 </div>
+                <hr>
+
+                <div>Galaxies:</div>
+                <div class="d-flex w-100 justify-content-center">
+                    <div style="display:flex">
+                        <span style="margin-right: 10px">OR</span>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false, false, true)">
+                            <label class="form-check-label" for="switchOperator">AND</label>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex;">
+                    <template v-if="galaxies">
+                        <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                            <template v-for="galaxy, key in galaxies">
+                                <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
+                            </template>
+                        </select>
+                    </template>
+                    
+                    <template v-if="cluster_list">
+                        <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                            <template v-for="(clusters, galaxy) in cluster_list">
+                                <optgroup :label="[[galaxy]]">
+                                    <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
+                                </optgroup>
+                            </template>
+                        </select>
+                    </template>
+                </div>
             </div>
         </div>
 
@@ -284,7 +315,8 @@
                 let show_ongoing = true
                 let current_filter = ""
                 let asc_desc = true
-                let or_and = true
+                let or_and_taxo = true
+                let or_and_galaxies = true
 
                 const main_tab = ref(true)
                 const history = ref(null)
@@ -293,6 +325,11 @@
                 const tags_list = ref([])
                 const selected_taxo = ref([])
                 const selected_tags = ref([])
+
+                const galaxies = ref([])
+                const cluster_list = ref([])
+                const selected_galaxies = ref([])
+                const selected_clusters = ref([])
 
                 async function fetch_history(){
                     const res = await fetch("/case/history/" + cases_info.value.case.id)
@@ -310,18 +347,18 @@
                     let loc
                     let tags = ""
                     let taxo = ""
-                    if(selected_tags.value.length){
-                        tags = "&tags=" + JSON.stringify(selected_tags.value)
-                    }
-                    if(selected_taxo.value.length){
-                        taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                    }
+                    let galax = ""
+                    let clusters = ""
+                    if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
+                    if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                    if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
+                    if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
 
                     if(show_ongoing){
-                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_ongoing_task?or_and=' + or_and + tags + taxo)
+                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_ongoing_task?or_and_taxo=' + or_and_taxo + '&or_and_galaxies=' + or_and_galaxies + tags + taxo + galax + clusters)
                         loc = await res.json()
                     }else{
-                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_finished_task?or_and=' + or_and + tags + taxo)
+                        const res = await fetch('/case/'+cases_info.value.case.id+'/sort_by_finished_task?or_and_taxo=' + or_and_taxo + '&or_and_galaxies=' + or_and_galaxies + tags + taxo + galax + clusters)
                         loc = await res.json()
                     }
                     cases_info.value.tasks = loc
@@ -333,27 +370,26 @@
                     asc_desc_filter()
                 }
 
-                async function asc_desc_filter(change=false, changeOperator=false){
-                    if(change)
-                        asc_desc = !asc_desc
-                    if (changeOperator)
-                        or_and = !or_and
+                async function asc_desc_filter(change=false, changeOperator=false, changeOperatorGalaxies=false){
+                    if (change) asc_desc = !asc_desc
+                    if (changeOperator) or_and_taxo = !or_and_taxo
+                    if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
 
                     let res
                     if (current_filter){
                         let tags = ""
                         let taxo = ""
-                        if(selected_tags.value.length){
-                            tags = "&tags=" + JSON.stringify(selected_tags.value)
-                        }
-                        if(selected_taxo.value.length){
-                            taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                        }
+                        let galax = ""
+                        let clusters = ""
+                        if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
+                        if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                        if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
+                        if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
 
                         if(show_ongoing)
-                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/ongoing?or_and=' + or_and + '&filter=' + current_filter + tags + taxo)
+                            res = await fetch(`/case/${cases_info.value.case.id}/tasks/ongoing?or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&filter=${current_filter}${tags}${taxo}${galax}${clusters}`)
                         else
-                            res = await fetch('/case/'+cases_info.value.case.id+'/tasks/finished?or_and=' + or_and + '&filter=' + current_filter + tags + taxo)
+                            res = await fetch(`/case/${cases_info.value.case.id}/tasks/finished?or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&filter=${current_filter}${tags}${taxo}${galax}${clusters}`)
                         let loc = await res.json()
                         if(asc_desc)
                             cases_info.value.tasks = loc.reverse()
@@ -558,6 +594,18 @@
                         taxonomies.value = loc["taxonomies"]
                     }
                 }
+                fetch_taxonomies()
+
+                async function fetch_galaxies(){
+                    const res = await fetch("/case/get_galaxies")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        galaxies.value = loc["galaxies"]
+                    }
+                }
+                fetch_galaxies()
 
                 async function fetch_tags(){
                     const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
@@ -569,7 +617,16 @@
                         $('#tags_select').trigger('change');
                     }
                 }
-                fetch_taxonomies()
+                async function fetch_cluster(){
+                    const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        cluster_list.value = loc["clusters"]
+                        $('#clusters_select').trigger('change');
+                    }
+                }
 
 
                 onMounted(() => {
@@ -585,6 +642,14 @@
                     })
                     $('#tags_select').on('change.select2', function (e) {
                         selected_tags.value = $(this).select2('data').map(item => item.id);
+                        asc_desc_filter()
+                    })
+                    $('#galaxies_select').on('change.select2', function (e) {
+                        selected_galaxies.value = $(this).select2('data').map(item => item.id);
+                        fetch_cluster()
+                    })
+                    $('#clusters_select').on('change.select2', function (e) {
+                        selected_clusters.value = $(this).select2('data').map(item => item.id);
                         asc_desc_filter()
                     })
                 })
@@ -613,6 +678,8 @@
                     mapIcon,
                     taxonomies,
                     tags_list,
+                    galaxies,
+                    cluster_list
                 }
             }
         }).mount('.container')

@@ -1,9 +1,11 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
+from . import common_template_core as CommonModel
+from . import task_template_core as TaskModel
 from ..decorators import editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
-from ..utils.utils import form_to_dict, check_tag
+from ..utils.utils import form_to_dict
 
 tools_blueprint = Blueprint(
     'tools',
@@ -37,14 +39,14 @@ def create_case_template():
     """Create a case Template"""
     form = CaseTemplateForm()
 
-    task_template_query_list = ToolsModel.get_all_task_templates()
+    task_template_query_list = CommonModel.get_all_task_templates()
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     
     if form.validate_on_submit():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
-        if ToolsModel.check_tag(tag_list):
-            if ToolsModel.check_cluster(cluster_list):
+        if CommonModel.check_tag(tag_list):
+            if CommonModel.check_cluster(cluster_list):
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
@@ -62,13 +64,13 @@ def create_case_template():
 def create_task_template():
     """Create a task Template"""
     form = TaskTemplateForm()
-    task_template_query_list = ToolsModel.get_all_task_templates()
+    task_template_query_list = CommonModel.get_all_task_templates()
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     if form.validate_on_submit():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
-        if ToolsModel.check_tag(tag_list):
-            if ToolsModel.check_cluster(cluster_list):
+        if CommonModel.check_tag(tag_list):
+            if CommonModel.check_cluster(cluster_list):
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
@@ -85,7 +87,7 @@ def create_task_template():
 @editor_required
 def case_template_view(cid):
     """View a case Template"""
-    template = ToolsModel.get_case_template(cid)
+    template = CommonModel.get_case_template(cid)
     if template:
         case = template.to_json()
         return render_template("tools/case_template_view.html", case=case)
@@ -97,15 +99,15 @@ def case_template_view(cid):
 def add_task_case(cid):
     """Add a task Template"""
     form = TaskTemplateForm()
-    task_template_query_list = ToolsModel.get_all_task_templates()
-    task_by_case = ToolsModel.get_task_by_case(cid)
+    task_template_query_list = CommonModel.get_all_task_templates()
+    task_by_case = CommonModel.get_task_by_case(cid)
     task_id_list = [tid.id for tid in task_by_case]
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list if template.id not in task_id_list]
     if form.validate_on_submit():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
-        if ToolsModel.check_tag(tag_list):
-            if ToolsModel.check_cluster(cluster_list):
+        if CommonModel.check_tag(tag_list):
+            if CommonModel.check_cluster(cluster_list):
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
@@ -122,15 +124,15 @@ def add_task_case(cid):
 @editor_required
 def edit_case(cid):
     """Edit a case Template"""
-    template = ToolsModel.get_case_template(cid)
+    template = CommonModel.get_case_template(cid)
     if template:
         form = CaseTemplateEditForm()
         form.template_id.data = cid
         if form.validate_on_submit():
             tag_list = request.form.getlist("tags_select")
             cluster_list = request.form.getlist("clusters_select")
-            if ToolsModel.check_tag(tag_list):
-                if ToolsModel.check_cluster(cluster_list):
+            if CommonModel.check_tag(tag_list):
+                if CommonModel.check_cluster(cluster_list):
                     form_dict = form_to_dict(form)
                     form_dict["tags"] = tag_list
                     form_dict["clusters"] = cluster_list
@@ -152,15 +154,15 @@ def edit_case(cid):
 @editor_required
 def edit_task(tid):
     """Edit a task Template"""
-    template = ToolsModel.get_task_template(tid)
+    template = CommonModel.get_task_template(tid)
     if template:
         form = TaskTemplateEditForm()
         form.template_id.data = tid
         if form.validate_on_submit():
             tag_list = request.form.getlist("tags_select")
             cluster_list = request.form.getlist("clusters_select")
-            if ToolsModel.check_tag(tag_list):
-                if ToolsModel.check_cluster(cluster_list):
+            if CommonModel.check_tag(tag_list):
+                if CommonModel.check_cluster(cluster_list):
                     form_dict = form_to_dict(form)
                     form_dict["tags"] = tag_list
                     form_dict["clusters"] = cluster_list
@@ -183,11 +185,11 @@ def edit_task(tid):
 @editor_required
 def get_all_case_templates():
     """Get all case templates"""
-    templates = ToolsModel.get_all_case_templates()
+    templates = CommonModel.get_all_case_templates()
     templates_list = list()
     for template in templates:
         loc_template = template.to_json()
-        loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
+        loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
     return {"templates": templates_list}
 
@@ -200,14 +202,18 @@ def get_page_case_templates():
     page = request.args.get('page', 1, type=int)
     title_filter = request.args.get('title')
     tags = request.args.get('tags')
-    or_and = request.args.get("or_and")
     taxonomies = request.args.get('taxonomies')
+    or_and_taxo = request.args.get("or_and_taxo")
 
-    templates, nb_pages = ToolsModel.get_page_case_templates(page, title_filter, tags, taxonomies, or_and)
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
+
+    templates, nb_pages = ToolsModel.get_page_case_templates(page, title_filter, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
     templates_list = list()
     for template in templates:
         loc_template = template.to_json()
-        loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
+        loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
     return {"templates": templates_list, "nb_pages": nb_pages}
 
@@ -217,7 +223,7 @@ def get_page_case_templates():
 @editor_required
 def get_template(cid):
     """Get a case template"""
-    template = ToolsModel.get_case_template(cid)
+    template = CommonModel.get_case_template(cid)
     if template:
         return {"template": template.to_json()}
     return {"message": "Template not found"}
@@ -228,7 +234,7 @@ def get_template(cid):
 @editor_required
 def get_task_template(tid):
     """Get a task template"""
-    template = ToolsModel.get_task_template(tid)
+    template = CommonModel.get_task_template(tid)
     if template:
         return {"template": template.to_json()}
     return {"message": "Template not found"}
@@ -239,11 +245,11 @@ def get_task_template(tid):
 @editor_required
 def get_all_task_templates():
     """Get all task templates"""
-    templates = ToolsModel.get_all_task_templates()
+    templates = CommonModel.get_all_task_templates()
     templates_list = list()
     for template in templates:
         loc_template = template.to_json()
-        loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
+        loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
     return {"templates": templates_list}
 
@@ -256,15 +262,19 @@ def get_page_task_templates():
     page = request.args.get('page', 1, type=int)
     title_filter = request.args.get('title')
     tags = request.args.get('tags')
-    or_and = request.args.get("or_and")
     taxonomies = request.args.get('taxonomies')
+    or_and_taxo = request.args.get("or_and_taxo")
 
-    templates, nb_pages = ToolsModel.get_page_task_templates(page, title_filter, tags, taxonomies, or_and)
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
+
+    templates, nb_pages = TaskModel.get_page_task_templates(page, title_filter, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
     if templates:
         templates_list = list()
         for template in templates:
             loc_template = template.to_json()
-            loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
+            loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
             templates_list.append(loc_template)
         return {"templates": templates_list, "nb_pages": nb_pages}
     return {"message": "Template not found"}
@@ -275,12 +285,12 @@ def get_page_task_templates():
 @editor_required
 def get_task_by_case(cid):
     """Get a task template by a case template"""
-    templates = ToolsModel.get_task_by_case(cid)
+    templates = CommonModel.get_task_by_case(cid)
     if templates:
         templates_list = list()
         for template in templates:
             loc_template = template.to_json()
-            loc_template["current_user_permission"] = ToolsModel.get_role(current_user).to_json()
+            loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
             templates_list.append(loc_template)
         return {"tasks": templates_list}
     return {"tasks": []}
@@ -291,7 +301,7 @@ def get_task_by_case(cid):
 @editor_required
 def remove_task(cid, tid):
     """Remove a task template form a case template"""
-    if ToolsModel.get_task_template(tid):
+    if CommonModel.get_task_template(tid):
         if ToolsModel.remove_task_case(cid, tid):
             return {"message":"Task Template removed", "toast_class": "success-subtle"}, 200
         return {"message":"Error Task Template removed", "toast_class": "danger-subtle"}, 400
@@ -303,7 +313,7 @@ def remove_task(cid, tid):
 @editor_required
 def delete_task(tid):
     """Delete a task template"""
-    if ToolsModel.get_task_template(tid):
+    if CommonModel.get_task_template(tid):
         if ToolsModel.delete_task_template(tid):
             return {"message":"Task Template deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error Task Template deleted", "toast_class": "danger-subtle"}, 400
@@ -315,7 +325,7 @@ def delete_task(tid):
 @editor_required
 def delete_case(cid):
     """Delete a case template"""
-    if ToolsModel.get_case_template(cid):
+    if CommonModel.get_case_template(cid):
         if ToolsModel.delete_case_template(cid):
             return {"message":"Case Template deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error Case Template deleted", "toast_class": "danger-subtle"}, 400
@@ -327,7 +337,7 @@ def delete_case(cid):
 @editor_required
 def create_case_from_template(cid):
     """Create a case from a template"""
-    template = ToolsModel.get_case_template(cid)
+    template = CommonModel.get_case_template(cid)
     if template:
         case_title_fork = request.json["case_title_fork"]
         new_case = ToolsModel.create_case_from_template(cid, case_title_fork, current_user)
@@ -342,8 +352,8 @@ def create_case_from_template(cid):
 @editor_required
 def download_case(cid):
     """Download a case template"""
-    case = ToolsModel.get_case_template(cid)
-    task_list = [task.download() for task in ToolsModel.get_task_by_case(cid)]
+    case = CommonModel.get_case_template(cid)
+    task_list = [task.download() for task in CommonModel.get_task_by_case(cid)]
     return_dict = case.download()
     return_dict["tasks_template"] = task_list
     return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=template_case_{case.title}.json'}
@@ -376,9 +386,9 @@ def importer():
 @tools_blueprint.route("/template/get_taxonomies_case/<cid>", methods=['GET'])
 @login_required
 def get_taxonomies_case(cid):
-    case = ToolsModel.get_case_template(cid)
+    case = CommonModel.get_case_template(cid)
     if case:
-        tags = ToolsModel.get_case_template_tags(case.id)
+        tags = CommonModel.get_case_template_tags(case.id)
         taxonomies = []
         if tags:
             taxonomies = [tag.split(":")[0] for tag in tags]
@@ -388,9 +398,9 @@ def get_taxonomies_case(cid):
 @tools_blueprint.route("/template/get_taxonomies_task/<tid>", methods=['GET'])
 @login_required
 def get_taxonomies_task(tid):
-    task = ToolsModel.get_task_template(tid)
+    task = CommonModel.get_task_template(tid)
     if task:
-        tags = ToolsModel.get_task_template_tags(task.id)
+        tags = CommonModel.get_task_template_tags(task.id)
         taxonomies = []
         if tags:
             taxonomies = [tag.split(":")[0] for tag in tags]
@@ -401,13 +411,13 @@ def get_taxonomies_task(tid):
 @tools_blueprint.route("/template/get_galaxies_case/<cid>", methods=['GET'])
 @login_required
 def get_galaxies_case(cid):
-    case = ToolsModel.get_case_template(cid)
+    case = CommonModel.get_case_template(cid)
     if case:
-        clusters = ToolsModel.get_case_clusters(case.id)
+        clusters = CommonModel.get_case_clusters(case.id)
         galaxies = []
         if clusters:
             for cluster in clusters:
-                loc_g = ToolsModel.get_galaxy(cluster.galaxy_id)
+                loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
                 if not loc_g.name in galaxies:
                     galaxies.append(loc_g.name)
                 index = clusters.index(cluster)
@@ -418,13 +428,13 @@ def get_galaxies_case(cid):
 @tools_blueprint.route("/template/get_galaxies_task/<tid>", methods=['GET'])
 @login_required
 def get_galaxies_task(tid):
-    task = ToolsModel.get_task_template(tid)
+    task = CommonModel.get_task_template(tid)
     if task:
-        clusters = ToolsModel.get_task_clusters(task.id)
+        clusters = CommonModel.get_task_clusters(task.id)
         galaxies = []
         if clusters:
             for cluster in clusters:
-                loc_g = ToolsModel.get_galaxy(cluster.galaxy_id)
+                loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
                 if not loc_g.name in galaxies:
                     galaxies.append(loc_g.name)
                 index = clusters.index(cluster)

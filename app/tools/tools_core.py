@@ -1,4 +1,3 @@
-from flask import flash
 from ..db_class.db import *
 import uuid
 import ast
@@ -8,106 +7,84 @@ import datetime
 from ..utils import utils
 from ..case import case_core
 from ..case import task_core
-from sqlalchemy import func
+from sqlalchemy import and_
+from . import common_template_core as CommonModel
+from . import task_template_core as TaskModel
 
-def get_all_case_templates():
-    return Case_Template.query.all()
+def build_case_query(page, tags=None, taxonomies=None, galaxies=None, clusters=None, title_filter=None):
+    query = Case_Template.query
+    conditions = []
 
-def get_case_clusters(cid):
-    return [cluster for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.cluster_id==Cluster.id).filter_by(template_id=cid).all()]
+    if tags or taxonomies:
+        query = query.join(Case_Template_Tags, Case_Template_Tags.case_id == Case_Template.id)
+        query = query.join(Tags, Case_Template_Tags.tag_id == Tags.id)
+        if tags:
+            tags = ast.literal_eval(tags)
+            conditions.append(Tags.name.in_(list(tags)))
 
-def get_task_clusters(tid):
-    return [cluster for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.cluster_id==Cluster.id).filter_by(template_id=tid).all()]
+        if taxonomies:
+            taxonomies = ast.literal_eval(taxonomies)
+            query = query.join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)
+            conditions.append(Taxonomy.name.in_(list(taxonomies)))
 
-def get_galaxy(galaxy_id):
-    return Galaxy.query.get(galaxy_id)
+    if clusters or galaxies:
+        query = query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id == Case_Template.id)
+        query = query.join(Cluster, Case_Template_Galaxy_Tags.cluster_id == Cluster.id)
+        if clusters:
+            clusters = ast.literal_eval(clusters)
+            conditions.append(Cluster.name.in_(list(clusters)))
 
-def check_cluster_db(cluster):
-    return Cluster.query.filter_by(name=cluster).first()
+        if galaxies:
+            galaxies = ast.literal_eval(galaxies)
+            query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
+            conditions.append(Galaxy.name.in_(list(galaxies)))
 
-def get_page_case_templates(page, title_filter, tags=[], taxonomies=[], or_and="true"):
-    if tags and taxonomies:
+    if title_filter:
+        query.order_by('title')
+    
+    return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
+
+
+def get_page_case_templates(page, title_filter, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true"):
+    cases = build_case_query(page, tags, taxonomies, galaxies, clusters, title_filter)
+    nb_pages = cases.pages
+
+    if tags:
         tags = ast.literal_eval(tags)
+    if taxonomies:
         taxonomies = ast.literal_eval(taxonomies)
-        if title_filter == 'true':
-            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
-                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                            .where(Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
-                            .order_by(('title'))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        else:
-            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
-                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                            .where(Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = cases.pages
-        if or_and == "false":
-            glob_list = list()
+
+    if galaxies:
+        galaxies = ast.literal_eval(galaxies)
+    if clusters:
+        clusters = ast.literal_eval(clusters)
+
+    if tags or taxonomies or galaxies or clusters:
+        if or_and_taxo == "false":
+            glob_list = []
+
             for case in cases:
                 tags_db = case.to_json()["tags"]
                 loc_tag = [tag["name"] for tag in tags_db]
+                taxo_list = [Taxonomy.query.get(tag["taxonomy_id"]).name for tag in tags_db]
 
-                if all(item in loc_tag for item in tags):
-                    taxo_list = list()
-                    for tag in tags_db:
-                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                        taxo_list.append(taxo.name)
-
-                    if all(item in taxo_list for item in taxonomies):
-                        glob_list.append(case)
-            cases = glob_list
-
-    elif tags:
-        tags = ast.literal_eval(tags)
-        if title_filter == 'true':
-            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
-                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
-                            .where(Tags.name.in_(list(tags)))\
-                            .order_by(('title'))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        else:
-            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
-                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
-                            .where(Tags.name.in_(list(tags)))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = cases.pages
-        if or_and == "false":
-            glob_list = list()
-            for case in cases:
-                loc_tag = [tag["name"] for tag in case.to_json()["tags"]]
-
-                if all(item in loc_tag for item in tags):
+                if (not tags or all(item in loc_tag for item in tags)) and \
+                (not taxonomies or all(item in taxo_list for item in taxonomies)):
                     glob_list.append(case)
-            cases = glob_list
-    
-    elif taxonomies:
-        taxonomies = ast.literal_eval(taxonomies)
-        if title_filter == 'true':
-            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
-                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                            .where(Taxonomy.name.in_(list(taxonomies)))\
-                            .order_by(('title'))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        else:
-            cases = Case_Template.query.join(Case_Template_Tags, Case_Template_Tags.case_id==Case_Template.id)\
-                            .join(Tags, Case_Template_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id==Tags.taxonomy_id)\
-                            .where(Taxonomy.name.in_(list(taxonomies)))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = cases.pages
-        if or_and == "false":
-            glob_list = list()
-            for case in cases:
-                taxo_list = list()
-                for tag in case.to_json()["tags"]:
-                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                    taxo_list.append(taxo.name)
 
-                if all(item in taxo_list for item in taxonomies):
+            cases = glob_list
+        if or_and_galaxies == "false":
+            glob_list = []
+
+            for case in cases:
+                clusters_db = case.to_json()["clusters"]
+                loc_cluster = [cluster["name"] for cluster in clusters_db]
+                galaxies_list = [Galaxy.query.get(cluster["galaxy_id"]).name for cluster in clusters_db]
+
+                if (not clusters or all(item in loc_cluster for item in clusters)) and \
+                (not galaxies or all(item in galaxies_list for item in galaxies)):
                     glob_list.append(case)
+
             cases = glob_list
     else:
         if title_filter == 'true':
@@ -115,138 +92,8 @@ def get_page_case_templates(page, title_filter, tags=[], taxonomies=[], or_and="
         else:
             cases = Case_Template.query.paginate(page=page, per_page=25, max_per_page=50)
         nb_pages = cases.pages
-
     return cases, nb_pages
 
-def get_case_template(cid):
-    return Case_Template.query.get(cid)
-
-def get_case_by_title(title):
-    return Case_Template.query.where(func.lower(Case_Template.title)==func.lower(title)).first()
-
-def get_all_task_templates():
-    return Task_Template.query.all()
-
-def get_page_task_templates(page, title_filter, tags=[], taxonomies=[], or_and="true"):
-    if tags and taxonomies:
-        tags = ast.literal_eval(tags)
-        taxonomies = ast.literal_eval(taxonomies)
-        if title_filter == 'true':
-            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
-                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                            .where(Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
-                            .order_by(('title'))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        else:
-            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
-                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                            .where(Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = tasks.pages
-        if or_and == "false":
-            glob_list = list()
-            for task in tasks:
-                tags_db = task.to_json()["tags"]
-                loc_tag = [tag["name"] for tag in tags_db]
-
-                if all(item in loc_tag for item in tags):
-                    taxo_list = list()
-                    for tag in tags_db:
-                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                        taxo_list.append(taxo.name)
-
-                    if all(item in taxo_list for item in taxonomies):
-                        glob_list.append(task)
-            tasks = glob_list
-
-    elif tags:
-        tags = ast.literal_eval(tags)
-        if title_filter == 'true':
-            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
-                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
-                            .where(Tags.name.in_(list(tags)))\
-                            .order_by(('title'))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        else:
-            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
-                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
-                            .where(Tags.name.in_(list(tags)))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = tasks.pages
-        if or_and == "false":
-            glob_list = list()
-            for task in tasks:
-                loc_tag = [tag["name"] for tag in task.to_json()["tags"]]
-
-                if all(item in loc_tag for item in tags):
-                    glob_list.append(task)
-            tasks = glob_list
-    
-    elif taxonomies:
-        taxonomies = ast.literal_eval(taxonomies)
-        if title_filter == 'true':
-            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
-                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                            .where(Taxonomy.name.in_(list(taxonomies)))\
-                            .order_by(('title'))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        else:
-            tasks = Task_Template.query.join(Task_Template_Tags, Task_Template_Tags.task_id==Task_Template.id)\
-                            .join(Tags, Task_Template_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id==Tags.taxonomy_id)\
-                            .where(Taxonomy.name.in_(list(taxonomies)))\
-                            .paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = tasks.pages
-        if or_and == "false":
-            glob_list = list()
-            for task in tasks:
-                taxo_list = list()
-                for tag in task.to_json()["tags"]:
-                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                    taxo_list.append(taxo.name)
-
-                if all(item in taxo_list for item in taxonomies):
-                    glob_list.append(task)
-            tasks = glob_list
-    else:
-        if title_filter == 'true':
-            tasks = Task_Template.query.order_by(('title')).paginate(page=page, per_page=25, max_per_page=50)
-        else:
-            tasks = Task_Template.query.paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = tasks.pages
-
-    return tasks, nb_pages
-
-
-def get_task_template(tid):
-    return Task_Template.query.get(tid)
-
-def get_role(user):
-    """Return role for the current user"""
-    return Role.query.get(user.role_id)
-
-
-def get_task_by_case(cid):
-    case_task_template = Case_Task_Template.query.filter_by(case_id=cid).all()
-
-    return [get_task_template(case_task.task_id) for case_task in case_task_template]
-
-
-def get_case_template_tags(cid):
-    return [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
-
-def get_task_template_tags(tid):
-    return [tag.name for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
-
-def get_tag(tag):
-    return Tags.query.filter_by(name=tag).first()
-
-
-def get_cluster_by_name(cluster):
-    return Cluster.query.filter_by(name=cluster).first()
 
 
 def create_case_template(form_dict):
@@ -259,7 +106,7 @@ def create_case_template(form_dict):
     db.session.commit()
 
     for tag in form_dict["tags"]:
-        tag = get_tag(tag)
+        tag = CommonModel.get_tag(tag)
         
         case_tag = Case_Template_Tags(
             tag_id=tag.id,
@@ -269,7 +116,7 @@ def create_case_template(form_dict):
         db.session.commit()
 
     for cluster in form_dict["clusters"]:
-        cluster = get_cluster_by_name(cluster)
+        cluster = CommonModel.get_cluster_by_name(cluster)
         
         case_tag = Case_Template_Galaxy_Tags(
             cluster_id=cluster.id,
@@ -287,37 +134,7 @@ def create_case_template(form_dict):
         db.session.commit()
     return case_template
 
-def add_task_template_core(form_dict):
-    template = Task_Template(
-        title=form_dict["title"],
-        description=form_dict["body"],
-        url=form_dict["url"],
-        uuid=str(uuid.uuid4())
-    )
-    db.session.add(template)
-    db.session.commit()
 
-    for tag in form_dict["tags"]:
-        tag = get_tag(tag)
-        
-        task_tag = Task_Template_Tags(
-            tag_id=tag.id,
-            task_id=template.id
-        )
-        db.session.add(task_tag)
-        db.session.commit()
-
-    for cluster in form_dict["clusters"]:
-        cluster = get_cluster_by_name(cluster)
-        
-        task_tag = Task_Template_Galaxy_Tags(
-            cluster_id=cluster.id,
-            template_id=template.id
-        )
-        db.session.add(task_tag)
-        db.session.commit()
-    
-    return template
 
 
 def add_task_case_template(form_dict, cid):
@@ -331,7 +148,7 @@ def add_task_case_template(form_dict, cid):
                 db.session.add(case_task_template)
                 db.session.commit()
     elif form_dict["title"]:
-        template = add_task_template_core(form_dict)
+        template = TaskModel.add_task_template_core(form_dict)
         case_task_template = Case_Task_Template(
                 case_id=cid,
                 task_id=template.id
@@ -345,7 +162,7 @@ def add_task_case_template(form_dict, cid):
 
 
 def edit_case_template(form_dict, cid):
-    template = get_case_template(cid)
+    template = CommonModel.get_case_template(cid)
 
     template.title=form_dict["title"]
     template.description=form_dict["description"]
@@ -353,7 +170,7 @@ def edit_case_template(form_dict, cid):
     ## Tags
     case_tag_db = Case_Template_Tags.query.filter_by(case_id=template.id).all()
     for tag in form_dict["tags"]:
-        tag = get_tag(tag)
+        tag = CommonModel.get_tag(tag)
 
         if not tag in case_tag_db:
             case_tag = Case_Template_Tags(
@@ -371,7 +188,7 @@ def edit_case_template(form_dict, cid):
     ## Clusters
     case_tag_db = Case_Template_Galaxy_Tags.query.filter_by(template_id=template.id).all()
     for cluster in form_dict["clusters"]:
-        cluster = get_cluster_by_name(cluster)
+        cluster = CommonModel.get_cluster_by_name(cluster)
 
         if not cluster in case_tag_db:
             case_tag = Case_Template_Galaxy_Tags(
@@ -388,50 +205,6 @@ def edit_case_template(form_dict, cid):
 
     db.session.commit()
 
-def edit_task_template(form_dict, tid):
-    template = get_task_template(tid)
-
-    template.title=form_dict["title"]
-    template.description=form_dict["body"]
-    template.url=form_dict["url"]
-    
-    ## Tags
-    task_tag_db = Task_Template_Tags.query.filter_by(task_id=template.id).all()
-    for tag in form_dict["tags"]:
-        tag = get_tag(tag)
-
-        if not tag in task_tag_db:
-            task_tag = Task_Template_Tags(
-                tag_id=tag.id,
-                task_id=template.id
-            )
-            db.session.add(task_tag)
-            db.session.commit()
-    
-    for c_t_db in task_tag_db:
-        if not c_t_db in form_dict["tags"]:
-            Task_Template_Tags.query.filter_by(id=c_t_db.id).delete()
-            db.session.commit()
-
-    ## Clusters
-    task_tag_db = Task_Template_Galaxy_Tags.query.filter_by(template_id=template.id).all()
-    for cluster in form_dict["clusters"]:
-        cluster = get_cluster_by_name(cluster)
-
-        if not cluster in task_tag_db:
-            task_tag = Task_Template_Galaxy_Tags(
-                cluster_id=cluster.id,
-                template_id=template.id
-            )
-            db.session.add(task_tag)
-            db.session.commit()
-    
-    for c_t_db in task_tag_db:
-        if not c_t_db in form_dict["clusters"]:
-            Task_Template_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
-            db.session.commit()
-
-    db.session.commit()
 
 def delete_case_template(cid):
     to_deleted = Case_Task_Template.query.filter_by(case_id=cid).all()
@@ -440,7 +213,7 @@ def delete_case_template(cid):
         db.session.commit()
     Case_Template_Tags.query.filter_by(case_id=cid).delete() 
     Case_Template_Galaxy_Tags.query.filter_by(template_id=cid).delete() 
-    template = get_case_template(cid)
+    template = CommonModel.get_case_template(cid)
     db.session.delete(template)
     db.session.commit()
     return True
@@ -451,25 +224,13 @@ def remove_task_case(cid, tid):
     db.session.commit()
     return True
 
-def delete_task_template(tid):
-    to_deleted = Case_Task_Template.query.filter_by(task_id=tid).all()
-    for to_do in to_deleted:
-        db.session.delete(to_do)
-        db.session.commit()
-    Task_Template_Tags.query.filter_by(task_id=tid).delete()
-    Task_Template_Galaxy_Tags.query.filter_by(template_id=tid).delete()
-    template = get_task_template(tid)
-    db.session.delete(template)
-    db.session.commit()
-    return True
-
 
 def create_case_from_template(cid, case_title_fork, user):
     case_title_stored = Case.query.filter_by(title=case_title_fork).first()
     if case_title_stored:
         return {"message": "Error, title already exist"}
     
-    case_template = get_case_template(cid)
+    case_template = CommonModel.get_case_template(cid)
 
     case = Case(
         title=case_title_fork,
@@ -510,7 +271,7 @@ def create_case_from_template(cid, case_title_fork, user):
     db.session.add(case_org)
     db.session.commit()
 
-    task_case_template = get_task_by_case(cid)
+    task_case_template = CommonModel.get_task_by_case(cid)
     for task in task_case_template:
         t = Task(
             uuid=str(uuid.uuid4()),
@@ -651,20 +412,3 @@ def read_json_file(files_list, current_user):
                 print(e)
                 return {"message": "Something went wrong"}
             
-def check_tag(tag_list):
-    flag = True
-    for tag in tag_list:
-        if not utils.check_tag(tag):
-            flag = False
-    if not flag:
-        flash("tag doesn't exist")
-    return flag
-
-def check_cluster(cluster_list):
-    flag = True
-    for cluster in cluster_list:
-        if not check_cluster_db(cluster):
-            flag = False
-    if not flag:
-        flash("cluster doesn't exist")
-    return flag

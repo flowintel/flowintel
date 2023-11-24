@@ -8,7 +8,7 @@ from .. import db
 from ..db_class.db import *
 from ..utils.utils import create_specific_dir
 
-from sqlalchemy import desc
+from sqlalchemy import desc, and_
 from flask import request, send_file
 from werkzeug.utils import secure_filename
 from ..notification import notification_core as NotifModel
@@ -358,76 +358,89 @@ def get_task_info(tasks_list, user):
     return tasks
 
 
-def sort_by_status_task_core(case, user, tags=[], taxonomies=[], or_and="true", completed=False, no_info=False):
-    if tags and taxonomies:
+def build_task_query(completed, tags=None, taxonomies=None, galaxies=None, clusters=None, filter=None):
+    query = Task.query
+    conditions = [Task.completed == completed]
+
+    if tags or taxonomies:
+        query = query.join(Task_Tags, Task_Tags.task_id == Task.id)
+        query = query.join(Tags, Task_Tags.tag_id == Tags.id)
+        if tags:
+            tags = ast.literal_eval(tags)
+            conditions.append(Tags.name.in_(list(tags)))
+
+        if taxonomies:
+            taxonomies = ast.literal_eval(taxonomies)
+            query = query.join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)
+            conditions.append(Taxonomy.name.in_(list(taxonomies)))
+
+    if clusters or galaxies:
+        query = query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id == Task.id)
+        query = query.join(Cluster, Task_Galaxy_Tags.cluster_id == Cluster.id)
+        if clusters:
+            clusters = ast.literal_eval(clusters)
+            conditions.append(Cluster.name.in_(list(clusters)))
+
+        if galaxies:
+            galaxies = ast.literal_eval(galaxies)
+            query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
+            conditions.append(Galaxy.name.in_(list(galaxies)))
+
+    if filter:
+        query.order_by(desc(filter))
+    
+    return query.filter(and_(*conditions)).all()
+
+def sort_by_status_task_core(case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False, no_info=False, filter=False):
+    tasks = build_task_query(completed, tags, taxonomies, galaxies, clusters, filter)
+
+    if tags:
         tags = ast.literal_eval(tags)
+    if taxonomies:
         taxonomies = ast.literal_eval(taxonomies)
 
-        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id)\
-                            .join(Tags, Task_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                            .where(Task.case_id==case.id, Task.completed==completed, Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))
-        
-        if or_and == "false":
-            glob_list = list()
-            for task in tasks_list:
+    if galaxies:
+        galaxies = ast.literal_eval(galaxies)
+    if clusters:
+        clusters = ast.literal_eval(clusters)
+
+    if tags or taxonomies or galaxies or clusters:
+        if or_and_taxo == "false":
+            glob_list = []
+
+            for task in tasks:
                 tags_db = task.to_json()["tags"]
                 loc_tag = [tag["name"] for tag in tags_db]
+                taxo_list = [Taxonomy.query.get(tag["taxonomy_id"]).name for tag in tags_db]
 
-                if all(item in loc_tag for item in tags):
-                    taxo_list = list()
-                    for tag in tags_db:
-                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                        taxo_list.append(taxo.name)
-
-                    if all(item in taxo_list for item in taxonomies):
-                        glob_list.append(task)
-            tasks_list = glob_list
-        
-    elif tags:
-        tags = ast.literal_eval(tags)
-
-        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id)\
-                            .join(Tags, Task_Tags.tag_id==Tags.id)\
-                            .where(Task.case_id==case.id, Task.completed==completed, Tags.name.in_(list(tags)))
-        if or_and == "false":
-            glob_list = list()
-            for task in tasks_list:
-                loc_tag = [tag["name"] for tag in task.to_json()["tags"]]
-
-                if all(item in loc_tag for item in tags):
+                if (not tags or all(item in loc_tag for item in tags)) and \
+                (not taxonomies or all(item in taxo_list for item in taxonomies)):
                     glob_list.append(task)
-            tasks_list = glob_list
 
-    elif taxonomies:
-        taxonomies = ast.literal_eval(taxonomies)
+            tasks = glob_list
+        if or_and_galaxies == "false":
+            glob_list = []
 
-        tasks_list = Task.query.join(Task_Tags, Task_Tags.task_id==Task.id)\
-                            .join(Tags, Task_Tags.tag_id==Tags.id)\
-                            .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                            .where(Task.case_id==case.id, Task.completed==completed, Taxonomy.name.in_(list(taxonomies)))
-        
-        if or_and == "false":
-            glob_list = list()
-            for task in tasks_list:
-                taxo_list = list()
-                for tag in task.to_json()["tags"]:
-                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                    taxo_list.append(taxo.name)
+            for task in tasks:
+                clusters_db = task.to_json()["clusters"]
+                loc_cluster = [cluster["name"] for cluster in clusters_db]
+                galaxies_list = [Galaxy.query.get(cluster["galaxy_id"]).name for cluster in clusters_db]
 
-                if all(item in taxo_list for item in taxonomies):
+                if (not clusters or all(item in loc_cluster for item in clusters)) and \
+                (not galaxies or all(item in galaxies_list for item in galaxies)):
                     glob_list.append(task)
-            tasks_list = glob_list
+
+            tasks = glob_list
     else:
-        tasks_list = Task.query.filter_by(case_id=case.id, completed=completed).all()
+        tasks = Task.query.filter_by(case_id=case.id, completed=completed).all()
 
     if no_info:
-        return tasks_list
-    return get_task_info(tasks_list, user)
+        return tasks
+    return get_task_info(tasks, user)
 
 
-def sort_tasks_by_filter(case, user, filter, tags=[], taxonomies=[], or_and="true", completed=False):
-    tasks_list = sort_by_status_task_core(case, user, tags, taxonomies, or_and, completed, no_info=True)
+def sort_tasks_by_filter(case, user, filter, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
+    tasks_list = sort_by_status_task_core(case, user, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed, no_info=True, filter=filter)
 
     loc_list = list()
     if filter == "assigned_tasks":

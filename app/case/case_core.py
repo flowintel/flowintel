@@ -4,7 +4,7 @@ import uuid
 import datetime
 from .. import db
 from ..db_class.db import *
-from sqlalchemy import desc
+from sqlalchemy import desc, and_
 from ..notification import notification_core as NotifModel
 from dateutil import relativedelta
 from ..tools.tools_core import create_case_from_template
@@ -275,134 +275,124 @@ def regroup_case_info(cases, user, nb_pages=None):
     return loc
 
 
-def sort_by_status(page, tags=[], taxonomies=[], or_and="true", completed = False):
-    if tags and taxonomies:
-        tags = ast.literal_eval(tags)
-        taxonomies = ast.literal_eval(taxonomies)
+def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, filter=None):
+    query = Case.query
+    conditions = [Case.completed == completed]
 
-        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
-                        .join(Tags, Case_Tags.tag_id==Tags.id)\
-                        .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                        .where(Case.completed==completed, Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
-                        .paginate(page=page, per_page=25, max_per_page=50)
-        if or_and == "false":
-            glob_list = list()
-            for case in cases:
-                tags_db = case.to_json()["tags"]
-                loc_tag = [tag["name"] for tag in tags_db]
+    if tags or taxonomies:
+        query = query.join(Case_Tags, Case_Tags.case_id == Case.id)
+        query = query.join(Tags, Case_Tags.tag_id == Tags.id)
+        if tags:
+            tags = ast.literal_eval(tags)
+            conditions.append(Tags.name.in_(list(tags)))
 
-                if all(item in loc_tag for item in tags):
-                    taxo_list = list()
-                    for tag in tags_db:
-                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                        taxo_list.append(taxo.name)
+        if taxonomies:
+            taxonomies = ast.literal_eval(taxonomies)
+            query = query.join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)
+            conditions.append(Taxonomy.name.in_(list(taxonomies)))
 
-                    if all(item in taxo_list for item in taxonomies):
-                        glob_list.append(case)
-            return glob_list
-        return cases
-                    
+    if clusters or galaxies:
+        query = query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id == Case.id)
+        query = query.join(Cluster, Case_Galaxy_Tags.cluster_id == Cluster.id)
+        if clusters:
+            clusters = ast.literal_eval(clusters)
+            conditions.append(Cluster.name.in_(list(clusters)))
+
+        if galaxies:
+            galaxies = ast.literal_eval(galaxies)
+            query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
+            conditions.append(Galaxy.name.in_(list(galaxies)))
+
+    if filter:
+        query.order_by(desc(filter))
+    
+    return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
+
+
+def sort_by_status(page, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
+    cases = build_case_query(page, completed, tags, taxonomies, galaxies, clusters)
+
     if tags:
         tags = ast.literal_eval(tags)
-        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
-                        .join(Tags, Case_Tags.tag_id==Tags.id)\
-                        .where(Case.completed==completed, Tags.name.in_(list(tags)))\
-                        .paginate(page=page, per_page=25, max_per_page=50)
-        if or_and == "false":
-            glob_list = list()
-            for case in cases:
-                loc_tag = [tag["name"] for tag in case.to_json()["tags"]]
-
-                if all(item in loc_tag for item in tags):
-                    glob_list.append(case)
-            return glob_list
-        return cases
-
     if taxonomies:
         taxonomies = ast.literal_eval(taxonomies)
-        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
-                    .join(Tags, Case_Tags.tag_id==Tags.id)\
-                    .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                    .where(Case.completed==completed, Taxonomy.name.in_(list(taxonomies)))\
-                    .paginate(page=page, per_page=25, max_per_page=50)
-        if or_and == "false":
-            glob_list = list()
-            for case in cases:
-                taxo_list = list()
-                for tag in case.to_json()["tags"]:
-                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                    taxo_list.append(taxo.name)
 
-                if all(item in taxo_list for item in taxonomies):
-                    glob_list.append(case)
-            return glob_list
-        return cases
-    
-    return Case.query.filter_by(completed=completed).paginate(page=page, per_page=25, max_per_page=50)
+    if galaxies:
+        galaxies = ast.literal_eval(galaxies)
+    if clusters:
+        clusters = ast.literal_eval(clusters)
 
+    if tags or taxonomies or galaxies or clusters:
+        if or_and_taxo == "false":
+            glob_list = []
 
-def sort_by_filter(filter, page, tags=[], taxonomies=[], or_and="true", completed = False): 
-    if tags and taxonomies:
-        tags = ast.literal_eval(tags)
-        taxonomies = ast.literal_eval(taxonomies)
-
-        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
-                        .join(Tags, Case_Tags.tag_id==Tags.id)\
-                        .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                        .where(Case.completed==completed, Tags.name.in_(list(tags)), Taxonomy.name.in_(list(taxonomies)))\
-                        .order_by(desc(filter))\
-                        .paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = cases.pages
-        if or_and == "false":
-            glob_list = list()
             for case in cases:
                 tags_db = case.to_json()["tags"]
                 loc_tag = [tag["name"] for tag in tags_db]
+                taxo_list = [Taxonomy.query.get(tag["taxonomy_id"]).name for tag in tags_db]
 
-                if all(item in loc_tag for item in tags):
-                    taxo_list = list()
-                    for tag in tags_db:
-                        taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                        taxo_list.append(taxo.name)
-
-                    if all(item in taxo_list for item in taxonomies):
-                        glob_list.append(case)
-            cases = glob_list                    
-    elif tags:
-        tags = ast.literal_eval(tags)
-        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
-                        .join(Tags, Case_Tags.tag_id==Tags.id)\
-                        .where(Case.completed==completed, Tags.name.in_(list(tags)))\
-                        .order_by(desc(filter))\
-                        .paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = cases.pages
-        if or_and == "false":
-            glob_list = list()
-            for case in cases:
-                loc_tag = [tag["name"] for tag in case.to_json()["tags"]]
-
-                if all(item in loc_tag for item in tags):
+                if (not tags or all(item in loc_tag for item in tags)) and \
+                (not taxonomies or all(item in taxo_list for item in taxonomies)):
                     glob_list.append(case)
+
             cases = glob_list
-    elif taxonomies:
-        taxonomies = ast.literal_eval(taxonomies)
-        cases = Case.query.join(Case_Tags, Case_Tags.case_id==Case.id)\
-                    .join(Tags, Case_Tags.tag_id==Tags.id)\
-                    .join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)\
-                    .where(Case.completed==completed, Taxonomy.name.in_(list(taxonomies)))\
-                    .order_by(desc(filter))\
-                    .paginate(page=page, per_page=25, max_per_page=50)
-        nb_pages = cases.pages
-        if or_and == "false":
-            glob_list = list()
-            for case in cases:
-                taxo_list = list()
-                for tag in case.to_json()["tags"]:
-                    taxo = Taxonomy.query.get(tag["taxonomy_id"])
-                    taxo_list.append(taxo.name)
+        if or_and_galaxies == "false":
+            glob_list = []
 
-                if all(item in taxo_list for item in taxonomies):
+            for case in cases:
+                clusters_db = case.to_json()["clusters"]
+                loc_cluster = [cluster["name"] for cluster in clusters_db]
+                galaxies_list = [Galaxy.query.get(cluster["galaxy_id"]).name for cluster in clusters_db]
+
+                if (not clusters or all(item in loc_cluster for item in clusters)) and \
+                (not galaxies or all(item in galaxies_list for item in galaxies)):
                     glob_list.append(case)
+
+            cases = glob_list
+    else:
+        cases = Case.query.filter_by(completed=completed).paginate(page=page, per_page=25, max_per_page=50)
+    return cases
+
+
+def sort_by_filter(filter, page, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
+    cases = build_case_query(page, completed, tags, taxonomies, galaxies, clusters, filter)
+    nb_pages = cases.pages
+    if tags:
+        tags = ast.literal_eval(tags)
+    if taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
+
+    if galaxies:
+        galaxies = ast.literal_eval(galaxies)
+    if clusters:
+        clusters = ast.literal_eval(clusters)
+
+    if tags or taxonomies or galaxies or clusters:
+        if or_and_taxo == "false":
+            glob_list = []
+
+            for case in cases:
+                tags_db = case.to_json()["tags"]
+                loc_tag = [tag["name"] for tag in tags_db]
+                taxo_list = [Taxonomy.query.get(tag["taxonomy_id"]).name for tag in tags_db]
+
+                if (not tags or all(item in loc_tag for item in tags)) and \
+                (not taxonomies or all(item in taxo_list for item in taxonomies)):
+                    glob_list.append(case)
+
+            cases = glob_list
+        if or_and_galaxies == "false":
+            glob_list = []
+
+            for case in cases:
+                clusters_db = case.to_json()["clusters"]
+                loc_cluster = [cluster["name"] for cluster in clusters_db]
+                galaxies_list = [Galaxy.query.get(cluster["galaxy_id"]).name for cluster in clusters_db]
+
+                if (not clusters or all(item in loc_cluster for item in clusters)) and \
+                (not galaxies or all(item in galaxies_list for item in galaxies)):
+                    glob_list.append(case)
+
             cases = glob_list
     else:
         cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=25, max_per_page=50)

@@ -303,10 +303,14 @@ def sort_by_ongoing_task(cid):
     """Sort Task by living one"""
     case = CommonModel.get_case(cid)
     tags = request.args.get('tags')
-    or_and = request.args.get("or_and")
+    or_and_taxo = request.args.get("or_and_taxo")
     taxonomies = request.args.get('taxonomies')
 
-    return TaskModel.sort_by_status_task_core(case, current_user, tags, taxonomies, or_and, completed=False)
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
+
+    return TaskModel.sort_by_status_task_core(case, current_user, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=False)
 
 
 @task_blueprint.route("/<cid>/sort_by_finished_task", methods=['GET'])
@@ -315,10 +319,14 @@ def sort_by_finished_task(cid):
     """Sort task by finished one"""
     case = CommonModel.get_case(cid)
     tags = request.args.get('tags')
-    or_and = request.args.get("or_and")
+    or_and_taxo = request.args.get("or_and_taxo")
     taxonomies = request.args.get('taxonomies')
 
-    return TaskModel.sort_by_status_task_core(case, current_user, tags, taxonomies, or_and, completed=True)
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
+
+    return TaskModel.sort_by_status_task_core(case, current_user, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=True)
 
 
 @task_blueprint.route("/<cid>/tasks/ongoing", methods=['GET'])
@@ -326,13 +334,17 @@ def sort_by_finished_task(cid):
 def ongoing_tasks_sort_by_filter(cid):
     """Sort by filter for living task"""
     tags = request.args.get('tags')
-    or_and = request.args.get("or_and")
+    or_and_taxo = request.args.get("or_and_taxo")
     taxonomies = request.args.get('taxonomies')
+
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
     filter = request.args.get('filter')
 
     if filter:
         case = CommonModel.get_case(cid)
-        return TaskModel.sort_tasks_by_filter(case, current_user, filter, tags, taxonomies, or_and, completed=False)
+        return TaskModel.sort_tasks_by_filter(case, current_user, filter, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=False)
     return {"message": "No filter pass"}, 400
 
 
@@ -341,13 +353,17 @@ def ongoing_tasks_sort_by_filter(cid):
 def finished_tasks_sort_by_filter(cid):
     """Sort by filter for finished task"""
     tags = request.args.get('tags')
-    or_and = request.args.get("or_and")
+    or_and_taxo = request.args.get("or_and_taxo")
     taxonomies = request.args.get('taxonomies')
     filter = request.args.get('filter')
 
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
+
     if filter:
         case = CommonModel.get_case(cid)
-        return TaskModel.sort_tasks_by_filter(case, current_user, filter, tags, taxonomies, or_and, completed=True)
+        return TaskModel.sort_tasks_by_filter(case, current_user, filter, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=True)
     return {"message": "No filter pass"}, 400
 
 

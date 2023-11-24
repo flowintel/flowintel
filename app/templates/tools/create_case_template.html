@@ -61,7 +61,7 @@
                 </template>
                 
                 <template v-if="cluster_list">
-                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="cluster_select" id="cluster_select" >
+                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
                         <template v-for="(clusters, galaxy) in cluster_list">
                             <optgroup :label="[[galaxy]]">
                                 <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
@@ -146,7 +146,7 @@
                 }else{
                     let loc = await res.json()
                     cluster_list.value = loc["clusters"]
-                    $('#cluster_select').trigger('change');
+                    $('#clusters_select').trigger('change');
                 }
             }
             

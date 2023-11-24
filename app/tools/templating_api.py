@@ -1,6 +1,8 @@
 from flask import Blueprint, request
 from . import tools_core as ToolModel
 from . import tools_core_api as ApiToolModel
+from . import common_template_core as CommonModel
+from . import task_template_core as TaskModel
 
 from flask_restx import Api, Resource
 from ..decorators import api_required
@@ -23,7 +25,7 @@ api = Api(api_templating_blueprint,
 class GetCaseTemplates(Resource):
     method_decorators = [api_required]
     def get(self):
-        templates = ToolModel.get_all_case_templates()
+        templates = CommonModel.get_all_case_templates()
         return {"templates": [template.to_json() for template in templates]}, 200
     
 @api.route('/case/<cid>')
@@ -31,10 +33,10 @@ class GetCaseTemplates(Resource):
 class GetCaseTemplate(Resource):
     method_decorators = [api_required]
     def get(self, cid):
-        case_template = ToolModel.get_case_template(cid)
+        case_template = CommonModel.get_case_template(cid)
         if case_template:
             loc_case = case_template.to_json()
-            tasks_template = ToolModel.get_task_by_case(cid)
+            tasks_template = CommonModel.get_task_by_case(cid)
             loc_case["tasks"] = [task_template.to_json() for task_template in tasks_template]
             return loc_case, 200
         return {"message": "Case template not found"}, 404
@@ -47,7 +49,7 @@ class GetCaseTitle(Resource):
     @api.doc(params={"title": "Title of a case"})
     def post(self):
         if "title" in request.json:
-            case = ToolModel.get_case_by_title(request.json["title"])
+            case = CommonModel.get_case_by_title(request.json["title"])
             if case:
                 case_json = case.to_json()          
                 return case_json, 200
@@ -98,7 +100,7 @@ class AddTaskCase(Resource):
         "tasks": "List of id of tasks template"
         })
     def post(self, cid):
-        template = ToolModel.get_case_template(cid)
+        template = CommonModel.get_case_template(cid)
         if template:
             if request.json:
                 if 'tasks' in request.json:
@@ -115,8 +117,8 @@ class AddTaskCase(Resource):
 class RemoveTaskCaseTemplate(Resource):
     method_decorators = [api_required]
     def get(self, cid, tid):
-        if ToolModel.get_case_template(cid):
-            if ToolModel.get_task_template(tid):
+        if CommonModel.get_case_template(cid):
+            if CommonModel.get_task_template(tid):
                 if ToolModel.remove_task_case(cid, tid):
                     return {"message": "Task template removed"}, 200
                 return {"message": "Error task template removed"}, 400
@@ -129,7 +131,7 @@ class RemoveTaskCaseTemplate(Resource):
 class DeleteCaseTemplate(Resource):
     method_decorators = [api_required]
     def get(self, cid):
-        if ToolModel.get_case_template(cid):
+        if CommonModel.get_case_template(cid):
             if ToolModel.delete_case_template(cid):
                 return {"message": "Case template deleted"}, 200
             return {"message": "Error case template deleted"}, 400
@@ -144,7 +146,7 @@ class CreateCaseFromTemplate(Resource):
         "title": "Title of the case to create"
         })
     def post(self, cid):
-        template = ToolModel.get_case_template(cid)
+        template = CommonModel.get_case_template(cid)
         if template:
             if request.json:
                 if "title" in request.json:
@@ -168,7 +170,7 @@ class CreateCaseFromTemplate(Resource):
 class GetTaskTemplates(Resource):
     method_decorators = [api_required]
     def get(self):
-        templates = ToolModel.get_all_task_templates()
+        templates = CommonModel.get_all_task_templates()
         return {"templates": [template.to_json() for template in templates]}, 200
     
 @api.route('/task/<tid>')
@@ -176,7 +178,7 @@ class GetTaskTemplates(Resource):
 class GetTaskTemplate(Resource):
     method_decorators = [api_required]
     def get(self, tid):
-        template = ToolModel.get_task_template(tid)
+        template = CommonModel.get_task_template(tid)
         if template:
             return template.to_json(), 200
         return {"message": "Task template not found"}, 404
@@ -194,7 +196,7 @@ class CreateTaskTemaplte(Resource):
         if request.json:
             verif_dict = ApiToolModel.verif_add_task_template(request.json)
             if "message" not in verif_dict:
-                template = ToolModel.add_task_template_core(verif_dict)
+                template = TaskModel.add_task_template_core(verif_dict)
                 return {"message": f"Template created, id: {template.id}"}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -213,7 +215,7 @@ class EditCaseTemaplte(Resource):
         if request.json:
             verif_dict = ApiToolModel.verif_edit_task_template(request.json, tid)
             if "message" not in verif_dict:
-                ToolModel.edit_task_template(verif_dict, tid)
+                TaskModel.edit_task_template(verif_dict, tid)
                 return {"message": f"Template edited"}, 200
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -224,8 +226,8 @@ class EditCaseTemaplte(Resource):
 class DeleteTaskTemplate(Resource):
     method_decorators = [api_required]
     def get(self, tid):
-        if ToolModel.get_task_template(tid):
-            if ToolModel.delete_task_template(tid):
+        if CommonModel.get_task_template(tid):
+            if TaskModel.delete_task_template(tid):
                 return {"message": "Task template deleted"}, 200
             return {"message": "Error task template deleted"}, 400
         return {"message": "Template not found"}, 404

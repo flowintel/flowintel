@@ -78,7 +78,7 @@ def edit_case(cid):
 
             if form.validate_on_submit():
                 tag_list = request.form.getlist("tags_select")
-                cluster_list = request.form.getlist("cluster_select")
+                cluster_list = request.form.getlist("clusters_select")
                 if CommonModel.check_tag(tag_list):
                     if CommonModel.check_cluster(cluster_list):
                         form_dict = form_to_dict(form)
@@ -332,9 +332,13 @@ def sort_by_ongoing():
     page = request.args.get('page', 1, type=int)
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
-    or_and = request.args.get("or_and")
+    or_and_taxo = request.args.get("or_and_taxo")
 
-    cases_list = CaseModel.sort_by_status(page, tags, taxonomies, or_and, completed=False)
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
+
+    cases_list = CaseModel.sort_by_status(page, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=False)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -346,9 +350,13 @@ def sort_by_finished():
     page = request.args.get('page', 1, type=int)
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
-    or_and = request.args.get("or_and")
+    or_and_taxo = request.args.get("or_and_taxo")
 
-    cases_list = CaseModel.sort_by_status(page, tags, taxonomies, or_and, completed=True)
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
+
+    cases_list = CaseModel.sort_by_status(page, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=True)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -360,10 +368,14 @@ def ongoing_sort_by_filter():
     filter = request.args.get('filter')
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
-    or_and = request.args.get("or_and")
+    or_and_taxo = request.args.get("or_and_taxo")
+
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
 
     if filter:
-        cases_list, nb_pages = CaseModel.sort_by_filter(filter, page, tags, taxonomies, or_and, completed=False)
+        cases_list, nb_pages = CaseModel.sort_by_filter(filter, page, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=False)
         return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 
@@ -376,10 +388,14 @@ def finished_sort_by_filter():
     filter = request.args.get('filter')
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
-    or_and = request.args.get("or_and")
+    or_and_taxo = request.args.get("or_and_taxo")
+
+    galaxies = request.args.get('galaxies')
+    clusters = request.args.get('clusters')
+    or_and_galaxies = request.args.get("or_and_galaxies")
 
     if filter:
-        cases_list, nb_pages = CaseModel.sort_by_filter(filter, page, tags, taxonomies, or_and, completed=True)
+        cases_list, nb_pages = CaseModel.sort_by_filter(filter, page, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=True)
         return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 

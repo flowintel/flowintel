@@ -93,6 +93,37 @@
                     </select>
                 </template>
             </div>
+            <hr>
+
+            <div>Galaxies:</div>
+            <div class="d-flex w-100 justify-content-center">
+                <div style="display:flex">
+				    <span style="margin-right: 10px">OR</span>
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false, false, true)">
+						<label class="form-check-label" for="switchOperator">AND</label>
+                    </div>
+				</div>
+            </div>
+            <div style="display: flex;">
+                <template v-if="galaxies">
+                    <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                        <template v-for="galaxy, key in galaxies">
+                            <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="cluster_list">
+                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                        <template v-for="(clusters, galaxy) in cluster_list">
+                            <optgroup :label="[[galaxy]]">
+                                <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
 		</div>
 	</div>
 
@@ -196,29 +227,35 @@
                 let show_ongoing = true
                 let asc_desc = true
                 let temp_case_list = []
-                let or_and = true
+                let or_and_taxo = true
+                let or_and_galaxies = true
 
                 const taxonomies = ref([])
                 const tags_list = ref([])
                 const selected_taxo = ref([])
                 const selected_tags = ref([])
 
+                const galaxies = ref([])
+                const cluster_list = ref([])
+                const selected_galaxies = ref([])
+                const selected_clusters = ref([])
+
 
                 async function fetchCase(page) {
                     let url
                     let tags = ""
                     let taxo = ""
-                    if(selected_tags.value.length){
-                        tags = "&tags=" + JSON.stringify(selected_tags.value)
-                    }
-                    if(selected_taxo.value.length){
-                        taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                    }
+                    let galax = ""
+                    let clusters = ""
+                    if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
+                    if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                    if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
+                    if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
 
                     if(current_filter.value)
-                        url = `/case/ongoing?page=${page}&filter=${current_filter.value}${tags}${taxo}`
+                        url = `/case/ongoing?page=${page}&filter=${current_filter.value}${tags}${taxo}${galax}${clusters}`
                     else
-                        url = '/case/get_cases_page?page=' + page + tags + taxo
+                        url = `/case/get_cases_page?page=${page}${tags}${taxo}${galax}${clusters}`
 
                     case_list.value = null
                     const res = await fetch(url)
@@ -286,18 +323,18 @@
                     let loc
                     let tags = ""
                     let taxo = ""
-                    if(selected_tags.value.length){
-                        tags = "&tags=" + JSON.stringify(selected_tags.value)
-                    }
-                    if(selected_taxo.value.length){
-                        taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                    }
+                    let galax = ""
+                    let clusters = ""
+                    if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
+                    if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                    if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
+                    if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
 
                     if(show_ongoing){
-                        const res = await fetch('/case/sort_by_ongoing?page=1&or_and=' + or_and + tags + taxo)
+                        const res = await fetch('/case/sort_by_ongoing?page=1&or_and_taxo=' + or_and_taxo + '&or_and_galaxies=' + or_and_galaxies + tags + taxo + galax + clusters)
                         loc = await res.json()
                     }else{
-                        const res = await fetch('/case/sort_by_finished?page=1&or_and=' + or_and + tags + taxo)
+                        const res = await fetch('/case/sort_by_finished?page=1&or_and_taxo=' + or_and_taxo + '&or_and_galaxies=' + or_and_galaxies + tags + taxo + galax + clusters)
                         loc = await res.json()
                     }
                     case_list.value.cases = loc.cases
@@ -310,27 +347,26 @@
                     asc_desc_filter()
                 }
 
-                async function asc_desc_filter(change=false, changeOperator=false){
-                    if(change)
-                        asc_desc = !asc_desc
-                    if (changeOperator)
-                        or_and = !or_and
+                async function asc_desc_filter(change=false, changeOperator=false, changeOperatorGalaxies=false){
+                    if (change) asc_desc = !asc_desc
+                    if (changeOperator) or_and_taxo = !or_and_taxo
+                    if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
 
                     let res
                     if (current_filter.value){
                         let tags = ""
                         let taxo = ""
-                        if(selected_tags.value.length){
-                            tags = "&tags=" + JSON.stringify(selected_tags.value)
-                        }
-                        if(selected_taxo.value.length){
-                            taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                        }
+                        let galax = ""
+                        let clusters = ""
+                        if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
+                        if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                        if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
+                        if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
 
                         if(show_ongoing)
-                            res = await fetch('/case/ongoing?page=1&or_and=' + or_and + '&filter=' + current_filter.value + tags + taxo)
+                            res = await fetch('/case/ongoing?page=1&or_and_taxo=' + or_and_taxo + '&or_and_galaxies=' + or_and_galaxies + '&filter=' + current_filter.value + tags + taxo + galax + clusters)
                         else
-                            res = await fetch('/case/finished?page=1&or_and=' + or_and + '&filter=' + current_filter.value + tags + taxo)
+                            res = await fetch('/case/finished?page=1&or_and_taxo=' + or_and_taxo + '&or_and_galaxies=' + or_and_galaxies + '&filter=' + current_filter.value + tags + taxo + galax + clusters)
                         let loc = await res.json()
                         if(asc_desc){
                             case_list.value.cases = loc.cases.reverse()
@@ -369,6 +405,18 @@
                         taxonomies.value = loc["taxonomies"]
                     }
                 }
+                fetch_taxonomies()
+
+                async function fetch_galaxies(){
+                    const res = await fetch("/case/get_galaxies")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        galaxies.value = loc["galaxies"]
+                    }
+                }
+                fetch_galaxies()
 
                 async function fetch_tags(){
                     const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
@@ -380,7 +428,16 @@
                         $('#tags_select').trigger('change');
                     }
                 }
-                fetch_taxonomies()
+                async function fetch_cluster(){
+                    const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        cluster_list.value = loc["clusters"]
+                        $('#clusters_select').trigger('change');
+                    }
+                }
 
 
                 onMounted(() => {
@@ -392,11 +449,18 @@
 
                     $('#taxonomies_select').on('change.select2', function (e) {
                         selected_taxo.value = $(this).select2('data').map(item => item.id);
-                        // asc_desc_filter()
                         fetch_tags()
                     })
                     $('#tags_select').on('change.select2', function (e) {
                         selected_tags.value = $(this).select2('data').map(item => item.id);
+                        asc_desc_filter()
+                    })
+                    $('#galaxies_select').on('change.select2', function (e) {
+                        selected_galaxies.value = $(this).select2('data').map(item => item.id);
+                        fetch_cluster()
+                    })
+                    $('#clusters_select').on('change.select2', function (e) {
+                        selected_clusters.value = $(this).select2('data').map(item => item.id);
                         asc_desc_filter()
                     })
                 })
@@ -419,6 +483,8 @@
                     onInput,
                     taxonomies,
                     tags_list,
+                    galaxies,
+                    cluster_list
                 }
             }
         }).mount('.container')
