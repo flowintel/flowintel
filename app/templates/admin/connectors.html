@@ -1,0 +1,176 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>
+        Connectors
+
+        {% if current_user.is_admin() %}
+            <span>
+                <a class="btn btn-primary" href="/admin/add_connector"><i class="fa-solid fa-plus"></i></a>
+            </span>
+        {% endif %}
+    </h1>
+
+    <hr>
+
+    <!-- Search bar -->
+    <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
+        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Org by name' style="min-width: 400px;" />
+    </div>
+    <!-- Search bar -->
+
+    <hr>
+    <div id="top"></div>
+    <a class="btn btn-outline-success" href="/admin/connectors_icons" type="button" style="margin-bottom: 10px;">See Icons</a>
+
+    <template v-if="connectors_list">
+        <template v-for="connector in connectors_list.connectors">
+            <div class="list-group" style="margin-bottom: 10px;">
+                <div style="display:flex">
+                    <a @click="extend_collapse(connector.id)" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1"><img style="max-width: 40px;" :src="'/static/icons/' + connector.icon_uuid"/> [[ connector.name ]]</h4>
+                            <p>[[connector.url]]</p>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p v-if="connector.description" class="card-text">[[ connector.description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                        </div>
+                    </a>
+                    {% if current_user.is_admin() %}
+                        <div style="display: grid;">
+                            <a class="btn btn-primary btn-sm" :href="`/admin/edit_connector/${connector.id}`" type="button" title="Edit the connector"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <button class="btn btn-danger btn-sm"  @click="delete_connector(connector)" title="Delete the connector"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="collapse" :id="'collapse'+connector.id" style="margin-bottom: 20px;">
+                <div class="card card-body" :id="'card-body_'+connector.id" style="background-color: whitesmoke;">
+                    <template v-if="users_table">
+                        <template v-if="users_table[connector.id]">
+                            <table>
+                                <template v-for="user in users_table[connector.id]">
+                                    <tr>
+                                        <td title="Id">[[user.id]]</td>
+                                        <td title="First name">[[user.first_name]]</td>
+                                        <td title="last name">[[user.last_name]]</td>
+                                        <td title="Email">[[user.email]]</td>
+                                        <td title="Role">[[user.role]]</td>
+                                        {% if current_user.is_admin() %}
+                                            <td>
+                                                <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                </a>
+                                                <button class="btn btn-danger btn-sm" @click="delete_user(user, connector.id)" title="Delete the user">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        {% endif %}
+                                    </tr>
+                                </template>
+                            </table>
+                        </template>
+                        <template v-else>
+                            <i>No users</i>
+                        </template>
+                    </template>
+                    <template v-else>
+                        Loading...
+                    </template>
+                </div>
+            </div>
+        </template>
+    </template>
+    <template v-else>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </template>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const connectors_list = ref(null)
+                const users_table = ref({})
+                let temp_connectors_list = []
+
+
+                async function fetchConnectors() {
+                    connectors_list.value = null
+                    const res = await fetch('get_connectors')
+                    let loc = await res.json()
+                    connectors_list.value = loc
+                    temp_connectors_list = connectors_list.value.connectors
+                }
+                fetchConnectors()
+
+                async function extend_collapse(org_id){
+                    const res = await fetch('get_org_users?org_id='+org_id)
+                    let loc = await res.json()
+                    users_table.value[org_id] = loc["users"]
+
+                    const collapseElementList = document.querySelectorAll('#collapse'+org_id)
+                    const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
+                }
+
+                async function delete_connector(connector){
+                    const res = await fetch('/admin/delete_connector/'+connector.id)
+                    if(await res.status == 200){
+                        let index = connectors_list.value.connectors.indexOf(connector)
+                        if(index > -1)
+                            connectors_list.value.connectors.splice(index, 1)
+                    }
+                    display_toast(res)
+                }
+
+                async function delete_user(user,org_id){
+                    const res = await fetch('/admin/delete_user/'+user.id)
+                    if(await res.status == 200){
+                        let index = users_table.value[org_id].indexOf(user)
+                        if(index > -1)
+                            users_table.value[org_id].splice(index, 1)
+                    }
+                    display_toast(res)
+                }
+
+                function onInput(e){
+                    connectors_list.value.connectors = []
+                    if(e.target.value){
+                        connectors_list.value.connectors = temp_connectors_list.filter((connectors) => {
+                            return connectors.name.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                    }else{
+                        connectors_list.value.connectors = fetchConnectors()
+                    }
+                }
+
+
+                return {
+                    message_list,
+                    connectors_list,
+                    users_table,
+                    extend_collapse,
+                    delete_connector,
+                    delete_user,
+                    onInput
+                }
+            }
+        }).mount('.container')
+
+    </script>
+{% endblock %}

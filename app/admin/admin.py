@@ -3,7 +3,9 @@ from flask_login import (
     current_user,
     login_required,
 )
-from .form import RegistrationForm, CreateOrgForm, AdminEditUserFrom
+
+from app.db_class.db import Connector_Icon
+from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm, RegistrationForm, CreateOrgForm, AdminEditUserFrom
 from . import admin_core as AdminModel
 from ..decorators import admin_required
 from ..utils.utils import form_to_dict
@@ -296,3 +298,155 @@ def galaxy_status():
     galaxy_id = request.args.get('galaxy', type=int)
     AdminModel.galaxy_status(galaxy_id)
     return {"message":"Galaxy changed", "toast_class": "success-subtle"}, 200
+
+
+##############
+# Connectors #
+##############
+
+@admin_blueprint.route("/connectors", methods=['GET'])
+@login_required
+def connectors():
+    """connectors' index page"""
+    return render_template("admin/connectors.html")
+
+@admin_blueprint.route("/connectors_icons", methods=['GET'])
+@login_required
+def icons():
+    """connectors icons' index page"""
+    return render_template("admin/connectors_icons.html")
+
+
+
+@admin_blueprint.route("/get_connectors", methods=['GET'])
+@login_required
+def get_connectors():
+    """List all connectors"""
+    connectors_list = list()
+    for connector in AdminModel.get_connectors():
+        connector_loc = connector.to_json()
+        icon_loc = AdminModel.get_icon(connector.icon_id)
+        icon_file = AdminModel.get_icon_file(icon_loc.file_icon_id)
+        connector_loc["icon_filename"] = icon_file.name
+        connector_loc["icon_uuid"] = icon_file.uuid
+        connectors_list.append(connector_loc)
+    return {"connectors": connectors_list}
+
+@admin_blueprint.route("/get_icons", methods=['GET'])
+@login_required
+def get_icons():
+    """List all icons"""
+    icon_list = list()
+    for icon in AdminModel.get_icons():
+        icon_loc = icon.to_json()
+        icon_file = AdminModel.get_icon_file(icon.file_icon_id)
+        icon_loc["icon_filename"] = icon_file.name
+        icon_loc["icon_uuid"] = icon_file.uuid
+        icon_list.append(icon_loc)
+    return {"icons": icon_list}
+
+@admin_blueprint.route("/add_connector", methods=['GET','POST'])
+@login_required
+@admin_required
+def add_connector():
+    """Add a connector"""
+    form = AddConnectorForm()
+    uuid_dict = dict()
+    for icon in AdminModel.get_icons():
+        uuid_dict[icon.id] = AdminModel.get_icon_file(icon.file_icon_id).uuid
+    form.icon_select.choices = [(icon.id, icon.name) for icon in AdminModel.get_icons()]
+    form.icon_select.choices.insert(0, ("None","--"))
+    if form.validate_on_submit():
+        form_dict = form_to_dict(form)
+        AdminModel.add_connector_core(form_dict)
+        return redirect("/admin/connectors")
+    return render_template("admin/add_connector.html", form=form, uuid_dict=uuid_dict, edit_mode=False)
+
+@admin_blueprint.route("/add_icons", methods=['GET','POST'])
+@login_required
+@admin_required
+def add_icons():
+    """Add an icon"""
+    form = AddIconForm()
+    if form.validate_on_submit():
+        icon = form.icon_upload
+        form_dict = form_to_dict(form)
+        if not AdminModel.add_icon_core(form_dict, icon):
+            flash("Error uploading icon")
+        return redirect("/admin/connectors_icons")
+    return render_template("admin/add_icons.html", form=form)
+
+
+@admin_blueprint.route("/edit_connector/<cid>", methods=['GET','POST'])
+@login_required
+@admin_required
+def edit_connector(cid):
+    """Edit a connector"""
+    form = EditConnectorForm()
+    loc_connector = AdminModel.get_connector(cid)
+    form.connector_id.data = cid
+
+    uuid_dict = dict()
+    for icon in AdminModel.get_icons():
+        uuid_dict[icon.id] = AdminModel.get_icon_file(icon.file_icon_id).uuid
+
+    loc_icon = AdminModel.get_icon(loc_connector.icon_id)
+    form.icon_select.choices = [(icon.id, icon.name) for icon in AdminModel.get_icons() if not icon.id == loc_icon.id]
+    form.icon_select.choices.insert(0, ("None","--"))
+    form.icon_select.choices.insert(0, (loc_icon.id,loc_icon.name))
+    if form.validate_on_submit():
+        form_dict = form_to_dict(form)
+        if not AdminModel.edit_connector_core(cid, form_dict):
+            flash("Error editing connector")
+        return redirect("/admin/connectors")
+    else:
+        form.name.data = loc_connector.name
+        form.url.data = loc_connector.url
+        form.description.data = loc_connector.description
+        
+    return render_template("admin/add_connector.html", form=form, uuid_dict=uuid_dict, edit_mode=True)
+
+
+@admin_blueprint.route("/edit_icon/<iid>", methods=['GET','POST'])
+@login_required
+@admin_required
+def edit_icon(iid):
+    """Edit an icon"""
+    form = EditIconForm()
+    loc_icon = AdminModel.get_icon(iid)
+    icon_file = AdminModel.get_icon_file(loc_icon.file_icon_id)
+    form.icon_id.data = iid
+    if form.validate_on_submit():
+        icon = form.icon_upload
+        form_dict = form_to_dict(form)
+        if not AdminModel.edit_icon_core(iid, form_dict, icon):
+            flash("Error uploading icon")
+        return redirect("/admin/connectors_icons")
+    else:
+        form.name.data = loc_icon.name
+        form.description.data = loc_icon.description
+    return render_template("admin/edit_icons.html", form=form, icon_file=icon_file.to_json())
+
+
+@admin_blueprint.route("/delete_connector/<cid>", methods=['GET','POST'])
+@login_required
+@admin_required
+def delete_connector(cid):
+    """Delete the connector"""
+    if AdminModel.get_connector(cid):
+        if AdminModel.delete_connector_core(cid):
+            return {"message":"connector deleted", "toast_class": "success-subtle"}, 200
+        return {"message":"Error connector deleted", "toast_class": "danger-subtle"}, 400
+    return {"message":"connector not found", "toast_class": "danger-subtle"}, 404
+
+
+@admin_blueprint.route("/delete_icon/<iid>", methods=['GET','POST'])
+@login_required
+@admin_required
+def delete_icon(iid):
+    """Delete the icon"""
+    if AdminModel.get_icon(iid):
+        if AdminModel.delete_icon_core(iid):
+            return {"message":"Icon deleted", "toast_class": "success-subtle"}, 200
+        return {"message":"Error Icon deleted", "toast_class": "danger-subtle"}, 400
+    return {"message":"Icon not found", "toast_class": "danger-subtle"}, 404

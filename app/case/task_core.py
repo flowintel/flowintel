@@ -17,6 +17,7 @@ from . import common_core as CommonModel
 
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
 
 
@@ -26,7 +27,7 @@ def delete_task(tid, current_user):
     if task is not None:
         for file in task.files:
             try:
-                os.remove(os.path.join(UPLOAD_FOLDER, file.uuid))
+                os.remove(os.path.join(FILE_FOLDER, file.uuid))
             except:
                 return False
             db.session.delete(file)
@@ -214,13 +215,14 @@ def edit_task_core(form_dict, tid, current_user):
 
 def add_file_core(task, files_list, current_user):
     create_specific_dir(UPLOAD_FOLDER)
+    create_specific_dir(FILE_FOLDER)
     for file in files_list:
         if files_list[file].filename:
             uuid_loc = str(uuid.uuid4())
             filename = secure_filename(files_list[file].filename)
             try:
                 file_data = request.files[file].read()
-                with open(os.path.join(UPLOAD_FOLDER, uuid_loc), "wb") as write_file:
+                with open(os.path.join(FILE_FOLDER, uuid_loc), "wb") as write_file:
                     write_file.write(file_data)
             except Exception as e:
                 print(e)
@@ -324,12 +326,12 @@ def change_task_status(status, task, current_user):
 
 
 def download_file(file):
-    return send_file(os.path.join(UPLOAD_FOLDER, file.uuid), as_attachment=True, download_name=file.name)
+    return send_file(os.path.join(FILE_FOLDER, file.uuid), as_attachment=True, download_name=file.name)
 
 
 def delete_file(file, task, current_user):
     try:
-        os.remove(os.path.join(UPLOAD_FOLDER, file.uuid))
+        os.remove(os.path.join(FILE_FOLDER, file.uuid))
     except:
         return False
 

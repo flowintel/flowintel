@@ -534,6 +534,61 @@ class Task_Template_Galaxy_Tags(db.Model):
     cluster_id = db.Column(db.Integer, index=True)
     template_id = db.Column(db.Integer, index=True)
 
+
+class Connector(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(64), index=True)
+    url = db.Column(db.String(64), index=True)
+    description = db.Column(db.String)
+    uuid = db.Column(db.String(36), index=True)
+    icon_id = db.Column(db.Integer, index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "name": self.name,
+            "url": self.url,
+            "description": self.description,
+            "uuid": self.uuid,
+            "icon_id": self.icon_id
+        }
+        return json_dict
+
+class Connector_Icon(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(64), index=True, unique=True)
+    description = db.Column(db.String)
+    uuid = db.Column(db.String(36), index=True)
+    file_icon_id = db.Column(db.Integer, index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "uuid": self.uuid,
+            "file_icon_id": self.file_icon_id
+        }
+        return json_dict
+
+class Icon_File(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(64), index=True, unique=True)
+    uuid = db.Column(db.String(36), index=True)
+
+    def to_json(self):
+        return {
+            "id": self.id, 
+            "name": self.name,
+            "uuid": self.uuid
+        }
+
+
+class Task_Connector(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, index=True)
+    connector_id = db.Column(db.Integer, index=True)
+
 login_manager.anonymous_user = AnonymousUser
 
 @login_manager.user_loader

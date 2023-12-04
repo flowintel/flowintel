@@ -1,0 +1,118 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/admin/connectors"><i class="fa-solid fa-arrow-left"></i></a></h1>
+    <h1 style="display: inline-block;">
+        Connectors Icons
+
+        {% if current_user.is_admin() %}
+            <span>
+                <a class="btn btn-primary" href="/admin/add_icons"><i class="fa-solid fa-plus"></i></a>
+            </span>
+        {% endif %}
+    </h1>
+
+    <hr>
+
+    <!-- Search bar -->
+    <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
+        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Icons by name' style="min-width: 400px;" />
+    </div>
+    <!-- Search bar -->
+
+    <hr>
+    <div id="top"></div>
+
+    <template v-if="icons_list">
+        <template v-for="icon in icons_list.icons">
+            <div class="list-group" style="margin-bottom: 10px;">
+                <div style="display:flex">
+                    <a class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1"><img style="max-width: 40px;" :src="'/static/icons/' + icon.icon_uuid"/> [[ icon.name ]]</h4>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p v-if="icon.description" class="card-text">[[ icon.description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                        </div>
+                    </a>
+                    <template v-if="icon.name != 'default'">
+                        {% if current_user.is_admin() %}
+                            <div style="display: grid;">
+                                <a class="btn btn-primary btn-sm" :href="`/admin/edit_icon/${icon.id}`" type="button" title="Edit the icon"><i class="fa-solid fa-pen-to-square"></i></a>
+                                <button class="btn btn-danger btn-sm"  @click="delete_icon(icon)" title="Delete the icon"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        {% endif %}
+                    </template>
+                </div>
+            </div>
+        </template>
+    </template>
+    <template v-else>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </template>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const icons_list = ref(null)
+                let temp_icons_list = []
+
+
+                async function fetchIcons() {
+                    icons_list.value = null
+                    const res = await fetch('get_icons')
+                    let loc = await res.json()
+                    icons_list.value = loc
+                    temp_icons_list = icons_list.value.icons
+                }
+                fetchIcons()
+
+                async function delete_icon(icon){
+                    const res = await fetch('/admin/delete_icon/'+icon.id)
+                    if(await res.status == 200){
+                        let index = icons_list.value.icons.indexOf(icon)
+                        if(index > -1)
+                            icons_list.value.icons.splice(index, 1)
+                    }
+                    display_toast(res)
+                }
+
+                function onInput(e){
+                    icons_list.value.icons = []
+                    if(e.target.value){
+                        icons_list.value.icons = temp_icons_list.filter((icons) => {
+                            return icons.name.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                    }else{
+                        icons_list.value.icons = fetchIcons()
+                    }
+                }
+                
+    
+                return {
+                    message_list,
+                    icons_list,
+                    delete_icon,
+                    fetchIcons,
+                    onInput
+                }
+            }
+        }).mount('.container')
+    </script>
+{% endblock %}

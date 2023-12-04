@@ -1,4 +1,5 @@
-from ..db_class.db import db
+import os
+from ..db_class.db import Connector_Icon, Icon_File, db
 from ..db_class.db import User, Role, Org, Status
 from .utils import generate_api_key
 import uuid
@@ -59,6 +60,24 @@ def create_status():
 
         db.session.add(status_db)
         db.session.commit()
+
+def create_default_icon():
+    icon_file = Icon_File(
+        name = "lambda.png",
+        uuid = "76447ff6-55f7-4acf-aed7-fabc8740d9e5"
+    )
+    db.session.add(icon_file)
+    db.session.commit()
+    icon_file_id = icon_file.id
+
+    icon = Connector_Icon(
+        name="default",
+        description="Default icon. Will be placed in case that a connector have no icon.",
+        uuid=str(uuid.uuid4()),
+        file_icon_id=icon_file_id
+    )
+    db.session.add(icon)
+    db.session.commit()
     
 
 def create_admin():
@@ -66,6 +85,9 @@ def create_admin():
     role = create_admin_role()
     create_editor_role()
     create_read_only_role()
+
+    # Default Icon
+    create_default_icon()
 
     # Admin user
     user = User(

@@ -1,0 +1,72 @@
+<!-- 
+    Author: David Cruciani
+-->
+{% extends 'base.html' %}
+{% import 'macros/form_macros.html' as f %}
+
+{% block content %}
+    <h2 class="ui dividing header">Add an Icon</h2>
+
+    <form action="" method="post" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <div class="modal-body">
+            <div class="mb-3">
+                {{form.name.label(class_="col-form-label")}}:
+                {{form.name(class_="form-control")}}
+                {% if form.name.errors %}
+                    <div style="color: red;">{{form.name.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div class="mb-3">
+                <label for="description" class="col-form-label">Description:</label>
+                {{form.description(class_="form-control")}}
+                {% if form.description.errors %}
+                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <hr>
+
+            <div v-if="!change_file">
+                <img style="max-width: 200px;" src="/static/icons/{{icon_file.uuid}}" />
+                <button style="margin-left: 20px;" class="btn btn-primary" @click="change_icon()">Change icon</button>
+            </div>
+            <div v-else class="mb-3">
+                {{form.icon_upload.label(class_="col-form-label")}}
+                {{form.icon_upload(class_="form-control")}}
+                {% if form.icon_upload.errors %}
+                    <div style="color: red;">{{form.icon_upload.errors[0] | safe}}</div>
+                {%endif%}
+                <button style="margin-top: 10px;" class="btn btn-danger" @click="change_icon()">Cancel</button>
+            </div>
+
+            <div class="modal-footer">
+                {{form.submit(class='btn btn-primary')}}
+            </div>
+        </div>
+    </form>
+
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, ref } = Vue
+    import {message_list} from '/static/js/toaster.js'
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const change_file = ref(false)
+
+            function change_icon(){
+                change_file.value = !change_file.value
+            }
+
+            return {
+                message_list,
+                change_file,
+                change_icon
+            }
+        }
+    }).mount('.container')
+
+</script>
+{% endblock %}
