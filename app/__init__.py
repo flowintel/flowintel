@@ -35,6 +35,7 @@ def create_app():
     from .notification.notification import notification_blueprint
     from .tools.tools import tools_blueprint
     from .my_assignment.my_assignment import my_assignment_blueprint
+    from .connectors.connectors import connector_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -43,6 +44,7 @@ def create_app():
     app.register_blueprint(notification_blueprint, url_prefix="/notification")
     app.register_blueprint(tools_blueprint, url_prefix="/tools")
     app.register_blueprint(my_assignment_blueprint, url_prefix="/my_assignment")
+    app.register_blueprint(connector_blueprint, url_prefix="/connectors")
 
 
     from .case.case_api import api_case_blueprint

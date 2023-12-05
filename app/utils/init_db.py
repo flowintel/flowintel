@@ -1,5 +1,5 @@
 import os
-from ..db_class.db import Connector_Icon, Icon_File, db
+from ..db_class.db import Connector, Connector_Icon, Icon_File, db
 from ..db_class.db import User, Role, Org, Status
 from .utils import generate_api_key
 import uuid
@@ -61,6 +61,62 @@ def create_status():
         db.session.add(status_db)
         db.session.commit()
 
+def create_misp_ail_connector():
+    ## MISP
+    icon_file = Icon_File(
+        name = "misp-icon.png",
+        uuid = "fe377a79-1950-407a-a02f-c5e1d990ca60"
+    )
+    db.session.add(icon_file)
+    db.session.commit()
+    icon_file_id = icon_file.id
+
+    icon = Connector_Icon(
+        name="misp",
+        description="Misp icon.",
+        uuid=str(uuid.uuid4()),
+        file_icon_id=icon_file_id
+    )
+    db.session.add(icon)
+    db.session.commit()
+
+    misp_connector = Connector(
+        name="Misp",
+        description="Misp connector",
+        uuid=str(uuid.uuid4()),
+        icon_id=icon.id
+    )
+    db.session.add(misp_connector)
+    db.session.commit()
+
+    ## AIL
+    icon_file = Icon_File(
+        name = "ail-icon.png",
+        uuid = "0f5bb2b8-9537-4c31-8d66-f5d0fd07b98a"
+    )
+    db.session.add(icon_file)
+    db.session.commit()
+    icon_file_id = icon_file.id
+
+    icon = Connector_Icon(
+        name="ail",
+        description="Ail icon.",
+        uuid=str(uuid.uuid4()),
+        file_icon_id=icon_file_id
+    )
+    db.session.add(icon)
+    db.session.commit()
+
+    ail_connector = Connector(
+        name="Ail",
+        description="Ail connector",
+        uuid=str(uuid.uuid4()),
+        icon_id=icon.id
+    )
+    db.session.add(ail_connector)
+    db.session.commit()
+
+
 def create_default_icon():
     icon_file = Icon_File(
         name = "lambda.png",
@@ -88,6 +144,7 @@ def create_admin():
 
     # Default Icon
     create_default_icon()
+    create_misp_ail_connector()
 
     # Admin user
     user = User(

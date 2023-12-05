@@ -10,7 +10,7 @@
 
         {% if current_user.is_admin() %}
             <span>
-                <a class="btn btn-primary" href="/admin/add_connector"><i class="fa-solid fa-plus"></i></a>
+                <a class="btn btn-primary" href="/connectors/add_connector"><i class="fa-solid fa-plus"></i></a>
             </span>
         {% endif %}
     </h1>
@@ -19,13 +19,13 @@
 
     <!-- Search bar -->
     <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
-        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Org by name' style="min-width: 400px;" />
+        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Connector by name' style="min-width: 400px;" />
     </div>
     <!-- Search bar -->
 
     <hr>
     <div id="top"></div>
-    <a class="btn btn-outline-success" href="/admin/connectors_icons" type="button" style="margin-bottom: 10px;">See Icons</a>
+    <a class="btn btn-outline-success" href="/connectors/connectors_icons" type="button" style="margin-bottom: 10px;">See Icons</a>
 
     <template v-if="connectors_list">
         <template v-for="connector in connectors_list.connectors">
@@ -43,7 +43,7 @@
                     </a>
                     {% if current_user.is_admin() %}
                         <div style="display: grid;">
-                            <a class="btn btn-primary btn-sm" :href="`/admin/edit_connector/${connector.id}`" type="button" title="Edit the connector"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <a class="btn btn-primary btn-sm" :href="`/connectors/edit_connector/${connector.id}`" type="button" title="Edit the connector"><i class="fa-solid fa-pen-to-square"></i></a>
                             <button class="btn btn-danger btn-sm"  @click="delete_connector(connector)" title="Delete the connector"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     {% endif %}
@@ -52,26 +52,25 @@
 
             <div class="collapse" :id="'collapse'+connector.id" style="margin-bottom: 20px;">
                 <div class="card card-body" :id="'card-body_'+connector.id" style="background-color: whitesmoke;">
-                    <template v-if="users_table">
-                        <template v-if="users_table[connector.id]">
+                    <span><a class="btn btn-outline-success" :href="'/connectors/'+connector.id+'/add_instance'" type="button" style="margin-bottom: 10px;">Add an instance</a></span>
+                    <template v-if="instances_table">
+                        <template v-if="instances_table[connector.id]">
                             <table>
-                                <template v-for="user in users_table[connector.id]">
+                                <template v-for="instance in instances_table[connector.id]">
                                     <tr>
-                                        <td title="Id">[[user.id]]</td>
-                                        <td title="First name">[[user.first_name]]</td>
-                                        <td title="last name">[[user.last_name]]</td>
-                                        <td title="Email">[[user.email]]</td>
-                                        <td title="Role">[[user.role]]</td>
-                                        {% if current_user.is_admin() %}
-                                            <td>
-                                                <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
-                                                    <i class="fa-solid fa-pen-to-square"></i>
-                                                </a>
-                                                <button class="btn btn-danger btn-sm" @click="delete_user(user, connector.id)" title="Delete the user">
-                                                    <i class="fa-solid fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        {% endif %}
+                                        <td title="Name of the instance">[[instance.name]]</td>
+                                        <td v-if="instance.description" title="Description of the instance">[[instance.description]]</td>
+                                        <td v-else><i>No description</i></td>
+                                        <td title="Url">[[instance.url]]</td>
+                                        <td><i>api key set</i></td>
+                                        <td>
+                                            <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </a>
+                                            <button class="btn btn-danger btn-sm" @click="delete_instance(instance, connector.id)" title="Delete the instance">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
                                     </tr>
                                 </template>
                             </table>
@@ -106,7 +105,7 @@
             delimiters: ['[[', ']]'],
             setup() {
                 const connectors_list = ref(null)
-                const users_table = ref({})
+                const instances_table = ref({})
                 let temp_connectors_list = []
 
 
@@ -119,17 +118,17 @@
                 }
                 fetchConnectors()
 
-                async function extend_collapse(org_id){
-                    const res = await fetch('get_org_users?org_id='+org_id)
+                async function extend_collapse(connector_id){
+                    const res = await fetch(connector_id+'/get_instances')
                     let loc = await res.json()
-                    users_table.value[org_id] = loc["users"]
+                    instances_table.value[connector_id] = loc["instances"]
 
-                    const collapseElementList = document.querySelectorAll('#collapse'+org_id)
+                    const collapseElementList = document.querySelectorAll('#collapse'+connector_id)
                     const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
                 }
 
                 async function delete_connector(connector){
-                    const res = await fetch('/admin/delete_connector/'+connector.id)
+                    const res = await fetch('/connectors/delete_connector/'+connector.id)
                     if(await res.status == 200){
                         let index = connectors_list.value.connectors.indexOf(connector)
                         if(index > -1)
@@ -138,12 +137,12 @@
                     display_toast(res)
                 }
 
-                async function delete_user(user,org_id){
-                    const res = await fetch('/admin/delete_user/'+user.id)
+                async function delete_instance(instance,connector_id){
+                    const res = await fetch('/connectors/'+connector_id+'/delete_instance/'+instance.id)
                     if(await res.status == 200){
-                        let index = users_table.value[org_id].indexOf(user)
+                        let index = instances_table.value[connector_id].indexOf(instance)
                         if(index > -1)
-                            users_table.value[org_id].splice(index, 1)
+                            instances_table.value[connector_id].splice(index, 1)
                     }
                     display_toast(res)
                 }
@@ -163,10 +162,10 @@
                 return {
                     message_list,
                     connectors_list,
-                    users_table,
+                    instances_table,
                     extend_collapse,
                     delete_connector,
-                    delete_user,
+                    delete_instance,
                     onInput
                 }
             }

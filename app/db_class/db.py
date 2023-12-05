@@ -538,10 +538,28 @@ class Task_Template_Galaxy_Tags(db.Model):
 class Connector(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True)
-    url = db.Column(db.String(64), index=True)
     description = db.Column(db.String)
     uuid = db.Column(db.String(36), index=True)
     icon_id = db.Column(db.Integer, index=True)
+    instances = db.relationship('Connector_Instance', backref='connector', lazy='dynamic', cascade="all, delete-orphan")
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "uuid": self.uuid,
+            "icon_id": self.icon_id
+        }
+        return json_dict
+    
+class Connector_Instance(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(64), index=True)
+    url = db.Column(db.String(64), index=True)
+    description = db.Column(db.String)
+    uuid = db.Column(db.String(36), index=True)
+    connector_id = db.Column(db.Integer, db.ForeignKey('connector.id', ondelete="CASCADE"))
 
     def to_json(self):
         json_dict = {
@@ -550,7 +568,7 @@ class Connector(db.Model):
             "url": self.url,
             "description": self.description,
             "uuid": self.uuid,
-            "icon_id": self.icon_id
+            "connector_id": self.connector_id
         }
         return json_dict
 
@@ -588,6 +606,12 @@ class Task_Connector(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, index=True)
     connector_id = db.Column(db.Integer, index=True)
+
+class User_Connector_Instance(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, index=True)
+    instance_id = db.Column(db.Integer, index=True)
+    api_key = db.Column(db.String(100), index=True)
 
 login_manager.anonymous_user = AnonymousUser
 

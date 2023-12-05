@@ -1,0 +1,89 @@
+<!-- 
+    Author: David Cruciani
+-->
+{% extends 'base.html' %}
+{% import 'macros/form_macros.html' as f %}
+
+{% block content %}
+    {% if edit_mode %}
+        <h2 class="ui dividing header">Edit an Instance</h2>
+    {%else%}
+        <h2 class="ui dividing header">Add an Instance</h2>
+    {%endif%}
+
+    <form action="" method="post">
+        {{ form.hidden_tag() }}
+        <div class="modal-body">
+            <div class="row">
+                <div class="mb-3 w-50">
+                    {{form.name.label(class_="col-form-label")}}:
+                    {{form.name(class_="form-control")}}
+                    {% if form.name.errors %}
+                        <div style="color: red;">{{form.name.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="mb-3 w-50">
+                    {{form.url.label(class_="col-form-label")}}:
+                    {{form.url(class_="form-control")}}
+                    {% if form.url.errors %}
+                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="description" class="col-form-label">Description:</label>
+                {{form.description(class_="form-control")}}
+                {% if form.description.errors %}
+                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div class="mb-3 w-50">
+                {{form.api_key.label(class_="col-form-label")}}:
+                {{form.api_key(class_="form-control")}}
+                {% if form.api_key.errors %}
+                    <div style="color: red;">{{form.api_key.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+
+            <div class="modal-footer">
+                {{form.submit(class='btn btn-primary')}}
+            </div>
+        </div>
+    </form>
+
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, onMounted} = Vue
+    import {message_list} from '/static/js/toaster.js'
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+
+            function formatState (state) {
+                if (!state.id || !state.element.title) {
+                    return state.text;
+                }
+
+                var baseUrl = "/static/icons/";
+                var $state = $(
+                    '<span><img style="max-width: 20px;" src="' + baseUrl + state.element.title.toLowerCase() + '" class="img-flag" /> ' + state.text + '</span>'
+                );
+                return $state;
+            };
+
+            onMounted(() => {
+                $('.select2-select').select2({
+                    theme: 'bootstrap-5',
+                    templateResult: formatState
+                })
+            })
+            return {
+                message_list
+            }
+        }
+    }).mount('.container')
+
+</script>
+{% endblock %}

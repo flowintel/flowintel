@@ -1,11 +1,9 @@
 import os
 from .. import db
-from ..db_class.db import Cluster, Connector_Icon, Galaxy, Icon_File, User, Role, Org, Case_Org, Task_User, Taxonomy, Connector
+from ..db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy
 from ..utils.utils import generate_api_key
 import uuid
-from werkzeug.utils import secure_filename
 
-ICON_FOLDER = os.path.join(os.getcwd(), "app", "static", "icons")
 
 def get_all_users():
     """Return all users"""
@@ -77,31 +75,6 @@ def get_tags_galaxy(galaxy_id):
 def get_tag_cluster(cluster_id):
     return Cluster.query.get(cluster_id).tag
 
-
-## Connectors
-def get_connectors():
-    """Return all connectors"""
-    return Connector.query.all()
-
-def get_connector(cid):
-    """Return a connector"""
-    return Connector.query.get(cid)
-
-def get_icons():
-    """Return all icons"""
-    return Connector_Icon.query.all()
-
-def get_icon(iid):
-    """Return an icon"""
-    return Connector_Icon.query.get(iid)
-
-def get_default_icon():
-    """Return teh default icon"""
-    return Connector_Icon.query.filter_by(name="default").first()
-
-def get_icon_file(file_id):
-    """Return a file"""
-    return Icon_File.query.get(file_id)
 
 
 def create_default_org(user):
@@ -292,127 +265,3 @@ def galaxy_status(galaxy_id):
     gal = get_galaxy(galaxy_id)
     gal.exclude = not gal.exclude
     db.session.commit()
-
-
-def add_connector_core(form_dict):
-    if not form_dict["icon_select"] or form_dict["icon_select"] == "None":
-        icon_id = get_default_icon().id
-    else:
-        icon_id = form_dict["icon_select"]
-
-    connector = Connector(
-        name=form_dict["name"],
-        description=form_dict["description"],
-        url=form_dict["url"],
-        uuid=str(uuid.uuid4()),
-        icon_id=icon_id
-    )
-    db.session.add(connector)
-    db.session.commit()
-    return True
-
-
-def add_icon_file(icon):
-    uuid_loc = str(uuid.uuid4())
-    try:
-        with open(os.path.join(ICON_FOLDER, uuid_loc), "wb") as write_icon:
-            write_icon.write(icon.data.read())
-    except Exception as e:
-        print(e)
-        return False
-    
-    icon_file = Icon_File(
-        name = secure_filename(icon.data.filename),
-        uuid = uuid_loc
-    )
-    db.session.add(icon_file)
-    db.session.commit()
-    return icon_file.id
-
-def add_icon_core(form_dict, icon):
-    icon_file_id = add_icon_file(icon)
-    
-    icon = Connector_Icon(
-        name = form_dict["name"],
-        description = form_dict["description"],
-        uuid = str(uuid.uuid4()),
-        file_icon_id = icon_file_id
-    )
-    db.session.add(icon)
-    db.session.commit()
-
-    return True
-
-
-def edit_connector_core(cid, form_dict):
-    connector_db = get_connector(cid)
-    if connector_db:
-        if not form_dict["icon_select"] or form_dict["icon_select"] == "None":
-            icon_id = get_default_icon().id
-        else:
-            icon_id = form_dict["icon_select"]
-        connector_db.name = form_dict["name"]
-        connector_db.url = form_dict["url"]
-        connector_db.description = form_dict["description"]
-        connector_db.icon_id = icon_id
-
-        db.session.add(connector_db)
-        db.session.commit()
-        return True
-    return False
-
-
-def edit_icon_core(iid, form_dict, icon):
-    icon_db = get_icon(iid)
-    if icon_db:
-        if icon.data:
-            if not delete_icon_file(icon_db.file_icon_id):
-                return False
-            icon_db.file_icon_id = add_icon_file(icon)
-
-        icon_db.name = form_dict["name"]
-        icon_db.description = form_dict["description"]
-        db.session.commit()
-        return True
-    return False
-
-
-def delete_connector_core(cid):
-    connector = get_connector(cid)
-    db.session.delete(connector)
-    db.session.commit()
-    return True
-
-
-def delete_icon_file(file_icon_id):
-    """Delete an icon from disk from table Icon_File"""
-    icon_file = get_icon_file(file_icon_id)
-
-    try:
-        os.remove(os.path.join(ICON_FOLDER, icon_file.uuid))
-    except:
-        return False
-    
-    db.session.delete(icon_file)
-    db.session.commit()
-    return True
-
-
-def delete_icon_core(iid):
-    """Delete the icon from the DB"""
-    icon = get_icon(iid)
-    if icon:
-        if not delete_icon_file(icon.file_icon_id):
-            return False
-
-        default_icon = get_default_icon()
-        for connector in Connector.query.filter_by(icon_id=icon.id).all():
-            connector.icon_id = default_icon.id
-            db.session.commit()
-
-        db.session.delete(icon)
-        db.session.commit()
-        
-        return True
-    else:
-        return False

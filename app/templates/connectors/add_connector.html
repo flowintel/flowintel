@@ -14,21 +14,12 @@
     <form action="" method="post">
         {{ form.hidden_tag() }}
         <div class="modal-body">
-            <div class="row">
-                <div class="mb-3 w-50">
-                    {{form.name.label(class_="col-form-label")}}:
-                    {{form.name(class_="form-control")}}
-                    {% if form.name.errors %}
-                        <div style="color: red;">{{form.name.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                <div class="mb-3 w-50">
-                    {{form.url.label(class_="col-form-label")}}:
-                    {{form.url(class_="form-control")}}
-                    {% if form.url.errors %}
-                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
+            <div class="mb-3 w-50">
+                {{form.name.label(class_="col-form-label")}}:
+                {{form.name(class_="form-control")}}
+                {% if form.name.errors %}
+                    <div style="color: red;">{{form.name.errors[0] | safe}}</div>
+                {%endif%}
             </div>
             <div class="mb-3">
                 <label for="description" class="col-form-label">Description:</label>
