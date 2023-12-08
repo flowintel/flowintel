@@ -478,6 +478,7 @@ def create_template_from_case(cid, case_title_template):
             db.session.add(task_template)
             db.session.commit()
 
+            ## Tags
             for t_t in Task_Tags.query.filter_by(task_id=task.id).all():
                 task_tag = Task_Template_Tags(
                     task_id=task_template.id,
@@ -486,12 +487,22 @@ def create_template_from_case(cid, case_title_template):
                 db.session.add(task_tag)
                 db.session.commit()
 
+            ## Clusters
             for t_t in Task_Galaxy_Tags.query.filter_by(task_id=task.id).all():
                 task_cluster = Task_Template_Galaxy_Tags(
                     template_id=task_template.id,
                     cluster_id=t_t.cluster_id
                 )
                 db.session.add(task_cluster)
+                db.session.commit()
+
+            ## Task Connectors
+            for t_c in Task_Connector_Instance.query.filter_by(task_id=task.id).all():
+                task_connector = Task_Template_Connector_Instance(
+                    template_id=task_template.id,
+                    instance_id=t_c.instance_id
+                )
+                db.session.add(task_connector)
                 db.session.commit()
 
             case_task_template = Case_Task_Template(

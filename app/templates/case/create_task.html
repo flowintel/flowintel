@@ -43,12 +43,26 @@
                     <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div class="mb-3 w-50">
-                {{form.url.label(class_="col-form-label")}}:
-                {{form.url(class_="form-control")}}
-                {% if form.url.errors %}
-                    <div style="color: red;">{{form.url.errors[0] | safe}}</div>
-                {%endif%}
+            <div class="row">
+                <div class="mb-3 w-50">
+                    {{form.url.label(class_="col-form-label")}}:
+                    {{form.url(class_="form-control")}}
+                    {% if form.url.errors %}
+                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="mb-3 w-50">
+                    <label style="padding: 4px;" for="connectors_select">Connectors:</label>
+                    <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
+                        <template v-if="connectors">
+                            <template v-for="(instances, connector) in connectors">
+                                <optgroup :label="[[connector]]">
+                                    <option :value="[[instance.name]]" v-for="instance in instances">[[instance.name]]</option>
+                                </optgroup>
+                            </template>
+                        </template>
+                    </select>
+                </div>
             </div>
             <div class="row">
                 <div class="mb-3 w-25">
@@ -82,7 +96,7 @@
                     <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
                         <template v-for="(tags, taxo) in tags_list">
                             <optgroup :label="[[taxo]]">
-                                <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                                <option :value="[[tag.name]]" :title="tag.description" v-for="tag in tags">[[tag.name]]</option>
                             </optgroup>
                         </template>
                     </select>
@@ -133,6 +147,19 @@
             const galaxies = ref([])
             const cluster_list = ref([])
             const selected_galaxies = ref([])
+
+            const connectors = ref()
+
+            async function fetchConnectors(){
+                const res = await fetch("/case/get_connectors")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    connectors.value = loc["connectors"]
+                }
+            }
+            fetchConnectors()
 
             let to_hide = true
             function hide_task_creation(){
@@ -191,7 +218,6 @@
             onMounted(() => {
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
-                    width: '50%',
                     closeOnSelect: false
                 })
 
@@ -212,6 +238,7 @@
                 galaxies,
                 tags_list,
                 cluster_list,
+                connectors,
                 hide_task_creation
             }
         }

@@ -47,6 +47,10 @@ def get_case_by_title(title):
 def get_case_template_by_title(title):
     return Case_Template.query.filter_by(title=title).first()
 
+
+def get_task_templates():
+    return Task_Template.query.all()
+
 def search(text):
     """Return cases containing text"""
     return Case.query.where(Case.title.contains(text), Case.completed==False).paginate(page=1, per_page=30, max_per_page=50)
@@ -143,6 +147,19 @@ def get_task_tags(tid):
 def get_task_clusters(tid):
     return [cluster for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id).filter_by(task_id=tid).all()]
 
+
+def get_connectors():
+    return Connector.query.all()
+
+def get_instance(iid):
+    return Connector_Instance.query.get(iid)
+
+def get_instance_by_name(name):
+    return Connector_Instance.query.filter_by(name=name).first()
+
+def get_task_connectors(tid):
+    return Task_Connector_Instance.query.filter_by(task_id=tid).all()
+
 def get_history(case_uuid):
     try:
         path_history = os.path.join(HISTORY_FOLDER, str(case_uuid))
@@ -209,4 +226,13 @@ def check_cluster(cluster_list):
             flag = False
     if not flag:
         flash("cluster doesn't exist")
+    return flag
+
+def check_connector(connector_list):
+    flag = True
+    for connector in connector_list:
+        if not get_instance_by_name(connector):
+            flag = False
+    if not flag:
+        flash("Connector doesn't exist")
     return flag

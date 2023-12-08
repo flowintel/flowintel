@@ -54,7 +54,7 @@
                                 <template v-for="tag in tags_table[taxonomy.id]">
                                     <tr>
                                         <td title="Tag">
-                                            <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                            <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
                                                 <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
                                                 [[tag.name]]
                                             </div>

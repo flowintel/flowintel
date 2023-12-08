@@ -44,8 +44,8 @@
                             <template v-for="(tags, taxo) in tags_list">
                                 <optgroup :label="[[taxo]]">
                                     <template v-for="tag in tags">
-                                        <option :value="[[tag.name]]" v-if="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
-                                        <option :value="[[tag.name]]" v-else>[[tag.name]]</option>
+                                        <option :value="[[tag.name]]" :title="tag.description" v-if="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
+                                        <option :value="[[tag.name]]" :title="tag.description" v-else>[[tag.name]]</option>
                                     </template>
                                 </optgroup>
                             </template>

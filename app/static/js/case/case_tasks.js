@@ -414,7 +414,7 @@ export default {
 			<div class="d-flex w-100 justify-content-between">
 				<div style="display: flex;" v-if="task.tags">
 					<template v-for="tag in task.tags">
-						<div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+						<div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
 							<i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
 							[[tag.name]]
 						</div>
@@ -528,11 +528,22 @@ export default {
 						[[task.url]]
 					</div>
 				</div>
-
-				<div>
-				<div>
-					<h5>Files</h5>
+				<div v-if="task.instances.length">
+					<div>
+						<h5>Connectors</h5>
+					</div>
+					<div v-for="instance in task.instances" :title="instance.description">
+						<img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
+						<a style="margin-left: 5px" :href="instance.url">[[instance.url]]</a>
+					</div>
 				</div>
+			</div>
+			<hr>
+			<div class="d-flex w-100 justify-content-between">
+				<div>
+					<div>
+						<h5>Files</h5>
+					</div>
 					<div>
 						<input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
 						<button class="btn btn-primary" @click="add_file(task)">Add</button>

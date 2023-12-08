@@ -42,7 +42,7 @@
                     <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
                         <template v-for="(tags, taxo) in tags_list">
                             <optgroup :label="[[taxo]]">
-                                <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                                <option :value="[[tag.name]]" :title="tag.description" v-for="tag in tags">[[tag.name]]</option>
                             </optgroup>
                         </template>
                     </select>

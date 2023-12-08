@@ -64,17 +64,18 @@ def create_case_template():
 def create_task_template():
     """Create a task Template"""
     form = TaskTemplateForm()
-    task_template_query_list = CommonModel.get_all_task_templates()
-    form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
+    form.tasks.choices = [(template.id, template.title) for template in  CommonModel.get_all_task_templates()]
     if form.validate_on_submit():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
+        connector_list = request.form.getlist("connectors_select")
         if CommonModel.check_tag(tag_list):
             if CommonModel.check_cluster(cluster_list):
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
-                template = ToolsModel.add_task_template_core(form_dict)
+                form_dict["connectors"] = connector_list
+                template = TaskModel.add_task_template_core(form_dict)
                 flash("Template created", "success")
                 return redirect(f"/tools/template/tasks")
             return render_template("case/create_task_template.html", form=form)
@@ -161,12 +162,14 @@ def edit_task(tid):
         if form.validate_on_submit():
             tag_list = request.form.getlist("tags_select")
             cluster_list = request.form.getlist("clusters_select")
+            connector_list = request.form.getlist("connectors_select")
             if CommonModel.check_tag(tag_list):
                 if CommonModel.check_cluster(cluster_list):
                     form_dict = form_to_dict(form)
                     form_dict["tags"] = tag_list
                     form_dict["clusters"] = cluster_list
-                    template = ToolsModel.edit_task_template(form_dict, tid)
+                    form_dict["connectors"] = connector_list
+                    template = TaskModel.edit_task_template(form_dict, tid)
                     flash("Template edited", "success")
                     return redirect(f"/tools/template/tasks")
                 return render_template("tools/edit_task_template.html", form=form)
@@ -250,6 +253,7 @@ def get_all_task_templates():
     for template in templates:
         loc_template = template.to_json()
         loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
+        loc_template["instances"] = TaskModel.get_task_info(template)
         templates_list.append(loc_template)
     return {"templates": templates_list}
 
@@ -275,6 +279,7 @@ def get_page_task_templates():
         for template in templates:
             loc_template = template.to_json()
             loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
+            loc_template["instances"] = TaskModel.get_task_info(template)
             templates_list.append(loc_template)
         return {"templates": templates_list, "nb_pages": nb_pages}
     return {"message": "Template not found"}
@@ -291,6 +296,7 @@ def get_task_by_case(cid):
         for template in templates:
             loc_template = template.to_json()
             loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
+            loc_template["instances"] = TaskModel.get_task_info(template)
             templates_list.append(loc_template)
         return {"tasks": templates_list}
     return {"tasks": []}
@@ -314,7 +320,7 @@ def remove_task(cid, tid):
 def delete_task(tid):
     """Delete a task template"""
     if CommonModel.get_task_template(tid):
-        if ToolsModel.delete_task_template(tid):
+        if TaskModel.delete_task_template(tid):
             return {"message":"Task Template deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error Task Template deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
@@ -441,3 +447,12 @@ def get_galaxies_task(tid):
                 clusters[index] = cluster.tag
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@tools_blueprint.route("/template/get_connectors_task/<tid>", methods=['GET'])
+@login_required
+def get_connectors_task(tid):
+    task = CommonModel.get_task_template(tid)
+    if task:
+        return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}
+    return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404

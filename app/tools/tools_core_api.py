@@ -88,6 +88,13 @@ def verif_add_task_template(data_dict):
     else:
         data_dict["clusters"] = []
 
+    if "connectors" in data_dict:
+        for connector in data_dict["connectors"]:
+            if not CommonModel.check_connector(connector):
+                return {"message": f"connector '{connector}' doesn't exist"}
+    else:
+        data_dict["connectors"] = []
+
     return data_dict
 
 def verif_edit_task_template(data_dict, task_id):
@@ -118,5 +125,14 @@ def verif_edit_task_template(data_dict, task_id):
         data_dict["clusters"] = task_template.to_json()["clusters"]
     else:
         data_dict["clusters"] = []
+
+    if "connectors" in data_dict:
+        for connector in data_dict["connectors"]:
+            if not CommonModel.check_connector(connector):
+                return {"message": f"connector '{connector}' doesn't exist"}
+    elif task_template.to_json()["connectors"]:
+        data_dict["connectors"] = task_template.to_json()["connectors"]
+    else:
+        data_dict["connectors"] = []
 
     return data_dict

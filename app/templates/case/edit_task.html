@@ -6,7 +6,7 @@
 
 {% block content %}
 
-    <h2 class="ui dividing header">Create a task</h2>
+    <h2 class="ui dividing header">Edit a task</h2>
 
     <form action="" method="post">
         {{ form.hidden_tag() }}
@@ -25,12 +25,29 @@
                     <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div class="mb-3">
-                {{form.url.label(class_="col-form-label")}}:
-                {{form.url(class_="form-control")}}
-                {% if form.url.errors %}
-                    <div style="color: red;">{{form.url.errors[0] | safe}}</div>
-                {%endif%}
+            <div class="row">
+                <div class="mb-3 w-50">
+                    {{form.url.label(class_="col-form-label")}}:
+                    {{form.url(class_="form-control")}}
+                    {% if form.url.errors %}
+                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="mb-3 w-50">
+                    <label style="padding: 4px;" for="connectors_select">Connectors:</label>
+                    <template v-if="connectors">
+                    <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
+                            <template v-for="(instances, connector) in connectors">
+                                <optgroup :label="[[connector]]">
+                                    <template v-for="instance in instances">
+                                        <option :value="[[instance.name]]" v-if="check_connectors_exist(instance.name)" selected>[[instance.name]]</option>
+                                        <option :value="[[instance.name]]" v-else>[[instance.name]]</option>
+                                    </template>
+                                </optgroup>
+                            </template>
+                        </select>
+                    </template>
+                </div>
             </div>
             <div class="row">
                 <div class="col">
@@ -66,8 +83,8 @@
                         <template v-for="(tags, taxo) in tags_list">
                             <optgroup :label="[[taxo]]">
                                 <template v-for="tag in tags">
-                                    <option :value="[[tag.name]]" v-if="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
-                                    <option :value="[[tag.name]]" v-else>[[tag.name]]</option>
+                                    <option :value="[[tag.name]]" :title="tag.description" v-if="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
+                                    <option :value="[[tag.name]]" :title="tag.description" v-else>[[tag.name]]</option>
                                 </template>
                             </optgroup>
                         </template>
@@ -125,6 +142,9 @@
             const clusters_task = ref([])
             const selected_taxo = ref([])
             const selected_galaxies = ref([])
+
+            const connectors = ref([])
+            const connectors_task = ref([])
 
             async function fetch_taxonomies(){
                 const res = await fetch("/case/get_taxonomies")
@@ -202,6 +222,30 @@
                 }
             }
 
+            async function fetchConnectors(){
+                const res = await fetch("/case/get_connectors")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    connectors.value = loc["connectors"]
+                }
+            }
+            fetchConnectors()
+
+            async function fetchConnectorsTask(){
+                const res = await fetch("/case/get_connectors_task/" +window.location.pathname.split("/").slice(-1))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    connectors_task.value = loc["connectors"]
+                    await nextTick()
+                    $('#connectors_select').trigger('change');
+                }
+            }
+            fetchConnectorsTask()
+
             function check_taxo_exist(taxo){
                 return taxonomies_task.value.some(function(field) {
                     return taxo === field
@@ -222,12 +266,17 @@
                     return cluster === field
                 })
             }
+
+            function check_connectors_exist(connector){
+                return connectors_task.value.some(function(field){
+                    return connector === field
+                })
+            }
             
 
             onMounted(() => {
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
-                    width: '50%',
                     closeOnSelect: false
                 })
 
@@ -248,10 +297,12 @@
                 galaxies,
                 tags_list,
                 cluster_list,
+                connectors,
                 check_taxo_exist,
                 check_galaxy_exist,
                 check_tag_exist,
-                check_cluster_exist
+                check_cluster_exist,
+                check_connectors_exist
             }
         }
     }).mount('.container')

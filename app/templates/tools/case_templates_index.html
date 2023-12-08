@@ -134,7 +134,7 @@
                         <div class="d-flex w-100 justify-content-between">
                             <div style="display: flex;" v-if="template.tags">
                                 <template v-for="tag in template.tags">
-                                    <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                    <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
                                         <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
                                         [[tag.name]]
                                     </div>

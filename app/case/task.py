@@ -5,8 +5,7 @@ from . import case_core as CaseModel
 from . import common_core as CommonModel
 from . import task_core as TaskModel
 from ..decorators import editor_required
-from ..utils.utils import form_to_dict, check_tag
-from ..db_class.db import Task_Template
+from ..utils.utils import form_to_dict
 
 task_blueprint = Blueprint(
     'task',
@@ -24,17 +23,19 @@ def create_task(cid):
         present_in_case = CaseModel.get_present_in_case(cid, current_user)
         if present_in_case or current_user.is_admin():
             form = TaskForm()
-            form.template_select.choices = [(template.id, template.title) for template in Task_Template.query.all()]
+            form.template_select.choices = [(template.id, template.title) for template in CommonModel.get_task_templates()]
             form.template_select.choices.insert(0, (0," "))
 
             if form.validate_on_submit():
                 tag_list = request.form.getlist("tags_select")
                 cluster_list = request.form.getlist("clusters_select")
+                connector_list = request.form.getlist("connectors_select")
                 if CommonModel.check_tag(tag_list):
                     if CommonModel.check_cluster(cluster_list):
                         form_dict = form_to_dict(form)
                         form_dict["tags"] = tag_list
                         form_dict["clusters"] = cluster_list
+                        form_dict["connectors"] = connector_list
                         if TaskModel.create_task(form_dict, cid, current_user):
                             flash("Task created", "success")
                         else:
@@ -58,11 +59,13 @@ def edit_task(cid, tid):
             if form.validate_on_submit():
                 tag_list = request.form.getlist("tags_select")
                 cluster_list = request.form.getlist("clusters_select")
+                connector_list = request.form.getlist("connectors_select")
                 if CommonModel.check_tag(tag_list):
                     if CommonModel.check_cluster(cluster_list):
                         form_dict = form_to_dict(form)
                         form_dict["tags"] = tag_list
                         form_dict["clusters"] = cluster_list
+                        form_dict["connectors"] = connector_list
                         TaskModel.edit_task_core(form_dict, tid, current_user)
                         flash("Task edited", "success")
                         return redirect(f"/case/{cid}")
@@ -421,7 +424,7 @@ def get_taxonomies_case(tid):
 
 @task_blueprint.route("/get_galaxies_task/<tid>", methods=['GET'])
 @login_required
-def get_galaxies_case(tid):
+def get_galaxies_task(tid):
     task = CommonModel.get_task(tid)
     if task:
         clusters = CommonModel.get_task_clusters(task.id)
@@ -434,4 +437,25 @@ def get_galaxies_case(tid):
                 index = clusters.index(cluster)
                 clusters[index] = cluster.tag
         return {"clusters": clusters, "galaxies": galaxies}
+    return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/get_connectors", methods=['GET'])
+@login_required
+def get_connectors():
+    connectors_list = CommonModel.get_connectors()
+    connectors_dict = dict()
+    for connector in connectors_list:
+        loc = [instance.to_json() for instance in connector.instances]
+        if loc:
+            connectors_dict[connector.name] = loc
+    
+    return jsonify({"connectors": connectors_dict}), 200
+
+@task_blueprint.route("/get_connectors_task/<tid>", methods=['GET'])
+@login_required
+def get_connectors_task(tid):
+    task = CommonModel.get_task(tid)
+    if task:
+        return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}
     return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404

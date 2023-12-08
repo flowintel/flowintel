@@ -19,7 +19,13 @@ def create_tag(tag, taxo_id):
     else:
         color_tag = revert_match
 
-    tag_db = Tags(name=tag, color=color_tag, taxonomy_id=taxo_id)
+    description = taxonomies.revert_machinetag(tag)[1].description
+    if not description:
+        description = taxonomies.revert_machinetag(tag)[1].expanded
+        if not description:
+            description = ""
+
+    tag_db = Tags(name=tag, color=color_tag, description=description, taxonomy_id=taxo_id)
     db.session.add(tag_db)
     db.session.commit()
 

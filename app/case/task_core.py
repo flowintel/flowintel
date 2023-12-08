@@ -42,6 +42,7 @@ def delete_task(tid, current_user):
         Task_Tags.query.filter_by(task_id=task.id).delete()
         Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
         Task_User.query.filter_by(task_id=task.id).delete()
+        Task_Connector_Instance.query.filter_by(task_id=task.id).delete()
         db.session.delete(task)
         CommonModel.update_last_modif(task.case_id)
         db.session.commit()
@@ -151,6 +152,15 @@ def create_task(form_dict, cid, current_user):
             db.session.add(task_galaxy_tag)
             db.session.commit()
 
+        for instance in form_dict["connectors"]:
+            instance = CommonModel.get_instance_by_name(instance)
+            task_instance = Task_Connector_Instance(
+                task_id=task.id,
+                instance_id=instance.id
+            )
+            db.session.add(task_instance)
+            db.session.commit()
+
     CommonModel.update_last_modif(cid)
 
     case = CommonModel.get_case(cid)
@@ -203,6 +213,24 @@ def edit_task_core(form_dict, tid, current_user):
     for c_t_db in task_tag_db:
         if not c_t_db in form_dict["clusters"]:
             Task_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+    
+    ## Connectors
+    task_connector_db = Task_Connector_Instance.query.filter_by(task_id=task.id).all()
+    for connectors in form_dict["connectors"]:
+        instance = CommonModel.get_instance_by_name(connectors)
+
+        if not connectors in task_connector_db:
+            task_tag = Task_Connector_Instance(
+                instance_id=instance.id,
+                task_id=task.id
+            )
+            db.session.add(task_tag)
+            db.session.commit()
+    
+    for c_t_db in task_connector_db:
+        if not c_t_db in form_dict["connectors"]:
+            Task_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
     CommonModel.update_last_modif(task.case_id)
@@ -355,6 +383,16 @@ def get_task_info(tasks_list, user):
         finalTask["is_current_user_assigned"] = is_current_user_assigned
         finalTask["files"] = file_list
         finalTask["case_title"] = case.title
+
+        finalTask["instances"] = list()
+        for task_connector in CommonModel.get_task_connectors(task.id):
+            loc_instance = CommonModel.get_instance(task_connector.instance_id).to_json()
+            loc_instance["icon"] = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
+                                            .join(Connector, Connector.icon_id==Connector_Icon.id)\
+                                            .join(Connector_Instance, Connector_Instance.connector_id==Connector.id)\
+                                            .where(Connector_Instance.id==task_connector.instance_id)\
+                                            .first().uuid
+            finalTask["instances"].append(loc_instance)
 
         tasks.append(finalTask)
     return tasks

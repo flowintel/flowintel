@@ -303,6 +303,15 @@ def create_case_from_template(cid, case_title_fork, user):
             )
             db.session.add(task_cluster)
             db.session.commit()
+
+        ## Task Connectors
+        for t_c in Task_Template_Connector_Instance.query.filter_by(template_id=task.id).all():
+            task_connector = Task_Connector_Instance(
+                task_id=t.id,
+                instance_id=t_c.instance_id
+            )
+            db.session.add(task_connector)
+            db.session.commit()
     
     return case
 

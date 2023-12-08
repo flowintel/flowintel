@@ -169,6 +169,8 @@ def edit_icon_core(iid, form_dict, icon):
 
 def delete_connector_core(cid):
     connector = get_connector(cid)
+    for instance in connector.instances:
+        delete_connector_instance_core(instance.id)
     db.session.delete(connector)
     db.session.commit()
     return True

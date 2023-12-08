@@ -43,6 +43,7 @@
                     </a>
                     {% if current_user.is_admin() %}
                         <div style="display: grid;">
+                            <a class="btn btn-success btn-sm" :href="'/connectors/'+connector.id+'/add_instance'" type="button"><i class="fa-solid fa-plus"></i></a>
                             <a class="btn btn-primary btn-sm" :href="`/connectors/edit_connector/${connector.id}`" type="button" title="Edit the connector"><i class="fa-solid fa-pen-to-square"></i></a>
                             <button class="btn btn-danger btn-sm"  @click="delete_connector(connector)" title="Delete the connector"><i class="fa-solid fa-trash"></i></button>
                         </div>

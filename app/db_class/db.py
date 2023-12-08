@@ -174,6 +174,8 @@ class Task(db.Model):
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id==self.id)\
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
+        json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Task_Connector_Instance, Task_Connector_Instance.instance_id==Connector_Instance.id)\
+                                                        .where(Task_Connector_Instance.task_id==self.id).all()]
 
         return json_dict
     
@@ -372,6 +374,8 @@ class Task_Template(db.Model):
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
+        json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Task_Template_Connector_Instance, Task_Template_Connector_Instance.instance_id==Connector_Instance.id)\
+                                                        .where(Task_Template_Connector_Instance.template_id==self.id).all()]
 
         return json_dict
     
@@ -415,6 +419,7 @@ class Tags(db.Model):
     name = db.Column(db.String)
     color = db.Column(db.String)
     exclude = db.Column(db.Boolean, default=False)
+    description = db.Column(db.String)
     taxonomy_id = db.Column(db.Integer, db.ForeignKey('taxonomy.id', ondelete="CASCADE"))
     cluster_id = db.Column(db.Integer, db.ForeignKey('cluster.id', ondelete="CASCADE"))
 
@@ -424,6 +429,7 @@ class Tags(db.Model):
             "name": self.name,
             "color": self.color,
             "exclude": self.exclude,
+            "description": self.description,
             "taxonomy_id": self.taxonomy_id,
             "cluster_id": self.cluster_id
         }
@@ -602,10 +608,15 @@ class Icon_File(db.Model):
         }
 
 
-class Task_Connector(db.Model):
+class Task_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, index=True)
-    connector_id = db.Column(db.Integer, index=True)
+    instance_id = db.Column(db.Integer, index=True)
+
+class Task_Template_Connector_Instance(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    template_id = db.Column(db.Integer, index=True)
+    instance_id = db.Column(db.Integer, index=True)
 
 class User_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

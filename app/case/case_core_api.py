@@ -70,6 +70,13 @@ def verif_create_case_task(data_dict, isCase):
         if "url" not in data_dict or not data_dict["url"]:
             data_dict["url"] = ""
 
+        if "connectors" in data_dict:
+            for connector in data_dict["connectors"]:
+                if not CommonModel.check_connector(connector):
+                    return {"message": f"Connector '{connector}' doesn't exist"}
+        else:
+            data_dict["connectors"] = []
+
     return data_dict
 
 
@@ -140,5 +147,14 @@ def verif_edit_task(data_dict, task_id):
 
     if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = task.url
+
+    if "connectors" in data_dict:
+        for connector in data_dict["connectors"]:
+            if not CommonModel.check_connector(connector):
+                return {"message": f"connector '{connector}' doesn't exist"}
+    elif task.to_json()["connectors"]:
+        data_dict["connectors"] = task.to_json()["connectors"]
+    else:
+        data_dict["connectors"] = []
 
     return data_dict

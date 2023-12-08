@@ -54,6 +54,19 @@ def get_cluster_by_name(cluster):
     return Cluster.query.filter_by(name=cluster).first()
 
 
+def get_connectors():
+    return Connector.query.all()
+
+def get_instance(iid):
+    return Connector_Instance.query.get(iid)
+
+def get_instance_by_name(name):
+    return Connector_Instance.query.filter_by(name=name).first()
+
+def get_task_connectors(tid):
+    return Task_Template_Connector_Instance.query.filter_by(template_id=tid).all()
+
+
 
 def check_tag(tag_list):
     flag = True
@@ -71,4 +84,13 @@ def check_cluster(cluster_list):
             flag = False
     if not flag:
         flash("cluster doesn't exist")
+    return flag
+
+def check_connector(connector_list):
+    flag = True
+    for connector in connector_list:
+        if not get_instance_by_name(connector):
+            flag = False
+    if not flag:
+        flash("Connector doesn't exist")
     return flag
