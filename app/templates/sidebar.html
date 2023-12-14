@@ -68,11 +68,11 @@
 				loading="lazy" />
 			</a>
 			<!-- Search form -->
-			<div id="search-form">
+			<div id="search-form" class="d-none">
 				<div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
 					<input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
 				</div>
-				<div v-if="result_search && result_search.length" class="search-result justify-content-center" >
+				<div v-if="result_search && result_search.length" class="search-result justify-content-center">
 					<div v-for="case_search in result_search" style="margin-bottom: 2px;">
 						<i class="fa-solid fa-circle fa-2xs"></i>
 						<a v-if="case_search.description" :href="'/case/'+case_search.id" :title="case_search.description">[[case_search.title]]</a>
@@ -163,6 +163,10 @@
 					container.hide();
 				}
 			});
+
+			onMounted(() => {
+				$('#search-form').removeClass('d-none')
+			})
 
 			return {
 				onInput,
