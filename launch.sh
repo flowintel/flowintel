@@ -6,6 +6,7 @@ function killscript {
     if  [ $isscripted ]; then
 		screen -X -S fcm quit
     fi
+}
 
 function launch {
     export FLASKENV="development"
