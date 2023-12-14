@@ -6,21 +6,14 @@ function killscript {
     if  [ $isscripted ]; then
 		screen -X -S fcm quit
     fi
-}
-
-function db_upgrade {
-    flask db upgrade
-}
 
 function launch {
     export FLASKENV="development"
     killscript
-    db_upgrade
-    python app.py -t
-    python app.py -g
+    python3 app.py -tg
     screen -dmS "fcm"
-    screen -S "fcm" -X screen -t "recurring_notification" bash -c "python startNotif.py; read x"
-    python app.py
+    screen -S "fcm" -X screen -t "recurring_notification" bash -c "python3 startNotif.py; read x"
+    python3 app.py
 }
 
 function test {
@@ -33,17 +26,17 @@ function production {
     killscript
     db_upgrade
     screen -dmS "fcm"
-    screen -S "fcm" -X screen -t "recurring_notification" bash -c "python startNotif.py; read x"
+    screen -S "fcm" -X screen -t "recurring_notification" bash -c "python3 startNotif.py; read x"
     gunicorn -w 4 'app:create_app()' -b 127.0.0.1:7006 --access-logfile -
 }
 
 
 function init_db {
-	python app.py -i
+	python3 app.py -i
 }
 
 function reload_db {
-	python app.py -r
+	python3 app.py -r
 }
 
 
