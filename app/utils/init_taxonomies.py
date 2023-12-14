@@ -31,6 +31,7 @@ def create_tag(tag, taxo_id):
 
 
 def create_taxonomies():
+    print("[+] Create/Update Taxonomies...")
     for taxonomy in list(taxonomies.keys()):
         if not Taxonomy.query.filter_by(name=taxonomy).first():
             taxo = Taxonomy(
@@ -45,6 +46,7 @@ def create_taxonomies():
 
 
 def create_galaxies():
+    print("[+] Create/Update Galaxies...")
     for galaxy in list(galaxies.keys()):
         current_galaxy = galaxies.get(galaxy)
         galaxy_db = Galaxy.query.filter_by(uuid=current_galaxy.uuid).first()

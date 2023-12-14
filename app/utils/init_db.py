@@ -136,6 +136,14 @@ def create_default_icon():
     db.session.commit()
     
 
+
+
+
+
+
+############
+############
+
 def create_admin():
     # Role
     role = create_admin_role()
