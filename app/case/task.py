@@ -1,3 +1,4 @@
+import ast
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from .form import TaskEditForm, TaskForm
 from flask_login import login_required, current_user
@@ -32,10 +33,15 @@ def create_task(cid):
                 connector_list = request.form.getlist("connectors_select")
                 if CommonModel.check_tag(tag_list):
                     if CommonModel.check_cluster(cluster_list):
+                        identifier_dict = dict()
+                        for connector in connector_list:
+                            identifier_dict[connector] = request.form.get(f"identifier_{connector}")
+
                         form_dict = form_to_dict(form)
                         form_dict["tags"] = tag_list
                         form_dict["clusters"] = cluster_list
                         form_dict["connectors"] = connector_list
+                        form_dict["identifier"] = identifier_dict
                         if TaskModel.create_task(form_dict, cid, current_user):
                             flash("Task created", "success")
                         else:
@@ -62,10 +68,15 @@ def edit_task(cid, tid):
                 connector_list = request.form.getlist("connectors_select")
                 if CommonModel.check_tag(tag_list):
                     if CommonModel.check_cluster(cluster_list):
+                        identifier_dict = dict()
+                        for connector in connector_list:
+                            identifier_dict[connector] = request.form.get(f"identifier_{connector}")
+
                         form_dict = form_to_dict(form)
                         form_dict["tags"] = tag_list
                         form_dict["clusters"] = cluster_list
                         form_dict["connectors"] = connector_list
+                        form_dict["identifier"] = identifier_dict
                         TaskModel.edit_task_core(form_dict, tid, current_user)
                         flash("Task edited", "success")
                         return redirect(f"/case/{cid}")
@@ -446,7 +457,10 @@ def get_connectors():
     connectors_list = CommonModel.get_connectors()
     connectors_dict = dict()
     for connector in connectors_list:
-        loc = [instance.to_json() for instance in connector.instances]
+        loc = list()
+        for instance in connector.instances:
+            if CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+                loc.append(instance.to_json())
         if loc:
             connectors_dict[connector.name] = loc
     
@@ -457,5 +471,18 @@ def get_connectors():
 def get_connectors_task(tid):
     task = CommonModel.get_task(tid)
     if task:
-        return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}
+        return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}, 200
+    return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/get_connectors_task_id/<tid>", methods=['GET'])
+@login_required
+def get_connectors_task_id(tid):
+    task = CommonModel.get_task(tid)
+    if task:
+        loc = dict()
+        instances = ast.literal_eval(request.args.get("instances"))
+        for instance in instances:
+            loc[instance] = CommonModel.get_task_connector_id(CommonModel.get_instance_by_name(instance).id, task.id).identifier
+        return {"instances": loc}, 200
     return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404

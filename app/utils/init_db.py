@@ -50,7 +50,7 @@ def create_user_org(user):
 
 
 def create_status():
-    status = [("Created", "success"), ("On going", "primary"), ("Recurring", "info"), ("Unavailable", "info"), ("Rejected", "danger"), ("Finished", "danger")]
+    status = [("Created", "success"), ("Ongoing", "primary"), ("Recurring", "info"), ("Unavailable", "info"), ("Rejected", "danger"), ("Finished", "danger")]
 
     for s in status:
         status_db = Status(

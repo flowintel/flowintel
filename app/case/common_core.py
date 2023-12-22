@@ -1,6 +1,7 @@
 import os
 import shutil
 import datetime
+import uuid
 
 from flask import flash
 from .. import db
@@ -151,14 +152,37 @@ def get_task_clusters(tid):
 def get_connectors():
     return Connector.query.all()
 
+def get_connector(cid):
+    return Connector.query.get(cid)
+
+def get_connector_by_name(name):
+    return Connector.query.where(Connector.name.like(name)).first()
+
 def get_instance(iid):
     return Connector_Instance.query.get(iid)
 
 def get_instance_by_name(name):
     return Connector_Instance.query.filter_by(name=name).first()
 
+def get_case_connectors(cid):
+    return Case_Connector_Instance.query.filter_by(case_id=cid).all()
+
 def get_task_connectors(tid):
     return Task_Connector_Instance.query.filter_by(task_id=tid).all()
+
+def get_user_instance_both(user_id, instance_id):
+    return User_Connector_Instance.query.filter_by(user_id=user_id, instance_id=instance_id).all()
+
+def get_user_instance_by_instance(instance_id):
+    """Return a user instance by instance id"""
+    return User_Connector_Instance.query.filter_by(instance_id=instance_id).first()
+
+def get_case_connector_id(instance_id, case_id):
+    return Case_Connector_Id.query.filter_by(case_id=case_id, instance_id=instance_id).first()
+
+def get_task_connector_id(instance_id, task_id):
+    return Task_Connector_Id.query.filter_by(task_id=task_id, instance_id=instance_id).first()
+
 
 def get_history(case_uuid):
     try:
@@ -236,3 +260,61 @@ def check_connector(connector_list):
     if not flag:
         flash("Connector doesn't exist")
     return flag
+
+
+def create_task_from_template(template_id, cid):
+    template = Task_Template.query.get(template_id)
+    task = Task(
+        uuid=str(uuid.uuid4()),
+        title=template.title,
+        description=template.description,
+        url=template.url,
+        creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
+        case_id=cid,
+        status_id=1
+    )
+    db.session.add(task)
+    db.session.commit()
+
+    for t_t in Task_Template_Tags.query.filter_by(task_id=task.id).all():
+        task_tag = Task_Tags(
+            task_id=task.id,
+            tag_id=t_t.tag_id
+        )
+        db.session.add(task_tag)
+        db.session.commit()
+
+    for t_t in Task_Template_Galaxy_Tags.query.filter_by(task_id=task.id).all():
+        task_tag = Task_Galaxy_Tags(
+            task_id=task.id,
+            cluster_id=t_t.cluster_id
+        )
+        db.session.add(task_tag)
+        db.session.commit()
+
+    for t_t in Task_Template_Connector_Instance.query.filter_by(template_id=task.id).all():
+        task_instance = Task_Connector_Instance(
+            task_id=task.id,
+            instance_id=t_t.instance_id
+        )
+        db.session.add(task_instance)
+        db.session.commit()
+
+
+def get_instance_with_icon(instance_id, case_task, case_task_id):
+    loc_instance = get_instance(instance_id).to_json()
+    loc_instance["icon"] = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
+                                    .join(Connector, Connector.icon_id==Connector_Icon.id)\
+                                    .join(Connector_Instance, Connector_Instance.connector_id==Connector.id)\
+                                    .where(Connector_Instance.id==instance_id)\
+                                    .first().uuid
+    if case_task:
+        identifier = Case_Connector_Id.query.join(Case, Case.id==case_task_id).where(Case_Connector_Id.instance_id==instance_id).first()
+    else:
+        identifier = Task_Connector_Id.query.join(Task, Task.id==case_task_id).where(Task_Connector_Id.instance_id==instance_id).first()
+    
+    loc_instance["identifier"] = ""
+    if identifier:
+        loc_instance["identifier"] = identifier.identifier
+    return loc_instance

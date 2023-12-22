@@ -125,6 +125,15 @@ def create_case_template(form_dict):
         db.session.add(case_tag)
         db.session.commit()
 
+    for instance in form_dict["connectors"]:
+        instance = CommonModel.get_instance_by_name(instance)
+        case_instance = Case_Template_Connector_Instance(
+            template_id=case_template.id,
+            instance_id=instance.id
+        )
+        db.session.add(case_instance)
+        db.session.commit()
+
     for tid in form_dict["tasks"]:
         case_task_template = Case_Task_Template(
             case_id=case_template.id,
@@ -203,6 +212,24 @@ def edit_case_template(form_dict, cid):
             Case_Template_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
+     ## Connectors
+    case_connector_db = Case_Template_Connector_Instance.query.filter_by(template_id=template.id).all()
+    for connectors in form_dict["connectors"]:
+        instance = CommonModel.get_instance_by_name(connectors)
+
+        if not connectors in case_connector_db:
+            case_tag = Case_Template_Connector_Instance(
+                instance_id=instance.id,
+                template_id=template.id
+            )
+            db.session.add(case_tag)
+            db.session.commit()
+    
+    for c_t_db in case_connector_db:
+        if not c_t_db in form_dict["connectors"]:
+            Case_Template_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
     db.session.commit()
 
 
@@ -213,6 +240,7 @@ def delete_case_template(cid):
         db.session.commit()
     Case_Template_Tags.query.filter_by(case_id=cid).delete() 
     Case_Template_Galaxy_Tags.query.filter_by(template_id=cid).delete() 
+    Case_Template_Connector_Instance.query.filter_by(template_id=cid).delete()
     template = CommonModel.get_case_template(cid)
     db.session.delete(template)
     db.session.commit()
@@ -260,6 +288,15 @@ def create_case_from_template(cid, case_title_fork, user):
             cluster_id=c_t.cluster_id
         )
         db.session.add(case_cluster)
+        db.session.commit()
+
+    ## Case Connectors
+    for c_t in Case_Template_Connector_Instance.query.filter_by(template_id=case_template.id).all():
+        case_connector = Case_Connector_Instance(
+            case_id=case.id,
+            instance_id=c_t.instance_id
+        )
+        db.session.add(case_connector)
         db.session.commit()
 
     # Add the current user's org to the case

@@ -28,13 +28,10 @@ class AddConnectorInstanceForm(FlaskForm):
     name = StringField('Name', validators=[InputRequired(), Length(1, 64)])
     description = TextAreaField('Description', default="", validators=[Optional()])
     url = StringField('Url', validators=[InputRequired(), Length(0, 64)])
-    api_key = StringField('Api key', validators=[InputRequired(), Length(0, 100)])
+    api_key = StringField('Api key', validators=[Optional(), Length(0, 100)])
+    type_select= SelectField(u'Type', coerce=str, validators=[Optional()])
     
     submit = SubmitField('Add')
-
-    def validate_name(self, field):
-        if Connector.query.filter_by(name=field.data).first():
-            raise ValidationError("Name Already Exist")
         
 
 class EditConnectorForm(FlaskForm):
@@ -56,12 +53,9 @@ class EditConnectorInstanceForm(FlaskForm):
     description = TextAreaField('Description', default="", validators=[Optional()])
     url = StringField('Url', validators=[InputRequired(), Length(0, 64)])
     api_key = StringField('Api key', validators=[Optional(), Length(0, 100)])
+    type_select= SelectField(u'Type', coerce=str, validators=[Optional()])
     
     submit = SubmitField('Modify')
-
-    def validate_name(self, field):
-        if Connector_Instance.query.filter_by(name=field.data).first() and not Connector_Instance.query.get(self.instance_id.data).name == field.data:
-            raise ValidationError("Name Already Exist")
         
         
 class AddIconForm(FlaskForm):

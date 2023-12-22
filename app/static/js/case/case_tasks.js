@@ -535,6 +535,7 @@ export default {
 					<div v-for="instance in task.instances" :title="instance.description">
 						<img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
 						<a style="margin-left: 5px" :href="instance.url">[[instance.url]]</a>
+						<span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>
 					</div>
 				</div>
 			</div>

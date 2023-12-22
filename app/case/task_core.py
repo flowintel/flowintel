@@ -43,6 +43,7 @@ def delete_task(tid, current_user):
         Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
         Task_User.query.filter_by(task_id=task.id).delete()
         Task_Connector_Instance.query.filter_by(task_id=task.id).delete()
+        Task_Connector_Id.query.filter_by(task_id=task.id).delete()
         db.session.delete(task)
         CommonModel.update_last_modif(task.case_id)
         db.session.commit()
@@ -86,37 +87,15 @@ def complete_task(tid, current_user):
 def create_task(form_dict, cid, current_user):
     """Add a task to the DB"""
     if "template_select" in form_dict and not 0 in form_dict["template_select"]:
-        template = Task_Template.query.get(form_dict["template_select"])
-        task = Task(
-            uuid=str(uuid.uuid4()),
-            title=template.title,
-            description=template.description,
-            url=template.url,
-            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
-            last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
-            case_id=cid,
-            status_id=1
-        )
-        db.session.add(task)
-        db.session.commit()
-
-        for t_t in Task_Template_Tags.query.filter_by(task_id=task.id).all():
-            task_tag = Task_Tags(
-                task_id=task.id,
-                tag_id=t_t.tag_id
-            )
-            db.session.add(task_tag)
-            db.session.commit()
-
-        for t_t in Task_Template_Galaxy_Tags.query.filter_by(task_id=task.id).all():
-            task_tag = Task_Galaxy_Tags(
-                task_id=task.id,
-                cluster_id=t_t.cluster_id
-            )
-            db.session.add(task_tag)
-            db.session.commit()
+        CommonModel.create_task_from_template(form_dict["template_select"], cid)
     else:
         deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
+
+        ## Check if instance is from current user
+        for instance in form_dict["connectors"]:
+            instance = CommonModel.get_instance_by_name(instance)
+            if not CommonModel.get_user_instance_by_instance(instance.id):
+                return False
 
         task = Task(
             uuid=str(uuid.uuid4()),
@@ -161,6 +140,15 @@ def create_task(form_dict, cid, current_user):
             db.session.add(task_instance)
             db.session.commit()
 
+            task_connector_id = Task_Connector_Id(
+                task_id=task.id,
+                instance_id=instance.id,
+                identifier=form_dict["identifier"][instance.name]
+            )
+            db.session.add(task_connector_id)
+            db.session.commit()
+
+
     CommonModel.update_last_modif(cid)
 
     case = CommonModel.get_case(cid)
@@ -173,6 +161,12 @@ def edit_task_core(form_dict, tid, current_user):
     """Edit a task to the DB"""
     task = CommonModel.get_task(tid)
     deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
+
+    ## Check if instance is from current user
+    for instance in form_dict["connectors"]:
+        instance = CommonModel.get_instance_by_name(instance)
+        if not CommonModel.get_user_instance_by_instance(instance.id):
+            return False
 
     task.title = form_dict["title"]
     task.description=form_dict["description"]
@@ -227,10 +221,23 @@ def edit_task_core(form_dict, tid, current_user):
             )
             db.session.add(task_tag)
             db.session.commit()
+
+        task_connector_id = Task_Connector_Id.query.filter_by(task_id=task.id, instance_id=instance.id).first()
+        if not task_connector_id:
+            task_connector_id = Task_Connector_Id(
+                task_id=task.id,
+                instance_id=instance.id,
+                identifier=form_dict["identifier"][connectors]
+            )
+            db.session.add(task_connector_id)
+        else:
+            task_connector_id.identifier = form_dict["identifier"][connectors]
+        db.session.commit()
     
     for c_t_db in task_connector_db:
         if not c_t_db in form_dict["connectors"]:
             Task_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
+            Task_Connector_Id.query.filter_by(task_id=task.id, instance_id=c_t_db.instance_id).delete()
             db.session.commit()
 
     CommonModel.update_last_modif(task.case_id)
@@ -386,13 +393,7 @@ def get_task_info(tasks_list, user):
 
         finalTask["instances"] = list()
         for task_connector in CommonModel.get_task_connectors(task.id):
-            loc_instance = CommonModel.get_instance(task_connector.instance_id).to_json()
-            loc_instance["icon"] = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
-                                            .join(Connector, Connector.icon_id==Connector_Icon.id)\
-                                            .join(Connector_Instance, Connector_Instance.connector_id==Connector.id)\
-                                            .where(Connector_Instance.id==task_connector.instance_id)\
-                                            .first().uuid
-            finalTask["instances"].append(loc_instance)
+            finalTask["instances"].append(CommonModel.get_instance_with_icon(task_connector.instance_id, case_task=False, case_task_id=task.id))
 
         tasks.append(finalTask)
     return tasks

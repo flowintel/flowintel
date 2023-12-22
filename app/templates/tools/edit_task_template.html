@@ -41,8 +41,7 @@
                             <template v-for="(instances, connector) in connectors">
                                 <optgroup :label="[[connector]]">
                                     <template v-for="instance in instances">
-                                        <option :value="[[instance.name]]" v-if="check_connectors_exist(instance.name)" selected>[[instance.name]]</option>
-                                        <option :value="[[instance.name]]" v-else>[[instance.name]]</option>
+                                        <option :value="[[instance.name]]" :selected="check_connectors_exist(instance.name)">[[instance.name]]</option>
                                     </template>
                                 </optgroup>
                             </template>
@@ -224,11 +223,9 @@
                 }else{
                     let loc = await res.json()
                     connectors_task.value = loc["connectors"]
-                    await nextTick()
-                    $('#connectors_select').trigger('change');
                 }
             }
-            fetchConnectorsTask()
+            
 
             function check_taxo_exist(taxo){
                 return taxonomies_task.value.some(function(field) {
@@ -252,12 +249,13 @@
             }
             function check_connectors_exist(connector){
                 return connectors_task.value.some(function(field){
-                    return connector === field
+                    return connector === field && $('#connectors_select').trigger('change')
                 })
             }
             
 
             onMounted(() => {
+                fetchConnectorsTask()
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
                     closeOnSelect: false

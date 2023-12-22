@@ -14,7 +14,7 @@ from ..db_class.db import Case_Template, Task_Template
 
 
 class TaskTemplateForm(FlaskForm):
-    title = StringField('Title', validators=[Optional(),Length(1, 64)])
+    title = StringField('Title', validators=[InputRequired(),Length(1, 64)])
     body = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     tasks = SelectMultipleField(u'Task Template', coerce=int, validators=[Optional()])

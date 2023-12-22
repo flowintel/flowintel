@@ -1,3 +1,4 @@
+import ast
 import json
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from .form import CaseForm, CaseEditForm, AddOrgsCase, RecurringForm
@@ -44,11 +45,18 @@ def create_case():
     if form.validate_on_submit():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
+        connector_list = request.form.getlist("connectors_select")
         if CommonModel.check_tag(tag_list):
             if CommonModel.check_cluster(cluster_list):
+                identifier_dict = dict()
+                for connector in connector_list:
+                    identifier_dict[connector] = request.form.get(f"identifier_{connector}")
+
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
+                form_dict["connectors"] = connector_list
+                form_dict["identifier"] = identifier_dict
                 case = CaseModel.create_case(form_dict, current_user)
                 flash("Case created", "success")
                 return redirect(f"/case/{case.id}")
@@ -63,7 +71,11 @@ def view(cid):
     case = CommonModel.get_case(cid)
     if case:
         present_in_case = CaseModel.get_present_in_case(cid, current_user)
-        return render_template("case/case_view.html", id=cid, case=case.to_json(), present_in_case=present_in_case)
+        case_loc = case.to_json()
+        case_loc["instances"] = list()
+        for case_connector in CommonModel.get_case_connectors(case.id):
+            case_loc["instances"].append(CommonModel.get_instance_with_icon(case_connector.instance_id, case_task=True, case_task_id=case.id))
+        return render_template("case/case_view.html", case=case_loc, present_in_case=present_in_case)
     return render_template("404.html")
 
 
@@ -79,11 +91,18 @@ def edit_case(cid):
             if form.validate_on_submit():
                 tag_list = request.form.getlist("tags_select")
                 cluster_list = request.form.getlist("clusters_select")
+                connector_list = request.form.getlist("connectors_select")
                 if CommonModel.check_tag(tag_list):
                     if CommonModel.check_cluster(cluster_list):
+                        identifier_dict = dict()
+                        for connector in connector_list:
+                            identifier_dict[connector] = request.form.get(f"identifier_{connector}")
+
                         form_dict = form_to_dict(form)
                         form_dict["tags"] = tag_list
                         form_dict["clusters"] = cluster_list
+                        form_dict["connectors"] = connector_list
+                        form_dict["identifier"] = identifier_dict
                         CaseModel.edit_case(form_dict, cid, current_user)
                         flash("Case edited", "success")
                         return redirect(f"/case/{cid}")
@@ -574,3 +593,38 @@ def get_galaxies_case(cid):
                 clusters[index] = cluster.tag
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/get_modules", methods=['GET'])
+@login_required
+def get_modules():
+    return {"modules": CaseModel.get_modules()}, 200
+    # return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
+
+
+@case_blueprint.route("/get_instance_module", methods=['GET'])
+@login_required
+def get_instance_module():
+    if "module" in request.args:
+        module = request.args.get("module")
+    return {"instances": CaseModel.get_instance_module_core(module, current_user.id)}, 200
+
+@case_blueprint.route("/get_connectors_case/<cid>", methods=['GET'])
+@login_required
+def get_connectors_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/get_connectors_case_id/<tid>", methods=['GET'])
+@login_required
+def get_connectors_case_id(tid):
+    case = CommonModel.get_case(tid)
+    if case:
+        loc = dict()
+        instances = ast.literal_eval(request.args.get("instances"))
+        for instance in instances:
+            loc[instance] = CommonModel.get_case_connector_id(CommonModel.get_instance_by_name(instance).id, case.id).identifier
+        return {"instances": loc}, 200
+    return {"message": "case Not found", 'toast_class': "danger-subtle"}, 404

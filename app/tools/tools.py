@@ -45,11 +45,13 @@ def create_case_template():
     if form.validate_on_submit():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
+        connector_list = request.form.getlist("connectors_select")
         if CommonModel.check_tag(tag_list):
             if CommonModel.check_cluster(cluster_list):
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
+                form_dict["connectors"] = connector_list
                 template = ToolsModel.create_case_template(form_dict)
                 flash("Template created", "success")
                 return redirect(f"/tools/template/case/{template.id}")
@@ -107,11 +109,13 @@ def add_task_case(cid):
     if form.validate_on_submit():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
+        connector_list = request.form.getlist("connectors_select")
         if CommonModel.check_tag(tag_list):
             if CommonModel.check_cluster(cluster_list):
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
+                form_dict["connectors"] = connector_list
                 ToolsModel.add_task_case_template(form_dict, cid)
                 flash("Template added", "success")
                 return redirect(f"/tools/template/case/{cid}")
@@ -132,11 +136,13 @@ def edit_case(cid):
         if form.validate_on_submit():
             tag_list = request.form.getlist("tags_select")
             cluster_list = request.form.getlist("clusters_select")
+            connector_list = request.form.getlist("connectors_select")
             if CommonModel.check_tag(tag_list):
                 if CommonModel.check_cluster(cluster_list):
                     form_dict = form_to_dict(form)
                     form_dict["tags"] = tag_list
                     form_dict["clusters"] = cluster_list
+                    form_dict["connectors"] = connector_list
                     template = ToolsModel.edit_case_template(form_dict, cid)
                     flash("Template edited", "success")
                     return redirect(f"/tools/template/case/{cid}")
@@ -449,10 +455,19 @@ def get_galaxies_task(tid):
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 
+
+@tools_blueprint.route("/template/get_connectors_case/<cid>", methods=['GET'])
+@login_required
+def get_connectors_case(cid):
+    case = CommonModel.get_case_template(cid)
+    if case:
+        return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
 @tools_blueprint.route("/template/get_connectors_task/<tid>", methods=['GET'])
 @login_required
 def get_connectors_task(tid):
     task = CommonModel.get_task_template(tid)
     if task:
         return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}
-    return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404

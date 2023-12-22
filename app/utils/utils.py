@@ -1,6 +1,10 @@
+import fnmatch
+import importlib
 import os
 import glob
 import json
+import re
+import sys
 import uuid
 import random
 import string
@@ -8,6 +12,10 @@ import jsonschema
 from ..db_class.db import User
 from pytaxonomies import Taxonomies
 from pymispgalaxies import Galaxies, Clusters
+
+MODULES = {}
+MODULES_CONFIG = {}
+MODULE_PATH = os.path.join(os.getcwd(), "app", "modules")
 
 manifest = os.path.join(os.getcwd(), "modules/misp-taxonomies/MANIFEST.json")
 
@@ -67,6 +75,27 @@ def create_specific_dir(specific_dir):
         os.mkdir(specific_dir)
 
 
+def get_module_type():
+    type_list = list()
+    for dir in os.listdir(MODULE_PATH):
+        type_list.append(dir)
+    return type_list
+
+def get_modules_list():
+    sys.path.append(MODULE_PATH)
+    for root, dirnames, filenames in os.walk(MODULE_PATH):
+        if os.path.basename(root) == '__pycache__':
+            continue
+        if re.match(r'^\.', os.path.basename(root)):
+            continue
+        for filename in fnmatch.filter(filenames, '*.py'):
+            if filename == '__init__.py':
+                continue
+            modulename = filename.split(".")[0]
+            root_dir = os.path.basename(root)
+            MODULES[modulename] = importlib.import_module(root_dir + '.' + modulename)
+            MODULES_CONFIG[modulename] = {"type": root_dir, "config": MODULES[modulename].module_config}
+
 caseSchema = {
     "type": "object",
     "properties": {
@@ -81,6 +110,10 @@ caseSchema = {
             "items": {"type": "object"},
         },
         "tags":{
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "clusters":{
             "type": "array",
             "items": {"type": "string"},
         },
@@ -100,7 +133,11 @@ taskSchema = {
         "tags":{
             "type": "array",
             "items": {"type": "string"}
-        }
+        },
+        "clusters":{
+            "type": "array",
+            "items": {"type": "string"},
+        },
     },
     "required": ['title']
 }

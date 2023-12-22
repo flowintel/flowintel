@@ -2,6 +2,8 @@ import os
 import ast
 import uuid
 import datetime
+
+from app.utils.utils import get_modules_list, MODULES, MODULES_CONFIG
 from .. import db
 from ..db_class.db import *
 from sqlalchemy import desc, and_
@@ -33,6 +35,8 @@ def delete_case(cid, current_user):
         Case_Tags.query.filter_by(case_id=case.id).delete()
         Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
         Case_Org.query.filter_by(case_id=case.id).delete()
+        Case_Connector_Id.query.filter_by(case_id=case.id).delete()
+        Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
         db.session.delete(case)
         db.session.commit()
         return True
@@ -101,37 +105,26 @@ def create_case(form_dict, user):
             db.session.add(case_galaxy)
             db.session.commit()
 
+        for instance in form_dict["connectors"]:
+            instance = CommonModel.get_instance_by_name(instance)
+            case_instance = Case_Connector_Instance(
+                case_id=case.id,
+                instance_id=instance.id
+            )
+            db.session.add(case_instance)
+            db.session.commit()
+
+            case_connector_id = Case_Connector_Id(
+                case_id=case.id,
+                instance_id=instance.id,
+                identifier=form_dict["identifier"][instance.name]
+            )
+            db.session.add(case_connector_id)
+            db.session.commit()
+
         if "tasks_templates" in form_dict and not 0 in form_dict["tasks_templates"]:
             for tid in form_dict["tasks_templates"]:
-                task = Task_Template.query.get(tid)
-                t = Task(
-                    uuid=str(uuid.uuid4()),
-                    title=task.title,
-                    description=task.description,
-                    url=task.url,
-                    creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
-                    last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
-                    case_id=case.id,
-                    status_id=1
-                )
-                db.session.add(t)
-                db.session.commit()
-
-                for t_t in Task_Template_Tags.query.filter_by(task_id=task.id).all():
-                    task_tag = Task_Tags(
-                        task_id=t.id,
-                        tag_id=t_t.tag_id
-                    )
-                    db.session.add(task_tag)
-                    db.session.commit()
-
-                for t_t in Task_Template_Galaxy_Tags.query.filter_by(task_id=task.id).all():
-                    task_galaxy = Task_Galaxy_Tags(
-                        task_id=t.id,
-                        cluster_id=t_t.cluster_id
-                    )
-                    db.session.add(task_galaxy)
-                    db.session.commit()
+                CommonModel.create_task_from_template(tid, case.id)
 
         # Add the current user's org to the case
         case_org = Case_Org(
@@ -150,6 +143,12 @@ def edit_case(form_dict, cid, current_user):
     """Edit a case to the DB"""
     case = CommonModel.get_case(cid)
     deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
+
+    ## Check if instance is from current user
+    for instance in form_dict["connectors"]:
+        instance = CommonModel.get_instance_by_name(instance)
+        if not CommonModel.get_user_instance_by_instance(instance.id):
+            return False
 
     case.title = form_dict["title"]
     case.description=form_dict["description"]
@@ -189,6 +188,36 @@ def edit_case(form_dict, cid, current_user):
     for c_t_db in case_cluster_db:
         if not c_t_db in form_dict["clusters"]:
             Case_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
+    ## Connectors
+    case_connector_db = Case_Connector_Instance.query.filter_by(case_id=case.id).all()
+    for connectors in form_dict["connectors"]:
+        instance = CommonModel.get_instance_by_name(connectors)
+
+        if not connectors in case_connector_db:
+            case_tag = Case_Connector_Instance(
+                instance_id=instance.id,
+                case_id=case.id
+            )
+            db.session.add(case_tag)
+            db.session.commit()
+
+        case_connector_id = Case_Connector_Id.query.filter_by(case_id=case.id, instance_id=instance.id).first()
+        if not case_connector_id:
+            case_connector_id = Case_Connector_Id(
+                case_id=case.id,
+                instance_id=instance.id,
+                identifier=form_dict["identifier"][connectors]
+            )
+            db.session.add(case_connector_id)
+        else:
+            case_connector_id.identifier = form_dict["identifier"][connectors]
+        db.session.commit()
+    
+    for c_t_db in case_connector_db:
+        if not c_t_db in form_dict["connectors"]:
+            Case_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
     CommonModel.update_last_modif(cid)
@@ -450,6 +479,7 @@ def create_template_from_case(cid, case_title_template):
     db.session.add(new_template)
     db.session.commit()
 
+    ## Tags
     for c_t in Case_Tags.query.filter_by(case_id=case.id).all():
         case_tag = Case_Template_Tags(
             case_id=new_template.id,
@@ -458,12 +488,22 @@ def create_template_from_case(cid, case_title_template):
         db.session.add(case_tag)
         db.session.commit()
 
+    ## Clusters
     for c_t in Case_Galaxy_Tags.query.filter_by(case_id=case.id).all():
         case_cluster = Case_Template_Galaxy_Tags(
             template_id=new_template.id,
             cluster_id=c_t.cluster_id
         )
         db.session.add(case_cluster)
+        db.session.commit()
+
+    ## Connectors
+    for c_t in Case_Connector_Instance.query.filter_by(case_id=case.id).all():
+        case_connector = Case_Template_Connector_Instance(
+            template_id=new_template.id,
+            instance_id=c_t.instance_id
+        )
+        db.session.add(case_connector)
         db.session.commit()
 
     for task in case.tasks:
@@ -594,3 +634,15 @@ def notify_user_recurring(form_dict, case_id, orgs):
                     if notif:
                         db.session.delete(notif)
                         db.session.commit()
+
+
+def get_modules():
+    return MODULES_CONFIG
+
+def get_instance_module_core(module, user_id):
+    connector = CommonModel.get_connector_by_name(MODULES_CONFIG[module]["config"]["connector"])
+    instance_list = list()
+    for instance in connector.instances:
+        if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+            instance_list.append(instance.to_json())
+    return  instance_list

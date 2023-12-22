@@ -63,6 +63,7 @@
                                         <td v-if="instance.description" title="Description of the instance">[[instance.description]]</td>
                                         <td v-else><i>No description</i></td>
                                         <td title="Url">[[instance.url]]</td>
+                                        <td title="Type">[[instance.type]]</td>
                                         <td><i>api key set</i></td>
                                         <td>
                                             <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">

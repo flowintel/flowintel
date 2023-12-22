@@ -41,14 +41,34 @@
                 </div>
             </div>
             <hr>
+            <div class="mb-3 w-50">
+                <label style="padding: 4px;" for="connectors_select">Connectors:</label>
+                <template v-if="connectors">
+                    <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
+                        <template v-for="(instances, connector) in connectors">
+                            <optgroup :label="[[connector]]">
+                                <template v-for="instance in instances">
+                                    <option :value="[[instance.name]]" :selected="check_connectors_exist(instance.name)">[[instance.name]]</option>
+                                </template>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
+            <div class="row" v-if="connectors_selected">
+                <div class="mb-3 w-50" v-for="instance in connectors_selected" >
+                    <label :for="'identifier_' + instance">[[instance]] Complement</label>
+                    <input v-if="connectors_value" :id="'identifier_' + instance" class="form-control" :value="connectors_value[instance]" :name="'identifier_' + instance" type="text">
+                </div>
+            </div>
+            <hr>
             
             <div>Taxonomies:</div>
             <div style="display: flex;">
                 <template v-if="taxonomies">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                         <template v-for="taxonomy in taxonomies">
-                            <option :value="[[taxonomy.name]]" v-if="check_taxo_exist(taxonomy.name)" selected>[[taxonomy.name]]</option>
-                            <option :value="[[taxonomy.name]]" v-else>[[taxonomy.name]]</option>
+                            <option :value="[[taxonomy.name]]" :selected="check_taxo_exist(taxonomy.name)" selected>[[taxonomy.name]]</option>
                         </template>
                     </select>
                 </template>
@@ -58,8 +78,7 @@
                         <template v-for="(tags, taxo) in tags_list">
                             <optgroup :label="[[taxo]]">
                                 <template v-for="tag in tags">
-                                    <option :value="[[tag.name]]" :title="tag.description" v-if="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
-                                    <option :value="[[tag.name]]" :title="tag.description" v-else>[[tag.name]]</option>
+                                    <option :value="[[tag.name]]" :title="tag.description" :selected="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
                                 </template>
                             </optgroup>
                         </template>
@@ -73,8 +92,7 @@
                 <template v-if="galaxies">
                     <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
                         <template v-for="galaxy, key in galaxies">
-                            <option :value="[[galaxy.name]]" v-if="check_galaxy_exist(galaxy.name)" selected>[[galaxy.name]]</option>
-                            <option :value="[[galaxy.name]]" v-else>[[galaxy.name]]</option>
+                            <option :value="[[galaxy.name]]" :selected="check_galaxy_exist(galaxy.name)" selected>[[galaxy.name]]</option>
                         </template>
                     </select>
                 </template>
@@ -84,8 +102,7 @@
                         <template v-for="(clusters, galaxy) in cluster_list">
                             <optgroup :label="[[galaxy]]">
                                 <template v-for="cluster in clusters">
-                                    <option v-if="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description" selected>[[cluster.tag]]</option>
-                                    <option v-else :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
+                                    <option :selected="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description" selected>[[cluster.tag]]</option>
                                 </template>
                             </optgroup>
                         </template>
@@ -117,6 +134,11 @@
             const clusters_case = ref([])
             const selected_taxo = ref([])
             const selected_galaxies = ref([])
+            
+            const connectors = ref([])
+            const connectors_case = ref([])
+            const connectors_selected = ref([])
+            const connectors_value = ref({})
 
             async function fetch_taxonomies(){
                 const res = await fetch("/case/get_taxonomies")
@@ -194,6 +216,40 @@
                 }
             }
 
+            async function fetchConnectors(){
+                const res = await fetch("/case/get_connectors")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    connectors.value = loc["connectors"]
+                }
+            }
+            fetchConnectors()
+
+            async function fetchConnectorsCase(){
+                const res = await fetch("/case/get_connectors_case/" +window.location.pathname.split("/").slice(-1))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    connectors_case.value = loc["connectors"]
+                    fetchConnectorsCaseId()
+                }
+            }
+            fetchConnectorsCase()
+
+            async function fetchConnectorsCaseId(){
+                const res = await fetch("/case/get_connectors_case_id/" +window.location.pathname.split("/").slice(-1) + "?instances=" + JSON.stringify(connectors_case.value))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    connectors_value.value = loc["instances"]
+                    $('#connectors_select').trigger('change')
+                }
+            }
+
             function check_taxo_exist(taxo){
                 return taxonomies_case.value.some(function(field) {
                     return taxo === field
@@ -214,12 +270,16 @@
                     return cluster === field
                 })
             }
+            function check_connectors_exist(connector){
+                return connectors_case.value.some(function(field){
+                    return connector === field
+                })
+            }
             
 
             onMounted(() => {
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
-                    width: '50%',
                     closeOnSelect: false
                 })
 
@@ -231,6 +291,9 @@
                     selected_galaxies.value = $(this).select2('data').map(item => item.id);
                     fetch_cluster(selected_galaxies.value)
                 })
+                $('#connectors_select').on('change.select2', function (e) {
+                    connectors_selected.value = $(this).select2('data').map(item => item.id)
+                })
             })
 
             return {
@@ -240,10 +303,14 @@
                 galaxies,
                 tags_list,
                 cluster_list,
+                connectors,
+                connectors_selected,
+                connectors_value,
                 check_taxo_exist,
                 check_galaxy_exist,
                 check_tag_exist,
-                check_cluster_exist
+                check_cluster_exist,
+                check_connectors_exist
             }
         }
     }).mount('.container')

@@ -26,6 +26,19 @@
                     <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                 {%endif%}
             </div>
+            <hr>
+            <div class="mb-3 w-50">
+                <label style="padding: 4px;" for="connectors_select">Connectors:</label>
+                <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
+                    <template v-if="connectors">
+                        <template v-for="(instances, connector) in connectors">
+                            <optgroup :label="[[connector]]">
+                                <option :value="[[instance.name]]" v-for="instance in instances">[[instance.name]]</option>
+                            </optgroup>
+                        </template>
+                    </template>
+                </select>
+            </div>
 
             <hr>
             <h5>Taxonomies:</h5>
@@ -106,6 +119,19 @@
             const cluster_list = ref([])
             const selected_galaxies = ref([])
 
+            const connectors = ref()
+
+            async function fetchConnectors(){
+                const res = await fetch("/case/get_connectors")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    connectors.value = loc["connectors"]
+                }
+            }
+            fetchConnectors()
+
             async function fetch_taxonomies(){
                 const res = await fetch("/case/get_taxonomies")
                 if(await res.status==400 ){
@@ -154,7 +180,6 @@
             onMounted(() => {
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
-                    width: '50%',
                     closeOnSelect: false
                 })
 
@@ -175,6 +200,7 @@
                 galaxies,
                 tags_list,
                 cluster_list,
+                connectors,
             }
         }
     }).mount('.container')

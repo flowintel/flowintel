@@ -26,6 +26,21 @@
                         <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
+                <hr>
+                <div class="mb-3 w-50">
+                    <label style="padding: 4px;" for="connectors_select">Connectors:</label>
+                    <template v-if="connectors">
+                    <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
+                            <template v-for="(instances, connector) in connectors">
+                                <optgroup :label="[[connector]]">
+                                    <template v-for="instance in instances">
+                                        <option :value="[[instance.name]]" :selected="check_connectors_exist(instance.name)">[[instance.name]]</option>
+                                    </template>
+                                </optgroup>
+                            </template>
+                        </select>
+                    </template>
+                </div>
 
                 <hr>
                 <h5>Taxonomies:</h5>
@@ -103,6 +118,9 @@
             const selected_taxo = ref([])
             const selected_galaxies = ref([])
 
+            const connectors = ref([])
+            const connectors_case = ref([])
+
             async function fetch_taxonomies(){
                 const res = await fetch("/case/get_taxonomies")
                 if(await res.status==400 ){
@@ -179,6 +197,27 @@
                 }
             }
 
+            async function fetchConnectors(){
+                const res = await fetch("/case/get_connectors")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    connectors.value = loc["connectors"]
+                }
+            }
+            fetchConnectors()
+
+            async function fetchConnectorsCase(){
+                const res = await fetch("/tools/template/get_connectors_case/" +window.location.pathname.split("/").slice(-1))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    connectors_case.value = loc["connectors"]
+                }
+            }
+
 
             function check_taxo_exist(taxo){
                 return taxonomies_case.value.some(function(field) {
@@ -200,12 +239,17 @@
                     return cluster === field
                 })
             }
+            function check_connectors_exist(connector){
+                return connectors_task.value.some(function(field){
+                    return connector === field && $('#connectors_select').trigger('change')
+                })
+            }
             
 
             onMounted(() => {
+                fetchConnectorsCase()
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
-                    width: '50%',
                     closeOnSelect: false
                 })
 
@@ -226,6 +270,7 @@
                 galaxies,
                 tags_list,
                 cluster_list,
+                connectors,
                 check_taxo_exist,
                 check_galaxy_exist,
                 check_tag_exist,

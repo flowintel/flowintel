@@ -63,6 +63,9 @@ def get_instance(iid):
 def get_instance_by_name(name):
     return Connector_Instance.query.filter_by(name=name).first()
 
+def get_case_connectors(cid):
+    return Case_Template_Connector_Instance.query.filter_by(template_id=cid).all()
+
 def get_task_connectors(tid):
     return Task_Template_Connector_Instance.query.filter_by(template_id=tid).all()
 

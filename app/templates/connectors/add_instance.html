@@ -37,14 +37,26 @@
                     <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div class="mb-3 w-50">
-                {{form.api_key.label(class_="col-form-label")}}:
-                {{form.api_key(class_="form-control")}}
-                {% if form.api_key.errors %}
-                    <div style="color: red;">{{form.api_key.errors[0] | safe}}</div>
-                {%endif%}
+            <div class="row">
+                <div class="mb-3 w-50">
+                    {{form.api_key.label(class_="col-form-label")}}:
+                    {{form.api_key(class_="form-control")}}
+                    {% if form.api_key.errors %}
+                        <div style="color: red;">{{form.api_key.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="mb-3 w-50">
+                    <label style="padding: 4px;" for="type_select">Type:</label>
+                    <select data-placeholder="Icons" class="select2-select form-control" name="type_select" id="type_select">
+                        {% for i, choice in form.type_select.choices %}
+                            <option value="{{i}}">{{choice}}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.type_select.errors %}
+                        <div style="color: red;">{{form.type_select.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
             </div>
-
             <div class="modal-footer">
                 {{form.submit(class='btn btn-primary')}}
             </div>
@@ -60,23 +72,9 @@
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-
-            function formatState (state) {
-                if (!state.id || !state.element.title) {
-                    return state.text;
-                }
-
-                var baseUrl = "/static/icons/";
-                var $state = $(
-                    '<span><img style="max-width: 20px;" src="' + baseUrl + state.element.title.toLowerCase() + '" class="img-flag" /> ' + state.text + '</span>'
-                );
-                return $state;
-            };
-
             onMounted(() => {
                 $('.select2-select').select2({
-                    theme: 'bootstrap-5',
-                    templateResult: formatState
+                    theme: 'bootstrap-5'
                 })
             })
             return {

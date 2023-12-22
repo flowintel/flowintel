@@ -25,12 +25,15 @@ def get_instance(iid):
     return Connector_Instance.query.get(iid)
 
 def get_user_instance_by_instance(instance_id):
-    """Return a user instance by insatnce id"""
+    """Return a user instance by instance id"""
     return User_Connector_Instance.query.filter_by(instance_id=instance_id).first()
 
 def get_user_instance_by_user(user_id):
     """Return a user instance by user id"""
-    return User_Connector_Instance.query.filter_by(user_id=user_id).first()
+    return User_Connector_Instance.query.filter_by(user_id=user_id).all()
+
+def get_user_instance_both(user_id, instance_id):
+    return User_Connector_Instance.query.filter_by(user_id=user_id, instance_id=instance_id).all()
 
 def get_icons():
     """Return all icons"""
@@ -41,7 +44,7 @@ def get_icon(iid):
     return Connector_Icon.query.get(iid)
 
 def get_default_icon():
-    """Return teh default icon"""
+    """Return the default icon"""
     return Connector_Icon.query.filter_by(name="default").first()
 
 def get_icon_file(file_id):
@@ -65,13 +68,23 @@ def add_connector_core(form_dict):
     db.session.commit()
     return True
 
-def add_connector_instance_core(cid, form_dict, user_id):
+def add_connector_instance_core(cid, form_dict, user_id, type_list=[]):
+
+    if form_dict["type_select"] and not form_dict["type_select"] == "None":
+        try:
+            type_select = type_list[int(form_dict["type_select"])]
+        except:
+            return False
+    else:
+        type_select = ""
+
     connector = Connector_Instance(
         name=form_dict["name"],
         description=form_dict["description"],
         url=form_dict["url"],
         uuid=str(uuid.uuid4()),
-        connector_id=cid
+        connector_id=cid,
+        type=type_select
     )
     db.session.add(connector)
     db.session.commit()
@@ -134,12 +147,20 @@ def edit_connector_core(cid, form_dict):
         return True
     return False
 
-def edit_connector_instance_core(iid, form_dict):
+def edit_connector_instance_core(iid, form_dict, type_list=[]):
     instance_db = get_instance(iid)
     if instance_db:
+        if form_dict["type_select"] and not form_dict["type_select"] == "None":
+            try:
+                type_select = type_list[int(form_dict["type_select"])-1]
+            except:
+                return False
+        else:
+            type_select = ""
         instance_db.name = form_dict["name"]
         instance_db.url = form_dict["url"]
         instance_db.description = form_dict["description"]
+        instance_db.type = type_select
         if form_dict["api_key"]:
             user_instance = get_user_instance_by_instance(iid)
             user_instance.api_key = form_dict["api_key"]

@@ -103,6 +103,8 @@ class Case(db.Model):
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id==self.id)\
                                                     .where(Cluster.id==Case_Galaxy_Tags.cluster_id).all()]
+        json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Case_Connector_Instance, Case_Connector_Instance.instance_id==Connector_Instance.id)\
+                                                        .where(Case_Connector_Instance.case_id==self.id).all()]
 
         return json_dict
     
@@ -337,6 +339,8 @@ class Case_Template(db.Model):
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
+        json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Case_Template_Connector_Instance, Case_Template_Connector_Instance.instance_id==Connector_Instance.id)\
+                                                        .where(Case_Template_Connector_Instance.template_id==self.id).all()]
 
 
         return json_dict
@@ -565,6 +569,7 @@ class Connector_Instance(db.Model):
     url = db.Column(db.String(64), index=True)
     description = db.Column(db.String)
     uuid = db.Column(db.String(36), index=True)
+    type = db.Column(db.String(36), index=True)
     connector_id = db.Column(db.Integer, db.ForeignKey('connector.id', ondelete="CASCADE"))
 
     def to_json(self):
@@ -574,7 +579,8 @@ class Connector_Instance(db.Model):
             "url": self.url,
             "description": self.description,
             "uuid": self.uuid,
-            "connector_id": self.connector_id
+            "connector_id": self.connector_id,
+            "type": self.type
         }
         return json_dict
 
@@ -608,9 +614,19 @@ class Icon_File(db.Model):
         }
 
 
+class Case_Connector_Instance(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    instance_id = db.Column(db.Integer, index=True)
+
 class Task_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, index=True)
+    instance_id = db.Column(db.Integer, index=True)
+
+class Case_Template_Connector_Instance(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    template_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
 
 class Task_Template_Connector_Instance(db.Model):
@@ -623,6 +639,18 @@ class User_Connector_Instance(db.Model):
     user_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
     api_key = db.Column(db.String(100), index=True)
+    
+class Case_Connector_Id(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    instance_id = db.Column(db.Integer, index=True)
+    identifier = db.Column(db.String)
+
+class Task_Connector_Id(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, index=True)
+    instance_id = db.Column(db.Integer, index=True)
+    identifier = db.Column(db.String)
 
 login_manager.anonymous_user = AnonymousUser
 

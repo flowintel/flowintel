@@ -67,6 +67,17 @@
         {%endif%}
     </div>
 
+    <br>
+    {% if case.instances %}
+        {% for instance in case.instances %}
+            <div title="{{instance.description}}">
+                <img src="/static/icons/{{instance.icon}}" style="max-width: 30px;">
+                <a style="margin-left: 5px" href="{{instance.url}}">{{instance.url}}</a>
+                <span style="margin-left: 3px;" title="identifier used by module">{{instance.identifier}}</span>
+            </div>
+        {%endfor%}
+    {%endif%}
+
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
         <i :title="cases_info.case.creation_date">Created: [[ moment.utc( cases_info.case.creation_date ).from(moment.utc()) ]]</i>
         <i :title="cases_info.case.last_modif">Changed: [[ moment.utc( cases_info.case.last_modif ).from(moment.utc()) ]]</i>

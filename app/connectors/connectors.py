@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, request, flash
 from flask_login import (
     current_user,
     login_required,
@@ -7,7 +7,7 @@ from flask_login import (
 from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm, AddConnectorInstanceForm, EditConnectorInstanceForm
 from . import connectors_core as ConnectorModel
 from ..decorators import admin_required
-from ..utils.utils import form_to_dict
+from ..utils.utils import form_to_dict, get_module_type
 
 connector_blueprint = Blueprint(
     'connector',
@@ -65,7 +65,11 @@ def get_instances(cid):
     """List all instance for a connector"""
     connector = ConnectorModel.get_connector(cid)
     if connector:
-        return {"instances": [instance.to_json() for instance in ConnectorModel.get_instances(cid)]}, 200
+        instance_list = list()
+        for instance in connector.instances:
+            if ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+                instance_list.append(instance.to_json())
+        return {"instances": instance_list}, 200
     return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
 
 @connector_blueprint.route("/add_connector", methods=['GET','POST'])
@@ -92,9 +96,14 @@ def add_instance(cid):
     """Add an instance"""
     if ConnectorModel.get_connector(cid):
         form = AddConnectorInstanceForm()
+        type_list = get_module_type()
+        form.type_select.choices = list()
+        for i in range(0, len(type_list)):
+            form.type_select.choices.append((i, type_list[i]))
+        form.type_select.choices.insert(0, ("None","--"))
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            ConnectorModel.add_connector_instance_core(cid, form_dict, current_user.id)
+            ConnectorModel.add_connector_instance_core(cid, form_dict, current_user.id, type_list)
             return redirect("/connectors")
         return render_template("connectors/add_instance.html", form=form, edit_mode=False)
     return render_template("404.html")
@@ -150,12 +159,21 @@ def edit_instance(cid, iid):
     """Edit an instance"""
     if ConnectorModel.get_connector(cid):
         form = EditConnectorInstanceForm()
-        loc_instance = ConnectorModel.get_instance(cid)
+        loc_instance = ConnectorModel.get_instance(iid)
         form.instance_id.data = iid
+
+        type_list = get_module_type()
+        form.type_select.choices = list()
+        for i in range(0, len(type_list)):
+            if not type_list[i] == loc_instance.type:
+                form.type_select.choices.append((i+1, type_list[i]))
+        form.type_select.choices.insert(0, ("None","--"))
+        if loc_instance.type:
+            form.type_select.choices.insert(0, (0, loc_instance.type))
 
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            if not ConnectorModel.edit_connector_instance_core(cid, form_dict):
+            if not ConnectorModel.edit_connector_instance_core(iid, form_dict, type_list):
                 flash("Error editing connector")
             return redirect("/connectors")
         else:
