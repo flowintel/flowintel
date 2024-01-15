@@ -483,6 +483,8 @@ def get_connectors_task_id(tid):
         loc = dict()
         instances = ast.literal_eval(request.args.get("instances"))
         for instance in instances:
-            loc[instance] = CommonModel.get_task_connector_id(CommonModel.get_instance_by_name(instance).id, task.id).identifier
+            ident = CommonModel.get_task_connector_id(CommonModel.get_instance_by_name(instance).id, task.id)
+            if ident:
+                loc[instance] = ident.identifier
         return {"instances": loc}, 200
     return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404

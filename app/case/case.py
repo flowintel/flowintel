@@ -602,12 +602,19 @@ def get_modules():
     # return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
 
 
-@case_blueprint.route("/get_instance_module", methods=['GET'])
+@case_blueprint.route("/<cid>/get_instance_module", methods=['GET'])
 @login_required
-def get_instance_module():
-    if "module" in request.args:
-        module = request.args.get("module")
-    return {"instances": CaseModel.get_instance_module_core(module, current_user.id)}, 200
+def get_instance_module(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if "module" in request.args:
+            module = request.args.get("module")
+        if "type" in request.args:
+            type_module = request.args.get("type")
+        else:
+            return{"message": "Module type error", 'toast_class': "danger-subtle"}, 400
+        return {"instances": CaseModel.get_instance_module_core(module, type_module, case.id, current_user.id)}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/get_connectors_case/<cid>", methods=['GET'])
 @login_required
@@ -625,6 +632,25 @@ def get_connectors_case_id(tid):
         loc = dict()
         instances = ast.literal_eval(request.args.get("instances"))
         for instance in instances:
-            loc[instance] = CommonModel.get_case_connector_id(CommonModel.get_instance_by_name(instance).id, case.id).identifier
+            ident = CommonModel.get_case_connector_id(CommonModel.get_instance_by_name(instance).id, case.id)
+            if ident:
+                loc[instance] = ident.identifier
         return {"instances": loc}, 200
     return {"message": "case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+
+@case_blueprint.route("/<cid>/call_module_case", methods=['GET', 'POST'])
+@login_required
+def call_module_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        instances = request.get_json()["int_sel"]
+        module = request.args.get("module")
+        res = CaseModel.call_module_case(module, instances, case, current_user)
+        if res:
+            res["toast_class"] = "danger-subtle"
+            return jsonify(res), 400
+        return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+

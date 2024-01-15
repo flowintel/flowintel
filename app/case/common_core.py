@@ -97,7 +97,7 @@ def get_all_status():
     return Status.query.all()
 
 def get_status(sid):
-    return Status.query.get(sid).first()
+    return Status.query.get(sid)
 
 
 def get_recu_notif_user(case_id, user_id):
@@ -171,7 +171,7 @@ def get_task_connectors(tid):
     return Task_Connector_Instance.query.filter_by(task_id=tid).all()
 
 def get_user_instance_both(user_id, instance_id):
-    return User_Connector_Instance.query.filter_by(user_id=user_id, instance_id=instance_id).all()
+    return User_Connector_Instance.query.filter_by(user_id=user_id, instance_id=instance_id).first()
 
 def get_user_instance_by_instance(instance_id):
     """Return a user instance by instance id"""

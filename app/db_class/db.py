@@ -152,8 +152,10 @@ class Task(db.Model):
 
     def to_json(self):
         json_dict = {
-            "id": self.id, "uuid": self.uuid, 
-            "title": self.title, "description": self.description,
+            "id": self.id,
+            "uuid": self.uuid,
+            "title": self.title,
+            "description": self.description,
             "url": self.url,
             "notes": self.notes,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
@@ -633,6 +635,8 @@ class Task_Template_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     template_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
+
+
 
 class User_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

@@ -3,7 +3,7 @@ import ast
 import uuid
 import datetime
 
-from app.utils.utils import get_modules_list, MODULES, MODULES_CONFIG
+from app.utils.utils import MODULES, MODULES_CONFIG
 from .. import db
 from ..db_class.db import *
 from sqlalchemy import desc, and_
@@ -639,10 +639,67 @@ def notify_user_recurring(form_dict, case_id, orgs):
 def get_modules():
     return MODULES_CONFIG
 
-def get_instance_module_core(module, user_id):
+def get_instance_module_core(module, type_module, case_id, user_id):
     connector = CommonModel.get_connector_by_name(MODULES_CONFIG[module]["config"]["connector"])
     instance_list = list()
     for instance in connector.instances:
         if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
-            instance_list.append(instance.to_json())
-    return  instance_list
+            if instance.type==type_module:
+                loc_instance = instance.to_json()
+                identifier = CommonModel.get_case_connector_id(instance.id, case_id)
+                loc_instance["identifier"] = identifier.identifier
+                instance_list.append(loc_instance)
+    return instance_list
+
+
+def call_module_case(module, instances, case, user):
+    org = CommonModel.get_org(case.owner_org_id)
+
+    tasks = list()
+    for task in case.tasks:
+        loc_task = task.to_json()
+        loc_task["status"] = CommonModel.get_status(task.status_id).name
+        tasks.append(loc_task)
+
+    case = case.to_json()
+    case["org_name"] = org.name
+    case["org_uuid"] = org.uuid
+    case["tasks"] = tasks
+    case["status"] = CommonModel.get_status(case["status_id"]).name
+
+
+    for instance in list(instances.keys()):
+        instance_key = instance
+        instance = CommonModel.get_instance_by_name(instance)
+        user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
+        case_instance_id = CommonModel.get_case_connector_id(instance.id, case["id"])
+
+        instance = instance.to_json()
+        if user_instance:
+            instance["api_key"] = user_instance.api_key
+        if instances[instance_key]:
+            instance["identifier"] = instances[instance_key]
+
+        event_id = MODULES[module].handler(instance, case)
+        if isinstance(event_id, dict):
+            return event_id
+
+        if not case_instance_id:
+            cc_instance = Case_Connector_Instance(
+                case_id=case["id"],
+                instance_id=instance["id"]
+            )
+            db.session.add(cc_instance)
+            db.session.commit()
+
+            cci = Case_Connector_Id(
+                case_id = case["id"],
+                instance_id=instance["id"],
+                identifier=event_id
+            )
+            db.session.add(cci)
+            db.session.commit()
+        elif not case_instance_id.identifier == event_id:
+            case_instance_id.identifier = event_id
+            db.session.commit()
+            
