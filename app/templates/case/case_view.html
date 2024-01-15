@@ -137,10 +137,10 @@
     {%endif%}
 
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
-        <i :title="cases_info.case.creation_date">Created: [[ moment.utc( cases_info.case.creation_date ).from(moment.utc()) ]]</i>
-        <i :title="cases_info.case.last_modif">Changed: [[ moment.utc( cases_info.case.last_modif ).from(moment.utc()) ]]</i>
+        <i :title="cases_info.case.creation_date">Created: [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]</i>
+        <i :title="cases_info.case.last_modif">Changed: [[ dayjs.utc( cases_info.case.last_modif ).fromNow() ]]</i>
         {% if case.deadline %}
-            <i :title="cases_info.case.deadline">Deadline: [[ moment.utc( cases_info.case.deadline ).endOf().from(moment.utc()) ]]</i>
+            <i :title="cases_info.case.deadline">Deadline: [[ dayjs.utc( cases_info.case.deadline ).endOf().fromNow() ]]</i>
         {%endif%}
     </div>
     {%if case.recurring_type %}
@@ -833,7 +833,7 @@
                     users_in_case,
                     message_list,
                     edit_mode,
-                    moment,
+                    dayjs,
                     main_tab,
                     history,
                     delete_case,

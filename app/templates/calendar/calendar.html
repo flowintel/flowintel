@@ -152,7 +152,7 @@
                 status_info.value = await res.json()
             }       
 
-            fetch_task_calendar(moment.utc().format('YYYY-MM'))
+            fetch_task_calendar(dayjs.utc().format('YYYY-MM'))
             fetchStatus()
 
 
@@ -253,7 +253,7 @@
             var dp = new DayPilot.Month("dp");
 
             dp.theme = "month_white";
-            dp.startDate = moment.utc().format('YYYY-MM-DD');
+            dp.startDate = dayjs.utc().format('YYYY-MM-DD');
             
 
             dp.onEventClicked = function(args) {

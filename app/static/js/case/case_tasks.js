@@ -324,11 +324,11 @@ export default {
 		}
 
 		function formatNow(dt) {
-			return moment.utc(dt).from(moment.utc())
+			return dayjs.utc(dt).from(dayjs.utc())
 		}
 
 		function endOf(dt){
-			return moment.utc(dt).endOf().from(moment.utc())
+			return dayjs.utc(dt).endOf().from(dayjs.utc())
 		}
 
 

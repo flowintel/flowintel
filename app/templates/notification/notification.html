@@ -41,8 +41,8 @@
                                 <span class="badge text-bg-dark">Read</span>
                             </div>
                             <div class="d-flex w-100 justify-content-between">
-                                <small><i class="card-text" :title="notif.creation_date">Created [[ moment.utc(notif.creation_date).from(moment.utc()) ]]</i></small>
-                                <small><i v-if="notif.read_date" class="card-text" :title="notif.read_date">Read [[ moment.utc(notif.read_date).from(moment.utc()) ]]</i></small>
+                                <small><i class="card-text" :title="notif.creation_date">Created [[ dayjs.utc(notif.creation_date).fromNow() ]]</i></small>
+                                <small><i v-if="notif.read_date" class="card-text" :title="notif.read_date">Read [[ dayjs.utc(notif.read_date).fromNow() ]]</i></small>
                             </div>
                         </a>
                         <a v-else :href="`/case/${notif.case_id}`" class="list-group-item list-group-item-action">
@@ -51,7 +51,7 @@
                                 <h5 class="mb-1"> <i v-if="notif.html_icon" :class="notif.html_icon"></i>  [[ notif.message ]]</h5>
                             </div>
                             <div class="d-flex w-100 justify-content-between">
-                                <small><i class="card-text" :title="notif.creation_date">Recieved [[ moment.utc(notif.creation_date).from(moment.utc()) ]]</i></small>
+                                <small><i class="card-text" :title="notif.creation_date">Recieved [[ dayjs.utc(notif.creation_date).fromNow() ]]</i></small>
                             </div>
                         </a>
                         <div style="display: grid;">
@@ -150,7 +150,7 @@
                     read_notification,
                     select_unread_read,
                     delete_notif,
-                    moment,
+                    dayjs,
                     mark_all_read
                 }
             }

@@ -11,7 +11,11 @@
         <script src="{{ url_for('static',filename='js/jquery-ui.js') }}"></script>
         <script src="{{ url_for('static',filename='js/select2.min.js') }}"></script>
         <script src="{{ url_for('static',filename='js/vue.global.js') }}"></script>
-        <script src="{{ url_for('static',filename='js/moment.min.js') }}"></script>
+        <script src="{{ url_for('static',filename='js/dayjs.min.js') }}"></script>
+        <script src="{{ url_for('static',filename='js/dayjs-utc.js') }}"></script>
+        <script src="{{ url_for('static',filename='js/dayjs-relativeTime.js') }}"></script>
+        <script>dayjs.extend(window.dayjs_plugin_utc)</script>
+        <script>dayjs.extend(window.dayjs_plugin_relativeTime)</script>
         <script src="{{ url_for('static',filename='js/daypilot-all.min.js') }}"></script>
         <script src="{{ url_for('static',filename='js/zxcvbn.js') }}"></script>
         <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
