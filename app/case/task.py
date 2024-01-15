@@ -102,7 +102,6 @@ def edit_task(cid, tid):
 @editor_required
 def complete_task(tid):
     """Complete the task"""
-
     task = CommonModel.get_task(str(tid))
     if task:
         if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
@@ -405,9 +404,7 @@ def notify_user(cid, tid):
 @login_required
 def export_notes(cid, tid):
     """Export note of a task as pdf"""
-
-    case = CommonModel.get_case(cid)
-    if case:
+    if CommonModel.get_case(cid):
         task = CommonModel.get_task(tid)
         if task:
             data_dict = dict(request.args)
@@ -423,22 +420,22 @@ def export_notes(cid, tid):
 
 @task_blueprint.route("/get_taxonomies_task/<tid>", methods=['GET'])
 @login_required
-def get_taxonomies_case(tid):
-    task = CommonModel.get_task(tid)
-    if task:
-        tags = CommonModel.get_task_tags(task.id)
+def get_taxonomies_task(tid):
+    """Get all taxonomies for a task"""
+    if CommonModel.get_task(tid):
+        tags = CommonModel.get_task_tags(tid)
         taxonomies = []
         if tags:
             taxonomies = [tag.split(":")[0] for tag in tags]
         return {"tags": tags, "taxonomies": taxonomies}
-    return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 @task_blueprint.route("/get_galaxies_task/<tid>", methods=['GET'])
 @login_required
 def get_galaxies_task(tid):
-    task = CommonModel.get_task(tid)
-    if task:
-        clusters = CommonModel.get_task_clusters(task.id)
+    """Get all galaxies for a task"""
+    if CommonModel.get_task(tid):
+        clusters = CommonModel.get_task_clusters(tid)
         galaxies = []
         if clusters:
             for cluster in clusters:
@@ -454,6 +451,7 @@ def get_galaxies_task(tid):
 @task_blueprint.route("/get_connectors", methods=['GET'])
 @login_required
 def get_connectors():
+    """Get all connectors and instances"""
     connectors_list = CommonModel.get_connectors()
     connectors_dict = dict()
     for connector in connectors_list:
@@ -469,6 +467,7 @@ def get_connectors():
 @task_blueprint.route("/get_connectors_task/<tid>", methods=['GET'])
 @login_required
 def get_connectors_task(tid):
+    """Get all connectors for a task"""
     task = CommonModel.get_task(tid)
     if task:
         return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}, 200
@@ -478,6 +477,7 @@ def get_connectors_task(tid):
 @task_blueprint.route("/get_connectors_task_id/<tid>", methods=['GET'])
 @login_required
 def get_connectors_task_id(tid):
+    """Get all identifier for connectors instances"""
     task = CommonModel.get_task(tid)
     if task:
         loc = dict()

@@ -441,7 +441,7 @@ class GetAllUsers(Resource):
         case = CommonModel.get_case(cid)
         if case:
             users_list = list()
-            for org in CommonModel.get_all_users_core(case):
+            for org in CommonModel.get_all_org_case(case):
                 for user in org.users:
                     if not user == current_user:
                         users_list.append(user.to_json())

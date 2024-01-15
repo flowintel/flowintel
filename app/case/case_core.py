@@ -274,25 +274,25 @@ def get_present_in_case(case_id, user):
 
 
 def change_status_core(status, case, current_user):
+    """Change the status of a case"""
     case.status_id = status
     CommonModel.update_last_modif(case.id)
     db.session.commit()
     CommonModel.save_history(case.uuid, current_user, "Case Status changed")
-
     return True
 
 
 def regroup_case_info(cases, user, nb_pages=None):
+    """Regroup all information if a case"""
     loc = dict()
     loc["cases"] = list()
     
     for case in cases:
-        present_in_case = get_present_in_case(case.id, user)
         case_loc = case.to_json()
-        case_loc["present_in_case"] = present_in_case
+        case_loc["present_in_case"] = get_present_in_case(case.id, user)
         case_loc["current_user_permission"] = CommonModel.get_role(user).to_json()
-
         loc["cases"].append(case_loc)
+
     if nb_pages:
         loc["nb_pages"] = nb_pages
     else:
@@ -305,6 +305,7 @@ def regroup_case_info(cases, user, nb_pages=None):
 
 
 def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, filter=None):
+    """Build a case query depending on parameters"""
     query = Case.query
     conditions = [Case.completed == completed]
 
@@ -339,6 +340,7 @@ def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None,
 
 
 def sort_by_status(page, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
+    """Sort all cases by completed and depending of taxonomies and galaxies"""
     cases = build_case_query(page, completed, tags, taxonomies, galaxies, clusters)
 
     if tags:
@@ -384,6 +386,7 @@ def sort_by_status(page, taxonomies=[], galaxies=[], tags=[], clusters=[], or_an
 
 
 def sort_by_filter(filter, page, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
+    """Sort all cases by a filter and taxonomies and galaxies"""
     cases = build_case_query(page, completed, tags, taxonomies, galaxies, clusters, filter)
     nb_pages = cases.pages
     if tags:
@@ -436,6 +439,7 @@ def sort_by_filter(filter, page, taxonomies=[], galaxies=[], tags=[], clusters=[
 
 
 def fork_case_core(cid, case_title_fork, user):
+    """Fork a case into an other with nearly all informations"""
     case_title_stored = CommonModel.get_case_by_title(case_title_fork)
     if case_title_stored:
         return {"message": "Error, title already exist"}
@@ -467,6 +471,7 @@ def fork_case_core(cid, case_title_fork, user):
 
 
 def create_template_from_case(cid, case_title_template):
+    """Create a case template from a case"""
     if Case_Template.query.filter_by(title=case_title_template).first():
         return {"message": "Error, title already exist"}
     
@@ -506,6 +511,8 @@ def create_template_from_case(cid, case_title_template):
         db.session.add(case_connector)
         db.session.commit()
 
+
+    ## Tasks of the case will become task template
     for task in case.tasks:
         task_exist = Task_Template.query.filter_by(title=task.title).first()
         if not task_exist:
@@ -563,6 +570,7 @@ def create_template_from_case(cid, case_title_template):
 
 
 def change_recurring(form_dict, cid, current_user):
+    """Change the type of recurring and the date for a case"""
     case = CommonModel.get_case(cid)
     recurring_status = Status.query.filter_by(name="Recurring").first()
     created_status = Status.query.filter_by(name="Created").first()
@@ -608,6 +616,7 @@ def change_recurring(form_dict, cid, current_user):
 
 
 def notify_user(task, user_id):
+    """Notify an user on task"""
     case = CommonModel.get_case(task.case_id)
     message = f"Notify for task '{task.id}-{task.title}' of case '{case.id}-{case.title}'"
     NotifModel.create_notification_user(message, task.case_id, user_id=user_id, html_icon="fa-solid fa-bell")
@@ -615,6 +624,7 @@ def notify_user(task, user_id):
 
 
 def notify_user_recurring(form_dict, case_id, orgs):
+    """Notify users for a recurring case"""
     for org in orgs:
         if f"check_{org.id}" in form_dict:
             for user in org.users:
@@ -637,9 +647,11 @@ def notify_user_recurring(form_dict, case_id, orgs):
 
 
 def get_modules():
+    """Return all modules"""
     return MODULES_CONFIG
 
 def get_instance_module_core(module, type_module, case_id, user_id):
+    """Return a list of connectors instances for a module"""
     connector = CommonModel.get_connector_by_name(MODULES_CONFIG[module]["config"]["connector"])
     instance_list = list()
     for instance in connector.instances:
@@ -653,6 +665,7 @@ def get_instance_module_core(module, type_module, case_id, user_id):
 
 
 def call_module_case(module, instances, case, user):
+    """Run a module"""
     org = CommonModel.get_org(case.owner_org_id)
 
     tasks = list()
@@ -702,4 +715,3 @@ def call_module_case(module, instances, case, user):
         elif not case_instance_id.identifier == event_id:
             case_instance_id.identifier = event_id
             db.session.commit()
-            

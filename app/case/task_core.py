@@ -249,6 +249,7 @@ def edit_task_core(form_dict, tid, current_user):
 
 
 def add_file_core(task, files_list, current_user):
+    """Upload a new file"""
     create_specific_dir(UPLOAD_FOLDER)
     create_specific_dir(FILE_FOLDER)
     for file in files_list:
@@ -349,6 +350,7 @@ def remove_assign_task(tid, user, current_user, flag_current_user):
 
 
 def change_task_status(status, task, current_user):
+    """Return the status of a task"""
     task.status_id = status
     CommonModel.update_last_modif(task.case_id)
     CommonModel.update_last_modif_task(task.id)
@@ -356,15 +358,16 @@ def change_task_status(status, task, current_user):
 
     case = CommonModel.get_case(task.case_id)
     CommonModel.save_history(case.uuid, current_user, f"Status changed for task '{task.title}'")
-
     return True
 
 
 def download_file(file):
+    """Download a file"""
     return send_file(os.path.join(FILE_FOLDER, file.uuid), as_attachment=True, download_name=file.name)
 
 
 def delete_file(file, task, current_user):
+    """Delete a file"""
     try:
         os.remove(os.path.join(FILE_FOLDER, file.uuid))
     except:
@@ -378,6 +381,7 @@ def delete_file(file, task, current_user):
 
 
 def get_task_info(tasks_list, user):
+    """Regroup all info on a task"""
     tasks = list()
     for task in tasks_list:
         case = CommonModel.get_case(task.case_id)
@@ -400,6 +404,7 @@ def get_task_info(tasks_list, user):
 
 
 def build_task_query(completed, tags=None, taxonomies=None, galaxies=None, clusters=None, filter=None):
+    """Build a task query depending on parameters"""
     query = Task.query
     conditions = [Task.completed == completed]
 
@@ -433,6 +438,7 @@ def build_task_query(completed, tags=None, taxonomies=None, galaxies=None, clust
     return query.filter(and_(*conditions)).all()
 
 def sort_by_status_task_core(case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False, no_info=False, filter=False):
+    """Sort all tasks by completed and depending of taxonomies and galaxies"""
     tasks = build_task_query(completed, tags, taxonomies, galaxies, clusters, filter)
 
     if tags:
@@ -481,6 +487,7 @@ def sort_by_status_task_core(case, user, taxonomies=[], galaxies=[], tags=[], cl
 
 
 def sort_tasks_by_filter(case, user, filter, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
+    """Sort all tasks by a filter and taxonomies and galaxies"""
     tasks_list = sort_by_status_task_core(case, user, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed, no_info=True, filter=filter)
 
     loc_list = list()
@@ -512,6 +519,7 @@ def sort_tasks_by_filter(case, user, filter, taxonomies=[], galaxies=[], tags=[]
 
 
 def export_notes(task, type_req):
+    """Export notes into a format like pdf or docx"""
     if not os.path.isdir(TEMP_FOLDER):
         os.mkdir(TEMP_FOLDER)
 

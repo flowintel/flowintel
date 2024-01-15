@@ -8,7 +8,7 @@ from . import common_core as CommonModel
 from . import task_core as TaskModel
 from ..db_class.db import Task_Template, Case_Template
 from ..decorators import editor_required
-from ..utils.utils import form_to_dict, check_tag
+from ..utils.utils import form_to_dict
 
 case_blueprint = Blueprint(
     'case',
@@ -67,7 +67,7 @@ def create_case():
 @case_blueprint.route("/<cid>", methods=['GET', 'POST'])
 @login_required
 def view(cid):
-    """View a case"""
+    """View of a case"""
     case = CommonModel.get_case(cid)
     if case:
         present_in_case = CaseModel.get_present_in_case(cid, current_user)
@@ -223,7 +223,7 @@ def recurring(cid):
 @case_blueprint.route("/get_cases_page", methods=['GET'])
 @login_required
 def get_cases():
-    """Return all cases"""
+    """Return all cases by page"""
     page = request.args.get('page', 1, type=int)
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
@@ -252,7 +252,6 @@ def search():
 @editor_required
 def delete(cid):
     """Delete the case"""
-
     if CommonModel.get_case(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_case(cid, current_user):
@@ -284,7 +283,7 @@ def get_case_info(cid):
 @login_required
 @editor_required
 def complete_case(cid):
-    """Complete the case"""
+    """Mark a case as completed"""
     if CommonModel.get_case(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.complete_case(cid, current_user):
@@ -305,7 +304,6 @@ def complete_case(cid):
 @editor_required
 def remove_org_case(cid, oid):
     """Remove an org to the case"""
-
     if CommonModel.get_case(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.remove_org_case(cid, oid, current_user):
@@ -320,7 +318,6 @@ def remove_org_case(cid, oid):
 @editor_required
 def change_status(cid):
     """Change the status of the case"""
-    
     status = request.json["status"]
     case = CommonModel.get_case(cid)
 
@@ -335,8 +332,7 @@ def change_status(cid):
 @case_blueprint.route("/get_status", methods=['GET'])
 @login_required
 def get_status():
-    """Get status"""
-
+    """Get all status"""
     status = CommonModel.get_all_status()
     status_list = list()
     for s in status:
@@ -422,12 +418,11 @@ def finished_sort_by_filter():
 @case_blueprint.route("/<cid>/get_all_users", methods=['GET'])
 @login_required
 def get_all_users(cid):
-    """Get all user in case"""
-
+    """Get all users in case"""
     case = CommonModel.get_case(cid)
     if case:
         users_list = list()
-        orgs = CommonModel.get_all_users_core(case)
+        orgs = CommonModel.get_all_org_case(case)
         for org in orgs:
             for user in org.users:
                 if not user == current_user:
@@ -451,7 +446,6 @@ def get_assigned_users(cid, tid):
 @login_required
 def download_case(cid):
     """Download a case"""
-
     case = CommonModel.get_case(cid)
     if case:
         task_list = list()
@@ -468,7 +462,6 @@ def download_case(cid):
 @login_required
 def fork_case(cid):
     """Assign current user to the task"""
-
     if CommonModel.get_case(cid):
         if "case_title_fork" in request.json:
             case_title_fork = request.json["case_title_fork"]
@@ -481,9 +474,10 @@ def fork_case(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/get_all_case_title", methods=['GET'])
+@case_blueprint.route("/check_case_title_exist", methods=['GET'])
 @login_required
-def get_all_case_title():
+def check_case_title_exist():
+    """Check if a title for a case exist"""
     data_dict = dict(request.args)
     if CommonModel.get_case_by_title(data_dict["title"]):
         flag = True
@@ -497,6 +491,7 @@ def get_all_case_title():
 @login_required
 @editor_required
 def create_template(cid):
+    """Create a case template from a case"""
     if CommonModel.get_case(cid):
         if "case_title_template" in request.json:
             case_title_template = request.json["case_title_template"]
@@ -509,9 +504,10 @@ def create_template(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/get_all_case_template_title", methods=['GET'])
+@case_blueprint.route("/check_case_template_title_exist", methods=['GET'])
 @login_required
-def get_all_case_template_title():
+def check_case_template_title_exist():
+    """Check if a title for a case template exist"""
     data_dict = dict(request.args)
     if CommonModel.get_case_template_by_title(data_dict["title"]):
         flag = True
@@ -524,6 +520,7 @@ def get_all_case_template_title():
 @case_blueprint.route("/history/<cid>", methods=['GET'])
 @login_required
 def history(cid):
+    """Get the history of a case"""
     case = CommonModel.get_case(cid)
     if case:
         history = CommonModel.get_history(case.uuid)
@@ -536,11 +533,13 @@ def history(cid):
 @case_blueprint.route("/get_taxonomies", methods=['GET'])
 @login_required
 def get_taxonomies():
+    """Get all taxonomies"""
     return {"taxonomies": CommonModel.get_taxonomies()}, 200
 
 @case_blueprint.route("/get_tags", methods=['GET'])
 @login_required
 def get_tags():
+    """Get all tags by taxonomies"""
     data_dict = dict(request.args)
     if "taxonomies" in data_dict:
         taxos = json.loads(data_dict["taxonomies"])
@@ -551,6 +550,7 @@ def get_tags():
 @case_blueprint.route("/get_taxonomies_case/<cid>", methods=['GET'])
 @login_required
 def get_taxonomies_case(cid):
+    """Get all taxonomies present in a case"""
     case = CommonModel.get_case(cid)
     if case:
         tags = CommonModel.get_case_tags(case.id)
@@ -564,12 +564,14 @@ def get_taxonomies_case(cid):
 @case_blueprint.route("/get_galaxies", methods=['GET'])
 @login_required
 def get_galaxies():
+    """Get all galaxies"""
     return {"galaxies": CommonModel.get_galaxies()}, 200
 
 
 @case_blueprint.route("/get_clusters", methods=['GET'])
 @login_required
 def get_clusters():
+    """Get all clusters by galaxies"""
     if "galaxies" in request.args:
         galaxies = request.args.get("galaxies")
         galaxies = json.loads(galaxies)
@@ -580,6 +582,7 @@ def get_clusters():
 @case_blueprint.route("/get_galaxies_case/<cid>", methods=['GET'])
 @login_required
 def get_galaxies_case(cid):
+    """Get all galaxies present in a case"""
     case = CommonModel.get_case(cid)
     if case:
         clusters = CommonModel.get_case_clusters(case.id)
@@ -598,13 +601,14 @@ def get_galaxies_case(cid):
 @case_blueprint.route("/get_modules", methods=['GET'])
 @login_required
 def get_modules():
+    """Get all modules"""
     return {"modules": CaseModel.get_modules()}, 200
-    # return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
 
 
 @case_blueprint.route("/<cid>/get_instance_module", methods=['GET'])
 @login_required
 def get_instance_module(cid):
+    """Get all connectors instances by modules"""
     case = CommonModel.get_case(cid)
     if case:
         if "module" in request.args:
@@ -619,6 +623,7 @@ def get_instance_module(cid):
 @case_blueprint.route("/get_connectors_case/<cid>", methods=['GET'])
 @login_required
 def get_connectors_case(cid):
+    """Get all connectors instances for a case"""
     case = CommonModel.get_case(cid)
     if case:
         return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}, 200
@@ -627,6 +632,7 @@ def get_connectors_case(cid):
 @case_blueprint.route("/get_connectors_case_id/<tid>", methods=['GET'])
 @login_required
 def get_connectors_case_id(tid):
+    """Get identifier for a list of connectors instances"""
     case = CommonModel.get_case(tid)
     if case:
         loc = dict()
@@ -643,6 +649,7 @@ def get_connectors_case_id(tid):
 @case_blueprint.route("/<cid>/call_module_case", methods=['GET', 'POST'])
 @login_required
 def call_module_case(cid):
+    """Run a module"""
     case = CommonModel.get_case(cid)
     if case:
         instances = request.get_json()["int_sel"]

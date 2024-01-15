@@ -40,16 +40,20 @@ def get_all_cases():
     return Case.query.filter_by(completed=False).order_by(desc(Case.last_modif))
 
 def get_case_by_completed(completed):
-    return Case.query.filter_by(completed=completed)
+    """Return a list of case depending on completed"""
+    return Case.query.filter_by(completed=completed).all()
 
 def get_case_by_title(title):
+    """Return a case by its title """
     return Case.query.where(func.lower(Case.title)==func.lower(title)).first()
 
 def get_case_template_by_title(title):
+    """Return a case template by its title"""
     return Case_Template.query.filter_by(title=title).first()
 
 
 def get_task_templates():
+    """Return a list of task template"""
     return Task_Template.query.all()
 
 def search(text):
@@ -57,7 +61,8 @@ def search(text):
     return Case.query.where(Case.title.contains(text), Case.completed==False).paginate(page=1, per_page=30, max_per_page=50)
 
 
-def get_all_users_core(case):
+def get_all_org_case(case):
+    """Return a list of all orgs in a case"""
     return Org.query.join(Case_Org, Case_Org.case_id==case.id).where(Case_Org.org_id==Org.id).all()
 
 
@@ -79,9 +84,11 @@ def get_org_order_by_name():
     return Org.query.order_by("name")
 
 def get_org_in_case(org_id, case_id):
+    """Return an instance of Case_org"""
     return Case_Org.query.filter_by(case_id=case_id, org_id=org_id).first()
 
 def get_org_in_case_by_case_id(case_id):
+    """Return an instance of Case_org depending of a case id"""
     return Case_Org.query.filter_by(case_id=case_id).all()
 
 def get_orgs_in_case(case_id):
@@ -91,100 +98,127 @@ def get_orgs_in_case(case_id):
 
 
 def get_file(fid):
+    """Return a file"""
     return File.query.get(fid)
 
 def get_all_status():
+    """Return a list of all status"""
     return Status.query.all()
 
 def get_status(sid):
+    """Return a status"""
     return Status.query.get(sid)
 
 
 def get_recu_notif_user(case_id, user_id):
+    """Return a notification for a case for a user"""
     return Recurring_Notification.query.filter_by(case_id=case_id, user_id=user_id).first()
 
 
 def get_taxonomies():
+    """Return a list of all taxonomies"""
     return [taxo.to_json() for taxo in Taxonomy.query.filter_by(exclude=False).all()]
 
 def get_galaxy(galaxy_id):
+    """Return a galaxy"""
     return Galaxy.query.get(galaxy_id)
 
 def get_galaxies():
+    """Return a list of all galaxies"""
     return [galax.to_json() for galax in Galaxy.query.filter_by(exclude=False).order_by('name').all()]
 
 def get_clusters():
+    """Return a list of all clusters"""
     return [cluster.to_json() for cluster in Cluster.query.all()]
 
 def get_cluster_by_name(cluster):
+    """Return a cluster by its name"""
     return Cluster.query.filter_by(name=cluster).first()
 
-def get_clusters_galaxy(galaxies):
+def get_clusters_galaxy(galaxies) -> dict:
+    """Return a dictionary with each clusters for each galaxies"""
     out = dict()
     for galaxy in galaxies:
         out[galaxy] = [cluster.to_json() for cluster in Cluster.query.join(Galaxy, Galaxy.id==Cluster.galaxy_id).where(Galaxy.name==galaxy).all() if not cluster.exclude]
     return out
 
 
-def get_tags(taxos):
+def get_tags(taxos) -> dict:
+    """Return a dictionary with each tags for each taxonomies"""
     out = dict()
     for taxo in taxos:
         out[taxo] = [tag.to_json() for tag in Taxonomy.query.filter_by(name=taxo).first().tags if not tag.exclude]
     return out
 
 def get_tag(tag):
+    """Return a tag by its name"""
     return Tags.query.filter_by(name=tag).first()
 
 
 def get_case_tags(cid):
+    """Return a list of tags present in a case"""
     return [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
 
 def get_case_clusters(cid):
+    """Return a list of clusters present in a case"""
     return [cluster for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id).filter_by(case_id=cid).all()]
 
 def get_task_tags(tid):
+    """Return a list of tags present in a task"""
     return [tag.name for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
 
 def get_task_clusters(tid):
+    """Return a list of clusters present in a case"""
     return [cluster for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id).filter_by(task_id=tid).all()]
 
 
 def get_connectors():
+    """Return a list of all connectors"""
     return Connector.query.all()
 
 def get_connector(cid):
+    """Return a connector"""
     return Connector.query.get(cid)
 
 def get_connector_by_name(name):
+    """Return a connector by its name"""
     return Connector.query.where(Connector.name.like(name)).first()
 
 def get_instance(iid):
+    """Return an instance"""
     return Connector_Instance.query.get(iid)
 
 def get_instance_by_name(name):
+    """Return an instance by its name"""
     return Connector_Instance.query.filter_by(name=name).first()
 
 def get_case_connectors(cid):
+    """Return a list of all connectors present in a case"""
     return Case_Connector_Instance.query.filter_by(case_id=cid).all()
 
 def get_task_connectors(tid):
+    """Return a list of all connectors present in a task"""
     return Task_Connector_Instance.query.filter_by(task_id=tid).all()
 
 def get_user_instance_both(user_id, instance_id):
+    """Return an instance of User_Connector_Instance depending of a user id and an instance id"""
     return User_Connector_Instance.query.filter_by(user_id=user_id, instance_id=instance_id).first()
 
 def get_user_instance_by_instance(instance_id):
-    """Return a user instance by instance id"""
+    """Return an instance of User_Connector_Instance depending of an instance id"""
     return User_Connector_Instance.query.filter_by(instance_id=instance_id).first()
 
 def get_case_connector_id(instance_id, case_id):
+    """Return an instance of Case_Connector_Id depending of an instance id and a case id"""
     return Case_Connector_Id.query.filter_by(case_id=case_id, instance_id=instance_id).first()
 
 def get_task_connector_id(instance_id, task_id):
+    """Return an instance of Case_Connector_Id depending of an instance id and a task id"""
     return Task_Connector_Id.query.filter_by(task_id=task_id, instance_id=instance_id).first()
 
 
 def get_history(case_uuid):
+    """Return history of case by its uuid"""
     try:
         path_history = os.path.join(HISTORY_FOLDER, str(case_uuid))
         with open(path_history, "r") as read_file:
@@ -194,6 +228,7 @@ def get_history(case_uuid):
         return False
     
 def save_history(case_uuid, current_user, message):
+    """Save historic message of a case"""
     create_specific_dir(HISTORY_FOLDER)
     path_history = os.path.join(HISTORY_FOLDER, str(case_uuid))
     with open(path_history, "a") as write_history:
@@ -228,13 +263,16 @@ def deadline_check(date, time):
 
 
 def delete_temp_folder():
+    """Delete temp folder"""
     shutil.rmtree(TEMP_FOLDER)
 
 
 def check_cluster_db(cluster):
+    """Check if a cluster exist in db"""
     return Cluster.query.filter_by(name=cluster).first()
 
 def check_tag(tag_list):
+    """Check if a list of tags exist"""
     flag = True
     for tag in tag_list:
         if not utils.check_tag(tag):
@@ -244,6 +282,7 @@ def check_tag(tag_list):
     return flag
 
 def check_cluster(cluster_list):
+    """Check if a list of clusters exist"""
     flag = True
     for cluster in cluster_list:
         if not check_cluster_db(cluster):
@@ -253,6 +292,7 @@ def check_cluster(cluster_list):
     return flag
 
 def check_connector(connector_list):
+    """Check if a list of connectors exist"""
     flag = True
     for connector in connector_list:
         if not get_instance_by_name(connector):
@@ -263,6 +303,7 @@ def check_connector(connector_list):
 
 
 def create_task_from_template(template_id, cid):
+    """Create a task from a task template"""
     template = Task_Template.query.get(template_id)
     task = Task(
         uuid=str(uuid.uuid4()),
@@ -303,6 +344,7 @@ def create_task_from_template(template_id, cid):
 
 
 def get_instance_with_icon(instance_id, case_task, case_task_id):
+    """Return an instance of a connector with its icon"""
     loc_instance = get_instance(instance_id).to_json()
     loc_instance["icon"] = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
                                     .join(Connector, Connector.icon_id==Connector_Icon.id)\

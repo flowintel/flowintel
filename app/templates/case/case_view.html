@@ -581,7 +581,7 @@
                 }
 
                 async function fetch_case_title(case_title_fork){
-                    const res = await fetch("/case/get_all_case_title?title="+case_title_fork)
+                    const res = await fetch("/case/check_case_title_exist?title="+case_title_fork)
                     let loc = await res.json()
                     if(loc["title_already_exist"]){
                         return true
@@ -606,7 +606,7 @@
                     }
                 }
                 async function fetch_case_template_title(case_title_template){
-                    const res = await fetch("/case/get_all_case_template_title?title="+case_title_template)
+                    const res = await fetch("/case/check_case_template_title_exist?title="+case_title_template)
                     let loc = await res.json()
                     if(loc["title_already_exist"]){
                         return true
