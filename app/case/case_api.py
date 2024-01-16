@@ -27,23 +27,6 @@ class GetCases(Resource):
         cases = CommonModel.get_all_cases()
         return {"cases": [case.to_json() for case in cases]}, 200
 
-@api.route('/not_completed')
-@api.doc(description='Get all not completed cases')
-class GetCases_not_completed(Resource):
-    method_decorators = [api_required]
-    def get(self):
-        cases = CommonModel.get_case_by_completed(False)
-        return {"cases": [case.to_json() for case in cases]}, 200
-    
-@api.route('/completed')
-@api.doc(description='Get all completed cases')
-class GetCases_not_completed(Resource):
-    method_decorators = [api_required]
-    def get(self):
-        cases = CommonModel.get_case_by_completed(True)
-        return {"cases": [case.to_json() for case in cases]}, 200
-
-
 @api.route('/<cid>')
 @api.doc(description='Get a case', params={'cid': 'id of a case'})
 class GetCase(Resource):
@@ -59,7 +42,65 @@ class GetCase(Resource):
             
             return case_json, 200
         return {"message": "Case not found"}, 404
+
+@api.route('/create', methods=['POST'])
+@api.doc(description='Create a case')
+class CreateCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        "title": "Required. Title for a case", 
+        "description": "Description of a case", 
+        "deadline_date": "Date(%Y-%m-%d)", 
+        "deadline_time": "Time(%H-%M)"
+    })
+    def post(self):
+        user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+
+        if request.json:
+            verif_dict = CaseModelApi.verif_create_case_task(request.json, True)
+
+            if "message" not in verif_dict:
+                case = CaseModel.create_case(verif_dict, user)
+                return {"message": f"Case created, id: {case.id}"}, 201
+
+            return verif_dict, 400
+        return {"message": "Please give data"}, 400
     
+
+@api.route('/<id>/edit', methods=['POST'])
+@api.doc(description='Edit a case', params={'id': 'id of a case'})
+class EditCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={"title": "Title for a case", "description": "Description of a case", "deadline_date": "Date(%Y-%m-%d)", "deadline_time": "Time(%H-%M)"})
+    def post(self, id):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
+            if request.json:
+                verif_dict = CaseModelApi.verif_edit_case(request.json, id)
+
+                if "message" not in verif_dict:
+                    CaseModel.edit_case(verif_dict, id, current_user)
+                    return {"message": f"Case {id} edited"}, 200
+
+                return verif_dict, 400
+            return {"message": "Please give data"}, 400
+        return {"message": "Permission denied"}, 403
+
+@api.route('/not_completed')
+@api.doc(description='Get all not completed cases')
+class GetCases_not_completed(Resource):
+    method_decorators = [api_required]
+    def get(self):
+        cases = CommonModel.get_case_by_completed(False)
+        return {"cases": [case.to_json() for case in cases]}, 200
+    
+@api.route('/completed')
+@api.doc(description='Get all completed cases')
+class GetCases_not_completed(Resource):
+    method_decorators = [api_required]
+    def get(self):
+        cases = CommonModel.get_case_by_completed(True)
+        return {"cases": [case.to_json() for case in cases]}, 200    
     
 @api.route('/title', methods=["POST"])
 @api.doc(description='Get a case by title')
@@ -77,7 +118,6 @@ class GetCaseTitle(Resource):
             return {"message": "Case not found"}, 404
         return {"message": "Need to pass a title"}, 404
     
-
 @api.route('/<cid>/complete')
 @api.doc(description='Complete a case', params={'cid': 'id of a case'})
 class CompleteCase(Resource):
@@ -92,7 +132,74 @@ class CompleteCase(Resource):
                 return {"message": f"Error case {cid} completed"}, 400
             return {"message": "Case not found"}, 404
         return {"message": "Permission denied"}, 403
+
+@api.route('/<cid>/delete')
+@api.doc(description='Delete a case', params={'cid': 'id of a case'})
+class DeleteCase(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CaseModel.delete_case(cid, current_user):
+                return {"message": "Case deleted"}, 200
+            return {"message": "Error case deleted"}, 400
+        return {"message": "Permission denied"}, 403
     
+@api.route('/<cid>/add_org', methods=['POST'])
+@api.doc(description='Add an org to the case', params={'cid': 'id of a case'})
+class AddOrgCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
+    def post(self, cid):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "name" in request.json:
+                org = CommonModel.get_org_by_name(request.json["name"])
+            elif "oid" in request.json:
+                org = CommonModel.get_org(request.json["oid"])
+            else:
+                return {"message": "Required an id or a name of an Org"}, 400
+
+            if org:
+                if not CommonModel.get_org_in_case(org.id, cid):
+                    if CaseModel.add_orgs_case({"org_id": [org.id]}, cid, current_user):
+                        return {"message": f"Org added to case {cid}"}, 200
+                    return {"message": f"Error Org added to case {cid}"}, 400
+                return {"message": "Org already in case"}, 400
+            return {"message": "Org not found"}, 404
+        return {"message": "Permission denied"}, 403
+
+
+@api.route('/<cid>/remove_org/<oid>', methods=['GET'])
+@api.doc(description='Add an org to the case', params={'cid': 'id of a case', "oid": "id of an org"})
+class RemoveOrgCase(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid, oid):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            org = CommonModel.get_org(oid)
+
+            if org:
+                if CommonModel.get_org_in_case(org.id, cid):
+                    if CaseModel.remove_org_case(cid, org.id, current_user):
+                        return {"message": f"Org deleted from case {cid}"}, 200
+                    return {"message": f"Error Org deleted from case {cid}"}, 400
+                return {"message": "Org not in case"}, 404
+            return {"message": "Org not found"}, 404
+        return {"message": "Permission denied"}, 403
+    
+@api.route('/<cid>/history', methods=['GET'])
+@api.doc(description='Get history of a case', params={'cid': 'id of a case'})
+class ChangeStatus(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            history = CommonModel.get_history(case.uuid)
+            if history:
+                return {"history": history}
+            return {"history": None}
+        return {"message": "Case Not found"}, 404
 
 @api.route('/<cid>/create_template', methods=["POST"])
 @api.doc(description='Create a template form case', params={'cid': 'id of a case'})
@@ -135,6 +242,11 @@ class RecurringCase(Resource):
         return {"message": "Permission denied"}, 403
 
 
+
+#########
+# Tasks #
+#########
+
 @api.route('/<cid>/tasks')
 @api.doc(description='Get all tasks for a case', params={'cid': 'id of a case'})
 class GetTasks(Resource):
@@ -165,63 +277,7 @@ class GetTask(Resource):
             else:
                 return {"message": "Task not in this case"}, 404
         return {"message": "Task not found"}, 404
-
-@api.route('/<cid>/delete')
-@api.doc(description='Delete a case', params={'cid': 'id of a case'})
-class DeleteCase(Resource):
-    method_decorators = [editor_required, api_required]
-    def get(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.delete_case(cid, current_user):
-                return {"message": "Case deleted"}, 200
-            return {"message": "Error case deleted"}, 400
-        return {"message": "Permission denied"}, 403
-
-
-@api.route('/<cid>/task/<tid>/delete')
-@api.doc(description='Delete a specific task in a case', params={'cid': 'id of a case', "tid": "id of a task"})
-class DeleteTask(Resource):
-    method_decorators = [editor_required, api_required]
-    def get(self, cid, tid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            task = CommonModel.get_task(tid)
-            if task:
-                if int(cid) == task.case_id:
-                    if TaskModel.delete_task(tid, current_user):
-                        return {"message": "Task deleted"}, 200
-                    else:
-                        return {"message": "Error task deleted"}, 400
-                else:
-                    return {"message": "Task not in this case"}, 404
-            return {"message": "Task not found"}, 404
-        return {"message": "Permission denied"}, 403
-        
-
-@api.route('/create', methods=['POST'])
-@api.doc(description='Create a case')
-class CreateCase(Resource):
-    method_decorators = [editor_required, api_required]
-    @api.doc(params={
-        "title": "Required. Title for a case", 
-        "description": "Description of a case", 
-        "deadline_date": "Date(%Y-%m-%d)", 
-        "deadline_time": "Time(%H-%M)"
-    })
-    def post(self):
-        user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-
-        if request.json:
-            verif_dict = CaseModelApi.verif_create_case_task(request.json, True)
-
-            if "message" not in verif_dict:
-                case = CaseModel.create_case(verif_dict, user)
-                return {"message": f"Case created, id: {case.id}"}, 201
-
-            return verif_dict, 400
-        return {"message": "Please give data"}, 400
-
+    
 
 @api.route('/<cid>/create_task', methods=['POST'])
 @api.doc(description='Create a new task to a case', params={'cid': 'id of a case'})
@@ -246,28 +302,7 @@ class CreateTask(Resource):
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
         return {"message": "Permission denied"}, 403
-
-
-@api.route('/<id>/edit', methods=['POST'])
-@api.doc(description='Edit a case', params={'id': 'id of a case'})
-class EditCase(Resource):
-    method_decorators = [editor_required, api_required]
-    @api.doc(params={"title": "Title for a case", "description": "Description of a case", "deadline_date": "Date(%Y-%m-%d)", "deadline_time": "Time(%H-%M)"})
-    def post(self, id):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-        if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
-            if request.json:
-                verif_dict = CaseModelApi.verif_edit_case(request.json, id)
-
-                if "message" not in verif_dict:
-                    CaseModel.edit_case(verif_dict, id, current_user)
-                    return {"message": f"Case {id} edited"}, 200
-
-                return verif_dict, 400
-            return {"message": "Please give data"}, 400
-        return {"message": "Permission denied"}, 403
-
-
+    
 @api.route('/<cid>/task/<tid>/edit', methods=['POST'])
 @api.doc(description='Edit a task in a case', params={'cid': 'id of a case', "tid": "id of a task"})
 class EditTake(Resource):
@@ -292,6 +327,25 @@ class EditTake(Resource):
                 else:
                     return {"message": "Task not found"}, 404
             return {"message": "Please give data"}, 400
+        return {"message": "Permission denied"}, 403
+
+@api.route('/<cid>/task/<tid>/delete')
+@api.doc(description='Delete a specific task in a case', params={'cid': 'id of a case', "tid": "id of a task"})
+class DeleteTask(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid, tid):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            task = CommonModel.get_task(tid)
+            if task:
+                if int(cid) == task.case_id:
+                    if TaskModel.delete_task(tid, current_user):
+                        return {"message": "Task deleted"}, 200
+                    else:
+                        return {"message": "Error task deleted"}, 400
+                else:
+                    return {"message": "Task not in this case"}, 404
+            return {"message": "Task not found"}, 404
         return {"message": "Permission denied"}, 403
 
 
@@ -347,51 +401,6 @@ class ModifNoteTask(Resource):
                         return {"message": "Task not in this case"}, 404
                 return {"message": "Task not found"}, 404
             return {"message": "Key 'note' not found"}, 400
-        return {"message": "Permission denied"}, 403
-
-
-
-@api.route('/<cid>/add_org', methods=['POST'])
-@api.doc(description='Add an org to the case', params={'cid': 'id of a case'})
-class AddOrgCase(Resource):
-    method_decorators = [editor_required, api_required]
-    @api.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
-    def post(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "name" in request.json:
-                org = CommonModel.get_org_by_name(request.json["name"])
-            elif "oid" in request.json:
-                org = CommonModel.get_org(request.json["oid"])
-            else:
-                return {"message": "Required an id or a name of an Org"}, 400
-
-            if org:
-                if not CommonModel.get_org_in_case(org.id, cid):
-                    if CaseModel.add_orgs_case({"org_id": [org.id]}, cid, current_user):
-                        return {"message": f"Org added to case {cid}"}, 200
-                    return {"message": f"Error Org added to case {cid}"}, 400
-                return {"message": "Org already in case"}, 400
-            return {"message": "Org not found"}, 404
-        return {"message": "Permission denied"}, 403
-
-
-@api.route('/<cid>/remove_org/<oid>', methods=['GET'])
-@api.doc(description='Add an org to the case', params={'cid': 'id of a case', "oid": "id of an org"})
-class RemoveOrgCase(Resource):
-    method_decorators = [editor_required, api_required]
-    def get(self, cid, oid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            org = CommonModel.get_org(oid)
-
-            if org:
-                if CommonModel.get_org_in_case(org.id, cid):
-                    if CaseModel.remove_org_case(cid, org.id, current_user):
-                        return {"message": f"Org deleted from case {cid}"}, 200
-                    return {"message": f"Error Org deleted from case {cid}"}, 400
-                return {"message": "Org not in case"}, 404
-            return {"message": "Org not found"}, 404
         return {"message": "Permission denied"}, 403
 
 
@@ -513,20 +522,6 @@ class ChangeStatus(Resource):
     method_decorators = [api_required]
     def get(self):
         return [status.to_json() for status in CommonModel.get_all_status()], 200
-    
-
-@api.route('/<cid>/history', methods=['GET'])
-@api.doc(description='Get history of a case', params={'cid': 'id of a case'})
-class ChangeStatus(Resource):
-    method_decorators = [api_required]
-    def get(self, cid):
-        case = CommonModel.get_case(cid)
-        if case:
-            history = CommonModel.get_history(case.uuid)
-            if history:
-                return {"history": history}
-            return {"history": None}
-        return {"message": "Case Not found"}, 404
 
  
 @api.route('/<cid>/task/<tid>/files')
