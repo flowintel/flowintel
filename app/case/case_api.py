@@ -1,3 +1,5 @@
+import ast
+import json
 from flask import Blueprint, request
 from . import case_core as CaseModel
 from . import common_core as CommonModel
@@ -190,7 +192,7 @@ class RemoveOrgCase(Resource):
     
 @api.route('/<cid>/history', methods=['GET'])
 @api.doc(description='Get history of a case', params={'cid': 'id of a case'})
-class ChangeStatus(Resource):
+class History(Resource):
     method_decorators = [api_required]
     def get(self, cid):
         case = CommonModel.get_case(cid)
@@ -241,6 +243,197 @@ class RecurringCase(Resource):
             return {"message": "Please give data"}, 400
         return {"message": "Permission denied"}, 403
 
+
+@api.route('/search', methods=['POST'])
+@api.doc(description='Get cases matching search terms')
+class SearchCase(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        "search": "Required. Search terms"
+    })
+    def post(self):
+        if "search" in request.json:
+            cases = CommonModel.search(request.json["search"])
+            if cases:
+                return {"cases": [case.to_json() for case in cases]}, 200
+            return {"message": "No case", 'toast_class': "danger-subtle"}, 404
+        return {"message": "Please enter terms"}, 400
+    
+@api.route('/<cid>/change_status', methods=['POST'])
+@api.doc(description='Change the status of the case')
+class ChangeStatusCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        "status": "Required. Status id"
+    })
+    def post(self, cid):
+        if "status" in request.json:
+            case = CommonModel.get_case(cid)
+            if case:
+                current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+                if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    CaseModel.change_status_core(request.json["status"], case, current_user)
+                    return {"message": "Status changed"}, 200
+                return {"message": "Permission denied"}, 403
+            return {"message": "Case doesn't exist"}, 404
+        return {"message": "Please enter a status id"}, 400
+    
+
+@api.route('/check_case_title_exist', methods=['POST'])
+@api.doc(description='Check if a case with the title exist', params={'title': 'title of a case'})
+class CheckTitle(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        'title': 'Required. Title of a case'
+    })
+    def post(self):
+        if "title" in request.json:
+            if CommonModel.get_case_by_title(request.json["title"]):
+                return {"title_already_exist": True}, 200
+            return {"title_already_exist": False}, 200
+        return {"message": "Please give 'title'"}, 400
+    
+
+@api.route('/get_taxonomies', methods=['GET'])
+@api.doc(description='Get all taxonomies')
+class GetTaxonomies(Resource):
+    method_decorators = [api_required]
+    def get(self):
+        return {"taxonomies": CommonModel.get_taxonomies()}, 200
+    
+@api.route('/get_tags', methods=['POST'])
+@api.doc(description='Get all tags by given taxonomies')
+class GetTags(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        'taxonomies': 'Required. List of taxonomies'
+    })
+    def post(self):
+        if "taxonomies" in request.json:
+            taxos = request.json["taxonomies"]
+            return {"tags": CommonModel.get_tags(taxos)}, 200
+        return {"message": "Please give 'taxonomies'"}, 400
+    
+@api.route('/get_taxonomies_case/<cid>', methods=['GET'])
+@api.doc(description='Get all tags and taxonomies in a case')
+class GetTaxonomiesCase(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            tags = CommonModel.get_case_tags(case.id)
+            taxonomies = []
+            if tags:
+                taxonomies = [tag.split(":")[0] for tag in tags]
+            return {"tags": tags, "taxonomies": taxonomies}, 200
+        return {"message": "Case Not found"}, 404
+
+@api.route('/get_galaxies', methods=['GET'])
+@api.doc(description='Get all galaxies')
+class GetGalaxies(Resource):
+    method_decorators = [api_required]
+    def get(self):
+        return {"galaxies": CommonModel.get_galaxies()}, 200
+
+@api.route('/get_galaxies_case/<cid>', methods=['GET'])
+@api.doc(description='Get all tags and galaxies in a case', params={'galaxies': 'List of galaxies'})
+class GetGalaxiesCase(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            clusters = CommonModel.get_case_clusters(case.id)
+            galaxies = []
+            if clusters:
+                for cluster in clusters:
+                    loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
+                    if not loc_g.name in galaxies:
+                        galaxies.append(loc_g.name)
+                    index = clusters.index(cluster)
+                    clusters[index] = cluster.tag
+            return {"clusters": clusters, "galaxies": galaxies}, 200
+        return {"message": "Case Not found"}, 404
+    
+
+
+@api.route('/get_modules', methods=['GET'])
+@api.doc(description='Get all modules')
+class GetModules(Resource):
+    method_decorators = [api_required]
+    def get(self):
+        return {"modules": CaseModel.get_modules()}, 200
+
+@api.route('/<cid>/get_instance_module', methods=['GET'])
+@api.doc(description='Get all instances for a module', params={'module': 'Name of the module to use', "type": "type of the module"})
+class GetInstanceModules(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            if "module" in request.args:
+                module = request.args.get("module")
+            if "type" in request.args:
+                type_module = request.args.get("type")
+            else:
+                return{"message": "Module type error"}, 400
+            return {"instances": CaseModel.get_instance_module_core(module, type_module, case.id, current_user.id)}, 200
+        return {"message": "Case Not found"}, 404
+    
+@api.route('/get_connectors_case/<cid>', methods=['GET'])
+@api.doc(description='Get all connectors instance for a case')
+class GetConnectorsCase(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}, 200
+        return {"message": "Case Not found"}, 404
+
+@api.route('/get_connectors_case_id/<cid>', methods=['POST'])
+@api.doc(description='Get identifier for a list of connectors instances')
+class GetConnectorsCaseId(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        'instances': 'Required. List of name of instances'
+    })
+    def post(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            if "instances" in request.json:
+                loc = dict()
+                instances = request.json["instances"]
+                for instance in instances:
+                    ident = CommonModel.get_case_connector_id(CommonModel.get_instance_by_name(instance).id, case.id)
+                    if ident:
+                        loc[instance] = ident.identifier
+                return {"instances": loc}, 200
+            return {"message": "Need to pass 'instances'"}
+        return {"message": "Case Not found"}, 404
+
+@api.route('/<cid>/call_module_case', methods=['POST'])
+@api.doc(description='Call a module on a case')
+class CallModuleCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        "module": "Required. Name of the module to call",
+        "instances": "Required. List of name or id of instances to use for the module"
+    })
+    def post(self, cid):
+        case = CommonModel.get_case(cid)
+        if "module" in request.json:
+            if "instances" in request.json:
+                if case:
+                    current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+                    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                        res = CaseModel.call_module_case(request.json["module"], request.json["instances"], case, current_user)
+                        if res:
+                            return res, 400
+                        return {"message": "Connector used"}, 200
+                    return {"message": "Permission denied"}, 403
+                return {"message": "Please enter a 'module''"}, 400
+            return {"message": "Please give 'instances''"}, 400
+        return {"message": "Case doesn't exist"}, 404
 
 
 #########
@@ -579,8 +772,6 @@ class DownloadFile(Resource):
 @api.doc(description='Delete a file', params={"cid": "id of a case", "tid": "id of a task", "fid": "id of a file"})
 class DeleteFile(Resource):
     method_decorators = [api_required]
-    @api.doc(params={
-        })
     def get(self, cid, tid, fid):
         case = CommonModel.get_case(cid)
         if case:
@@ -595,3 +786,84 @@ class DeleteFile(Resource):
                 return {"message": "Task Not found"}, 404
             return {"message": "Permission denied"}, 403
         return {"message": "Case Not found"}, 404
+
+
+@api.route('/get_taxonomies_task/<tid>', methods=['GET'])
+@api.doc(description='Get all tags and taxonomies in a task')
+class GetTaxonomiesTask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        if CommonModel.get_task(tid):
+            tags = CommonModel.get_task_tags(tid)
+            taxonomies = []
+            if tags:
+                taxonomies = [tag.split(":")[0] for tag in tags]
+            return {"tags": tags, "taxonomies": taxonomies}
+        return {"message": "Task Not found"}, 404
+
+
+@api.route('/get_galaxies_task/<tid>', methods=['GET'])
+@api.doc(description='Get all tags and taxonomies in a task')
+class GetGalaxiesTask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        if CommonModel.get_task(tid):
+            clusters = CommonModel.get_task_clusters(tid)
+            galaxies = []
+            if clusters:
+                for cluster in clusters:
+                    loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
+                    if not loc_g.name in galaxies:
+                        galaxies.append(loc_g.name)
+                    index = clusters.index(cluster)
+                    clusters[index] = cluster.tag
+            return {"clusters": clusters, "galaxies": galaxies}
+        return {"message": "task Not found"}, 404
+        
+@api.route('/get_connectors', methods=['GET'])
+@api.doc(description='Get all connectors and instances')
+class GetConnectors(Resource):
+    method_decorators = [api_required]
+    def get(self):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        connectors_list = CommonModel.get_connectors()
+        connectors_dict = dict()
+        for connector in connectors_list:
+            loc = list()
+            for instance in connector.instances:
+                if CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+                    loc.append(instance.to_json())
+            if loc:
+                connectors_dict[connector.name] = loc
+        return {"connectors": connectors_dict}, 200
+
+@api.route('/get_connectors_task/<tid>', methods=['GET'])
+@api.doc(description='Get all connectors for a task')
+class GetConnectors(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}, 200
+        return {"message": "task Not found"}, 404
+
+@api.route('/get_connectors_task_id/<tid>', methods=['POST'])
+@api.doc(description='Get all identifier for connectors instances')
+class GetConnectors(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        'instances': 'Required. List of name of instances'
+    })
+    def post(self, tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            if "instances" in request.json:
+                loc = dict()
+                instances = request.json["instances"]
+                for instance in instances:
+                    ident = CommonModel.get_task_connector_id(CommonModel.get_instance_by_name(instance).id, task.id)
+                    if ident:
+                        loc[instance] = ident.identifier
+                return {"instances": loc}, 200
+            return {"Need to pass 'instances'"}, 400
+        return {"message": "Task Not found"}, 404

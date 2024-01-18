@@ -159,6 +159,49 @@ class CreateCaseFromTemplate(Resource):
         return {"message": "Case template not found"}, 404
     
 
+@api.route('/get_taxonomies_case/<cid>', methods=["GET"])
+@api.doc(description='Get Taxonomies of a case', params={'cid': 'id of a case template'})
+class GetTaxonomiesCase(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case_template(cid)
+        if case:
+            tags = CommonModel.get_case_template_tags(case.id)
+            taxonomies = []
+            if tags:
+                taxonomies = [tag.split(":")[0] for tag in tags]
+            return {"tags": tags, "taxonomies": taxonomies}
+        return {"message": "Case Not found"}, 404
+    
+
+@api.route('/get_galaxies_case/<cid>', methods=["GET"])
+@api.doc(description='Get Galaxies of a case', params={'cid': 'id of a case template'})
+class GetGalaxiesCase(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case_template(cid)
+        if case:
+            clusters = CommonModel.get_case_clusters(case.id)
+            galaxies = []
+            if clusters:
+                for cluster in clusters:
+                    loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
+                    if not loc_g.name in galaxies:
+                        galaxies.append(loc_g.name)
+                    index = clusters.index(cluster)
+                    clusters[index] = cluster.tag
+            return {"clusters": clusters, "galaxies": galaxies}
+        return {"message": "Case Not found"}, 404
+    
+@api.route('/get_connectors_case/<cid>', methods=["GET"])
+@api.doc(description='Get Connectors of a case', params={'cid': 'id of a case template'})
+class GetConnectorsCase(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case_template(cid)
+        if case:
+            return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}
+        return {"message": "Case Not found"}, 404
 
 ##########
 ## Task ##
@@ -232,3 +275,46 @@ class DeleteTaskTemplate(Resource):
             return {"message": "Error task template deleted"}, 400
         return {"message": "Template not found"}, 404
     
+
+@api.route('/get_taxonomies_task/<tid>', methods=["GET"])
+@api.doc(description='Get Taxonomies of a task', params={'tid': 'id of a task template'})
+class GetTaxonomiesTask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            tags = CommonModel.get_task_template_tags(task.id)
+            taxonomies = []
+            if tags:
+                taxonomies = [tag.split(":")[0] for tag in tags]
+            return {"tags": tags, "taxonomies": taxonomies}
+        return {"message": "Task Not found"}, 404
+    
+@api.route('/get_galaxies_task/<tid>', methods=["GET"])
+@api.doc(description='Get Galaxies of a task', params={'tid': 'id of a task template'})
+class GetGalaxiesTask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            clusters = CommonModel.get_task_clusters(task.id)
+            galaxies = []
+            if clusters:
+                for cluster in clusters:
+                    loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
+                    if not loc_g.name in galaxies:
+                        galaxies.append(loc_g.name)
+                    index = clusters.index(cluster)
+                    clusters[index] = cluster.tag
+            return {"clusters": clusters, "galaxies": galaxies}
+        return {"message": "Case Not found"}, 404
+    
+@api.route('/get_connectors_task/<tid>', methods=["GET"])
+@api.doc(description='Get Connectors of a task', params={'tid': 'id of a task template'})
+class GetConnectorsTask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}
+        return {"message": "Task Not found"}, 404

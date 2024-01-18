@@ -321,7 +321,7 @@ def change_status(cid):
     status = request.json["status"]
     case = CommonModel.get_case(cid)
 
-    if CommonModel.get_case(cid):
+    if case:
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             CaseModel.change_status_core(status, case, current_user)
             return {"message": "Status changed", "toast_class": "success-subtle"}, 200
@@ -629,11 +629,11 @@ def get_connectors_case(cid):
         return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
-@case_blueprint.route("/get_connectors_case_id/<tid>", methods=['GET'])
+@case_blueprint.route("/get_connectors_case_id/<cid>", methods=['GET'])
 @login_required
-def get_connectors_case_id(tid):
+def get_connectors_case_id(cid):
     """Get identifier for a list of connectors instances"""
-    case = CommonModel.get_case(tid)
+    case = CommonModel.get_case(cid)
     if case:
         loc = dict()
         instances = ast.literal_eval(request.args.get("instances"))
