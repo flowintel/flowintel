@@ -20,7 +20,10 @@
         <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task template by title' style="min-width: 350px;"/>
     </div>
     <br>
-    <div class="collapse show" id="collapsefiltercase">
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
+        filter
+    </button>
+    <div class="collapse" id="collapsefiltertask">
 		<div class="card card-body">
 			<div class="d-flex w-100 justify-content-evenly">
 				<div>
@@ -120,54 +123,9 @@
     </nav>
 
     <template v-if="templates_list">
-        <template v-for="template, key in templates_list.templates">
+        <template v-for="template, key in templates_list.templates" :key="template.id">
             <div class="list-group" style="margin-bottom: 20px;">
-                <div style="display:flex">
-                    <a class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">[[ key+1 ]]- [[ template.title ]]</h4>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p v-if="template.description" class="card-text">[[ template.description ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p v-if="template.url" class="card-text">[[ template.url ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No url</i></p>
-                        </div>
-                        <div v-for="instance in template.instances" :title="instance.description">
-                            <img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
-                            <i>[[instance.url]]</i>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <div style="display: flex;" v-if="template.tags">
-                                <template v-for="tag in template.tags">
-                                    <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                                        [[tag.name]]
-                                    </div>
-                                </template>
-                            </div>
-                            <div v-else></div>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <div v-if="template.clusters">
-                                <template v-for="cluster in template.clusters">
-                                    <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
-                                        <span v-html="mapIcon(cluster.icon)"></span>
-                                        [[cluster.tag]]
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-                    </a>
-                    <div v-if="!template.current_user_permission.read_only" style="display: grid;">
-                        <a class="btn btn-primary btn-sm" :href="`/tools/template/edit_task/${template.id}`" type="button" title="Edit the task template">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </a>
-                        <button class="btn btn-danger btn-sm"  @click="delete_task(template)" title="Delete the task template"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
+                <task_template :template="template" :key_loop="key" :templates_list="templates_list.templates" :task_in_case="false"></task_template>
             </div>
         </template>
     </template>
@@ -198,10 +156,14 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
+        import task_template from '/static/js/tools/task_template.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                task_template
+            },
             setup() {
                 const templates_list = ref(null)
                 const current_page = ref(1)
@@ -238,16 +200,6 @@
                     templates_list.value = loc
                     current_page.value = page
                     temp_task_list = templates_list.value.templates
-                }
-
-                async function delete_task(task){
-                    const res = await fetch("/tools/template/delete_task/" + task.id)
-                    if(await res.status == 200){
-                        let index = templates_list.value.templates.indexOf(task)
-                        if(index > -1)
-                            templates_list.value.templates.splice(index, 1)
-                    }
-                    display_toast(res)
                 }
 
                 function sort_by_title(){
@@ -370,7 +322,6 @@
                     message_list,
                     templates_list,
                     current_page,
-                    delete_task,
                     fetch_template,
                     sort_by_title,
                     asc_desc_filter,

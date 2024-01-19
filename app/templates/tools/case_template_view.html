@@ -69,55 +69,11 @@
     </div>
 
     <template v-if="tasks_list">
-        <div v-for="task,key in tasks_list" class="list-group" style="margin-bottom: 20px;">
-            <div style="display:flex">
-                <a class="list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h4 class="mb-1">[[key+1]]-[[ task.title ]]</h4>
-                    </div>
-                    <div class="d-flex w-100 justify-content-between">
-                        <p v-if="task.description" class="card-text">[[ task.description ]]</p>
-                        <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
-                    </div>
-                    <div class="d-flex w-100 justify-content-between">
-                        <p v-if="task.url" class="card-text">[[ task.url ]]</p>
-                        <p v-else class="card-text"><i style="font-size: 12px;">No url</i></p>
-                    </div>
-                    <div v-for="instance in task.instances" :title="instance.description">
-                        <img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
-                        <i>[[instance.url]]</i>
-                    </div>
-                    <div class="d-flex w-100 justify-content-between">
-                        <div style="display: flex;" v-if="task.tags">
-                            <template v-for="tag in task.tags">
-                                <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                                    <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                                    [[tag.name]]
-                                </div>
-                            </template>
-                        </div>
-                        <div v-else></div>
-                    </div>
-                    <div class="d-flex w-100 justify-content-between">
-                        <div style="display: flex;" v-if="task.clusters">
-                            <template v-for="cluster in task.clusters">
-                                <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
-                                    <span v-html="mapIcon(cluster.icon)"></span>
-                                    [[cluster.tag]]
-                                </div>
-                            </template>
-                        </div>
-                        <div v-else></div>
-                    </div>
-                </a>
-                <div v-if="!task.current_user_permission.read_only" style="display: grid;">
-                    <div style="display: grid;">
-                        <a class="btn btn-primary btn-sm" :href="`/tools/template/edit_task/${task.id}`" type="button" title="Edit the template"><i class="fa-solid fa-pen-to-square"></i></a>
-                        <button class="btn btn-danger btn-sm" @click="remove_task({{case.id}}, task)" title="Remove the task"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
+        <template v-for="template, key in tasks_list" :key="template.id">
+            <div class="list-group" style="margin-bottom: 20px;">
+                <task_template :template="template" :key_loop="key" :templates_list="tasks_list" :task_in_case="true"></task_template>
             </div>
-        </div>
+        </template>
     </template>
     <template v-else>
         <div class="spinner-border" role="status">
@@ -133,10 +89,14 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
+        import task_template from '/static/js/tools/task_template.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                task_template
+            },
             setup() {
                 const tasks_list = ref(null)
 
@@ -148,16 +108,7 @@
                     let loc = await res.json()
                     tasks_list.value = loc["tasks"]
                 }
-
-                async function remove_task(case_id, task){
-                    const res = await fetch("/tools/template/" + case_id + "/remove_task/" + task.id)
-                    if(await res.status == 200){
-                        let index = tasks_list.value.indexOf(task)
-                        if(index > -1)
-                            tasks_list.value.splice(index, 1)
-                    }
-                    display_toast(res)
-                }
+                fetchTasks()
 
                 async function delete_case(case_template){
                     const res = await fetch("/tools/template/delete_case/" + case_template.id)
@@ -179,6 +130,7 @@
                         window.location.href="/case/" + loc["new_case_id"]
                     }
                 }
+
                 async function fetch_case_title(case_title_fork){
                     const res = await fetch("/case/check_case_title_exist?title="+case_title_fork)
                     let loc = await res.json()
@@ -187,13 +139,11 @@
                     }
                     return false
                 }
-
-                fetchTasks()
+                
 
                 return {
                     message_list,
                     tasks_list,
-                    remove_task,
                     delete_case,
                     fork_case,
                     getTextColor,

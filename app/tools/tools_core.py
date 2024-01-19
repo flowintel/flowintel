@@ -318,7 +318,8 @@ def create_case_from_template(cid, case_title_fork, user):
             creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             case_id=case.id,
-            status_id=1
+            status_id=1,
+            notes=task.notes
         )
         db.session.add(t)
         db.session.commit()

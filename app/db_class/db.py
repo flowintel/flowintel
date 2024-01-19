@@ -367,6 +367,7 @@ class Task_Template(db.Model):
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String, nullable=True)
     url = db.Column(db.String(64), index=True)
+    notes = db.Column(db.String, nullable=True)
 
     def to_json(self):
         json_dict =  {
@@ -374,7 +375,8 @@ class Task_Template(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "url": self.url
+            "url": self.url,
+            "notes": self.notes
         }
 
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
@@ -390,7 +392,8 @@ class Task_Template(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "url": self.url
+            "url": self.url,
+            "notes": self.notes
         }
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\

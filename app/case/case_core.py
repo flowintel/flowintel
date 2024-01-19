@@ -520,7 +520,8 @@ def create_template_from_case(cid, case_title_template):
                 uuid=str(uuid.uuid4()),
                 title=task.title,
                 description=task.description,
-                url=task.url
+                url=task.url,
+                notes=task.notes
             )
             db.session.add(task_template)
             db.session.commit()

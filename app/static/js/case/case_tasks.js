@@ -473,7 +473,7 @@ export default {
 
 	
 	<!-- Collapse Part -->
-	<div class="collapse collapsetest" :id="'collapse'+task.id">
+	<div class="collapse" :id="'collapse'+task.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
 			<div class="d-flex w-100 justify-content-between">
 				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">

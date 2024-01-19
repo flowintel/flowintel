@@ -147,13 +147,13 @@ def modif_note(cid, tid):
 
 
 @task_blueprint.route("/<cid>/get_note/<tid>", methods=['GET'])
-@editor_required
+@login_required
 def get_note(cid, tid):
     """Get not of a task in text format"""
     if CommonModel.get_case(cid):
         task = CommonModel.get_task(tid)
         if task:
-            return {"note": task.notes}, 201
+            return {"note": task.notes}, 200
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 

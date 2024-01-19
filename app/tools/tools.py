@@ -371,7 +371,26 @@ def download_case(cid):
     return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=template_case_{case.title}.json'}
 
 
+@tools_blueprint.route("/template/get_note/<tid>", methods=['GET'])
+@login_required
+def get_note(tid):
+    """Get not of a task in text format"""
+    task = CommonModel.get_task_template(tid)
+    if task:
+        return {"notes": task.notes}, 200
+    return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
 
+@tools_blueprint.route("/template/modif_note/<tid>", methods=['POST'])
+@login_required
+@editor_required
+def modif_note(tid):
+    """Modify note of the task"""
+    if CommonModel.get_task_template(tid):
+        notes = request.json["notes"]
+        if TaskModel.modif_note_core(tid, notes):
+            return {"message": "Note added", "toast_class": "success-subtle"}, 200
+        return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+    return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
 
 
 @tools_blueprint.route("/importer_view", methods=['GET'])

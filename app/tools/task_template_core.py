@@ -217,3 +217,13 @@ def get_task_info(task):
                                         .first().uuid
         instances_list.append(loc_instance)
     return instances_list
+
+
+def modif_note_core(tid, notes):
+    """Modify a noe of a task to the DB"""
+    task = CommonModel.get_task_template(tid)
+    if task:
+        task.notes = notes
+        db.session.commit()
+        return True
+    return False
