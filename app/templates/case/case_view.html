@@ -126,14 +126,38 @@
     </div>
 
     <br>
+
     {% if case.instances %}
-        {% for instance in case.instances %}
-            <div title="{{instance.description}}">
-                <img src="/static/icons/{{instance.icon}}" style="max-width: 30px;">
-                <a style="margin-left: 5px" href="{{instance.url}}">{{instance.url}}</a>
-                <span style="margin-left: 3px;" title="identifier used by module">{{instance.identifier}}</span>
+        <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConnectors" aria-expanded="false" aria-controls="collapseConnectors">
+            <i class="fa-solid fa-link"></i> Connectors
+        </button>
+        <div class="collapse" id="collapseConnectors">
+            <div class="card card-body">
+                <table class="table">
+                    <tr>
+                        <th>Instance name</th>
+                        <th>Identifier on the instance</th>
+                    </tr>
+                    {% for instance in case.instances %}
+                        <tr>
+                            <td>
+                                <div title="{{instance.description}}">
+                                    <img src="/static/icons/{{instance.icon}}" style="max-width: 30px;">
+                                    <a style="margin-left: 5px" href="{{instance.url}}">{{instance.url}}</a>
+                                </div>
+                            </td>
+                            {% if instance.identifier %}
+                                <td><span style="margin-left: 3px;" title="identifier used by module">{{instance.identifier}}</span></td>
+                            {%else%}
+                                <td><i>None</i></td>
+                            {%endif%}
+                        </tr>
+                        
+                    {%endfor%}
+
+                </table>
             </div>
-        {%endfor%}
+        </div>
     {%endif%}
 
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
