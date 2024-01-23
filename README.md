@@ -1,6 +1,16 @@
 # Flowintel-cm
 
-A flexible case management.
+FlowIntel CM is an open-source platform designed to assist analysts in organizing their cases and tasks. It features a range of tools and functionalities to enhance workflow efficiency. 
+
+## Features
+
+- **Case and Task Management**: Tailored for security analysts, enabling efficient tracking and organization.
+- **Rich Documentation Tools**: Includes Markdown and Mermaid integration for detailed notes, with export options like PDF.
+- **Integration with MISP standard**: Seamless connection with [MISP taxonomies](https://github.com/MISP/misp-taxonomies) and [MISP galaxy](https://www.misp-galaxy.org/).
+- **Calendar and Notifications**: Features an efficient calendar view and notifications for timely task management.
+- **Templating System**: Provides templates for cases and tasks, creating a playbook and process repository for cybersecurity.
+- **Flexible Data Export**: Offers modules for exporting data to platforms like [MISP](https://www.misp-project.org/), [AIL](https://www.ail-project.org/), and more.
+- **Accessible API**: Exposes an API for easy interaction with FlowIntel CM's functionalities.
 
 ![case-management](https://github.com/flowintel/flowintel-cm/blob/main/doc/case_fcm.png?raw=true)
 
