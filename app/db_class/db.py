@@ -70,6 +70,7 @@ class Case(db.Model):
     notif_deadline_id = db.Column(db.Integer, index=True)
     recurring_date = db.Column(db.DateTime, index=True)
     recurring_type = db.Column(db.String(30), index=True)
+    nb_tasks = db.Column(db.Integer, index=True)
 
     def to_json(self):
         json_dict = {
@@ -83,7 +84,8 @@ class Case(db.Model):
             "completed": self.completed,
             "owner_org_id": self.owner_org_id,
             "notif_deadline_id": self.notif_deadline_id,
-            "recurring_type": self.recurring_type
+            "recurring_type": self.recurring_type,
+            "nb_tasks": self.nb_tasks
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
@@ -148,6 +150,7 @@ class Task(db.Model):
     status_id = db.Column(db.Integer, index=True)
     completed = db.Column(db.Boolean, default=False)
     notif_deadline_id = db.Column(db.Integer, index=True)
+    case_order_id = db.Column(db.Integer, index=True)
     files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
@@ -163,7 +166,8 @@ class Task(db.Model):
             "case_id": self.case_id,
             "status_id": self.status_id,
             "completed": self.completed,
-            "notif_deadline_id": self.notif_deadline_id
+            "notif_deadline_id": self.notif_deadline_id,
+            "case_order_id": self.case_order_id
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
@@ -406,6 +410,7 @@ class Case_Task_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
     task_id = db.Column(db.Integer, index=True)
+    case_order_id = db.Column(db.Integer, index=True)
 
 
 class Taxonomy(db.Model):

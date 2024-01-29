@@ -341,3 +341,21 @@ def test_delete_task(client):
     test_create_task(client)
     response = client.get("/api/case/1/task/1/delete", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Task deleted" in response.data
+
+def test_move_task_up(client):
+    test_create_task(client)
+    test_create_task(client, flag=False)
+    response = client.get("/api/case/1/move_task_up/2", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and b"Order changed" in response.data
+
+    response = client.get("/api/case/1/task/2", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["task"]["case_order_id"] == 1
+
+def test_move_task_down(client):
+    test_create_task(client)
+    test_create_task(client, flag=False)
+    response = client.get("/api/case/1/move_task_down/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and b"Order changed" in response.data
+
+    response = client.get("/api/case/1/task/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["task"]["case_order_id"] == 2

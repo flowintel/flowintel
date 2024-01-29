@@ -305,6 +305,12 @@ def check_connector(connector_list):
 def create_task_from_template(template_id, cid):
     """Create a task from a task template"""
     template = Task_Template.query.get(template_id)
+    case = get_case(cid)
+    nb_tasks = 1
+    if case.nb_tasks:
+        nb_tasks = case.nb_tasks+1
+    else:
+        case.nb_tasks = 0
     task = Task(
         uuid=str(uuid.uuid4()),
         title=template.title,
@@ -313,12 +319,13 @@ def create_task_from_template(template_id, cid):
         creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
         last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
         case_id=cid,
-        status_id=1
+        status_id=1,
+        case_order_id=nb_tasks
     )
     db.session.add(task)
     db.session.commit()
 
-    for t_t in Task_Template_Tags.query.filter_by(task_id=task.id).all():
+    for t_t in Task_Template_Tags.query.filter_by(task_id=template.id).all():
         task_tag = Task_Tags(
             task_id=task.id,
             tag_id=t_t.tag_id
@@ -326,7 +333,7 @@ def create_task_from_template(template_id, cid):
         db.session.add(task_tag)
         db.session.commit()
 
-    for t_t in Task_Template_Galaxy_Tags.query.filter_by(task_id=task.id).all():
+    for t_t in Task_Template_Galaxy_Tags.query.filter_by(template_id=template.id).all():
         task_tag = Task_Galaxy_Tags(
             task_id=task.id,
             cluster_id=t_t.cluster_id
@@ -334,13 +341,15 @@ def create_task_from_template(template_id, cid):
         db.session.add(task_tag)
         db.session.commit()
 
-    for t_t in Task_Template_Connector_Instance.query.filter_by(template_id=task.id).all():
+    for t_t in Task_Template_Connector_Instance.query.filter_by(template_id=template.id).all():
         task_instance = Task_Connector_Instance(
             task_id=task.id,
             instance_id=t_t.instance_id
         )
         db.session.add(task_instance)
         db.session.commit()
+
+    return task
 
 
 def get_instance_with_icon(instance_id, case_task, case_task_id):

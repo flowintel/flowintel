@@ -303,6 +303,7 @@ def get_task_by_case(cid):
             loc_template = template.to_json()
             loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
             loc_template["instances"] = TaskModel.get_task_info(template)
+            loc_template["case_order_id"] = CommonModel.get_task_by_case_class(cid, template.id).case_order_id
             templates_list.append(loc_template)
         return {"tasks": templates_list}
     return {"tasks": []}
@@ -490,3 +491,21 @@ def get_connectors_task(tid):
     if task:
         return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@tools_blueprint.route("/template/<cid>/change_order/<tid>", methods=['GET'])
+@login_required
+@editor_required
+def change_order(cid, tid):
+    """Change the order of tasks"""
+    case = CommonModel.get_case_template(cid)
+    if case:
+        task = CommonModel.get_task_template(tid)
+        if task:
+            up_down = None
+            if "up_down" in request.args:
+                up_down = request.args.get("up_down")
+                TaskModel.change_order(case, task, up_down)
+                return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
+            return {"message": "Need to pass up_down", 'toast_class': "danger-subtle"}, 400
+        return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404

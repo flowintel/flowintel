@@ -555,14 +555,16 @@ def create_template_from_case(cid, case_title_template):
 
             case_task_template = Case_Task_Template(
                     case_id=new_template.id,
-                    task_id=task_template.id
+                    task_id=task_template.id,
+                    case_order_id=task.case_order_id
                 )
             db.session.add(case_task_template)
             db.session.commit()
         else:
             case_task_template = Case_Task_Template(
                     case_id=new_template.id,
-                    task_id=task_exist.id
+                    task_id=task_exist.id,
+                    case_order_id=task.case_order_id
                 )
             db.session.add(case_task_template)
             db.session.commit()

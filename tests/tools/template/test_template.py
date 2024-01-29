@@ -88,13 +88,16 @@ def test_create_case_from_template(client):
 ## Task ##
 ##########
 
-def test_create_task_template(client):
+def test_create_task_template(client, flag=True):
     response = client.post("/api/template/create_task", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task template admin"}
                         )
-    assert response.status_code == 201 and b"Template created, id: 1" in response.data
+    if flag:
+        assert response.status_code == 201 and b"Template created, id: 1" in response.data
+    else:
+        assert response.status_code == 201
 
 def test_edit_task_template(client):
     test_create_task_template(client)
@@ -150,3 +153,43 @@ def test_remove_task_case(client):
 
     response = client.get("/api/template/case/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and len(response.json["tasks"]) == 0
+
+def test_move_task_up(client):
+    test_create_case_template(client)
+    test_create_task_template(client)
+    test_create_task_template(client, flag=False)
+
+    response = client.post("/api/template/case/1/add_tasks", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"tasks": [1, 2]}
+                        )
+    assert response.status_code == 200 and b"Tasks added" in response.data
+
+    response = client.get("/api/template/case/1/move_task_up/2", 
+                           headers={"X-API-KEY": API_KEY}
+                        )
+    assert response.status_code == 200 and b"Order changed" in response.data
+
+    response = client.get("/api/template/case/1/task/2", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["case_order_id"] == 1
+
+def test_move_task_down(client):
+    test_create_case_template(client)
+    test_create_task_template(client)
+    test_create_task_template(client, flag=False)
+
+    response = client.post("/api/template/case/1/add_tasks", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"tasks": [1, 2]}
+                        )
+    assert response.status_code == 200 and b"Tasks added" in response.data
+
+    response = client.get("/api/template/case/1/move_task_down/1", 
+                           headers={"X-API-KEY": API_KEY}
+                        )
+    assert response.status_code == 200 and b"Order changed" in response.data
+
+    response = client.get("/api/template/case/1/task/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["case_order_id"] == 2

@@ -227,3 +227,22 @@ def modif_note_core(tid, notes):
         db.session.commit()
         return True
     return False
+
+
+def change_order(case, task, up_down):
+    case_task_template = Case_Task_Template.query.filter_by(case_id=case.id).all()
+    task_template = Case_Task_Template.query.filter_by(case_id=case.id, task_id=task.id).first()
+    for task_db in case_task_template:
+        # A task move up, case_order_id decrease by one
+        if up_down == "true":
+            if task_db.case_order_id == task_template.case_order_id - 1:
+                task_db.case_order_id += 1
+                task_template.case_order_id -= 1
+                break
+        else:
+            if task_db.case_order_id == task_template.case_order_id + 1:
+                task_db.case_order_id -= 1
+                task_template.case_order_id += 1
+                break
+
+    db.session.commit()

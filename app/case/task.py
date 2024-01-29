@@ -487,4 +487,23 @@ def get_connectors_task_id(tid):
             if ident:
                 loc[instance] = ident.identifier
         return {"instances": loc}, 200
-    return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/change_order/<tid>", methods=['GET'])
+@login_required
+@editor_required
+def change_order(cid, tid):
+    """Change the order of tasks"""
+    case = CommonModel.get_case(cid)
+    if case:
+        task = CommonModel.get_task(tid)
+        if task:
+            up_down = None
+            if "up_down" in request.args:
+                up_down = request.args.get("up_down")
+                TaskModel.change_order(case, task, up_down)
+                return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
+            return {"message": "Need to pass up_down", 'toast_class': "danger-subtle"}, 400
+        return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404

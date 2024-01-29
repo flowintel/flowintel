@@ -734,7 +734,7 @@ class DownloadFile(Resource):
 @api.route('/<cid>/task/<tid>/upload_file')
 @api.doc(description='Upload a file')
 class UploadFile(Resource):
-    method_decorators = [api_required]
+    method_decorators = [editor_required, api_required]
     @api.doc(params={})
     def post(self, cid, tid):
         case = CommonModel.get_case(cid)
@@ -753,7 +753,7 @@ class UploadFile(Resource):
 @api.route('/<cid>/task/<tid>/download_file/<fid>')
 @api.doc(description='Download a file', params={"cid": "id of a case", "tid": "id of a task", "fid": "id of a file"})
 class DownloadFile(Resource):
-    method_decorators = [api_required]
+    method_decorators = [editor_required, api_required]
     def get(self, cid, tid, fid):
         case = CommonModel.get_case(cid)
         if case:
@@ -771,7 +771,7 @@ class DownloadFile(Resource):
 @api.route('/<cid>/task/<tid>/delete_file/<fid>')
 @api.doc(description='Delete a file', params={"cid": "id of a case", "tid": "id of a task", "fid": "id of a file"})
 class DeleteFile(Resource):
-    method_decorators = [api_required]
+    method_decorators = [editor_required, api_required]
     def get(self, cid, tid, fid):
         case = CommonModel.get_case(cid)
         if case:
@@ -867,3 +867,38 @@ class GetConnectors(Resource):
                 return {"instances": loc}, 200
             return {"Need to pass 'instances'"}, 400
         return {"message": "Task Not found"}, 404
+    
+
+@api.route('/<cid>/move_task_up/<tid>', methods=['GET'])
+@api.doc(description='Move the task up', params={"cid": "id of a case", "tid": "id of a task"})
+class MoveTaskUp(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid, tid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                task = CommonModel.get_task(tid)
+                if task:
+                    TaskModel.change_order(case, task, "true")
+                    return {"message": "Order changed"}, 200
+                return {"message": "Task Not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case Not found"}, 404
+
+@api.route('/<cid>/move_task_down/<tid>', methods=['GET'])
+@api.doc(description='Move the task down', params={"cid": "id of a case", "tid": "id of a task"})
+class MoveTaskDown(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid, tid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                task = CommonModel.get_task(tid)
+                if task:
+                    TaskModel.change_order(case, task, "false")
+                    return {"message": "Order changed"}, 200
+                return {"message": "Task Not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case Not found"}, 404

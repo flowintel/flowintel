@@ -355,8 +355,13 @@
 
         <template v-if="cases_info && cases_info.tasks && status_info" >
             <template v-for="task, key in cases_info.tasks" :key="task.id">
-                <div :id="`task-${task.id}`"  class="list-group" style="margin-bottom: 20px;">
-                    <case_tasks :cases_info="cases_info" :users_in_case="users_in_case" :status_info="status_info" :edit_mode="edit_mode" :task="task" :key_loop="key" @edit_mode="(msg) => edit_mode = msg" @task="(msg) => task = msg"></case_tasks>
+                <div :id="`task-${task.id}`" class="list-group" style="margin-bottom: 20px;">
+                    <case_tasks :cases_info="cases_info" 
+                                :users_in_case="users_in_case" 
+                                :status_info="status_info" 
+                                :task="task" 
+                                :key_loop="key" >
+                    </case_tasks>
                 </div>
             </template>
         </template>
@@ -399,7 +404,6 @@
                 case_tasks
             },
             setup() {
-                const edit_mode = ref(false)
                 const cases_info = ref(null)
                 const status_info = ref(null)
                 const users_in_case = ref(null)
@@ -856,7 +860,6 @@
                     status_info,
                     users_in_case,
                     message_list,
-                    edit_mode,
                     dayjs,
                     main_tab,
                     history,

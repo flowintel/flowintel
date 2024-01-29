@@ -6,7 +6,8 @@ export default {
         templates_list: Object,
 		template: Object,
         key_loop: Number,
-        task_in_case: Boolean
+        task_in_case: Boolean,
+		case_id: Number
 	},
 	setup(props) {
 		Vue.onMounted(async () => {
@@ -58,11 +59,11 @@ export default {
         }
 
         async function remove_task(template, template_array){
-            const res = await fetch("/tools/template/" + case_id + "/remove_task/" + template.id)
+            const res = await fetch("/tools/template/" + props.case_id + "/remove_task/" + template.id)
             if(await res.status == 200){
-                let index = template_array.value.indexOf(template)
+                let index = template_array.indexOf(template)
                 if(index > -1)
-                    template_array.value.splice(index, 1)
+                    template_array.splice(index, 1)
             }
             display_toast(res)
         }
@@ -135,6 +136,41 @@ export default {
 			return dayjs.utc(dt).endOf().from(dayjs.utc())
 		}
 
+		async function move_task_up(task, up_down){
+			const res = await fetch('/tools/template/' + props.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
+			await display_toast(res)
+			for( let i in props.templates_list){
+				if(props.templates_list[i]["case_order_id"] == task.case_order_id-1){
+					props.templates_list[i]["case_order_id"] = task.case_order_id
+					task.case_order_id -= 1
+					break
+				}
+			}
+			props.templates_list.sort(order_task)
+		}
+		async function move_task_down(task, up_down){
+			const res = await fetch('/tools/template/' + props.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
+			await display_toast(res)
+			for( let i in props.templates_list){
+				if(props.templates_list[i]["case_order_id"] == task.case_order_id+1){
+					props.templates_list[i]["case_order_id"] = task.case_order_id
+					task.case_order_id += 1
+					break
+				}
+			}
+			props.templates_list.sort(order_task)
+		}
+
+		function order_task(a, b){
+			if(a.case_order_id > b.case_order_id){
+				return 1
+			}
+			if(a.case_order_id < b.case_order_id){
+				return -1
+			}
+			return 0
+		}
+
 		return {
 			notes,
 			note_editor_render,
@@ -146,7 +182,10 @@ export default {
 			edit_note,
 			modif_note,
 			formatNow,
-			endOf
+			endOf,
+			move_task_up,
+			move_task_down,
+			remove_task
 		}
 	},
 	template: `
@@ -196,6 +235,14 @@ export default {
             <button v-if="task_in_case" class="btn btn-warning btn-sm" @click="remove_task(template, templates_list)" title="Remove the task template from the case"><i class="fa-solid fa-trash"></i></button>
             <button class="btn btn-danger btn-sm" @click="delete_task(template, templates_list)" title="Delete the task template"><i class="fa-solid fa-trash"></i></button>
         </div>
+		<div v-if="!template.current_user_permission.read_only" style="display: grid;">
+			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task_up(template, true)">
+				<i class="fa-solid fa-chevron-up"></i>
+			</button>
+			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task_down(template, false)">
+				<i class="fa-solid fa-chevron-down"></i>
+			</button>
+		</div>
 	</div>
 
 	

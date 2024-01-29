@@ -71,7 +71,7 @@
     <template v-if="tasks_list">
         <template v-for="template, key in tasks_list" :key="template.id">
             <div class="list-group" style="margin-bottom: 20px;">
-                <task_template :template="template" :key_loop="key" :templates_list="tasks_list" :task_in_case="true"></task_template>
+                <task_template :template="template" :key_loop="key" :templates_list="tasks_list" :task_in_case="true" :case_id="{{case.id}}"></task_template>
             </div>
         </template>
     </template>

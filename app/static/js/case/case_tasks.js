@@ -1,17 +1,15 @@
 import {display_toast} from '../toaster.js'
-const { ref, nextTick, computed } = Vue
+const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
 		cases_info: Object,
 		status_info: Object,
 		users_in_case: Object,
-		edit_mode: Boolean,
 		task: Object,
 		key_loop: Number
 	},
-	emits: ['edit_mode', 'task'],
-	setup(props, {emit}) {
+	setup(props) {
 		Vue.onMounted(async () => {
 			select2_change(props.task.id)
 			
@@ -47,6 +45,7 @@ export default {
 		let editor
 		const md = window.markdownit()
 		md.use(mermaidMarkdown.default)
+		const edit_mode = ref(false)
 
 		if(props.task.notes)
 			note_editor_render.value = props.task.notes
@@ -128,7 +127,6 @@ export default {
 						let loc = await res.json()
 						props.task.users = loc
 						props.task.last_modif = Date.now()
-						emit('task', props.task)
 					}
 				}
 				await display_toast(res_msg)
@@ -178,8 +176,7 @@ export default {
 		}
 
 		async function edit_note(task){
-			task.last_modif = Date.now()
-			emit('edit_mode', true)
+			edit_mode.value = true
 
 			const res = await fetch('/case/' + task.case_id + '/get_note/' + task.id)
 			let loc = await res.json()
@@ -212,7 +209,7 @@ export default {
 			)
 
 			if(await res_msg.status == 200){
-				emit('edit_mode', false)
+				edit_mode.value = false
 				task.last_modif = Date.now()
 				task.notes = notes_loc
 				notes.value = notes_loc
@@ -365,6 +362,41 @@ export default {
 			$('.select2-selectUser'+tid).select2({width: 'element'})
 			$('.select2-container').css("min-width", "200px")
 		}
+
+		async function move_task_up(task, up_down){
+			const res = await fetch('/case/' + task.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
+			await display_toast(res)
+			for( let i in props.cases_info.tasks){
+				if(props.cases_info.tasks[i]["case_order_id"] == task.case_order_id-1){
+					props.cases_info.tasks[i]["case_order_id"] = task.case_order_id
+					task.case_order_id -= 1
+					break
+				}
+			}
+			props.cases_info.tasks.sort(order_task)
+		}
+		async function move_task_down(task, up_down){
+			const res = await fetch('/case/' + task.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
+			await display_toast(res)
+			for( let i in props.cases_info.tasks){
+				if(props.cases_info.tasks[i]["case_order_id"] == task.case_order_id+1){
+					props.cases_info.tasks[i]["case_order_id"] = task.case_order_id
+					task.case_order_id += 1
+					break
+				}
+			}
+			props.cases_info.tasks.sort(order_task)
+		}
+
+		function order_task(a, b){
+			if(a.case_order_id > b.case_order_id){
+				return 1
+			}
+			if(a.case_order_id < b.case_order_id){
+				return -1
+			}
+			return 0
+		}
 		
 
 		return {
@@ -374,6 +406,7 @@ export default {
 			is_exporting,
 			getTextColor,
 			mapIcon,
+			edit_mode,
 			change_status,
 			take_task,
 			remove_assign_task,
@@ -389,7 +422,9 @@ export default {
 			formatNow,
 			endOf,
 			export_notes,
-			present_user_in_task
+			present_user_in_task,
+			move_task_up,
+			move_task_down
 		}
 	},
 	template: `
@@ -467,6 +502,14 @@ export default {
 			</a>
 			<button class="btn btn-danger btn-sm" @click="delete_task(task, cases_info.tasks)" title="Delete the task">
 				<i class="fa-solid fa-trash"></i>
+			</button>
+		</div>
+		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin" style="display: grid;">
+			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task_up(task, true)">
+				<i class="fa-solid fa-chevron-up"></i>
+			</button>
+			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task_down(task, false)">
+				<i class="fa-solid fa-chevron-down"></i>
 			</button>
 		</div>
 	</div>

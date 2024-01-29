@@ -225,6 +225,24 @@ class GetTaskTemplate(Resource):
         if template:
             return template.to_json(), 200
         return {"message": "Task template not found"}, 404
+    
+@api.route('/case/<cid>/task/<tid>')
+@api.doc(description='Get a task template by case', params={'cid': 'id of a case template', 'tid': 'id of a task template'})
+class GetTaskTemplateByCase(Resource):
+    method_decorators = [api_required]
+    def get(self, cid, tid):
+        case = CommonModel.get_case_template(cid)
+        if case:
+            template = CommonModel.get_task_template(tid)
+            if template:
+                loc = CommonModel.get_task_by_case_class(cid, tid)
+                if loc:
+                    loc_template = template.to_json()
+                    loc_template["case_order_id"] = loc.case_order_id
+                    return loc_template, 200
+                return {"message": "Task template not in this case template"}, 404
+            return {"message": "Task template not found"}, 404
+        return {"message": "Case template not found"}, 404
 
 @api.route('/create_task')
 @api.doc(description='Create new task template')
@@ -318,3 +336,32 @@ class GetConnectorsTask(Resource):
         if task:
             return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}
         return {"message": "Task Not found"}, 404
+
+
+@api.route('/case/<cid>/move_task_up/<tid>', methods=["GET"])
+@api.doc(description='Move the task up', params={"cid": "id of a case", "tid": "id of a task"})
+class MoveTaskUp(Resource):
+    method_decorators = [api_required]
+    def get(self, cid, tid):
+        case = CommonModel.get_case_template(cid)
+        if case:
+            task = CommonModel.get_task_template(tid)
+            if task:
+                TaskModel.change_order(case, task, "true")
+                return {"message": "Order changed"}, 200
+            return {"message": "Task Not found"}, 404
+        return {"message": "Case Not found"}, 404
+
+@api.route('/case/<cid>/move_task_down/<tid>', methods=["GET"])
+@api.doc(description='Move the task down', params={"cid": "id of a case", "tid": "id of a task"})
+class MoveTaskDown(Resource):
+    method_decorators = [api_required]
+    def get(self, cid, tid):
+        case = CommonModel.get_case_template(cid)
+        if case:
+            task = CommonModel.get_task_template(tid)
+            if task:
+                TaskModel.change_order(case, task, "false")
+                return {"message": "Order changed"}, 200
+            return {"message": "Task Not found"}, 404
+        return {"message": "Case Not found"}, 404

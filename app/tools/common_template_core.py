@@ -35,10 +35,18 @@ def get_role(user):
     """Return role for the current user"""
     return Role.query.get(user.role_id)
 
-def get_task_by_case(cid):
-    case_task_template = Case_Task_Template.query.filter_by(case_id=cid).all()
+def get_all_tasks_by_case(cid):
+    """Return all tasks in case template"""
+    return Case_Task_Template.query.filter_by(case_id=cid).order_by(Case_Task_Template.case_order_id).all()
 
+def get_task_by_case(cid):
+    """Return all tasks in case template with data"""
+    case_task_template = get_all_tasks_by_case(cid)
     return [get_task_template(case_task.task_id) for case_task in case_task_template]
+
+def get_task_by_case_class(cid, template_id):
+    return Case_Task_Template.query.filter_by(case_id=cid, task_id=template_id).first()
+
 
 def get_case_template_tags(cid):
     return [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]

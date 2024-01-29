@@ -87,7 +87,7 @@ def complete_task(tid, current_user):
 def create_task(form_dict, cid, current_user):
     """Add a task to the DB"""
     if "template_select" in form_dict and not 0 in form_dict["template_select"]:
-        CommonModel.create_task_from_template(form_dict["template_select"], cid)
+        task = CommonModel.create_task_from_template(form_dict["template_select"], cid)
     else:
         deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
@@ -96,6 +96,13 @@ def create_task(form_dict, cid, current_user):
             instance = CommonModel.get_instance_by_name(instance)
             if not CommonModel.get_user_instance_by_instance(instance.id):
                 return False
+            
+        case = CommonModel.get_case(cid)
+        nb_tasks = 1
+        if case.nb_tasks:
+            nb_tasks = case.nb_tasks+1
+        else:
+            case.nb_tasks = 0
 
         task = Task(
             uuid=str(uuid.uuid4()),
@@ -106,9 +113,13 @@ def create_task(form_dict, cid, current_user):
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             deadline=deadline,
             case_id=cid,
-            status_id=1
+            status_id=1,
+            case_order_id=nb_tasks
         )
         db.session.add(task)
+        db.session.commit()
+
+        case.nb_tasks += 1
         db.session.commit()
 
         for tags in form_dict["tags"]:
@@ -435,7 +446,7 @@ def build_task_query(completed, tags=None, taxonomies=None, galaxies=None, clust
     if filter:
         query.order_by(desc(filter))
     
-    return query.filter(and_(*conditions)).all()
+    return query.filter(and_(*conditions)).order_by(Task.case_order_id).all()
 
 def sort_by_status_task_core(case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False, no_info=False, filter=False):
     """Sort all tasks by completed and depending of taxonomies and galaxies"""
@@ -479,7 +490,7 @@ def sort_by_status_task_core(case, user, taxonomies=[], galaxies=[], tags=[], cl
 
             tasks = glob_list
     else:
-        tasks = Task.query.filter_by(case_id=case.id, completed=completed).all()
+        tasks = Task.query.filter_by(case_id=case.id, completed=completed).order_by(Task.case_order_id).all()
 
     if no_info:
         return tasks
@@ -542,3 +553,20 @@ def export_notes(task, type_req):
         pass
     
     return send_file(temp_export, as_attachment=True, download_name=download_filename)
+
+def change_order(case, task, up_down):
+    """Change the order of tasks"""
+    for task_in_case in case.tasks:
+        # A task move up, case_order_id decrease by one
+        if up_down == "true":
+            if task_in_case.case_order_id == task.case_order_id - 1:
+                task_in_case.case_order_id += 1
+                task.case_order_id -= 1
+                break
+        else:
+            if task_in_case.case_order_id == task.case_order_id + 1:
+                task_in_case.case_order_id -= 1
+                task.case_order_id += 1
+                break
+    db.session.commit()
+

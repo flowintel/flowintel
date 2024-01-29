@@ -134,33 +134,41 @@ def create_case_template(form_dict):
         db.session.add(case_instance)
         db.session.commit()
 
+    cp = 1
     for tid in form_dict["tasks"]:
         case_task_template = Case_Task_Template(
             case_id=case_template.id,
-            task_id=tid
+            task_id=tid,
+            case_order_id = cp
         )
         db.session.add(case_task_template)
         db.session.commit()
+        cp += 1
     return case_template
 
 
 
 
 def add_task_case_template(form_dict, cid):
+    count_task = len(Case_Task_Template.query.filter_by(case_id=cid).all())
+    count_task += 1
     if form_dict["tasks"]:
         for tid in form_dict["tasks"]:
             if not Case_Task_Template.query.filter_by(case_id=cid, task_id=tid).first():
                 case_task_template = Case_Task_Template(
                     case_id=cid,
-                    task_id=tid
+                    task_id=tid,
+                    case_order_id=count_task
                 )
                 db.session.add(case_task_template)
                 db.session.commit()
+                count_task += 1
     elif form_dict["title"]:
         template = TaskModel.add_task_template_core(form_dict)
         case_task_template = Case_Task_Template(
                 case_id=cid,
-                task_id=template.id
+                task_id=template.id,
+                case_order_id=count_task
             )
         db.session.add(case_task_template)
         db.session.commit()
@@ -259,6 +267,7 @@ def create_case_from_template(cid, case_title_fork, user):
         return {"message": "Error, title already exist"}
     
     case_template = CommonModel.get_case_template(cid)
+    case_tasks = CommonModel.get_all_tasks_by_case(cid)
 
     case = Case(
         title=case_title_fork,
@@ -267,7 +276,8 @@ def create_case_from_template(cid, case_title_fork, user):
         creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
         last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
         status_id=1,
-        owner_org_id=user.org_id
+        owner_org_id=user.org_id,
+        nb_tasks=len(case_tasks)
     )
     db.session.add(case)
     db.session.commit()
@@ -310,6 +320,7 @@ def create_case_from_template(cid, case_title_fork, user):
 
     task_case_template = CommonModel.get_task_by_case(cid)
     for task in task_case_template:
+        task_in_case = CommonModel.get_task_by_case_class(cid, task.id)
         t = Task(
             uuid=str(uuid.uuid4()),
             title=task.title,
@@ -319,7 +330,8 @@ def create_case_from_template(cid, case_title_fork, user):
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             case_id=case.id,
             status_id=1,
-            notes=task.notes
+            notes=task.notes,
+            case_order_id=task_in_case.case_order_id
         )
         db.session.add(t)
         db.session.commit()
