@@ -14,7 +14,7 @@ from ..db_class.db import Case_Template, Task_Template
 
 
 class TaskTemplateForm(FlaskForm):
-    title = StringField('Title', validators=[InputRequired(),Length(1, 64)])
+    title = StringField('Title', validators=[Optional(),Length(1, 64)])
     body = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     tasks = SelectMultipleField(u'Task Template', coerce=int, validators=[Optional()])
@@ -22,8 +22,14 @@ class TaskTemplateForm(FlaskForm):
     submit = SubmitField('Create')
 
     def validate_title(self, field):
+        if not field.data and 0 in self.tasks.data:
+            raise ValidationError("Need to enter a title or select a template")
         if field.data and Task_Template.query.filter_by(title=field.data).first():
             raise ValidationError("The title already exist")
+    
+    def validate_tasks(self, field):
+        if 0 in field.data and not self.title.data:
+            raise ValidationError("Need to select a template or enter a title")
         
 
 class TaskTemplateEditForm(FlaskForm):
