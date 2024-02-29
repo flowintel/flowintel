@@ -1,6 +1,7 @@
 
 body {
   background-color: #fbfbfb;
+  margin-bottom: 100px;
 }
 
 @media (min-width: 991.98px) {

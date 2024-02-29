@@ -7,7 +7,8 @@ export default {
 		status_info: Object,
 		users_in_case: Object,
 		task: Object,
-		key_loop: Number
+		key_loop: Number,
+		open_closed: Object
 	},
 	setup(props) {
 		Vue.onMounted(async () => {
@@ -64,10 +65,14 @@ export default {
 				task.status_id=status
 					
 				if(props.status_info.status[status-1].name == 'Finished'){
+					props.open_closed["closed"] += 1
+					props.open_closed["open"] -= 1
 					task.last_modif = Date.now()
 					task.completed = true
 					fetch('/case/complete_task/'+task.id)
 				}else{
+					props.open_closed["closed"] -= 1
+					props.open_closed["open"] += 1
 					task.completed = false
 				}
 			}
@@ -168,6 +173,12 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
 
 			if( await res.status == 200){
+				if(task.completed){
+					props.open_closed["closed"] -= 1
+				}else{
+					props.open_closed["open"] -= 1
+				}
+
 				let index = task_array.indexOf(task)
 				if(index > -1)
 					task_array.splice(index, 1)
@@ -283,6 +294,13 @@ export default {
 		async function complete_task(task){
 			const res = await fetch('/case/complete_task/'+task.id)
 			if (await res.status == 200){
+				if(task.completed){
+					props.open_closed["open"] += 1
+					props.open_closed["closed"] -= 1
+				}else{
+					props.open_closed["closed"] += 1
+					props.open_closed["open"] -= 1
+				}
 				task.last_modif = Date.now()
 				task.completed = !task.completed
 				let status = task.status_id

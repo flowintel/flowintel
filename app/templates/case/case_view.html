@@ -233,6 +233,9 @@
             </div>
             <!-- Search bar -->
         </div>
+        <div style="margin-top: -5px; margin-bottom: 15px;">
+            <small><i>[[open_closed.open]] open/ [[open_closed.closed]] closed</i></small>
+        </div>
 
         <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
             filter
@@ -360,7 +363,8 @@
                                 :users_in_case="users_in_case" 
                                 :status_info="status_info" 
                                 :task="task" 
-                                :key_loop="key" >
+                                :key_loop="key"
+                                :open_closed="open_closed" >
                     </case_tasks>
                 </div>
             </template>
@@ -433,6 +437,8 @@
                 const instances_selected = ref([])
                 const module_loader = ref(false)
 
+                const open_closed = ref({})
+
                 async function fetch_history(){
                     const res = await fetch("/case/history/" + cases_info.value.case.id)
                     if(await res.status==404 ){
@@ -440,6 +446,16 @@
                     }else{
                         let loc = await res.json()
                         history.value = loc["history"]
+                    }
+                }
+
+                async function fetch_open_closed(){
+                    const res = await fetch("/case/get_open_close/"+cases_info.value.case.id)
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        open_closed.value = loc
                     }
                 }
 
@@ -519,6 +535,7 @@
                         fetch_history()
                         await nextTick()
                         scrollIntoSelectedElement()
+                        fetch_open_closed()
                     }
                 }
 
@@ -883,7 +900,8 @@
                     modules,
                     module_selected,
                     instances_selected,
-                    module_loader
+                    module_loader,
+                    open_closed
                 }
             }
         }).mount('.container')

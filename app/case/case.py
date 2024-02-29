@@ -661,3 +661,19 @@ def call_module_case(cid):
         return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
+
+@case_blueprint.route("/get_open_close/<cid>", methods=['GET'])
+@login_required
+def get_open_close(cid):
+    """Get the numbers of open and closed tasks"""
+    case = CommonModel.get_case(cid)
+    if case:
+        cp_open = 0
+        cp_closed = 0
+        for task in case.tasks:
+            if task.completed:
+                cp_closed += 1
+            else:
+                cp_open += 1
+        return {"open": cp_open, "closed": cp_closed}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
