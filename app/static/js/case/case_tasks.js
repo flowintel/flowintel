@@ -11,112 +11,62 @@ export default {
 		open_closed: Object
 	},
 	setup(props) {
-		Vue.onMounted(async () => {
-			select2_change(props.task.id)
-			
-			const targetElement = document.getElementById('editor_' + props.task.id)
-			editor = new Editor.EditorView({
-				doc: "\n\n",
-				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-					if (v.docChanged) {
-						note_editor_render.value = editor.state.doc.toString()
-					}
-				})],
-				parent: targetElement
-			})
+		// Variables part
+		const users_list = ref([])				// List to display in proper way users assign to this task
+		const is_mounted = ref(false)			// Boolean use to know if the app is mount to initialize mermaid
+		const is_exporting = ref(false)		 	// Boolean to display a spinner when exporting
 
-			const allCollapses = document.getElementById('collapse' + props.task.id)
-			allCollapses.addEventListener('shown.bs.collapse', event => {
-				md.mermaid.init()
-			})
-			is_mounted.value = true
-
-			for(let index in props.task.users){
-				users_list.value.push(props.task.users[index].first_name + " " + props.task.users[index].last_name)
-			}
-		})
-		Vue.onUpdated(async () => {
-			select2_change(props.task.id)
-			// do not initialize mermaid before the page is mounted
-			if(is_mounted)
-				md.mermaid.init()
-		})
-
-		const users_list = ref([])
-		const is_mounted = ref(false)
-		const is_exporting = ref(false)
-
-		const notes = ref(props.task.notes)
-		const note_editor_render = ref("")
-		let editor
-		const md = window.markdownit()
-		md.use(mermaidMarkdown.default)
-		const edit_mode = ref(false)
+		const notes = ref(props.task.notes)		// Notes of the task
+		const note_editor_render = ref("")		// Notes display in mermaid
+		let editor								// Variable for the editor
+		const md = window.markdownit()			// Library to Parse and display markdown
+		md.use(mermaidMarkdown.default)			// Use mermaid library
+		const edit_mode = ref(false)			// Boolean use when the note is in edit mode
 
 		if(props.task.notes)
-			note_editor_render.value = props.task.notes
-		
+			note_editor_render.value = props.task.notes		// If this task has notes
 
-		async function change_status(status, task){
+		
+		// Function part
+		async function add_file(task){
+			// Add file to the task
+			let files = document.getElementById('formFileMultiple'+task.id).files
+
+			// Create a form with all files upload
+			let formData = new FormData();
+			for(let i=0;i<files.length;i++){
+				formData.append("files"+i, files[i]);
+			}
+
 			const res = await fetch(
-				'/case/' + task.case_id + '/change_task_status/'+task.id,{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+				'/case/' + task.case_id + '/add_files/' + task.id,{
+					headers: { "X-CSRFToken": $("#csrf_token").val() },
 					method: "POST",
-					body: JSON.stringify({"status": status})
+					files: files,
+					body: formData
 				}
 			)
-			if(await res.status==200){
-				task.last_modif = Date.now()
-				task.status_id=status
-					
-				if(props.status_info.status[status-1].name == 'Finished'){
-					props.open_closed["closed"] += 1
-					props.open_closed["open"] -= 1
+			if(await res.status == 200){
+				// Get the new list of files of the task
+				const res_files = await fetch('/case/' + task.case_id + '/get_files/'+task.id)
+
+				if(await res_files.status == 200){
 					task.last_modif = Date.now()
-					task.completed = true
-					fetch('/case/complete_task/'+task.id)
+					let loc = await res_files.json()
+					task.files = []
+					for(let file in loc['files']){
+						task.files.push(loc['files'][file])
+					}
 				}else{
-					props.open_closed["closed"] -= 1
-					props.open_closed["open"] += 1
-					task.completed = false
+					await display_toast(res_files)
 				}
 			}
+
 			await display_toast(res)
 		}
-
-		async function take_task(task, current_user){
-			const res = await fetch('/case/' + task.case_id + '/take_task/' + task.id)
-
-			if( await res.status == 200){
-				task.last_modif = Date.now()
-				task.is_current_user_assigned = true
-				task.users.push(current_user)
-			}
-			await display_toast(res)
-		}
-
-		async function remove_assign_task(task, current_user){
-			const res = await fetch('/case/' + task.case_id + '/remove_assignment/' + task.id)
-
-			if( await res.status == 200){
-				task.last_modif = Date.now()
-				task.is_current_user_assigned = false
-	
-				let index = -1
-	
-				for(let i=0;i<task.users.length;i++){
-					if (task.users[i].id==current_user.id)
-						index = i
-				}
-	
-				if(index > -1)
-					task.users.splice(index, 1)
-			}
-			await display_toast(res)
-		}
-
 
 		async function assign_user_task(){
+			// Assign users present in the case to the task
 			let users_select = $('#selectUser'+props.task.id).val()
 			if(users_select.length){
 				const res_msg = await fetch(
@@ -127,6 +77,7 @@ export default {
 					}
 				)
 				if( await res_msg.status == 200){
+					// Check if current user is assign
 					if(users_select.includes(props.cases_info.current_user.id.toString())){
 						props.task.is_current_user_assigned = true
 					}
@@ -142,39 +93,89 @@ export default {
 				await display_toast(res_msg)
 			}
 		}
-
-
-		async function remove_assigned_user(user_id){
+		
+		async function change_status(status, task){
+			// Change the status of the task
 			const res = await fetch(
-				'/case/' + props.task.case_id + '/remove_assigned_user/' + props.task.id,{
+				'/case/' + task.case_id + '/change_task_status/'+task.id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
-					body: JSON.stringify({"user_id": user_id})
+					body: JSON.stringify({"status": status})
 				}
 			)
-
-			if( await res.status == 200){
-				props.task.last_modif = Date.now()
-
-				let index = -1
-				for(let i=0;i<props.task.users.length;i++){
-					if (props.task.users[i].id==user_id){
-						if(user_id == props.cases_info.current_user.id.toString()){
-							props.task.is_current_user_assigned = true
-						}
-						props.task.is_current_user_assigned = false
-						index = i
-					}
+			if(await res.status==200){
+				task.last_modif = Date.now()
+				task.status_id=status
+					
+				// If 'Finished' is selected, the task is completed
+				if(props.status_info.status[status-1].name == 'Finished'){
+					props.open_closed["closed"] += 1
+					props.open_closed["open"] -= 1
+					task.last_modif = Date.now()
+					task.completed = true
+					fetch('/case/complete_task/'+task.id)
+				}else{
+					props.open_closed["closed"] -= 1
+					props.open_closed["open"] += 1
+					task.completed = false
 				}
-
-				if(index > -1)
-					props.task.users.splice(index, 1)
 			}
 			await display_toast(res)
 		}
 
+		async function complete_task(task){
+			// Complete a task
+			const res = await fetch('/case/complete_task/'+task.id)
+			if (await res.status == 200){
+				if(task.completed){
+					props.open_closed["open"] += 1
+					props.open_closed["closed"] -= 1
+				}else{
+					props.open_closed["closed"] += 1
+					props.open_closed["open"] -= 1
+				}
+				task.last_modif = Date.now()
+				task.completed = !task.completed
+				let status = task.status_id
+				if(props.status_info.status[task.status_id -1].name == 'Finished'){
+					for(let i in props.status_info.status){
+						if(props.status_info.status[i].name == 'Created')
+							task.status_id = props.status_info.status[i].id
+					}
+					if(task.status_id == status)
+						task.status_id = 1
+
+				}else{
+					for(let i in props.status_info.status){
+						if(props.status_info.status[i].name == 'Finished'){
+							task.status_id = props.status_info.status[i].id
+							break
+						}
+					}
+				}
+				let index = props.cases_info.tasks.indexOf(task)
+				if(index > -1)
+					props.cases_info.tasks.splice(index, 1)
+			}
+			await display_toast(res)
+		}
+
+		async function delete_file(file, task){
+			// Delete a file in the task
+			const res = await fetch('/case/task/' + task.id + '/delete_file/' + file.id)
+			if(await res.status == 200){
+				task.last_modif = Date.now()
+
+				// Remove the file from list
+				let index = task.files.indexOf(file)
+				if(index > -1)
+					task.files.splice(index, 1)
+			}
+			await display_toast(res)
+		}
 
 		async function delete_task(task, task_array){
+			// delete the task
 			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
 
 			if( await res.status == 200){
@@ -184,6 +185,7 @@ export default {
 					props.open_closed["open"] -= 1
 				}
 
+				// remove the task from the list of task
 				let index = task_array.indexOf(task)
 				if(index > -1)
 					task_array.splice(index, 1)
@@ -192,12 +194,14 @@ export default {
 		}
 
 		async function edit_note(task){
+			// Edit the note of the task
 			edit_mode.value = true
 
 			const res = await fetch('/case/' + task.case_id + '/get_note/' + task.id)
 			let loc = await res.json()
 			task.notes = loc["note"]
 
+			// Initialize the editor
 			const targetElement = document.getElementById('editor1_' + props.task.id)
 			editor = new Editor.EditorView({
 				doc: task.notes,
@@ -208,10 +212,46 @@ export default {
 				})],
 				parent: targetElement
 			})
-			
+		}
+
+		async function export_notes(task, type){
+			// Export notes in differnet format and download it
+			is_exporting.value = true
+			let filename = ""
+			await fetch('/case/'+task.case_id+'/task/'+task.id+'/export_notes?type=' + type)
+			.then(res =>{
+				filename = res.headers.get("content-disposition").split("=")
+				filename = filename[filename.length - 1]
+				return res.blob() 
+			})
+			.then(data =>{
+				var a = document.createElement("a")
+				a.href = window.URL.createObjectURL(data);
+				a.download = filename;
+				a.click();
+			})
+			is_exporting.value = false
+		}
+
+		async function move_task(task, up_down){
+			// Move the task up and down
+			let cp = 0
+			up_down ? cp = -1 : cp = 1
+
+			const res = await fetch('/case/' + task.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
+			await display_toast(res)
+			for( let i in props.cases_info.tasks){
+				if(props.cases_info.tasks[i]["case_order_id"] == task.case_order_id+cp){
+					props.cases_info.tasks[i]["case_order_id"] = task.case_order_id
+					task.case_order_id += cp
+					break
+				}
+			}
+			props.cases_info.tasks.sort(order_task)
 		}
 
 		async function modif_note(task){
+			// Modify notes of the task
 			let notes_loc = editor.state.doc.toString()
 			if(notes_loc.trim().length == 0){
 				notes_loc = notes_loc.trim()
@@ -249,90 +289,8 @@ export default {
 			await display_toast(res_msg)
 		}
 
-
-		async function add_file(task){
-			let files = document.getElementById('formFileMultiple'+task.id).files
-
-			let formData = new FormData();
-			for(let i=0;i<files.length;i++){
-				formData.append("files"+i, files[i]);
-			}
-
-			const res = await fetch(
-				'/case/' + task.case_id + '/add_files/' + task.id,{
-					headers: { "X-CSRFToken": $("#csrf_token").val() },
-					method: "POST",
-					files: files,
-					body: formData
-				}
-			)
-			if(await res.status == 200){
-				const res_files = await fetch('/case/' + task.case_id + '/get_files/'+task.id)
-
-				if(await res_files.status == 200){
-					task.last_modif = Date.now()
-					let loc = await res_files.json()
-					task.files = []
-					for(let file in loc['files']){
-						task.files.push(loc['files'][file])
-					}
-				}else{
-					await display_toast(res_files)
-				}
-			}
-
-			await display_toast(res)
-		}
-
-		async function delete_file(file, task){
-			const res = await fetch('/case/task/' + task.id + '/delete_file/' + file.id)
-			if(await res.status == 200){
-				task.last_modif = Date.now()
-
-				let index = task.files.indexOf(file)
-				if(index > -1)
-					task.files.splice(index, 1)
-			}
-			await display_toast(res)
-		}
-
-		async function complete_task(task){
-			const res = await fetch('/case/complete_task/'+task.id)
-			if (await res.status == 200){
-				if(task.completed){
-					props.open_closed["open"] += 1
-					props.open_closed["closed"] -= 1
-				}else{
-					props.open_closed["closed"] += 1
-					props.open_closed["open"] -= 1
-				}
-				task.last_modif = Date.now()
-				task.completed = !task.completed
-				let status = task.status_id
-				if(props.status_info.status[task.status_id -1].name == 'Finished'){
-					for(let i in props.status_info.status){
-						if(props.status_info.status[i].name == 'Created')
-							task.status_id = props.status_info.status[i].id
-					}
-					if(task.status_id == status)
-						task.status_id = 1
-
-				}else{
-					for(let i in props.status_info.status){
-						if(props.status_info.status[i].name == 'Finished'){
-							task.status_id = props.status_info.status[i].id
-							break
-						}
-					}
-				}
-				let index = props.cases_info.tasks.indexOf(task)
-				if(index > -1)
-					props.cases_info.tasks.splice(index, 1)
-			}
-			await display_toast(res)
-		}
-
 		async function notify_user(user_id){
+			// Send a notification to the user
 			const res = await fetch(
 				'/case/' + props.task.case_id + '/task/' + props.task.id + '/notify_user',{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
@@ -343,75 +301,9 @@ export default {
 			await display_toast(res)
 		}
 
-		function formatNow(dt) {
-			return dayjs.utc(dt).from(dayjs.utc())
-		}
-
-		function endOf(dt){
-			return dayjs.utc(dt).endOf().from(dayjs.utc())
-		}
-
-
-		function present_user_in_task(task_user_list, user){
-			let index = -1
-
-			for(let i=0;i<task_user_list.length;i++){
-				if (task_user_list[i].id==user.id)
-					index = i
-			}
-
-			return index
-		}
-
-		async function export_notes(task, type){
-			is_exporting.value = true
-			let filename = ""
-			await fetch('/case/'+task.case_id+'/task/'+task.id+'/export_notes?type=' + type)
-			.then(res =>{
-				filename = res.headers.get("content-disposition").split("=")
-				filename = filename[filename.length - 1]
-				return res.blob() 
-			})
-			.then(data =>{
-				var a = document.createElement("a")
-				a.href = window.URL.createObjectURL(data);
-				a.download = filename;
-				a.click();
-			})
-			is_exporting.value = false
-		}
-
-		function select2_change(tid){
-			$('.select2-selectUser'+tid).select2({width: 'element'})
-			$('.select2-container').css("min-width", "200px")
-		}
-
-		async function move_task_up(task, up_down){
-			const res = await fetch('/case/' + task.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
-			await display_toast(res)
-			for( let i in props.cases_info.tasks){
-				if(props.cases_info.tasks[i]["case_order_id"] == task.case_order_id-1){
-					props.cases_info.tasks[i]["case_order_id"] = task.case_order_id
-					task.case_order_id -= 1
-					break
-				}
-			}
-			props.cases_info.tasks.sort(order_task)
-		}
-		async function move_task_down(task, up_down){
-			const res = await fetch('/case/' + task.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
-			await display_toast(res)
-			for( let i in props.cases_info.tasks){
-				if(props.cases_info.tasks[i]["case_order_id"] == task.case_order_id+1){
-					props.cases_info.tasks[i]["case_order_id"] = task.case_order_id
-					task.case_order_id += 1
-					break
-				}
-			}
-			props.cases_info.tasks.sort(order_task)
-		}
 
 		function order_task(a, b){
+			// Helper for move_task function
 			if(a.case_order_id > b.case_order_id){
 				return 1
 			}
@@ -420,7 +312,132 @@ export default {
 			}
 			return 0
 		}
-		
+
+		function present_user_in_task(task_user_list, user){
+			// Check if user is already assign
+			let index = -1
+
+			for(let i=0;i<task_user_list.length;i++){
+				if (task_user_list[i].id==user.id)
+					index = i
+			}
+			return index
+		}
+
+		async function remove_assign_task(task, current_user){
+			// Remove current user from assignment to the task
+			const res = await fetch('/case/' + task.case_id + '/remove_assignment/' + task.id)
+
+			if( await res.status == 200){
+				task.last_modif = Date.now()
+				task.is_current_user_assigned = false
+	
+				let index = -1
+	
+				for(let i=0;i<task.users.length;i++){
+					if (task.users[i].id==current_user.id)
+						index = i
+				}
+	
+				if(index > -1)
+					task.users.splice(index, 1)
+			}
+			await display_toast(res)
+		}
+
+
+		async function remove_assigned_user(user_id){
+			// Remove a user from assignment to the task
+			const res = await fetch(
+				'/case/' + props.task.case_id + '/remove_assigned_user/' + props.task.id,{
+					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+					method: "POST",
+					body: JSON.stringify({"user_id": user_id})
+				}
+			)
+
+			if( await res.status == 200){
+				props.task.last_modif = Date.now()
+
+				let index = -1
+				for(let i=0;i<props.task.users.length;i++){
+					if (props.task.users[i].id==user_id){
+						// Check if the user is the current one
+						if(user_id == props.cases_info.current_user.id.toString()){
+							props.task.is_current_user_assigned = true
+						}
+						props.task.is_current_user_assigned = false
+						index = i
+					}
+				}
+
+				if(index > -1)
+					props.task.users.splice(index, 1)
+			}
+			await display_toast(res)
+		}
+
+		async function take_task(task, current_user){
+			// Assign the task to the current user
+			const res = await fetch('/case/' + task.case_id + '/take_task/' + task.id)
+
+			if( await res.status == 200){
+				task.last_modif = Date.now()
+				task.is_current_user_assigned = true
+				task.users.push(current_user)
+			}
+			await display_toast(res)
+		}
+
+
+
+		// Utils function
+		function formatNow(dt) {
+			return dayjs.utc(dt).from(dayjs.utc())
+		}
+
+		function endOf(dt){
+			return dayjs.utc(dt).endOf().from(dayjs.utc())
+		}
+
+		function select2_change(tid){
+			$('.select2-selectUser'+tid).select2({width: 'element'})
+			$('.select2-container').css("min-width", "200px")
+		}		
+
+
+		// Vue function
+		Vue.onMounted(async () => {
+			select2_change(props.task.id)
+			
+			const targetElement = document.getElementById('editor_' + props.task.id)
+			editor = new Editor.EditorView({
+				doc: "\n\n",
+				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+					if (v.docChanged) {
+						note_editor_render.value = editor.state.doc.toString()
+					}
+				})],
+				parent: targetElement
+			})
+
+			// When openning a task, initialize mermaid library
+			const allCollapses = document.getElementById('collapse' + props.task.id)
+			allCollapses.addEventListener('shown.bs.collapse', event => {
+				md.mermaid.init()
+			})
+			is_mounted.value = true
+
+			for(let index in props.task.users){
+				users_list.value.push(props.task.users[index].first_name + " " + props.task.users[index].last_name)
+			}
+		})
+		Vue.onUpdated(async () => {
+			select2_change(props.task.id)
+			// do not initialize mermaid before the page is mounted
+			if(is_mounted)
+				md.mermaid.init()
+		})
 
 		return {
 			notes,
@@ -447,8 +464,7 @@ export default {
 			endOf,
 			export_notes,
 			present_user_in_task,
-			move_task_up,
-			move_task_down
+			move_task
 		}
 	},
 	template: `
@@ -526,10 +542,10 @@ export default {
 			</button>
 		</div>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin" style="display: grid;">
-			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task_up(task, true)">
+			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task(task, true)">
 				<i class="fa-solid fa-chevron-up"></i>
 			</button>
-			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task_down(task, false)">
+			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task(task, false)">
 				<i class="fa-solid fa-chevron-down"></i>
 			</button>
 		</div>
