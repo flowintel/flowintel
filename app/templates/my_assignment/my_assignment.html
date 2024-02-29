@@ -60,10 +60,7 @@
                 </div>
                 <div class="d-flex w-100 justify-content-between">
                     <div v-if="task.users.length">
-                        Users: 
-                        <template v-for="user in task.users">
-                            [[user.first_name]] [[user.last_name]],
-                        </template>
+                        Users: [[list_users(task)]]
                     </div>
 
                     <div v-else>
@@ -109,7 +106,7 @@
 {% block script %}
     <script type="module">
         const { createApp, ref } = Vue
-        import my_assignment_filter from '../../static/js/my_assignment/my_assignment_filter.js'
+        import my_assignment_filter from '/static/js/my_assignment/my_assignment_filter.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
@@ -155,6 +152,14 @@
                     tasks_list.value.tasks = tasks.tasks
                     current_page.value = 1
                 }
+
+                function list_users(task){
+                    let loc = []
+                    for(let index in task.users){
+                        loc.push(task.users[index].first_name + " " + task.users[index].last_name)
+                    }
+                    return loc.join(", ")
+                }
                 
 
                 fetchAssignedTask(1)
@@ -170,7 +175,8 @@
                     current_filter,
                     message_list, // Avoid warning
                     getTextColor,
-                    mapIcon
+                    mapIcon,
+                    list_users
                 }
             }
         }).mount('.container')

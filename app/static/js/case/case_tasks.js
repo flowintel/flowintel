@@ -30,6 +30,10 @@ export default {
 				md.mermaid.init()
 			})
 			is_mounted.value = true
+
+			for(let index in props.task.users){
+				users_list.value.push(props.task.users[index].first_name + " " + props.task.users[index].last_name)
+			}
 		})
 		Vue.onUpdated(async () => {
 			select2_change(props.task.id)
@@ -38,6 +42,7 @@ export default {
 				md.mermaid.init()
 		})
 
+		const users_list = ref([])
 		const is_mounted = ref(false)
 		const is_exporting = ref(false)
 
@@ -425,6 +430,7 @@ export default {
 			getTextColor,
 			mapIcon,
 			edit_mode,
+			users_list,
 			change_status,
 			take_task,
 			remove_assign_task,
@@ -478,10 +484,7 @@ export default {
 
 			<div class="d-flex w-100 justify-content-between">
                 <div v-if="task.users.length">
-                    Users: 
-                    <template v-for="user in task.users">
-                        [[user.first_name]] [[user.last_name]],
-                    </template>
+                    Users:  [[users_list.join(", ")]]
                 </div>
 
                 <div v-else>
