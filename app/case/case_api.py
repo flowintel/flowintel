@@ -902,3 +902,44 @@ class MoveTaskDown(Resource):
                 return {"message": "Task Not found"}, 404
             return {"message": "Permission denied"}, 403
         return {"message": "Case Not found"}, 404
+
+
+@api.route('/<cid>/all_notes')
+@api.doc(description='Get all notes of a case', params={'cid': 'id of a case'})
+class GetAllNotes(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            return {"notes": CaseModel.get_all_notes(case)}
+        return {"message": "Case not found"}, 404
+
+
+@api.route('/<cid>/modif_case_note', methods=['POST'])
+@api.doc(description='Edit note of a case', params={'cid': 'id of a case'})
+class ModifNoteCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={"note": "note to create or modify"})
+    def post(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if "note" in request.json:
+                    if CaseModel.modif_note_core(cid, current_user, request.json["note"]):
+                        return {"message": f"Note for Case {cid} edited"}, 200
+                    return {"message": f"Error Note for Case {cid} edited"}, 400
+                return {"message": "Key 'note' not found"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
+    
+
+@api.route('/<cid>/get_note')
+@api.doc(description='Get note of a case', params={'cid': 'id of a case'})
+class GetNote(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            return {"note": case.notes}
+        return {"message": "Case not found"}, 404

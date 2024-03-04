@@ -237,3 +237,22 @@ def test_move_task_down(client):
 
     response = client.get("/api/case/1/task/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and response.json["task"]["case_order_id"] == 1
+
+def test_get_all_notes(client):
+    test_modif_note(client)
+    response = client.get("/api/case/1/all_notes", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+
+def test_modif_case_note(client):
+    test_create_case(client)
+    response = client.post("/api/case/1/modif_case_note",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"note": "Test super note"}
+                        )
+    assert response.status_code == 403 
+
+def test_get_case_note(client):
+    test_modif_case_note(client)
+    response = client.get("/api/case/1/get_note", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 
