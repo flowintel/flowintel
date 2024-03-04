@@ -718,3 +718,24 @@ def call_module_case(module, instances, case, user):
         elif not case_instance_id.identifier == event_id:
             case_instance_id.identifier = event_id
             db.session.commit()
+
+
+def get_all_notes(case):
+    """Get all tasks' notes"""
+    loc_notes = ""
+    for task in case.tasks:
+        if task.notes:
+            loc_notes += f"# (Task) {task.title}\n{task.notes}---\n\n"
+    return loc_notes
+
+
+def modif_note_core(cid, current_user, notes):
+    """Modify notes of a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        case.notes = notes
+        CommonModel.update_last_modif(cid)
+        db.session.commit()
+        CommonModel.save_history(case.uuid, current_user, f"Notes for '{case.title}' modified")
+        return True
+    return False

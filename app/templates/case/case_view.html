@@ -210,15 +210,21 @@
 
     <ul class="nav nav-tabs" style="margin-bottom: 10px;">
         <li class="nav-item">
-            <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab(true)">Main</button>
+            <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')">Main</button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-history" @click="active_tab(false)">History</button>
+            <button class="nav-link" id="tab-history" @click="active_tab('history')">History</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-case" @click="active_tab('case')">Case notes</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-all" @click="active_tab('all')">Tasks notes</button>
         </li>
     </ul>
 
 
-    <template v-if="main_tab">
+    <template v-if="main_tab == 'main'">
         <div style="display: flex;">
             <h3>Tasks</h3>
             {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
@@ -379,7 +385,7 @@
 
 
 
-    <template v-else>
+    <template v-else-if="main_tab == 'history'">
         <template v-if="history">
             <div v-for="h in history">
                 [[h]]
@@ -388,6 +394,34 @@
         <template v-else>
             <i>No history</i>
         </template>
+    </template>
+
+    <template v-else-if="main_tab == 'case'">
+        <div v-if="cases_info.case.notes">
+            <template v-if="edit_mode">
+                <button class="btn btn-primary" @click="save_note_case()">Save</button>
+                <div style="display: flex;">
+                    <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
+                    <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+                </div>
+            </template>
+            <template v-else>
+                <button class="btn btn-primary" @click="edit_note()">Edit</button>
+                <div v-html="md.render(cases_info.case.notes)" style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px;"></div>
+            </template>
+        </div>
+        <template v-else>
+            <button class="btn btn-primary" @click="save_note_case()">Save</button>
+            <div style="display: flex;">
+                <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
+                <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+            </div>
+        </template>
+
+    </template>
+
+    <template v-else-if="main_tab == 'all'">
+        <div v-html="md.render(all_notes)"></div>
     </template>
     
     <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
@@ -419,7 +453,7 @@
                 let or_and_taxo = true
                 let or_and_galaxies = true
 
-                const main_tab = ref(true)
+                const main_tab = ref('main')
                 const history = ref(null)
 
                 const taxonomies = ref([])
@@ -438,6 +472,13 @@
                 const module_loader = ref(false)
 
                 const open_closed = ref({})
+                const all_notes = ref("")
+                let editor
+                const note_editor_render = ref("")
+                const edit_mode = ref(false)
+
+                const md = window.markdownit()			// Library to Parse and display markdown
+		        md.use(mermaidMarkdown.default)			// Use mermaid library
 
                 async function fetch_history(){
                     const res = await fetch("/case/history/" + cases_info.value.case.id)
@@ -682,12 +723,33 @@
                     }
                 }
 
-                async function active_tab(is_main){
-                    if(is_main){
-                        main_tab.value = true
+                function prepare_editor(){
+                    const targetElement = document.getElementById('editor')
+                    editor = new Editor.EditorView({
+							doc: "\n\n",
+							extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+								if (v.docChanged) {
+									note_editor_render.value = editor.state.doc.toString()
+								}
+							})],
+							parent: targetElement
+						})
+                }
+
+                async function fetch_all_notes(){
+                    const res = await fetch("/case/"+cases_info.value.case.id+"/all_notes")
+                    let loc = await res.json()
+                    all_notes.value = loc["notes"]
+                }
+
+                async function active_tab(tab_name){
+                    if(tab_name == 'main'){
+                        main_tab.value = 'main'
                         if ( !document.getElementById("tab-main").classList.contains("active") ){
                             document.getElementById("tab-main").classList.add("active")
                             document.getElementById("tab-history").classList.remove("active")
+                            document.getElementById("tab-case").classList.remove("active")
+                            document.getElementById("tab-all").classList.remove("active")
                             await nextTick()
                             $('.select2-select').select2({
                                 theme: 'bootstrap-5',
@@ -695,12 +757,39 @@
                                 closeOnSelect: false
                             })
                         }
-                    }else{
-                        main_tab.value = false
+                    }else if(tab_name == 'history'){
+                        main_tab.value = 'history'
                         if ( !document.getElementById("tab-history").classList.contains("active") ){
                             document.getElementById("tab-history").classList.add("active")
                             document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-case").classList.remove("active")
+                            document.getElementById("tab-all").classList.remove("active")
                         }
+                    }else if(tab_name == 'case'){
+                        main_tab.value = 'case'
+                        if ( !document.getElementById("tab-case").classList.contains("active") ){
+                            document.getElementById("tab-case").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                            document.getElementById("tab-all").classList.remove("active")
+                        }
+                        await nextTick()
+                        if(!cases_info.value.case.notes){
+                            prepare_editor()
+                        }else{
+                            md.mermaid.init()
+                        }
+                    }else if(tab_name == 'all'){
+                        main_tab.value = 'all'
+                        if ( !document.getElementById("tab-all").classList.contains("active") ){
+                            document.getElementById("tab-all").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-case").classList.remove("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                        }
+                        await fetch_all_notes()
+                        await nextTick()
+                        md.mermaid.init()
                     }
                 }
 
@@ -835,6 +924,66 @@
                     display_toast(res, true)
                 }
 
+                async function save_note_case(){
+                    let notes_loc = editor.state.doc.toString()
+                    if(notes_loc.trim().length == 0){
+                        notes_loc = notes_loc.trim()
+                    }
+                    const res_msg = await fetch(
+                        '/case/' + cases_info.value.case.id + '/modif_note_case',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"notes": notes_loc})
+                        }
+                    )
+                    if(await res_msg.status == 200){
+                        edit_mode.value = false
+                        cases_info.value.case.last_modif = Date.now()
+                        cases_info.value.case.notes = notes_loc
+                        // notes.value = notes_loc
+                        await nextTick()
+                        
+                        if(!notes_loc){
+                            const targetElement = document.getElementById('editor')
+                            if(targetElement.innerHTML === ""){
+                                editor = new Editor.EditorView({
+                                    doc: "\n\n",
+                                    extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                                        if (v.docChanged) {
+                                            note_editor_render.value = editor.state.doc.toString()
+                                        }
+                                    })],
+                                    parent: targetElement
+                                })
+                            }
+                            
+                        }
+                        md.mermaid.init()
+                    }
+                    await display_toast(res_msg)
+                }
+
+                async function edit_note(){
+                    // Edit the note of the task
+                    edit_mode.value = true
+                    await nextTick()
+                    
+                    note_editor_render.value = cases_info.value.case.notes
+                    md.mermaid.init()
+                    // Initialize the editor
+                    const targetElement = document.getElementById('editor')
+                    editor = new Editor.EditorView({
+                        doc: cases_info.value.case.notes,
+                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            if (v.docChanged) {
+                                note_editor_render.value = editor.state.doc.toString()
+                            }
+                        })],
+                        parent: targetElement
+                    })
+                    
+                }
+
 
                 onMounted(() => {
                     $('.select2-select').select2({
@@ -899,7 +1048,13 @@
                     module_selected,
                     instances_selected,
                     module_loader,
-                    open_closed
+                    open_closed,
+                    md,
+                    all_notes,
+                    note_editor_render,
+                    edit_mode,
+                    save_note_case,
+                    edit_note
                 }
             }
         }).mount('.container')

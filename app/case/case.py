@@ -677,3 +677,30 @@ def get_open_close(cid):
                 cp_open += 1
         return {"open": cp_open, "closed": cp_closed}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/all_notes", methods=['GET'])
+@login_required
+def all_notes(cid):
+    """Get all tasks notes for a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        notes = CaseModel.get_all_notes(case)
+        return {"notes": notes}
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/modif_note_case", methods=['POST'])
+@login_required
+@editor_required
+def modif_note(cid):
+    """Modify note of the task"""
+    if CommonModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            notes = request.json["notes"]
+            if CaseModel.modif_note_core(cid, current_user, notes):
+                return {"message": "Note added", "toast_class": "success-subtle"}, 200
+            return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
