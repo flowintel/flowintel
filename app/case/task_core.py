@@ -104,6 +104,11 @@ def create_task(form_dict, cid, current_user):
         else:
             case.nb_tasks = 0
 
+        if "completed" in form_dict:
+            completed = form_dict["completed"]
+        else:
+            completed = False
+
         task = Task(
             uuid=str(uuid.uuid4()),
             title=form_dict["title"],
@@ -114,7 +119,8 @@ def create_task(form_dict, cid, current_user):
             deadline=deadline,
             case_id=cid,
             status_id=1,
-            case_order_id=nb_tasks
+            case_order_id=nb_tasks,
+            completed=completed
         )
         db.session.add(task)
         db.session.commit()

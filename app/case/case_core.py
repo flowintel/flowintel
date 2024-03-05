@@ -455,6 +455,31 @@ def fork_case_core(cid, case_title_fork, user):
         case_json["deadline_date"] = None
         case_json["deadline_time"] = None
 
+    loc_tags = list()
+    for tag in case_json["tags"]:
+        loc_tags.append(tag["name"])
+    case_json["tags"] = loc_tags
+
+    loc_clusters = list()
+    for cluster in case_json["clusters"]:
+        loc_clusters.append(cluster["name"])
+    case_json["clusters"] = loc_clusters
+
+    loc_connectors = list()
+    loc_connectors_keep = list()
+    for connector in case_json["connectors"]:
+        loc_connectors_keep.append(connector)
+        loc_connectors.append(connector["name"])
+    case_json["connectors"] = loc_connectors
+
+    loc_identifiers_dict = dict()
+    for connector in loc_connectors_keep:
+        loc_identifier = CommonModel.get_case_connector_id(connector["id"], cid)
+        loc_identifiers_dict[connector["name"]] = None
+        if loc_identifier:
+            loc_identifiers_dict[connector["name"]] = loc_identifier.identifier
+    case_json["identifier"] = loc_identifiers_dict
+
     new_case = create_case(case_json, user)
 
     for task in case.tasks:
@@ -465,6 +490,33 @@ def fork_case_core(cid, case_title_fork, user):
         else:
             task_json["deadline_date"] = None
             task_json["deadline_time"] = None
+
+
+        loc_tags = list()
+        for tag in task_json["tags"]:
+            loc_tags.append(tag["name"])
+        task_json["tags"] = loc_tags
+
+        loc_clusters = list()
+        for cluster in task_json["clusters"]:
+            loc_clusters.append(cluster["name"])
+        task_json["clusters"] = loc_clusters
+        
+
+        loc_connectors = list()
+        loc_connectors_keep = list()
+        for connector in task_json["connectors"]:
+            loc_connectors_keep.append(connector)
+            loc_connectors.append(connector["name"])
+        task_json["connectors"] = loc_connectors
+
+        loc_identifiers_dict = dict()
+        for connector in loc_connectors_keep:
+            loc_identifier = CommonModel.get_task_connector_id(connector["id"], task.id)
+            loc_identifiers_dict[connector["name"]] = None
+            if loc_identifier:
+                loc_identifiers_dict[connector["name"]] = loc_identifier.identifier
+        task_json["identifier"] = loc_identifiers_dict
 
         TaskModel.create_task(task_json, new_case.id, user)
     return new_case
