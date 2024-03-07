@@ -460,6 +460,7 @@ def download_case(cid):
 
 @case_blueprint.route("/<cid>/fork", methods=['POST'])
 @login_required
+@editor_required
 def fork_case(cid):
     """Assign current user to the task"""
     if CommonModel.get_case(cid):

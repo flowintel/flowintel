@@ -87,6 +87,25 @@ class EditCase(Resource):
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
         return {"message": "Permission denied"}, 403
+    
+@api.route('/<cid>/fork', methods=['POST'])
+@api.doc(description='Fork a case', params={'cid': 'id of a case'})
+class ForkCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        "case_title_fork": "Required. Title for the case"
+    })
+    def post(self, cid):
+        user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+
+        if request.json:
+            if "case_title_fork" in request.json:
+                new_case = CaseModel.fork_case_core(cid, request.json["case_title_fork"], user)
+                if type(new_case) == dict:
+                    return new_case, 400
+                return {"new_case_id": new_case.id}, 201
+            return {"message": "Need to pass 'case_title_fork'"}, 400
+        return {"message": "Please give data"}, 400
 
 @api.route('/not_completed')
 @api.doc(description='Get all not completed cases')
