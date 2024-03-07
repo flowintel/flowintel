@@ -228,19 +228,36 @@ def edit_case(form_dict, cid, current_user):
 
 def add_orgs_case(form_dict, cid, current_user):
     """Add orgs to case in th DB"""
+    case = CommonModel.get_case(cid)
     for org_id in form_dict["org_id"]:
-        case_org = Case_Org(
-            case_id=cid, 
-            org_id=org_id
-        )
-        db.session.add(case_org)
-        case = CommonModel.get_case(cid)
-        NotifModel.create_notification_org(f"{CommonModel.get_org(org_id).name} add to case: '{case.id}-{case.title}'", cid, org_id, html_icon="fa-solid fa-sitemap", current_user=current_user)
+        if CommonModel.get_org(org_id):
+            case_org = Case_Org(
+                case_id=cid, 
+                org_id=org_id
+            )
+            db.session.add(case_org)
+            NotifModel.create_notification_org(f"{CommonModel.get_org(org_id).name} add to case: '{case.id}-{case.title}'", cid, org_id, html_icon="fa-solid fa-sitemap", current_user=current_user)
+        else:
+            return False
 
     CommonModel.update_last_modif(cid)
     db.session.commit()
-    case = CommonModel.get_case(cid)
     CommonModel.save_history(case.uuid, current_user, f"Org {org_id} added")
+    return True
+
+
+def change_owner_core(org_id, cid, current_user):
+    case = CommonModel.get_case(cid)
+    if CommonModel.get_org(org_id):
+        case.owner_org_id = org_id
+        db.session.commit()
+        NotifModel.create_notification_org(f"{CommonModel.get_org(org_id).name} is now owner of case: '{case.id}-{case.title}'", cid, org_id, html_icon="fa-solid fa-hand-holding-hand", current_user=current_user)
+    else: 
+        return False
+
+    CommonModel.update_last_modif(cid)
+    db.session.commit()
+    CommonModel.save_history(case.uuid, current_user, f"Org {org_id} is now owner of this case")
     return True
 
 

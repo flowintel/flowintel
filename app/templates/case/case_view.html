@@ -51,7 +51,7 @@
             Send to
         </button>
         
-        <!-- Modal -->
+        <!-- Modal send to -->
         <div class="modal fade" id="Send_to_modal" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -178,24 +178,88 @@
 
     <div id="assign" style="float: right;" v-if="cases_info">
         <div class="dropdown" id="dropdown_user_case">
-            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Orgs</button>
+            <button class="btn btn-secondary dropdown-toggle" style="margin-top: -2px" data-bs-toggle="dropdown" aria-expanded="false">Orgs</button>
             <ul class="dropdown-menu">
                 <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
                     <li>
-                        <a class="btn btn-primary" :href="`/case/${cases_info.case.id}/add_orgs`" role="button">Add Orgs</a>
+                        <div>
+                            <!-- <a class="btn btn-primary btn-sm" :href="`/case/${cases_info.case.id}/add_orgs`" style="margin-left: 7px">Add Orgs</a>
+                            <a class="btn btn-secondary btn-sm" :href="`/case/${cases_info.case.id}/change_owner`" >Change owner</a> -->
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#add_orgs">
+                                Add orgs
+                            </button>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#change_owner">
+                                Change owner
+                            </button>
+
+                            
+                        </div>
                     </li>
                 </template>
                 <template v-for="org in cases_info.orgs_in_case" :key="org.id">
                     <li>
                         <div style="display: flex;">
                             <button class="dropdown-item">[[org.name]]</button>
-                            <template v-if="org.id != cases_info.case.owner_org_id || cases_info.permission.admin">
-                                <button class="btn btn-danger" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">Delete</button>
+                            <template v-if="org.id != cases_info.case.owner_org_id">
+                                <button class="btn btn-danger btn-sm" style="margin-right: 5px;" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">Delete</button>
+                            </template>
+                            <template v-else>
+                                <small style="margin-right: 20px; color: green;"><i>owner</i></small>
                             </template>
                         </div>
                     </li>
                 </template>
             </ul>
+            <!-- Modal add orgs -->
+            <div class="modal fade" id="add_orgs" tabindex="-1" aria-labelledby="add_orgs_modal" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="add_orgs_modal">Add Orgs</h1>
+                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            Orgs:
+                            <select data-placeholder="Orgs" class="select2-select-add-orgs form-control" multiple name="add_orgs_select" id="add_orgs_select">
+                                <option value="None">--</option>
+                                <template v-for="org in orgs">
+                                    <option v-if="!check_org_not_in(org.id)" :value="[[org.id]]">[[org.name]]</option>
+                                    <!-- <option :value="[[org.id]]">[[org.name]]</option> -->
+                                </template>
+                            </select>
+                            <div style="color: brown;" id="add_orgs_error"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button @click="submit_add_orgs()" class="btn btn-primary">Submit</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal change owner -->
+            <div class="modal fade" id="change_owner" tabindex="-1" aria-labelledby="change_owner_modal" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="change_owner_modal">Change Owner</h1>
+                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            Orgs:
+                            <select class="form-control" name="change_owner_select" id="change_owner_select" style="width: 50%">
+                                <option value="None">--</option>
+                                <template v-for="org in orgs">
+                                    <option v-if="org.id != cases_info.case.owner_org_id" :value="[[org.id]]">[[org.name]]</option>
+                                </template>
+                            </select>
+                            <div style="color: brown;" id="change_owner_error"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button @click="submit_change_owner()" class="btn btn-primary">Submit</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -480,6 +544,8 @@
                 const md = window.markdownit()			// Library to Parse and display markdown
 		        md.use(mermaidMarkdown.default)			// Use mermaid library
 
+                const orgs = ref([])
+
                 async function fetch_history(){
                     const res = await fetch("/case/history/" + cases_info.value.case.id)
                     if(await res.status==404 ){
@@ -497,6 +563,67 @@
                     }else{
                         let loc = await res.json()
                         open_closed.value = loc
+                    }
+                }
+                
+                async function fetch_orgs(){
+                    const res = await fetch("/case/get_orgs")
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        orgs.value = loc
+                    }
+                }
+                fetch_orgs()
+
+                function check_org_not_in(org_id){
+                    for(let i in cases_info.value.orgs_in_case){
+                        if(cases_info.value.orgs_in_case[i].id == org_id){
+                            return true
+                        }
+                    }
+                    return false
+                }
+
+                async function submit_add_orgs(){
+                    $("#add_orgs_error").text("")
+                    if($("#add_orgs_select").val().includes("None") || !$("#add_orgs_select").val().length){
+                        $("#add_orgs_error").text("Give me more")
+                    }else{
+                        const res = await fetch('/case/' + cases_info.value.case.id + '/add_orgs',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"org_id": $("#add_orgs_select").val()})
+                        })
+                        if(await res.status == 200){
+                            let loc = $("#add_orgs_select").val()
+                            for(let index in loc){
+                                for(let i in orgs.value){
+                                    if(orgs.value[i].id == loc[index]){
+                                        cases_info.value.orgs_in_case.push(orgs.value[i])
+                                    }
+                                }
+                            }
+                        }
+                        display_toast(res)
+                    }
+                }
+
+                async function submit_change_owner(){
+                    $("#change_owner_error").text("")
+                    if($("#change_owner_select").val() == "None" || !$("#change_owner_select")){
+                        $("#change_owner_error").text("Give me more")
+                    }else{
+                        const res = await fetch('/case/' + cases_info.value.case.id  + '/change_owner',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"org_id": $("#change_owner_select").val()})
+                        })
+                        if(await res.status == 200){
+                            cases_info.value.case.owner_org_id=$("#change_owner_select").val()
+                        }
+                        display_toast(res)
                     }
                 }
 
@@ -577,6 +704,11 @@
                         await nextTick()
                         scrollIntoSelectedElement()
                         fetch_open_closed()
+
+                        $('.select2-select-add-orgs').select2({
+                            theme: 'bootstrap-5',
+                            width: '50%'
+                        })
                     }
                 }
 
@@ -618,10 +750,10 @@
                                 case_loc.status_id = 1
 
                                 await fetch('/case/' + case_loc.id + '/change_status',{
-                                headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                method: "POST",
-                                body: JSON.stringify({"status": case_loc.status_id})
-                            })
+                                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                    method: "POST",
+                                    body: JSON.stringify({"status": case_loc.status_id})
+                                })
                         }else{
                             for(let i in status_info.value.status){
                                 if(status_info.value.status[i].name == 'Finished'){
@@ -984,13 +1116,12 @@
                     
                 }
 
-
                 onMounted(() => {
-                    $('.select2-select').select2({
-                        theme: 'bootstrap-5',
-                        width: '50%',
-                        closeOnSelect: false
-                    })
+                    // $('.select2-select').select2({
+                    //     theme: 'bootstrap-5',
+                    //     width: '50%',
+                    //     closeOnSelect: false
+                    // })
 
                     $('#taxonomies_select').on('change.select2', function (e) {
                         selected_taxo.value = $(this).select2('data').map(item => item.id);
@@ -1016,6 +1147,7 @@
                             fetch_module_selected($(this).select2('data').map(item => item.id))
                         }
                     })
+                    
                 })
                 
     
@@ -1053,8 +1185,12 @@
                     all_notes,
                     note_editor_render,
                     edit_mode,
+                    orgs,
                     save_note_case,
-                    edit_note
+                    edit_note,
+                    submit_add_orgs,
+                    submit_change_owner,
+                    check_org_not_in
                 }
             }
         }).mount('.container')

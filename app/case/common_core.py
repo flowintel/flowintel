@@ -75,6 +75,10 @@ def get_org(oid):
     """Return an org by is id"""
     return Org.query.get(oid)
 
+def get_orgs():
+    """Return all orgs"""
+    return Org.query.all()
+
 def get_org_by_name(name):
     """Return an org by is name"""
     return Org.query.filter_by(name=name).first()

@@ -128,39 +128,34 @@ def edit_case(cid):
 @editor_required
 def add_orgs(cid):
     """Add orgs to the case"""
-
     if CommonModel.get_case(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            form = AddOrgsCase()
-            case_org = CommonModel.get_org_in_case_by_case_id(cid)
-            org_list = list()
-            for org in CommonModel.get_org_order_by_name():
-                if case_org:
-                    flag = False
-                    for c_o in case_org:
-                        if c_o.org_id == org.id:
-                            flag = True
-                    if not flag:
-                        org_list.append((org.id, f"{org.name}"))
-                else:
-                    org_list.append((org.id, f"{org.name}"))
+            if request.json:
+                if "org_id" in request.json:
+                    if CaseModel.add_orgs_case(request.json, cid, current_user):
+                        return {"message": "Orgs added", "toast_class": "success-subtle"}, 200
+                    return {"message": "One Orgs doesn't exist", "toast_class": "danger-subtle"}, 404
+                return {"message": "Need to pass 'org_id'", "toast_class": "warning-subtle"}, 400
+            return {"message": "An error occur", "toast_class": "warning-subtle"}, 400
+        return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
-            form.org_id.choices = org_list
-            form.case_id.data = cid
-
-            if form.validate_on_submit():
-                form_dict = form_to_dict(form)
-                CaseModel.add_orgs_case(form_dict, cid, current_user)
-                flash("Orgs added", "success")
-                return redirect(f"/case/{cid}")
-
-            return render_template("case/add_orgs.html", form=form)
-        else:
-            flash("Access denied", "error")
-    else:
-        return render_template("404.html")
-    return redirect(f"/case/{cid}")
-
+@case_blueprint.route("/<cid>/change_owner", methods=['GET', 'POST'])
+@login_required
+@editor_required
+def change_owner(cid):
+    """Change owner of a case"""
+    if CommonModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if request.json:
+                if "org_id" in request.json:
+                    if CaseModel.change_owner_core(request.json["org_id"], cid, current_user):
+                        return {"message": "Owner changed", "toast_class": "success-subtle"}, 200
+                    return {"message": "Org doesn't exist", "toast_class": "danger-subtle"}, 404
+                return {"message": "Need to pass 'org_id'", "toast_class": "warning-subtle"}, 400
+            return {"message": "An error occur", "toast_class": "warning-subtle"}, 400
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/recurring", methods=['GET', 'POST'])
 @login_required
@@ -705,3 +700,10 @@ def modif_note(cid):
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
+
+@case_blueprint.route("/get_orgs", methods=['GET'])
+@login_required
+def get_orgs():
+    """Get all orgs"""
+    orgs = CommonModel.get_orgs()
+    return [org.to_json() for org in orgs], 200
