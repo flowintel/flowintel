@@ -379,3 +379,15 @@ def test_get_case_note(client):
     test_modif_case_note(client)
     response = client.get("/api/case/1/get_note", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Test super note" in response.data
+
+def test_fork_case(client):
+    test_create_case(client)
+    response = client.post("/api/case/1/fork",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"case_title_fork": "Test fork case"}
+                        )
+    assert response.status_code == 201
+
+    response = client.get("/api/case/2", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["title"] == "Test fork case"
