@@ -45,8 +45,11 @@
     </div>
 
 
-    <label for="startDate">Date :</label>
-    <input name="startDate" id="startDate" class="date-picker"  data-date="" style="margin-bottom: 10px;"/>
+    <div style="margin-bottom: 5px;">
+        <label style="margin-right: 5px;" for="startDate">Date : </label>
+        <input id="startDate" type="text"/>
+        <button class="btn btn-secondary btn-sm" @click="change_date()" style="margin-top: -3px;">Change</button>
+    </div>
 
 
     <div class="card card-body" style="margin-bottom: 10px;">
@@ -219,36 +222,21 @@
                 flag_dead_creation = false
             }
 
+            function change_date(){
+                dp.events.list = []
+                var month = $("#startDate").MonthPicker('GetSelectedMonth');
+                var year = $("#startDate").MonthPicker('GetSelectedYear');
+                $(this).datepicker('setDate', new Date(year, month, 1));
+                
+                if(flag_case_task)
+                    fetch_case_calendar(date_parser(new Date(year, month, 0)), flag_dead_creation)
+                else
+                    fetch_task_calendar(date_parser(new Date(year, month, 0)), flag_dead_creation)
 
-            function date_picker(){
-                var myDate = $("#startDate").attr('data-date');
-
-                $('#startDate').datepicker({
-                    yearRange: "-20:+0",
-                    changeMonth: true,
-                    changeYear: true,
-                    setDate: myDate,
-                    showButtonPanel: false,
-                    dateFormat: 'MM yy',
-                    onClose: function(dateText, inst) {
-                        dp.events.list = []
-                        var month = $("#ui-datepicker-div .ui-datepicker-month :selected").val();
-                        var year = $("#ui-datepicker-div .ui-datepicker-year :selected").val();
-                        $(this).datepicker('setDate', new Date(year, month, 1));
-                        
-                        if(flag_case_task)
-                            fetch_case_calendar(date_parser(new Date(year, month)), flag_dead_creation)
-                        else
-                            fetch_task_calendar(date_parser(new Date(year, month)), flag_dead_creation)
-
-                        let loc_date = date_parser(new Date(year, month, 1), true)
-                        dp.startDate = loc_date
-                        dp.update()
-                    }
-                });
-                $('#startDate').datepicker('setDate', myDate);
+                let loc_date = date_parser(new Date(year, month, 0), true)
+                dp.startDate = loc_date
+                dp.update()
             }
-
 
             var dp = new DayPilot.Month("dp");
 
@@ -275,14 +263,17 @@
 
 
             onMounted(() => { 
+                $('#startDate').MonthPicker({ SelectedMonth: new Date(), Button: false});
+                $("#MonthPicker_startDate").css({"position": "absolute"})
+
                 modal_task = new bootstrap.Modal('#modal_task', {})
-                date_picker()
                 dp.init();
             })
 
 
             return {
-                openModal, closeModal, select_case_filter, select_task_filter, select_dead_filter, select_creation_filter
+                openModal, closeModal, select_case_filter, select_task_filter, select_dead_filter, select_creation_filter,
+                change_date
             }
         }
     }).mount('#container')
