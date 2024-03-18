@@ -20,6 +20,9 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
 
+def get_task_note(note_id):
+    return Note.query.get(note_id)
+
 
 def delete_task(tid, current_user):
     """Delete a task by is id"""
@@ -120,7 +123,8 @@ def create_task(form_dict, cid, current_user):
             case_id=cid,
             status_id=1,
             case_order_id=nb_tasks,
-            completed=completed
+            completed=completed,
+            nb_notes=0
         )
         db.session.add(task)
         db.session.commit()
@@ -294,19 +298,61 @@ def add_file_core(task, files_list, current_user):
     CommonModel.save_history(case.uuid, current_user, f"File added for task '{task.title}'")
     return True
 
-def modif_note_core(tid, current_user, notes):
+def modif_note_core(tid, current_user, notes, note_id):
     """Modify a noe of a task to the DB"""
     task = CommonModel.get_task(tid)
-    if task:
-        task.notes = notes
-        CommonModel.update_last_modif(task.case_id)
-        CommonModel.update_last_modif_task(task.id)
+    if note_id == '-1':
+        note = Note(
+            uuid=str(uuid.uuid4()),
+            note=notes,
+            task_id=tid,
+            task_order_id=task.nb_notes+1
+        )
+        task.nb_notes += 1
+        db.session.add(note)
         db.session.commit()
-        case = CommonModel.get_case(task.case_id)
-        CommonModel.save_history(case.uuid, current_user, f"Notes for '{task.title}' modified")
-        return True
+    else:
+        note = get_task_note(note_id)
+        if note:
+            if note.task_id == int(tid):
+                note.note = notes
+            else:
+                return {"message": f"This note is not in task {tid}"}
+        else:
+            return {"message": f"Note not found"}
+        
+    CommonModel.update_last_modif(task.case_id)
+    CommonModel.update_last_modif_task(task.id)
+    db.session.commit()
+    case = CommonModel.get_case(task.case_id)
+    CommonModel.save_history(case.uuid, current_user, f"Notes for '{task.title}' modified")
+    return note
+
+def create_note(tid):
+    """Create a new empty note in the task"""
+    task = CommonModel.get_task(tid)
+    if task:
+        note = Note(
+            uuid=str(uuid.uuid4()),
+            note="",
+            task_id=tid,
+            task_order_id=task.nb_notes+1
+        )
+        task.nb_notes += 1
+        db.session.add(note)
+        db.session.commit()
+        return note
     return False
 
+def delete_note(tid, note_id):
+    """Delete note"""
+    note = Note.query.get(note_id)
+    if note:
+        if note.task_id == int(tid):
+            Note.query.filter_by(id=note_id).delete()
+            db.session.commit()
+            return True
+    return False
 
 def assign_task(tid, user, current_user, flag_current_user):
     """Assign current user to a task"""
@@ -535,17 +581,18 @@ def sort_tasks_by_filter(case, user, filter, taxonomies=[], galaxies=[], tags=[]
     return get_task_info(tasks_list, user)
 
 
-def export_notes(task, type_req):
+def export_notes(task_id, type_req, note_id):
     """Export notes into a format like pdf or docx"""
     if not os.path.isdir(TEMP_FOLDER):
         os.mkdir(TEMP_FOLDER)
 
-    download_filename = f"export_note_task_{task.id}.{type_req}"
+    download_filename = f"export_note_task_{task_id}.{type_req}"
     temp_md = os.path.join(TEMP_FOLDER, "index.md")
     temp_export = os.path.join(TEMP_FOLDER, f"output.{type_req}")
 
+    note = get_task_note(note_id)
     with open(temp_md, "w")as write_file:
-        write_file.write(task.notes)
+        write_file.write(note.note)
     if type_req == "pdf":
         process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=red", "-V", "tocolor=gray"\
                                     "--number-sections", "--toc", "--template", "eisvogel", "-o", temp_export, "--filter=pandoc-mermaid"], stdout=subprocess.PIPE)

@@ -143,18 +143,32 @@ def test_complete_task(client):
     response = client.get("/api/case/1/task/1/complete", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Task 1 completed" in response.data
 
-def test_modif_note(client):
+def test_create_note_task(client):
     test_create_task(client)
     response = client.post("/api/case/1/task/1/modif_note",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
-                           json={"note": "Test super note"}
+                           json={"note": "Test super note", "note_id": "-1"}
                         )
     assert response.status_code == 200 and b"Note for task 1 edited" in response.data
 
+def test_modif_note(client):
+    test_create_note_task(client)
+    response = client.post("/api/case/1/task/1/modif_note",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"note": "Test super note", "note_id": "1"}
+                        )
+    assert response.status_code == 200 and b"Note for task 1 edited" in response.data
+
+def test_get_all_notes_task(client):
+    test_create_task(client)
+    response = client.get("/api/case/1/task/1/get_all_notes", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+
 def test_get_note_task(client):
-    test_modif_note(client)
-    response = client.get("/api/case/1/task/1/get_note", headers={"X-API-KEY": API_KEY})
+    test_create_note_task(client)
+    response = client.get("/api/case/1/task/1/get_note?note_id=1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Test super note" in response.data
 
 

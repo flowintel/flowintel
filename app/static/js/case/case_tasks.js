@@ -16,15 +16,19 @@ export default {
 		const is_mounted = ref(false)			// Boolean use to know if the app is mount to initialize mermaid
 		const is_exporting = ref(false)		 	// Boolean to display a spinner when exporting
 
-		const notes = ref(props.task.notes)		// Notes of the task
-		const note_editor_render = ref("")		// Notes display in mermaid
-		let editor								// Variable for the editor
+		const note_editor_render = ref([])		// Notes display in mermaid
+		let editor_list = []								// Variable for the editor
 		const md = window.markdownit()			// Library to Parse and display markdown
 		md.use(mermaidMarkdown.default)			// Use mermaid library
-		const edit_mode = ref(false)			// Boolean use when the note is in edit mode
+		const edit_mode = ref(-1)			// Boolean use when the note is in edit mode
 
-		if(props.task.notes)
-			note_editor_render.value = props.task.notes		// If this task has notes
+		if(props.task.notes.length){
+			for(let i in props.task.notes){
+				note_editor_render.value[i] = props.task.notes[i].note		// If this task has notes
+			}
+		}else{
+			note_editor_render.value[0] = ""
+		}
 
 		
 		// Function part
@@ -63,6 +67,33 @@ export default {
 			}
 
 			await display_toast(res)
+		}
+
+		async function add_notes_task(){
+			// Create a new empty note in the task
+			const res = await fetch('/case/' + props.task.case_id + '/create_note/'+props.task.id)
+
+			if(await res.status == 200){
+				let loc = await res.json()
+				props.task.notes.push(loc["note"])
+				let key = props.task.notes.length-1
+				note_editor_render.value[key] = ""
+				await nextTick()
+				const targetElement = document.getElementById('editor_' + key + "_" + props.task.id)
+				
+				if(targetElement.innerHTML === ""){
+					let editor = new Editor.EditorView({
+						doc: "\n\n",
+						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+							if (v.docChanged) {
+								note_editor_render.value[key] = editor.state.doc.toString()
+							}
+						})],
+						parent: targetElement
+					})
+					editor_list.push(editor)
+				}
+			}
 		}
 
 		async function assign_user_task(){
@@ -174,6 +205,16 @@ export default {
 			await display_toast(res)
 		}
 
+		async function delete_note(task, note_id, key){
+			// Delete a note of the task
+			const res = await fetch('/case/' + task.case_id + '/delete_note/' + task.id + '?note_id='+note_id)
+
+			if( await res.status == 200){
+				props.task.notes.splice(key, 1);
+			}
+			display_toast(res)
+		}
+
 		async function delete_task(task, task_array){
 			// delete the task
 			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
@@ -193,32 +234,33 @@ export default {
 			await display_toast(res)
 		}
 
-		async function edit_note(task){
+		async function edit_note(task, note_id, key){
 			// Edit the note of the task
-			edit_mode.value = true
+			edit_mode.value = note_id
 
-			const res = await fetch('/case/' + task.case_id + '/get_note/' + task.id)
+			const res = await fetch('/case/' + task.case_id + '/get_note/' + task.id + '?note_id=' + note_id)
 			let loc = await res.json()
-			task.notes = loc["note"]
+			task.notes[key].note = loc["note"]
 
 			// Initialize the editor
-			const targetElement = document.getElementById('editor1_' + props.task.id)
-			editor = new Editor.EditorView({
-				doc: task.notes,
+			const targetElement = document.getElementById('editor1_'+ key + "_" + props.task.id)
+			let editor = new Editor.EditorView({
+				doc: task.notes[key].note,
 				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
 					if (v.docChanged) {
-						note_editor_render.value = editor.state.doc.toString()
+						note_editor_render.value[key] = editor.state.doc.toString()
 					}
 				})],
 				parent: targetElement
 			})
+			editor_list[key] = editor
 		}
 
-		async function export_notes(task, type){
+		async function export_notes(task, type, note_id){
 			// Export notes in differnet format and download it
 			is_exporting.value = true
 			let filename = ""
-			await fetch('/case/'+task.case_id+'/task/'+task.id+'/export_notes?type=' + type)
+			await fetch('/case/'+task.case_id+'/task/'+task.id+'/export_notes?type=' + type+"&note_id="+note_id)
 			.then(res =>{
 				filename = res.headers.get("content-disposition").split("=")
 				filename = filename[filename.length - 1]
@@ -250,14 +292,14 @@ export default {
 			props.cases_info.tasks.sort(order_task)
 		}
 
-		async function modif_note(task){
+		async function modif_note(task, note_id, key){
 			// Modify notes of the task
-			let notes_loc = editor.state.doc.toString()
+			let notes_loc = editor_list[key].state.doc.toString()
 			if(notes_loc.trim().length == 0){
 				notes_loc = notes_loc.trim()
 			}
 			const res_msg = await fetch(
-				'/case/' + task.case_id + '/modif_note/' + task.id,{
+				'/case/' + task.case_id + '/modif_note/' + task.id + '?note_id=' + note_id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"task_id": task.id.toString(), "notes": notes_loc})
@@ -265,28 +307,36 @@ export default {
 			)
 
 			if(await res_msg.status == 200){
-				edit_mode.value = false
+				let loc = await res_msg.json()
+				edit_mode.value = -1
 				task.last_modif = Date.now()
-				task.notes = notes_loc
-				notes.value = notes_loc
+				if(note_id == -1){
+					note_id = loc["note"]["id"]
+					task.notes.push(loc["note"])
+				}else{
+					task.notes[key].note = notes_loc
+				}
+
 				await nextTick()
 				
 				if(!notes_loc){
-					const targetElement = document.getElementById('editor_' + props.task.id)
+					const targetElement = document.getElementById('editor_' +key + "_" + props.task.id)
 					if(targetElement.innerHTML === ""){
-						editor = new Editor.EditorView({
+						let editor = new Editor.EditorView({
 							doc: "\n\n",
 							extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
 								if (v.docChanged) {
-									note_editor_render.value = editor.state.doc.toString()
+									note_editor_render.value[key] = editor.state.doc.toString()
 								}
 							})],
 							parent: targetElement
 						})
+						editor_list[key] = editor
 					}
 				}
+			}else{
+				display_toast(res_msg)
 			}
-			await display_toast(res_msg)
 		}
 
 		async function notify_user(user_id){
@@ -410,16 +460,34 @@ export default {
 		Vue.onMounted(async () => {
 			select2_change(props.task.id)
 			
-			const targetElement = document.getElementById('editor_' + props.task.id)
-			editor = new Editor.EditorView({
-				doc: "\n\n",
-				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-					if (v.docChanged) {
-						note_editor_render.value = editor.state.doc.toString()
-					}
-				})],
-				parent: targetElement
-			})
+			//here
+			if(props.task.notes.length){
+				for(let i in props.task.notes){
+					const targetElement = document.getElementById('editor_' +i +'_' + props.task.id)
+					let editor=new Editor.EditorView({
+						doc: "\n\n",
+						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+							if (v.docChanged) {
+								note_editor_render.value[i] = editor.state.doc.toString()
+							}
+						})],
+						parent: targetElement
+					})
+					editor_list[i] = editor
+				}
+			}else{
+				const targetElement = document.getElementById('editor_0_' + props.task.id)
+					let editor=new Editor.EditorView({
+						doc: "\n\n",
+						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+							if (v.docChanged) {
+								note_editor_render.value[0] = editor.state.doc.toString()
+							}
+						})],
+						parent: targetElement
+					})
+					editor_list[0] = editor
+			}
 
 			// When openning a task, initialize mermaid library
 			const allCollapses = document.getElementById('collapse' + props.task.id)
@@ -440,7 +508,6 @@ export default {
 		})
 
 		return {
-			notes,
 			note_editor_render,
 			md,
 			is_exporting,
@@ -454,6 +521,7 @@ export default {
 			assign_user_task,
 			remove_assigned_user,
 			delete_task,
+			delete_note,
 			edit_note,
 			modif_note,
 			add_file,
@@ -464,7 +532,8 @@ export default {
 			endOf,
 			export_notes,
 			present_user_in_task,
-			move_task
+			move_task,
+			add_notes_task
 		}
 	},
 	template: `
@@ -519,6 +588,12 @@ export default {
 					</template>
 				</div>
 				<div v-else></div>
+			</div>
+			<div class="d-flex w-100 justify-content-between">
+				<div></div>
+				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
+					<i>[[task.notes.length]] Notes</i>
+				</span>
 			</div>
 		</a>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin" style="display: grid;">
@@ -627,7 +702,7 @@ export default {
 					</div>
 					<div>
 						<input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
-						<button class="btn btn-primary" @click="add_file(task)">Add</button>
+						<button class="btn btn-primary btn-sm" @click="add_file(task)" style="margin-top: 2px;">Add</button>
 					</div>
 					<br/>
 					<template v-if="task.files.length">
@@ -648,62 +723,88 @@ export default {
 					<div>
 						<h5>Notes</h5>
 					</div>
-					<div v-if="task.notes">
-						<template v-if="edit_mode">
-							<div>
-								<button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
-									<div hidden>[[task.title]]</div>
-									Save
-								</button>
-							</div>
-							<div style="display: flex;">
-								<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor1_'+task.id"></div>
-								<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
-							</div>
-						</template>
-						<template v-else>
-							<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-								<button class="btn btn-primary" @click="edit_note(task)" type="button" :id="'note_'+task.id">
-									<div hidden>[[task.title]]</div>
-									Edit
-								</button>
-								<div class="btn-group">
-									<button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-										Export
-									</button>
-									<ul class="dropdown-menu">
-										<li>
-											<button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'pdf')" title="Export markdown as pdf">PDF</button>
-											<button v-else class="btn btn-link" disabled>
-												<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-												<span role="status">Loading...</span>
+					<div v-if="task.notes.length">
+						<template v-for="task_note, key in task.notes">
+							<h5>#[[key+1]]</h5>
+							<template v-if="task_note.note">
+								<template v-if="edit_mode == task_note.id">
+									<div>
+										<button class="btn btn-primary" @click="modif_note(task, task_note.id, key)" type="button" :id="'note_'+task.id">
+											<div hidden>[[task.title]]</div>
+											Save
+										</button>
+									</div>
+									<div style="display: flex;">
+										<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor1_'+key+'_'+task.id"></div>
+										<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[key])"></div>
+									</div>
+								</template>
+								<template v-else>
+									<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+										<button class="btn btn-primary btn-sm" @click="edit_note(task, task_note.id, key)" :id="'note_'+task.id" style="margin-bottom: 1px;">
+											<div hidden>[[task.title]]</div>
+											<small><i class="fa-solid fa-pen"></i></small> Edit
+										</button>
+										<div class="btn-group">
+											<button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="margin-bottom: 1px;">
+												<small><i class="fa-solid fa-download"></i></small> Export
 											</button>
-										</li>
-										<li>
-											<button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'docx')" title="Export markdown as docx">DOCX</button>
-											<button v-else class="btn btn-link" disabled>
-												<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-												<span role="status">Loading...</span>
-											</button>
-										</li>
-									</ul>
-								</div>
+											<ul class="dropdown-menu">
+												<li>
+													<button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'pdf', task_note.id)" title="Export markdown as pdf">PDF</button>
+													<button v-else class="btn btn-link" disabled>
+														<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+														<span role="status">Loading...</span>
+													</button>
+												</li>
+												<li>
+													<button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'docx', task_note.id)" title="Export markdown as docx">DOCX</button>
+													<button v-else class="btn btn-link" disabled>
+														<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+														<span role="status">Loading...</span>
+													</button>
+												</li>
+											</ul>
+										</div>
+										<button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-bottom: 1px;">
+											<small><i class="fa-solid fa-trash"></i></small> Delete
+										</button>
 
-							</template> 
-							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(notes)"></p>
+									</template> 
+									<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(task_note.note)"></p>
+								</template>
+							</template>
+							<template v-else>
+								<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+									<div>
+										<button class="btn btn-primary btn-sm" @click="modif_note(task, task_note.id, key)" type="button" :id="'note_'+task.id" style="margin-bottom: 3px;">
+											<div hidden>[[task.title]]</div>
+											Create
+										</button>
+										<button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-bottom: 1px;">
+											<small><i class="fa-solid fa-trash"></i></small> Delete
+										</button>
+									</div>
+									<div style="display: flex;">
+										<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_'+key+'_'+task.id"></div>
+										<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[key])"></div>
+									</div>
+								</template>
+							</template>
 						</template>
+						<button class="btn btn-primary" @click="add_notes_task()">Add notes</button>
 					</div>
 					<div v-else>
 						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 							<div>
-								<button class="btn btn-primary" @click="modif_note(task)" type="button" :id="'note_'+task.id">
+								<button class="btn btn-primary btn-sm" @click="modif_note(task, -1, 0)" type="button" :id="'note_'+task.id" style="margin-bottom: 3px;">
 									<div hidden>[[task.title]]</div>
 									Create
 								</button>
 							</div>
 							<div style="display: flex;">
-								<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_'+task.id"></div>
-								<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+								<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_0_'+task.id"></div>
+								<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[0])"></div>
 							</div>
 						</template>
 					</div>

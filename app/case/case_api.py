@@ -579,18 +579,36 @@ class CompleteTake(Resource):
             return {"message": "Task not found"}, 404
         return {"message": "Permission denied"}, 403
 
+    
+@api.route('/<cid>/task/<tid>/get_all_notes')
+@api.doc(description='Get all notes of a task', params={"cid": "id of a case", "tid": "id of a task"})
+class GetAllNotesTask(Resource):
+    method_decorators = [api_required]
+    def get(self, cid, tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            if int(cid) == task.case_id:
+                notes_list = [note.to_json() for note in task.notes]
 
+                return {"notes": notes_list}, 200
+            return {"message": "Task not in this case"}, 404
+        return {"message": "Task not found"}, 404
+    
 @api.route('/<cid>/task/<tid>/get_note')
-@api.doc(description='Get note of a task in a case', params={'cid': 'id of a case', "tid": "id of a task"})
+@api.doc(description='Get note of a task in a case', params={"note_id": "id of a note in task"})
 class GetNoteTask(Resource):
     method_decorators = [api_required]
     def get(self, cid, tid):
         task = CommonModel.get_task(tid)
         if task:
             if int(cid) == task.case_id:
-                return {"note": task.notes}, 200
-            else:
-                return {"message": "Task not in this case"}, 404
+                if "note_id" in request.args:
+                    task_note = TaskModel.get_task_note(request.args.get("note_id"))
+                    if task_note:
+                        return {"note": task_note.note}, 200
+                    return {"message": "Note not found"}, 404
+                return {"message": "Need to pass a note id"}, 400
+            return {"message": "Task not in this case"}, 404
         return {"message": "Task not found"}, 404
 
 
@@ -598,22 +616,61 @@ class GetNoteTask(Resource):
 @api.doc(description='Edit note of a task in a case', params={'cid': 'id of a case', "tid": "id of a task"})
 class ModifNoteTask(Resource):
     method_decorators = [editor_required, api_required]
+    @api.doc(params={"note": "note to create or modify", "note_id": "id of the note"})
+    def post(self, cid, tid):
+        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            task = CommonModel.get_task(tid)
+            if task:
+                if int(cid) == task.case_id:
+                    if "note_id" in request.json:
+                        if "note" in request.json:
+                            res = TaskModel.modif_note_core(tid, current_user, request.json["note"], request.json["note_id"])
+                            if type(res) == dict:
+                                return res, 400
+                            return {"message": f"Note for task {tid} edited"}, 200
+                        return {"message": "Need to pass a note"}, 400
+                    return {"message": "Need to pass a note id"}, 400
+                return {"message": "Task not in this case"}, 404
+            return {"message": "Task not found"}, 404
+        return {"message": "Permission denied"}, 403
+    
+@api.route('/<cid>/task/<tid>/create_note', methods=['POST'])
+@api.doc(description='Create a new note for a task', params={'cid': 'id of a case', "tid": "id of a task"})
+class ModifNoteTask(Resource):
+    method_decorators = [editor_required, api_required]
     @api.doc(params={"note": "note to create or modify"})
     def post(self, cid, tid):
         current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "note" in request.json:
-                task = CommonModel.get_task(tid)
-                if task:
-                    if int(cid) == task.case_id:
-                        if TaskModel.modif_note_core(tid, current_user, request.json["note"]):
-                            return {"message": f"Note for task {tid} edited"}, 200
-                        return {"message": f"Error Note for task {tid} edited"}, 400
-                    else:
-                        return {"message": "Task not in this case"}, 404
-                return {"message": "Task not found"}, 404
-            return {"message": "Key 'note' not found"}, 400
+            task = CommonModel.get_task(tid)
+            if task:
+                if int(cid) == task.case_id:
+                    if "note" in request.json:
+                        res = TaskModel.modif_note_core(tid, current_user, request.json["note"], '-1')
+                        if type(res) == dict:
+                            return res, 400
+                        return {"message": f"Note for task {tid} edited"}, 200
+                    return {"message": "Need to pass a note"}, 400
+                return {"message": "Task not in this case"}, 404
+            return {"message": "Task not found"}, 404
         return {"message": "Permission denied"}, 403
+    
+
+@api.route('/<cid>/task/<tid>/delete_note')
+@api.doc(description='Delete a note of a task', params={"note_id": "id of a note in task"})
+class GetNoteTask(Resource):
+    method_decorators = [api_required]
+    def get(self, cid, tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            if int(cid) == task.case_id:
+                if "note_id" in request.args:
+                    if TaskModel.delete_note(tid, request.args.get("note_id")):
+                        return {"message": "Note deleted"}, 200
+                return {"message": "Need to pass a note id"}, 400
+            return {"message": "Task not in this case"}, 404
+        return {"message": "Task not found"}, 404
 
 
 @api.route('/<cid>/take_task/<tid>', methods=['GET'])

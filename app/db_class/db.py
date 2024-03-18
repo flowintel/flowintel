@@ -144,7 +144,7 @@ class Task(db.Model):
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String, nullable=True)
     url = db.Column(db.String(64), index=True)
-    notes = db.Column(db.String, nullable=True)
+    notes = db.relationship('Note', backref='task', lazy='dynamic', cascade="all, delete-orphan")
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
@@ -155,6 +155,7 @@ class Task(db.Model):
     notif_deadline_id = db.Column(db.Integer, index=True)
     case_order_id = db.Column(db.Integer, index=True)
     files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
+    nb_notes = db.Column(db.Integer, index=True)
 
     def to_json(self):
         json_dict = {
@@ -163,15 +164,16 @@ class Task(db.Model):
             "title": self.title,
             "description": self.description,
             "url": self.url,
-            "notes": self.notes,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
             "case_id": self.case_id,
             "status_id": self.status_id,
             "completed": self.completed,
             "notif_deadline_id": self.notif_deadline_id,
-            "case_order_id": self.case_order_id
+            "case_order_id": self.case_order_id,
+            "nb_notes": self.nb_notes,
         }
+        json_dict["notes"] = [note.to_json() for note in self.notes]
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
         else:
@@ -195,9 +197,9 @@ class Task(db.Model):
             "uuid": self.uuid, 
             "title": self.title, 
             "description": self.description,
-            "url": self.url,
-            "notes": self.notes
+            "url": self.url
         }
+        json_dict["notes"] = [note.to_json() for note in self.notes]
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
         else:
@@ -207,6 +209,23 @@ class Task(db.Model):
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id==self.id)\
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
 
+        return json_dict
+
+class Note(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True)
+    note = db.Column(db.String, nullable=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
+    task_order_id = db.Column(db.Integer, index=True)
+
+    def to_json(self):
+        json_dict = {
+                "id": self.id,
+                "uuid": self.uuid,
+                "note": self.note,
+                "task_id": self.task_id,
+                "task_order_id": self.task_order_id
+            }
         return json_dict
 
 

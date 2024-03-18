@@ -138,9 +138,45 @@ def modif_note(cid, tid):
         if CommonModel.get_task(tid):
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 notes = request.json["notes"]
-                if TaskModel.modif_note_core(tid, current_user, notes):
-                    return {"message": "Note added", "toast_class": "success-subtle"}, 200
-                return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+                if "note_id" in request.args:
+                    res_note = TaskModel.modif_note_core(tid, current_user, notes, request.args.get("note_id"))
+                    if res_note:
+                        return {"note": res_note.to_json(), "message": "Note added", "toast_class": "success-subtle"}, 200
+                    return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+                return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
+            return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+@task_blueprint.route("/<cid>/create_note/<tid>", methods=['GET'])
+@login_required
+@editor_required
+def create_note(cid, tid):
+    """Create note"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_task(tid):
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                res_note = TaskModel.create_note(tid)
+                if res_note:
+                    return {"note": res_note.to_json(), "message": "Note created", "toast_class": "success-subtle"}, 200
+                return {"message": "Error create note", "toast_class": "danger-subtle"}, 400
+            return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+@task_blueprint.route("/<cid>/delete_note/<tid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_note(cid, tid):
+    """Create note"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_task(tid):
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if "note_id" in request.args:
+                    if TaskModel.delete_note(tid, request.args.get("note_id")):
+                        return {"message": "Note deleted", "toast_class": "success-subtle"}, 200
+                    return {"message": "Error delete note", "toast_class": "danger-subtle"}, 400
+                return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
             return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -153,7 +189,10 @@ def get_note(cid, tid):
     if CommonModel.get_case(cid):
         task = CommonModel.get_task(tid)
         if task:
-            return {"note": task.notes}, 200
+            if "note_id" in request.args:
+                task_note = TaskModel.get_task_note(request.args.get("note_id"))
+                return {"note": task_note.note}, 200
+            return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
@@ -405,14 +444,13 @@ def notify_user(cid, tid):
 def export_notes(cid, tid):
     """Export note of a task as pdf"""
     if CommonModel.get_case(cid):
-        task = CommonModel.get_task(tid)
-        if task:
-            data_dict = dict(request.args)
-            if "type" in data_dict:
-                type_req = data_dict["type"]
-                res = TaskModel.export_notes(task, type_req)
-                CommonModel.delete_temp_folder()
-                return res
+        if CommonModel.get_task(tid):
+            if "type" in request.args:
+                if "note_id" in request.args:
+                    res = TaskModel.export_notes(tid, request.args.get("type"), request.args.get("note_id"))
+                    CommonModel.delete_temp_folder()
+                    return res
+                return {"message": "'note_id' is missing", 'toast_class': "warning-subtle"}, 400
             return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
         return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
