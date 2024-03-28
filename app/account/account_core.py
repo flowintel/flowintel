@@ -25,6 +25,7 @@ def edit_user_core(form_dict, id):
 
     user.first_name=form_dict["first_name"]
     user.last_name=form_dict["last_name"]
+    user.nickname=form_dict["nickname"]
     user.email=form_dict["email"]
     user.matrix_id=form_dict["matrix_id"]
 

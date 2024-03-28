@@ -57,11 +57,20 @@
                     <template v-if="users_table">
                         <template v-if="users_table[org.id]">
                             <table>
+                                <tr>
+                                    <th>Id</th>
+                                    <th>First name</th>
+                                    <th>Last name</th>
+                                    <th>Nickname</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                </tr>
                                 <template v-for="user in users_table[org.id]">
                                     <tr>
                                         <td title="Id">[[user.id]]</td>
                                         <td title="First name">[[user.first_name]]</td>
                                         <td title="last name">[[user.last_name]]</td>
+                                        <td title="Nickname">[[user.nickname]]</td>
                                         <td title="Email">[[user.email]]</td>
                                         <td title="Role">[[user.role]]</td>
                                         {% if current_user.is_admin() %}

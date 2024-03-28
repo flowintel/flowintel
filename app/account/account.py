@@ -38,6 +38,7 @@ def edit_user():
     else:
         form.first_name.data = current_user.first_name
         form.last_name.data = current_user.last_name
+        form.nickname.data = current_user.nickname
         form.email.data = current_user.email
         form.matrix_id.data = current_user.matrix_id
 

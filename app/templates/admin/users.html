@@ -32,12 +32,16 @@
                     <a class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">[[ user.id ]]- [[ user.first_name ]] [[ user.last_name ]]</h4>
+                            <small v-if="user.nickname" title="nickname" class="btn btn-primary btn-sm person">
+                                <i class="fa-solid fa-user"></i> [[user.nickname]]
+                            </small>
+                            <small v-else><i>No nickname</i></small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
-                            <p class="card-text">[[ user.email ]]</p>
+                            <p class="card-text" title="email adress">[[ user.email ]]</p>
                         </div>
                         <div v-if="user.matrix_id" class="d-flex w-100 justify-content-between">
-                            <p class="card-text">[[ user.matrix_id ]]</p>
+                            <p class="card-text" title="matrix id">[[ user.matrix_id ]]</p>
                         </div>
                         <div class="d-flex w-100 justify-content-center">
                             <p class="card-text" title="Role">[[ user.role ]]</p>

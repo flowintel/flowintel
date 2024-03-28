@@ -112,6 +112,7 @@ def add_user_core(form_dict):
     user = User(
         first_name=form_dict["first_name"],
         last_name=form_dict["last_name"],
+        nickname=form_dict["nickname"],
         email=form_dict["email"],
         password=form_dict["password"],
         role_id = form_dict["role"],
@@ -149,6 +150,7 @@ def admin_edit_user_core(form_dict, id):
 
     user.first_name=form_dict["first_name"]
     user.last_name=form_dict["last_name"]
+    user.nickname=form_dict["nickname"]
     user.email=form_dict["email"]
     user.matrix_id = form_dict["matrix_id"]
     if "password" in form_dict and form_dict["password"]:

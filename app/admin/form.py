@@ -17,6 +17,7 @@ from ..utils.utils import isUUID
 class RegistrationForm(FlaskForm):
     first_name = StringField('First name', validators=[InputRequired(), Length(1, 64)])
     last_name = StringField('Last name', validators=[InputRequired(), Length(1, 64)])
+    nickname = StringField('Nickname', validators=[Length(1, 64)])
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
     password = PasswordField('Password', validators=[
             InputRequired(),
@@ -39,6 +40,7 @@ class AdminEditUserFrom(FlaskForm):
     user_id = HiddenField("")
     first_name = StringField('First name', validators=[InputRequired(), Length(1, 64)])
     last_name = StringField('Last name', validators=[InputRequired(), Length(1, 64)])
+    nickname = StringField('Nickname', validators=[Length(1, 64)])
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
     password = PasswordField('Password', validators=[Optional(), EqualTo('password2', 'Passwords must match')])
     password2 = PasswordField('Confirm password')

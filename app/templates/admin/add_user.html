@@ -36,6 +36,15 @@
                 </div>
                 <div class="row">
                     <div class="col">
+                        {{form.nickname.label(class_="col-form-label")}}:
+                        {{form.nickname(class_="form-control")}}
+                        {% if form.nickname.errors %}
+                            <div style="color: red;">{{form.nickname.errors[0] | safe}}</div>
+                        {%endif%}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
                         {{form.email.label(class_="col-form-label")}}:
                         {{form.email(class_="form-control")}}
                         {% if form.email.errors %}

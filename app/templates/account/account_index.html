@@ -23,17 +23,24 @@
                 <h6 style="display: inline-block;">Last name:</h6> <span>{{user.last_name}}</span>
             </div>
             <div>
+                <h6 style="display: inline-block;">Nickname:</h6> 
+                {%if user.nickname %}
+                    <span> {{user.nickname}}</span>
+                {%else%}
+                    <span><i> Not set</i></span>
+                {%endif%}
+            </div>
+            <div>
                 <h6 style="display: inline-block;">Email:</h6> <span>{{user.email}}</span>
             </div>
-            {%if user.matrix_id%}
                 <div>
-                    <h6 style="display: inline-block;">Matrix id:</h6> <span>{{user.matrix_id}}</span>
+                    <h6 style="display: inline-block;">Matrix id:</h6> 
+                    {%if user.matrix_id%}
+                        <span> {{user.matrix_id}}</span>
+                    {%else%}
+                        <span><i> Not set</i></span>
+                    {%endif%}
                 </div>
-            {%else%}
-                <div>
-                    <h6 style="display: inline-block;">Matrix id:</h6> <span><i>Not set</i></span>
-                </div>
-            {%endif%}
             <div>
                 <h6 style="display: inline-block;">Api key:</h6> <span>{{user.api_key}}</span>
             </div>

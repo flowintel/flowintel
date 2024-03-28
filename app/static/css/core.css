@@ -41,3 +41,7 @@ span#goTop, span#project-version{
 	background-color: #ced4da;
 	filter: drop-shadow(-1px 1px 1px rgba(50, 50, 0, 0.5));
 }
+
+.person {
+	border-radius: 50px;
+}

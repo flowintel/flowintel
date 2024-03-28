@@ -71,6 +71,7 @@ def edit_user(uid):
         user_modif = AdminModel.get_user(uid)
         form.first_name.data = user_modif.first_name
         form.last_name.data = user_modif.last_name
+        form.nickname.data = user_modif.nickname
         form.email.data = user_modif.email
         form.matrix_id.data = user_modif.matrix_id
 

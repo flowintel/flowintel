@@ -592,7 +592,10 @@ export default {
 
 			<div class="d-flex w-100 justify-content-between">
                 <div v-if="task.users.length">
-                    Users:  [[users_list.join(", ")]]
+					<template v-for="user in task.users">
+						<span v-if="user.nickname" class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name"><i class="fa-solid fa-user"></i> [[user.nickname]]</span>
+						<span v-else class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name"><i class="fa-solid fa-user"></i> [[user.last_name]]</span>
+					</template>
                 </div>
 
                 <div v-else>
@@ -680,18 +683,19 @@ export default {
 											<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 										</div>
 										<div class="modal-body">
-											<div style="display: flex;">
-												<div>
-													<label :for="'modules_select_'+task.id+'_'+user.id">Modules:</label>
-													<select data-placeholder="Modules" class="select2-select form-control" style="min-width: 100px" :name="'modules_select_'+task.id+'_'+user.id" :id="'modules_select_'+task.id+'_'+user.id" >
-														<option value="None">--</option>
-														<option value="flowintel-cm">flowintel-cm</option>
-														<template v-for="module, key in modules">
-															<option v-if="module.type == 'notify_user' && module.config.case_task == 'task'" :value="[[key]]">[[key]]</option>
-														</template>
-													</select>
-													<div id="modules_errors" class="invalid-feedback"></div>
-												</div>
+											<div class="d-flex w-100 justify-content-center">
+												<label :for="'modules_select_'+task.id+'_'+user.id">Modules:</label>
+											</div>
+											<div class="d-flex w-100 justify-content-center">
+												
+												<select data-placeholder="Modules" class="select2-select form-control" style="min-width: 100px; max-width: 300px;" :name="'modules_select_'+task.id+'_'+user.id" :id="'modules_select_'+task.id+'_'+user.id" >
+													<option value="None">--</option>
+													<option value="flowintel-cm">flowintel-cm</option>
+													<template v-for="module, key in modules">
+														<option v-if="module.type == 'notify_user' && module.config.case_task == 'task'" :value="[[key]]">[[key]]</option>
+													</template>
+												</select>
+												<div id="modules_errors" class="invalid-feedback"></div>
 											</div>
 										</div>
 										<div class="modal-footer">

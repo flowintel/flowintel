@@ -24,6 +24,7 @@ class LoginForm(FlaskForm):
 class EditUserFrom(FlaskForm):
     first_name = StringField('First name', validators=[InputRequired(), Length(1, 64)])
     last_name = StringField('Last name', validators=[InputRequired(), Length(1, 64)])
+    nickname = StringField('Nickname', validators=[Length(1, 64)])
     matrix_id = StringField('Matrix id', render_kw={"placeholder": "@testuser:matrix.org"})
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
 
