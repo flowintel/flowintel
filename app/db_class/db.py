@@ -8,6 +8,7 @@ class User(UserMixin, db.Model):
     first_name = db.Column(db.String(64), index=True)
     last_name = db.Column(db.String(64), index=True)
     email = db.Column(db.String(64), unique=True, index=True)
+    matrix_id = db.Column(db.String, unique=True, index=True)
     role_id = db.Column(db.Integer, index=True)
     password_hash = db.Column(db.String(128))
     api_key = db.Column(db.String(60), index=True)
@@ -43,7 +44,8 @@ class User(UserMixin, db.Model):
             "last_name": self.last_name, 
             "email": self.email, 
             "org_id": self.org_id, 
-            "role_id": self.role_id
+            "role_id": self.role_id,
+            "matrix_id": self.matrix_id
         }
 
 class AnonymousUser(AnonymousUserMixin):

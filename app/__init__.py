@@ -4,7 +4,7 @@ from flask_wtf import CSRFProtect
 from flask_migrate import Migrate
 from flask_login import LoginManager
 
-from config import config as Config
+from conf.config import config as Config
 import os
 
 

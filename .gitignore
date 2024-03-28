@@ -3,3 +3,5 @@
 history/*
 uploads/*
 mermaid-filter.err
+app/modules/notify_user/matrix_store/*
+app/modules/notify_user/matrix_session.txt

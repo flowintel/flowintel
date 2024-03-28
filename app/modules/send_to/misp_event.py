@@ -1,7 +1,6 @@
-import json
 from pymisp import MISPEvent, MISPObject, PyMISP
 import uuid
-from config import Config
+import conf.config_module as Config
 
 module_config = {
     "connector": "misp",
@@ -46,7 +45,7 @@ def create_task(task, case_uuid):
     return misp_object
 
 
-def handler(instance, case):
+def handler(instance, case, user):
     """
     instance: name, url, description, uuid, connector_id, type, api_key, identifier
 
@@ -55,6 +54,8 @@ def handler(instance, case):
 
     case["tasks"]: id, uuid, title, description, url, notes, creation_date, last_modif, case_id, status_id, status,
                    completed, deadline, finish_date, tags, clusters, connectors
+
+    user: id, first_name, last_name, email, role_id, password_hash, api_key, org_id
     """
     try:
         misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)

@@ -72,6 +72,7 @@ def edit_user(uid):
         form.first_name.data = user_modif.first_name
         form.last_name.data = user_modif.last_name
         form.email.data = user_modif.email
+        form.matrix_id.data = user_modif.matrix_id
 
     return render_template("admin/add_user.html", form=form, edit_mode=True)
 

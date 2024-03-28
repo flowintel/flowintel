@@ -16,3 +16,5 @@ git+https://github.com/MISP/PyTaxonomies
 git+https://github.com/MISP/PyMISPGalaxies
 jsonschema
 pymisp
+matrix-nio
+matrix-nio[e2e]

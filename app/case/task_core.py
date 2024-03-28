@@ -15,6 +15,8 @@ from ..notification import notification_core as NotifModel
 
 from . import common_core as CommonModel
 
+from app.utils.utils import MODULES, MODULES_CONFIG
+
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
@@ -622,4 +624,10 @@ def change_order(case, task, up_down):
                 task.case_order_id += 1
                 break
     db.session.commit()
+
+def call_module_task_no_instance(module, task, case, current_user, user_id):
+    user = User.query.get(user_id)
+    res = MODULES[module].handler(task, case, current_user, user)
+    if isinstance(res, dict):
+        return res
 

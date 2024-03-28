@@ -36,6 +36,9 @@
                         <div class="d-flex w-100 justify-content-between">
                             <p class="card-text">[[ user.email ]]</p>
                         </div>
+                        <div v-if="user.matrix_id" class="d-flex w-100 justify-content-between">
+                            <p class="card-text">[[ user.matrix_id ]]</p>
+                        </div>
                         <div class="d-flex w-100 justify-content-center">
                             <p class="card-text" title="Role">[[ user.role ]]</p>
                         </div>

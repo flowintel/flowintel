@@ -116,6 +116,7 @@ def add_user_core(form_dict):
         password=form_dict["password"],
         role_id = form_dict["role"],
         org_id = form_dict["org"],
+        matrix_id=form_dict["matrix_id"],
         api_key = generate_api_key()
     )
     db.session.add(user)
@@ -149,7 +150,8 @@ def admin_edit_user_core(form_dict, id):
     user.first_name=form_dict["first_name"]
     user.last_name=form_dict["last_name"]
     user.email=form_dict["email"]
-    if "password" in form_dict:
+    user.matrix_id = form_dict["matrix_id"]
+    if "password" in form_dict and form_dict["password"]:
         user.password=form_dict["password"]
     user.role_id = form_dict["role"]
     user.org_id = org_change

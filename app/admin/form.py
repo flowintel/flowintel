@@ -23,6 +23,7 @@ class RegistrationForm(FlaskForm):
             EqualTo('password2', 'Passwords must match')
         ])
     password2 = PasswordField('Confirm password', validators=[InputRequired()])
+    matrix_id = StringField('Matrix id', render_kw={"placeholder": "@testuser:matrix.org"})
 
     role = SelectField(u'Role', coerce=str, validators=[InputRequired()])
     org = SelectField(u'Organisation', coerce=str, validators=[InputRequired()])
@@ -41,6 +42,7 @@ class AdminEditUserFrom(FlaskForm):
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
     password = PasswordField('Password', validators=[Optional(), EqualTo('password2', 'Passwords must match')])
     password2 = PasswordField('Confirm password')
+    matrix_id = StringField('Matrix id', render_kw={"placeholder": "@testuser:matrix.org"})
 
     role = SelectField(u'Role', coerce=str, validators=[InputRequired()])
     org = SelectField(u'Organisation', coerce=str, validators=[InputRequired()])

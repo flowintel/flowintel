@@ -39,6 +39,7 @@ def edit_user():
         form.first_name.data = current_user.first_name
         form.last_name.data = current_user.last_name
         form.email.data = current_user.email
+        form.matrix_id.data = current_user.matrix_id
 
     return render_template("account/edit_user.html", form=form)
 

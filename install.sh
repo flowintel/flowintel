@@ -1,7 +1,7 @@
 #!/bin/bash
 
 sudo apt-get update -y
-sudo apt-get install python3-pip git screen virtualenv pandoc npm librsvg2-bin texlive-full -y
+sudo apt-get install python3-pip git screen libolm-dev pandoc npm librsvg2-bin texlive-full virtualenv -y
 
 virtualenv env
 source env/bin/activate

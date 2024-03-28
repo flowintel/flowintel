@@ -724,16 +724,18 @@ def get_modules():
 
 def get_instance_module_core(module, type_module, case_id, user_id):
     """Return a list of connectors instances for a module"""
-    connector = CommonModel.get_connector_by_name(MODULES_CONFIG[module]["config"]["connector"])
-    instance_list = list()
-    for instance in connector.instances:
-        if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
-            if instance.type==type_module:
-                loc_instance = instance.to_json()
-                identifier = CommonModel.get_case_connector_id(instance.id, case_id)
-                loc_instance["identifier"] = identifier.identifier
-                instance_list.append(loc_instance)
-    return instance_list
+    if "connector" in MODULES_CONFIG[module]["config"]:
+        connector = CommonModel.get_connector_by_name(MODULES_CONFIG[module]["config"]["connector"])
+        instance_list = list()
+        for instance in connector.instances:
+            if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                if instance.type==type_module:
+                    loc_instance = instance.to_json()
+                    identifier = CommonModel.get_case_connector_id(instance.id, case_id)
+                    loc_instance["identifier"] = identifier.identifier
+                    instance_list.append(loc_instance)
+        return instance_list
+    return []
 
 
 def call_module_case(module, instances, case, user):
@@ -765,7 +767,7 @@ def call_module_case(module, instances, case, user):
         if instances[instance_key]:
             instance["identifier"] = instances[instance_key]
 
-        event_id = MODULES[module].handler(instance, case)
+        event_id = MODULES[module].handler(instance, case, user)
         if isinstance(event_id, dict):
             return event_id
 

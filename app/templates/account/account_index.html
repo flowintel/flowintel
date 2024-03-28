@@ -25,6 +25,15 @@
             <div>
                 <h6 style="display: inline-block;">Email:</h6> <span>{{user.email}}</span>
             </div>
+            {%if user.matrix_id%}
+                <div>
+                    <h6 style="display: inline-block;">Matrix id:</h6> <span>{{user.matrix_id}}</span>
+                </div>
+            {%else%}
+                <div>
+                    <h6 style="display: inline-block;">Matrix id:</h6> <span><i>Not set</i></span>
+                </div>
+            {%endif%}
             <div>
                 <h6 style="display: inline-block;">Api key:</h6> <span>{{user.api_key}}</span>
             </div>

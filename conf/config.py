@@ -4,8 +4,6 @@ class Config:
     FLASK_URL = '127.0.0.1'
     FLASK_PORT = 7006
 
-    ORIGIN_URL = 'flowintel-cm.circl.lu' # Used for connector, to know what's the origin of the data
-    # SERVER_NAME="localhost:7006"
 
 class DevelopmentConfig(Config):
     DEBUG = True

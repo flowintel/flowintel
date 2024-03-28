@@ -434,7 +434,8 @@
                                 :status_info="status_info" 
                                 :task="task" 
                                 :key_loop="key"
-                                :open_closed="open_closed" >
+                                :open_closed="open_closed" 
+                                :modules="modules">
                     </case_tasks>
                 </div>
             </template>
@@ -1117,11 +1118,11 @@
                 }
 
                 onMounted(() => {
-                    // $('.select2-select').select2({
-                    //     theme: 'bootstrap-5',
-                    //     width: '50%',
-                    //     closeOnSelect: false
-                    // })
+                    $('.select2-select').select2({
+                        theme: 'bootstrap-5',
+                        width: '50%',
+                        closeOnSelect: false
+                    })
 
                     $('#taxonomies_select').on('change.select2', function (e) {
                         selected_taxo.value = $(this).select2('data').map(item => item.id);

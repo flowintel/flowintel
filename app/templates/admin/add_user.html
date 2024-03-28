@@ -34,12 +34,21 @@
                         {%endif%}
                     </div>
                 </div>
-                <div class="mb-3">
-                    {{form.email.label(class_="col-form-label")}}:
-                    {{form.email(class_="form-control")}}
-                    {% if form.email.errors %}
-                        <div style="color: red;">{{form.email.errors[0] | safe}}</div>
-                    {%endif%}
+                <div class="row">
+                    <div class="col">
+                        {{form.email.label(class_="col-form-label")}}:
+                        {{form.email(class_="form-control")}}
+                        {% if form.email.errors %}
+                            <div style="color: red;">{{form.email.errors[0] | safe}}</div>
+                        {%endif%}
+                    </div>
+                    <div class="col">
+                        {{form.matrix_id.label(class_="col-form-label")}}:
+                        {{form.matrix_id(class_="form-control")}}
+                        {% if form.matrix_id.errors %}
+                            <div style="color: red;">{{form.matrix_id.errors[0] | safe}}</div>
+                        {%endif%}
+                    </div>
                 </div>
                 <div class="row">
                     <div class="col">

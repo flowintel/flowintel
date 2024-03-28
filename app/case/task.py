@@ -545,3 +545,19 @@ def change_order(cid, tid):
             return {"message": "Need to pass up_down", 'toast_class': "danger-subtle"}, 400
         return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/<cid>/task/<tid>/call_module_task_no_instance", methods=['GET', 'POST'])
+@login_required
+def call_module_task_no_instance(cid, tid):
+    """Run a module"""
+    case = CommonModel.get_case(cid)
+    task = CommonModel.get_task(tid)
+    if task:
+        module = request.args.get("module")
+        user_id = request.args.get("user_id")
+        res = TaskModel.call_module_task_no_instance(module, task, case, current_user, user_id)
+        if res:
+            res["toast_class"] = "danger-subtle"
+            return jsonify(res), 400
+        return {"message": "Module used", 'toast_class': "success-subtle"}, 200
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404

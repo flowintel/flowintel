@@ -8,7 +8,8 @@ export default {
 		users_in_case: Object,
 		task: Object,
 		key_loop: Number,
-		open_closed: Object
+		open_closed: Object,
+		modules: Object
 	},
 	setup(props) {
 		// Variables part
@@ -21,6 +22,7 @@ export default {
 		const md = window.markdownit()			// Library to Parse and display markdown
 		md.use(mermaidMarkdown.default)			// Use mermaid library
 		const edit_mode = ref(-1)			// Boolean use when the note is in edit mode
+		const module_loader = ref(false)
 
 		if(props.task.notes.length){
 			for(let i in props.task.notes){
@@ -427,6 +429,25 @@ export default {
 			await display_toast(res)
 		}
 
+		async function submit_module_task(user_id){
+			module_loader.value = true
+			$("#modules_errors").hide()
+			const loc_val = $("#modules_select_"+props.task.id+"_"+user_id).val()
+			if(!loc_val || loc_val == "None"){
+				$("#modules_errors").text("Select an item")
+				$("#modules_errors").show()
+			}else{
+				if(loc_val == "flowintel-cm"){
+					notify_user(user_id)
+				}else{
+					const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.task.id+"/call_module_task_no_instance?module=" + loc_val + "&user_id="+user_id);
+					module_loader.value = false
+
+					display_toast(res, true)
+				}
+			}
+		}
+
 		async function take_task(task, current_user){
 			// Assign the task to the current user
 			const res = await fetch('/case/' + task.case_id + '/take_task/' + task.id)
@@ -515,6 +536,7 @@ export default {
 			mapIcon,
 			edit_mode,
 			users_list,
+			module_loader,
 			change_status,
 			take_task,
 			remove_assign_task,
@@ -533,7 +555,8 @@ export default {
 			export_notes,
 			present_user_in_task,
 			move_task,
-			add_notes_task
+			add_notes_task,
+			submit_module_task
 		}
 	},
 	template: `
@@ -646,8 +669,42 @@ export default {
 						<h5>Remove assign</h5>
 						<div v-for="user in task.users">
 							<span style="margin-right: 5px">[[user.first_name]] [[user.last_name]]</span>
-							<button v-if="cases_info.current_user.id != user.id" class="btn btn-primary btn-sm" @click="notify_user(user.id)"><i class="fa-solid fa-bell"></i></button>
+							<button v-if="cases_info.current_user.id != user.id" class="btn btn-primary btn-sm" data-bs-toggle="modal" :data-bs-target="'#notify_modal_'+task.id+'_'+user.id" title="Use a module to notify user"><i class="fa-solid fa-bell"></i></button>
 							<button class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
+						
+							<div class="modal fade" :id="'notify_modal_'+task.id+'_'+user.id" tabindex="-1" aria-labelledby="notify_modalLabel" aria-hidden="true">
+								<div class="modal-dialog modal-lg">
+									<div class="modal-content">
+										<div class="modal-header">
+											<h1 class="modal-title fs-5" id="notify_modalLabel">Notify user</h1>
+											<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+										</div>
+										<div class="modal-body">
+											<div style="display: flex;">
+												<div>
+													<label :for="'modules_select_'+task.id+'_'+user.id">Modules:</label>
+													<select data-placeholder="Modules" class="select2-select form-control" style="min-width: 100px" :name="'modules_select_'+task.id+'_'+user.id" :id="'modules_select_'+task.id+'_'+user.id" >
+														<option value="None">--</option>
+														<option value="flowintel-cm">flowintel-cm</option>
+														<template v-for="module, key in modules">
+															<option v-if="module.type == 'notify_user' && module.config.case_task == 'task'" :value="[[key]]">[[key]]</option>
+														</template>
+													</select>
+													<div id="modules_errors" class="invalid-feedback"></div>
+												</div>
+											</div>
+										</div>
+										<div class="modal-footer">
+											<button v-if="module_loader" class="btn btn-primary" type="button" disabled>
+												<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+												<span role="status">Loading...</span>
+											</button>
+											<button v-else type="button" @click="submit_module_task(user.id)" class="btn btn-primary">Submit</button>
+										</div>
+									</div>
+								</div>
+							</div>
+
 						</div>
 					</div>
 				</div>
