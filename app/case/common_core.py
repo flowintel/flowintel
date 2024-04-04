@@ -45,7 +45,7 @@ def get_case_by_completed(completed):
 
 def get_case_by_title(title):
     """Return a case by its title """
-    return Case.query.where(func.lower(Case.title)==func.lower(title)).first()
+    return Case.query.where(func.lower(Case.title).contains(func.lower(title))).first()
 
 def get_case_template_by_title(title):
     """Return a case template by its title"""

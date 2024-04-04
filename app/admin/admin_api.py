@@ -39,6 +39,27 @@ class GetUsers(Resource):
             return user.to_json(), 200
         return {"message": "User not found"}, 404
 
+@api.route('/user')
+@api.doc(description='Get a user by name', params={"lastname": "last name of a user"})
+class GetUserName(Resource):
+    method_decorators = [api_required]
+    def get(self):
+        if "lastname" in request.args:
+            users = AdminModel.get_user_by_lastname(request.args.get("lastname"))
+            return {"users": [user.to_json() for user in users]}, 200
+        return {"message": "Need to pass a last name"}, 400
+
+@api.route('/user_matrix_id')
+@api.doc(description='Get a user by matrix id', params={"matrix_id": "matrix id of a user"})
+class GetUserMatrix(Resource):
+    method_decorators = [api_required]
+    def get(self):
+        if "matrix_id" in request.args:
+            user = AdminModel.get_user_by_matrix_id(request.args.get("matrix_id"))
+            if user:
+                return user.to_json(), 200
+            return {"message": "No user found for this matrix id"}
+        return {"message": "Need to pass a last name"}, 400
 
 @api.route('/add_user')
 @api.doc(description='Add new user')

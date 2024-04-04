@@ -29,6 +29,12 @@ def get_user(id):
     """Return the user"""
     return User.query.get(id)
 
+def get_user_by_lastname(lastname):
+    return User.query.filter_by(last_name=lastname).all()
+
+def get_user_by_matrix_id(matrix_id):
+    return User.query.filter_by(matrix_id=matrix_id).first()
+
 def get_org(id):
     """Return the org"""
     return Org.query.get(id)

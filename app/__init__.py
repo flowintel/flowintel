@@ -51,13 +51,16 @@ def create_app():
     from .admin.admin_api import api_admin_blueprint
     from .tools.templating_api import api_templating_blueprint
     from .tools.importer_api import api_importer_blueprint
+    from .my_assignment.my_assignment_api import api_assignment_blueprint
     csrf.exempt(api_case_blueprint)
     csrf.exempt(api_admin_blueprint)
     csrf.exempt(api_templating_blueprint)
     csrf.exempt(api_importer_blueprint)
+    csrf.exempt(api_assignment_blueprint)
     app.register_blueprint(api_case_blueprint, url_prefix="/api/case")
     app.register_blueprint(api_admin_blueprint, url_prefix="/api/admin")
     app.register_blueprint(api_templating_blueprint, url_prefix="/api/template")
     app.register_blueprint(api_importer_blueprint, url_prefix="/api/importer")
+    app.register_blueprint(api_assignment_blueprint, url_prefix="/api/my_assignment")
 
     return app
