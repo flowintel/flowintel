@@ -257,13 +257,13 @@ def test_get_all_tasks(client):
 
 def test_get_task(client):
     test_create_task(client)
-    response = client.get("/api/case/1/task/1", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200
 
 
 def test_edit_task(client):
     test_create_task(client)
-    response = client.post("/api/case/1/task/1/edit",
+    response = client.post("/api/task/1/edit",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test edit task admin"}
@@ -271,19 +271,19 @@ def test_edit_task(client):
 
     assert response.status_code == 200 and b"Task 1 edited" in response.data
 
-    response = client.get("/api/case/1/task/1", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Test edit task admin" in response.data
 
 
 def test_complete_task(client):
     test_create_task(client)
-    response = client.get("/api/case/1/task/1/complete", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/1/complete", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Task 1 completed" in response.data
 
 
 def test_create_note_task(client):
     test_create_task(client)
-    response = client.post("/api/case/1/task/1/modif_note",
+    response = client.post("/api/task/1/modif_note",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"note": "Test super note", "note_id": "-1"}
@@ -292,7 +292,7 @@ def test_create_note_task(client):
 
 def test_modif_note(client):
     test_create_note_task(client)
-    response = client.post("/api/case/1/task/1/modif_note",
+    response = client.post("/api/task/1/modif_note",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"note": "Test super note", "note_id": "1"}
@@ -301,29 +301,29 @@ def test_modif_note(client):
 
 def test_get_all_notes_task(client):
     test_create_task(client)
-    response = client.get("/api/case/1/task/1/get_all_notes", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/1/get_all_notes", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200
 
 def test_get_note_task(client):
     test_create_note_task(client)
-    response = client.get("/api/case/1/task/1/get_note?note_id=1", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/1/get_note?note_id=1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Test super note" in response.data
 
 
 def test_take_task(client):
     test_create_task(client)
-    response = client.get("/api/case/1/take_task/1", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/1/take_task", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Task Take" in response.data
 
 def test_remove_assign_task(client):
     test_take_task(client)
-    response = client.get("/api/case/1/remove_assignment/1", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/1/remove_assignment", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Removed from assignment" in response.data
 
 def test_assign_user_task(client):
     test_add_org_case(client)
     test_create_task(client, False)
-    response = client.post("/api/case/1/task/1/assign_users",
+    response = client.post("/api/task/1/assign_users",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"users_id": [2]}
@@ -332,7 +332,7 @@ def test_assign_user_task(client):
 
 def test_remove_assign_user_task(client):
     test_assign_user_task(client)
-    response = client.post("/api/case/1/task/1/remove_assign_user",
+    response = client.post("/api/task/1/remove_assign_user",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"user_id": "2"}
@@ -341,7 +341,7 @@ def test_remove_assign_user_task(client):
 
 def test_change_status(client):
     test_create_task(client)
-    response = client.post("/api/case/1/task/1/change_status",
+    response = client.post("/api/task/1/change_status",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"status_id": "2"}
@@ -354,7 +354,7 @@ def test_list_status(client):
 
 def test_delete_task(client):
     test_create_task(client)
-    response = client.get("/api/case/1/task/1/delete", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/1/delete", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Task deleted" in response.data
 
 def test_move_task_up(client):
@@ -363,7 +363,7 @@ def test_move_task_up(client):
     response = client.get("/api/case/1/move_task_up/2", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Order changed" in response.data
 
-    response = client.get("/api/case/1/task/2", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/2", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and response.json["task"]["case_order_id"] == 1
 
 def test_move_task_down(client):
@@ -372,7 +372,7 @@ def test_move_task_down(client):
     response = client.get("/api/case/1/move_task_down/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Order changed" in response.data
 
-    response = client.get("/api/case/1/task/1", headers={"X-API-KEY": API_KEY})
+    response = client.get("/api/task/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and response.json["task"]["case_order_id"] == 2
 
 
