@@ -7,11 +7,17 @@ def verif_add_user(data_dict):
 
     if "last_name" not in data_dict or not data_dict["last_name"]:
         return {"message": "Please give a last name for the user"}
+    
+    if "nickname" not in data_dict or not data_dict["nickname"]:
+        data_dict["nickname"] = "None"
 
     if "email" not in data_dict or not data_dict["email"]:
         return {"message": "Please give an email for the user"}
     elif User.query.filter_by(email=data_dict["email"]).first():
         return {"message": "Email already exist"}
+    
+    if "matrix_id" not in data_dict or not data_dict["matrix_id"]:
+        data_dict["matrix_id"] = "None"
 
     if "password" not in data_dict or not data_dict["password"]:
         return {"message": "Please give a password for the user"}
@@ -34,10 +40,16 @@ def verif_edit_user(data_dict, user_id):
     if "last_name" not in data_dict or not data_dict["last_name"]:
         data_dict["last_name"] = user.last_name
 
+    if "nickname" not in data_dict or not data_dict["nickname"]:
+        data_dict["nickname"] = user.nickname
+
     if "email" not in data_dict or not data_dict["email"]:
         data_dict["email"] = user.email
     elif User.query.filter_by(email=data_dict["email"]).first():
         return {"message": "Email already exist"}
+    
+    if "matrix_id" not in data_dict or not data_dict["matrix_id"]:
+        data_dict["matrix_id"] = user.matrix_id
 
     if "role" not in data_dict or not data_dict["role"]:
         data_dict["role"] = user.role_id
