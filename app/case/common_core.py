@@ -47,6 +47,10 @@ def get_case_by_title(title):
     """Return a case by its title """
     return Case.query.where(func.lower(Case.title).contains(func.lower(title))).first()
 
+def get_task_by_title(title):
+    """Return a tas by its title"""
+    return Task.query.where(func.lower(Task.title).contains(func.lower(title))).first()
+
 def get_case_template_by_title(title):
     """Return a case template by its title"""
     return Case_Template.query.filter_by(title=title).first()

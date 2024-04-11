@@ -56,7 +56,7 @@ class CreateCase(Resource):
         "deadline_time": "Time(%H-%M)"
     })
     def post(self):
-        user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        user = CaseModelApi.get_user_api(request.headers)
 
         if request.json:
             verif_dict = CaseModelApi.verif_create_case_task(request.json, True)
@@ -75,7 +75,7 @@ class EditCase(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"title": "Title for a case", "description": "Description of a case", "deadline_date": "Date(%Y-%m-%d)", "deadline_time": "Time(%H-%M)"})
     def post(self, id):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_edit_case(request.json, id)
@@ -96,7 +96,7 @@ class ForkCase(Resource):
         "case_title_fork": "Required. Title for the case"
     })
     def post(self, cid):
-        user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        user = CaseModelApi.get_user_api(request.headers)
 
         if request.json:
             if "case_title_fork" in request.json:
@@ -144,7 +144,7 @@ class GetCaseTitle(Resource):
 class CompleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             case = CommonModel.get_case(cid)
             if case:
@@ -159,7 +159,7 @@ class CompleteCase(Resource):
 class DeleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_case(cid, current_user):
                 return {"message": "Case deleted"}, 200
@@ -172,7 +172,7 @@ class AddOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
     def post(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "name" in request.json:
                 org = CommonModel.get_org_by_name(request.json["name"])
@@ -196,7 +196,7 @@ class AddOrgCase(Resource):
 class RemoveOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, oid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             org = CommonModel.get_org(oid)
 
@@ -250,7 +250,7 @@ class RecurringCase(Resource):
         "remove": "Boolean"
     })
     def post(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_set_recurring(request.json)
@@ -283,15 +283,15 @@ class SearchCase(Resource):
 class ChangeStatusCase(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={
-        "status": "Required. Status id"
+        "status_id": "Required. Status id"
     })
     def post(self, cid):
-        if "status" in request.json:
+        if "status_id" in request.json:
             case = CommonModel.get_case(cid)
             if case:
-                current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+                current_user = CaseModelApi.get_user_api(request.headers)
                 if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                    CaseModel.change_status_core(request.json["status"], case, current_user)
+                    CaseModel.change_status_core(request.json["status_id"], case, current_user)
                     return {"message": "Status changed"}, 200
                 return {"message": "Permission denied"}, 403
             return {"message": "Case doesn't exist"}, 404
@@ -389,7 +389,7 @@ class GetInstanceModules(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if "module" in request.args:
                 module = request.args.get("module")
             if "type" in request.args:
@@ -443,7 +443,7 @@ class CallModuleCase(Resource):
         if "module" in request.json:
             if "instances" in request.json:
                 if case:
-                    current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+                    current_user = CaseModelApi.get_user_api(request.headers)
                     if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                         res = CaseModel.call_module_case(request.json["module"], request.json["instances"], case, current_user)
                         if res:
@@ -471,7 +471,7 @@ class GetNote(Resource):
 class GetAllUsers(Resource):
     method_decorators = [api_required]
     def get(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         case = CommonModel.get_case(cid)
         if case:
             users_list = list()
@@ -495,7 +495,7 @@ class ListStatus(Resource):
 class GetConnectors(Resource):
     method_decorators = [api_required]
     def get(self):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         connectors_list = CommonModel.get_connectors()
         connectors_dict = dict()
         for connector in connectors_list:
@@ -520,7 +520,24 @@ class GetTasks(Resource):
         if case:
             tasks = list()
             for task in case.tasks:
-                tasks.append(task.to_json())
+                if not task.completed:
+                    tasks.append(task.to_json())
+
+            return tasks, 200
+        return {"message": "Case not found"}, 404
+    
+
+@api.route('/<cid>/tasks_finished')
+@api.doc(description='Get all tasks for a case', params={'cid': 'id of a case'})
+class GetTasksFinished(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            tasks = list()
+            for task in case.tasks:
+                if task.completed:
+                    tasks.append(task.to_json())
 
             return tasks, 200
         return {"message": "Case not found"}, 404
@@ -538,14 +555,14 @@ class CreateTask(Resource):
         "deadline_time": "Time(%H-%M)"
     })
     def post(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_create_case_task(request.json, False)
 
                 if "message" not in verif_dict:
                     task = TaskModel.create_task(verif_dict, cid, current_user)
-                    return {"message": f"Task created for case id: {cid}"}, 201
+                    return {"message": f"Task {task.id} created for case id: {cid}"}, 201
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
         return {"message": "Permission denied"}, 403
@@ -558,7 +575,7 @@ class MoveTaskUp(Resource):
     def get(self, cid, tid):
         case = CommonModel.get_case(cid)
         if case:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 task = CommonModel.get_task(tid)
                 if task:
@@ -575,7 +592,7 @@ class MoveTaskDown(Resource):
     def get(self, cid, tid):
         case = CommonModel.get_case(cid)
         if case:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 task = CommonModel.get_task(tid)
                 if task:
@@ -605,7 +622,7 @@ class ModifNoteCase(Resource):
     def post(self, cid):
         case = CommonModel.get_case(cid)
         if case:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "note" in request.json:
                     if CaseModel.modif_note_core(cid, current_user, request.json["note"]):

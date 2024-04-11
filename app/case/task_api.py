@@ -28,10 +28,24 @@ class GetTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             loc = dict()
-            loc["users_assign"], loc["is_current_user_assign"] = TaskModel.get_users_assign_task(task.id, CaseModelApi.get_user_api(request.headers["X-API-KEY"]))
+            loc["users_assign"], loc["is_current_user_assign"] = TaskModel.get_users_assign_task(task.id, CaseModelApi.get_user_api(request.headers))
             loc["task"] = task.to_json()
             return loc, 200
         return {"message": "Task not found"}, 404
+    
+
+@api.route('/title', methods=["POST"])
+@api.doc(description='Get a task by title')
+class GetTaskTitle(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={"title": "Title of a task"})
+    def post(self):
+        if "title" in request.json:
+            task = CommonModel.get_task_by_title(request.json["title"])
+            if task:
+                return task.to_json(), 200
+            return {"message": "Task not found"}, 404
+        return {"message": "Need to pass a title"}, 404
     
     
 @api.route('/<tid>/edit', methods=['POST'])
@@ -42,7 +56,7 @@ class EditTake(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if request.json:
                     verif_dict = CaseModelApi.verif_edit_task(request.json, tid)
@@ -63,7 +77,7 @@ class DeleteTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.delete_task(tid, current_user):
                     return {"message": "Task deleted"}, 200
@@ -79,7 +93,7 @@ class CompleteTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.complete_task(tid, current_user):
                     return {"message": f"Task {tid} completed"}, 200
@@ -122,7 +136,7 @@ class ModifNoteTask(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "note_id" in request.json:
                     if "note" in request.json:
@@ -143,7 +157,7 @@ class CreateNoteTask(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "note" in request.json:
                     res = TaskModel.modif_note_core(tid, current_user, request.json["note"], '-1')
@@ -176,7 +190,8 @@ class AssignTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
+            print(current_user.to_json())
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     return {"message": f"Task Take"}, 200
@@ -192,7 +207,7 @@ class RemoveOrgCase(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     return {"message": f"Removed from assignment"}, 200
@@ -209,7 +224,7 @@ class AssignUsers(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 users_list = request.json["users_id"]
                 for user in users_list:
@@ -227,7 +242,7 @@ class RemoveAssignUser(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 user_id = request.json["user_id"]
                 if TaskModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
@@ -237,6 +252,13 @@ class RemoveAssignUser(Resource):
         return {"message": "Task not found"}, 404
     
 
+@api.route('/list_status', methods=['GET'])
+@api.doc(description='List all status')
+class ListStatus(Resource):
+    method_decorators = [api_required]
+    def get(self):
+        return [status.to_json() for status in CommonModel.get_all_status()], 200
+
 @api.route('/<tid>/change_status', methods=['POST'])
 @api.doc(description='Change status of a task', params={"tid": "id of a task"})
 class ChangeStatus(Resource):
@@ -245,7 +267,7 @@ class ChangeStatus(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.change_task_status(request.json["status_id"], task, current_user):
                     return {"message": "Status changed"}, 200
@@ -274,7 +296,7 @@ class UploadFile(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.add_file_core(task, request.files, current_user):
                     return {"message": "File added"}, 200
@@ -290,7 +312,7 @@ class DownloadFile(Resource):
     def get(self, tid, fid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 file = CommonModel.get_file(fid)
                 if file and file in task.files:
@@ -305,7 +327,7 @@ class DeleteFile(Resource):
     def get(self, tid, fid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+            current_user = CaseModelApi.get_user_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 file = CommonModel.get_file(fid)
                 if file and file in task.files:
@@ -353,7 +375,7 @@ class GetGalaxiesTask(Resource):
 class GetConnectors(Resource):
     method_decorators = [api_required]
     def get(self):
-        current_user = CaseModelApi.get_user_api(request.headers["X-API-KEY"])
+        current_user = CaseModelApi.get_user_api(request.headers)
         connectors_list = CommonModel.get_connectors()
         connectors_dict = dict()
         for connector in connectors_list:

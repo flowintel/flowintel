@@ -44,6 +44,7 @@ def delete_task(tid, current_user):
             user = User.query.get(task_user.user_id)
             NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
+        case.nb_tasks -= 1
         Task_Tags.query.filter_by(task_id=task.id).delete()
         Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
         Task_User.query.filter_by(task_id=task.id).delete()
