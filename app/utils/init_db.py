@@ -171,6 +171,23 @@ def create_admin():
     user.org_id = org.id
     db.session.commit()
 
+    # Matrix bot user
+    user = User(
+        first_name="Matrix",
+        last_name="Bot",
+        email="neo@admin.admin",
+        password=generate_api_key(),
+        role_id=role.id,
+        api_key = generate_api_key()
+    )
+    db.session.add(user)
+    db.session.commit()
+    
+    # Org    
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
     # Status
     create_status()
 
