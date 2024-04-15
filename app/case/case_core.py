@@ -230,12 +230,20 @@ def add_orgs_case(form_dict, cid, current_user):
     """Add orgs to case in th DB"""
     case = CommonModel.get_case(cid)
     for org_id in form_dict["org_id"]:
-        if CommonModel.get_org(org_id):
+        org = CommonModel.get_org(org_id)
+        if org:
             case_org = Case_Org(
                 case_id=cid, 
                 org_id=org_id
             )
             db.session.add(case_org)
+
+            if case.recurring_type:
+                for user in org.users:
+                    r_n = Recurring_Notification(case_id=case.id, user_id=user.id)
+                    db.session.add(r_n)
+                    db.session.commit()
+
             NotifModel.create_notification_org(f"{CommonModel.get_org(org_id).name} add to case: '{case.id}-{case.title}'", cid, org_id, html_icon="fa-solid fa-sitemap", current_user=current_user)
         else:
             return False
@@ -268,6 +276,19 @@ def remove_org_case(case_id, org_id, current_user):
         db.session.delete(case_org)
 
         case = CommonModel.get_case(case_id)
+
+        org = CommonModel.get_org(org_id)
+        for user in org.users:
+            for task in case.tasks:
+                task
+                t_u = Task_User.query.filter_by(user_id=user.id, task_id=task.id)
+                if t_u:
+                    db.session.delete(t_u)
+
+            recu_notif = Recurring_Notification.query.filter_by(user_id=user.id, case_id=case.id)
+            if recu_notif:
+                db.session.delete(recu_notif)
+
         NotifModel.create_notification_org(f"{CommonModel.get_org(org_id).name} removed from case: '{case.id}-{case.title}'", case_id, org_id, html_icon="fa-solid fa-door-open", current_user=current_user)
 
         CommonModel.update_last_modif(case_id)
