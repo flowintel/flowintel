@@ -224,12 +224,13 @@ class Note(db.Model):
 
     def to_json(self):
         json_dict = {
-                "id": self.id,
-                "uuid": self.uuid,
-                "note": self.note,
-                "task_id": self.task_id,
-                "task_order_id": self.task_order_id
-            }
+            "id": self.id,
+            "uuid": self.uuid,
+            "note": self.note,
+            "task_id": self.task_id,
+            "task_uuid": Task.query.get(self.task_id).uuid,
+            "task_order_id": self.task_order_id
+        }
         return json_dict
 
 

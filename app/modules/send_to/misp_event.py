@@ -7,42 +7,77 @@ module_config = {
     "case_task": "case"
 }
 
+def common_edit(case_task, attribute):
+    if attribute.object_relation == 'title' and not attribute.value == case_task["title"]:
+        attribute.value = case_task["title"]
+    elif attribute.object_relation == 'description' and not attribute.value == case_task["description"]:
+        attribute.value = case_task["description"]
+    elif attribute.object_relation == 'deadline' and not attribute.value == case_task["deadline"]:
+        attribute.value = case_task["deadline"]
+    elif attribute.object_relation == 'finish-date' and not attribute.value == case_task["finish_date"]:
+        attribute.value = case_task["finish_date"]
+    elif attribute.object_relation == 'status' and not attribute.value == case_task["status"]:
+        attribute.value = case_task["status"]
+    elif attribute.object_relation == 'origin-url' and not attribute.value == Config.ORIGIN_URL:
+        attribute.value = Config.ORIGIN_URL
+    return attribute
+
+def common_create(case_task, case_uuid, misp_object):
+    title = misp_object.add_attribute('title', value=case_task["title"])
+    for tag in case_task["tags"]:
+        title.add_tag({'name': tag["name"], 'colour': tag["color"]})
+    misp_object.add_attribute('case-uuid', value=case_uuid)
+    misp_object.add_attribute('creation-date', value=case_task["creation_date"])
+    misp_object.add_attribute('deadline', value=case_task["deadline"])
+    misp_object.add_attribute('description', value=case_task["description"])
+    misp_object.add_attribute('finish-date', value=case_task["finish_date"])
+    misp_object.add_attribute('status', value=case_task["status"])
+    misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
+    return misp_object
+
 def create_case(case):
     misp_object = MISPObject("flowintel-cm-case", standalone=False)
-    title = misp_object.add_attribute('title', value=case["title"])
-    for tag in case["tags"]:
-        title.add_tag({'name': tag["name"], 'colour': tag["color"]})
+    misp_object = common_create(case, case["uuid"], misp_object)
     
     misp_object.add_attribute('case-owner-org-name', value=case["org_name"])
     misp_object.add_attribute('case-owner-org-uuid', value=case["org_uuid"])
-    misp_object.add_attribute('case-uuid', value=case["uuid"])
-    misp_object.add_attribute('creation-date', value=case["creation_date"])
-    misp_object.add_attribute('deadline', value=case["deadline"])
-    misp_object.add_attribute('description', value=case["description"])
-    misp_object.add_attribute('finish-date', value=case["finish_date"])
+    misp_object.add_attribute('notes', value=case["notes"])
     misp_object.add_attribute('recurring-type', value=case["recurring_type"])
-    misp_object.add_attribute('status', value=case["status"])
-    misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
     return misp_object
 
 def create_task(task, case_uuid):
     misp_object = MISPObject("flowintel-cm-task", standalone=False)
+    misp_object = common_create(task, case_uuid, misp_object)
 
-    title = misp_object.add_attribute('title', value=task["title"])
-    for tag in task["tags"]:
-        title.add_tag({'name': tag["name"], 'colour': tag["color"]})
-
-    misp_object.add_attribute('creation-date', value=task["creation_date"])
-    misp_object.add_attribute('deadline', value=task["deadline"])
-    misp_object.add_attribute('description', value=task["description"])
-    misp_object.add_attribute('finish-date', value=task["finish_date"])
-    misp_object.add_attribute('notes', value=task["notes"])
-    misp_object.add_attribute('status', value=task["status"])
-    misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
     misp_object.add_attribute('task-uuid', value=task["uuid"])
-    misp_object.add_attribute('case-uuid', value=case_uuid)
     misp_object.add_attribute('url', value=task["url"])
     return misp_object
+
+def create_task_note(note):
+    misp_object = MISPObject("flowintel-cm-task-note", standalone=False)
+
+    misp_object.add_attribute('note', value=note["note"])
+    misp_object.add_attribute('task-uuid', value=note["task_uuid"])
+    misp_object.add_attribute('note-uuid', value=note["uuid"])
+    misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
+    return misp_object
+
+def event_report_note(case):
+    loc_notes = ""
+    if case["notes"]:
+        loc_notes += f"# (Case) {case['title']}\n ---\n\n{case['notes']}\n ---\n\n"
+    return loc_notes
+
+def event_report_note_task(case):
+    loc_notes = ""
+    for task in case["tasks"]:
+        if task["notes"]:
+            loc_notes += f"## (Task) {task['title']}\n\n"
+            cp = 0
+            for note in task["notes"]:
+                cp += 1
+                loc_notes += f"#### #{cp}\n{note['note']}\n ---\n\n"
+    return loc_notes
 
 
 def handler(instance, case, user):
@@ -66,7 +101,6 @@ def handler(instance, case, user):
         event = misp.get_event(instance["identifier"], pythonify=True)
         if 'errors' in event:
             flag = True
-
         else:
             misp_objects = event.get_objects_by_name("flowintel-cm-case")
             current_case_object = None
@@ -79,24 +113,16 @@ def handler(instance, case, user):
             ## Case exist in the event
             if not current_case_object == None:
                 for attribute in misp_objects[current_case_object].attributes:
-                    if attribute.object_relation == 'title' and not attribute.value == case["title"]:
-                        attribute.value = case["title"]
-                    elif attribute.object_relation == 'case-owner-org-name' and not attribute.value == case["org_name"]:
+                    attribute = common_edit(case, attribute)
+                    if attribute.object_relation == 'case-owner-org-name' and not attribute.value == case["org_name"]:
                         attribute.value = case["org_name"]
                     elif attribute.object_relation == 'case-owner-org-uuid' and not attribute.value == case["org_uuid"]:
                         attribute.value = case["org_uuid"]
-                    elif attribute.object_relation == 'deadline' and not attribute.value == case["deadline"]:
-                        attribute.value = case["deadline"]
-                    elif attribute.object_relation == 'description' and not attribute.value == case["description"]:
-                        attribute.value = case["description"]
-                    elif attribute.object_relation == 'finish-date' and not attribute.value == case["finish_date"]:
-                        attribute.value = case["finish_date"]
-                    elif attribute.object_relation == 'origin-url' and not attribute.value == Config.ORIGIN_URL:
-                        attribute.value = Config.ORIGIN_URL
                     elif attribute.object_relation == 'recurring-type' and not attribute.value == case["recurring_type"]:
                         attribute.value = case["recurring_type"]
-                    elif attribute.object_relation == 'status' and not attribute.value == case["status"]:
-                        attribute.value = case["status"]
+                    elif attribute.object_relation == 'notes' and not attribute.value == case["notes"]:
+                        attribute.value = case["notes"]
+                    
 
                 misp_objects = event.get_objects_by_name("flowintel-cm-task")
                 for task in case["tasks"]:
@@ -110,27 +136,78 @@ def handler(instance, case, user):
                     ## Task exist in the event
                     if not current_object == None:
                         for attribute in misp_objects[current_object].attributes:
-                            if attribute.object_relation == 'title' and not attribute.value == task["title"]:
-                                attribute.value = task["title"]
-                            elif attribute.object_relation == 'deadline' and not attribute.value == task["deadline"]:
-                                attribute.value = task["deadline"]
-                            elif attribute.object_relation == 'description' and not attribute.value == task["description"]:
-                                attribute.value = task["description"]
-                            elif attribute.object_relation == 'finish-date' and not attribute.value == task["finish_date"]:
-                                attribute.value = task["finish_date"]
-                            elif attribute.object_relation == 'notes' and not attribute.value == task["notes"]:
-                                attribute.value = task["notes"]
-                            elif attribute.object_relation == 'status' and not attribute.value == task["status"]:
-                                attribute.value = task["status"]
-                            elif attribute.object_relation == 'origin-url' and not attribute.value == Config.ORIGIN_URL:
-                                attribute.value = Config.ORIGIN_URL
-                            elif attribute.object_relation == 'url' and not attribute.value == task["url"]:
+                            attribute = common_edit(task, attribute)
+                            if attribute.object_relation == 'url' and not attribute.value == task["url"]:
                                 attribute.value = task["url"]
+
+                        ## Task's notes
+                        misp_objects_note = event.get_objects_by_name("flowintel-cm-task-note")
+                        for note in task["notes"]:
+                            current_note = None
+                            for i in range(0, len(misp_objects_note)):
+                                for attr in misp_objects_note[i].attributes:
+                                    if attr.object_relation == 'note-uuid':
+                                        if attr.value == note["uuid"]:
+                                            current_note = i
+                                            break
+                            ## Note exist in the event
+                            if not current_note == None:
+                                for attr in misp_objects_note[current_note].attributes:
+                                    if attr.object_relation == "note" and not attribute.value == note["note"]:
+                                        attr.value = note["note"]
+                            ## Note doesn't exist in the event
+                            else:
+                                misp_note_object = create_task_note(note)
+                                event.add_object(misp_note_object)
+                        
                     ## Task doesn't exist in the event
                     else:
                         misp_object = create_task(task, case["uuid"])
                         event.add_object(misp_object)
+
+                        ## Task's notes
+                        misp_object = create_task_note(task)
+                        event.add_object(misp_object)
+
+                
+                if event.EventReport:
+                    ## Case's notes
+                    loc_notes = event_report_note(case)
+                    loc_event_report_case = event.EventReport[0]
+
+                    if loc_event_report_case:
+                        loc_event_report_case["content"] = loc_notes
+                        misp.update_event_report(loc_event_report_case, event.get("id"))
+                    else:
+                        if loc_notes:
+                            event_report = {
+                                "uuid": str(uuid.uuid4()),
+                                "event_id": event.get("id"),
+                                "name": "Case's notes",
+                                "content": loc_notes
+                            }   
+                            misp.add_event_report(event.get("id"), event_report)
+
+                    ## Tasks' notes
+                    if len(event.EventReport) >= 2:
+                        loc_notes = event_report_note_task(case)
+                        loc_event_report_case = event.EventReport[1]
+
+                        if loc_event_report_case:
+                            loc_event_report_case["content"] = loc_notes
+                            misp.update_event_report(loc_event_report_case, event.get("id"))
+                        else:
+                            if loc_notes:
+                                event_report = {
+                                    "uuid": str(uuid.uuid4()),
+                                    "event_id": event.get("id"),
+                                    "name": "Tasks' notes",
+                                    "content": loc_notes
+                                }   
+                                misp.add_event_report(event.get("id"), event_report)
+                
                 event = misp.update_event(event, pythonify=True)
+
             ## Case doesn't exist in the event
             else:
                 misp_object = create_case(case)
@@ -140,27 +217,61 @@ def handler(instance, case, user):
                     misp_object = create_task(task, case["uuid"])
                     event.add_object(misp_object)
 
+                    for note in task["notes"]:
+                        misp_object = create_task_note(note)
+                        event.add_object(misp_object)
+
                 event = misp.update_event(event, pythonify=True)
 
     ## Case have no id for this connector or the event doesn't exist anymore  
     else: 
         flag = True
 
-    ## Event doesn't exist or doesn't contains the case
+    ## Event doesn't exist
     if flag:
         event = MISPEvent()
         event.uuid = str(uuid.uuid4())
         event.info = f"Case: {case['title']}"  # Required
 
         misp_object = create_case(case)
-
         event.add_object(misp_object)
 
+        # Task
         for task in case["tasks"]:
             misp_object = create_task(task, case["uuid"])
             event.add_object(misp_object)
 
-        event = misp.add_event(event, pythonify=True)        
+            ## Task's notes
+            for note in task["notes"]:
+                misp_object = create_task_note(note)
+                event.add_object(misp_object)
+
+        event = misp.add_event(event, pythonify=True)
+
+
+        ## Get all notes from task to create an event report
+        ## Case's notes event report
+        loc_notes = event_report_note(case)
+        if loc_notes:
+            event_report = {
+                "uuid": str(uuid.uuid4()),
+                "event_id": event.get("id"),
+                "name": "Case notes",
+                "content": loc_notes
+            }   
+            misp.add_event_report(event.get("id"), event_report)
+
+        ## Tasks' notes event report
+        loc_notes = event_report_note_task(case)
+
+        if loc_notes:
+            event_report = {
+                "uuid": str(uuid.uuid4()),
+                "event_id": event.get("id"),
+                "name": "Tasks notes",
+                "content": loc_notes
+            }   
+            misp.add_event_report(event.get("id"), event_report)
     
     return event.get("id")
 

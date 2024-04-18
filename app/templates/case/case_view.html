@@ -136,6 +136,7 @@
                 <table class="table">
                     <tr>
                         <th>Instance name</th>
+                        <th>Instance url</th>
                         <th>Identifier on the instance</th>
                     </tr>
                     {% for instance in case.instances %}
@@ -143,8 +144,11 @@
                             <td>
                                 <div title="{{instance.description}}">
                                     <img src="/static/icons/{{instance.icon}}" style="max-width: 30px;">
-                                    <a style="margin-left: 5px" href="{{instance.url}}">{{instance.url}}</a>
+                                    {{instance.name}}
                                 </div>
+                            </td>
+                            <td>
+                                <a style="margin-left: 5px" href="{{instance.url}}">{{instance.url}}</a>
                             </td>
                             {% if instance.identifier %}
                                 <td><span style="margin-left: 3px;" title="identifier used by module">{{instance.identifier}}</span></td>
