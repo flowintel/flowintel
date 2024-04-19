@@ -187,16 +187,12 @@
                 <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
                     <li>
                         <div>
-                            <!-- <a class="btn btn-primary btn-sm" :href="`/case/${cases_info.case.id}/add_orgs`" style="margin-left: 7px">Add Orgs</a>
-                            <a class="btn btn-secondary btn-sm" :href="`/case/${cases_info.case.id}/change_owner`" >Change owner</a> -->
                             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#add_orgs">
                                 Add orgs
                             </button>
                             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#change_owner">
                                 Change owner
                             </button>
-
-                            
                         </div>
                     </li>
                 </template>
@@ -475,7 +471,28 @@
                 </div>
             </template>
             <template v-else>
-                <button class="btn btn-primary" @click="edit_note()">Edit</button>
+                <button class="btn btn-primary btn-sm" @click="edit_note()">Edit</button>
+                <div class="btn-group">
+                    <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="margin-bottom: 1px;">
+                        <small><i class="fa-solid fa-download"></i></small> Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'pdf')" title="Export markdown as pdf">PDF</button>
+                            <button v-else class="btn btn-link" disabled>
+                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                <span role="status">Loading...</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'docx')" title="Export markdown as docx">DOCX</button>
+                            <button v-else class="btn btn-link" disabled>
+                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                <span role="status">Loading...</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
                 <div v-html="md.render(cases_info.case.notes)" style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px;"></div>
             </template>
         </div>
@@ -514,6 +531,7 @@
                 const cases_info = ref(null)
                 const status_info = ref(null)
                 const users_in_case = ref(null)
+                const is_exporting = ref(false)
                 let loc_tasks_list = []
 
                 let show_ongoing = true
@@ -630,6 +648,25 @@
                         }
                         display_toast(res)
                     }
+                }
+
+                async function export_notes(case_id, type){
+                    // Export notes in different format and download it
+                    is_exporting.value = true
+                    let filename = ""
+                    await fetch('/case/'+case_id+'/export_notes?type=' + type)
+                    .then(res =>{
+                        filename = res.headers.get("content-disposition").split("=")
+                        filename = filename[filename.length - 1]
+                        return res.blob() 
+                    })
+                    .then(data =>{
+                        var a = document.createElement("a")
+                        a.href = window.URL.createObjectURL(data);
+                        a.download = filename;
+                        a.click();
+                    })
+                    is_exporting.value = false
                 }
 
                 async function filter_ongoing(ongoing){
@@ -1164,6 +1201,7 @@
                     dayjs,
                     main_tab,
                     history,
+                    is_exporting,
                     delete_case,
                     remove_org_case,
                     complete_case,
@@ -1195,7 +1233,8 @@
                     edit_note,
                     submit_add_orgs,
                     submit_change_owner,
-                    check_org_not_in
+                    check_org_not_in,
+                    export_notes
                 }
             }
         }).mount('.container')

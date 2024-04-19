@@ -442,12 +442,14 @@ def notify_user(cid, tid):
 @task_blueprint.route("/<cid>/task/<tid>/export_notes", methods=['GET'])
 @login_required
 def export_notes(cid, tid):
-    """Export note of a task as pdf"""
+    """Export note of a task"""
     if CommonModel.get_case(cid):
         if CommonModel.get_task(tid):
             if "type" in request.args:
                 if "note_id" in request.args:
-                    res = TaskModel.export_notes(tid, request.args.get("type"), request.args.get("note_id"))
+                    type_req = request.args.get("type")
+                    note_id = request.args.get("note_id")
+                    res = CommonModel.export_notes(case_task=False, case_task_id=tid, type_req=type_req, note_id=note_id)
                     CommonModel.delete_temp_folder()
                     return res
                 return {"message": "'note_id' is missing", 'toast_class': "warning-subtle"}, 400

@@ -20,10 +20,6 @@ from app.utils.utils import MODULES, MODULES_CONFIG
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
-TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
-
-def get_task_note(note_id):
-    return Note.query.get(note_id)
 
 
 def delete_task(tid, current_user):
@@ -583,32 +579,6 @@ def sort_tasks_by_filter(case, user, filter, taxonomies=[], galaxies=[], tags=[]
 
     return get_task_info(tasks_list, user)
 
-
-def export_notes(task_id, type_req, note_id):
-    """Export notes into a format like pdf or docx"""
-    if not os.path.isdir(TEMP_FOLDER):
-        os.mkdir(TEMP_FOLDER)
-
-    download_filename = f"export_note_task_{task_id}.{type_req}"
-    temp_md = os.path.join(TEMP_FOLDER, "index.md")
-    temp_export = os.path.join(TEMP_FOLDER, f"output.{type_req}")
-
-    note = get_task_note(note_id)
-    with open(temp_md, "w")as write_file:
-        write_file.write(note.note)
-    if type_req == "pdf":
-        process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=red", "-V", "tocolor=gray"\
-                                    "--number-sections", "--toc", "--template", "eisvogel", "-o", temp_export, "--filter=pandoc-mermaid"], stdout=subprocess.PIPE)
-    elif type_req == "docx":
-        process = subprocess.Popen(["pandoc", temp_md, "-o", temp_export, "--filter=mermaid-filter"], stdout=subprocess.PIPE)
-    process.wait()
-
-    try:
-        shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
-    except:
-        pass
-    
-    return send_file(temp_export, as_attachment=True, download_name=download_filename)
 
 def change_order(case, task, up_down):
     """Change the order of tasks"""

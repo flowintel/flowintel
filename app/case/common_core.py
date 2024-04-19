@@ -1,9 +1,10 @@
 import os
 import shutil
 import datetime
+import subprocess
 import uuid
 
-from flask import flash
+from flask import flash, send_file
 from .. import db
 from ..db_class.db import *
 from ..utils.utils import isUUID, create_specific_dir
@@ -224,6 +225,9 @@ def get_task_connector_id(instance_id, task_id):
     """Return an instance of Case_Connector_Id depending of an instance id and a task id"""
     return Task_Connector_Id.query.filter_by(task_id=task_id, instance_id=instance_id).first()
 
+def get_task_note(note_id):
+    return Note.query.get(note_id)
+
 
 def get_history(case_uuid):
     """Return history of case by its uuid"""
@@ -273,6 +277,37 @@ def deadline_check(date, time):
 def delete_temp_folder():
     """Delete temp folder"""
     shutil.rmtree(TEMP_FOLDER)
+
+
+def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int = None):
+    """Export notes into a format like pdf or docx"""
+    if not os.path.isdir(TEMP_FOLDER):
+        os.mkdir(TEMP_FOLDER)
+
+    download_filename = f"export_note_task_{case_task_id}.{type_req}"
+    temp_md = os.path.join(TEMP_FOLDER, "index.md")
+    temp_export = os.path.join(TEMP_FOLDER, f"output.{type_req}")
+
+    if not case_task:
+        note = get_task_note(note_id).note
+    else:
+        note = get_case(case_task_id).notes
+    with open(temp_md, "w")as write_file:
+        write_file.write(note)
+        
+    if type_req == "pdf":
+        process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=red", "-V", "tocolor=gray"\
+                                    "--number-sections", "--toc", "--template", "eisvogel", "-o", temp_export, "--filter=pandoc-mermaid"], stdout=subprocess.PIPE)
+    elif type_req == "docx":
+        process = subprocess.Popen(["pandoc", temp_md, "-o", temp_export, "--filter=mermaid-filter"], stdout=subprocess.PIPE)
+    process.wait()
+
+    try:
+        shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
+    except:
+        pass
+    
+    return send_file(temp_export, as_attachment=True, download_name=download_filename)
 
 
 def check_cluster_db(cluster):

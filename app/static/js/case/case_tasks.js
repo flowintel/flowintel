@@ -259,7 +259,7 @@ export default {
 		}
 
 		async function export_notes(task, type, note_id){
-			// Export notes in differnet format and download it
+			// Export notes in different format and download it
 			is_exporting.value = true
 			let filename = ""
 			await fetch('/case/'+task.case_id+'/task/'+task.id+'/export_notes?type=' + type+"&note_id="+note_id)

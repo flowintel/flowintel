@@ -701,6 +701,19 @@ def modif_note(cid):
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<cid>/export_notes", methods=['GET'])
+@login_required
+def export_notes(cid):
+    """Export note of a case"""
+    if CommonModel.get_case(cid):
+        if "type" in request.args:
+            res = CommonModel.export_notes(case_task=True, case_task_id=cid, type_req=request.args.get("type"))
+            CommonModel.delete_temp_folder()
+            return res
+        return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
 @case_blueprint.route("/get_orgs", methods=['GET'])
 @login_required
 def get_orgs():
