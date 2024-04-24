@@ -220,7 +220,7 @@ def test_delete_case(client):
 ## TASK ##
 ##########
 
-def test_create_task(client, flag=True):
+def test_create_task(client, flag=True, multiple=False):
     if flag:
         test_create_case(client)
     response = client.post("/api/case/1/create_task",
@@ -228,7 +228,11 @@ def test_create_task(client, flag=True):
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task admin"}
                         )
-    assert response.status_code == 201 and b"Task created for case id: 1" in response.data
+    if not multiple:
+        assert response.status_code == 201 and "Task 1 created for case id: 1" in response.json["message"]
+    else:
+        assert response.status_code == 201 and "Task 2 created for case id: 1" in response.json["message"]
+    
 
 def test_create_task_deadline(client, flag=True):
     if flag:
@@ -238,7 +242,7 @@ def test_create_task_deadline(client, flag=True):
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task admin", "description": "Test", "url": "test", "deadline_date": "2023-09-30"}
                         )
-    assert response.status_code == 201 and b"Task created for case id: 1" in response.data
+    assert response.status_code == 201 and "Task 1 created for case id: 1" in response.json["message"]
 
 def test_create_task_wrong_deadline(client, flag=True):
     if flag:
@@ -359,7 +363,7 @@ def test_delete_task(client):
 
 def test_move_task_up(client):
     test_create_task(client)
-    test_create_task(client, flag=False)
+    test_create_task(client, flag=False, multiple=True)
     response = client.get("/api/case/1/move_task_up/2", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Order changed" in response.data
 
@@ -368,7 +372,7 @@ def test_move_task_up(client):
 
 def test_move_task_down(client):
     test_create_task(client)
-    test_create_task(client, flag=False)
+    test_create_task(client, flag=False, multiple=True)
     response = client.get("/api/case/1/move_task_down/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Order changed" in response.data
 

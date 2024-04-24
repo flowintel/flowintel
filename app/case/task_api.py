@@ -120,7 +120,7 @@ class GetNoteTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             if "note_id" in request.args:
-                task_note = TaskModel.get_task_note(request.args.get("note_id"))
+                task_note = CommonModel.get_task_note(request.args.get("note_id"))
                 if task_note:
                     return {"note": task_note.note}, 200
                 return {"message": "Note not found"}, 404

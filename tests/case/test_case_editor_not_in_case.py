@@ -149,7 +149,7 @@ def test_create_task_editor(client, flag=True):
                         )
     assert response.status_code == 403
 
-def test_create_task(client, flag=True):
+def test_create_task(client, flag=True, multiple=False):
     if flag:
         test_create_case(client)
     response = client.post("/api/case/1/create_task",
@@ -157,7 +157,10 @@ def test_create_task(client, flag=True):
                            headers={"X-API-KEY": "admin_api_key"},
                            json={"title": "Test task admin"}
                         )
-    assert response.status_code == 201 and b"Task created for case id: 1" in response.data
+    if not multiple:
+        assert response.status_code == 201 and "Task 1 created for case id: 1" in response.json["message"]
+    else:
+        assert response.status_code == 201 and "Task 2 created for case id: 1" in response.json["message"]
 
 def test_get_all_tasks(client):
     test_create_task(client)
@@ -268,7 +271,7 @@ def test_delete_task(client):
 
 def test_move_task_up(client):
     test_create_task(client)
-    test_create_task(client, flag=False)
+    test_create_task(client, flag=False, multiple=True)
     response = client.get("/api/case/1/move_task_up/2", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 403 and b"Permission denied" in response.data
 
@@ -278,7 +281,7 @@ def test_move_task_up(client):
 
 def test_move_task_down(client):
     test_create_task(client)
-    test_create_task(client, flag=False)
+    test_create_task(client, flag=False, multiple=True)
     response = client.get("/api/case/1/move_task_down/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 403 and b"Permission denied" in response.data
 
