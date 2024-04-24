@@ -1,9 +1,7 @@
 import os
 import ast
 import uuid
-import shutil
 import datetime
-import subprocess
 from .. import db
 from ..db_class.db import *
 from ..utils.utils import create_specific_dir
@@ -45,7 +43,6 @@ def delete_task(tid, current_user):
         Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
         Task_User.query.filter_by(task_id=task.id).delete()
         Task_Connector_Instance.query.filter_by(task_id=task.id).delete()
-        Task_Connector_Id.query.filter_by(task_id=task.id).delete()
         db.session.delete(task)
         CommonModel.update_last_modif(task.case_id)
         db.session.commit()
@@ -155,17 +152,10 @@ def create_task(form_dict, cid, current_user):
             instance = CommonModel.get_instance_by_name(instance)
             task_instance = Task_Connector_Instance(
                 task_id=task.id,
-                instance_id=instance.id
-            )
-            db.session.add(task_instance)
-            db.session.commit()
-
-            task_connector_id = Task_Connector_Id(
-                task_id=task.id,
                 instance_id=instance.id,
                 identifier=form_dict["identifier"][instance.name]
             )
-            db.session.add(task_connector_id)
+            db.session.add(task_instance)
             db.session.commit()
 
 
@@ -237,27 +227,17 @@ def edit_task_core(form_dict, tid, current_user):
         if not connectors in task_connector_db:
             task_tag = Task_Connector_Instance(
                 instance_id=instance.id,
-                task_id=task.id
-            )
-            db.session.add(task_tag)
-            db.session.commit()
-
-        task_connector_id = Task_Connector_Id.query.filter_by(task_id=task.id, instance_id=instance.id).first()
-        if not task_connector_id:
-            task_connector_id = Task_Connector_Id(
                 task_id=task.id,
-                instance_id=instance.id,
                 identifier=form_dict["identifier"][connectors]
             )
-            db.session.add(task_connector_id)
-        else:
-            task_connector_id.identifier = form_dict["identifier"][connectors]
+            db.session.add(task_tag)
+        elif not task_connector_db.identifier == form_dict["identifier"][connectors]:
+            task_connector_db.identifier = form_dict["identifier"][connectors]
         db.session.commit()
     
     for c_t_db in task_connector_db:
         if not c_t_db in form_dict["connectors"]:
             Task_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
-            Task_Connector_Id.query.filter_by(task_id=task.id, instance_id=c_t_db.instance_id).delete()
             db.session.commit()
 
     CommonModel.update_last_modif(task.case_id)
@@ -311,7 +291,7 @@ def modif_note_core(tid, current_user, notes, note_id):
         db.session.add(note)
         db.session.commit()
     else:
-        note = get_task_note(note_id)
+        note = CommonModel.get_task_note(note_id)
         if note:
             if note.task_id == int(tid):
                 note.note = notes
@@ -595,6 +575,78 @@ def change_order(case, task, up_down):
                 task.case_order_id += 1
                 break
     db.session.commit()
+
+
+def get_task_modules():
+    """Return modules for task only"""
+    loc_list = {}
+    for module in MODULES_CONFIG:
+        if MODULES_CONFIG[module]["config"]["case_task"] == 'task':
+            loc_list[module] = MODULES_CONFIG[module]
+    return loc_list
+
+def get_instance_module_core(module, type_module, task_id, user_id):
+    """Return a list of connectors instances for a module"""
+    if "connector" in MODULES_CONFIG[module]["config"]:
+        connector = CommonModel.get_connector_by_name(MODULES_CONFIG[module]["config"]["connector"])
+        instance_list = list()
+        for instance in connector.instances:
+            if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                if instance.type==type_module:
+                    loc_instance = instance.to_json()
+                    identifier = CommonModel.get_task_connector_id(instance.id, task_id)
+                    if identifier:
+                        loc_id = identifier.identifier
+                    else:
+                        loc_id = None
+                    loc_instance["identifier"] = loc_id
+                    instance_list.append(loc_instance)
+        return instance_list
+    return []
+
+
+def call_module_task(module, instances, case, task, user):
+    """Run a module"""
+    org = CommonModel.get_org(case.owner_org_id)
+
+    case = case.to_json()
+    case["org_name"] = org.name
+    case["org_uuid"] = org.uuid
+    case["status"] = CommonModel.get_status(case["status_id"]).name
+
+    task = task.to_json()
+    task["status"] = CommonModel.get_status(task["status_id"]).name
+
+    for instance in list(instances.keys()):
+        instance_key = instance
+        instance = CommonModel.get_instance_by_name(instance)
+        user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
+        task_instance_id = CommonModel.get_task_connector_id(instance.id, task["id"])
+
+        instance = instance.to_json()
+        if user_instance:
+            instance["api_key"] = user_instance.api_key
+        if instances[instance_key]:
+            instance["identifier"] = instances[instance_key]
+
+        ## Handler
+        event_id = MODULES[module].handler(instance, case, task, user)
+        if isinstance(event_id, dict):
+            return event_id
+
+        if not task_instance_id:
+            tc_instance = Task_Connector_Instance(
+                task_id=task["id"],
+                instance_id=instance["id"],
+                identifier=event_id
+            )
+            db.session.add(tc_instance)
+            db.session.commit()
+            
+        elif not task_instance_id.identifier == event_id:
+            task_instance_id.identifier = event_id
+            db.session.commit()
+
 
 def call_module_task_no_instance(module, task, case, current_user, user_id):
     user = User.query.get(user_id)

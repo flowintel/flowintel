@@ -23,6 +23,9 @@ export default {
 		md.use(mermaidMarkdown.default)			// Use mermaid library
 		const edit_mode = ref(-1)			// Boolean use when the note is in edit mode
 		const module_loader = ref(false)
+		const task_modules = ref()
+		const task_instances_selected = ref([])
+		const task_module_selected = ref()
 
 		if(props.task.notes.length){
 			for(let i in props.task.notes){
@@ -277,6 +280,45 @@ export default {
 			is_exporting.value = false
 		}
 
+		async function fetch_modules(){
+			// Get modules and instances linked on
+			const res = await fetch("/case/get_task_modules")
+			if(await res.status==400 ){
+				display_toast(res)
+			}else{
+				let loc = await res.json()
+				task_modules.value = loc["modules"]
+			}
+		}
+		fetch_modules()
+
+		async function fetch_module_selected(module){
+			// Get modules and instances linked on
+			const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.task.id+"/get_instance_module?type=send_to&module="+module)
+			if(await res.status==400 ){
+				display_toast(res)
+			}else{
+				let loc = await res.json()
+				task_module_selected.value = loc["instances"]
+				await nextTick()
+				$('#task_instances_select_'+props.task.id).select2({
+					theme: 'bootstrap-5',
+					width: '50%',
+					closeOnSelect: false
+				})
+				$('#task_instances_select_'+props.task.id).on('change.select2', function (e) {
+					let name_instance = $(this).select2('data').map(item => item.id)
+					task_instances_selected.value = []
+					for( let index in task_module_selected.value){
+						if (name_instance.includes(task_module_selected.value[index].name)){
+							if(!task_instances_selected.value.includes(task_module_selected.value[index]))
+								task_instances_selected.value.push(task_module_selected.value[index])
+						}
+					}
+				})
+			}
+		}
+
 		async function move_task(task, up_down){
 			// Move the task up and down
 			let cp = 0
@@ -429,6 +471,48 @@ export default {
 			await display_toast(res)
 		}
 
+		async function submit_module(){
+			module_loader.value = true
+			$("#task_modules_errors_"+props.task.id).hide()
+			$("#task_instances_errors_"+props.task.id).hide()
+			if(!$("#task_modules_select_"+props.task.id).val() || $("#task_modules_select_"+props.task.id).val() == "None"){
+				$("#task_modules_errors_"+props.task.id).text("Select an item")
+				$("#task_modules_errors_"+props.task.id).show()
+			}
+			if(!$("#task_instances_select_"+props.task.id).val() || $("#task_instances_select_"+props.task.id).val().length<1){
+				$("#task_instances_error_"+props.task.id).text("Select an item")
+				$("#task_instances_error_"+props.task.id).show()
+			}
+
+			let i_s = $("#task_instances_select_"+props.task.id).val()
+			let int_sel = {}
+			for(let index in i_s){
+				for( let j in task_module_selected.value){
+					if (task_module_selected.value[j].name == i_s[index]){
+						let loc_val = $("#identifier_"+task_module_selected.value[j].id).val()
+						int_sel[task_module_selected.value[j].name] = loc_val
+						for(let k in task_instances_selected.value){
+							if(task_instances_selected.value[k].name == task_module_selected.value[j].name){
+								task_instances_selected.value[k].identifier = loc_val
+							}
+						}
+					}
+				}
+			}
+			const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.task.id+"/call_module_task?module=" + $("#task_modules_select_"+props.task.id).val() , {
+				method: "POST",
+				body: JSON.stringify({
+					int_sel
+				}),
+				headers: {
+					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+				}
+			});
+			module_loader.value = false
+
+			display_toast(res, true)
+		}
+
 		async function submit_module_task(user_id){
 			module_loader.value = true
 			$("#modules_errors").hide()
@@ -478,10 +562,14 @@ export default {
 
 
 		// Vue function
-		Vue.onMounted(async () => {
+		Vue.onMounted( () => {
 			select2_change(props.task.id)
+			$('.select2-select').select2({
+				theme: 'bootstrap-5',
+				width: '50%',
+				closeOnSelect: false
+			})
 			
-			//here
 			if(props.task.notes.length){
 				for(let i in props.task.notes){
 					const targetElement = document.getElementById('editor_' +i +'_' + props.task.id)
@@ -524,8 +612,16 @@ export default {
 		Vue.onUpdated(async () => {
 			select2_change(props.task.id)
 			// do not initialize mermaid before the page is mounted
-			if(is_mounted)
+			if(is_mounted){
 				md.mermaid.init()
+				$('#task_modules_select_'+props.task.id).on('change.select2', function (e) {
+					if($(this).select2('data').map(item => item.id)[0] == "None"){
+						task_module_selected.value = []
+					}else{
+						fetch_module_selected($(this).select2('data').map(item => item.id))
+					}
+				})
+			}
 		})
 
 		return {
@@ -537,6 +633,9 @@ export default {
 			edit_mode,
 			users_list,
 			module_loader,
+			task_modules,
+			task_instances_selected,
+			task_module_selected,
 			change_status,
 			take_task,
 			remove_assign_task,
@@ -556,7 +655,8 @@ export default {
 			present_user_in_task,
 			move_task,
 			add_notes_task,
-			submit_module_task
+			submit_module_task,
+			submit_module
 		}
 	},
 	template: `
@@ -579,7 +679,7 @@ export default {
 			</div>
 			
 			<div class="d-flex w-100 justify-content-between">
-				<div style="display: flex;" v-if="task.tags">
+				<div style="display: flex; margin-bottom: 7px" v-if="task.tags">
 					<template v-for="tag in task.tags">
 						<div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
 							<i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
@@ -656,8 +756,8 @@ export default {
 	<!-- Collapse Part -->
 	<div class="collapse" :id="'collapse'+task.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
-			<div class="d-flex w-100 justify-content-between">
-				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+			<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+				<div class="d-flex w-100 justify-content-between">
 					<div v-if="users_in_case">
 						<h5>Assign</h5>
 						<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
@@ -667,7 +767,27 @@ export default {
 						</select>
 						<button class="btn btn-primary" @click="assign_user_task()">Assign</button>
 					</div>
-
+					<div style="margin-right: 5px">
+						<h5>Change Status</h5>
+						<div>
+							<div class="dropdown" :id="'dropdown_status_'+task.id">
+								<template v-if="status_info">
+									<button class="btn btn-secondary dropdown-toggle" :id="'button_'+task.id" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+										[[ status_info.status[task.status_id -1].name ]]
+									</button>
+									<ul class="dropdown-menu" :id="'dropdown_ul_status_'+task.id">
+										<template v-for="status_list in status_info.status">
+											<li v-if="status_list.id != task.status_id">
+												<button class="dropdown-item" @click="change_status(status_list.id, task)">[[ status_list.name ]]</button>
+											</li>
+										</template>
+									</ul>
+								</template>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="d-flex w-100 justify-content-between">
 					<div v-if="task.users.length">
 						<h5>Remove assign</h5>
 						<div v-for="user in task.users">
@@ -708,28 +828,63 @@ export default {
 									</div>
 								</div>
 							</div>
-
 						</div>
 					</div>
-				</div>
-				<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-					<div>
-						<h5>Change Status</h5>
+					<div style="margin-right: 54px">
+						<h5>Modules</h5>
+						<div>
+							<button type="button" class="btn btn-primary" data-bs-toggle="modal" :data-bs-target="'#Send_to_modal_task_'+task.id">
+								Send to
+							</button>
+						</div>
 					</div>
-					<div>
-						<div class="dropdown" :id="'dropdown_status_'+task.id">
-							<template v-if="status_info">
-								<button class="btn btn-secondary dropdown-toggle" :id="'button_'+task.id" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-									[[ status_info.status[task.status_id -1].name ]]
-								</button>
-								<ul class="dropdown-menu" :id="'dropdown_ul_status_'+task.id">
-									<template v-for="status_list in status_info.status">
-										<li v-if="status_list.id != task.status_id">
-											<button class="dropdown-item" @click="change_status(status_list.id, task)">[[ status_list.name ]]</button>
-										</li>
-									</template>
-								</ul>
-							</template>
+					<!-- Modal send to -->
+					<div class="modal fade" :id="'Send_to_modal_task_'+task.id" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
+						<div class="modal-dialog modal-lg">
+							<div class="modal-content">
+								<div class="modal-header">
+									<h1 class="modal-title fs-5" id="Send_to_modalLabel">Send to modules</h1>
+									<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+								</div>
+								<div class="modal-body">
+									<div style="display: flex;">
+										<div>
+											<label :for="'task_modules_select_'+task.id">Modules:</label>
+											<select data-placeholder="Modules" class="select2-select form-control" :name="'task_modules_select_'+task.id" :id="'task_modules_select_'+task.id" >
+												<option value="None">--</option>
+												<template v-for="module, key in task_modules">
+													<option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
+												</template>
+											</select>
+											<div :id="'task_modules_errors_'+task.id" class="invalid-feedback"></div>
+										</div>
+										<div style="min-width: 100%;">
+											<label :for="'task_instances_select'+task.id">Instances:</label>
+											<select data-placeholder="Instances" class="select2-select form-control" multiple :name="'task_instances_select_'+task.id" :id="'task_instances_select_'+task.id" >
+												<template v-if="task_module_selected">
+													<template v-for="instance, key in task_module_selected">
+														<option :value="[[instance.name]]">[[instance.name]]</option>
+													</template>
+												</template>
+											</select>
+											<div :id="'task_instances_errors_'+task.id" class="invalid-feedback"></div>
+										</div>
+									</div>
+									<div class="row" v-if="task_instances_selected">
+										<div class="mb-3 w-50" v-for="instance, key in task_instances_selected" >
+											<label :for="'identifier_' + instance.id">Identifier for <u><i>[[instance.name]]</i></u></label>
+											<input :id="'identifier_' + instance.id" class="form-control" :value="instance.identifier" :name="'identifier_' + instance.id" type="text">
+										</div>
+									</div>
+								</div>
+								<div class="modal-footer">
+									<button v-if="module_loader" class="btn btn-primary" type="button" disabled>
+										<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+										<span role="status">Loading...</span>
+									</button>
+									<button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

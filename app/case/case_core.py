@@ -35,7 +35,6 @@ def delete_case(cid, current_user):
         Case_Tags.query.filter_by(case_id=case.id).delete()
         Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
         Case_Org.query.filter_by(case_id=case.id).delete()
-        Case_Connector_Id.query.filter_by(case_id=case.id).delete()
         Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
         db.session.delete(case)
         db.session.commit()
@@ -109,17 +108,10 @@ def create_case(form_dict, user):
             instance = CommonModel.get_instance_by_name(instance)
             case_instance = Case_Connector_Instance(
                 case_id=case.id,
-                instance_id=instance.id
-            )
-            db.session.add(case_instance)
-            db.session.commit()
-
-            case_connector_id = Case_Connector_Id(
-                case_id=case.id,
                 instance_id=instance.id,
                 identifier=form_dict["identifier"][instance.name]
             )
-            db.session.add(case_connector_id)
+            db.session.add(case_instance)
             db.session.commit()
 
         if "tasks_templates" in form_dict and not 0 in form_dict["tasks_templates"]:
@@ -198,22 +190,15 @@ def edit_case(form_dict, cid, current_user):
         if not connectors in case_connector_db:
             case_tag = Case_Connector_Instance(
                 instance_id=instance.id,
-                case_id=case.id
+                case_id=case.id,
+                identifier=form_dict["identifier"][connectors]
             )
             db.session.add(case_tag)
             db.session.commit()
 
-        case_connector_id = Case_Connector_Id.query.filter_by(case_id=case.id, instance_id=instance.id).first()
-        if not case_connector_id:
-            case_connector_id = Case_Connector_Id(
-                case_id=case.id,
-                instance_id=instance.id,
-                identifier=form_dict["identifier"][connectors]
-            )
-            db.session.add(case_connector_id)
-        else:
-            case_connector_id.identifier = form_dict["identifier"][connectors]
-        db.session.commit()
+        elif not case_connector_db.identifier == form_dict["identifier"][connectors]:
+            case_connector_db.identifier = form_dict["identifier"][connectors]
+            db.session.commit()
     
     for c_t_db in case_connector_db:
         if not c_t_db in form_dict["connectors"]:
@@ -285,9 +270,7 @@ def remove_org_case(case_id, org_id, current_user):
                 if t_u:
                     db.session.delete(t_u)
 
-            recu_notif = Recurring_Notification.query.filter_by(user_id=user.id, case_id=case.id)
-            if recu_notif:
-                db.session.delete(recu_notif)
+            Recurring_Notification.query.filter_by(user_id=user.id, case_id=case.id).delete()
 
         NotifModel.create_notification_org(f"{CommonModel.get_org(org_id).name} removed from case: '{case.id}-{case.title}'", case_id, org_id, html_icon="fa-solid fa-door-open", current_user=current_user)
 
@@ -743,6 +726,14 @@ def get_modules():
     """Return all modules"""
     return MODULES_CONFIG
 
+def get_case_modules():
+    """Return modules for case only"""
+    loc_list = {}
+    for module in MODULES_CONFIG:
+        if MODULES_CONFIG[module]["config"]["case_task"] == 'case':
+            loc_list[module] = MODULES_CONFIG[module]
+    return loc_list
+
 def get_instance_module_core(module, type_module, case_id, user_id):
     """Return a list of connectors instances for a module"""
     if "connector" in MODULES_CONFIG[module]["config"]:
@@ -795,17 +786,10 @@ def call_module_case(module, instances, case, user):
         if not case_instance_id:
             cc_instance = Case_Connector_Instance(
                 case_id=case["id"],
-                instance_id=instance["id"]
-            )
-            db.session.add(cc_instance)
-            db.session.commit()
-
-            cci = Case_Connector_Id(
-                case_id = case["id"],
                 instance_id=instance["id"],
                 identifier=event_id
             )
-            db.session.add(cci)
+            db.session.add(cc_instance)
             db.session.commit()
         elif not case_instance_id.identifier == event_id:
             case_instance_id.identifier = event_id

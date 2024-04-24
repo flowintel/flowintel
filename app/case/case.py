@@ -594,26 +594,25 @@ def get_galaxies_case(cid):
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/get_modules", methods=['GET'])
+@case_blueprint.route("/get_case_modules", methods=['GET'])
 @login_required
-def get_modules():
+def get_case_modules():
     """Get all modules"""
-    return {"modules": CaseModel.get_modules()}, 200
+    return {"modules": CommonModel.get_modules_by_case_task('case')}, 200
 
 
 @case_blueprint.route("/<cid>/get_instance_module", methods=['GET'])
 @login_required
 def get_instance_module(cid):
     """Get all connectors instances by modules"""
-    case = CommonModel.get_case(cid)
-    if case:
+    if CommonModel.get_case(cid):
         if "module" in request.args:
             module = request.args.get("module")
         if "type" in request.args:
             type_module = request.args.get("type")
         else:
             return{"message": "Module type error", 'toast_class': "danger-subtle"}, 400
-        return {"instances": CaseModel.get_instance_module_core(module, type_module, case.id, current_user.id)}, 200
+        return {"instances": CaseModel.get_instance_module_core(module, type_module, cid, current_user.id)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/get_connectors_case/<cid>", methods=['GET'])

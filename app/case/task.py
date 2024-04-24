@@ -548,6 +548,50 @@ def change_order(cid, tid):
         return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
+
+@task_blueprint.route("/get_task_modules", methods=['GET'])
+@login_required
+def get_task_modules():
+    """Get all modules"""
+    return {"modules": CommonModel.get_modules_by_case_task('task')}, 200
+
+@task_blueprint.route("/<cid>/task/<tid>/get_instance_module", methods=['GET'])
+@login_required
+def get_instance_module(cid, tid):
+    """Get all connectors instances by modules"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_task(tid):
+            if "module" in request.args:
+                module = request.args.get("module")
+            if "type" in request.args:
+                type_module = request.args.get("type")
+            else:
+                return{"message": "Module type error", 'toast_class': "danger-subtle"}, 400
+            return {"instances": TaskModel.get_instance_module_core(module, type_module, tid, current_user.id)}, 200
+        return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/<cid>/task/<tid>/call_module_task", methods=['GET', 'POST'])
+@login_required
+@editor_required
+def call_module_task(cid, tid):
+    """Run a module"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            task = CommonModel.get_task(tid)
+            if task:
+                instances = request.get_json()["int_sel"]
+                module = request.args.get("module")
+                res = TaskModel.call_module_task(module, instances, case, task, current_user)
+                if res:
+                    res["toast_class"] = "danger-subtle"
+                    return jsonify(res), 400
+                return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
+            return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message":"Case not found", "toast_class": "danger-subtle"}, 404
+
 @task_blueprint.route("/<cid>/task/<tid>/call_module_task_no_instance", methods=['GET', 'POST'])
 @login_required
 def call_module_task_no_instance(cid, tid):

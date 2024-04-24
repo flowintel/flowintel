@@ -45,7 +45,7 @@
         </ul>
     </div>
     <br>
-    <div class="dropdown" style="float: right;">
+    <div style="float: right;">
         <!-- Button trigger modal -->
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#Send_to_modal">
             Send to
@@ -66,7 +66,7 @@
                                 <select data-placeholder="Modules" class="select2-select form-control" name="modules_select" id="modules_select" >
                                     <option value="None">--</option>
                                     <template v-for="module, key in modules">
-                                        <option v-if="module.type == 'send_to' && module.config.case_task == 'case'" :value="[[key]]">[[key]]</option>
+                                        <option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
                                     </template>
                                 </select>
                                 <div id="modules_errors" class="invalid-feedback"></div>
@@ -1019,7 +1019,7 @@
 
                 async function fetch_modules(){
                     // Get modules and instances linked on
-                    const res = await fetch("/case/get_modules")
+                    const res = await fetch("/case/get_case_modules")
                     if(await res.status==400 ){
                         display_toast(res)
                     }else{

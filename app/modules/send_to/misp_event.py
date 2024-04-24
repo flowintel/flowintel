@@ -166,10 +166,10 @@ def handler(instance, case, user):
                         event.add_object(misp_object)
 
                         ## Task's notes
-                        misp_object = create_task_note(task)
-                        event.add_object(misp_object)
+                        for note in task["notes"]:
+                            misp_object = create_task_note(note)
+                            event.add_object(misp_object)
 
-                
                 if event.EventReport:
                     ## Case's notes
                     loc_notes = event_report_note(case)

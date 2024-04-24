@@ -655,11 +655,13 @@ class Case_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
+    identifier = db.Column(db.String)
 
 class Task_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
+    identifier = db.Column(db.String)
 
 class Case_Template_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -678,18 +680,6 @@ class User_Connector_Instance(db.Model):
     user_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
     api_key = db.Column(db.String(100), index=True)
-    
-class Case_Connector_Id(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    case_id = db.Column(db.Integer, index=True)
-    instance_id = db.Column(db.Integer, index=True)
-    identifier = db.Column(db.String)
-
-class Task_Connector_Id(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    task_id = db.Column(db.Integer, index=True)
-    instance_id = db.Column(db.Integer, index=True)
-    identifier = db.Column(db.String)
 
 login_manager.anonymous_user = AnonymousUser
 

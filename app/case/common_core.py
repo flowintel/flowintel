@@ -10,6 +10,7 @@ from ..db_class.db import *
 from ..utils.utils import isUUID, create_specific_dir
 from sqlalchemy import desc, func
 from ..utils import utils
+from app.utils.utils import MODULES_CONFIG
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
@@ -218,12 +219,12 @@ def get_user_instance_by_instance(instance_id):
     return User_Connector_Instance.query.filter_by(instance_id=instance_id).first()
 
 def get_case_connector_id(instance_id, case_id):
-    """Return an instance of Case_Connector_Id depending of an instance id and a case id"""
-    return Case_Connector_Id.query.filter_by(case_id=case_id, instance_id=instance_id).first()
+    """Return an instance of Case_Connector_Instance depending of an instance id and a case id"""
+    return Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
 
 def get_task_connector_id(instance_id, task_id):
-    """Return an instance of Case_Connector_Id depending of an instance id and a task id"""
-    return Task_Connector_Id.query.filter_by(task_id=task_id, instance_id=instance_id).first()
+    """Return an instance of Task_Connector_Instance depending of an instance id and a task id"""
+    return Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).first()
 
 def get_task_note(note_id):
     return Note.query.get(note_id)
@@ -404,11 +405,20 @@ def get_instance_with_icon(instance_id, case_task, case_task_id):
                                     .where(Connector_Instance.id==instance_id)\
                                     .first().uuid
     if case_task:
-        identifier = Case_Connector_Id.query.join(Case, Case.id==case_task_id).where(Case_Connector_Id.instance_id==instance_id).first()
+        identifier = Case_Connector_Instance.query.where(Case_Connector_Instance.case_id==case_task_id, Case_Connector_Instance.instance_id==instance_id).first()
     else:
-        identifier = Task_Connector_Id.query.join(Task, Task.id==case_task_id).where(Task_Connector_Id.instance_id==instance_id).first()
+        identifier = Task_Connector_Instance.query.where(Task_Connector_Instance.task_id==case_task_id, Task_Connector_Instance.instance_id==instance_id).first()
     
     loc_instance["identifier"] = ""
     if identifier:
         loc_instance["identifier"] = identifier.identifier
     return loc_instance
+
+
+def get_modules_by_case_task(case_task):
+    """Return modules for task only"""
+    loc_list = {}
+    for module in MODULES_CONFIG:
+        if MODULES_CONFIG[module]["config"]["case_task"] == case_task:
+            loc_list[module] = MODULES_CONFIG[module]
+    return loc_list
