@@ -30,10 +30,10 @@ class Task(Base):
 class Note(Base):
     __tablename__ = 'note'
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
-    uuid = sa.Column(sa.String(length=36), nullable=True),
-    note = sa.Column(sa.String(), nullable=True),
-    task_id = sa.Column(sa.Integer(), nullable=True),
-    task_order_id = sa.Column(sa.Integer(), nullable=True),
+    uuid = sa.Column(sa.String(length=36), nullable=True)
+    note = sa.Column(sa.String(), nullable=True)
+    task_id = sa.Column(sa.Integer(), nullable=True)
+    task_order_id = sa.Column(sa.Integer(), nullable=True)
 
 accounts_table = table(
     "note",
