@@ -43,6 +43,7 @@ def delete_task(tid, current_user):
         Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
         Task_User.query.filter_by(task_id=task.id).delete()
         Task_Connector_Instance.query.filter_by(task_id=task.id).delete()
+        Note.query.filter_by(task_id=tid).delete()
         db.session.delete(task)
         CommonModel.update_last_modif(task.case_id)
         db.session.commit()
@@ -642,7 +643,7 @@ def call_module_task(module, instances, case, task, user):
             )
             db.session.add(tc_instance)
             db.session.commit()
-            
+
         elif not task_instance_id.identifier == event_id:
             task_instance_id.identifier = event_id
             db.session.commit()

@@ -201,6 +201,7 @@ def delete_task_template(tid):
     Task_Template_Tags.query.filter_by(task_id=tid).delete()
     Task_Template_Galaxy_Tags.query.filter_by(template_id=tid).delete()
     Task_Template_Connector_Instance.query.filter_by(template_id=tid).delete()
+    Note_Template.query.filter_by(template_id=tid)
     template = CommonModel.get_task_template(tid)
     db.session.delete(template)
     db.session.commit()
