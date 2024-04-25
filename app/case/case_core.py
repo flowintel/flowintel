@@ -594,10 +594,20 @@ def create_template_from_case(cid, case_title_template):
                 title=task.title,
                 description=task.description,
                 url=task.url,
-                notes=task.notes
+                nb_notes=task.nb_notes
             )
             db.session.add(task_template)
             db.session.commit()
+
+            for t_note in task.notes:
+                note = Note_Template(
+                    uuid=str(uuid.uuid4()),
+                    note=t_note.note,
+                    template_id=task_template.id,
+                    template_order_id=task.nb_notes+1
+                )
+                db.session.add(note)
+                db.session.commit()
 
             ## Tags
             for t_t in Task_Tags.query.filter_by(task_id=task.id).all():

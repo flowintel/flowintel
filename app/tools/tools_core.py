@@ -330,11 +330,21 @@ def create_case_from_template(cid, case_title_fork, user):
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             case_id=case.id,
             status_id=1,
-            notes=task.notes,
-            case_order_id=task_in_case.case_order_id
+            case_order_id=task_in_case.case_order_id,
+            nb_notes=task.nb_notes
         )
         db.session.add(t)
         db.session.commit()
+
+        for t_note in task.notes:
+            note = Note(
+                uuid=str(uuid.uuid4()),
+                note=t_note.note,
+                task_id=t.id,
+                task_order_id=task.nb_notes+1
+            )
+            db.session.add(note)
+            db.session.commit()
 
         ## Task Tags
         for t_t in Task_Template_Tags.query.filter_by(task_id=task.id).all():
@@ -364,8 +374,6 @@ def create_case_from_template(cid, case_title_fork, user):
             db.session.commit()
     
     return case
-
-
 
 def core_read_json_file(case, current_user):
     if not utils.validateCaseJson(case):

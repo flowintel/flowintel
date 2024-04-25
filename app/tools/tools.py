@@ -372,13 +372,40 @@ def download_case(cid):
     return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=template_case_{case.title}.json'}
 
 
+@tools_blueprint.route("/template/create_note/<tid>", methods=['GET'])
+@login_required
+@editor_required
+def create_note(tid):
+    """Create a new note for the template"""
+    res_note = TaskModel.create_note(tid)
+    if res_note:
+        return {"note": res_note.to_json(), "message": "Note created", "toast_class": "success-subtle"}, 200
+    return {"message": "Error create note", "toast_class": "danger-subtle"}, 400
+
+@tools_blueprint.route("/template/delete_note/<tid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_note(tid):
+    """Create a new note for the template"""
+    if CommonModel.get_task_template(tid):
+        if "note_id" in request.args:
+            if TaskModel.delete_note(tid, request.args.get("note_id")):
+                return {"message": "Note deleted", "toast_class": "success-subtle"}, 200
+            return {"message": "Error delete note", "toast_class": "danger-subtle"}, 400
+        return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
+    return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+
+
 @tools_blueprint.route("/template/get_note/<tid>", methods=['GET'])
 @login_required
 def get_note(tid):
     """Get not of a task in text format"""
     task = CommonModel.get_task_template(tid)
     if task:
-        return {"notes": task.notes}, 200
+        if "note_id" in request.args:
+            task_note = CommonModel.get_task_note(request.args.get("note_id"))
+            return {"notes": task_note.note}, 200
+        return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
     return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
 
 @tools_blueprint.route("/template/modif_note/<tid>", methods=['POST'])
@@ -388,9 +415,12 @@ def modif_note(tid):
     """Modify note of the task"""
     if CommonModel.get_task_template(tid):
         notes = request.json["notes"]
-        if TaskModel.modif_note_core(tid, notes):
-            return {"message": "Note added", "toast_class": "success-subtle"}, 200
-        return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+        if "note_id" in request.args:
+            res_note = TaskModel.modif_note_core(tid, notes, request.args.get("note_id"))
+            if res_note:
+                return {"note": res_note.to_json(), "message": "Note added", "toast_class": "success-subtle"}, 200
+            return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+        return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
     return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
 
 

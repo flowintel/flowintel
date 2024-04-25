@@ -92,7 +92,8 @@ def add_task_template_core(form_dict):
         title=form_dict["title"],
         description=form_dict["body"],
         url=form_dict["url"],
-        uuid=str(uuid.uuid4())
+        uuid=str(uuid.uuid4()),
+        nb_notes=0
     )
     db.session.add(template)
     db.session.commit()
@@ -219,15 +220,57 @@ def get_task_info(task):
     return instances_list
 
 
-def modif_note_core(tid, notes):
-    """Modify a noe of a task to the DB"""
-    task = CommonModel.get_task_template(tid)
-    if task:
-        task.notes = notes
+def create_note(tid):
+    """Create a new empty note in the template"""
+    template = CommonModel.get_task_template(tid)
+    if template:
+        note = Note_Template(
+            uuid=str(uuid.uuid4()),
+            note="",
+            template_id=tid,
+            template_order_id=template.nb_notes+1
+        )
+        template.nb_notes += 1
+        db.session.add(note)
         db.session.commit()
-        return True
+        return note
     return False
 
+
+def modif_note_core(tid, notes, note_id):
+    """Modify a noe of a task to the DB"""
+    template = CommonModel.get_task_template(tid)
+    if note_id == "-1":
+        note = Note_Template(
+            uuid=str(uuid.uuid4()),
+            note=notes,
+            template_id=tid,
+            template_order_id=template.nb_notes+1
+        )
+        template.nb_notes += 1
+        db.session.add(note)
+        db.session.commit()
+    else:
+        note = CommonModel.get_task_note(note_id)
+        if note:
+            if note.template_id == int(tid):
+                note.note = notes
+                db.session.commit()
+            else:
+                return {"message": f"This note is not in template {tid}"}
+        else:
+            return {"message": "Note not found"}
+    return note
+
+def delete_note(tid, note_id):
+    """Delete a note by id"""
+    note = CommonModel.get_task_note(note_id)
+    if note:
+        if note.template_id == int(tid):
+            Note_Template.query.filter_by(id=note_id).delete()
+            db.session.commit()
+            return True
+    return False
 
 def change_order(case, task, up_down):
     case_task_template = Case_Task_Template.query.filter_by(case_id=case.id).all()

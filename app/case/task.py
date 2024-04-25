@@ -190,7 +190,7 @@ def get_note(cid, tid):
         task = CommonModel.get_task(tid)
         if task:
             if "note_id" in request.args:
-                task_note = TaskModel.get_task_note(request.args.get("note_id"))
+                task_note = CommonModel.get_task_note(request.args.get("note_id"))
                 return {"note": task_note.note}, 200
             return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404

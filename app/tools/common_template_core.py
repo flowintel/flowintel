@@ -30,6 +30,9 @@ def get_galaxy(galaxy_id):
 def check_cluster_db(cluster):
     return Cluster.query.filter_by(name=cluster).first()
 
+def get_task_note(note_id):
+    return Note_Template.query.get(note_id)
+
 
 def get_role(user):
     """Return role for the current user"""

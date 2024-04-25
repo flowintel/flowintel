@@ -398,7 +398,8 @@ class Task_Template(db.Model):
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String, nullable=True)
     url = db.Column(db.String(64), index=True)
-    notes = db.Column(db.String, nullable=True)
+    notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade="all, delete-orphan")
+    nb_notes = db.Column(db.Integer, index=True)
 
     def to_json(self):
         json_dict =  {
@@ -407,9 +408,9 @@ class Task_Template(db.Model):
             "title": self.title,
             "description": self.description,
             "url": self.url,
-            "notes": self.notes
+            "nb_notes": self.nb_notes
         }
-
+        json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
@@ -424,12 +425,30 @@ class Task_Template(db.Model):
             "title": self.title,
             "description": self.description,
             "url": self.url,
-            "notes": self.notes
         }
+        json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
 
+        return json_dict
+    
+class Note_Template(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True)
+    note = db.Column(db.String, nullable=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('task__template.id', ondelete="CASCADE"))
+    template_order_id = db.Column(db.Integer, index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "uuid": self.uuid,
+            "note": self.note,
+            "template_id": self.template_id,
+            "template_uuid": Task_Template.query.get(self.template_id).uuid,
+            "template_order_id": self.template_order_id
+        }
         return json_dict
     
 

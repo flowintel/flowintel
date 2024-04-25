@@ -11,17 +11,33 @@ export default {
 	},
 	setup(props) {
 		Vue.onMounted(async () => {
-			
-			const targetElement = document.getElementById('editor_' + props.template.id)
-			editor = new Editor.EditorView({
-				doc: "\n\n",
-				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-					if (v.docChanged) {
-						note_editor_render.value = editor.state.doc.toString()
-					}
-				})],
-				parent: targetElement
-			})
+			if(props.template.notes.length){
+				for(let i in props.template.notes){
+					const targetElement = document.getElementById('editor_' +i +'_' + props.template.id)
+					let editor=new Editor.EditorView({
+						doc: "\n\n",
+						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+							if (v.docChanged) {
+								note_editor_render.value[i] = editor.state.doc.toString()
+							}
+						})],
+						parent: targetElement
+					})
+					editor_list[i] = editor
+				}
+			}else{
+				const targetElement = document.getElementById('editor_0_' + props.template.id)
+					let editor=new Editor.EditorView({
+						doc: "\n\n",
+						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+							if (v.docChanged) {
+								note_editor_render.value[0] = editor.state.doc.toString()
+							}
+						})],
+						parent: targetElement
+					})
+					editor_list[0] = editor
+			}
 
 			const allCollapses = document.getElementById('collapse' + props.template.id)
 			allCollapses.addEventListener('shown.bs.collapse', event => {
@@ -36,17 +52,58 @@ export default {
 		})
 
 		const is_mounted = ref(false)
-        const edit_mode = ref(false)
+        const edit_mode = ref(-1)
 
-		const notes = ref(props.template.notes)
-		const note_editor_render = ref("")
-		let editor
+		const note_editor_render = ref([])
+		let editor_list = []
 		const md = window.markdownit()
 		md.use(mermaidMarkdown.default)
 
-		if(props.template.notes)
-			note_editor_render.value = props.template.notes
+		if(props.template.notes.length){
+			for(let i in props.template.notes){
+				note_editor_render.value[i] = props.template.notes[i].note		// If this template has notes
+			}
+		}else{
+			note_editor_render.value[0] = ""
+		}
+
+
+		async function add_notes_task(){
+			// Create a new empty note in the task
+			const res = await fetch('/tools/template/create_note/' + props.template.id)
+
+			if(await res.status == 200){
+				let loc = await res.json()
+				props.template.notes.push(loc["note"])
+				let key = props.template.notes.length-1
+				note_editor_render.value[key] = ""
+				await nextTick()
+				const targetElement = document.getElementById('editor_' + key + "_" + props.template.id)
+				
+				if(targetElement.innerHTML === ""){
+					let editor = new Editor.EditorView({
+						doc: "\n\n",
+						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+							if (v.docChanged) {
+								note_editor_render.value[key] = editor.state.doc.toString()
+							}
+						})],
+						parent: targetElement
+					})
+					editor_list.push(editor)
+				}
+			}
+		}
 		
+		async function delete_note(template, note_id, key){
+			// Delete a note of the task
+			const res = await fetch('/tools/template/delete_note/' + template.id + '?note_id='+note_id)
+
+			if( await res.status == 200){
+				props.template.notes.splice(key, 1);
+			}
+			display_toast(res)
+		}
 
         async function delete_task(template, template_array){
             const res = await fetch("/tools/template/delete_task/" + template.id)
@@ -69,33 +126,33 @@ export default {
         }
         
 
-		async function edit_note(template){
-            edit_mode.value = true
+		async function edit_note(template, note_id, key){
+            edit_mode.value = note_id
 
-			const res = await fetch('/tools/template/get_note/' + template.id)
+			const res = await fetch('/tools/template/get_note/' + template.id + "?note_id=" + note_id)
 			let loc = await res.json()
-			template.notes = loc["notes"]
+			template.notes[key].note = loc["notes"]
 
-			const targetElement = document.getElementById('editor1_' + props.template.id)
-			editor = new Editor.EditorView({
-				doc: template.notes,
+			const targetElement = document.getElementById('editor1_'+key+"_" + props.template.id)
+			let editor = new Editor.EditorView({
+				doc: template.notes[key].note,
 				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
 					if (v.docChanged) {
-						note_editor_render.value = editor.state.doc.toString()
+						note_editor_render.value[key] = editor.state.doc.toString()
 					}
 				})],
 				parent: targetElement
 			})
-			
+			editor_list[key] = editor
 		}
 
-		async function modif_note(template){
-			let notes_loc = editor.state.doc.toString()
+		async function modif_note(template, note_id, key){
+			let notes_loc = editor_list[key].state.doc.toString()
 			if(notes_loc.trim().length == 0){
 				notes_loc = notes_loc.trim()
 			}
 			const res_msg = await fetch(
-				'/tools/template/modif_note/' + template.id,{
+				'/tools/template/modif_note/' + template.id + "?note_id=" + note_id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"notes": notes_loc})
@@ -103,10 +160,15 @@ export default {
 			)
 
 			if(await res_msg.status == 200){
-                edit_mode.value = false
+				let loc = await res_msg.json()
+                edit_mode.value = -1
 				template.last_modif = Date.now()
-				template.notes = notes_loc
-				notes.value = notes_loc
+				if(note_id == -1){
+					note_id = loc["note"]["id"]
+					template.notes.push(loc["note"])
+				}else{
+					template.notes[key].note = notes_loc
+				}
 				await nextTick()
 				
 				if(!notes_loc){
@@ -121,10 +183,12 @@ export default {
 							})],
 							parent: targetElement
 						})
+						editor_list[key] = editor
 					}
 				}
+			}else{
+				display_toast(res_msg)
 			}
-			await display_toast(res_msg)
 		}
 
 
@@ -172,12 +236,12 @@ export default {
 		}
 
 		return {
-			notes,
 			note_editor_render,
 			md,
 			getTextColor,
 			mapIcon,
             edit_mode,
+			delete_note,
 			delete_task,
 			edit_note,
 			modif_note,
@@ -185,7 +249,8 @@ export default {
 			endOf,
 			move_task_up,
 			move_task_down,
-			remove_task
+			remove_task,
+			add_notes_task
 		}
 	},
 	template: `
@@ -254,40 +319,66 @@ export default {
 					<div>
 						<h5>Notes</h5>
 					</div>
-					<div v-if="template.notes">
-						<template v-if="edit_mode">
-							<div>
-								<button class="btn btn-primary" @click="modif_note(template)" type="button" :id="'note_'+template.id">
-									<div hidden>[[template.title]]</div>
-									Save
-								</button>
+					<div v-if="template.notes.length">
+						<template v-for="template_note, key in template.notes">
+							<h5>#[[key+1]]</h5>
+							<div v-if="template_note.note">
+								<template v-if="edit_mode == template_note.id">
+									<div>
+										<button class="btn btn-primary" @click="modif_note(template, template_note.id, key)" type="button" :id="'note_'+template.id">
+											<div hidden>[[template.title]]</div>
+											Save
+										</button>
+									</div>
+									<div style="display: flex;">
+										<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor1_'+key+'_'+template.id"></div>
+										<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[key])"></div>
+									</div>
+								</template>
+								<template v-else>
+									<template v-if="!template.current_user_permission.read_only || template.current_user_permission.admin">
+										<button class="btn btn-primary btn-sm" @click="edit_note(template, template_note.id, key)" type="button" :id="'note_'+template.id">
+											<div hidden>[[template.title]]</div>
+											<small><i class="fa-solid fa-pen"></i></small> Edit
+										</button>
+										<button class="btn btn-danger btn-sm" @click="delete_note(template, template_note.id, key)" style="margin-bottom: 1px;">
+											<small><i class="fa-solid fa-trash"></i></small> Delete
+										</button>
+									</template>
+									<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(template_note.note)"></p>
+								</template>
 							</div>
-							<div style="display: flex;">
-								<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor1_'+template.id"></div>
-								<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+							<div v-else>
+								<template v-if="!template.current_user_permission.read_only || template.current_user_permission.admin">
+									<div>
+										<button class="btn btn-primary btn-sm" @click="modif_note(template, template_note.id, key)" type="button" :id="'note_'+template.id">
+											<div hidden>[[template.title]]</div>
+											Create
+										</button>
+										<button class="btn btn-danger btn-sm" @click="delete_note(template, template_note.id, key)" style="margin-bottom: 1px;">
+											<small><i class="fa-solid fa-trash"></i></small> Delete
+										</button>
+									</div>
+									<div style="display: flex;">
+										<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_'+key+'_'+template.id"></div>
+										<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[key])"></div>
+									</div>
+								</template>
 							</div>
-						</template>
-						<template v-else>
-							<template v-if="!template.current_user_permission.read_only || template.current_user_permission.admin">
-								<button class="btn btn-primary" @click="edit_note(template)" type="button" :id="'note_'+template.id">
-									<div hidden>[[template.title]]</div>
-									Edit
-								</button>
-							</template> 
-							<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(notes)"></p>
+							<button class="btn btn-primary btn-sm" @click="add_notes_task()">Add notes</button>
 						</template>
 					</div>
 					<div v-else>
 						<template v-if="!template.current_user_permission.read_only || template.current_user_permission.admin">
 							<div>
-								<button class="btn btn-primary" @click="modif_note(template)" type="button" :id="'note_'+template.id">
+								<button class="btn btn-primary btn-sm" @click="modif_note(template, -1, 0)" type="button" :id="'note_'+template.id" style="margin-bottom: 3px;">
 									<div hidden>[[template.title]]</div>
 									Create
 								</button>
 							</div>
 							<div style="display: flex;">
-								<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_'+template.id"></div>
-								<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+								<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_0_'+template.id"></div>
+								<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[0])"></div>
 							</div>
 						</template>
 					</div>
