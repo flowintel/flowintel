@@ -2,6 +2,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
 from flask_migrate import Migrate
+from flask_session import Session
 from flask_login import LoginManager
 
 from conf.config import config as Config
@@ -11,6 +12,7 @@ import os
 db = SQLAlchemy()
 csrf = CSRFProtect()
 migrate = Migrate()
+session = Session()
 login_manager = LoginManager()
 
 def create_app():
@@ -24,6 +26,8 @@ def create_app():
     db.init_app(app)
     csrf.init_app(app)
     migrate.init_app(app, db, render_as_batch=True)
+    app.config["SESSION_SQLALCHEMY"] = db
+    session.init_app(app)
     login_manager.login_view = "account.login"
     login_manager.init_app(app)
 
@@ -36,6 +40,7 @@ def create_app():
     from .tools.tools import tools_blueprint
     from .my_assignment.my_assignment import my_assignment_blueprint
     from .connectors.connectors import connector_blueprint
+    from .analyzer.analyzer import analyzer_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -45,6 +50,8 @@ def create_app():
     app.register_blueprint(tools_blueprint, url_prefix="/tools")
     app.register_blueprint(my_assignment_blueprint, url_prefix="/my_assignment")
     app.register_blueprint(connector_blueprint, url_prefix="/connectors")
+    app.register_blueprint(analyzer_blueprint, url_prefix="/analyzer")
+    csrf.exempt(analyzer_blueprint)
 
 
     from .case.case_api import api_case_blueprint

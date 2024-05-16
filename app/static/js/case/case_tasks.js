@@ -346,7 +346,7 @@ export default {
 				'/case/' + task.case_id + '/modif_note/' + task.id + '?note_id=' + note_id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
-					body: JSON.stringify({"task_id": task.id.toString(), "notes": notes_loc})
+					body: JSON.stringify({"notes": notes_loc})
 				}
 			)
 
@@ -937,7 +937,7 @@ export default {
 			<div class="d-flex w-100 justify-content-between">
 				<div class="w-100">
 					<div>
-						<h5>Notes</h5>
+						<h5>Notes <a class="btn btn-primary btn-sm" :href="'/analyzer/?case_id='+task.case_id+'&task_id='+task.id" style="margin-bottom: 1px;"><i class="fa-solid fa-magnifying-glass"></i> Analyze</a></h5> 
 					</div>
 					<div v-if="task.notes.length">
 						<template v-for="task_note, key in task.notes">

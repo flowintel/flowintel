@@ -1,0 +1,233 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <div style="display:flex;">
+        <h1>Analyzers</h1>
+        <i class="fa fa-question" title="Select text from note present in case or tasks"></i>
+    </div>
+    <hr>
+
+    <div id="top"></div>
+
+    <div style="display: flex;">
+        <div class="card card-body" style="max-width: 50%; margin: 10px">
+            Select a Case
+            <div id="case-search" class="d-none">
+				<div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
+					<input id="case-search-input" @input="onInputCase" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
+				</div>
+				<div v-if="result_search && result_search.length" class="search-result justify-content-center" style="z-index: 1;">
+					<div v-for="case_search in result_search" style="margin-bottom: 2px;">
+						<i class="fa-solid fa-circle fa-2xs"></i>
+						<a v-if="case_search.description" @click="select_case(case_search)" :title="case_search.description" style="cursor: pointer;">[[case_search.title]]</a>
+						<a v-else @click="select_case(case_search)" title="No description" style="cursor: pointer;">[[case_search.title]]</a>
+					</div>
+				</div>
+			</div>
+        </div>
+        <div class="card card-body d-none" id="task-search" style="margin: 10px">
+            Select a Task:
+            <select data-placeholder="Select a Task" class="select2-select form-control" name="task_select" id="task_select">
+                <option value="None">--</option>
+                <template v-for="task, key in result_search_task">
+                        <option :value="key" :selected="task.id == '{{task_id}}'">[[task.title]] </option>
+                </template>
+            </select>
+        </div>
+    </div>
+    <button class="btn btn-primary" @click="submit()">Submit</button>
+
+    <div class="row">
+        <div class="col-6">
+            <ul class="nav nav-tabs" style="margin-bottom: 10px;">
+                <li class="nav-item">
+                    <button :disabled="!case_selected || !case_selected.notes" class="nav-link" id="tab-case-notes" @click="active_tab('case')">Case notes</button>
+                </li>
+                <li class="nav-item">
+                    <button :disabled="!case_selected || !case_selected.notes" class="nav-link" id="tab-all-notes" @click="active_tab('all')">All Tasks notes</button>
+                </li>
+                <li class="nav-item">
+                    <button :disabled="!task_selected || !task_selected.notes" class="nav-link" id="tab-task-notes" @click="active_tab('task')">Task notes</button>
+                </li>
+            </ul>
+            
+            <div v-if="main_tab == 'case'">
+                <h6>Select note</h6>
+                <div class="card card-body" v-html="md.render(case_selected.notes)"></div>
+            </div>
+            <div v-else-if="main_tab == 'all'">
+                <h6>Select note</h6>
+                <div class="card card-body" v-html="md.render(all_notes)"></div>
+            </div>
+            <div v-else-if="main_tab == 'task'">
+                <h6>Select note</h6>
+                <div class="card card-body">
+                    <template v-for="note, key in task_selected.notes">
+                        <div v-html="md.render('## Note '+key+'\n'+ note.note +'\n ---')"></div>
+                    </template>
+                </div>
+            </div>
+        </div>
+        <div class="analyse-editor-container d-none" style="margin-top: 50px; margin-right: 10px;">
+            <h6>Note selected</h6>
+            <div class="card card-body">
+                <div id="editor-selected-notes"></div>
+            </div>
+        </div>
+    </div>
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+    <div id="insert_form"></div>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, onMounted, nextTick } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const result_search = ref([])
+                const result_search_task = ref([])
+                const case_selected = ref()
+                const task_selected = ref()
+                const main_tab = ref()
+                const all_notes = ref()
+
+                let editor = ""
+
+                const md = window.markdownit()			// Library to Parse and display markdown
+		        md.use(mermaidMarkdown.default)			// Use mermaid library
+
+
+                async function onInputCase(e){
+                    result_search.value = []
+                    if(e.target.value){
+                        const res = await fetch('/case/search?text='+e.target.value)
+                        if (await res.status == 200){
+                            let loc = await res.json()
+                            result_search.value = loc["cases"]
+                        }
+                        else{
+                            display_toast(res)
+                        }
+                    }
+                }
+
+                async function select_case(case_search){
+                    case_selected.value = case_search
+                    result_search.value = []
+                    $("#case-search-input").val(case_search.title)
+                    $('#task-search').removeClass('d-none')
+                    $('.analyse-editor-container').removeClass('d-none')
+
+                    const res = await fetch("/case/"+case_selected.value.id+"/all_notes")
+                    let loc = await res.json()
+                    all_notes.value = loc["notes"]
+
+                    const res_task = await fetch("/case/"+case_selected.value.id+"/sort_by_ongoing_task")
+                    let loc_task = await res_task.json()
+                    result_search_task.value = loc_task
+
+                    $('.select2-select').select2({
+                        theme: 'bootstrap-5',
+                        width: '100%'
+                    })
+
+                    $('#task_select').on('change.select2', function (e) {
+                        let loc = $(this).select2('data').map(item => item.id);
+                        task_selected.value = result_search_task.value[loc]
+                    })
+
+                }
+
+                async function active_tab(tab_name){
+                    if(tab_name == 'case'){
+                        main_tab.value = 'case'
+                        if ( !document.getElementById("tab-case-notes").classList.contains("active") ){
+                            document.getElementById("tab-case-notes").classList.add("active")
+                            document.getElementById("tab-all-notes").classList.remove("active")
+                            document.getElementById("tab-task-notes").classList.remove("active")
+                        }
+                        await nextTick()
+                    }
+                    if(tab_name == 'all'){
+                        main_tab.value = 'all'
+                        if ( !document.getElementById("tab-all-notes").classList.contains("active") ){
+                            document.getElementById("tab-all-notes").classList.add("active")
+                            document.getElementById("tab-case-notes").classList.remove("active")
+                            document.getElementById("tab-task-notes").classList.remove("active")
+                            await nextTick()
+                        }
+                    }else if(tab_name == 'task'){
+                        main_tab.value = 'task'
+                        if ( !document.getElementById("tab-task-notes").classList.contains("active") ){
+                            document.getElementById("tab-task-notes").classList.add("active")
+                            document.getElementById("tab-case-notes").classList.remove("active")
+                            document.getElementById("tab-all-notes").classList.remove("active")
+                        }
+                    }
+                    md.mermaid.init()
+                }
+
+                async function submit(){
+                    const res = await fetch('/analyzer/misp-modules-url')
+                    let loc = await res.json()
+                    const misp_modules_url = loc["url"]
+
+                    $('#insert_form').append(
+                        $('<form>').attr({"action": misp_modules_url, "name": "misp_modules", "method": "post", "style": "display:none"}).append(
+                            $("<input>").attr({"type": "text", "name": "query"}).val(JSON.stringify(editor.state.doc.text))
+                        )
+                    );
+                    document.forms['misp_modules'].submit();
+                }
+
+                onMounted(async () => {
+                    $('#case-search').removeClass('d-none')
+
+                    const targetElement = document.getElementById('editor-selected-notes')
+                    editor = new Editor.EditorView({
+                        doc: "\n\n",
+                        extensions: [Editor.basicSetup, Editor.markdown()],
+                        parent: targetElement
+                    })
+
+                    if("{{case_id}}"){
+                        const res = await fetch('/case/get_case/{{case_id}}')
+                        let loc = await res.json()
+                        await select_case(loc)
+
+                        for(let i in result_search_task.value){
+                            if(result_search_task.value[i].id == '{{task_id}}'){
+                                task_selected.value = result_search_task.value[i]
+                                break
+                            }
+                        }
+                    }
+                })
+
+                return {
+                    message_list,
+                    result_search,
+                    result_search_task,
+                    main_tab,
+                    case_selected,
+                    task_selected,
+                    all_notes,
+                    md,
+                    onInputCase,
+                    select_case,
+                    active_tab,
+                    submit
+                }
+            }
+        }).mount('.container')
+
+    </script>
+{% endblock %}

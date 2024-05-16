@@ -230,6 +230,12 @@ def get_cases():
     loc = CaseModel.regroup_case_info(cases, current_user)
     return jsonify({"cases": loc["cases"], "role": role, "nb_pages": cases.pages}), 200
 
+@case_blueprint.route("/get_case/<cid>", methods=['GET'])
+@login_required
+def get_case(cid):
+    """Return all cases by page"""
+    return CommonModel.get_case(cid).to_json()
+
 
 @case_blueprint.route("/search", methods=['GET'])
 @login_required
@@ -694,7 +700,7 @@ def modif_note(cid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             notes = request.json["notes"]
             if CaseModel.modif_note_core(cid, current_user, notes):
-                return {"message": "Note added", "toast_class": "success-subtle"}, 200
+                return {"message": "Note modified", "toast_class": "success-subtle"}, 200
             return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404

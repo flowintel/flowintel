@@ -3,6 +3,9 @@ class Config:
     
     FLASK_URL = '127.0.0.1'
     FLASK_PORT = 7006
+    MISP_MODULES = "http://localhost:7008"
+    SESSION_TYPE = "sqlalchemy"
+    SESSION_SQLALCHEMY_TABLE = "flask_sessions"
 
 
 class DevelopmentConfig(Config):

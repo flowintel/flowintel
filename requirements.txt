@@ -1,6 +1,7 @@
 flask
 sqlalchemy
 flask-sqlalchemy
+flask-session
 Flask-WTF
 WTForms
 Werkzeug==2.3.7

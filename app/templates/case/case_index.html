@@ -261,6 +261,7 @@
                     const res = await fetch(url)
                     case_list.value = await res.json()
                     current_page.value = page
+                    temp_case_list = case_list.value.cases
                 }
 
                 async function fetchStatus() {

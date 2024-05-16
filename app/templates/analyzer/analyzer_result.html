@@ -1,0 +1,205 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Analyzers Results</h1>
+    <i>Select note to inject this in case or task</i>
+    <hr>
+    <div id="top"></div>
+
+    <button class="btn btn-primary" @click="nextPage()" style="margin-bottom: 10px;margin-top: -3px;">Next</button>
+
+    <div class="row">
+        <div class="col-6">
+            <ul class="nav nav-tabs" style="margin-bottom: 10px;">
+                <li class="nav-item">
+                    <button class="nav-link active" id="tab-visual" @click="active_tab('visual')">Visual</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="tab-json" @click="active_tab('json')">Json</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="tab-task-markdown" @click="active_tab('markdown')">Markdown</button>
+                </li>
+            </ul>
+            
+            <h6>Select note</h6>
+            <div class="accordion" v-if="Object.keys(misp_modules).length" style="width: 95%">
+                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in misp_modules">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button" :title="key_query" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenMain-'+key_query" aria-expanded="true" :aria-controls="'panelsStayOpenMain-'+key_query">
+                            <template v-if="key_query.length > 45">
+                                [[key_query.substring(0, 45)]]...
+                            </template>
+                            <template v-else>
+                                [[key_query]]
+                            </template>
+                        </button>
+                    </h2>
+                    <div :id="'panelsStayOpenMain-'+key_query" class="accordion-collapse collapse show">
+                        <div class="accordion" style="padding: 25px">
+                            <div class="accordion-item" :id="'list-item-'+key_query+'-'+key" v-for="result, key in ele">
+                                <template v-if="!('error' in result)">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button" style="height: 40px;" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpen-'+key_query+'-'+key" aria-expanded="true" :aria-controls="'panelsStayOpen-'+key">
+                                            [[key]]
+                                        </button>
+                                    </h2>
+                                    <div :id="'panelsStayOpen-'+key_query+'-'+key" class="accordion-collapse collapse show">
+                                        <!-- visual part -->
+                                        <template v-if="main_tab == 'visual'">
+                                            <div class="accordion-body" >
+                                                <template v-if="'Object' in result.results">
+                                                    <template v-for="obj in result.results.Object">
+                                                        <div v-html="parseMispObject(obj)[0].outerHTML"></div>
+                                                    </template>
+                                                </template>
+        
+                                                <template v-else>
+                                                    <template v-for="misp_attrs, key_loop in result.results">
+                                                        <div v-for="misp_attr in misp_attrs.values" class="accordion-body" v-html="parseMispAttr(misp_attr, misp_attrs.types, key_loop)[0].outerHTML"></div>
+                                                    </template>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <!-- json part -->
+                                        <template v-if="main_tab == 'json'">
+                                            <div class="accordion-body" v-html="generateCoreFormatUI(result)[0].outerHTML"></div>
+                                        </template>
+                                        <!-- markdown part -->
+                                        <template v-if="main_tab == 'markdown'">
+                                            <div class="accordion-body">
+                                                <template v-if="'Object' in result.results">
+                                                    <template v-for="obj, key_obj in result.results.Object">
+                                                        <pre>
+#### [[obj.name]]
+<template v-for="attr, key_attr in obj.Attribute">
+###### [[attr.object_relation]]
+Type: [[attr.type]]
+Value: [[attr.value]]
+</template>
+                                                        </pre>
+                                                        <hr>
+                                                    </template>
+                                                </template>
+                                                <template v-else>
+                                                    <template v-for="misp_attrs, key_loop in result.results">
+                                                        <template v-for="misp_attr in misp_attrs.values">
+                                                            <pre>
+#### Attr [[key_loop +1]]
+Type: [[misp_attrs.types.join(", ")]]
+Value: [[misp_attr]]
+                                                            </pre>
+                                                        </template>
+                                                    </template>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template> <!-- Not error -->
+                            </div>
+                        </div> <!-- Accordion -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="analyse-editor-container" style="margin-top: 50px; margin-right: 10px;">
+            <h6>Note selected</h6>
+            <div class="card card-body">
+                <div id="editor-selected-notes"></div>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn btn-primary" @click="nextPage()" style="margin-top: 8px;">Next</button>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+    <div id="insert_form"></div>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, onMounted, nextTick } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const main_tab = ref('visual')
+                const misp_modules = ref()
+
+                let editor = ""
+
+                async function fetch_result(){
+                    misp_modules.value = {}
+                    const res = await fetch("/analyzer/get_misp_modules_result")
+                    let loc = await res.json()
+                    misp_modules.value = loc
+                }
+                fetch_result()
+
+                async function active_tab(tab_name){
+                    if(tab_name == 'visual'){
+                        main_tab.value = 'visual'
+                        if ( !document.getElementById("tab-visual").classList.contains("active") ){
+                            document.getElementById("tab-visual").classList.add("active")
+                            document.getElementById("tab-json").classList.remove("active")
+                            document.getElementById("tab-task-markdown").classList.remove("active")
+                        }
+                        await nextTick()
+                    }
+                    if(tab_name == 'json'){
+                        main_tab.value = 'json'
+                        if ( !document.getElementById("tab-json").classList.contains("active") ){
+                            document.getElementById("tab-json").classList.add("active")
+                            document.getElementById("tab-visual").classList.remove("active")
+                            document.getElementById("tab-task-markdown").classList.remove("active")
+                            await nextTick()
+                        }
+                    }else if(tab_name == 'markdown'){
+                        main_tab.value = 'markdown'
+                        if ( !document.getElementById("tab-task-markdown").classList.contains("active") ){
+                            document.getElementById("tab-task-markdown").classList.add("active")
+                            document.getElementById("tab-visual").classList.remove("active")
+                            document.getElementById("tab-json").classList.remove("active")
+                        }
+                    }
+                }
+
+                async function nextPage(){
+                    $('#insert_form').append(
+                        $('<form>').attr({"action": "/analyzer/nextPage", "name": "flowintel", "method": "post", "style": "display:none"}).append(
+                            $("<input>").attr({"type": "text", "name": "note_selected"}).val(JSON.stringify(editor.state.doc.toString()))
+                        )
+                    );
+                    document.forms['flowintel'].submit();
+                }
+
+                onMounted(() => {
+                    const targetElement = document.getElementById('editor-selected-notes')
+                    editor = new Editor.EditorView({
+                        doc: "\n\n",
+                        extensions: [Editor.basicSetup, Editor.markdown()],
+                        parent: targetElement
+                    })
+                })
+
+                return {
+                    message_list,
+                    main_tab,
+                    misp_modules,
+                    generateCoreFormatUI,
+                    parseMispObject,
+                    parseMispAttr,
+                    active_tab,
+                    nextPage
+                }
+            }
+        }).mount('.container')
+
+    </script>
+{% endblock %}
