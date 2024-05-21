@@ -26,8 +26,9 @@ def create_app():
     db.init_app(app)
     csrf.init_app(app)
     migrate.init_app(app, db, render_as_batch=True)
-    app.config["SESSION_SQLALCHEMY"] = db
-    session.init_app(app)
+    if not config_name == 'testing':
+        app.config["SESSION_SQLALCHEMY"] = db
+        session.init_app(app)
     login_manager.login_view = "account.login"
     login_manager.init_app(app)
 
