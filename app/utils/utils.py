@@ -84,6 +84,7 @@ def get_module_type():
     return type_list
 
 def get_modules_list():
+    modulename_list = list()
     sys.path.append(MODULE_PATH)
     for root, dirnames, filenames in os.walk(MODULE_PATH):
         if os.path.basename(root) == '__pycache__':
@@ -97,6 +98,16 @@ def get_modules_list():
             root_dir = os.path.basename(root)
             MODULES[modulename] = importlib.import_module(root_dir + '.' + modulename)
             MODULES_CONFIG[modulename] = {"type": root_dir, "config": MODULES[modulename].module_config}
+            modulename_list.append(modulename)
+
+    loc_elem = []
+    for elem in MODULES_CONFIG:
+        if elem not in modulename_list:
+            loc_elem.append(elem)
+    
+    for elem in loc_elem:
+        del MODULES_CONFIG[elem]
+        del MODULES[elem]
 
 caseSchema = {
     "type": "object",

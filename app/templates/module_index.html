@@ -1,0 +1,71 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <div style="display:flex;">
+        <h1>Modules</h1>
+        <i class="fa fa-question" title="List of modules usable"></i>
+    </div>
+    <hr>
+
+    <div id="top"></div>
+
+    <button class="btn btn-primary" @click="reload()"><i class="fa-solid fa-arrow-rotate-right"></i> Reload</button>
+
+    <table class="table" style="margin-top: 10px; background-color: white;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Apply to</th>
+                <th>Type</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="module, key in modules_list">
+                <td>[[key]]</td>
+                <td>[[ module.config.case_task ]]</td>
+                <td>[[ module.type ]]</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, onMounted, nextTick } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const modules_list = ref([])
+
+                async function fetch_module(){
+                    const res = await fetch("/tools/get_modules")
+                    let loc = await res.json()
+                    modules_list.value = loc["modules"]
+                }
+                fetch_module()
+
+                async function reload(){
+                    const res = await fetch("/tools/reload_module")
+                    display_toast(res)
+                    
+                    await fetch_module()
+                }
+
+                return {
+                    message_list,
+                    modules_list,
+                    reload
+                }
+            }
+        }).mount('.container')
+    </script>
+{% endblock %}
