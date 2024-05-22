@@ -87,7 +87,7 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, onMounted, nextTick } = Vue
-        import {display_toast, message_list} from '/static/js/toaster.js'
+        import {display_toast, message_list, create_message} from '/static/js/toaster.js'
 
         createApp({
             delimiters: ['[[', ']]'],
@@ -179,13 +179,16 @@
                     const res = await fetch('/analyzer/misp-modules-url')
                     let loc = await res.json()
                     const misp_modules_url = loc["url"]
-
-                    $('#insert_form').append(
-                        $('<form>').attr({"action": misp_modules_url, "name": "misp_modules", "method": "post", "style": "display:none"}).append(
-                            $("<input>").attr({"type": "text", "name": "query"}).val(JSON.stringify(editor.state.doc.text))
-                        )
-                    );
-                    document.forms['misp_modules'].submit();
+                    if(editor.state.doc.toString().trim().length){
+                        $('#insert_form').append(
+                            $('<form>').attr({"action": misp_modules_url, "name": "misp_modules", "method": "post", "style": "display:none"}).append(
+                                $("<input>").attr({"type": "text", "name": "query"}).val(JSON.stringify(editor.state.doc.text))
+                            )
+                        );
+                        document.forms['misp_modules'].submit();
+                    }else{
+                        create_message("No note passed", 'warning-subtle', true)
+                    }
                 }
 
                 onMounted(async () => {
@@ -227,7 +230,7 @@
                     submit
                 }
             }
-        }).mount('.container')
+        }).mount('#main-container')
 
     </script>
 {% endblock %}

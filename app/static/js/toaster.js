@@ -2,7 +2,7 @@ const { nextTick, ref } = Vue
 
 export const message_list = ref([])
 
-async function create_message(message, toast_class, not_hide){
+export async function create_message(message, toast_class, not_hide){
 	let id = Math.random()
 	let message_loc = {"message": message, "toast_class": toast_class, "id": id}
 	message_list.value.push(message_loc)

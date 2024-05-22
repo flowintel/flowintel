@@ -46,7 +46,7 @@
 
         <!--Main layout-->
         <main style="margin-top: 65px;">
-            <div class="container pt-4">
+            <div class="container-fluid pt-4" id="main-container">
                 {% include 'macros/_flashes.html' %}
 
                 <div aria-live="polite" aria-atomic="true" class="">
@@ -89,7 +89,7 @@
             createApp({
                 delimiters: ['[[', ']]'],
                 setup() {}
-            }).mount('.container')
+            }).mount('#main-container')
         </script>
         {% endblock %}
         

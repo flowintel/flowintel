@@ -5,7 +5,7 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <div id="container">
+    <div>
         <h2 style="display: inline-block;">Edit a Task template</h2>
 
         <form action="" method="post">
@@ -286,7 +286,7 @@
                 check_connectors_exist
             }
         }
-    }).mount('.container')
+    }).mount('#main-container')
 
 </script>
 {% endblock %}

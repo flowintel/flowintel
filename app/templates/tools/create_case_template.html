@@ -5,7 +5,7 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <div id="container">
+    <div>
         <h2 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/tools/template/cases"><i class="fa-solid fa-arrow-left"></i></a></h2>
         <h2 style="display: inline-block;">Create a Case template</h2>
 
@@ -203,7 +203,7 @@
                 connectors,
             }
         }
-    }).mount('.container')
+    }).mount('#main-container')
 
 </script>
 {% endblock %}
