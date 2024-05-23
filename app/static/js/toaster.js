@@ -22,8 +22,10 @@ export async function create_message(message, toast_class, not_hide){
 	})
 }
 
-export async function display_toast(res, not_hide=false) {
+export async function display_toast(res, not_hide=false, toast_class = "") {
 	let loc = await res.json()
+	let loc_toast = toast_class
+	if(!loc_toast) loc_toast = loc["toast_class"]
 	
 	if (typeof loc["message"] == "object"){
 		for(let index in loc["message"]){
@@ -31,5 +33,5 @@ export async function display_toast(res, not_hide=false) {
 		}
 	}
 	else
-		await create_message(loc["message"], loc["toast_class"], not_hide)
+		await create_message(loc["message"], loc_toast, not_hide)
 }

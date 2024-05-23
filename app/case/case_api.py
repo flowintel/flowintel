@@ -63,7 +63,7 @@ class CreateCase(Resource):
 
             if "message" not in verif_dict:
                 case = CaseModel.create_case(verif_dict, user)
-                return {"message": f"Case created, id: {case.id}"}, 201
+                return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -562,7 +562,7 @@ class CreateTask(Resource):
 
                 if "message" not in verif_dict:
                     task = TaskModel.create_task(verif_dict, cid, current_user)
-                    return {"message": f"Task {task.id} created for case id: {cid}"}, 201
+                    return {"message": f"Task {task.id} created for case id: {cid}", "task_id": task.id}, 201
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
         return {"message": "Permission denied"}, 403

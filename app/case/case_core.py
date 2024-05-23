@@ -72,7 +72,7 @@ def create_case(form_dict, user):
     else:
         deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
         case = Case(
-            title=form_dict["title"],
+            title=form_dict["title"].strip(),
             description=form_dict["description"],
             uuid=str(uuid.uuid4()),
             creation_date=datetime.datetime.now(tz=datetime.timezone.utc),

@@ -35,6 +35,23 @@
                         <label for="task_radio">Tasks</label>
                     </div>
                 </div>
+                 <!-- Button trigger Collapse -->
+                <button id="button-collapse-case" class="btn btn-secondary mt-2" @click="open_collapse_case()" data-bs-toggle="collapse" data-bs-target="#collapseCase" aria-expanded="false" aria-controls="collapseCase">
+                    New case
+                </button>
+                <div class="collapse" id="collapseCase">
+                    <div class="card card-body">
+                        <div class="mb-3">
+                            <label for="case-title" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="case-title" aria-describedby="emailHelp">
+                        </div>
+                        <div class="mb-3">
+                            <label for="case-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="case-description"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
                 <br>
                 <a v-if="case_selected" :href="'/case/'+case_selected.id">See case</a>
             </fieldset>
@@ -43,28 +60,45 @@
         <div class="col-6">
             <fieldset class="analyzer-select-case" v-if="!bool_case_task_note">
                 <legend class="analyzer-select-case">Select a Task</legend>
-                <select data-placeholder="Select a Task" class="select2-select form-control" name="task_select" id="task_select">
-                    <option value="None">--</option>
-                    <template v-for="task, key in result_search_task">
-                        <option :value="key">[[task.title]]</option>
-                    </template>
-                </select>
-                <div v-if="task_selected">
-                    <input type="radio" id="task_create_radio" name="task_note_radio" value="create" @click="select_task_note(true)">
-                    <label for="task_create_radio">Create a new note</label>
-                    <br>
-                    <template v-if="task_selected.nb_notes > 0">
-                        <input type="radio" id="task_edit_radio" name="task_note_radio" value="Tasks" @click="select_task_note(false)">
-                        <label for="task_edit_radio">Edit existing note</label>
-                        <select data-placeholder="Select a Task" class="select2-select-note form-control d-none" name="task_note_select" id="task_note_select">
-                            <option value="None">--</option>
-                            <template v-for="note, key in task_selected.notes">
-                                <option :value="key"># Note [[key]]</option>
-                            </template>
-                        </select>
-                    </template>
-                    <br>
-                    <a :href="'/case/'+case_selected.id+'#task-'+task_selected.id">See task</a>
+                <template v-if="!create_case && !create_task">
+                    <select data-placeholder="Select a Task" class="select2-select form-control" name="task_select" id="task_select">
+                        <option value="None">--</option>
+                        <template v-for="task, key in result_search_task">
+                            <option :value="key">[[task.title]]</option>
+                        </template>
+                    </select>
+                    <div v-if="task_selected">
+                        <input type="radio" id="task_create_radio" name="task_note_radio" value="create" @click="select_task_note(true)">
+                        <label for="task_create_radio">Create a new note</label>
+                        <br>
+                        <template v-if="task_selected.nb_notes > 0">
+                            <input type="radio" id="task_edit_radio" name="task_note_radio" value="Tasks" @click="select_task_note(false)">
+                            <label for="task_edit_radio">Edit existing note</label>
+                            <select data-placeholder="Select a Task" class="select2-select-note form-control d-none" name="task_note_select" id="task_note_select">
+                                <option value="None">--</option>
+                                <template v-for="note, key in task_selected.notes">
+                                    <option :value="key"># Note [[key]]</option>
+                                </template>
+                            </select>
+                        </template>
+                        <br>
+                        <a :href="'/case/'+case_selected.id+'#task-'+task_selected.id">See task</a>
+                    </div>
+                </template>
+                <button id="button-collapse-task" class="btn btn-secondary mt-2" data-bs-toggle="collapse" data-bs-target="#collapseTask" aria-expanded="false" aria-controls="collapseTask">
+                    New task
+                </button>
+                <div class="collapse" id="collapseTask">
+                    <div class="card card-body">
+                        <div class="mb-3">
+                            <label for="task-title" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="task-title" aria-describedby="emailHelp">
+                        </div>
+                        <div class="mb-3">
+                            <label for="task-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="task-description"></textarea>
+                        </div>
+                    </div>
                 </div>
             </fieldset>
         </div>
@@ -92,7 +126,7 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, onMounted, nextTick } = Vue
-        import {display_toast, message_list} from '/static/js/toaster.js'
+        import {display_toast, message_list, create_message} from '/static/js/toaster.js'
 
         createApp({
             delimiters: ['[[', ']]'],
@@ -101,10 +135,11 @@
                 const result_search_task = ref([])
                 const case_selected = ref()
                 const task_selected = ref()
-                const main_tab = ref()
                 const note_selected = ref()
                 const bool_case_task_note = ref(true)
                 const task_note_index = ref()
+                const create_case = ref(false)
+                const create_task = ref(false)
 
                 let editor = ""
 
@@ -115,6 +150,21 @@
                     note_selected.value = loc
                 }
                 fetch_note_selected()
+
+                function setEditor(note){
+                    if(!editor){
+                        const targetElement = document.getElementById('editor-selected-notes')
+                        editor = new Editor.EditorView({
+                            doc: note,
+                            extensions: [Editor.basicSetup, Editor.markdown()],
+                            parent: targetElement
+                        })
+                    }else{
+                        editor.dispatch({
+                            changes: {from: 0, to: editor.state.doc.toString().length, insert: note}
+                        })
+                    }
+                }
 
                 async function onInputCase(e){
                     result_search.value = []
@@ -127,16 +177,25 @@
                         else{
                             display_toast(res)
                         }
+                    }else{
+                        $("#button-collapse-case").removeClass('d-none')
+                        $("#collapseCase").removeClass('d-none')
+                        bool_case_task_note.value = true
+                        setEditor("\n\n")
                     }
                 }
 
                 async function select_case(case_search){
                     $("#editor_id").removeClass('d-none')
+                    $("#button-collapse-case").addClass('d-none')
+                    $("#collapseCase").addClass('d-none')
+                    $("#collapseCase").removeClass('show')
                     case_selected.value = case_search
                     result_search.value = []
                     $("#case-search-input").val(case_search.title)
                     $('.analyse-editor-container').removeClass('d-none')
                     $('#radio_case_task_hide').removeClass('d-none')
+                    create_case.value = false
 
                     const res_task = await fetch("/case/"+case_selected.value.id+"/sort_by_ongoing_task")
                     let loc_task = await res_task.json()
@@ -154,7 +213,9 @@
                     await nextTick()
 
                     if(!case_task){
-                        $("#editor_id").addClass('d-none')
+                        if(!create_case.value){
+                            $("#editor_id").addClass('d-none')
+                        }
                         $('.select2-select').select2({
                             theme: 'bootstrap-5',
                             width: '100%'
@@ -165,33 +226,36 @@
                             task_selected.value = result_search_task.value[loc]
                             if(editor){
                                 editor.dispatch({
-                                    changes: {from: 0, to: editor.state.doc.toString().length, insert: ''}
+                                    changes: {from: 0, to: editor.state.doc.toString().length, insert: "\n\n"}
                                 })
                             }
                         })
-
-                        if(editor){
+                        const myCollapsibleTask = document.getElementById('collapseTask')
+                        myCollapsibleTask.addEventListener('hidden.bs.collapse', event => {
+                            create_task.value = false
+                            $("#editor_id").addClass('d-none')
                             editor.dispatch({
-                                changes: {from: 0, to: editor.state.doc.toString().length, insert: ''}
+                                changes: {from: 0, to: editor.state.doc.toString().length, insert: "\n\n"}
                             })
-                        }
+                        })
+                        myCollapsibleTask.addEventListener('show.bs.collapse', event => {
+                            task_selected.value = ""
+                            create_task.value = true
+                            $("#editor_id").removeClass('d-none')
+                            editor.dispatch({
+                                changes: {from: 0, to: editor.state.doc.toString().length, insert: "\n\n"}
+                            })
+                        })
+
+                        setEditor("\n\n")
                     }else{
-                        
-                        // Reset value to default
-                        task_selected.value = null
-                        task_note_index.value = null
-
-                        if(!editor){
-                            const targetElement = document.getElementById('editor-selected-notes')
-                            editor = new Editor.EditorView({
-                                doc: case_selected.value.notes,
-                                extensions: [Editor.basicSetup, Editor.markdown()],
-                                parent: targetElement
-                            })
+                        if(!create_case.value){
+                            // Reset value to default
+                            task_selected.value = null
+                            task_note_index.value = null
+                            setEditor(case_selected.value.notes)
                         }else{
-                            editor.dispatch({
-                                changes: {from: 0, to: editor.state.doc.toString().length, insert: case_selected.value.notes}
-                            })
+                            setEditor("\n\n")
                         }
                     }
                 }
@@ -199,18 +263,7 @@
                 async function select_task_note(task_note_bool){
                     if(task_note_bool){
                         $("#editor_id").removeClass('d-none')
-                        if(!editor){
-                            const targetElement = document.getElementById('editor-selected-notes')
-                            editor = new Editor.EditorView({
-                                doc: "\n\n",
-                                extensions: [Editor.basicSetup, Editor.markdown()],
-                                parent: targetElement
-                            })
-                        }else{
-                            editor.dispatch({
-                                changes: {from: 0, to: editor.state.doc.toString().length, insert: "\n\n"}
-                            })
-                        }
+                        setEditor("\n\n")
                     }else{
                         $('#task_note_select').removeClass("d-none")
                         await nextTick()
@@ -225,18 +278,7 @@
                             task_note_index.value = loc
                             if(loc != "None"){
                                 $("#editor_id").removeClass('d-none')
-                                if(!editor){
-                                    const targetElement = document.getElementById('editor-selected-notes')
-                                    editor = new Editor.EditorView({
-                                        doc: task_selected.value["notes"][loc]["note"],
-                                        extensions: [Editor.basicSetup, Editor.markdown()],
-                                        parent: targetElement
-                                    })
-                                }else{
-                                    editor.dispatch({
-                                        changes: {from: 0, to: editor.state.doc.toString().length, insert: task_selected.value["notes"][loc]["note"]}
-                                    })
-                                }
+                                setEditor(task_selected.value["notes"][loc]["note"])
                             }
                         })
                     }
@@ -244,20 +286,74 @@
 
 
                 async function submit(){
+                    let loc_url = ""
+                    let loc_case_id
+                    if(case_selected.value) loc_case_id = case_selected.value["id"]
+                    else loc_case_id = ""
+                    // Create a new case
+                    if(create_case.value){
+                        let case_title = $("#case-title").val()
+                        if(!case_title){
+                            create_message("Case need a title", 'warning-subtle', true)
+                            return
+                        }
+                        let case_description = $("#case-description").val()
+                        
+                        // create case
+                        const res = await fetch('/api/case/create', {
+                            method: "POST",
+                            headers: {
+                                "X-API-KEY": "{{current_user.api_key}}", "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({"title": case_title, "description": case_description})
+                        })
+                        if(await res.status==400 ){
+                            display_toast(res, false, "warning-subtle")
+                            return
+                        }else{
+                            let loc = await res.json()
+                            let case_id = loc["case_id"]
+                            loc_case_id = case_id
+                            loc_url = '/case/'+case_id+'/modif_note_case'
+                        }
+                    }
+                    // Create a new task
+                    if(create_task.value){
+                        let task_title = $("#task-title").val()
+                        if(!task_title){
+                            create_message("Task need a title", 'warning-subtle', true)
+                            return
+                        }
+                        let task_description = $("#task-description").val()
+                        // create task
+                        const res = await fetch('/api/case/'+loc_case_id+'/create_task', {
+                            method: "POST",
+                            headers: {
+                                "X-API-KEY": "{{current_user.api_key}}", "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({"title": task_title, "description": task_description})
+                        })
+                        if(await res.status==400 ){
+                            display_toast(res, false, "warning-subtle")
+                            return
+                        }else{
+                            let loc = await res.json()
+                            let task_id = loc["task_id"]
+
+                            const res_create_note = await fetch('/case/'+loc_case_id+'/create_note/'+task_id)
+                            let loc_note = await res_create_note.json()
+                            console.log(loc_note);
+                            loc_url = '/case/'+loc_case_id+'/modif_note/'+task_id+"?note_id="+loc_note["note"]["id"]
+                        }
+                    }
                     // Edit an existing task, so it's not case notes
-                    if(task_note_index.value){
+                    else if(task_note_index.value){
                         let task_id = task_selected.value["id"]
                         let case_id = task_selected.value["case_id"]
                         let note_id = task_selected.value["notes"][task_note_index.value]["id"]
 
-                        const res = await fetch('/case/'+case_id+'/modif_note/'+task_id+"?note_id="+note_id, {
-                            method: "POST",
-                            headers: {
-                                "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({"notes": editor.state.doc.toString()})
-                        })
-                        display_toast(res)
+                        loc_url = '/case/'+case_id+'/modif_note/'+task_id+"?note_id="+note_id
+                        loc_case_id = case_id
                     }
                     // Create a new note for the task
                     else if (task_selected.value){
@@ -266,28 +362,36 @@
                         const res_create = await fetch('/case/'+case_id+'/create_note/'+task_id)
                         let loc = await res_create.json()
 
-                        const res = await fetch('/case/'+case_id+'/modif_note/'+task_id+"?note_id="+loc["note"]["id"], {
-                            method: "POST",
-                            headers: {
-                                "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({"notes": editor.state.doc.toString()})
-                        })
-                        display_toast(res)
+                        loc_url = '/case/'+case_id+'/modif_note/'+task_id+"?note_id="+loc["note"]["id"]
+                        loc_case_id = case_id
                     }
                     // Case note
                     else if(case_selected.value){
                         let case_id = case_selected.value["id"]
-                        const res = await fetch('/case/'+case_id+'/modif_note_case', {
-                            method: "POST",
-                            headers: {
-                                "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({"notes": editor.state.doc.toString()})
-                        })
-                        display_toast(res)
+                        loc_url = '/case/'+case_id+'/modif_note_case'
                     }
-                    window.location.href='/case/'+case_selected.value.id
+
+                    const res = await fetch(loc_url, {
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({"notes": editor.state.doc.toString()})
+                    })
+                    if(await res.status==400 ){
+                        display_toast(res)
+                        return
+                    }else{
+                        window.location.href='/case/'+loc_case_id
+                    }
+                }
+
+
+                function open_collapse_case(){
+                    create_case.value = true
+                    $('#radio_case_task_hide').removeClass('d-none')
+                    $("#editor_id").removeClass('d-none')
+                    setEditor("\n\n")
                 }
 
                 onMounted(() => {
@@ -298,16 +402,18 @@
                     message_list,
                     result_search,
                     result_search_task,
-                    main_tab,
                     case_selected,
                     task_selected,
                     note_selected,
                     bool_case_task_note,
+                    create_case,
+                    create_task,
                     onInputCase,
                     select_case,
                     submit,
                     select_case_task,
-                    select_task_note
+                    select_task_note,
+                    open_collapse_case
                 }
             }
         }).mount('#main-container')
