@@ -1,5 +1,22 @@
 <!--Main Navigation-->
 <header>
+	<style>
+	.collapse-modif[data-bs-toggle].collapsed:after {
+		font-family: "Font Awesome 6 Free"; 
+		font-weight: 900; 
+		content: "\f078"; 
+		color:  #444444;
+		padding-left: 5px;
+	}
+	.collapse-modif[data-bs-toggle]:not(.collapsed):after {
+		font-family: "Font Awesome 6 Free"; 
+		font-weight: 900; 
+		content: "\f077"; 
+		color:  #444444;
+		padding-left: 5px;
+	}
+	</style>
+	
   	<!-- Sidebar -->
   	<nav id="sidebarMenu" class="collapse d-lg-block sidebar collapse bg-white">
 		<div class="position-sticky">
@@ -16,24 +33,6 @@
 				<a href="/calendar" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fa-solid fa-calendar fa-fw me-3"></i><span>Calendar</span>
 				</a>
-				<button class="list-group-item list-group-item-action py-2 ripple" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="true">
-					<i class="fa-solid fa-toolbox fa-fw me-3"></i><span>Tools</span>
-				</button>
-				<div class="collapse" id="tools-collapse">
-					<button class="list-group-item list-group-item-action py-2 ripple" data-bs-toggle="collapse" data-bs-target="#template-collapse" aria-expanded="true">
-						<i class="fa-solid fa-bookmark fa-fw me-2"></i><span>Templates</span>
-					</button>
-					<div class="collapse" id="template-collapse">
-						<a href="/tools/template/cases" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Case</a>
-						<a href="/tools/template/tasks" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Task</a>
-					</div>
-					<a href="/tools/importer_view" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-file-import fa-fw me-2"></i><span>Importer</span>
-					</a>
-					<a href="/tools/module" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-wrench fa-fw me-2"></i><span>Modules</span>
-					</a>
-				</div>
 				<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fa-solid fa-users fa-fw me-3"></i><span>Orgs</span>
 				</a>
@@ -52,6 +51,24 @@
 				<a href="/analyzer" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fa-solid fa-magnifying-glass fa-fw me-3"></i><span>Analyzers</span>
 				</a>
+				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">
+					<i class="fa-solid fa-toolbox fa-fw me-3"></i><span>Tools</span>
+				</button>
+				<div class="collapse" id="tools-collapse">
+					<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#template-collapse" aria-expanded="false">
+						<i class="fa-solid fa-bookmark fa-fw me-2"></i><span>Templates</span>
+					</button>
+					<div class="collapse" id="template-collapse">
+						<a href="/tools/template/cases" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Case</a>
+						<a href="/tools/template/tasks" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Task</a>
+					</div>
+					<a href="/tools/importer_view" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-file-import fa-fw me-2"></i><span>Importer</span>
+					</a>
+					<a href="/tools/module" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-wrench fa-fw me-2"></i><span>Modules</span>
+					</a>
+				</div>
 			</div>
 		</div>
   	</nav>
