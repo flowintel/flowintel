@@ -7,23 +7,26 @@
 {% block content %}
 
     <h2 class="ui dividing header">Edit a task</h2>
+    <hr>
 
     <form action="" method="post">
         {{ form.hidden_tag() }}
         <div class="modal-body">
-            <div class="mb-3">
-                {{form.title.label(class_="col-form-label")}}:
-                {{form.title(class_="form-control")}}
-                {% if form.title.errors %}
-                    <div style="color: red;">{{form.title.errors[0] | safe}}</div>
-                {%endif%}
-            </div>
-            <div class="mb-3">
-                <label for="description" class="col-form-label">Description:</label>
-                {{form.description(class_="form-control")}}
-                {% if form.description.errors %}
-                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                {%endif%}
+            <div class="row">
+                <div class="mb-3 w-50">
+                    {{form.title.label(class_="col-form-label")}}:
+                    {{form.title(class_="form-control")}}
+                    {% if form.title.errors %}
+                        <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="mb-3 w-50">
+                    <label for="description" class="col-form-label">Description:</label>
+                    {{form.description(class_="form-control")}}
+                    {% if form.description.errors %}
+                        <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
             </div>
             <div class="row">
                 <div class="col">
@@ -41,7 +44,6 @@
                     {%endif%}
                 </div>
             </div>
-            <hr>
             <div class="mb-3 w-50">
                 {{form.url.label(class_="col-form-label")}}:
                 {{form.url(class_="form-control")}}
@@ -49,8 +51,9 @@
                     <div style="color: red;">{{form.url.errors[0] | safe}}</div>
                 {%endif%}
             </div>
+            <hr>
             <div class="mb-3 w-50">
-                <label style="padding: 4px;" for="connectors_select">Connectors:</label>
+                <h5 style="padding: 4px;">Connectors:</h5>
                 <template v-if="connectors">
                     <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
                         <template v-for="(instances, connector) in connectors">
@@ -71,7 +74,7 @@
             </div>
 
             <hr>
-            <div>Taxonomies:</div>
+            <h5>Taxonomies:</h5>
             <div style="display: flex;">
                 <template v-if="taxonomies">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >

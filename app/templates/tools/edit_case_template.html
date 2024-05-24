@@ -6,96 +6,97 @@
 
 {% block content %}
     <div>
-            <h2 class="ui dividing header">Edit a Case Template</h2>
-
-            <form action="" method="post">
-                {{ form.hidden_tag() }}
-                {{ form.template_id }}
-                
-                <div class="mb-3">
+        <h2 class="ui dividing header">Edit a Case Template</h2>
+        <hr>
+        <form action="" method="post">
+            {{ form.hidden_tag() }}
+            {{ form.template_id }}
+            <div class="row">
+                <div class="mb-3 w-50">
                     {{form.title.label(class_="col-form-label")}}:
                     {{form.title(class_="form-control")}}
                     {% if form.title.errors %}
                         <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
-                <div class="mb-3">
+                <div class="mb-3 w-50">
                     <label for="description" class="col-form-label">Description:</label>
                     {{form.description(class_="form-control")}}
                     {% if form.description.errors %}
                         <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
-                <hr>
-                <div class="mb-3 w-50">
-                    <label style="padding: 4px;" for="connectors_select">Connectors:</label>
-                    <template v-if="connectors">
-                    <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
-                            <template v-for="(instances, connector) in connectors">
-                                <optgroup :label="[[connector]]">
-                                    <template v-for="instance in instances">
-                                        <option :value="[[instance.name]]" :selected="check_connectors_exist(instance.name)">[[instance.name]]</option>
-                                    </template>
-                                </optgroup>
-                            </template>
-                        </select>
-                    </template>
-                </div>
+            </div>
+            <hr>
+            <div class="mb-3 w-50">
+                <h5 style="padding: 4px;">Connectors:</h5>
+                <template v-if="connectors">
+                <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
+                        <template v-for="(instances, connector) in connectors">
+                            <optgroup :label="[[connector]]">
+                                <template v-for="instance in instances">
+                                    <option :value="[[instance.name]]" :selected="check_connectors_exist(instance.name)">[[instance.name]]</option>
+                                </template>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
 
-                <hr>
-                <h5>Taxonomies:</h5>
-                <div style="display: flex;">
-                    <template v-if="taxonomies">
-                        <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                            <template v-for="taxonomy in taxonomies">
-                                <option :value="[[taxonomy.name]]" v-if="check_taxo_exist(taxonomy.name)" selected>[[taxonomy.name]]</option>
-                                <option :value="[[taxonomy.name]]" v-else>[[taxonomy.name]]</option>
-                            </template>
-                        </select>
-                    </template>
-                    
-                    <template v-if="tags_list">
-                        <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                            <template v-for="(tags, taxo) in tags_list">
-                                <optgroup :label="[[taxo]]">
-                                    <template v-for="tag in tags">
-                                        <option :value="[[tag.name]]" :title="tag.description" v-if="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
-                                        <option :value="[[tag.name]]" :title="tag.description" v-else>[[tag.name]]</option>
-                                    </template>
-                                </optgroup>
-                            </template>
-                        </select>
-                    </template>
-                </div>
-                <hr>
-
-                <h5>Galaxies:</h5>
-                <div style="display: flex;">
-                    <template v-if="galaxies">
-                        <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                            <template v-for="galaxy, key in galaxies">
-                                <option :value="[[galaxy.name]]" v-if="check_galaxy_exist(galaxy.name)" selected>[[galaxy.name]]</option>
-                                <option :value="[[galaxy.name]]" v-else>[[galaxy.name]]</option>
-                            </template>
-                        </select>
-                    </template>
-                    
-                    <template v-if="cluster_list">
-                        <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
-                            <template v-for="(clusters, galaxy) in cluster_list">
-                                <optgroup :label="[[galaxy]]">
-                                    <template v-for="cluster in clusters">
-                                        <option v-if="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description" selected>[[cluster.tag]]</option>
-                                        <option v-else :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
-                                    </template>
-                                </optgroup>
-                            </template>
-                        </select>
-                    </template>
-                </div>
+            <hr>
+            <h5>Taxonomies:</h5>
+            <div style="display: flex;">
+                <template v-if="taxonomies">
+                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                        <template v-for="taxonomy in taxonomies">
+                            <option :value="[[taxonomy.name]]" v-if="check_taxo_exist(taxonomy.name)" selected>[[taxonomy.name]]</option>
+                            <option :value="[[taxonomy.name]]" v-else>[[taxonomy.name]]</option>
+                        </template>
+                    </select>
+                </template>
                 
-                {{form.submit(class='btn btn-primary')}}
-            </form>
+                <template v-if="tags_list">
+                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                        <template v-for="(tags, taxo) in tags_list">
+                            <optgroup :label="[[taxo]]">
+                                <template v-for="tag in tags">
+                                    <option :value="[[tag.name]]" :title="tag.description" v-if="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
+                                    <option :value="[[tag.name]]" :title="tag.description" v-else>[[tag.name]]</option>
+                                </template>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
+            <hr>
+
+            <h5>Galaxies:</h5>
+            <div style="display: flex;">
+                <template v-if="galaxies">
+                    <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                        <template v-for="galaxy, key in galaxies">
+                            <option :value="[[galaxy.name]]" v-if="check_galaxy_exist(galaxy.name)" selected>[[galaxy.name]]</option>
+                            <option :value="[[galaxy.name]]" v-else>[[galaxy.name]]</option>
+                        </template>
+                    </select>
+                </template>
+                
+                <template v-if="cluster_list">
+                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                        <template v-for="(clusters, galaxy) in cluster_list">
+                            <optgroup :label="[[galaxy]]">
+                                <template v-for="cluster in clusters">
+                                    <option v-if="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description" selected>[[cluster.tag]]</option>
+                                    <option v-else :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
+                                </template>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
+            </div>
+            
+            {{form.submit(class='btn btn-primary')}}
+        </form>
     </div>
 {% endblock %}
 
@@ -240,7 +241,7 @@
                 })
             }
             function check_connectors_exist(connector){
-                return connectors_task.value.some(function(field){
+                return connectors_case.value.some(function(field){
                     return connector === field && $('#connectors_select').trigger('change')
                 })
             }
@@ -274,7 +275,8 @@
                 check_taxo_exist,
                 check_galaxy_exist,
                 check_tag_exist,
-                check_cluster_exist
+                check_cluster_exist,
+                check_connectors_exist
             }
         }
     }).mount('#main-container')

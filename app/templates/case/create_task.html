@@ -7,28 +7,30 @@
 {% block content %}
 <form action="" method="post">
     {{ form.hidden_tag() }}
-    <div class="modal-body">
-        <button class="btn btn-primary" @click="hide_task_creation()" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
+    <h2>
+        Create task 
+        <button class="btn btn-outline-primary mt-1 mx-3" @click="hide_task_creation()" style="float: right" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
             Create from template
-        </button>        
-        <div class="collapse" id="collapseTemplate">
-            <div class="card card-body">
-                <div class="mb-3">
-                    <p>Select from Template:</p>
-                    <select data-placeholder="Templates" class="select2-select form-control" name="template_select" id="template_select">
-                        {% for choice in form.template_select.choices %}
-                            <option value="{{choice[0]}}">{{choice[1]}}</option>
-                        {% endfor %}
-                    </select>
-                    {% if form.template_select.errors %}
-                        <div style="color: red;">{{form.template_select.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-            </div>
+        </button> 
+    </h2>
+    <hr>
+            
+    <div class="collapse mb-4" id="collapseTemplate">
+        <div class="mb-3 w-50">
+            <p>Select from Template:</p>
+            <select data-placeholder="Templates" class="select2-select form-control" name="template_select" id="template_select">
+                {% for choice in form.template_select.choices %}
+                    <option value="{{choice[0]}}">{{choice[1]}}</option>
+                {% endfor %}
+            </select>
+            {% if form.template_select.errors %}
+                <div style="color: red;">{{form.template_select.errors[0] | safe}}</div>
+            {%endif%}
         </div>
-        
-        <hr>
-        <div id="create_task">
+    </div>
+    
+    <div class="mb-3" id="create_task">
+        <div class="row">
             <div class="mb-3 w-50">
                 {{form.title.label(class_="col-form-label")}}:
                 {{form.title(class_="form-control")}}
@@ -36,104 +38,134 @@
                     <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div class="mb-3">
+            <div class="mb-3 w-50">
                 <label for="description" class="col-form-label">Description:</label>
                 {{form.description(class_="form-control")}}
                 {% if form.description.errors %}
                     <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div class="row">
-                <div class="mb-3 w-25">
-                    {{form.deadline_date.label(class_="col-form-label")}}:
-                    {{form.deadline_date(class_="form-control")}}
-                    {% if form.deadline_date.errors %}
-                        <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                <div class="mb-3 w-25">
-                    {{form.deadline_time.label(class_="col-form-label")}}:
-                    {{form.deadline_time(class_="form-control")}}
-                    {% if form.deadline_time.errors %}
-                        <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-            </div>
-            <hr>
+        </div>
+        <div class="row">
             <div class="mb-3 w-50">
-                {{form.url.label(class_="col-form-label")}}:
-                {{form.url(class_="form-control")}}
-                {% if form.url.errors %}
-                    <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                {{form.deadline_date.label(class_="col-form-label")}}:
+                {{form.deadline_date(class_="form-control")}}
+                {% if form.deadline_date.errors %}
+                    <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="mb-3 w-50">
-                <label style="padding: 4px;" for="connectors_select">Connectors:</label>
-                <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
-                    <template v-if="connectors">
-                        <template v-for="(instances, connector) in connectors">
-                            <optgroup :label="[[connector]]">
-                                <option :value="[[instance.name]]" v-for="instance in instances">[[instance.name]]</option>
-                            </optgroup>
-                        </template>
-                    </template>
-                </select>
+                {{form.deadline_time.label(class_="col-form-label")}}:
+                {{form.deadline_time(class_="form-control")}}
+                {% if form.deadline_time.errors %}
+                    <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
+                {%endif%}
             </div>
-            <div class="row" v-if="connectors_selected">
-                <div class="mb-3 w-50" v-for="instance in connectors_selected" >
-                    <label :for="'identifier_' + instance">[[instance]] Complement</label>
-                    <input :id="'identifier_' + instance" class="form-control" :name="'identifier_' + instance" type="text">
+        </div>
+        <div class="mb-3 w-50">
+            {{form.url.label(class_="col-form-label")}}:
+            {{form.url(class_="form-control")}}
+            {% if form.url.errors %}
+                <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+            {%endif%}
+        </div>
+        <hr>
+        <div class="accordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                        Connectors <i class="fa fa-question" title="Add connectors to the case" style="margin-left: 5px;"></i>
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+                        <div class="w-50">
+                            <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
+                                <template v-if="connectors">
+                                    <template v-for="(instances, connector) in connectors">
+                                        <optgroup :label="[[connector]]">
+                                            <option :value="[[instance.name]]" v-for="instance in instances">[[instance.name]]</option>
+                                        </optgroup>
+                                    </template>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="row" v-if="connectors_selected">
+                            <div class="mb-3 w-25" v-for="instance in connectors_selected" >
+                                <label :for="'identifier_' + instance">[[instance]] Complement</label>
+                                <input :id="'identifier_' + instance" class="form-control" :name="'identifier_' + instance" type="text">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <hr>
-
-            <div>Taxonomies:</div>
-            <div style="display: flex;">
-                <template v-if="taxonomies">
-                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                        <template v-for="taxonomy, key in taxonomies">
-                            <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
-                        </template>
-                    </select>
-                </template>
-                
-                <template v-if="tags_list">
-                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                        <template v-for="(tags, taxo) in tags_list">
-                            <optgroup :label="[[taxo]]">
-                                <option :value="[[tag.name]]" :title="tag.description" v-for="tag in tags">[[tag.name]]</option>
-                            </optgroup>
-                        </template>
-                    </select>
-                </template>
-            </div>
-
-            <hr>
-            <h5>Galaxies:</h5>
-            <div style="display: flex;">
-                <template v-if="galaxies">
-                    <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                        <template v-for="galaxy, key in galaxies">
-                            <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
-                        </template>
-                    </select>
-                </template>
-                
-                <template v-if="cluster_list">
-                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
-                        <template v-for="(clusters, galaxy) in cluster_list">
-                            <optgroup :label="[[galaxy]]">
-                                <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
-                            </optgroup>
-                        </template>
-                    </select>
-                </template>
+        </div>
+        <div class="accordion mt-4">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                        Taxonomies <i class="fa fa-question" title="Add taxonomies to the case" style="margin-left: 5px;"></i>
+                    </button>
+                </h2>
+                <div id="collapseTwo" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+                        <div class="row">
+                            <div v-if="taxonomies" class="col-4">
+                                <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                                    <template v-for="taxonomy, key in taxonomies">
+                                        <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                                    </template>
+                                </select>
+                            </div>
+                            
+                            <div v-if="tags_list" class="col-4">
+                                <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                                    <template v-for="(tags, taxo) in tags_list">
+                                        <optgroup :label="[[taxo]]">
+                                            <option :value="[[tag.name]]" :title="tag.description" v-for="tag in tags">[[tag.name]]</option>
+                                        </optgroup>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="modal-footer">
-            {{form.submit(class='btn btn-primary')}}
+        <div class="accordion mt-4">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                        Galaxies <i class="fa fa-question" title="Add galaxies to the case" style="margin-left: 5px;"></i>
+                    </button>
+                </h2>
+                <div id="collapseThree" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+                        <div class="row">
+                            <div v-if="galaxies" class="col-4">
+                                <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                                    <template v-for="galaxy, key in galaxies">
+                                        <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
+                                    </template>
+                                </select>
+                            </div>
+                            
+                            <div v-if="cluster_list" class="col-4">
+                                <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                                    <template v-for="(clusters, galaxy) in cluster_list">
+                                        <optgroup :label="[[galaxy]]">
+                                            <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
+                                        </optgroup>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+    {{form.submit(class='btn btn-primary')}}
 </form>
 {% endblock %}
 

@@ -7,47 +7,49 @@
 {% block content %}
     <div>
         <h2 style="display: inline-block;">Edit a Task template</h2>
+        <hr>
 
         <form action="" method="post">
             {{ form.hidden_tag() }}
             {{ form.template_id }}
-            
-            <div class="mb-3 w-50">
-                {{form.title.label(class_="col-form-label")}}:
-                {{form.title(class_="form-control")}}
-                {% if form.title.errors %}
-                    <div style="color: red;">{{form.title.errors[0] | safe}}</div>
-                {%endif%}
-            </div>
-            <div class="mb-3">
-                <label for="description" class="col-form-label">Description:</label>
-                {{form.body(class_="form-control")}}
-                {% if form.body.errors %}
-                    <div style="color: red;">{{form.body.errors[0] | safe}}</div>
-                {%endif%}
-            </div>
             <div class="row">
                 <div class="mb-3 w-50">
-                    {{form.url.label(class_="col-form-label")}}:
-                    {{form.url(class_="form-control")}}
-                    {% if form.url.errors %}
-                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                    {{form.title.label(class_="col-form-label")}}:
+                    {{form.title(class_="form-control")}}
+                    {% if form.title.errors %}
+                        <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
                 <div class="mb-3 w-50">
-                    <label style="padding: 4px;" for="connectors_select">Connectors:</label>
-                    <template v-if="connectors">
-                    <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
-                            <template v-for="(instances, connector) in connectors">
-                                <optgroup :label="[[connector]]">
-                                    <template v-for="instance in instances">
-                                        <option :value="[[instance.name]]" :selected="check_connectors_exist(instance.name)">[[instance.name]]</option>
-                                    </template>
-                                </optgroup>
-                            </template>
-                        </select>
-                    </template>
+                    <label for="description" class="col-form-label">Description:</label>
+                    {{form.body(class_="form-control")}}
+                    {% if form.body.errors %}
+                        <div style="color: red;">{{form.body.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
+            </div>
+            <div class="mb-3 w-50">
+                {{form.url.label(class_="col-form-label")}}:
+                {{form.url(class_="form-control")}}
+                {% if form.url.errors %}
+                    <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <hr>
+                
+            <div class="mb-3 w-50">
+                <h5 style="padding: 4px;">Connectors:</h5>
+                <template v-if="connectors">
+                <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
+                        <template v-for="(instances, connector) in connectors">
+                            <optgroup :label="[[connector]]">
+                                <template v-for="instance in instances">
+                                    <option :value="[[instance.name]]" :selected="check_connectors_exist(instance.name)">[[instance.name]]</option>
+                                </template>
+                            </optgroup>
+                        </template>
+                    </select>
+                </template>
             </div>
 
             <hr>

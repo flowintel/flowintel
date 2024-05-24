@@ -21,7 +21,7 @@ class CaseForm(FlaskForm):
     deadline_date = DateField('deadline_date', validators=[Optional()])
     deadline_time = TimeField("deadline_time", validators=[Optional()])
     template_select = SelectMultipleField(u'Templates', coerce=int)
-    title_template = StringField('Title Template', validators=[Optional(), Length(1, 64)])
+    title_template = StringField('New Title', validators=[Optional(), Length(1, 64)])
     tasks_templates = SelectMultipleField(u'Tasks Templates', coerce=int)
     submit = SubmitField('Create')
 
