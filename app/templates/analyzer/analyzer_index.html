@@ -13,30 +13,34 @@
 
     <div id="top"></div>
 
-    <div style="display: flex;">
-        <div class="card card-body" style="max-width: 50%; margin: 10px">
-            Select a Case
-            <div id="case-search" class="d-none">
-				<div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
-					<input id="case-search-input" @input="onInputCase" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
-				</div>
-				<div v-if="result_search && result_search.length" class="search-result justify-content-center" style="z-index: 1;">
-					<div v-for="case_search in result_search" style="margin-bottom: 2px;">
-						<i class="fa-solid fa-circle fa-2xs"></i>
-						<a v-if="case_search.description" @click="select_case(case_search)" :title="case_search.description" style="cursor: pointer;">[[case_search.title]]</a>
-						<a v-else @click="select_case(case_search)" title="No description" style="cursor: pointer;">[[case_search.title]]</a>
-					</div>
-				</div>
-			</div>
+    <div class="row">
+        <div class="col-6">
+            <fieldset class="analyzer-select-case">
+                <legend class="analyzer-select-case">Select a Case</legend>
+                <div id="case-search" class="d-none">
+                    <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
+                        <input id="case-search-input" @input="onInputCase" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
+                    </div>
+                    <div v-if="result_search && result_search.length" class="search-result justify-content-center" style="z-index: 1;">
+                        <div v-for="case_search in result_search" style="margin-bottom: 2px;">
+                            <i class="fa-solid fa-circle fa-2xs"></i>
+                            <a v-if="case_search.description" @click="select_case(case_search)" :title="case_search.description" style="cursor: pointer;">[[case_search.title]]</a>
+                            <a v-else @click="select_case(case_search)" title="No description" style="cursor: pointer;">[[case_search.title]]</a>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
         </div>
-        <div class="card card-body d-none" id="task-search" style="margin: 10px">
-            Select a Task:
-            <select data-placeholder="Select a Task" class="select2-select form-control" name="task_select" id="task_select">
-                <option value="None">--</option>
-                <template v-for="task, key in result_search_task">
-                        <option :value="key" :selected="task.id == '{{task_id}}'">[[task.title]] </option>
-                </template>
-            </select>
+        <div class="col-6">
+            <fieldset class="analyzer-select-case d-none" id="task-search">
+                <legend class="analyzer-select-case">Select a Task</legend>
+                <select data-placeholder="Select a Task" class="select2-select form-control" name="task_select" id="task_select">
+                    <option value="None">--</option>
+                    <template v-for="task, key in result_search_task">
+                            <option :value="key" :selected="task.id == '{{task_id}}'">[[task.title]] </option>
+                    </template>
+                </select>
+            </fieldset>
         </div>
     </div>
     <button class="btn btn-primary" @click="submit()">Submit</button>
