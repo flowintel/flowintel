@@ -171,9 +171,14 @@ Value: [[misp_attr]]
                 }
 
                 async function nextPage(){
+                    let data_to_pass = editor.state.doc.toString().trim()
+                    if(!data_to_pass){
+                        data_to_pass = misp_modules.value
+                    }
+
                     $('#insert_form').append(
                         $('<form>').attr({"action": "/analyzer/nextPage", "name": "flowintel", "method": "post", "style": "display:none"}).append(
-                            $("<input>").attr({"type": "text", "name": "note_selected"}).val(JSON.stringify(editor.state.doc.toString()))
+                            $("<input>").attr({"type": "text", "name": "note_selected"}).val(JSON.stringify(data_to_pass))
                         )
                     );
                     document.forms['flowintel'].submit();

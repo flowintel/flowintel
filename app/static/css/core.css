@@ -58,11 +58,6 @@ span#goTop, span#project-version{
 	height: 58%;
 }
 
-.result-editor-container {
-	position: fixed;
-	width: calc((100vw - var(--sidebar))/2 );
-	overflow-x: hidden;
-}
 
 .note-editor-container {
 	position: absolute;
