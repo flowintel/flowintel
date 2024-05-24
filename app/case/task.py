@@ -140,7 +140,7 @@ def modif_note(cid, tid):
                 notes = request.json["notes"]
                 if "note_id" in request.args:
                     res_note = TaskModel.modif_note_core(tid, current_user, notes, request.args.get("note_id"))
-                    if res_note and not type(res_note == dict):
+                    if res_note and not type(res_note) == dict:
                         return {"note": res_note.to_json(), "message": "Note added", "toast_class": "success-subtle"}, 200
                     return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
                 return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
