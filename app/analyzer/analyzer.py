@@ -32,7 +32,10 @@ def index():
 @login_required
 def recieve_result():
     """Recieve result form analyzers"""
-    session["misp_modules_res"] = request.form["result"]
+    if "result" in request.form:
+        session["misp_modules_res"] = request.form["result"]
+    else:
+        session["misp_modules_res"] = None
     return render_template("analyzer/analyzer_result.html")
 
 @analyzer_blueprint.route("/get_misp_modules_result", methods=['GET', 'POST'])

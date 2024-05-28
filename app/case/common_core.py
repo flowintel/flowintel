@@ -364,7 +364,8 @@ def create_task_from_template(template_id, cid):
         last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
         case_id=cid,
         status_id=1,
-        case_order_id=nb_tasks
+        case_order_id=nb_tasks,
+        nb_notes=0
     )
     db.session.add(task)
     db.session.commit()
