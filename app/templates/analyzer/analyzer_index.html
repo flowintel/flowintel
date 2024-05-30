@@ -5,13 +5,28 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div style="display:flex;">
-        <h1>Analyzers</h1>
-        <i class="fa fa-question" title="Select text from note present in case or tasks"></i>
+    <div>
+        <h1>Analyzers 
+            <i class="fa fa-question" title="Select text from note present in case or tasks" style="font-size: initial;"></i>
+            <a class="btn btn-outline-primary mt-1 mx-3" href="/analyzer/config" style="float: right">
+                Config
+            </a>
+        </h1>
+        
     </div>
     <hr>
 
     <div id="top"></div>
+
+    <div>
+        Select an Analyzer: 
+        <select data-placeholder="Select an analyzer" class="select2-select-analyzer form-control" name="analyzer_select" id="analyzer_select">
+            <option value="None">--</option>
+            <option v-for="analyzer, key in analyzers_list" :value="key">[[analyzer.name]]</option>
+        </select>
+        <span id="error-selector" style="color: brown;"></span>
+    </div>
+    <hr>
 
     <div class="row">
         <div class="col-6">
@@ -102,11 +117,21 @@
                 const task_selected = ref()
                 const main_tab = ref()
                 const all_notes = ref()
+                const analyzers_list = ref([])
 
                 let editor = ""
 
                 const md = window.markdownit()			// Library to Parse and display markdown
 		        md.use(mermaidMarkdown.default)			// Use mermaid library
+
+                async function fetchAnalyzers() {
+                    analyzers_list.value = null
+                    const res = await fetch(
+                        '/analyzer/analyzers_data'
+                    )
+                    analyzers_list.value = await res.json()
+                }
+                fetchAnalyzers()
 
 
                 async function onInputCase(e){
@@ -180,22 +205,31 @@
                 }
 
                 async function submit(){
-                    const res = await fetch('/analyzer/misp-modules-url')
-                    let loc = await res.json()
-                    const misp_modules_url = loc["url"]
+                    $("#error-selector").text("")
+                    let analyzer_select = $("#analyzer_select").val()
+                    if(!analyzer_select || analyzer_select == 'None'){
+                        $("#error-selector").text("Need to select an analyzer")
+                        return
+                    }
+
+                    let analyzer_url = analyzers_list.value[analyzer_select].url
                     if(editor.state.doc.toString().trim().length){
                         $('#insert_form').append(
-                            $('<form>').attr({"action": misp_modules_url, "name": "misp_modules", "method": "post", "style": "display:none"}).append(
+                            $('<form>').attr({"action": analyzer_url, "name": "analyzer_form", "method": "post", "style": "display:none"}).append(
                                 $("<input>").attr({"type": "text", "name": "query"}).val(JSON.stringify(editor.state.doc.text))
                             )
                         );
-                        document.forms['misp_modules'].submit();
+                        document.forms['analyzer_form'].submit();
                     }else{
                         create_message("No note passed", 'warning-subtle', true)
                     }
                 }
 
                 onMounted(async () => {
+                    $('.select2-select-analyzer').select2({
+                        theme: 'bootstrap-5',
+                        width: '50%'
+                    })
                     $('#case-search').removeClass('d-none')
 
                     const targetElement = document.getElementById('editor-selected-notes')
@@ -228,6 +262,7 @@
                     task_selected,
                     all_notes,
                     md,
+                    analyzers_list,
                     onInputCase,
                     select_case,
                     active_tab,

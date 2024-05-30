@@ -17,7 +17,6 @@ from conf.config import Config
 MODULES = {}
 MODULES_CONFIG = {}
 MODULE_PATH = os.path.join(os.getcwd(), "app", "modules")
-MISP_MODULES = Config.MISP_MODULES
 
 manifest = os.path.join(os.getcwd(), "modules/misp-taxonomies/MANIFEST.json")
 

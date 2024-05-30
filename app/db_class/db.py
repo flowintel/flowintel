@@ -700,6 +700,22 @@ class User_Connector_Instance(db.Model):
     instance_id = db.Column(db.Integer, index=True)
     api_key = db.Column(db.String(100), index=True)
 
+
+class Analyzer(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(64), index=True, unique=True)
+    url = db.Column(db.String, index=True)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "name": self.name,
+            "url": self.url,
+            "is_active": self.is_active
+        }
+        return json_dict
+
 login_manager.anonymous_user = AnonymousUser
 
 @login_manager.user_loader

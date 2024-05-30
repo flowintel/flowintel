@@ -260,7 +260,7 @@ def delete(cid):
             else:
                 return {"message": "Error case deleted", 'toast_class': "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
-    return {"message": "Case no found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/<cid>/get_case_info", methods=['GET'])
