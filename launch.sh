@@ -33,7 +33,9 @@ function production {
 
 
 function init_db {
+	export FLASKENV="development"
 	python3 app.py -i
+	python3 app.py -tg
 }
 
 function reload_db {
