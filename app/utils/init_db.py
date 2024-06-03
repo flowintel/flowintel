@@ -1,8 +1,10 @@
-import os
-from ..db_class.db import Connector, Connector_Icon, Icon_File, db
+import uuid
+import datetime
+from ..db_class.db import Case, Case_Org, Connector, Connector_Icon, Icon_File, Task, db
 from ..db_class.db import User, Role, Org, Status
 from .utils import generate_api_key
-import uuid
+from ..case import common_core as CommonModel
+from ..case import task_core as TaskModel
 
 def create_admin_role():
     role = Role(
@@ -136,8 +138,75 @@ def create_default_icon():
     db.session.commit()
     
 
+def create_task(case, user, title, description):
+    nb_tasks = 1
+    if case.nb_tasks:
+        nb_tasks = case.nb_tasks+1
+    else:
+        case.nb_tasks = 0
+
+    task = Task(
+        uuid=str(uuid.uuid4()),
+        title=title,
+        description=description,
+        creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
+        case_id=case.id,
+        status_id=1,
+        case_order_id=nb_tasks,
+        completed=False,
+        nb_notes=0
+    )
+    db.session.add(task)
+    db.session.commit()
+
+    case.nb_tasks += 1
+    db.session.commit()
+
+    CommonModel.update_last_modif(case.id)
+    CommonModel.save_history(case.uuid, user, f"Task '{task.title}' Created")
+    return task
 
 
+def create_default_case(user):
+    # Create a case
+    case = Case(
+        title="Forensic Case",
+        description="Example forensic case",
+        uuid=str(uuid.uuid4()),
+        creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
+        status_id=1,
+        owner_org_id=user.org_id
+    )
+    db.session.add(case)
+    db.session.commit()
+
+    case_org = Case_Org(
+        case_id=case.id, 
+        org_id=user.org_id
+    )
+    db.session.add(case_org)
+    db.session.commit()
+
+    CommonModel.save_history(case.uuid, user, "Case Created")
+
+    # Create tasks
+    task_1 = create_task(case, user, title="Extract disk", description="Only one machine")
+    task_2 = create_task(case, user, title="Create a timeline", description="The time is your ally")
+    task_3 = create_task(case, user, title="Extract and analyze evtx", description="Lost in the wild Windows")
+    task_4 = create_task(case, user, title="Write report", description="Boring part but do it")
+
+    note_1 = TaskModel.create_note(task_1.id)
+    note_2 = TaskModel.create_note(task_2.id)
+    note_3 = TaskModel.create_note(task_3.id)
+    note_3_1 = TaskModel.create_note(task_3.id)
+    note_4 = TaskModel.create_note(task_4.id)
+    TaskModel.modif_note_core(task_1.id, user, "# Important\nDon't forget to do a copy. \nNever work on original evidence.", note_1.id)
+    TaskModel.modif_note_core(task_2.id, user, "# Timeline\nPlaso or mactime. Choose your side...", note_2.id)
+    TaskModel.modif_note_core(task_3.id, user, "There's always a few in a Windows machine.", note_3.id)
+    TaskModel.modif_note_core(task_3.id, user, "Found it...\n\n\nQuickly...", note_3_1.id)
+    TaskModel.modif_note_core(task_3.id, user, "Markdown this time.", note_4.id)
 
 
 
@@ -155,7 +224,7 @@ def create_admin():
     create_misp_ail_connector()
 
     # Admin user
-    user = User(
+    admin_user = User(
         first_name="admin",
         last_name="admin",
         email="admin@admin.admin",
@@ -163,12 +232,12 @@ def create_admin():
         role_id=role.id,
         api_key = generate_api_key()
     )
-    db.session.add(user)
+    db.session.add(admin_user)
     db.session.commit()
     
     # Org    
-    org = create_user_org(user)
-    user.org_id = org.id
+    org = create_user_org(admin_user)
+    admin_user.org_id = org.id
     db.session.commit()
 
     # Matrix bot user
@@ -190,6 +259,10 @@ def create_admin():
 
     # Status
     create_status()
+
+    create_default_case(admin_user)
+
+
 
 
 def create_user_test():
