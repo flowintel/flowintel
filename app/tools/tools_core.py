@@ -424,6 +424,9 @@ def core_read_json_file(case, current_user):
         if not utils.check_tag(tag):
             return {"message": f"Case '{case['title']}': tag '{tag}' doesn't exist"}
         
+    # connectors
+    case['connectors'] = []
+        
     
     #######################
     ## Task Verification ##
@@ -448,6 +451,8 @@ def core_read_json_file(case, current_user):
         for tag in task["tags"]:
             if not utils.check_tag(tag):
                 return {"message": f"Task '{task['title']}': tag '{tag}' doesn't exist"}
+        
+        task['connectors'] = []
 
 
     #################
@@ -456,12 +461,16 @@ def core_read_json_file(case, current_user):
 
     ## Case creation
     case_created = case_core.create_case(case, current_user)
+    if case["notes"]:
+        case_core.modif_note_core(case_created.id, current_user, case["notes"])
 
     ## Task creation
     for task in case["tasks"]:
         task_created = task_core.create_task(task, case_created.id, current_user)
         if task["notes"]:
-            task_core.modif_note_core(task_created.id, current_user, task["notes"])
+            for note in task["notes"]:
+                loc_note = task_core.create_note(task_created.id)
+                task_core.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
 
     
 def read_json_file(files_list, current_user):

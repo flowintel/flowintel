@@ -117,6 +117,7 @@ caseSchema = {
         "deadline:": {"type": "string"},
         "recurring_date:": {"type": "string"},
         "recurring_type:": {"type": "string"},
+        "notes:": {"type": "string"},
         "tasks": {
             "type": "array", 
             "items": {"type": "object"},
@@ -141,7 +142,10 @@ taskSchema = {
         "uuid": {"type": "string"},
         "deadline:": {"type": "string"},
         "url:": {"type": "string"},
-        "notes:": {"type": "string"},
+        "notes:": {
+            "type": "array", 
+            "items": {"type": "object"},
+        },
         "tags":{
             "type": "array",
             "items": {"type": "string"}

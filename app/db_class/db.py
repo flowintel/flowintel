@@ -203,7 +203,7 @@ class Task(db.Model):
             "description": self.description,
             "url": self.url
         }
-        json_dict["notes"] = [note.to_json() for note in self.notes]
+        json_dict["notes"] = [note.download() for note in self.notes]
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
         else:
@@ -233,6 +233,14 @@ class Note(db.Model):
         }
         return json_dict
 
+    def download(self):
+        json_dict = {
+            "uuid": self.uuid,
+            "note": self.note,
+            "task_id": self.task_id,
+            "task_uuid": Task.query.get(self.task_id).uuid
+        }
+        return json_dict
 
 class Org(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

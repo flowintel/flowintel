@@ -454,7 +454,7 @@ def download_case(cid):
             task_list.append(task.download())
         return_dict = case.download()
         return_dict["tasks"] = task_list
-        return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=case_{case.title}.json'}
+        return json.dumps(return_dict, indent=4), 200, {'Content-Disposition': f'attachment; filename=case_{case.title}.json'}
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
