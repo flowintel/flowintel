@@ -504,7 +504,9 @@
     </template>
 
     <template v-else-if="main_tab == 'all'">
-        <div v-html="md.render(all_notes)"></div>
+        <template v-for="notes in all_notes">
+            <div v-html="md.render(notes)" style="background-color: white; border: 1px solid grey; border-radius: 10px; padding: 5px; margin-bottom: 10px;"></div>
+        </template>
     </template>
     
     <span id="goTop">[<a href="#top">Go Back Top</a>]</span>

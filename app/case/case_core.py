@@ -808,14 +808,22 @@ def call_module_case(module, instances, case, user):
 
 def get_all_notes(case):
     """Get all tasks' notes"""
-    loc_notes = ""
+    loc_notes = []
     for task in case.tasks:
-        if task.notes:
-            loc_notes += f"# (Task) {task.title}\n\n"
+        loc = ""
+        task_notes = [note.to_json() for note in task.notes]
+        if task_notes:
+            loc += f"# {task.title}\n\n"
+            loc_len = len(loc)
             cp = 0
-            for note in task.notes:
-                cp += 1
-                loc_notes += f"### #{cp}\n{note.note}---\n\n"
+            for note in task_notes:
+                if note["note"]:
+                    cp += 1
+                    loc += f"---\n\n{note['note']}\n\n"
+                else:
+                    continue
+            if not len(loc) == loc_len:
+                loc_notes.append(loc)
     return loc_notes
 
 
