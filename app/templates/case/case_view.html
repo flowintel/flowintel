@@ -899,14 +899,14 @@
                 function prepare_editor(){
                     const targetElement = document.getElementById('editor')
                     editor = new Editor.EditorView({
-							doc: "\n\n",
-							extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-								if (v.docChanged) {
-									note_editor_render.value = editor.state.doc.toString()
-								}
-							})],
-							parent: targetElement
-						})
+                        doc: "\n\n",
+                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            if (v.docChanged) {
+                                note_editor_render.value = editor.state.doc.toString()
+                            }
+                        })],
+                        parent: targetElement
+                    })
                 }
 
                 async function fetch_all_notes(){
@@ -939,6 +939,7 @@
                             document.getElementById("tab-all").classList.remove("active")
                         }
                     }else if(tab_name == 'case'){
+                        let loc_tab = main_tab.value 
                         main_tab.value = 'case'
                         if ( !document.getElementById("tab-case").classList.contains("active") ){
                             document.getElementById("tab-case").classList.add("active")
@@ -947,7 +948,7 @@
                             document.getElementById("tab-all").classList.remove("active")
                         }
                         await nextTick()
-                        if(!cases_info.value.case.notes){
+                        if(!cases_info.value.case.notes && loc_tab != 'case'){
                             prepare_editor()
                         }else{
                             md.mermaid.init()
