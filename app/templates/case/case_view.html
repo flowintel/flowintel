@@ -9,13 +9,16 @@
     <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/case"><i class="fa-solid fa-arrow-left"></i></a></h1>
 
     <h1 style="display: inline-block; font-size: xx-large;">{{case.id}}- {{case.title}}</h1>
-    <span><i style="font-size: 12px;">{{case.uuid}}</i></span>
+    <span><i style="font-size: 12px; margin-left: 5px;">{{case.uuid}}</i></span>
     <small v-if="status_info" style="margin-left: 10px;">
         <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style">[[ status_info.status[ {{case.status_id}} -1].name ]]</span>
     </small>
 
     <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right; display: grid;">
         <a class="btn btn-primary btn-sm"  :href="`/case/${cases_info.case.id}/download`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
+        <button type="button" class="btn btn-secondary btn-sm" title="Send to connectors" data-bs-toggle="modal" data-bs-target="#Send_to_modal">
+            <i class="fa-solid fa-share-from-square"></i>
+        </button>
         <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
     </div>
     <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right">
@@ -45,62 +48,55 @@
         </ul>
     </div>
     <br>
-    <div style="float: right;">
-        <!-- Button trigger modal -->
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#Send_to_modal">
-            Send to
-        </button>
-        
-        <!-- Modal send to -->
-        <div class="modal fade" id="Send_to_modal" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="Send_to_modalLabel">Send to modules</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div style="display: flex;">
-                            <div>
-                                <label for="modules_select">Modules:</label>
-                                <select data-placeholder="Modules" class="select2-select form-control" name="modules_select" id="modules_select" >
-                                    <option value="None">--</option>
-                                    <template v-for="module, key in modules">
-                                        <option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
-                                    </template>
-                                </select>
-                                <div id="modules_errors" class="invalid-feedback"></div>
-                            </div>
-                            <div style="min-width: 100%;">
-                                <label for="instances_select">Instances:</label>
-                                <select data-placeholder="Instances" class="select2-select form-control" multiple name="instances_select" id="instances_select" >
-                                    <template v-if="module_selected">
-                                        <template v-for="instance, key in module_selected">
-                                            <option :value="[[instance.name]]">[[instance.name]]</option>
-                                        </template>
-                                    </template>
-                                </select>
-                                <div id="instances_errors" class="invalid-feedback"></div>
-                            </div>
+
+    <!-- Modal send to -->
+    <div class="modal fade" id="Send_to_modal" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="Send_to_modalLabel">Send to modules</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div style="display: flex;">
+                        <div>
+                            <label for="modules_select">Modules:</label>
+                            <select data-placeholder="Modules" class="select2-select form-control" name="modules_select" id="modules_select" >
+                                <option value="None">--</option>
+                                <template v-for="module, key in modules">
+                                    <option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
+                                </template>
+                            </select>
+                            <div id="modules_errors" class="invalid-feedback"></div>
                         </div>
-                        <div class="row" v-if="instances_selected">
-                            <div class="mb-3 w-50" v-for="instance, key in instances_selected" >
-                                <label :for="'identifier_' + instance.id">Identifier for <u><i>[[instance.name]]</i></u></label>
-                                <input :id="'identifier_' + instance.id" class="form-control" :value="instance.identifier" :name="'identifier_' + instance.id" type="text">
-                            </div>
+                        <div style="min-width: 100%;">
+                            <label for="instances_select">Instances:</label>
+                            <select data-placeholder="Instances" class="select2-select form-control" multiple name="instances_select" id="instances_select" >
+                                <template v-if="module_selected">
+                                    <template v-for="instance, key in module_selected">
+                                        <option :value="[[instance.name]]">[[instance.name]]</option>
+                                    </template>
+                                </template>
+                            </select>
+                            <div id="instances_errors" class="invalid-feedback"></div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button v-if="module_loader" class="btn btn-primary" type="button" disabled>
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            <span role="status">Loading...</span>
-                          </button>
-                          <button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
+                    <div class="row" v-if="instances_selected">
+                        <div class="mb-3 w-50" v-for="instance, key in instances_selected" >
+                            <label :for="'identifier_' + instance.id">Identifier for <u><i>[[instance.name]]</i></u></label>
+                            <input :id="'identifier_' + instance.id" class="form-control" :value="instance.identifier" :name="'identifier_' + instance.id" type="text">
+                        </div>
                     </div>
+                </div>
+                <div class="modal-footer">
+                    <button v-if="module_loader" class="btn btn-primary" type="button" disabled>
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        <span role="status">Loading...</span>
+                        </button>
+                        <button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
                 </div>
             </div>
         </div>
-  
     </div>
 
     {% if case.tags %}
@@ -186,15 +182,16 @@
             <ul class="dropdown-menu">
                 <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
                     <li>
-                        <div>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#add_orgs">
-                                Add orgs
+                        <div class="justify-content-center" style="display: flex;">
+                            <button class="btn btn-primary btn-sm" title="Add an org to the case" style="margin-right: 3px" data-bs-toggle="modal" data-bs-target="#add_orgs">
+                                <i class="fa-solid fa-users"></i>+
                             </button>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#change_owner">
-                                Change owner
+                            <button class="btn btn-primary btn-sm" title="Change owner of the case" data-bs-toggle="modal" data-bs-target="#change_owner">
+                                <i class="fa-solid fa-user-pen"></i>
                             </button>
                         </div>
                     </li>
+                    <li><hr class="dropdown-divider"></li>
                 </template>
                 <template v-for="org in cases_info.orgs_in_case" :key="org.id">
                     <li>

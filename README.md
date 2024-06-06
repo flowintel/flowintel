@@ -73,10 +73,7 @@ Import a case and its tasks:
     }
   ]
 }
-
 ```
-
-
 
 ## Api
 
@@ -96,45 +93,31 @@ Import a case and its tasks:
 
 `/api/importer/doc`
 
-
-
 ## Screenshots
 
 ### My Assignment
 
-[My Assignment](https://github.com/flowintel/flowintel-cm/blob/main/doc/my_assignment.png?raw=true)
-
-
+![My Assignment](https://github.com/flowintel/flowintel-cm/blob/main/doc/my_assignment.png?raw=true)
 
 ### Calendar
 
-[Calendar](https://github.com/flowintel/flowintel-cm/blob/main/doc/calendar.png?raw=true)
-
-
+![Calendar](https://github.com/flowintel/flowintel-cm/blob/main/doc/calendar.png?raw=true)
 
 ### Template
 
-[Template Case](https://github.com/flowintel/flowintel-cm/blob/main/doc/template_case.png?raw=true)
-
-
+![Template Case](https://github.com/flowintel/flowintel-cm/blob/main/doc/template_case.png?raw=true)
 
 ### Importer
 
-[Importer](https://github.com/flowintel/flowintel-cm/blob/main/doc/importer.png?raw=true)
-
-
+![Importer](https://github.com/flowintel/flowintel-cm/blob/main/doc/importer.png?raw=true)
 
 ### Org
 
-[Org](https://github.com/flowintel/flowintel-cm/blob/main/doc/org.png?raw=true)
-
-
+![Org](https://github.com/flowintel/flowintel-cm/blob/main/doc/org.png?raw=true)
 
 ### Users
 
-[Users](https://github.com/flowintel/flowintel-cm/blob/main/doc/users.png?raw=true)
-
-
+![Users](https://github.com/flowintel/flowintel-cm/blob/main/doc/users.png?raw=true)
 
 ## License
 

@@ -735,6 +735,9 @@ export default {
 			<button v-else class="btn btn-secondary btn-sm" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
 				<i class="fa-solid fa-handshake-slash"></i>
 			</button>
+			<button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" :data-bs-target="'#Send_to_modal_task_'+task.id">
+				<i class="fa-solid fa-share-from-square"></i>
+			</button>
 			<a class="btn btn-primary btn-sm" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
 				<i class="fa-solid fa-pen-to-square"></i>
 			</a>
@@ -749,6 +752,56 @@ export default {
 			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task(task, false)">
 				<i class="fa-solid fa-chevron-down"></i>
 			</button>
+		</div>
+	</div>
+
+	<!-- Modal send to -->
+	<div class="modal fade" :id="'Send_to_modal_task_'+task.id" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 class="modal-title fs-5" id="Send_to_modalLabel">Send to modules</h1>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<div style="display: flex;">
+						<div>
+							<label :for="'task_modules_select_'+task.id">Modules:</label>
+							<select data-placeholder="Modules" class="select2-select form-control" :name="'task_modules_select_'+task.id" :id="'task_modules_select_'+task.id" >
+								<option value="None">--</option>
+								<template v-for="module, key in task_modules">
+									<option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
+								</template>
+							</select>
+							<div :id="'task_modules_errors_'+task.id" class="invalid-feedback"></div>
+						</div>
+						<div style="min-width: 100%;">
+							<label :for="'task_instances_select'+task.id">Instances:</label>
+							<select data-placeholder="Instances" class="select2-select form-control" multiple :name="'task_instances_select_'+task.id" :id="'task_instances_select_'+task.id" >
+								<template v-if="task_module_selected">
+									<template v-for="instance, key in task_module_selected">
+										<option :value="[[instance.name]]">[[instance.name]]</option>
+									</template>
+								</template>
+							</select>
+							<div :id="'task_instances_errors_'+task.id" class="invalid-feedback"></div>
+						</div>
+					</div>
+					<div class="row" v-if="task_instances_selected">
+						<div class="mb-3 w-50" v-for="instance, key in task_instances_selected" >
+							<label :for="'identifier_' + instance.id">Identifier for <u><i>[[instance.name]]</i></u></label>
+							<input :id="'identifier_' + instance.id" class="form-control" :value="instance.identifier" :name="'identifier_' + instance.id" type="text">
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button v-if="module_loader" class="btn btn-primary" type="button" disabled>
+						<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+						<span role="status">Loading...</span>
+					</button>
+					<button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
+				</div>
+			</div>
 		</div>
 	</div>
 
@@ -830,63 +883,6 @@ export default {
 							</div>
 						</div>
 					</div>
-					<div style="margin-right: 54px">
-						<h5>Modules</h5>
-						<div>
-							<button type="button" class="btn btn-primary" data-bs-toggle="modal" :data-bs-target="'#Send_to_modal_task_'+task.id">
-								Send to
-							</button>
-						</div>
-					</div>
-					<!-- Modal send to -->
-					<div class="modal fade" :id="'Send_to_modal_task_'+task.id" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
-						<div class="modal-dialog modal-lg">
-							<div class="modal-content">
-								<div class="modal-header">
-									<h1 class="modal-title fs-5" id="Send_to_modalLabel">Send to modules</h1>
-									<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-								</div>
-								<div class="modal-body">
-									<div style="display: flex;">
-										<div>
-											<label :for="'task_modules_select_'+task.id">Modules:</label>
-											<select data-placeholder="Modules" class="select2-select form-control" :name="'task_modules_select_'+task.id" :id="'task_modules_select_'+task.id" >
-												<option value="None">--</option>
-												<template v-for="module, key in task_modules">
-													<option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
-												</template>
-											</select>
-											<div :id="'task_modules_errors_'+task.id" class="invalid-feedback"></div>
-										</div>
-										<div style="min-width: 100%;">
-											<label :for="'task_instances_select'+task.id">Instances:</label>
-											<select data-placeholder="Instances" class="select2-select form-control" multiple :name="'task_instances_select_'+task.id" :id="'task_instances_select_'+task.id" >
-												<template v-if="task_module_selected">
-													<template v-for="instance, key in task_module_selected">
-														<option :value="[[instance.name]]">[[instance.name]]</option>
-													</template>
-												</template>
-											</select>
-											<div :id="'task_instances_errors_'+task.id" class="invalid-feedback"></div>
-										</div>
-									</div>
-									<div class="row" v-if="task_instances_selected">
-										<div class="mb-3 w-50" v-for="instance, key in task_instances_selected" >
-											<label :for="'identifier_' + instance.id">Identifier for <u><i>[[instance.name]]</i></u></label>
-											<input :id="'identifier_' + instance.id" class="form-control" :value="instance.identifier" :name="'identifier_' + instance.id" type="text">
-										</div>
-									</div>
-								</div>
-								<div class="modal-footer">
-									<button v-if="module_loader" class="btn btn-primary" type="button" disabled>
-										<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-										<span role="status">Loading...</span>
-									</button>
-									<button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
-								</div>
-							</div>
-						</div>
-					</div>
 				</div>
 			</div>
 			<hr>
@@ -910,15 +906,15 @@ export default {
 					</div>
 				</div>
 			</div>
-			<hr>
+			<hr v-if="task.url || task.instances.length">
 			<div class="d-flex w-100 justify-content-between">
 				<div>
 					<div>
 						<h5>Files</h5>
 					</div>
-					<div>
+					<div style="display: flex;">
 						<input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
-						<button class="btn btn-primary btn-sm" @click="add_file(task)" style="margin-top: 2px;">Add</button>
+						<button class="btn btn-primary btn-sm" @click="add_file(task)" style="margin-left: 2px;">Submit</button>
 					</div>
 					<br/>
 					<template v-if="task.files.length">
