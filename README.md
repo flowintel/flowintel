@@ -12,9 +12,9 @@ FlowIntel CM is an open-source platform designed to assist analysts in organizin
 - **Flexible Data Export**: Offers modules for exporting data to platforms like [MISP](https://www.misp-project.org/), [AIL](https://www.ail-project.org/), and more.
 - **Accessible API**: Exposes an API for easy interaction with FlowIntel CM's functionalities.
 
-![case-management](https://github.com/flowintel/flowintel-cm/blob/main/doc/case_fcm.png?raw=true)
+![case-management](./doc/case_index.png)
 
-![task-management](https://github.com/flowintel/flowintel-cm/blob/main/doc/task_fcm.png?raw=true)
+![task-management](./doc/case_example.png)
 
 ## Installation
 
@@ -97,27 +97,27 @@ Import a case and its tasks:
 
 ### My Assignment
 
-![My Assignment](https://github.com/flowintel/flowintel-cm/blob/main/doc/my_assignment.png?raw=true)
+![My Assignment](./doc/my_assignment.png)
 
 ### Calendar
 
-![Calendar](https://github.com/flowintel/flowintel-cm/blob/main/doc/calendar.png?raw=true)
+![Calendar](./doc/calendar.png)
 
 ### Template
 
-![Template Case](https://github.com/flowintel/flowintel-cm/blob/main/doc/template_case.png?raw=true)
+![Template Case](./doc/template_case.png)
 
 ### Importer
 
-![Importer](https://github.com/flowintel/flowintel-cm/blob/main/doc/importer.png?raw=true)
+![Importer](./doc/importer.png)
 
-### Org
+### Orgs
 
-![Org](https://github.com/flowintel/flowintel-cm/blob/main/doc/org.png?raw=true)
+![Org](./doc/orgs.png)
 
 ### Users
 
-![Users](https://github.com/flowintel/flowintel-cm/blob/main/doc/users.png?raw=true)
+![Users](./doc/users.png)
 
 ## License
 
