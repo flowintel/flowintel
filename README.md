@@ -12,35 +12,31 @@ FlowIntel CM is an open-source platform designed to assist analysts in organizin
 - **Flexible Data Export**: Offers modules for exporting data to platforms like [MISP](https://www.misp-project.org/), [AIL](https://www.ail-project.org/), and more.
 - **Accessible API**: Exposes an API for easy interaction with FlowIntel CM's functionalities.
 
-![case-management](./doc/case_index.png)
-
 ![task-management](./doc/case_example.png)
 
-## Installation
+## Quick start
 
-```
-./install.sh
-./launch.sh -i # To init the db\
-./launch.sh -l
-```
+Change the **configuration** `/conf/config.py`
 
-## 
+run the **installation** script `./install.sh`
 
-## Configuration
+**Start** the application with `./launch.sh -l`
 
-Go to `config.py` and change just like you want to.
-
-## 
-
-## Account
+#### Account
 
 - email: `admin@admin.admin`
 
 - password: `admin`
 
-After login go to `Users->New User` and create a new user with admin right. Then go back to `Users` and delete `admin` user
 
-## 
+
+## Analyzers vs Connectors
+
+![](./doc/flowintel_connections.png)
+
+Analyzers receive data from Flowintel-cm and can send data to flowintel-cm to enrich notes of cases or tasks.
+
+Connectors can only receive data from Flowintel-cm. In the case of MISP, this will result in the creation of an event with a flowintel-cm-case object for a case and a flowintel-cm-task object for a task.
 
 ## Screen
 
