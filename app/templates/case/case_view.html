@@ -19,7 +19,9 @@
         <button type="button" class="btn btn-secondary btn-sm" title="Send to connectors" data-bs-toggle="modal" data-bs-target="#Send_to_modal">
             <i class="fa-solid fa-share-from-square"></i>
         </button>
-        <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
+        <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
+            <i class="fa-solid fa-trash"></i>
+        </button>
     </div>
     <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right">
         <button v-if="cases_info.case.completed" class="btn btn-secondary btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-backward"></i></button>
@@ -48,6 +50,22 @@
         </ul>
     </div>
     <br>
+
+    <!-- Modal delete case -->
+    <div class="modal fade" id="delete_case_modal" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="delete_case_modal">Delete '[[cases_info.case.title]]' ?</h1>
+                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)"><i class="fa-solid fa-trash"></i> Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal send to -->
     <div class="modal fade" id="Send_to_modal" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">

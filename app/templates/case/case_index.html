@@ -185,7 +185,24 @@
                         <button v-if="case_loc.completed" class="btn btn-secondary btn-sm"  @click="complete_case(case_loc, case_list.cases, true)" title="Revive the case"><i class="fa-solid fa-backward"></i></button>
                         <button v-else class="btn btn-success btn-sm"  @click="complete_case(case_loc, case_list.cases, false)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
                         <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
-                        <button class="btn btn-danger btn-sm"  @click="delete_case(case_list, case_loc)" title="Delete the case"><i class="fa-solid fa-trash"></i></button>
+                        <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Modal delete case -->
+            <div class="modal fade" id="delete_case_modal" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="delete_case_modal">Delete '[[case_loc.title]]' ?</h1>
+                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button class="btn btn-danger btn-sm"  @click="delete_case(case_list, case_loc)"><i class="fa-solid fa-trash"></i> Confirm</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -278,8 +295,13 @@
                         let index = case_list.cases.indexOf(case_loc)
                         if(index > -1)
                             case_list.cases.splice(index, 1)
+
+                        var myModalEl = document.getElementById('delete_case_modal');
+                        var modal = bootstrap.Modal.getInstance(myModalEl)
+                        modal.hide();
                     }
                     display_toast(res)
+                    
                 }
 
                 async function complete_case(case_loc, cases_list, is_revived){
