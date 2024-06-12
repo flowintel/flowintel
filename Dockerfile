@@ -53,15 +53,6 @@ EOF
 
 RUN chmod +x tools/mmdc
 
-# puppeteer configuration for mmdc
-# WARNING: this is probably not recommended to use this setting in production 
-COPY <<EOF tools/puppeteer.json
-{
-    "args": [
-        "--no-sandbox"
-    ]
-}
-EOF
 
 # Change ownership of the /app directory to the appuser
 RUN chown -R flowintel-cm:flowintel-cm /home/flowintel-cm/app
@@ -82,11 +73,39 @@ RUN <<EOF
 wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 . ~/.profile
 nvm install node 20
+# needed for docx export
+npm install --prefix $HOME mermaid-filter
+# needed for PDF export
 npm install --prefix $HOME @mermaid-js/mermaid-cli
 echo "export NVM_DIR=\"$NVM_DIR\"" >> ~/.bashrc
 echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm' >> ~/.bashrc
 # this is to include the path to our fake mmdc
-echo "export PATH=\"\$PATH:$PWD/tools/\"" >> ~/.bashrc
+echo "export PATH=\"\$PATH:$HOME/node_modules/.bin\"" >> ~/.bashrc
+EOF
+
+# proxifying mmdc so that by default any tool relying
+# on it will use the proper puppeteer configuration
+RUN <<EOF
+cd $HOME/node_modules/.bin
+# we rename mmdc
+mv mmdc mmdc.orig
+# WARNING: this is probably not recommended to use this setting in production 
+cat <<eof > puppeteer.json
+{
+    "args": [
+        "--no-sandbox"
+    ]
+}
+eof
+
+# we create a proxy mmdc with proper puppeteer config
+cat <<eof > mmdc
+#!/bin/bash
+
+\$HOME/node_modules/.bin/mmdc.orig -p $(realpath $(dirname "\$0"))/puppeteer.json \$@
+eof
+
+chmod +x mmdc
 EOF
 
 # initialize flowintel-cm
