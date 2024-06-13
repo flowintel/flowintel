@@ -119,5 +119,14 @@ Import a case and its tasks:
 
 This software is licensed under [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.html)
 
+~~~
 Copyright (C) 2022-2023 CIRCL - Computer Incident Response Center Luxembourg
 Copyright (C) 2022-2023 David Cruciani
+~~~
+
+## Funding
+
+![CIRCL.lu](https://www.circl.lu/assets/images/logo.png)
+![CEF Telecom funding (D4 Project](https://www.misp-project.org/assets/images/en_cef.png)
+
+
