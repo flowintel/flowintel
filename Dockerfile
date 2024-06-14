@@ -40,20 +40,6 @@ WORKDIR /home/flowintel-cm/app
 RUN RAND=$(tr -cd "[:alnum:]" < /dev/urandom | head -c 20) && sed "s/SECRET_KEY_ENV_VAR_NOT_SET/$RAND/" conf/config.py | sponge conf/config.py
 RUN sed "s/127.0.0.1/0.0.0.0/" conf/config.py | sponge conf/config.py
 
-# prepare a fake mmdc with correct puppeteer option so that
-# it does not complain with pandoc
-RUN mkdir tools
-
-# fake mmdc script
-COPY <<EOF tools/mmdc
-#!/bin/bash
-
-\$HOME/node_modules/.bin/mmdc -p $(realpath $(dirname "\$0"))/puppeteer.json \$@
-EOF
-
-RUN chmod +x tools/mmdc
-
-
 # Change ownership of the /app directory to the appuser
 RUN chown -R flowintel-cm:flowintel-cm /home/flowintel-cm/app
 
