@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -i
 isscripted=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1`
 source env/bin/activate
 
@@ -8,10 +8,14 @@ function killscript {
     fi
 }
 
+function db_upgrade {
+    export FLASKENV="development"
+    python3 app.py -tg
+}
+
 function launch {
     export FLASKENV="development"
     killscript
-    python3 app.py -tg
     screen -dmS "fcm"
     screen -S "fcm" -X screen -t "recurring_notification" bash -c "python3 startNotif.py; read x"
     python3 app.py
@@ -54,8 +58,10 @@ if [ "$1" ]; then
         -p | --production )         production;
                                         ;;
         -t | --test )               test;
-                                        ;;                                
+                                        ;;
         -ks | --killscript )        killscript;
+                                        ;;
+        -u | --db_upgrade )         db_upgrade;
     esac
     shift
 else
