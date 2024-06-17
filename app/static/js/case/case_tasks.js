@@ -1,5 +1,5 @@
 import {display_toast} from '../toaster.js'
-const { ref, nextTick } = Vue
+const { ref, nextTick, watch } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -14,7 +14,7 @@ export default {
 	setup(props) {
 		// Variables part
 		const users_list = ref([])				// List to display in proper way users assign to this task
-		const is_mounted = ref(false)			// Boolean use to know if the app is mount to initialize mermaid
+		let is_mounted = false			// Boolean use to know if the app is mount to initialize mermaid
 		const is_exporting = ref(false)		 	// Boolean to display a spinner when exporting
 
 		const note_editor_render = ref([])		// Notes display in mermaid
@@ -98,6 +98,7 @@ export default {
 					})
 					editor_list.push(editor)
 				}
+				md.mermaid.run()
 			}
 		}
 
@@ -259,6 +260,7 @@ export default {
 				parent: targetElement
 			})
 			editor_list[key] = editor
+			md.mermaid.run()
 		}
 
 		async function export_notes(task, type, note_id){
@@ -378,6 +380,7 @@ export default {
 						editor_list[key] = editor
 					}
 				}
+				md.mermaid.run()
 			}else{
 				display_toast(res_msg)
 			}
@@ -586,24 +589,25 @@ export default {
 				}
 			}else{
 				const targetElement = document.getElementById('editor_0_' + props.task.id)
-					let editor=new Editor.EditorView({
-						doc: "\n\n",
-						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-							if (v.docChanged) {
-								note_editor_render.value[0] = editor.state.doc.toString()
-							}
-						})],
-						parent: targetElement
-					})
-					editor_list[0] = editor
+				let editor=new Editor.EditorView({
+					doc: "\n\n",
+					extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+						if (v.docChanged) {
+							note_editor_render.value[0] = editor.state.doc.toString()
+						}
+					})],
+					parent: targetElement
+				})
+				editor_list[0] = editor
+				md.mermaid.run()
 			}
 
 			// When openning a task, initialize mermaid library
 			const allCollapses = document.getElementById('collapse' + props.task.id)
 			allCollapses.addEventListener('shown.bs.collapse', event => {
-				md.mermaid.init()
+				md.mermaid.run()
 			})
-			is_mounted.value = true
+			is_mounted = true
 
 			for(let index in props.task.users){
 				users_list.value.push(props.task.users[index].first_name + " " + props.task.users[index].last_name)
@@ -613,7 +617,6 @@ export default {
 			select2_change(props.task.id)
 			// do not initialize mermaid before the page is mounted
 			if(is_mounted){
-				md.mermaid.init()
 				$('#task_modules_select_'+props.task.id).on('change.select2', function (e) {
 					if($(this).select2('data').map(item => item.id)[0] == "None"){
 						task_module_selected.value = []
@@ -623,6 +626,11 @@ export default {
 				})
 			}
 		})
+
+		watch(note_editor_render, async (newAllContent, oldAllContent) => {
+			await nextTick()
+			md.mermaid.run()
+		}, {deep: true})
 
 		return {
 			note_editor_render,

@@ -54,7 +54,7 @@
     <!-- Modal delete case -->
     <div class="modal fade" id="delete_case_modal" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
         <div class="modal-dialog modal-sm">
-            <div class="modal-content">
+            <div class="modal-content" v-if="cases_info">
                 <div class="modal-header">
                     <h1 class="modal-title fs-5" id="delete_case_modal">Delete '[[cases_info.case.title]]' ?</h1>
                     <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
