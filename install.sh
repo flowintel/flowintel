@@ -1,4 +1,4 @@
-# https://github.com/flowintel/flowintel-cm
+# https://github.com/flowintel/flowintel
 sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget
 
 # install pandoc from git 
@@ -55,7 +55,7 @@ eof
 
 chmod +x $HOME/node_modules/.bin/mmdc
 
-# initialize flowintel-cm
+# initialize flowintel
 
 # install python requirements
 python3 -m venv env

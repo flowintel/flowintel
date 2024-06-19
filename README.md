@@ -1,6 +1,6 @@
-# Flowintel-cm
+<img title="" src="./doc/flowintel_logo.png" alt="" width="149" data-align="center">
 
-FlowIntel CM is an open-source platform designed to assist analysts in organizing their cases and tasks. It features a range of tools and functionalities to enhance workflow efficiency. 
+flowIntel is an open-source platform designed to assist analysts in organizing their cases and tasks. It features a range of tools and functionalities to enhance workflow efficiency. 
 
 ## Features
 
@@ -28,15 +28,13 @@ run the **installation** script `./install.sh`
 
 - password: `admin`
 
-
-
 ## Analyzers vs Connectors
 
 ![](./doc/flowintel_connections.png)
 
-Analyzers receive data from Flowintel-cm and can send data to flowintel-cm to enrich notes of cases or tasks.
+Analyzers receive data from flowintel and can send data to flowintel to enrich notes of cases or tasks.
 
-Connectors can only receive data from Flowintel-cm. In the case of MISP, this will result in the creation of an event with a flowintel-cm-case object for a case and a flowintel-cm-task object for a task.
+Connectors can only receive data from flowintel. In the case of MISP, this will result in the creation of an event with a flowintel-cm-case object for a case and a flowintel-cm-task object for a task.
 
 ## Screen
 
@@ -119,14 +117,12 @@ Import a case and its tasks:
 
 This software is licensed under [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.html)
 
-~~~
+```
 Copyright (C) 2022-2023 CIRCL - Computer Incident Response Center Luxembourg
 Copyright (C) 2022-2023 David Cruciani
-~~~
+```
 
 ## Funding
 
 ![CIRCL.lu](https://www.circl.lu/assets/images/logo.png)
 ![CEF Telecom funding (D4 Project](https://www.misp-project.org/assets/images/en_cef.png)
-
-

@@ -7,7 +7,7 @@ import time
 
 from ..db_class.db import Case, Notification, Recurring_Notification
 
-engine = create_engine("sqlite:///instance/flowintel-cm.sqlite")
+engine = create_engine("sqlite:///instance/flowintel.sqlite")
 
 session = Session(engine)
 

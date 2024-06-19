@@ -8,11 +8,11 @@ from ..decorators import api_required
 
 api_assignment_blueprint = Blueprint('api_assignment', __name__)
 api = Api(api_assignment_blueprint,
-        title='Flowintel-cm API', 
+        title='flowintel API', 
         description='API to manage a case management instance.', 
         version='0.1', 
         default='GenericAPI', 
-        default_label='Generic Flowintel-cm API', 
+        default_label='Generic flowintel API', 
         doc='/doc'
     )
 

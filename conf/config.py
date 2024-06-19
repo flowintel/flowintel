@@ -9,7 +9,7 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel-cm.sqlite"
+    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel.sqlite"
 
     @classmethod
     def init_app(cls, app):
@@ -18,7 +18,7 @@ class DevelopmentConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel-cm-test.sqlite"
+    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel-test.sqlite"
     WTF_CSRF_ENABLED = False
 
     @classmethod

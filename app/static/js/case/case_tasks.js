@@ -524,7 +524,7 @@ export default {
 				$("#modules_errors").text("Select an item")
 				$("#modules_errors").show()
 			}else{
-				if(loc_val == "flowintel-cm"){
+				if(loc_val == "flowintel"){
 					notify_user(user_id)
 				}else{
 					const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.task.id+"/call_module_task_no_instance?module=" + loc_val + "&user_id="+user_id);
@@ -871,7 +871,7 @@ export default {
 												
 												<select data-placeholder="Modules" class="select2-select form-control" style="min-width: 100px; max-width: 300px;" :name="'modules_select_'+task.id+'_'+user.id" :id="'modules_select_'+task.id+'_'+user.id" >
 													<option value="None">--</option>
-													<option value="flowintel-cm">flowintel-cm</option>
+													<option value="flowintel">flowintel</option>
 													<template v-for="module, key in modules">
 														<option v-if="module.type == 'notify_user' && module.config.case_task == 'task'" :value="[[key]]">[[key]]</option>
 													</template>

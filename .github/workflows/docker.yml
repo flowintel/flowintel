@@ -25,4 +25,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/flowintel-cm:latest
+          tags: ghcr.io/${{ github.repository_owner }}/flowintel:latest

@@ -65,7 +65,7 @@ async def matrix(task, case, current_user, user):
                         pass
                     client.user_id = r['user_id']
         else:
-            res = await client.login(password=Config.MATRIX_PASSWORD, device_name="flowintel-cm")
+            res = await client.login(password=Config.MATRIX_PASSWORD, device_name="flowintel")
 
             # print(res)
             if not device_id:

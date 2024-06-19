@@ -19,7 +19,7 @@ def handler(task, case, current_user, user):
 
     # Destinataire et contenu de l'email
     recipient_email = user.email
-    subject = 'Flowintel-cm notification'
+    subject = 'flowintel notification'
     body = f'{current_user.first_name} {current_user.last_name} notify you on task {task.title} \n (http://{Config.ORIGIN_URL}/case/{task.case_id})'
 
     # Création du message
