@@ -942,11 +942,8 @@
                             document.getElementById("tab-case").classList.remove("active")
                             document.getElementById("tab-all").classList.remove("active")
                             await nextTick()
-                            $('.select2-select').select2({
-                                theme: 'bootstrap-5',
-                                width: '50%',
-                                closeOnSelect: false
-                            })
+
+                            initialize_select2()
                         }
                     }else if(tab_name == 'history'){
                         main_tab.value = 'history'
@@ -1176,38 +1173,41 @@
                     
                 }
 
-                onMounted(() => {
+                function initialize_select2(){
                     $('.select2-select').select2({
                         theme: 'bootstrap-5',
                         width: '50%',
                         closeOnSelect: false
                     })
 
-                    $('#taxonomies_select').on('change.select2', function (e) {
+                    $('#taxonomies_select').on('select2:select', function (e) {
                         selected_taxo.value = $(this).select2('data').map(item => item.id);
                         fetch_tags()
                     })
-                    $('#tags_select').on('change.select2', function (e) {
+                    $('#tags_select').on('select2:select', function (e) {
                         selected_tags.value = $(this).select2('data').map(item => item.id);
                         asc_desc_filter()
                     })
-                    $('#galaxies_select').on('change.select2', function (e) {
+                    $('#galaxies_select').on('select2:select', function (e) {
                         selected_galaxies.value = $(this).select2('data').map(item => item.id);
                         fetch_cluster()
                     })
-                    $('#clusters_select').on('change.select2', function (e) {
+                    $('#clusters_select').on('select2:select', function (e) {
                         selected_clusters.value = $(this).select2('data').map(item => item.id);
                         asc_desc_filter()
                     })
 
-                    $('#modules_select').on('change.select2', function (e) {
+                    $('#modules_select').on('select2:select', function (e) {
                         if($(this).select2('data').map(item => item.id)[0] == "None"){
                             module_selected.value = []
                         }else{
                             fetch_module_selected($(this).select2('data').map(item => item.id))
                         }
                     })
-                    
+                }
+
+                onMounted(() => {
+                    initialize_select2()
                 })
                 
     
