@@ -18,7 +18,7 @@
     <div class="collapse mb-4" id="collapseTemplate">
         <div class="mb-3 w-50">
             <p>Create from Template:</p>
-            <select data-placeholder="Templates" class="select2-select form-control" name="template_select" id="template_select">
+            <select data-placeholder="Templates" class="select2-select-template form-control" name="template_select" id="template_select">
                 {% for choice in form.template_select.choices %}
                     <option value="{{choice[0]}}">{{choice[1]}}</option>
                 {% endfor %}
@@ -273,6 +273,9 @@
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
                     closeOnSelect: false
+                })
+                $('.select2-select-template').select2({
+                    theme: 'bootstrap-5'
                 })
 
                 $('#taxonomies_select').on('change.select2', function (e) {
