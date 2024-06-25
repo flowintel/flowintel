@@ -237,7 +237,6 @@ class Note(db.Model):
         json_dict = {
             "uuid": self.uuid,
             "note": self.note,
-            "task_id": self.task_id,
             "task_uuid": Task.query.get(self.task_id).uuid
         }
         return json_dict

@@ -815,10 +815,8 @@ def get_all_notes(case):
         if task_notes:
             loc += f"# {task.title}\n\n"
             loc_len = len(loc)
-            cp = 0
             for note in task_notes:
                 if note["note"]:
-                    cp += 1
                     loc += f"---\n\n{note['note']}\n\n"
                 else:
                     continue
