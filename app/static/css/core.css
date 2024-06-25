@@ -129,3 +129,11 @@ legend.analyzer-select-case {
         max-width: calc((100% - 200px) / 2 - 1*var(--bs-gutter-x) * .5);
     }
 }
+
+.all-tasks-notes {
+	background-color: white;
+	border: 1px solid grey;
+	border-radius: 10px;
+	padding: 5px;
+	margin-bottom: 10px;
+}

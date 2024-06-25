@@ -523,7 +523,7 @@
 
     <template v-else-if="main_tab == 'all'">
         <template v-for="notes in all_notes">
-            <div v-html="md.render(notes)" style="background-color: white; border: 1px solid grey; border-radius: 10px; padding: 5px; margin-bottom: 10px;"></div>
+            <div class="all-tasks-notes" v-html="md.render(notes)"></div>
         </template>
     </template>
     

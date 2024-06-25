@@ -80,15 +80,16 @@
             </div>
             <div v-else-if="main_tab == 'all'">
                 <h6>Select note</h6>
-                <div class="card card-body" v-html="md.render(all_notes)"></div>
+                <template v-for="notes in all_notes">
+                    <div class="all-tasks-notes" v-html="md.render(notes)"></div>
+                </template>
             </div>
             <div v-else-if="main_tab == 'task'">
                 <h6>Select note</h6>
-                <div class="card card-body">
-                    <template v-for="note, key in task_selected.notes">
-                        <div v-html="md.render('## Note '+key+'\n'+ note.note +'\n ---')"></div>
-                    </template>
-                </div>
+                <h1 title="task's title"><u>[[task_selected.title]]</u></h1>
+                <template v-for="note, key in task_selected.notes">
+                    <div class="all-tasks-notes" v-html="md.render(note.note)"></div>
+                </template>
             </div>
         </div>
         <div class="analyse-editor-container d-none" style="margin-top: 50px;">
@@ -199,6 +200,7 @@
                             document.getElementById("tab-task-notes").classList.add("active")
                             document.getElementById("tab-case-notes").classList.remove("active")
                             document.getElementById("tab-all-notes").classList.remove("active")
+                            await nextTick()
                         }
                     }
                     md.mermaid.init()
