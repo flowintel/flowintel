@@ -27,8 +27,8 @@
             </ul>
             
             <h6>Select note</h6>
-            <div class="accordion" v-if="Object.keys(misp_modules).length" style="width: 95%">
-                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in misp_modules">
+            <div class="accordion" v-if="Object.keys(analyzer_results).length" style="width: 95%">
+                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in analyzer_results">
                     <h2 class="accordion-header">
                         <button class="accordion-button" :title="key_query" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenMain-'+key_query" aria-expanded="true" :aria-controls="'panelsStayOpenMain-'+key_query">
                             <template v-if="key_query.length > 45">
@@ -130,15 +130,15 @@ Value: [[misp_attr]]
             delimiters: ['[[', ']]'],
             setup() {
                 const main_tab = ref('visual')
-                const misp_modules = ref()
+                const analyzer_results = ref()
 
                 let editor = ""
 
                 async function fetch_result(){
-                    misp_modules.value = {}
-                    const res = await fetch("/analyzer/get_misp_modules_result")
+                    analyzer_results.value = {}
+                    const res = await fetch("/analyzer/get_analyzer_results")
                     let loc = await res.json()
-                    misp_modules.value = loc
+                    analyzer_results.value = loc
                 }
                 fetch_result()
 
@@ -173,7 +173,7 @@ Value: [[misp_attr]]
                 async function nextPage(){
                     let data_to_pass = editor.state.doc.toString().trim()
                     if(!data_to_pass){
-                        data_to_pass = misp_modules.value
+                        data_to_pass = analyzer_results.value
                     }
 
                     $('#insert_form').append(
@@ -196,7 +196,7 @@ Value: [[misp_attr]]
                 return {
                     message_list,
                     main_tab,
-                    misp_modules,
+                    analyzer_results,
                     generateCoreFormatUI,
                     parseMispObject,
                     parseMispAttr,

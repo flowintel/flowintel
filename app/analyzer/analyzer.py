@@ -35,30 +35,32 @@ def index():
 @login_required
 def recieve_result():
     """Recieve result form analyzers"""
-    if "result" in request.form:
-        session["misp_modules_res"] = request.form["result"]
+    if "results" in request.form:
+        session["analyzer_results"] = request.form["results"]
+    elif "results" in request.json:
+        session["analyzer_results"] = request.json["results"]
     else:
-        session["misp_modules_res"] = None
+        session["analyzer_results"] = None
     return render_template("analyzer/analyzer_result.html")
 
-@analyzer_blueprint.route("/get_misp_modules_result", methods=['GET', 'POST'])
+@analyzer_blueprint.route("/get_analyzer_results", methods=['GET', 'POST'])
 @login_required
-def get_misp_modules_result():
-    """Get result from misp-modules"""
-    return session.get("misp_modules_res")
+def get_analyzer_results():
+    """Get result from analyzers"""
+    return session.get("analyzer_results")
 
 
 @analyzer_blueprint.route("/nextPage", methods=['GET', 'POST'])
 @login_required
 def nextPage():
-    """Get result from misp-modules"""
+    """Enrich notes from previous selection"""
     session["note_selected"] = request.form["note_selected"]
     return render_template("analyzer/nextPage.html")
 
 @analyzer_blueprint.route("/get_note_selected", methods=['GET', 'POST'])
 @login_required
 def get_note_selected():
-    """Get result from misp-modules"""
+    """Get notes selected"""
     return session.get("note_selected")
 
 
