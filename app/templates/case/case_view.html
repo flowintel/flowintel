@@ -967,6 +967,16 @@
                             prepare_editor()
                         }else{
                             md.mermaid.init()
+                            const targetElement = document.getElementById('editor')
+                            editor = new Editor.EditorView({
+                                doc: cases_info.value.case.notes,
+                                extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                                    if (v.docChanged) {
+                                        note_editor_render.value = editor.state.doc.toString()
+                                    }
+                                })],
+                                parent: targetElement
+                            })
                         }
                     }else if(tab_name == 'all'){
                         main_tab.value = 'all'
@@ -1206,8 +1216,29 @@
                     })
                 }
 
+                async function autosave_case_note(){
+                    if (edit_mode.value){
+                        let notes_loc = editor.state.doc.toString()
+                        if(notes_loc.trim().length == 0){
+                            notes_loc = notes_loc.trim()
+                        }
+                        const res_msg = await fetch(
+                            '/case/' + cases_info.value.case.id + '/modif_note_case',{
+                                headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                method: "POST",
+                                body: JSON.stringify({"notes": notes_loc})
+                            }
+                        )
+                        if(await res_msg.status == 200){
+                            cases_info.value.case.notes = notes_loc
+                        }
+                    }
+                    setTimeout(autosave_case_note, 30000);
+                }
+
                 onMounted(() => {
                     initialize_select2()
+                    autosave_case_note()
                 })
                 
     
