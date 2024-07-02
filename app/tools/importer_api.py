@@ -18,11 +18,10 @@ api = Api(api_importer_blueprint,
 
     
 @api.route('/')
-@api.doc(description='Import a case')
+@api.doc(description='Import a case. JSON is required')
 class ImportCase(Resource):
     method_decorators = [api_required]
-    @api.doc(params={
-        })
+    # @api.doc(params={})
     def post(self):
         if request.json:
             current_user = ApiToolModel.get_user_api(request.headers["X-API-KEY"])

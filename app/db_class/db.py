@@ -722,6 +722,24 @@ class Analyzer(db.Model):
             "is_active": self.is_active
         }
         return json_dict
+    
+class Custom_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(25), index=True, unique=True)
+    color = db.Column(db.String(20), index=True)
+    icon = db.Column(db.String, index=True, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "name": self.name,
+            "color": self.color,
+            "icon": self.icon,
+            "is_active": self.is_active
+        }
+        return json_dict
+
 
 login_manager.anonymous_user = AnonymousUser
 

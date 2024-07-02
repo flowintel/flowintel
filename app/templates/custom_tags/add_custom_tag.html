@@ -1,0 +1,40 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+<form action="" method="post">
+    {{ form.hidden_tag() }}
+    <h2>Add External tool</h2>
+    <hr>
+    
+    <div class="mb-3 w-50">
+        {{form.name.label(class_="col-form-label")}}:
+        {{form.name(class_="form-control")}}
+        {% if form.name.errors %}
+            <div style="color: red;">{{form.name.errors[0] | safe}}</div>
+        {%endif%}
+    </div>
+    
+    <div class="col-6">
+        {{form.icon.label(class_="col-form-label")}}:
+        <i style="font-size: small;">(only fontawesome is supported)</i>
+        {{form.icon(class_="form-control")}}
+        {% if form.icon.errors %}
+            <div style="color: red;">{{form.icon.errors[0] | safe}}</div>
+        {%endif%}
+    </div>
+
+    <div class="mb-3 w-50">
+        {{form.color.label(class_="col-form-label")}}:
+        {{form.color(class_="form-control")}}
+        {% if form.color.errors %}
+            <div style="color: red;">{{form.color.errors[0] | safe}}</div>
+        {%endif%}
+    </div>
+    
+    {{form.submit(class='btn btn-primary')}}
+</form>
+{% endblock %}

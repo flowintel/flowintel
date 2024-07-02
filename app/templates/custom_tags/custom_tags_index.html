@@ -1,0 +1,201 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <div style="display: flex;">
+        <h2>Custom tags</h2>
+        <span style="margin-top: 4px; margin-left: 7px;">
+            <a class="btn btn-primary btn-sm" href="/custom_tags/add" title="Add a new custom tag"><i class="fa-solid fa-plus"></i></a>
+        </span>
+    </div>
+    <hr>
+
+    <div id="top"></div>
+
+    <div style="width:50%; transform: translate(50%, 0);">
+        <div>
+            <input type="search" @input="onInput" placeholder="Search Custom tags" autofocus class="form-control" style="border-radius: 5px;" />
+        </div>
+    </div>
+    <br>
+
+    <div class="row" style="margin-bottom: 100px;">
+        <div class="col" style="flex: 0 0 50%">
+            <div class="list-group">
+                <div v-for="custom_tag in custom_tag_config" style="display:flex; ">
+                    <input v-if="custom_tag.is_active || custom_tag.is_active == null" type="checkbox" style="margin-right: 5px;" checked @click="change_status(custom_tag)">
+                    <input v-else type="checkbox" style="margin-right: 5px;" @click="change_status(custom_tag)">
+                    <a class="list-group-item list-group-item-action" style="border-radius: 10px;" @click="display_config(custom_tag)">
+                        [[custom_tag.name]]
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- Right panel -->
+        <div v-if="Object.keys(current_config).length" class="side-panel-config">
+            <div class="round-button" title="close" style="margin-top: 3px;">
+                <div class="round-button-circle">
+                    <a @click="close_panel()" class="round-button">x</a>
+                </div>
+            </div>
+            <br>
+            <h4>[[ current_config.custom_tag_name ]]</h4>
+            <div class="mb-3">
+                <label :for="'form-name-'+current_config.custom_tag_id" class="form-label">Name: </label>
+                <input type="text" class="form-control" :id="'form-name-'+current_config.custom_tag_id" :value="current_config.custom_tag_name">
+                <span style="color: brown" :id="'error-name-'+current_config.custom_tag_id"></span>
+            </div>
+            <div class="mb-3">
+                <label :for="'form-color-'+current_config.custom_tag_id" class="form-label">Color: </label>
+                <input type="color" class="form-control" :id="'form-color-'+current_config.custom_tag_id" :value="current_config.custom_tag_color">
+                <span style="color: brown" :id="'error-color-'+current_config.custom_tag_id"></span>
+            </div>
+            <div class="mb-3">
+                <label :for="'form-icon-'+current_config.custom_tag_id" class="form-label">Icon: </label>
+                <input type="text" class="form-control" :id="'form-icon-'+current_config.custom_tag_id" :value="current_config.custom_tag_icon">
+                <span style="color: brown" :id="'error-icon-'+current_config.custom_tag_id"></span>
+            </div>
+            <button class="btn btn-primary" @click="change_config()">Save</button>
+            <button class="btn btn-danger" @click="delete_custom_tag()" style="margin-left: 5px;">Delete</button>
+        </div>
+    </div>
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, onMounted, nextTick } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const custom_tag_config = ref({})
+                const current_config = ref({})
+                let loc_custom_tag = {}
+
+                async function query_custom_tags(){
+                    let res = await fetch("/custom_tags/list")
+                    let loc = await res.json()
+                    custom_tag_config.value = loc
+                    loc_custom_tag = custom_tag_config.value
+                }
+                query_custom_tags()
+
+                async function display_config(custom_tag){
+                    current_config.value = {}
+                    current_config.value["custom_tag_id"] = custom_tag.id
+                    current_config.value["custom_tag_name"] = custom_tag.name
+                    current_config.value["custom_tag_color"] = custom_tag.color
+                    current_config.value["custom_tag_icon"] = custom_tag.icon
+                }
+
+                function close_panel(){
+                    current_config.value = {}
+                }
+
+                async function change_config(){
+                    $("#error-name-"+current_config.value["custom_tag_id"]).text("")
+                    $("#error-color-"+current_config.value["custom_tag_id"]).text("")
+                    $("#error-icon-"+current_config.value["custom_tag_id"]).text("")
+                    let result_dict = {}
+                    result_dict["custom_tag_id"] = current_config.value["custom_tag_id"]
+
+                    let loc_name = $("#form-name-"+current_config.value["custom_tag_id"]).val()
+                    if(!loc_name){
+                        $("#error-name-"+current_config.value["custom_tag_id"]).text('Cannot be empty')
+                        return
+                    }
+                    let loc_color = $("#form-color-"+current_config.value["custom_tag_id"]).val()
+                    if(!loc_color){
+                        $("#error-color-"+current_config.value["custom_tag_id"]).text('Cannot be empty')
+                        return
+                    }
+                    let loc_icon = $("#form-icon-"+current_config.value["custom_tag_id"]).val()
+
+                    // Update result_dict and current_config
+                    result_dict["custom_tag_name"] = loc_name
+                    current_config.value["custom_tag_name"] = loc_name
+
+                    result_dict["custom_tag_color"] = loc_color
+                    current_config.value["custom_tag_color"] = loc_color
+
+                    result_dict["custom_tag_icon"] = loc_icon
+                    current_config.value["custom_tag_icon"] = loc_icon
+                    
+                    // Update list of custom tags with new value for current custom tag
+                    for(let i in custom_tag_config.value){
+                        if(custom_tag_config.value[i].id == current_config.value["custom_tag_id"] ){
+                            custom_tag_config.value[i].name = loc_name
+                            custom_tag_config.value[i].color = loc_color
+                            custom_tag_config.value[i].icon = loc_icon
+                        }
+                    }
+
+                    const res = await fetch('/custom_tags/change_config',{
+                                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                        method: "POST",
+                                        body: JSON.stringify({
+                                            result_dict
+                                        })
+                                    })
+                    display_toast(res)
+                }
+
+                async function change_status(custom_tag){
+                    let res = await fetch("/custom_tags/change_status?custom_tag_id="+custom_tag.id)
+                    if(await res.status_code == 200){
+                        custom_tag.is_active = !custom_tag.is_active
+                    }
+                    display_toast(res)
+                }
+
+                function onInput(e){
+                    custom_tag_config.value = []
+                    if(e.target.value){
+                        custom_tag_config.value = loc_custom_tag.filter((custom_tag) => {
+                            return custom_tag.name.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                    }else{
+                        custom_tag_config.value = loc_custom_tag
+                    }
+                }
+
+                async function delete_custom_tag(){
+                    let loc_id = current_config.value["custom_tag_id"]
+                    let res = await fetch("/custom_tags/"+loc_id+"/delete_custom_tag")
+                    if(await res.status_code == 200){
+                        current_config.value = {}
+                        let index 
+                        for(let i in custom_tag_config.value){
+                            if(custom_tag_config.value[i].id == loc_id){
+                                index = i
+                                break
+                            }
+                        }
+                        delete custom_tag_config.value[index]
+                    }
+                    display_toast(res)
+                }
+
+
+                return {
+                    message_list,
+                    custom_tag_config,
+                    current_config,
+                    display_config,
+                    close_panel,
+                    change_config,
+                    change_status,
+                    onInput,
+                    delete_custom_tag
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
+{% endblock %}

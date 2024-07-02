@@ -42,6 +42,7 @@ def create_app():
     from .my_assignment.my_assignment import my_assignment_blueprint
     from .connectors.connectors import connector_blueprint
     from .analyzer.analyzer import analyzer_blueprint
+    from .custom_tags.custom_tags import custom_tags_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -53,6 +54,7 @@ def create_app():
     app.register_blueprint(connector_blueprint, url_prefix="/connectors")
     app.register_blueprint(analyzer_blueprint, url_prefix="/analyzer")
     csrf.exempt(analyzer_blueprint)
+    app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
 
 
     from .case.case_api import api_case_blueprint
