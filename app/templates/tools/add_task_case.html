@@ -64,6 +64,16 @@
                 </div>
             </div>
             <hr>
+            
+            <h5>Custom Tags</h5>
+            <div v-if="custom_tags" class="col-6">
+                <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
+                    <template v-for="c_t, key in custom_tags">
+                        <option :value="[[c_t.id]]">[[c_t.name]]</option>
+                    </template>
+                </select>
+            </div>
+            <hr>
 
             <h5>Taxonomies:</h5>
             <div style="display: flex;">
@@ -131,6 +141,8 @@
             const selected_galaxies = ref([])
             const connectors = ref()
 
+            const custom_tags = ref([])
+
             async function fetchConnectors(){
                 const res = await fetch("/case/get_connectors")
                 if(await res.status==400 ){
@@ -195,10 +207,21 @@
                 }
             }
 
+            async function fetch_custom_tags(){
+                const res = await fetch("/custom_tags/list")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    custom_tags.value = loc
+                }
+            }
+
             onMounted(() => {
+                fetch_custom_tags()
+
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
-                    width: '50%',
                     closeOnSelect: false
                 })
 
@@ -220,6 +243,7 @@
                 tags_list,
                 cluster_list,
                 connectors,
+                custom_tags,
                 hide_task_creation
             }
         }

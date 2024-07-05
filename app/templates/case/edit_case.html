@@ -65,13 +65,23 @@
                 </div>
             </div>
             <hr>
+
+            <h5>Custom Tags</h5>
+            <div v-if="custom_tags" class="col-6">
+                <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
+                    <template v-for="c_t in custom_tags">
+                        <option :value="[[c_t.id]]" :selected="check_custom_tag_exist(c_t.name)">[[c_t.name]]</option>
+                    </template>
+                </select>
+            </div>
+            <hr>
             
             <h5>Taxonomies:</h5>
             <div style="display: flex;">
                 <template v-if="taxonomies">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                         <template v-for="taxonomy in taxonomies">
-                            <option :value="[[taxonomy.name]]" :selected="check_taxo_exist(taxonomy.name)" selected>[[taxonomy.name]]</option>
+                            <option :value="[[taxonomy.name]]" :selected="check_taxo_exist(taxonomy.name)">[[taxonomy.name]]</option>
                         </template>
                     </select>
                 </template>
@@ -81,7 +91,7 @@
                         <template v-for="(tags, taxo) in tags_list">
                             <optgroup :label="[[taxo]]">
                                 <template v-for="tag in tags">
-                                    <option :value="[[tag.name]]" :title="tag.description" :selected="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
+                                    <option :value="[[tag.name]]" :title="tag.description" :selected="check_tag_exist(tag.name)">[[tag.name]]</option>
                                 </template>
                             </optgroup>
                         </template>
@@ -95,7 +105,7 @@
                 <template v-if="galaxies">
                     <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
                         <template v-for="galaxy, key in galaxies">
-                            <option :value="[[galaxy.name]]" :selected="check_galaxy_exist(galaxy.name)" selected>[[galaxy.name]]</option>
+                            <option :value="[[galaxy.name]]" :selected="check_galaxy_exist(galaxy.name)">[[galaxy.name]]</option>
                         </template>
                     </select>
                 </template>
@@ -105,7 +115,7 @@
                         <template v-for="(clusters, galaxy) in cluster_list">
                             <optgroup :label="[[galaxy]]">
                                 <template v-for="cluster in clusters">
-                                    <option :selected="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description" selected>[[cluster.tag]]</option>
+                                    <option :selected="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
                                 </template>
                             </optgroup>
                         </template>
@@ -137,6 +147,9 @@
             const clusters_case = ref([])
             const selected_taxo = ref([])
             const selected_galaxies = ref([])
+
+            const custom_tags = ref([])
+            const custom_tags_case = ref([])
             
             const connectors = ref([])
             const connectors_case = ref([])
@@ -152,7 +165,7 @@
                     taxonomies.value = loc["taxonomies"]
                 }
             }
-            fetch_taxonomies()
+            // fetch_taxonomies()
 
             async function fetch_galaxies(){
                 const res = await fetch("/case/get_galaxies")
@@ -164,6 +177,17 @@
                 }
             }
             fetch_galaxies()
+
+            async function fetch_custom_tags(){
+                const res = await fetch("/custom_tags/list")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    custom_tags.value = loc
+                }
+            }
+            
 
             async function fetch_taxonomies_case(){
                 const res = await fetch("/case/get_taxonomies_case/" +window.location.pathname.split("/").slice(-1))
@@ -194,6 +218,19 @@
                 }
             }
             fetch_galaxies_case()
+
+            async function fetch_custom_tags_case(){
+                const res = await fetch("/case/get_custom_tags_case/" +window.location.pathname.split("/").slice(-1))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    custom_tags_case.value = loc["custom_tags"]
+                }
+            }
+            fetch_custom_tags_case()
+
+
 
             async function fetch_tags(s_taxo){
                 const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(s_taxo))
@@ -278,6 +315,11 @@
                     return connector === field
                 })
             }
+            function check_custom_tag_exist(custom_tag){
+                return custom_tags_case.value.some(function(field){
+                    return custom_tag === field
+                })
+            }
             
 
             onMounted(() => {
@@ -285,6 +327,8 @@
                     theme: 'bootstrap-5',
                     closeOnSelect: false
                 })
+                fetch_taxonomies()
+                fetch_custom_tags()
 
                 $('#taxonomies_select').on('change.select2', function (e) {
                     selected_taxo.value = $(this).select2('data').map(item => item.id);
@@ -306,6 +350,7 @@
                 galaxies,
                 tags_list,
                 cluster_list,
+                custom_tags,
                 connectors,
                 connectors_selected,
                 connectors_value,
@@ -313,7 +358,8 @@
                 check_galaxy_exist,
                 check_tag_exist,
                 check_cluster_exist,
-                check_connectors_exist
+                check_connectors_exist,
+                check_custom_tag_exist
             }
         }
     }).mount('#main-container')

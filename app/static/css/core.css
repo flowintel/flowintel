@@ -25,8 +25,9 @@ span#goTop, span#project-version{
 	border-top-right-radius: 3px;
 	border-bottom-right-radius: 3px;
 	margin-right: 2px;
+  margin-bottom: 4px;
 	border-top-left-radius: 3px;
-  	border-bottom-left-radius: 3px;
+  border-bottom-left-radius: 3px;
 	display: inline-block;
 	padding: 2px 4px;
 	font-size: 12px;

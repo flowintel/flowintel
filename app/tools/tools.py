@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from . import common_template_core as CommonModel
 from . import task_template_core as TaskModel
+from ..custom_tags import custom_tags_core as CustomModel
 from ..decorators import editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
 from ..utils.utils import form_to_dict, MODULES_CONFIG, get_modules_list
@@ -46,12 +47,14 @@ def create_case_template():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
         connector_list = request.form.getlist("connectors_select")
+        custom_tags_list = request.form.getlist("custom_select")
         if CommonModel.check_tag(tag_list):
             if CommonModel.check_cluster(cluster_list):
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
                 form_dict["connectors"] = connector_list
+                form_dict["custom_tags"] = custom_tags_list
                 template = ToolsModel.create_case_template(form_dict)
                 flash("Template created", "success")
                 return redirect(f"/tools/template/case/{template.id}")
@@ -71,12 +74,14 @@ def create_task_template():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
         connector_list = request.form.getlist("connectors_select")
+        custom_tags_list = request.form.getlist("custom_select")
         if CommonModel.check_tag(tag_list):
             if CommonModel.check_cluster(cluster_list):
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
                 form_dict["connectors"] = connector_list
+                form_dict["custom_tags"] = custom_tags_list
                 template = TaskModel.add_task_template_core(form_dict)
                 flash("Template created", "success")
                 return redirect(f"/tools/template/tasks")
@@ -110,12 +115,14 @@ def add_task_case(cid):
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
         connector_list = request.form.getlist("connectors_select")
+        custom_tags_list = request.form.getlist("custom_select")
         if CommonModel.check_tag(tag_list):
             if CommonModel.check_cluster(cluster_list):
                 form_dict = form_to_dict(form)
                 form_dict["tags"] = tag_list
                 form_dict["clusters"] = cluster_list
                 form_dict["connectors"] = connector_list
+                form_dict["custom_tags"] = custom_tags_list
                 ToolsModel.add_task_case_template(form_dict, cid)
                 flash("Template added", "success")
                 return redirect(f"/tools/template/case/{cid}")
@@ -137,12 +144,14 @@ def edit_case(cid):
             tag_list = request.form.getlist("tags_select")
             cluster_list = request.form.getlist("clusters_select")
             connector_list = request.form.getlist("connectors_select")
+            custom_tag_list = request.form.getlist("custom_select")
             if CommonModel.check_tag(tag_list):
                 if CommonModel.check_cluster(cluster_list):
                     form_dict = form_to_dict(form)
                     form_dict["tags"] = tag_list
                     form_dict["clusters"] = cluster_list
                     form_dict["connectors"] = connector_list
+                    form_dict["custom_tags"] = custom_tag_list
                     template = ToolsModel.edit_case_template(form_dict, cid)
                     flash("Template edited", "success")
                     return redirect(f"/tools/template/case/{cid}")
@@ -169,12 +178,14 @@ def edit_task(tid):
             tag_list = request.form.getlist("tags_select")
             cluster_list = request.form.getlist("clusters_select")
             connector_list = request.form.getlist("connectors_select")
+            custom_tag_list = request.form.getlist("custom_select")
             if CommonModel.check_tag(tag_list):
                 if CommonModel.check_cluster(cluster_list):
                     form_dict = form_to_dict(form)
                     form_dict["tags"] = tag_list
                     form_dict["clusters"] = cluster_list
                     form_dict["connectors"] = connector_list
+                    form_dict["custom_tags"] = custom_tag_list
                     template = TaskModel.edit_task_template(form_dict, tid)
                     flash("Template edited", "success")
                     return redirect(f"/tools/template/tasks")
@@ -519,6 +530,24 @@ def change_order(cid, tid):
         return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
+
+@tools_blueprint.route("/template/get_custom_tags_case/<cid>", methods=['GET'])
+@login_required
+def get_custom_tags_case(cid):
+    """Get all custom tags for a case template"""
+    case = CommonModel.get_case_template(cid)
+    if case:
+        return {"custom_tags": [CustomModel.get_custom_tag(c_t.custom_tag_id).name for c_t in CommonModel.get_case_custom_tags(case.id)]}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+@tools_blueprint.route("/template/get_custom_tags_task/<cid>", methods=['GET'])
+@login_required
+def get_custom_tags_task(cid):
+    """Get all custom tags for a task template"""
+    task = CommonModel.get_task_template(cid)
+    if task:
+        return {"custom_tags": [CustomModel.get_custom_tag(c_t.custom_tag_id).name for c_t in CommonModel.get_task_custom_tags(task.id)]}, 200
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 ############
 # Importer #

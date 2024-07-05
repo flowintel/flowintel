@@ -112,7 +112,10 @@ class Case(db.Model):
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id==self.id)\
                                                     .where(Cluster.id==Case_Galaxy_Tags.cluster_id).all()]
         json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Case_Connector_Instance, Case_Connector_Instance.instance_id==Connector_Instance.id)\
-                                                        .where(Case_Connector_Instance.case_id==self.id).all()]
+                                                    .where(Case_Connector_Instance.case_id==self.id).all()]
+        
+        json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                                                    .where(Case_Custom_Tags.case_id==self.id).all()]
 
         return json_dict
     
@@ -193,6 +196,8 @@ class Task(db.Model):
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
         json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Task_Connector_Instance, Task_Connector_Instance.instance_id==Connector_Instance.id)\
                                                         .where(Task_Connector_Instance.task_id==self.id).all()]
+        json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                                                    .where(Task_Custom_Tags.task_id==self.id).all()]
 
         return json_dict
     
@@ -381,6 +386,8 @@ class Case_Template(db.Model):
                                                     .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
         json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Case_Template_Connector_Instance, Case_Template_Connector_Instance.instance_id==Connector_Instance.id)\
                                                         .where(Case_Template_Connector_Instance.template_id==self.id).all()]
+        json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                                                    .where(Case_Template_Custom_Tags.case_template_id==self.id).all()]
 
 
         return json_dict
@@ -423,6 +430,8 @@ class Task_Template(db.Model):
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
         json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Task_Template_Connector_Instance, Task_Template_Connector_Instance.instance_id==Connector_Instance.id)\
                                                         .where(Task_Template_Connector_Instance.template_id==self.id).all()]
+        json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Task_Template_Custom_Tags, Task_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                                                    .where(Task_Template_Custom_Tags.task_template_id==self.id).all()]
 
         return json_dict
     
@@ -739,7 +748,26 @@ class Custom_Tags(db.Model):
             "is_active": self.is_active
         }
         return json_dict
+        
+class Case_Custom_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    custom_tag_id = db.Column(db.Integer, index=True)
 
+class Task_Custom_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, index=True)
+    custom_tag_id = db.Column(db.Integer, index=True)
+
+class Case_Template_Custom_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_template_id = db.Column(db.Integer, index=True)
+    custom_tag_id = db.Column(db.Integer, index=True)
+
+class Task_Template_Custom_Tags(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_template_id = db.Column(db.Integer, index=True)
+    custom_tag_id = db.Column(db.Integer, index=True)
 
 login_manager.anonymous_user = AnonymousUser
 

@@ -9,6 +9,7 @@ from . import task_core as TaskModel
 from ..db_class.db import Task_Template, Case_Template
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
+from ..custom_tags import custom_tags_core as CustomModel
 
 case_blueprint = Blueprint(
     'case',
@@ -46,6 +47,7 @@ def create_case():
         tag_list = request.form.getlist("tags_select")
         cluster_list = request.form.getlist("clusters_select")
         connector_list = request.form.getlist("connectors_select")
+        custom_tags_list = request.form.getlist("custom_select")
         if CommonModel.check_tag(tag_list):
             if CommonModel.check_cluster(cluster_list):
                 identifier_dict = dict()
@@ -57,6 +59,7 @@ def create_case():
                 form_dict["clusters"] = cluster_list
                 form_dict["connectors"] = connector_list
                 form_dict["identifier"] = identifier_dict
+                form_dict["custom_tags"] = custom_tags_list
                 case = CaseModel.create_case(form_dict, current_user)
                 flash("Case created", "success")
                 return redirect(f"/case/{case.id}")
@@ -92,6 +95,7 @@ def edit_case(cid):
                 tag_list = request.form.getlist("tags_select")
                 cluster_list = request.form.getlist("clusters_select")
                 connector_list = request.form.getlist("connectors_select")
+                custom_tag_list = request.form.getlist("custom_select")
                 if CommonModel.check_tag(tag_list):
                     if CommonModel.check_cluster(cluster_list):
                         identifier_dict = dict()
@@ -103,6 +107,7 @@ def edit_case(cid):
                         form_dict["clusters"] = cluster_list
                         form_dict["connectors"] = connector_list
                         form_dict["identifier"] = identifier_dict
+                        form_dict["custom_tags"] = custom_tag_list
                         CaseModel.edit_case(form_dict, cid, current_user)
                         flash("Case edited", "success")
                         return redirect(f"/case/{cid}")
@@ -725,3 +730,12 @@ def get_orgs():
     """Get all orgs"""
     orgs = CommonModel.get_orgs()
     return [org.to_json() for org in orgs], 200
+
+@case_blueprint.route("/get_custom_tags_case/<cid>", methods=['GET'])
+@login_required
+def get_custom_tags_case(cid):
+    """Get all custom tags for a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        return {"custom_tags": [CustomModel.get_custom_tag(c_t.custom_tag_id).name for c_t in CommonModel.get_case_custom_tags(case.id)]}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404

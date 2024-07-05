@@ -117,6 +117,19 @@
         </div>
     </div>
 
+    {% if case.custom_tags %}
+        <div style="display: flex; margin-bottom: 5px;">
+            {% for tag in case.custom_tags %}
+                <div class="tag" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
+                    {% if tag.icon %}
+                        <i class="{{tag.icon}}"></i>
+                    {%endif%}
+                    {{tag.name}}
+                </div>
+            {%endfor%}
+        </div>
+    {%endif%}
+
     {% if case.tags %}
         <div style="display: flex;">
             {% for tag in case.tags%}

@@ -58,6 +58,27 @@
             <div class="accordion mt-4">
                 <div class="accordion-item">
                     <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCustom" aria-expanded="false" aria-controls="collapseCustom">
+                            Custom Tags <i class="fa fa-question" title="Add custom tags to the case" style="margin-left: 5px;"></i>
+                        </button>
+                    </h2>
+                    <div id="collapseCustom" class="accordion-collapse collapse">
+                        <div class="accordion-body">
+                            <div v-if="custom_tags" class="col-6">
+                                <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
+                                    <template v-for="c_t, key in custom_tags">
+                                        <option :value="[[c_t.id]]">[[c_t.name]]</option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion mt-4">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
                             Taxonomies <i class="fa fa-question" title="Add taxonomies to the case" style="margin-left: 5px;"></i>
                         </button>
@@ -157,6 +178,8 @@
 
             const connectors = ref()
 
+            const custom_tags = ref([])
+
             async function fetchConnectors(){
                 const res = await fetch("/case/get_connectors")
                 if(await res.status==400 ){
@@ -211,6 +234,17 @@
                     $('#clusters_select').trigger('change');
                 }
             }
+
+            async function fetch_custom_tags(){
+                const res = await fetch("/custom_tags/list")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    custom_tags.value = loc
+                }
+            }
+            fetch_custom_tags()
             
 
             onMounted(() => {
@@ -237,6 +271,7 @@
                 tags_list,
                 cluster_list,
                 connectors,
+                custom_tags
             }
         }
     }).mount('#main-container')

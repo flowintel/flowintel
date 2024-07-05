@@ -51,8 +51,18 @@
                     </select>
                 </template>
             </div>
-
             <hr>
+
+            <h5>Custom Tags</h5>
+            <div v-if="custom_tags" class="col-6">
+                <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
+                    <template v-for="c_t in custom_tags">
+                        <option :value="[[c_t.id]]" :selected="check_custom_tag_exist(c_t.name)">[[c_t.name]]</option>
+                    </template>
+                </select>
+            </div>
+            <hr>
+
             <h5>Taxonomies:</h5>
             <div style="display: flex;">
                 <template v-if="taxonomies">
@@ -131,6 +141,9 @@
             const connectors = ref([])
             const connectors_task = ref([])
 
+            const custom_tags = ref([])
+            const custom_tags_task = ref([])
+
             async function fetch_taxonomies(){
                 const res = await fetch("/case/get_taxonomies")
                 if(await res.status==400 ){
@@ -152,6 +165,17 @@
                 }
             }
             fetch_galaxies()
+
+            async function fetch_custom_tags(){
+                const res = await fetch("/custom_tags/list")
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    custom_tags.value = loc
+                }
+            }
+            fetch_custom_tags()
 
             async function fetch_taxonomies_task(){
                 const res = await fetch("/tools/template/get_taxonomies_task/" +window.location.pathname.split("/").slice(-1))
@@ -227,6 +251,16 @@
                     connectors_task.value = loc["connectors"]
                 }
             }
+
+            async function fetch_custom_tags_task(){
+                const res = await fetch("/tools/template/get_custom_tags_task/" +window.location.pathname.split("/").slice(-1))
+                if(await res.status==400 ){
+                    display_toast(res)
+                }else{
+                    let loc = await res.json()
+                    custom_tags_task.value = loc["custom_tags"]
+                }
+            }
             
 
             function check_taxo_exist(taxo){
@@ -254,10 +288,17 @@
                     return connector === field && $('#connectors_select').trigger('change')
                 })
             }
+            function check_custom_tag_exist(custom_tag){
+                return custom_tags_task.value.some(function(field){
+                    return custom_tag === field
+                })
+            }
             
 
             onMounted(() => {
                 fetchConnectorsTask()
+                fetch_custom_tags_task()
+
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
                     closeOnSelect: false
@@ -281,11 +322,13 @@
                 tags_list,
                 cluster_list,
                 connectors,
+                custom_tags,
                 check_taxo_exist,
                 check_galaxy_exist,
                 check_tag_exist,
                 check_cluster_exist,
-                check_connectors_exist
+                check_connectors_exist,
+                check_custom_tag_exist
             }
         }
     }).mount('#main-container')

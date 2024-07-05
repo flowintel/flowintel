@@ -134,6 +134,16 @@ def create_case_template(form_dict):
         db.session.add(case_instance)
         db.session.commit()
 
+    for custom_tag_id in form_dict["custom_tags"]:
+        custom_tag = Custom_Tags.query.get(custom_tag_id)
+        if custom_tag:
+            case_custom_tag = Case_Template_Custom_Tags(
+                case_template_id=case_template.id,
+                custom_tag_id=custom_tag.id
+            )
+            db.session.add(case_custom_tag)
+            db.session.commit()
+
     cp = 1
     for tid in form_dict["tasks"]:
         case_task_template = Case_Task_Template(
@@ -238,6 +248,21 @@ def edit_case_template(form_dict, cid):
             Case_Template_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
+    # Custom tags
+    case_custom_tags_db = CommonModel.get_case_custom_tags(template.id)
+    for custom_tag in form_dict["custom_tags"]:
+        if not custom_tag in case_custom_tags_db:
+            c_t = Case_Template_Custom_Tags(
+                case_template_id=template.id,
+                custom_tag_id=custom_tag
+            )
+            db.session.add(c_t)
+            db.session.commit()
+    for c_t_db in case_custom_tags_db:
+        if not c_t_db in form_dict["custom_tags"]:
+            Case_Template_Custom_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
     db.session.commit()
 
 
@@ -249,6 +274,7 @@ def delete_case_template(cid):
     Case_Template_Tags.query.filter_by(case_id=cid).delete() 
     Case_Template_Galaxy_Tags.query.filter_by(template_id=cid).delete() 
     Case_Template_Connector_Instance.query.filter_by(template_id=cid).delete()
+    Case_Template_Custom_Tags.query.filter_by(case_template_id=cid).delete()
     template = CommonModel.get_case_template(cid)
     db.session.delete(template)
     db.session.commit()
@@ -307,6 +333,15 @@ def create_case_from_template(cid, case_title_fork, user):
             instance_id=c_t.instance_id
         )
         db.session.add(case_connector)
+        db.session.commit()
+    
+    ## Case Custom Tags
+    for c_t in CommonModel.get_case_custom_tags(case_template.id):
+        case_custom_tags = Case_Custom_Tags(
+            case_id=case.id,
+            custom_tag_id=c_t.custom_tag_id
+        )
+        db.session.add(case_custom_tags)
         db.session.commit()
 
     # Add the current user's org to the case
@@ -371,6 +406,15 @@ def create_case_from_template(cid, case_title_fork, user):
                 instance_id=t_c.instance_id
             )
             db.session.add(task_connector)
+            db.session.commit()
+
+        ## Task Custom Tags
+        for c_t in CommonModel.get_task_custom_tags(task.id):
+            task_custom_tags = Task_Custom_Tags(
+                task_id=t.id,
+                custom_tag_id=c_t.custom_tag_id
+            )
+            db.session.add(task_custom_tags)
             db.session.commit()
     
     return case

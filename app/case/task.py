@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 from . import case_core as CaseModel
 from . import common_core as CommonModel
 from . import task_core as TaskModel
+from ..custom_tags import custom_tags_core as CustomModel
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
 
@@ -31,6 +32,7 @@ def create_task(cid):
                 tag_list = request.form.getlist("tags_select")
                 cluster_list = request.form.getlist("clusters_select")
                 connector_list = request.form.getlist("connectors_select")
+                custom_tags_list = request.form.getlist("custom_select")
                 if CommonModel.check_tag(tag_list):
                     if CommonModel.check_cluster(cluster_list):
                         identifier_dict = dict()
@@ -42,6 +44,7 @@ def create_task(cid):
                         form_dict["clusters"] = cluster_list
                         form_dict["connectors"] = connector_list
                         form_dict["identifier"] = identifier_dict
+                        form_dict["custom_tags"] = custom_tags_list
                         if TaskModel.create_task(form_dict, cid, current_user):
                             flash("Task created", "success")
                         else:
@@ -66,6 +69,7 @@ def edit_task(cid, tid):
                 tag_list = request.form.getlist("tags_select")
                 cluster_list = request.form.getlist("clusters_select")
                 connector_list = request.form.getlist("connectors_select")
+                custom_tag_list = request.form.getlist("custom_select")
                 if CommonModel.check_tag(tag_list):
                     if CommonModel.check_cluster(cluster_list):
                         identifier_dict = dict()
@@ -77,6 +81,7 @@ def edit_task(cid, tid):
                         form_dict["clusters"] = cluster_list
                         form_dict["connectors"] = connector_list
                         form_dict["identifier"] = identifier_dict
+                        form_dict["custom_tags"] = custom_tag_list
                         TaskModel.edit_task_core(form_dict, tid, current_user)
                         flash("Task edited", "success")
                         return redirect(f"/case/{cid}")
@@ -606,4 +611,13 @@ def call_module_task_no_instance(cid, tid):
             res["toast_class"] = "danger-subtle"
             return jsonify(res), 400
         return {"message": "Module used", 'toast_class': "success-subtle"}, 200
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/get_custom_tags_task/<tid>", methods=['GET'])
+@login_required
+def get_custom_tags_task(tid):
+    """Get all custom tags for a task"""
+    task = CommonModel.get_task(tid)
+    if task:
+        return {"custom_tags": [CustomModel.get_custom_tag(c_t.custom_tag_id).name for c_t in CommonModel.get_task_custom_tags(task.id)]}, 200
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404

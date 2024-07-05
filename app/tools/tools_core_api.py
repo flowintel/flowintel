@@ -35,6 +35,13 @@ def common_creation(data_dict):
     else:
         data_dict["identifier"] = []
 
+    if "custom_tags" in data_dict:
+        for custom_tag in list(data_dict["custom_tags"].keys()):
+            if not CommonModel.check_custom_tags(custom_tag):
+                return {"message": f"Custom tag '{custom_tag}' doesn't exist"}
+    else:
+        data_dict["custom_tags"] = []
+
     return data_dict
 
 def common_edit(data_dict, case_task):
@@ -71,6 +78,15 @@ def common_edit(data_dict, case_task):
                 return {"message": f"connector '{connector}' doesn't exist"}
     else:
         data_dict["identifier"] = {}
+
+    if "custom_tags" in data_dict:
+        for custom_tag in list(data_dict["custom_tags"].keys()):
+            if not CommonModel.check_custom_tags(custom_tag):
+                return {"message": f"Custom tag '{custom_tag}' doesn't exist"}
+    elif case_task.to_json()["custom_tags"]:
+        data_dict["custom_tags"] = case_task.to_json()["custom_tags"]
+    else:
+        data_dict["custom_tags"] = []
 
     return data_dict
 

@@ -126,6 +126,16 @@ def add_task_template_core(form_dict):
         )
         db.session.add(task_instance)
         db.session.commit()
+
+    for custom_tag_id in form_dict["custom_tags"]:
+        custom_tag = Custom_Tags.query.get(custom_tag_id)
+        if custom_tag:
+            task_custom_tag = Task_Template_Custom_Tags(
+                task_template_id=template.id,
+                custom_tag_id=custom_tag.id
+            )
+            db.session.add(task_custom_tag)
+            db.session.commit()
     
     return template
 
@@ -190,6 +200,22 @@ def edit_task_template(form_dict, tid):
             Task_Template_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
+    # Custom tags
+    task_custom_tags_db = CommonModel.get_task_custom_tags(template.id)
+    for custom_tag in form_dict["custom_tags"]:
+        if not custom_tag in task_custom_tags_db:
+            c_t = Task_Template_Custom_Tags(
+                task_template_id=template.id,
+                custom_tag_id=custom_tag
+            )
+            db.session.add(c_t)
+            db.session.commit()
+    for c_t_db in task_custom_tags_db:
+        if not c_t_db in form_dict["custom_tags"]:
+            Task_Template_Custom_Tags.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
+
     db.session.commit()
 
 
@@ -201,6 +227,7 @@ def delete_task_template(tid):
     Task_Template_Tags.query.filter_by(task_id=tid).delete()
     Task_Template_Galaxy_Tags.query.filter_by(template_id=tid).delete()
     Task_Template_Connector_Instance.query.filter_by(template_id=tid).delete()
+    Task_Template_Custom_Tags.query.filter_by(task_template_id=tid).delete()
     Note_Template.query.filter_by(template_id=tid)
     template = CommonModel.get_task_template(tid)
     db.session.delete(template)

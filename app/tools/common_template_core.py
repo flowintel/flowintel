@@ -2,6 +2,7 @@ from flask import flash
 from ..db_class.db import *
 from ..utils import utils
 from sqlalchemy import func
+from ..custom_tags import custom_tags_core as CustomModel
 
 def get_all_case_templates():
     return Case_Template.query.all()
@@ -80,6 +81,12 @@ def get_case_connectors(cid):
 def get_task_connectors(tid):
     return Task_Template_Connector_Instance.query.filter_by(template_id=tid).all()
 
+def get_case_custom_tags(case_id):
+    return Case_Template_Custom_Tags.query.filter_by(case_template_id=case_id).all()
+
+def get_task_custom_tags(task_id):
+    return Task_Template_Custom_Tags.query.filter_by(task_template_id=task_id).all()
+
 
 
 def check_tag(tag_list):
@@ -107,4 +114,14 @@ def check_connector(connector_list):
             flag = False
     if not flag:
         flash("Connector doesn't exist")
+    return flag
+
+def check_custom_tags(tags_list):
+    """Check if a list of custom tags exist"""
+    flag = True
+    for tag in tags_list:
+        if not CustomModel.get_custom_tag_by_name(tag):
+            flag = False
+    if not flag:
+        flash("Custom tag doesn't exist")
     return flag

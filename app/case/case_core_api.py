@@ -87,6 +87,13 @@ def verif_create_case_task(data_dict, isCase):
     else:
         data_dict["identifier"] = []
 
+    if "custom_tags" in data_dict:
+        for custom_tag in list(data_dict["custom_tags"].keys()):
+            if not CommonModel.check_custom_tags(custom_tag):
+                return {"message": f"Custom tag '{custom_tag}' doesn't exist"}
+    else:
+        data_dict["custom_tags"] = []
+
     if not isCase:
         if "url" not in data_dict or not data_dict["url"]:
             data_dict["url"] = ""
@@ -150,11 +157,20 @@ def common_verif(data_dict, case_task):
     if "identifier" in data_dict:
         for connector in list(data_dict["identifier"].keys()):
             if not CommonModel.check_connector(connector):
-                return {"message": f"connector '{connector}' doesn't exist"}
+                return {"message": f"identifier '{connector}' doesn't exist"}
     # elif case_task.to_json()["connectors"]:
     #     data_dict["connectors"] = case_task.to_json()["connectors"]
     else:
         data_dict["identifier"] = {}
+            
+    if "custom_tags" in data_dict:
+        for custom_tag in list(data_dict["custom_tags"].keys()):
+            if not CommonModel.check_custom_tags(custom_tag):
+                return {"message": f"Custom tag '{custom_tag}' doesn't exist"}
+    elif case_task.to_json()["custom_tags"]:
+        data_dict["custom_tags"] = case_task.to_json()["custom_tags"]
+    else:
+        data_dict["custom_tags"] = []
     
     return data_dict
 

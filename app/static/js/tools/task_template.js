@@ -271,6 +271,16 @@ export default {
                 <img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
                 <i>[[instance.url]]</i>
             </div>
+			<div class="d-flex w-100 justify-content-between" style="margin-top: 5px;">
+				<div style="display: flex;" v-if="template.custom_tags">
+					<template v-for="custom_tag in template.custom_tags">
+						<div class="tag" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">
+							<i v-if="custom_tag.icon" :class="custom_tag.icon"></i>
+							[[custom_tag.name]]
+						</div>
+					</template>
+				</div>
+			</div>
             <div class="d-flex w-100 justify-content-between">
                 <div style="display: flex;" v-if="template.tags">
                     <template v-for="tag in template.tags">

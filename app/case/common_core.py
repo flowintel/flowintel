@@ -11,6 +11,7 @@ from ..utils.utils import isUUID, create_specific_dir
 from sqlalchemy import desc, func
 from ..utils import utils
 from app.utils.utils import MODULES_CONFIG
+from ..custom_tags import custom_tags_core as CustomModel
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
@@ -229,6 +230,12 @@ def get_task_connector_id(instance_id, task_id):
 def get_task_note(note_id):
     return Note.query.get(note_id)
 
+def get_case_custom_tags(case_id):
+    return Case_Custom_Tags.query.filter_by(case_id=case_id).all()
+
+def get_task_custom_tags(task_id):
+    return Task_Custom_Tags.query.filter_by(task_id=task_id).all()
+
 
 def get_history(case_uuid):
     """Return history of case by its uuid"""
@@ -345,6 +352,16 @@ def check_connector(connector_list):
         flash("Connector doesn't exist")
     return flag
 
+def check_custom_tags(tags_list):
+    """Check if a list of custom tags exist"""
+    flag = True
+    for tag in tags_list:
+        if not CustomModel.get_custom_tag_by_name(tag):
+            flag = False
+    if not flag:
+        flash("Custom tag doesn't exist")
+    return flag
+
 
 def create_task_from_template(template_id, cid):
     """Create a task from a task template"""
@@ -392,6 +409,15 @@ def create_task_from_template(template_id, cid):
             instance_id=t_t.instance_id
         )
         db.session.add(task_instance)
+        db.session.commit()
+
+    ## Task Custom Tags
+    for c_t in Task_Template_Custom_Tags.query.filter_by(task_template_id=template.id).all():
+        task_custom_tags = Task_Custom_Tags(
+            task_id=task.id,
+            custom_tag_id=c_t.custom_tag_id
+        )
+        db.session.add(task_custom_tags)
         db.session.commit()
 
     return task

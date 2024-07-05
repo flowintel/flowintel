@@ -1,5 +1,5 @@
 from .. import db
-from ..db_class.db import Custom_Tags
+from ..db_class.db import Case_Custom_Tags, Case_Template_Custom_Tags, Custom_Tags, Task_Custom_Tags, Task_Template_Custom_Tags
 
 def get_custom_tag(ctid):
     """Return a custom tag by id"""
@@ -8,6 +8,10 @@ def get_custom_tag(ctid):
 def get_custom_tags():
     """Return all custom tags"""
     return Custom_Tags.query.all()
+
+def get_custom_tag_by_name(tag_name):
+    """Return a custom tag by its name"""
+    return Custom_Tags.query.filter_by(name=tag_name)
 
 def change_status_core(ctid):
     """Active or disabled a tool"""
@@ -45,6 +49,10 @@ def delete_custom_tag(ctid):
     """Delete a custom tag from db"""
     custom_tag = get_custom_tag(ctid)
     if custom_tag:
+        Case_Custom_Tags.query.filter_by(custom_tag_id=ctid).delete()
+        Task_Custom_Tags.query.filter_by(custom_tag_id=ctid).delete()
+        Case_Template_Custom_Tags.query.filter_by(custom_tag_id=ctid).delete()
+        Task_Template_Custom_Tags.query.filter_by(custom_tag_id=ctid).delete()
         db.session.delete(custom_tag)
         return True
     return False

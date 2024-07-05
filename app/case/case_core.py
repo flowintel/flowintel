@@ -36,6 +36,7 @@ def delete_case(cid, current_user):
         Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
         Case_Org.query.filter_by(case_id=case.id).delete()
         Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
+        Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
         db.session.delete(case)
         db.session.commit()
         return True
@@ -113,6 +114,16 @@ def create_case(form_dict, user):
             )
             db.session.add(case_instance)
             db.session.commit()
+
+        for custom_tag_id in form_dict["custom_tags"]:
+            custom_tag = Custom_Tags.query.get(custom_tag_id)
+            if custom_tag:
+                case_custom_tag = Case_Custom_Tags(
+                    case_id=case.id,
+                    custom_tag_id=custom_tag.id
+                )
+                db.session.add(case_custom_tag)
+                db.session.commit()
 
         if "tasks_templates" in form_dict and not 0 in form_dict["tasks_templates"]:
             for tid in form_dict["tasks_templates"]:
@@ -203,6 +214,21 @@ def edit_case(form_dict, cid, current_user):
     for c_t_db in case_connector_db:
         if not c_t_db in form_dict["connectors"]:
             Case_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
+            db.session.commit()
+
+    # Custom tags
+    case_custom_tags_db = CommonModel.get_case_custom_tags(case.id)
+    for custom_tag in form_dict["custom_tags"]:
+        if not custom_tag in case_custom_tags_db:
+            c_t = Case_Custom_Tags(
+                case_id=case.id,
+                custom_tag_id=custom_tag
+            )
+            db.session.add(c_t)
+            db.session.commit()
+    for c_t_db in case_custom_tags_db:
+        if not c_t_db in form_dict["custom_tags"]:
+            Case_Custom_Tags.query.filter_by(id=c_t_db.id).delete()
             db.session.commit()
 
     CommonModel.update_last_modif(cid)
@@ -584,6 +610,14 @@ def create_template_from_case(cid, case_title_template):
         db.session.add(case_connector)
         db.session.commit()
 
+    ## Custom Tags
+    for c_t in CommonModel.get_case_custom_tags(case.id):
+        case_template_custom_tags = Case_Template_Custom_Tags(
+            case_template_id=new_template.id,
+            custom_tag_id=c_t.custom_tag_id
+        )
+        db.session.add(case_template_custom_tags)
+        db.session.commit()
 
     ## Tasks of the case will become task template
     for task in case.tasks:
@@ -634,6 +668,14 @@ def create_template_from_case(cid, case_title_template):
                     instance_id=t_c.instance_id
                 )
                 db.session.add(task_connector)
+                db.session.commit()
+
+            for c_t in CommonModel.get_task_custom_tags(task.id):
+                task_template_custom_tags = Task_Template_Custom_Tags(
+                    task_template_id=task_template.id,
+                    custom_tag_id=c_t.custom_tag_id
+                )
+                db.session.add(task_template_custom_tags)
                 db.session.commit()
 
             case_task_template = Case_Task_Template(
