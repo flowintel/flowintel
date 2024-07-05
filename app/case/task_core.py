@@ -19,6 +19,13 @@ from app.utils.utils import MODULES, MODULES_CONFIG
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
 
+def reorder_tasks(case, task_order_id):
+    for task_in_case in case.tasks:
+        if task_in_case.case_order_id > task_order_id:
+            task_in_case.case_order_id -= 1
+            db.session.commit()
+    case.nb_tasks -= 1
+    db.session.commit()
 
 def delete_task(tid, current_user):
     """Delete a task by is id"""
@@ -38,7 +45,9 @@ def delete_task(tid, current_user):
             user = User.query.get(task_user.user_id)
             NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
-        case.nb_tasks -= 1
+        ## Move all task down if possible
+        reorder_tasks(case, task.case_order_id)
+
         Task_Tags.query.filter_by(task_id=task.id).delete()
         Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
         Task_User.query.filter_by(task_id=task.id).delete()
@@ -64,9 +73,13 @@ def complete_task(tid, current_user):
         task_users = Task_User.query.where(Task_User.task_id==task.id).all()
         if task.completed:
             task.status_id = Status.query.filter_by(name="Finished").first().id
+            task.case_order_id = -1
+            reorder_tasks(case, task.case_order_id)
             message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
         else:
             task.status_id = Status.query.filter_by(name="Created").first().id
+            case.nb_tasks += 1
+            task.case_order_id = case.nb_tasks
             message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived"
         for task_user in task_users:
             user = User.query.get(task_user.user_id)

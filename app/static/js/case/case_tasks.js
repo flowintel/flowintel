@@ -328,10 +328,12 @@ export default {
 
 			const res = await fetch('/case/' + task.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
 			await display_toast(res)
+			console.log(task.case_order_id);
 			for( let i in props.cases_info.tasks){
 				if(props.cases_info.tasks[i]["case_order_id"] == task.case_order_id+cp){
 					props.cases_info.tasks[i]["case_order_id"] = task.case_order_id
 					task.case_order_id += cp
+					console.log(task.case_order_id);
 					break
 				}
 			}
@@ -763,7 +765,7 @@ export default {
 				<i class="fa-solid fa-trash"></i>
 			</button>
 		</div>
-		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin" style="display: grid;">
+		<div v-if="(!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin) && !task.completed" style="display: grid;">
 			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task(task, true)">
 				<i class="fa-solid fa-chevron-up"></i>
 			</button>
