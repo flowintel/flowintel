@@ -1,95 +1,18 @@
 from ..db_class.db import Case_Template, User, Task_Template
 from ..utils.utils import check_tag
-from . import common_template_core as CommonModel
+# from . import common_template_core as CommonModel
+from ..case import common_core as CommonModel
+from ..utils.datadictHelper import edition_verification_tags_connectors, creation_verification_tags_connectors
 
 
 def get_user_api(api_key):
     return User.query.filter_by(api_key=api_key).first()
 
 def common_creation(data_dict):
-    if "tags" in data_dict:
-        for tag in data_dict["tags"]:
-            if not check_tag(tag):
-                return {"message": f"Tag '{tag}' doesn't exist"}
-    else:
-        data_dict["tags"] = []
-
-    if "clusters" in data_dict:
-        for cluster in data_dict["clusters"]:
-            if not CommonModel.check_cluster_db(cluster):
-                return {"message": f"Cluster '{cluster}' doesn't exist"}
-    else:
-        data_dict["clusters"] = []
-
-    if "connectors" in data_dict:
-        for connector in data_dict["connectors"]:
-            if not CommonModel.check_connector(connector):
-                return {"message": f"connector '{connector}' doesn't exist"}
-    else:
-        data_dict["connectors"] = []
-
-    if "identifier" in data_dict:
-        for connector in list(data_dict["identifier"].keys()):
-            if not CommonModel.check_connector(connector):
-                return {"message": f"Connector '{connector}' doesn't exist"}
-    else:
-        data_dict["identifier"] = []
-
-    if "custom_tags" in data_dict:
-        for custom_tag in list(data_dict["custom_tags"].keys()):
-            if not CommonModel.check_custom_tags(custom_tag):
-                return {"message": f"Custom tag '{custom_tag}' doesn't exist"}
-    else:
-        data_dict["custom_tags"] = []
-
-    return data_dict
+    return creation_verification_tags_connectors(data_dict)
 
 def common_edit(data_dict, case_task):
-    if "tags" in data_dict:
-        for tag in data_dict["tags"]:
-            if not check_tag(tag):
-                return {"message": f"Tag '{tag}' doesn't exist"}
-    elif case_task.to_json()["tags"]:
-        data_dict["tags"] = case_task.to_json()["tags"]
-    else:
-        data_dict["tags"] = []
-
-    if "clusters" in data_dict:
-        for cluster in data_dict["clusters"]:
-            if not CommonModel.check_cluster_db(cluster):
-                return {"message": f"Cluster '{cluster}' doesn't exist"}
-    elif case_task.to_json()["clusters"]:
-        data_dict["clusters"] = case_task.to_json()["clusters"]
-    else:
-        data_dict["clusters"] = []
-
-    if "connectors" in data_dict:
-        for connector in data_dict["connectors"]:
-            if not CommonModel.check_connector(connector):
-                return {"message": f"connector '{connector}' doesn't exist"}
-    elif case_task.to_json()["connectors"]:
-        data_dict["connectors"] = case_task.to_json()["connectors"]
-    else:
-        data_dict["connectors"] = []
-    
-    if "identifier" in data_dict:
-        for connector in list(data_dict["identifier"].keys()):
-            if not CommonModel.check_connector(connector):
-                return {"message": f"connector '{connector}' doesn't exist"}
-    else:
-        data_dict["identifier"] = {}
-
-    if "custom_tags" in data_dict:
-        for custom_tag in list(data_dict["custom_tags"].keys()):
-            if not CommonModel.check_custom_tags(custom_tag):
-                return {"message": f"Custom tag '{custom_tag}' doesn't exist"}
-    elif case_task.to_json()["custom_tags"]:
-        data_dict["custom_tags"] = case_task.to_json()["custom_tags"]
-    else:
-        data_dict["custom_tags"] = []
-
-    return data_dict
-
+    return edition_verification_tags_connectors(data_dict, case_task)
 
 def verif_create_case_template(data_dict):
     if "title" not in data_dict or not data_dict["title"]:

@@ -2,7 +2,7 @@ import json
 import os
 from ..db_class.db import db
 from ..db_class.db import Taxonomy, Tags, Galaxy, Cluster
-from .utils import taxonomies, galaxies, clusters, check_tag
+from .utils import taxonomies, galaxies, clusters
 
 
 def create_tag(tag, taxo_id):

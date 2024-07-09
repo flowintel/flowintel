@@ -7,6 +7,7 @@ from ..custom_tags import custom_tags_core as CustomModel
 from ..decorators import editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
 from ..utils.utils import form_to_dict, MODULES_CONFIG, get_modules_list
+from ..utils.formHelper import prepare_tags_connectors
 
 tools_blueprint = Blueprint(
     'tools',
@@ -44,21 +45,13 @@ def create_case_template():
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     
     if form.validate_on_submit():
-        tag_list = request.form.getlist("tags_select")
-        cluster_list = request.form.getlist("clusters_select")
-        connector_list = request.form.getlist("connectors_select")
-        custom_tags_list = request.form.getlist("custom_select")
-        if CommonModel.check_tag(tag_list):
-            if CommonModel.check_cluster(cluster_list):
-                form_dict = form_to_dict(form)
-                form_dict["tags"] = tag_list
-                form_dict["clusters"] = cluster_list
-                form_dict["connectors"] = connector_list
-                form_dict["custom_tags"] = custom_tags_list
-                template = ToolsModel.create_case_template(form_dict)
-                flash("Template created", "success")
-                return redirect(f"/tools/template/case/{template.id}")
-            return render_template("case/create_case_template.html", form=form)
+        res = prepare_tags_connectors(request)
+        if isinstance(res, dict):
+            form_dict = form_to_dict(form)
+            form_dict.update(res)
+            template = ToolsModel.create_case_template(form_dict)
+            flash("Template created", "success")
+            return redirect(f"/tools/template/case/{template.id}")
         return render_template("case/create_case_template.html", form=form)
     return render_template("tools/create_case_template.html", form=form)
 
@@ -71,21 +64,13 @@ def create_task_template():
     form = TaskTemplateForm()
     form.tasks.choices = [(template.id, template.title) for template in  CommonModel.get_all_task_templates()]
     if form.validate_on_submit():
-        tag_list = request.form.getlist("tags_select")
-        cluster_list = request.form.getlist("clusters_select")
-        connector_list = request.form.getlist("connectors_select")
-        custom_tags_list = request.form.getlist("custom_select")
-        if CommonModel.check_tag(tag_list):
-            if CommonModel.check_cluster(cluster_list):
-                form_dict = form_to_dict(form)
-                form_dict["tags"] = tag_list
-                form_dict["clusters"] = cluster_list
-                form_dict["connectors"] = connector_list
-                form_dict["custom_tags"] = custom_tags_list
-                template = TaskModel.add_task_template_core(form_dict)
-                flash("Template created", "success")
-                return redirect(f"/tools/template/tasks")
-            return render_template("case/create_task_template.html", form=form)
+        res = prepare_tags_connectors(request)
+        if isinstance(res, dict):
+            form_dict = form_to_dict(form)
+            form_dict.update(res)
+            template = TaskModel.add_task_template_core(form_dict)
+            flash("Template created", "success")
+            return redirect(f"/tools/template/tasks")
         return render_template("case/create_task_template.html", form=form)
     return render_template("tools/create_task_template.html", form=form)
 
@@ -112,21 +97,13 @@ def add_task_case(cid):
     task_id_list = [tid.id for tid in task_by_case]
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list if template.id not in task_id_list]
     if form.validate_on_submit():
-        tag_list = request.form.getlist("tags_select")
-        cluster_list = request.form.getlist("clusters_select")
-        connector_list = request.form.getlist("connectors_select")
-        custom_tags_list = request.form.getlist("custom_select")
-        if CommonModel.check_tag(tag_list):
-            if CommonModel.check_cluster(cluster_list):
-                form_dict = form_to_dict(form)
-                form_dict["tags"] = tag_list
-                form_dict["clusters"] = cluster_list
-                form_dict["connectors"] = connector_list
-                form_dict["custom_tags"] = custom_tags_list
-                ToolsModel.add_task_case_template(form_dict, cid)
-                flash("Template added", "success")
-                return redirect(f"/tools/template/case/{cid}")
-            return render_template("tools/add_task_case.html", form=form)
+        res = prepare_tags_connectors(request)
+        if isinstance(res, dict):
+            form_dict = form_to_dict(form)
+            form_dict.update(res)
+            ToolsModel.add_task_case_template(form_dict, cid)
+            flash("Template added", "success")
+            return redirect(f"/tools/template/case/{cid}")
         return render_template("tools/add_task_case.html", form=form)
     return render_template("tools/add_task_case.html", form=form)
 
@@ -141,21 +118,13 @@ def edit_case(cid):
         form = CaseTemplateEditForm()
         form.template_id.data = cid
         if form.validate_on_submit():
-            tag_list = request.form.getlist("tags_select")
-            cluster_list = request.form.getlist("clusters_select")
-            connector_list = request.form.getlist("connectors_select")
-            custom_tag_list = request.form.getlist("custom_select")
-            if CommonModel.check_tag(tag_list):
-                if CommonModel.check_cluster(cluster_list):
-                    form_dict = form_to_dict(form)
-                    form_dict["tags"] = tag_list
-                    form_dict["clusters"] = cluster_list
-                    form_dict["connectors"] = connector_list
-                    form_dict["custom_tags"] = custom_tag_list
-                    template = ToolsModel.edit_case_template(form_dict, cid)
-                    flash("Template edited", "success")
-                    return redirect(f"/tools/template/case/{cid}")
-                return render_template("tools/edit_case_template.html", form=form)
+            res = prepare_tags_connectors(request)
+            if isinstance(res, dict):
+                form_dict = form_to_dict(form)
+                form_dict.update(res)
+                template = ToolsModel.edit_case_template(form_dict, cid)
+                flash("Template edited", "success")
+                return redirect(f"/tools/template/case/{cid}")
             return render_template("tools/edit_case_template.html", form=form)
         else:
             form.title.data = template.title
@@ -175,21 +144,13 @@ def edit_task(tid):
         form = TaskTemplateEditForm()
         form.template_id.data = tid
         if form.validate_on_submit():
-            tag_list = request.form.getlist("tags_select")
-            cluster_list = request.form.getlist("clusters_select")
-            connector_list = request.form.getlist("connectors_select")
-            custom_tag_list = request.form.getlist("custom_select")
-            if CommonModel.check_tag(tag_list):
-                if CommonModel.check_cluster(cluster_list):
-                    form_dict = form_to_dict(form)
-                    form_dict["tags"] = tag_list
-                    form_dict["clusters"] = cluster_list
-                    form_dict["connectors"] = connector_list
-                    form_dict["custom_tags"] = custom_tag_list
-                    template = TaskModel.edit_task_template(form_dict, tid)
-                    flash("Template edited", "success")
-                    return redirect(f"/tools/template/tasks")
-                return render_template("tools/edit_task_template.html", form=form)
+            res = prepare_tags_connectors(request)
+            if isinstance(res, dict):
+                form_dict = form_to_dict(form)
+                form_dict.update(res)
+                template = TaskModel.edit_task_template(form_dict, tid)
+                flash("Template edited", "success")
+                return redirect(f"/tools/template/tasks")
             return render_template("tools/edit_task_template.html", form=form)
         else:
             form.title.data = template.title

@@ -324,43 +324,31 @@ def check_cluster_db(cluster):
 
 def check_tag(tag_list):
     """Check if a list of tags exist"""
-    flag = True
     for tag in tag_list:
         if not utils.check_tag(tag):
-            flag = False
-    if not flag:
-        flash("tag doesn't exist")
-    return flag
+            return tag
+    return True
 
 def check_cluster(cluster_list):
     """Check if a list of clusters exist"""
-    flag = True
     for cluster in cluster_list:
         if not check_cluster_db(cluster):
-            flag = False
-    if not flag:
-        flash("cluster doesn't exist")
-    return flag
+            return cluster
+    return True
 
 def check_connector(connector_list):
     """Check if a list of connectors exist"""
-    flag = True
     for connector in connector_list:
         if not get_instance_by_name(connector):
-            flag = False
-    if not flag:
-        flash("Connector doesn't exist")
-    return flag
+            return connector
+    return True
 
 def check_custom_tags(tags_list):
     """Check if a list of custom tags exist"""
-    flag = True
     for tag in tags_list:
         if not CustomModel.get_custom_tag_by_name(tag):
-            flag = False
-    if not flag:
-        flash("Custom tag doesn't exist")
-    return flag
+            return tag
+    return True
 
 
 def create_task_from_template(template_id, cid):

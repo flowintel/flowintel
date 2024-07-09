@@ -696,6 +696,31 @@ def create_template_from_case(cid, case_title_template):
 
     return new_template
 
+def prepare_recurring_form(cid, orgs_in_case):
+    # List orgs and users in and verify if all users of an org are currently notify
+    orgs_to_return = list()
+    for org in orgs_in_case:
+        loc = org.to_json()
+        loc["users"] = list()
+        cp_checked_user = 0
+        cp_users = 0
+        for user in org.users:
+            cp_users += 1
+            loc_user = user.to_json()
+            if CommonModel.get_recu_notif_user(cid, user.id):
+                loc_user["checked"] = True
+                cp_checked_user += 1
+            else:
+                loc_user["checked"] = False
+            loc["users"].append(loc_user)
+        # if all users in an org are notify, then check the org checkbox
+        if cp_checked_user == cp_users:
+            loc["checked"] = True
+        else:
+            loc["checked"] = False
+        orgs_to_return.append(loc)
+    return  orgs_to_return
+
 
 def change_recurring(form_dict, cid, current_user):
     """Change the type of recurring and the date for a case"""

@@ -8,6 +8,7 @@ from . import task_core as TaskModel
 from ..custom_tags import custom_tags_core as CustomModel
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
+from ..utils.formHelper import prepare_tags_connectors
 
 task_blueprint = Blueprint(
     'task',
@@ -29,28 +30,15 @@ def create_task(cid):
             form.template_select.choices.insert(0, (0," "))
 
             if form.validate_on_submit():
-                tag_list = request.form.getlist("tags_select")
-                cluster_list = request.form.getlist("clusters_select")
-                connector_list = request.form.getlist("connectors_select")
-                custom_tags_list = request.form.getlist("custom_select")
-                if CommonModel.check_tag(tag_list):
-                    if CommonModel.check_cluster(cluster_list):
-                        identifier_dict = dict()
-                        for connector in connector_list:
-                            identifier_dict[connector] = request.form.get(f"identifier_{connector}")
-
-                        form_dict = form_to_dict(form)
-                        form_dict["tags"] = tag_list
-                        form_dict["clusters"] = cluster_list
-                        form_dict["connectors"] = connector_list
-                        form_dict["identifier"] = identifier_dict
-                        form_dict["custom_tags"] = custom_tags_list
-                        if TaskModel.create_task(form_dict, cid, current_user):
-                            flash("Task created", "success")
-                        else:
-                            flash("Error Task Created", "error")
-                        return redirect(f"/case/{cid}")
-                    return render_template("case/create_task.html", form=form)
+                res = prepare_tags_connectors(request)
+                if isinstance(res, dict):
+                    form_dict = form_to_dict(form)
+                    form_dict.update(res)
+                    if TaskModel.create_task(form_dict, cid, current_user):
+                        flash("Task created", "success")
+                    else:
+                        flash("Error Task Created", "error")
+                    return redirect(f"/case/{cid}")
                 return render_template("case/create_task.html", form=form)
             return render_template("case/create_task.html", form=form)
         return redirect(f"/case/{cid}")
@@ -66,26 +54,13 @@ def edit_task(cid, tid):
             form = TaskEditForm()
 
             if form.validate_on_submit():
-                tag_list = request.form.getlist("tags_select")
-                cluster_list = request.form.getlist("clusters_select")
-                connector_list = request.form.getlist("connectors_select")
-                custom_tag_list = request.form.getlist("custom_select")
-                if CommonModel.check_tag(tag_list):
-                    if CommonModel.check_cluster(cluster_list):
-                        identifier_dict = dict()
-                        for connector in connector_list:
-                            identifier_dict[connector] = request.form.get(f"identifier_{connector}")
-
-                        form_dict = form_to_dict(form)
-                        form_dict["tags"] = tag_list
-                        form_dict["clusters"] = cluster_list
-                        form_dict["connectors"] = connector_list
-                        form_dict["identifier"] = identifier_dict
-                        form_dict["custom_tags"] = custom_tag_list
-                        TaskModel.edit_task_core(form_dict, tid, current_user)
-                        flash("Task edited", "success")
-                        return redirect(f"/case/{cid}")
-                    return render_template("case/create_task.html", form=form)
+                res = prepare_tags_connectors(request)
+                if isinstance(res, dict):
+                    form_dict = form_to_dict(form)
+                    form_dict.update(res)
+                    TaskModel.edit_task_core(form_dict, tid, current_user)
+                    flash("Task edited", "success")
+                    return redirect(f"/case/{cid}")
                 return render_template("case/create_task.html", form=form)
             else:
                 task_modif = CommonModel.get_task(tid)

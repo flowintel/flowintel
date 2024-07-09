@@ -1,7 +1,7 @@
 import ast
 import json
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
-from .form import CaseForm, CaseEditForm, AddOrgsCase, RecurringForm
+from .form import CaseForm, CaseEditForm, RecurringForm
 from flask_login import login_required, current_user
 from . import case_core as CaseModel
 from . import common_core as CommonModel
@@ -9,6 +9,7 @@ from . import task_core as TaskModel
 from ..db_class.db import Task_Template, Case_Template
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
+from ..utils.formHelper import prepare_tags_connectors
 from ..custom_tags import custom_tags_core as CustomModel
 
 case_blueprint = Blueprint(
@@ -44,26 +45,13 @@ def create_case():
     form.tasks_templates.choices.insert(0, (0," "))
     
     if form.validate_on_submit():
-        tag_list = request.form.getlist("tags_select")
-        cluster_list = request.form.getlist("clusters_select")
-        connector_list = request.form.getlist("connectors_select")
-        custom_tags_list = request.form.getlist("custom_select")
-        if CommonModel.check_tag(tag_list):
-            if CommonModel.check_cluster(cluster_list):
-                identifier_dict = dict()
-                for connector in connector_list:
-                    identifier_dict[connector] = request.form.get(f"identifier_{connector}")
-
-                form_dict = form_to_dict(form)
-                form_dict["tags"] = tag_list
-                form_dict["clusters"] = cluster_list
-                form_dict["connectors"] = connector_list
-                form_dict["identifier"] = identifier_dict
-                form_dict["custom_tags"] = custom_tags_list
-                case = CaseModel.create_case(form_dict, current_user)
-                flash("Case created", "success")
-                return redirect(f"/case/{case.id}")
-            return render_template("case/create_case.html", form=form)
+        res = prepare_tags_connectors(request)
+        if isinstance(res, dict):
+            form_dict = form_to_dict(form)
+            form_dict.update(res)
+            case = CaseModel.create_case(form_dict, current_user)
+            flash("Case created", "success")
+            return redirect(f"/case/{case.id}")
         return render_template("case/create_case.html", form=form)
     return render_template("case/create_case.html", form=form)
 
@@ -92,26 +80,13 @@ def edit_case(cid):
             form = CaseEditForm()
 
             if form.validate_on_submit():
-                tag_list = request.form.getlist("tags_select")
-                cluster_list = request.form.getlist("clusters_select")
-                connector_list = request.form.getlist("connectors_select")
-                custom_tag_list = request.form.getlist("custom_select")
-                if CommonModel.check_tag(tag_list):
-                    if CommonModel.check_cluster(cluster_list):
-                        identifier_dict = dict()
-                        for connector in connector_list:
-                            identifier_dict[connector] = request.form.get(f"identifier_{connector}")
-
-                        form_dict = form_to_dict(form)
-                        form_dict["tags"] = tag_list
-                        form_dict["clusters"] = cluster_list
-                        form_dict["connectors"] = connector_list
-                        form_dict["identifier"] = identifier_dict
-                        form_dict["custom_tags"] = custom_tag_list
-                        CaseModel.edit_case(form_dict, cid, current_user)
-                        flash("Case edited", "success")
-                        return redirect(f"/case/{cid}")
-                    return render_template("case/edit_case.html", form=form)
+                res = prepare_tags_connectors(request)
+                if isinstance(res, dict):
+                    form_dict = form_to_dict(form)
+                    form_dict.update(res)
+                    CaseModel.edit_case(form_dict, cid, current_user)
+                    flash("Case edited", "success")
+                    return redirect(f"/case/{cid}")
                 return render_template("case/edit_case.html", form=form)
             else:
                 case_modif = CommonModel.get_case(cid)
@@ -175,27 +150,7 @@ def recurring(cid):
 
             # List orgs and users in and verify if all users of an org are currently notify
             orgs_in_case = CommonModel.get_orgs_in_case(cid)
-            orgs_to_return = list()
-            for org in orgs_in_case:
-                loc = org.to_json()
-                loc["users"] = list()
-                cp_checked_user = 0
-                cp_users = 0
-                for user in org.users:
-                    cp_users += 1
-                    loc_user = user.to_json()
-                    if CommonModel.get_recu_notif_user(cid, user.id):
-                        loc_user["checked"] = True
-                        cp_checked_user += 1
-                    else:
-                        loc_user["checked"] = False
-                    loc["users"].append(loc_user)
-                # if all users in an org are notify, then check the org checkbox
-                if cp_checked_user == cp_users:
-                    loc["checked"] = True
-                else:
-                    loc["checked"] = False
-                orgs_to_return.append(loc)
+            orgs_to_return = CaseModel.prepare_recurring_form(cid, orgs_in_case)
 
             if form.validate_on_submit():
                 form_dict = form_to_dict(form)
