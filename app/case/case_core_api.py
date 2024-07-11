@@ -62,7 +62,11 @@ def verif_create_case_task(data_dict, isCase):
 
     data_dict = creation_verification_tags_connectors(data_dict)
 
-    if "identifier" not in data_dict:
+    if "identifier" in data_dict:
+        loc = CommonModel.check_connector(list(data_dict["identifier"].keys()))   # dictionnary with connector as key and identifier as value
+        if not isinstance(loc, bool):
+            return {"message": f"Connector '{loc}' doesn't exist"}
+    else:
         data_dict["identifier"] = []
 
     if not isCase:
@@ -101,13 +105,11 @@ def common_verif(data_dict, case_task):
     data_dict = edition_verification_tags_connectors(data_dict, case_task)
 
     if "identifier" in data_dict:
-        for connector in list(data_dict["identifier"].keys()):
-            if not CommonModel.check_connector(connector):
-                return {"message": f"identifier '{connector}' doesn't exist"}
-    # elif case_task.to_json()["connectors"]:
-    #     data_dict["connectors"] = case_task.to_json()["connectors"]
+        loc = CommonModel.check_connector(list(data_dict["identifier"].keys()))   # dictionnary with connector as key and identifier as value
+        if not isinstance(loc, bool):
+            return {"message": f"Connector '{loc}' doesn't exist"}
     else:
-        data_dict["identifier"] = {}
+        data_dict["identifier"] = []
     
     return data_dict
 
