@@ -233,8 +233,22 @@ def get_task_note(note_id):
 def get_case_custom_tags(case_id):
     return Case_Custom_Tags.query.filter_by(case_id=case_id).all()
 
+def get_case_custom_tags_name(case_id):
+    c_ts = Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id).where(Case_Custom_Tags.case_id==case_id).all()
+    return [c_t.name for c_t in c_ts]
+
+def get_case_custom_tags_both(case_id, custom_tag_id):
+    return Case_Custom_Tags.query.filter_by(case_id=case_id, custom_tag_id=custom_tag_id).first()
+
 def get_task_custom_tags(task_id):
     return Task_Custom_Tags.query.filter_by(task_id=task_id).all()
+
+def get_task_custom_tags_name(task_id):
+    c_ts = Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).where(Task_Custom_Tags.task_id==task_id).all()
+    return [c_t.name for c_t in c_ts]
+
+def get_task_custom_tags_both(task_id, custom_tag_id):
+    return Task_Custom_Tags.query.filter_by(task_id=task_id, custom_tag_id=custom_tag_id).first()
 
 
 def get_history(case_uuid):

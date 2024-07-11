@@ -4,6 +4,7 @@ import ast
 from .. import db
 from . import common_template_core as CommonModel
 from sqlalchemy import and_
+from ..custom_tags import custom_tags_core as CustomModel
 
 
 def build_task_query(page, tags=None, taxonomies=None, galaxies=None, clusters=None, title_filter=None):
@@ -127,8 +128,8 @@ def add_task_template_core(form_dict):
         db.session.add(task_instance)
         db.session.commit()
 
-    for custom_tag_id in form_dict["custom_tags"]:
-        custom_tag = Custom_Tags.query.get(custom_tag_id)
+    for custom_tag_name in form_dict["custom_tags"]:
+        custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
         if custom_tag:
             task_custom_tag = Task_Template_Custom_Tags(
                 task_template_id=template.id,
@@ -201,20 +202,23 @@ def edit_task_template(form_dict, tid):
             db.session.commit()
 
     # Custom tags
-    task_custom_tags_db = CommonModel.get_task_custom_tags(template.id)
+    task_custom_tags_db = CommonModel.get_task_custom_tags_name(template.id)
     for custom_tag in form_dict["custom_tags"]:
         if not custom_tag in task_custom_tags_db:
+            custom_tag_id = CustomModel.get_custom_tag_by_name(custom_tag).id
             c_t = Task_Template_Custom_Tags(
                 task_template_id=template.id,
-                custom_tag_id=custom_tag
+                custom_tag_id=custom_tag_id
             )
             db.session.add(c_t)
             db.session.commit()
+            task_custom_tags_db.append(custom_tag)
     for c_t_db in task_custom_tags_db:
         if not c_t_db in form_dict["custom_tags"]:
-            Task_Template_Custom_Tags.query.filter_by(id=c_t_db.id).delete()
+            custom_tag = CustomModel.get_custom_tag_by_name(c_t_db)
+            task_custom_tag = CommonModel.get_task_custom_tags_both(template.id, custom_tag_id=custom_tag.id)
+            Task_Template_Custom_Tags.query.filter_by(id=task_custom_tag.id).delete()
             db.session.commit()
-
 
     db.session.commit()
 

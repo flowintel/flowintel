@@ -49,7 +49,7 @@
             <div v-if="custom_tags" class="col-6">
                 <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
                     <template v-for="c_t in custom_tags">
-                        <option :value="[[c_t.id]]" :selected="check_custom_tag_exist(c_t.name)">[[c_t.name]]</option>
+                        <option :value="[[c_t.name]]" :selected="check_custom_tag_exist(c_t.name)">[[c_t.name]]</option>
                     </template>
                 </select>
             </div>

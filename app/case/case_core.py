@@ -10,6 +10,7 @@ from sqlalchemy import desc, and_
 from ..notification import notification_core as NotifModel
 from dateutil import relativedelta
 from ..tools.tools_core import create_case_from_template
+from ..custom_tags import custom_tags_core as CustomModel
 
 from . import common_core as CommonModel
 from . import task_core as TaskModel
@@ -107,16 +108,19 @@ def create_case(form_dict, user):
 
         for instance in form_dict["connectors"]:
             instance = CommonModel.get_instance_by_name(instance)
+            loc_identifier = None
+            if instance.name in form_dict["identifier"]:
+                loc_identifier = form_dict["identifier"][instance.name]
             case_instance = Case_Connector_Instance(
                 case_id=case.id,
                 instance_id=instance.id,
-                identifier=form_dict["identifier"][instance.name]
+                identifier=loc_identifier
             )
             db.session.add(case_instance)
             db.session.commit()
 
-        for custom_tag_id in form_dict["custom_tags"]:
-            custom_tag = Custom_Tags.query.get(custom_tag_id)
+        for custom_tag_name in form_dict["custom_tags"]:
+            custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
             if custom_tag:
                 case_custom_tag = Case_Custom_Tags(
                     case_id=case.id,
@@ -217,18 +221,22 @@ def edit_case(form_dict, cid, current_user):
             db.session.commit()
 
     # Custom tags
-    case_custom_tags_db = CommonModel.get_case_custom_tags(case.id)
+    case_custom_tags_db = CommonModel.get_case_custom_tags_name(case.id)
     for custom_tag in form_dict["custom_tags"]:
         if not custom_tag in case_custom_tags_db:
+            custom_tag_id = CustomModel.get_custom_tag_by_name(custom_tag).id
             c_t = Case_Custom_Tags(
                 case_id=case.id,
-                custom_tag_id=custom_tag
+                custom_tag_id=custom_tag_id
             )
             db.session.add(c_t)
             db.session.commit()
+            case_custom_tags_db.append(custom_tag)
     for c_t_db in case_custom_tags_db:
         if not c_t_db in form_dict["custom_tags"]:
-            Case_Custom_Tags.query.filter_by(id=c_t_db.id).delete()
+            custom_tag = CustomModel.get_custom_tag_by_name(c_t_db)
+            case_custom_tag = CommonModel.get_case_custom_tags_both(case.id, custom_tag_id=custom_tag.id)
+            Case_Custom_Tags.query.filter_by(id=case_custom_tag.id).delete()
             db.session.commit()
 
     CommonModel.update_last_modif(cid)

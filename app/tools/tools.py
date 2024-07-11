@@ -498,7 +498,7 @@ def get_custom_tags_case(cid):
     """Get all custom tags for a case template"""
     case = CommonModel.get_case_template(cid)
     if case:
-        return {"custom_tags": [CustomModel.get_custom_tag(c_t.custom_tag_id).name for c_t in CommonModel.get_case_custom_tags(case.id)]}, 200
+        return {"custom_tags": CommonModel.get_case_custom_tags_name(case.id)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 @tools_blueprint.route("/template/get_custom_tags_task/<cid>", methods=['GET'])
@@ -507,7 +507,7 @@ def get_custom_tags_task(cid):
     """Get all custom tags for a task template"""
     task = CommonModel.get_task_template(cid)
     if task:
-        return {"custom_tags": [CustomModel.get_custom_tag(c_t.custom_tag_id).name for c_t in CommonModel.get_task_custom_tags(task.id)]}, 200
+        return {"custom_tags": CommonModel.get_task_custom_tags_name(task.id)}, 200
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 ############

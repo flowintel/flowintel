@@ -1,8 +1,5 @@
-from flask import flash
 from ..db_class.db import *
-from ..utils import utils
 from sqlalchemy import func
-from ..custom_tags import custom_tags_core as CustomModel
 
 def get_all_case_templates():
     return Case_Template.query.all()
@@ -27,9 +24,6 @@ def get_task_clusters(tid):
 
 def get_galaxy(galaxy_id):
     return Galaxy.query.get(galaxy_id)
-
-def check_cluster_db(cluster):
-    return Cluster.query.filter_by(name=cluster).first()
 
 def get_task_note(note_id):
     return Note_Template.query.get(note_id)
@@ -84,44 +78,19 @@ def get_task_connectors(tid):
 def get_case_custom_tags(case_id):
     return Case_Template_Custom_Tags.query.filter_by(case_template_id=case_id).all()
 
+def get_case_custom_tags_name(case_id):
+    c_ts = Custom_Tags.query.join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.custom_tag_id==Custom_Tags.id).where(Case_Template_Custom_Tags.case_template_id==case_id).all()
+    return [c_t.name for c_t in c_ts]
+
+def get_case_custom_tags_both(case_id, custom_tag_id):
+    return Case_Template_Custom_Tags.query.filter_by(case_template_id=case_id, custom_tag_id=custom_tag_id).first()
+
 def get_task_custom_tags(task_id):
     return Task_Template_Custom_Tags.query.filter_by(task_template_id=task_id).all()
 
+def get_task_custom_tags_name(task_id):
+    c_ts = Custom_Tags.query.join(Task_Template_Custom_Tags, Task_Template_Custom_Tags.custom_tag_id==Custom_Tags.id).where(Task_Template_Custom_Tags.task_template_id==task_id).all()
+    return [c_t.name for c_t in c_ts]
 
-
-def check_tag(tag_list):
-    flag = True
-    for tag in tag_list:
-        if not utils.check_tag(tag):
-            flag = False
-    if not flag:
-        flash("tag doesn't exist")
-    return flag
-
-def check_cluster(cluster_list):
-    flag = True
-    for cluster in cluster_list:
-        if not check_cluster_db(cluster):
-            flag = False
-    if not flag:
-        flash("cluster doesn't exist")
-    return flag
-
-def check_connector(connector_list):
-    flag = True
-    for connector in connector_list:
-        if not get_instance_by_name(connector):
-            flag = False
-    if not flag:
-        flash("Connector doesn't exist")
-    return flag
-
-def check_custom_tags(tags_list):
-    """Check if a list of custom tags exist"""
-    flag = True
-    for tag in tags_list:
-        if not CustomModel.get_custom_tag_by_name(tag):
-            flag = False
-    if not flag:
-        flash("Custom tag doesn't exist")
-    return flag
+def get_task_custom_tags_both(task_id, custom_tag_id):
+    return Task_Template_Custom_Tags.query.filter_by(task_template_id=task_id, custom_tag_id=custom_tag_id).first()

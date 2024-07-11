@@ -24,7 +24,7 @@ def creation_verification_tags_connectors(data_dict):
         data_dict["connectors"] = []
 
     if "custom_tags" in data_dict:
-        loc = CommonModel.check_custom_tags(list(data_dict["custom_tags"].keys()))
+        loc = CommonModel.check_custom_tags(data_dict["custom_tags"])
         if not isinstance(loc, bool):
             return {"message": f"Custom tag '{loc}' doesn't exist"}
     else:
@@ -61,7 +61,7 @@ def edition_verification_tags_connectors(data_dict, case_task):
         data_dict["connectors"] = []
             
     if "custom_tags" in data_dict:
-        loc = CommonModel.check_custom_tags(list(data_dict["custom_tags"].keys()))
+        loc = CommonModel.check_custom_tags(data_dict["custom_tags"])
         if not isinstance(loc, bool):
             return {"message": f"Custom tag '{loc}' doesn't exist"}
     elif case_task.to_json()["custom_tags"]:

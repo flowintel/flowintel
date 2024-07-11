@@ -692,5 +692,5 @@ def get_custom_tags_case(cid):
     """Get all custom tags for a case"""
     case = CommonModel.get_case(cid)
     if case:
-        return {"custom_tags": [CustomModel.get_custom_tag(c_t.custom_tag_id).name for c_t in CommonModel.get_case_custom_tags(case.id)]}, 200
+        return {"custom_tags": CommonModel.get_case_custom_tags_name(case.id)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404

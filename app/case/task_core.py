@@ -12,6 +12,7 @@ from werkzeug.utils import secure_filename
 from ..notification import notification_core as NotifModel
 
 from . import common_core as CommonModel
+from ..custom_tags import custom_tags_core as CustomModel
 
 from app.utils.utils import MODULES, MODULES_CONFIG
 
@@ -165,16 +166,19 @@ def create_task(form_dict, cid, current_user):
 
         for instance in form_dict["connectors"]:
             instance = CommonModel.get_instance_by_name(instance)
+            loc_identifier = None
+            if instance.name in form_dict["identifier"]:
+                loc_identifier = form_dict["identifier"][instance.name]
             task_instance = Task_Connector_Instance(
                 task_id=task.id,
                 instance_id=instance.id,
-                identifier=form_dict["identifier"][instance.name]
+                identifier=loc_identifier
             )
             db.session.add(task_instance)
             db.session.commit()
         
-        for custom_tag_id in form_dict["custom_tags"]:
-            custom_tag = Custom_Tags.query.get(custom_tag_id)
+        for custom_tag_name in form_dict["custom_tags"]:
+            custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
             if custom_tag:
                 task_custom_tag = Task_Custom_Tags(
                     task_id=task.id,
@@ -265,18 +269,22 @@ def edit_task_core(form_dict, tid, current_user):
             db.session.commit()
 
     # Custom tags
-    task_custom_tags_db = CommonModel.get_task_custom_tags(task.id)
+    task_custom_tags_db = CommonModel.get_task_custom_tags_name(task.id)
     for custom_tag in form_dict["custom_tags"]:
         if not custom_tag in task_custom_tags_db:
+            custom_tag_id = CustomModel.get_custom_tag_by_name(custom_tag).id
             c_t = Task_Custom_Tags(
                 task_id=task.id,
-                custom_tag_id=custom_tag
+                custom_tag_id=custom_tag_id
             )
             db.session.add(c_t)
             db.session.commit()
+            task_custom_tags_db.append(custom_tag)
     for c_t_db in task_custom_tags_db:
         if not c_t_db in form_dict["custom_tags"]:
-            Task_Custom_Tags.query.filter_by(id=c_t_db.id).delete()
+            custom_tag = CustomModel.get_custom_tag_by_name(c_t_db)
+            task_custom_tag = CommonModel.get_task_custom_tags_both(task.id, custom_tag_id=custom_tag.id)
+            Task_Custom_Tags.query.filter_by(id=task_custom_tag.id).delete()
             db.session.commit()
 
     CommonModel.update_last_modif(task.case_id)

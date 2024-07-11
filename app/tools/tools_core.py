@@ -10,6 +10,7 @@ from ..case import task_core
 from sqlalchemy import and_
 from . import common_template_core as CommonModel
 from . import task_template_core as TaskModel
+from ..custom_tags import custom_tags_core as CustomModel
 
 def build_case_query(page, tags=None, taxonomies=None, galaxies=None, clusters=None, title_filter=None):
     query = Case_Template.query
@@ -134,8 +135,8 @@ def create_case_template(form_dict):
         db.session.add(case_instance)
         db.session.commit()
 
-    for custom_tag_id in form_dict["custom_tags"]:
-        custom_tag = Custom_Tags.query.get(custom_tag_id)
+    for custom_tag_name in form_dict["custom_tags"]:
+        custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
         if custom_tag:
             case_custom_tag = Case_Template_Custom_Tags(
                 case_template_id=case_template.id,
@@ -249,18 +250,22 @@ def edit_case_template(form_dict, cid):
             db.session.commit()
 
     # Custom tags
-    case_custom_tags_db = CommonModel.get_case_custom_tags(template.id)
+    case_custom_tags_db = CommonModel.get_case_custom_tags_name(template.id)
     for custom_tag in form_dict["custom_tags"]:
         if not custom_tag in case_custom_tags_db:
+            custom_tag_id = CustomModel.get_custom_tag_by_name(custom_tag).id
             c_t = Case_Template_Custom_Tags(
                 case_template_id=template.id,
-                custom_tag_id=custom_tag
+                custom_tag_id=custom_tag_id
             )
             db.session.add(c_t)
             db.session.commit()
+            case_custom_tags_db.append(custom_tag)
     for c_t_db in case_custom_tags_db:
         if not c_t_db in form_dict["custom_tags"]:
-            Case_Template_Custom_Tags.query.filter_by(id=c_t_db.id).delete()
+            custom_tag = CustomModel.get_custom_tag_by_name(c_t_db)
+            case_custom_tag = CommonModel.get_case_custom_tags_both(template.id, custom_tag_id=custom_tag.id)
+            Case_Template_Custom_Tags.query.filter_by(id=case_custom_tag.id).delete()
             db.session.commit()
 
     db.session.commit()

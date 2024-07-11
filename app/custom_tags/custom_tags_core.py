@@ -11,7 +11,7 @@ def get_custom_tags():
 
 def get_custom_tag_by_name(tag_name):
     """Return a custom tag by its name"""
-    return Custom_Tags.query.filter_by(name=tag_name)
+    return Custom_Tags.query.filter_by(name=tag_name).first()
 
 def change_status_core(ctid):
     """Active or disabled a tool"""
