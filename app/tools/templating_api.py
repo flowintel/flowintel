@@ -62,8 +62,12 @@ class GetCaseTitle(Resource):
 class CreateCaseTemaplte(Resource):
     method_decorators = [api_required]
     @api.doc(params={
-        "title": "Required. Title for the template",
-        "description": "Description of the template"
+            "title": "Required. Title for the template",
+            "description": "Description of the template",
+            "tags": "list of tags from taxonomies",
+            "clusters": "list of tags from galaxies",
+            "connectors": "List of name of connectors",
+            "custom_tags" : "List of custom tags created on the instance"
         })
     def post(self):
         if request.json:
@@ -79,8 +83,12 @@ class CreateCaseTemaplte(Resource):
 class EditCaseTemaplte(Resource):
     method_decorators = [api_required]
     @api.doc(params={
-        "title": "Title for the template",
-        "description": "Description of the template"
+            "title": "Title for the template",
+            "description": "Description of the template",
+            "tags": "list of tags from taxonomies",
+            "clusters": "list of tags from galaxies",
+            "connectors": "List of name of connectors",
+            "custom_tags" : "List of custom tags created on the instance"
         })
     def post(self, cid):
         if request.json:
@@ -249,9 +257,13 @@ class GetTaskTemplateByCase(Resource):
 class CreateTaskTemaplte(Resource):
     method_decorators = [api_required]
     @api.doc(params={
-        "title": "Required. Title for the template",
-        "description": "Description of the template",
-        "url": "Link to a tool or a ressource"
+            "title": "Required. Title for the template",
+            "description": "Description of the template",
+            "url": "Link to a tool or a ressource",
+            "tags": "list of tags from taxonomies",
+            "clusters": "list of tags from galaxies",
+            "connectors": "List of name of connectors",
+            "custom_tags" : "List of custom tags created on the instance"
         })
     def post(self):
         if request.json:
@@ -268,9 +280,13 @@ class CreateTaskTemaplte(Resource):
 class EditCaseTemaplte(Resource):
     method_decorators = [api_required]
     @api.doc(params={
-        "title": "Title for the template",
-        "description": "Description of the template",
-        "url": "Link to a tool or a ressource"
+            "title": "Title for the template",
+            "description": "Description of the template",
+            "url": "Link to a tool or a ressource",
+            "tags": "list of tags from taxonomies",
+            "clusters": "list of tags from galaxies",
+            "connectors": "List of name of connectors",
+            "custom_tags" : "List of custom tags created on the instance"
         })
     def post(self, tid):
         if request.json:

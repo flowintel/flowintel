@@ -53,7 +53,12 @@ class CreateCase(Resource):
         "title": "Required. Title for a case", 
         "description": "Description of a case", 
         "deadline_date": "Date(%Y-%m-%d)", 
-        "deadline_time": "Time(%H-%M)"
+        "deadline_time": "Time(%H-%M)",
+        "tags": "list of tags from taxonomies",
+        "clusters": "list of tags from galaxies",
+        "connectors": "List of name of connectors",
+        "identifier": "Dictionnary with connector as key and identifier as value",
+        "custom_tags" : "List of custom tags created on the instance"
     })
     def post(self):
         user = CaseModelApi.get_user_api(request.headers)
@@ -73,7 +78,16 @@ class CreateCase(Resource):
 @api.doc(description='Edit a case', params={'id': 'id of a case'})
 class EditCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"title": "Title for a case", "description": "Description of a case", "deadline_date": "Date(%Y-%m-%d)", "deadline_time": "Time(%H-%M)"})
+    @api.doc(params={"title": "Title for a case", 
+                     "description": "Description of a case", 
+                     "deadline_date": "Date(%Y-%m-%d)", 
+                     "deadline_time": "Time(%H-%M)",
+                     "tags": "list of tags from taxonomies",
+                     "clusters": "list of tags from galaxies",
+                     "connectors": "List of name of connectors",
+                     "identifier": "Dictionnary with connector as key and identifier as value",
+                     "custom_tags" : "List of custom tags created on the instance"
+                    })
     def post(self, id):
         current_user = CaseModelApi.get_user_api(request.headers)
         if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
@@ -552,7 +566,12 @@ class CreateTask(Resource):
         "description": "Description of a task",
         "url": "Link to a tool or a ressource",
         "deadline_date": "Date(%Y-%m-%d)", 
-        "deadline_time": "Time(%H-%M)"
+        "deadline_time": "Time(%H-%M)",
+        "tags": "list of tags from taxonomies",
+        "clusters": "list of tags from galaxies",
+        "connectors": "List of name of connectors",
+        "identifier": "Dictionnary with connector as key and identifier as value",
+        "custom_tags" : "List of custom tags created on the instance"
     })
     def post(self, cid):
         current_user = CaseModelApi.get_user_api(request.headers)

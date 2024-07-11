@@ -52,7 +52,16 @@ class GetTaskTitle(Resource):
 @api.doc(description='Edit a task', params={"tid": "id of a task"})
 class EditTake(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"title": "Title for a task", "description": "Description of a task", "deadline_date": "Date(%Y-%m-%d)", "deadline_time": "Time(%H-%M)"})
+    @api.doc(params={"title": "Title for a task", 
+                     "description": "Description of a task", 
+                     "deadline_date": "Date(%Y-%m-%d)", 
+                     "deadline_time": "Time(%H-%M)",
+                     "tags": "list of tags from taxonomies",
+                     "clusters": "list of tags from galaxies",
+                     "connectors": "List of name of connectors",
+                     "identifier": "Dictionnary with connector as key and identifier as value",
+                     "custom_tags" : "List of custom tags created on the instance"
+                    })
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
