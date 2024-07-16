@@ -49,8 +49,16 @@ def get_task_by_case_class(cid, template_id):
 def get_case_template_tags(cid):
     return [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
 
+def get_case_template_tags_both(case_id, tag_id):
+    """Return a list of tags present in a case"""
+    return Case_Template_Tags.query.filter_by(case_id=case_id, tag_id=tag_id).first()
+
 def get_task_template_tags(tid):
     return [tag.name for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
+
+def get_task_template_tags_both(task_id, tag_id):
+    """Return a list of tags present in a task"""
+    return Task_Template_Tags.query.filter_by(task_id=task_id, tag_id=tag_id).first()
 
 def get_tag(tag):
     return Tags.query.filter_by(name=tag).first()
@@ -59,6 +67,25 @@ def get_tag(tag):
 def get_cluster_by_name(cluster):
     return Cluster.query.filter_by(name=cluster).first()
 
+def get_case_template_clusters_name(cid):
+    """Return a list of clusters present in a case template"""
+    return [cluster.name for cluster in \
+            Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.cluster_id==Cluster.id)\
+                   .filter_by(template_id=cid).all()]
+
+def get_case_template_clusters_both(case_id, cluster_id):
+    """Return a list of clusters present in a case template"""
+    return Case_Template_Galaxy_Tags.query.filter_by(template_id=case_id, cluster_id=cluster_id).first()
+
+def get_task_template_clusters_name(tid):
+    """Return a list of clusters present in a task template"""
+    return [cluster.name for cluster in \
+            Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.cluster_id==Cluster.id)\
+                   .filter_by(template_id=tid).all()]
+
+def get_task_template_clusters_both(task_id, cluster_id):
+    """Return a list of clusters present in a task template"""
+    return Task_Template_Galaxy_Tags.query.filter_by(template_id=task_id, cluster_id=cluster_id).first()
 
 def get_connectors():
     return Connector.query.all()
@@ -72,8 +99,28 @@ def get_instance_by_name(name):
 def get_case_connectors(cid):
     return Case_Template_Connector_Instance.query.filter_by(template_id=cid).all()
 
+def get_case_template_connectors_name(cid):
+    """Return a list of name connectors present in a case"""
+    return [instance.name for instance in \
+            Connector_Instance.query.join(Case_Template_Connector_Instance, Case_Template_Connector_Instance.instance_id==Connector_Instance.id)\
+                .filter_by(template_id=cid).all()]
+
+def get_case_template_connectors_both(case_id, instance_id):
+    """Return an instance of Case_Template_Connector_Instance depending of a case template id and an instance id"""
+    return Case_Template_Connector_Instance.query.filter_by(template_id=case_id, instance_id=instance_id).first()
+
 def get_task_connectors(tid):
     return Task_Template_Connector_Instance.query.filter_by(template_id=tid).all()
+
+def get_task_template_connectors_name(tid):
+    """Return a list of name connectors present in a task"""
+    return [instance.name for instance in \
+            Connector_Instance.query.join(Task_Template_Connector_Instance, Task_Template_Connector_Instance.instance_id==Connector_Instance.id)\
+                .filter_by(template_id=tid).all()]
+
+def get_task_template_connectors_both(task_id, instance_id):
+    """Return an instance of Task_Template_Connector_Instance depending of a task template id and an instance id"""
+    return Task_Template_Connector_Instance.query.filter_by(template_id=task_id, instance_id=instance_id).first()
 
 def get_case_custom_tags(case_id):
     return Case_Template_Custom_Tags.query.filter_by(case_template_id=case_id).all()

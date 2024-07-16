@@ -148,57 +148,60 @@ def edit_task_template(form_dict, tid):
     template.url=form_dict["url"]
     
     ## Tags
-    task_tag_db = Task_Template_Tags.query.filter_by(task_id=template.id).all()
-    for tag in form_dict["tags"]:
-        tag = CommonModel.get_tag(tag)
-
-        if not tag in task_tag_db:
+    task_tag_db = CommonModel.get_task_template_tags(tid)
+    for tags in form_dict["tags"]:
+        if not tags in task_tag_db:
+            tag = CommonModel.get_tag(tags)
             task_tag = Task_Template_Tags(
                 tag_id=tag.id,
                 task_id=template.id
             )
             db.session.add(task_tag)
             db.session.commit()
-    
+            task_tag_db.append(tags)
     for c_t_db in task_tag_db:
         if not c_t_db in form_dict["tags"]:
-            Task_Template_Tags.query.filter_by(id=c_t_db.id).delete()
+            tag = CommonModel.get_tag(c_t_db)
+            task_tag = CommonModel.get_task_template_tags_both(tid, tag.id)
+            Task_Template_Tags.query.filter_by(id=task_tag.id).delete()
             db.session.commit()
 
     ## Clusters
-    task_tag_db = Task_Template_Galaxy_Tags.query.filter_by(template_id=template.id).all()
-    for cluster in form_dict["clusters"]:
-        cluster = CommonModel.get_cluster_by_name(cluster)
-
-        if not cluster in task_tag_db:
+    task_cluster_db = CommonModel.get_task_template_clusters_name(tid)
+    for clusters in form_dict["clusters"]:
+        if not clusters in task_cluster_db:
+            cluster = CommonModel.get_cluster_by_name(clusters)
             task_tag = Task_Template_Galaxy_Tags(
                 cluster_id=cluster.id,
                 template_id=template.id
             )
             db.session.add(task_tag)
             db.session.commit()
-    
-    for c_t_db in task_tag_db:
+            task_cluster_db.append(clusters)
+    for c_t_db in task_cluster_db:
         if not c_t_db in form_dict["clusters"]:
-            Task_Template_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
+            cluster = CommonModel.get_cluster_by_name(c_t_db)
+            task_cluster = CommonModel.get_task_template_clusters_both(tid, cluster.id)
+            Task_Template_Galaxy_Tags.query.filter_by(id=task_cluster.id).delete()
             db.session.commit()
 
     ## Connectors
-    task_connector_db = Task_Template_Connector_Instance.query.filter_by(template_id=template.id).all()
+    task_connector_db = CommonModel.get_task_template_connectors_name(tid)
     for connectors in form_dict["connectors"]:
-        instance = CommonModel.get_instance_by_name(connectors)
-
         if not connectors in task_connector_db:
+            instance = CommonModel.get_instance_by_name(connectors)
             task_tag = Task_Template_Connector_Instance(
                 instance_id=instance.id,
                 template_id=template.id
             )
             db.session.add(task_tag)
             db.session.commit()
-    
+            task_connector_db.append(connectors)
     for c_t_db in task_connector_db:
         if not c_t_db in form_dict["connectors"]:
-            Task_Template_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
+            loc_connector = CommonModel.get_instance_by_name(c_t_db)
+            task_connector = CommonModel.get_task_template_connectors_both(tid, loc_connector.id)
+            Task_Template_Connector_Instance.query.filter_by(id=task_connector.id).delete()
             db.session.commit()
 
     # Custom tags

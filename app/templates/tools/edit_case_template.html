@@ -32,7 +32,7 @@
             <div class="mb-3 w-50">
                 <h5 style="padding: 4px;">Connectors:</h5>
                 <template v-if="connectors">
-                <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
+                    <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
                         <template v-for="(instances, connector) in connectors">
                             <optgroup :label="[[connector]]">
                                 <template v-for="instance in instances">
@@ -57,11 +57,10 @@
 
             <h5>Taxonomies:</h5>
             <div style="display: flex;">
-                <template v-if="taxonomies">
+                <template v-if="taxonomies && taxonomies_case">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                         <template v-for="taxonomy in taxonomies">
-                            <option :value="[[taxonomy.name]]" v-if="check_taxo_exist(taxonomy.name)">[[taxonomy.name]]</option>
-                            <option :value="[[taxonomy.name]]" v-else>[[taxonomy.name]]</option>
+                            <option :value="[[taxonomy.name]]" :selected="check_taxo_exist(taxonomy.name)">[[taxonomy.name]]</option>
                         </template>
                     </select>
                 </template>
@@ -71,8 +70,7 @@
                         <template v-for="(tags, taxo) in tags_list">
                             <optgroup :label="[[taxo]]">
                                 <template v-for="tag in tags">
-                                    <option :value="[[tag.name]]" :title="tag.description" v-if="check_tag_exist(tag.name)">[[tag.name]]</option>
-                                    <option :value="[[tag.name]]" :title="tag.description" v-else>[[tag.name]]</option>
+                                    <option :value="[[tag.name]]" :title="tag.description" :selected="check_tag_exist(tag.name)">[[tag.name]]</option>
                                 </template>
                             </optgroup>
                         </template>
@@ -83,11 +81,10 @@
 
             <h5>Galaxies:</h5>
             <div style="display: flex;">
-                <template v-if="galaxies">
+                <template v-if="galaxies && galaxies_case">
                     <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
                         <template v-for="galaxy, key in galaxies">
-                            <option :value="[[galaxy.name]]" v-if="check_galaxy_exist(galaxy.name)">[[galaxy.name]]</option>
-                            <option :value="[[galaxy.name]]" v-else>[[galaxy.name]]</option>
+                            <option :value="[[galaxy.name]]" :selected="check_galaxy_exist(galaxy.name)">[[galaxy.name]]</option>
                         </template>
                     </select>
                 </template>
@@ -97,8 +94,7 @@
                         <template v-for="(clusters, galaxy) in cluster_list">
                             <optgroup :label="[[galaxy]]">
                                 <template v-for="cluster in clusters">
-                                    <option v-if="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
-                                    <option v-else :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
+                                    <option :selected="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
                                 </template>
                             </optgroup>
                         </template>
@@ -145,7 +141,6 @@
                     taxonomies.value = loc["taxonomies"]
                 }
             }
-            fetch_taxonomies()
 
             async function fetch_galaxies(){
                 const res = await fetch("/case/get_galaxies")
@@ -156,7 +151,6 @@
                     galaxies.value = loc["galaxies"]
                 }
             }
-            fetch_galaxies()
 
             async function fetch_custom_tags(){
                 const res = await fetch("/custom_tags/list")
@@ -181,7 +175,6 @@
                     fetch_tags(taxonomies_case.value)
                 }
             }
-            fetch_taxonomies_case()
 
             async function fetch_galaxies_case(){
                 const res = await fetch("/tools/template/get_galaxies_case/" +window.location.pathname.split("/").slice(-1))
@@ -196,7 +189,6 @@
                     fetch_cluster(galaxies_case.value)
                 }
             }
-            fetch_galaxies_case()
 
             async function fetch_tags(s_taxo){
                 const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(s_taxo))
@@ -231,7 +223,6 @@
                     connectors.value = loc["connectors"]
                 }
             }
-            fetchConnectors()
 
             async function fetchConnectorsCase(){
                 const res = await fetch("/tools/template/get_connectors_case/" +window.location.pathname.split("/").slice(-1))
@@ -252,7 +243,6 @@
                     custom_tags_case.value = loc["custom_tags"]
                 }
             }
-            fetch_custom_tags_case()
 
 
             function check_taxo_exist(taxo){
@@ -288,8 +278,14 @@
             
 
             onMounted(() => {
+                fetch_taxonomies()
+                fetch_galaxies()
+                fetch_taxonomies_case()
+                fetch_galaxies_case()
+                fetchConnectors()
                 fetchConnectorsCase()
                 fetch_custom_tags()
+                fetch_custom_tags_case()
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
                     closeOnSelect: false
@@ -309,7 +305,9 @@
                 selected_taxo,
                 message_list,
                 taxonomies,
+                taxonomies_case,
                 galaxies,
+                galaxies_case,
                 tags_list,
                 cluster_list,
                 connectors,
