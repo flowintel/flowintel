@@ -150,7 +150,9 @@ def get_clusters_galaxy(galaxies) -> dict:
     """Return a dictionary with each clusters for each galaxies"""
     out = dict()
     for galaxy in galaxies:
-        out[galaxy] = [cluster.to_json() for cluster in Cluster.query.join(Galaxy, Galaxy.id==Cluster.galaxy_id).where(Galaxy.name==galaxy).all() if not cluster.exclude]
+        out[galaxy] = [cluster.to_json() for cluster in \
+                       Cluster.query.join(Galaxy, Galaxy.id==Cluster.galaxy_id)\
+                        .where(Galaxy.name==galaxy).all() if not cluster.exclude]
     return out
 
 
@@ -170,18 +172,49 @@ def get_case_tags(cid):
     """Return a list of tags present in a case"""
     return [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
 
+def get_case_tags_both(case_id, tag_id):
+    """Return a list of tags present in a case"""
+    return Case_Tags.query.filter_by(case_id=case_id, tag_id=tag_id).first()
+
 def get_case_clusters(cid):
     """Return a list of clusters present in a case"""
-    return [cluster for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id).filter_by(case_id=cid).all()]
+    return [cluster for cluster in \
+            Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id)\
+                .filter_by(case_id=cid).all()]
+
+def get_case_clusters_both(case_id, cluster_id):
+    """Return a list of clusters present in a case"""
+    return Case_Galaxy_Tags.query.filter_by(case_id=case_id, cluster_id=cluster_id).first()
+
+def get_case_clusters_name(cid):
+    """Return a list of clusters present in a case"""
+    return [cluster.name for cluster in \
+            Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id)\
+                .filter_by(case_id=cid).all()]
 
 def get_task_tags(tid):
     """Return a list of tags present in a task"""
     return [tag.name for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
 
-def get_task_clusters(tid):
-    """Return a list of clusters present in a case"""
-    return [cluster for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id).filter_by(task_id=tid).all()]
+def get_task_tags_both(task_id, tag_id):
+    """Return a list of tags present in a task"""
+    return Task_Tags.query.filter_by(task_id=task_id, tag_id=tag_id).first()
 
+def get_task_clusters(tid):
+    """Return a list of clusters present in a task"""
+    return [cluster for cluster in \
+            Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id)\
+                .filter_by(task_id=tid).all()]
+
+def get_task_clusters_name(task_id):
+    """Return a list of clusters present in a task"""
+    return [cluster.name for cluster in \
+            Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id)\
+                .filter_by(task_id=task_id).all()]
+
+def get_task_clusters_both(task_id, cluster_id):
+    """Return a list of tags present in a task"""
+    return Task_Galaxy_Tags.query.filter_by(task_id=task_id, cluster_id=cluster_id).first()
 
 def get_connectors():
     """Return a list of all connectors"""
@@ -207,9 +240,29 @@ def get_case_connectors(cid):
     """Return a list of all connectors present in a case"""
     return Case_Connector_Instance.query.filter_by(case_id=cid).all()
 
+def get_case_connectors_name(cid):
+    """Return a list of all name connectors present in a case"""
+    return [instance.name for instance in \
+            Connector_Instance.query.join(Case_Connector_Instance, Case_Connector_Instance.instance_id==Connector_Instance.id)\
+                .filter_by(case_id=cid).all()]
+
+def get_case_connectors_both(case_id, instance_id):
+    """Return an instance of Case_Connector_Instance depending of a case id and an instance id"""
+    return Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
+
 def get_task_connectors(tid):
     """Return a list of all connectors present in a task"""
     return Task_Connector_Instance.query.filter_by(task_id=tid).all()
+
+def get_task_connectors_name(task_id):
+    """Return a list of all name connectors present in a task"""
+    return [instance.name for instance in \
+            Connector_Instance.query.join(Task_Connector_Instance, Task_Connector_Instance.instance_id==Connector_Instance.id)\
+                .filter_by(task_id=task_id).all()]
+
+def get_task_connectors_both(task_id, instance_id):
+    """Return an instance of Task_Connector_Instance depending of a task id and an instance id"""
+    return Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).first()
 
 def get_user_instance_both(user_id, instance_id):
     """Return an instance of User_Connector_Instance depending of a user id and an instance id"""
@@ -234,8 +287,9 @@ def get_case_custom_tags(case_id):
     return Case_Custom_Tags.query.filter_by(case_id=case_id).all()
 
 def get_case_custom_tags_name(case_id):
-    c_ts = Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id).where(Case_Custom_Tags.case_id==case_id).all()
-    return [c_t.name for c_t in c_ts]
+    return [c_t.name for c_t in \
+            Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                .where(Case_Custom_Tags.case_id==case_id).all()]
 
 def get_case_custom_tags_both(case_id, custom_tag_id):
     return Case_Custom_Tags.query.filter_by(case_id=case_id, custom_tag_id=custom_tag_id).first()
@@ -244,8 +298,9 @@ def get_task_custom_tags(task_id):
     return Task_Custom_Tags.query.filter_by(task_id=task_id).all()
 
 def get_task_custom_tags_name(task_id):
-    c_ts = Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).where(Task_Custom_Tags.task_id==task_id).all()
-    return [c_t.name for c_t in c_ts]
+    return [c_t.name for c_t in \
+            Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                .where(Task_Custom_Tags.task_id==task_id).all()]
 
 def get_task_custom_tags_both(task_id, custom_tag_id):
     return Task_Custom_Tags.query.filter_by(task_id=task_id, custom_tag_id=custom_tag_id).first()
@@ -318,8 +373,15 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
         write_file.write(note)
         
     if type_req == "pdf":
-        process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=red", "-V", "tocolor=gray"\
-                                    "--number-sections", "--toc", "--template", "eisvogel", "-o", temp_export, "--filter=pandoc-mermaid"], stdout=subprocess.PIPE)
+        process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", \
+                                    "-V", "colorlinks=true", \
+                                    "-V", "linkcolor=blue", \
+                                    "-V", "urlcolor=red", \
+                                    "-V", "tocolor=gray",\
+                                    "--number-sections", "--toc", \
+                                    "--template", "eisvogel",\
+                                    "-o", temp_export, \
+                                    "--filter=pandoc-mermaid"], stdout=subprocess.PIPE)
     elif type_req == "docx":
         process = subprocess.Popen(["pandoc", temp_md, "-o", temp_export, "--filter=mermaid-filter"], stdout=subprocess.PIPE)
     process.wait()
@@ -434,9 +496,13 @@ def get_instance_with_icon(instance_id, case_task, case_task_id):
                                     .where(Connector_Instance.id==instance_id)\
                                     .first().uuid
     if case_task:
-        identifier = Case_Connector_Instance.query.where(Case_Connector_Instance.case_id==case_task_id, Case_Connector_Instance.instance_id==instance_id).first()
+        identifier = Case_Connector_Instance.query\
+                .where(Case_Connector_Instance.case_id==case_task_id, Case_Connector_Instance.instance_id==instance_id)\
+                .first()
     else:
-        identifier = Task_Connector_Instance.query.where(Task_Connector_Instance.task_id==case_task_id, Task_Connector_Instance.instance_id==instance_id).first()
+        identifier = Task_Connector_Instance.query\
+                .where(Task_Connector_Instance.task_id==case_task_id, Task_Connector_Instance.instance_id==instance_id)\
+                .first()
     
     loc_instance["identifier"] = ""
     if identifier:

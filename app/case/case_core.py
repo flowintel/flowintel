@@ -162,47 +162,48 @@ def edit_case(form_dict, cid, current_user):
     case.deadline=deadline
 
     ## Tags
-    case_tag_db = Case_Tags.query.filter_by(case_id=case.id).all()
+    case_tag_db = CommonModel.get_case_tags(cid)
     for tags in form_dict["tags"]:
-        tag = CommonModel.get_tag(tags)
-
         if not tags in case_tag_db:
+            tag = CommonModel.get_tag(tags)
             case_tag = Case_Tags(
                 tag_id=tag.id,
                 case_id=case.id
             )
             db.session.add(case_tag)
             db.session.commit()
-    
+            case_tag_db.append(tags)
     for c_t_db in case_tag_db:
         if not c_t_db in form_dict["tags"]:
-            Case_Tags.query.filter_by(id=c_t_db.id).delete()
+            tag = CommonModel.get_tag(c_t_db)
+            case_tag = CommonModel.get_case_tags_both(case.id, tag.id)
+            Case_Tags.query.filter_by(id=case_tag.id).delete()
             db.session.commit()
 
     ## Clusters
-    case_cluster_db = Case_Galaxy_Tags.query.filter_by(case_id=case.id).all()
+    case_cluster_db = CommonModel.get_case_clusters_name(cid)
     for clusters in form_dict["clusters"]:
-        cluster = CommonModel.get_cluster_by_name(clusters)
-
         if not clusters in case_cluster_db:
+            cluster = CommonModel.get_cluster_by_name(clusters)
             case_galaxy_tag = Case_Galaxy_Tags(
                 cluster_id=cluster.id,
                 case_id=case.id
             )
             db.session.add(case_galaxy_tag)
             db.session.commit()
-    
+            case_cluster_db.append(clusters)
     for c_t_db in case_cluster_db:
         if not c_t_db in form_dict["clusters"]:
-            Case_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
+            cluster = CommonModel.get_cluster_by_name(c_t_db)
+            case_cluster = CommonModel.get_case_clusters_both(cid, cluster.id)
+            Case_Galaxy_Tags.query.filter_by(id=case_cluster.id).delete()
             db.session.commit()
 
     ## Connectors
-    case_connector_db = Case_Connector_Instance.query.filter_by(case_id=case.id).all()
+    case_connector_db = CommonModel.get_case_connectors_name(cid)
     for connectors in form_dict["connectors"]:
-        instance = CommonModel.get_instance_by_name(connectors)
-
         if not connectors in case_connector_db:
+            instance = CommonModel.get_instance_by_name(connectors)
             case_tag = Case_Connector_Instance(
                 instance_id=instance.id,
                 case_id=case.id,
@@ -210,14 +211,19 @@ def edit_case(form_dict, cid, current_user):
             )
             db.session.add(case_tag)
             db.session.commit()
-
-        elif not case_connector_db.identifier == form_dict["identifier"][connectors]:
-            case_connector_db.identifier = form_dict["identifier"][connectors]
-            db.session.commit()
+            case_connector_db.append(connectors)
+        else:
+            loc_connector = CommonModel.get_instance_by_name(connectors)
+            case_connector = CommonModel.get_case_connectors_both(cid, loc_connector.id)
+            if not case_connector.identifier == form_dict["identifier"][connectors]:
+                case_connector.identifier = form_dict["identifier"][connectors]
+                db.session.commit()
     
     for c_t_db in case_connector_db:
         if not c_t_db in form_dict["connectors"]:
-            Case_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
+            loc_connector = CommonModel.get_instance_by_name(c_t_db)
+            case_connector = CommonModel.get_case_connectors_both(cid, loc_connector.id)
+            Case_Connector_Instance.query.filter_by(id=case_connector.id).delete()
             db.session.commit()
 
     # Custom tags

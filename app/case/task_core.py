@@ -212,60 +212,68 @@ def edit_task_core(form_dict, tid, current_user):
     task.deadline=deadline
 
     ## Tags
-    task_tag_db = Task_Tags.query.filter_by(task_id=task.id).all()
+    task_tag_db = CommonModel.get_task_tags(tid)
     for tags in form_dict["tags"]:
-        tag = CommonModel.get_tag(tags)
-
         if not tags in task_tag_db:
+            tag = CommonModel.get_tag(tags)
             task_tag = Task_Tags(
                 tag_id=tag.id,
                 task_id=task.id
             )
             db.session.add(task_tag)
             db.session.commit()
-    
+            task_tag_db.append(tags)
     for c_t_db in task_tag_db:
         if not c_t_db in form_dict["tags"]:
-            Task_Tags.query.filter_by(id=c_t_db.id).delete()
+            tag = CommonModel.get_tag(c_t_db)
+            task_tag = CommonModel.get_task_tags_both(tid, tag.id)
+            Task_Tags.query.filter_by(id=task_tag.id).delete()
             db.session.commit()
 
     ## Clusters
-    task_tag_db = Task_Galaxy_Tags.query.filter_by(task_id=task.id).all()
+    task_cluster_db = CommonModel.get_task_clusters_name(tid)
     for clusters in form_dict["clusters"]:
-        cluster = CommonModel.get_cluster_by_name(clusters)
-
         if not clusters in task_tag_db:
+            cluster = CommonModel.get_cluster_by_name(clusters)
             task_tag = Task_Galaxy_Tags(
                 cluster_id=cluster.id,
                 task_id=task.id
             )
             db.session.add(task_tag)
             db.session.commit()
-    
-    for c_t_db in task_tag_db:
+            task_cluster_db.append(clusters)
+    for c_t_db in task_cluster_db:
         if not c_t_db in form_dict["clusters"]:
-            Task_Galaxy_Tags.query.filter_by(id=c_t_db.id).delete()
+            cluster = CommonModel.get_cluster_by_name(c_t_db)
+            task_cluster = CommonModel.get_task_clusters_both(tid, cluster.id)
+            Task_Galaxy_Tags.query.filter_by(id=task_cluster.id).delete()
             db.session.commit()
     
     ## Connectors
-    task_connector_db = Task_Connector_Instance.query.filter_by(task_id=task.id).all()
+    task_connector_db = CommonModel.get_task_connectors_name(tid)
     for connectors in form_dict["connectors"]:
-        instance = CommonModel.get_instance_by_name(connectors)
-
         if not connectors in task_connector_db:
+            instance = CommonModel.get_instance_by_name(connectors)
             task_tag = Task_Connector_Instance(
                 instance_id=instance.id,
                 task_id=task.id,
                 identifier=form_dict["identifier"][connectors]
             )
             db.session.add(task_tag)
-        elif not task_connector_db.identifier == form_dict["identifier"][connectors]:
-            task_connector_db.identifier = form_dict["identifier"][connectors]
-        db.session.commit()
+            db.session.commit()
+            task_connector_db.append(connectors)
+        else:
+            loc_connector = CommonModel.get_instance_by_name(connectors)
+            task_connector = CommonModel.get_task_connectors_both(tid, loc_connector.id)
+            if not task_connector.identifier == form_dict["identifier"][connectors]:
+                task_connector.identifier = form_dict["identifier"][connectors]
+                db.session.commit()        
     
     for c_t_db in task_connector_db:
         if not c_t_db in form_dict["connectors"]:
-            Task_Connector_Instance.query.filter_by(id=c_t_db.id).delete()
+            loc_connector = CommonModel.get_instance_by_name(c_t_db)
+            task_connector = CommonModel.get_task_connectors_both(tid, loc_connector.id)
+            Task_Connector_Instance.query.filter_by(id=task_connector.id).delete()
             db.session.commit()
 
     # Custom tags
