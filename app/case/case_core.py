@@ -395,7 +395,7 @@ def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None,
             conditions.append(Galaxy.name.in_(list(galaxies)))
 
     if filter:
-        query.order_by(desc(filter))
+        query = query.order_by(desc(filter))
     
     return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
 

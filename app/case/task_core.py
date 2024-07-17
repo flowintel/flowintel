@@ -530,7 +530,7 @@ def build_task_query(completed, tags=None, taxonomies=None, galaxies=None, clust
             conditions.append(Galaxy.name.in_(list(galaxies)))
 
     if filter:
-        query.order_by(desc(filter))
+        query = query.order_by(desc(filter))
     
     return query.filter(and_(*conditions)).order_by(Task.case_order_id).all()
 
