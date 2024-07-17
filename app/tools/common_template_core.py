@@ -1,3 +1,4 @@
+import datetime
 from ..db_class.db import *
 from sqlalchemy import func
 
@@ -141,3 +142,17 @@ def get_task_custom_tags_name(task_id):
 
 def get_task_custom_tags_both(task_id, custom_tag_id):
     return Task_Template_Custom_Tags.query.filter_by(task_template_id=task_id, custom_tag_id=custom_tag_id).first()
+
+
+def update_last_modif(case_id):
+    """Update 'last_modif' of a case"""
+    case = Case_Template.query.get(case_id)
+    case.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+    db.session.commit()
+
+def update_last_modif_task(task_id):
+    """Update 'last_modif' of a task"""
+    if task_id:
+        task = Task_Template.query.get(task_id)
+        task.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+        db.session.commit()

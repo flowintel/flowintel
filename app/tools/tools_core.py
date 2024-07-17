@@ -7,7 +7,7 @@ import datetime
 from ..utils import utils
 from ..case import case_core
 from ..case import task_core
-from sqlalchemy import and_
+from sqlalchemy import and_, desc
 from . import common_template_core as CommonModel
 from . import task_template_core as TaskModel
 from ..custom_tags import custom_tags_core as CustomModel
@@ -40,8 +40,10 @@ def build_case_query(page, tags=None, taxonomies=None, galaxies=None, clusters=N
             query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
             conditions.append(Galaxy.name.in_(list(galaxies)))
 
-    if title_filter:
-        query.order_by('title')
+    if title_filter=='true':
+        query = query.order_by('title')
+    else:
+        query = query.order_by(desc('last_modif'))
     
     return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
 
@@ -88,10 +90,12 @@ def get_page_case_templates(page, title_filter, taxonomies=[], galaxies=[], tags
 
             cases = glob_list
     else:
+        query = Case_Template.query
         if title_filter == 'true':
-            cases = Case_Template.query.order_by(('title')).paginate(page=page, per_page=25, max_per_page=50)
+            query = query.order_by('title')
         else:
-            cases = Case_Template.query.paginate(page=page, per_page=25, max_per_page=50)
+            query = query.order_by(desc('last_modif'))
+        cases = query.paginate(page=page, per_page=25, max_per_page=50)
         nb_pages = cases.pages
     return cases, nb_pages
 
@@ -101,7 +105,8 @@ def create_case_template(form_dict):
     case_template = Case_Template(
         title=form_dict["title"],
         description=form_dict["description"],
-        uuid=str(uuid.uuid4())
+        uuid=str(uuid.uuid4()),
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
     )
     db.session.add(case_template)
     db.session.commit()
@@ -174,6 +179,7 @@ def add_task_case_template(form_dict, cid):
                 db.session.add(case_task_template)
                 db.session.commit()
                 count_task += 1
+        CommonModel.update_last_modif(cid)
     elif form_dict["title"]:
         template = TaskModel.add_task_template_core(form_dict)
         case_task_template = Case_Task_Template(
@@ -183,6 +189,7 @@ def add_task_case_template(form_dict, cid):
             )
         db.session.add(case_task_template)
         db.session.commit()
+        CommonModel.update_last_modif(cid)
     else:
         return "No info"
     
@@ -271,6 +278,8 @@ def edit_case_template(form_dict, cid):
             Case_Template_Custom_Tags.query.filter_by(id=case_custom_tag.id).delete()
             db.session.commit()
 
+    CommonModel.update_last_modif(cid)
+
     db.session.commit()
 
 
@@ -292,6 +301,7 @@ def remove_task_case(cid, tid):
     template = Case_Task_Template.query.filter_by(case_id=cid, task_id=tid).first()
     db.session.delete(template)
     db.session.commit()
+    CommonModel.update_last_modif(cid)
     return True
 
 

@@ -1,9 +1,10 @@
+import datetime
 from ..db_class.db import *
 import uuid
 import ast
 from .. import db
 from . import common_template_core as CommonModel
-from sqlalchemy import and_
+from sqlalchemy import and_, desc
 from ..custom_tags import custom_tags_core as CustomModel
 
 
@@ -35,8 +36,10 @@ def build_task_query(page, tags=None, taxonomies=None, galaxies=None, clusters=N
             query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
             conditions.append(Galaxy.name.in_(list(galaxies)))
 
-    if title_filter:
-        query.order_by('title')
+    if title_filter=='true':
+        query = query.order_by('title')
+    else:
+        query = query.order_by(desc('last_modif'))
     
     return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
 
@@ -83,7 +86,12 @@ def get_page_task_templates(page, title_filter, taxonomies=[], galaxies=[], tags
 
             tasks = glob_list
     else:
-        tasks = Task_Template.query.paginate(page=page, per_page=25, max_per_page=50)
+        query = Task_Template.query
+        if title_filter=='true':
+           query = query.order_by('title')
+        else:
+            query = query.order_by(desc('last_modif'))
+        tasks = query.paginate(page=page, per_page=25, max_per_page=50)
         nb_pages = tasks.pages
     return tasks, nb_pages
 
@@ -94,7 +102,8 @@ def add_task_template_core(form_dict):
         description=form_dict["body"],
         url=form_dict["url"],
         uuid=str(uuid.uuid4()),
-        nb_notes=0
+        nb_notes=0,
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
     )
     db.session.add(template)
     db.session.commit()
@@ -223,6 +232,8 @@ def edit_task_template(form_dict, tid):
             Task_Template_Custom_Tags.query.filter_by(id=task_custom_tag.id).delete()
             db.session.commit()
 
+    CommonModel.update_last_modif_task(template.id)
+
     db.session.commit()
 
 
@@ -268,6 +279,7 @@ def create_note(tid):
         template.nb_notes += 1
         db.session.add(note)
         db.session.commit()
+        CommonModel.update_last_modif_task(template.id)
         return note
     return False
 
@@ -285,12 +297,15 @@ def modif_note_core(tid, notes, note_id):
         template.nb_notes += 1
         db.session.add(note)
         db.session.commit()
+
+        CommonModel.update_last_modif_task(template.id)
     else:
         note = CommonModel.get_task_note(note_id)
         if note:
             if note.template_id == int(tid):
                 note.note = notes
                 db.session.commit()
+                CommonModel.update_last_modif_task(template.id)
             else:
                 return {"message": f"This note is not in template {tid}"}
         else:
@@ -304,6 +319,7 @@ def delete_note(tid, note_id):
         if note.template_id == int(tid):
             Note_Template.query.filter_by(id=note_id).delete()
             db.session.commit()
+            CommonModel.update_last_modif_task(tid)
             return True
     return False
 

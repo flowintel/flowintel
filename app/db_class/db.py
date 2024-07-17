@@ -372,13 +372,15 @@ class Case_Template(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String(64), index=True)
     description = db.Column(db.String, nullable=True)
+    last_modif = db.Column(db.DateTime, index=True)
 
     def to_json(self):
         json_dict =  {
             "id": self.id,
             "uuid": self.uuid,
             "title": self.title,
-            "description": self.description
+            "description": self.description,
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
         }
 
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
@@ -414,6 +416,7 @@ class Task_Template(db.Model):
     url = db.Column(db.String(64), index=True)
     notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade="all, delete-orphan")
     nb_notes = db.Column(db.Integer, index=True)
+    last_modif = db.Column(db.DateTime, index=True)
 
     def to_json(self):
         json_dict =  {
@@ -422,7 +425,8 @@ class Task_Template(db.Model):
             "title": self.title,
             "description": self.description,
             "url": self.url,
-            "nb_notes": self.nb_notes
+            "nb_notes": self.nb_notes,
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
