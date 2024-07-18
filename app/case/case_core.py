@@ -3,6 +3,8 @@ import ast
 import uuid
 import datetime
 
+from flask import send_file
+
 from app.utils.utils import MODULES, MODULES_CONFIG
 from .. import db
 from ..db_class.db import *
@@ -923,3 +925,11 @@ def modif_note_core(cid, current_user, notes):
         CommonModel.save_history(case.uuid, current_user, f"Case's Notes modified")
         return True
     return False
+
+def download_history(case):
+    """Download a history"""
+    history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
+    if os.path.isfile(history_path):
+        return send_file(history_path, as_attachment=True, download_name=f"{case.title}_history")
+    else:
+        return {"message": "History file not found", "toast_class": "danger-subtle"}, 404

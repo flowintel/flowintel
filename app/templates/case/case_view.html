@@ -480,6 +480,7 @@
 
     <template v-else-if="main_tab == 'history'">
         <template v-if="history">
+            <a class="btn btn-primary btn-sm mb-1" :href="'/case/'+cases_info.case.id+'/download_history'">Download</a>
             <div v-for="h in history">
                 [[h]]
             </div>
