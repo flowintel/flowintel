@@ -702,6 +702,8 @@ def call_module_task(module, instances, case, task, user):
             task_instance_id.identifier = event_id
             db.session.commit()
 
+    CommonModel.save_history(case.uuid, user, f"Task Module {module} used on instances: {', '.join(list(instances.keys))}")
+
 
 def call_module_task_no_instance(module, task, case, current_user, user_id):
     user = User.query.get(user_id)

@@ -5,8 +5,7 @@ import json
 from .. import db
 import datetime
 from ..utils import utils
-from ..case import case_core
-from ..case import task_core
+from ..case import case_core, task_core, common_core
 from sqlalchemy import and_, desc
 from . import common_template_core as CommonModel
 from . import task_template_core as TaskModel
@@ -161,7 +160,6 @@ def create_case_template(form_dict):
         db.session.commit()
         cp += 1
     return case_template
-
 
 
 
@@ -435,6 +433,7 @@ def create_case_from_template(cid, case_title_fork, user):
             db.session.add(task_custom_tags)
             db.session.commit()
     
+    common_core.save_history(case.uuid, user, f"Case created from template: {case_template.id} - {case_template.title}")
     return case
 
 def core_read_json_file(case, current_user):

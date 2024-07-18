@@ -244,7 +244,8 @@ class CreateTemplate(Resource):
     def post(self, cid):
         if "title_template" in request.json:
             if CommonModel.get_case(cid):
-                new_template = CaseModel.create_template_from_case(cid, request.json["title_template"])
+                current_user = CaseModelApi.get_user_api(request.headers)
+                new_template = CaseModel.create_template_from_case(cid, request.json["title_template"], current_user)
                 if type(new_template) == dict:
                     return new_template
                 return {"template_id": new_template.id}, 201

@@ -15,7 +15,7 @@ from ..custom_tags import custom_tags_core as CustomModel
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
-HISTORY_FOLDER = os.path.join(os.getcwd(), "history")
+HISTORY_DIR = os.environ.get("HISTORY_DIR")
 
 
 def get_case(cid):
@@ -309,7 +309,7 @@ def get_task_custom_tags_both(task_id, custom_tag_id):
 def get_history(case_uuid):
     """Return history of case by its uuid"""
     try:
-        path_history = os.path.join(HISTORY_FOLDER, str(case_uuid))
+        path_history = os.path.join(HISTORY_DIR, str(case_uuid))
         with open(path_history, "r") as read_file:
             loc_file = read_file.read().splitlines()
         return loc_file
@@ -318,8 +318,8 @@ def get_history(case_uuid):
     
 def save_history(case_uuid, current_user, message):
     """Save historic message of a case"""
-    create_specific_dir(HISTORY_FOLDER)
-    path_history = os.path.join(HISTORY_FOLDER, str(case_uuid))
+    create_specific_dir(HISTORY_DIR)
+    path_history = os.path.join(HISTORY_DIR, str(case_uuid))
     with open(path_history, "a") as write_history:
         now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
         write_history.write(f"[{now}]({current_user.first_name} {current_user.last_name}): {message}\n")

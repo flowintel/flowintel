@@ -24,7 +24,7 @@ def delete_case(cid, current_user):
         for task in case.tasks:
             TaskModel.delete_task(task.id, current_user)
 
-        history_path = os.path.join(CommonModel.HISTORY_FOLDER, str(case.uuid))
+        history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
         if os.path.isfile(history_path):
             try:
                 os.remove(history_path)
@@ -580,10 +580,12 @@ def fork_case_core(cid, case_title_fork, user):
         task_json["identifier"] = loc_identifiers_dict
 
         TaskModel.create_task(task_json, new_case.id, user)
+
+    CommonModel.save_history(case.uuid, user, f"Case forked, {new_case.id} - {new_case.title}")
     return new_case
 
 
-def create_template_from_case(cid, case_title_template):
+def create_template_from_case(cid, case_title_template, current_user):
     """Create a case template from a case"""
     if Case_Template.query.filter_by(title=case_title_template).first():
         return {"message": "Error, title already exist"}
@@ -592,7 +594,8 @@ def create_template_from_case(cid, case_title_template):
     new_template = Case_Template(
         uuid=str(uuid.uuid4()),
         title=case_title_template,
-        description=case.description
+        description=case.description,
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
     )
     db.session.add(new_template)
     db.session.commit()
@@ -642,7 +645,8 @@ def create_template_from_case(cid, case_title_template):
                 title=task.title,
                 description=task.description,
                 url=task.url,
-                nb_notes=task.nb_notes
+                nb_notes=task.nb_notes,
+                last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
             )
             db.session.add(task_template)
             db.session.commit()
@@ -707,6 +711,8 @@ def create_template_from_case(cid, case_title_template):
                 )
             db.session.add(case_task_template)
             db.session.commit()
+
+    CommonModel.save_history(case.uuid, current_user, f"Template created, {new_template.id} - {new_template.title}")
 
     return new_template
 
@@ -885,7 +891,8 @@ def call_module_case(module, instances, case, user):
         elif not case_instance_id.identifier == event_id:
             case_instance_id.identifier = event_id
             db.session.commit()
-
+    
+    CommonModel.save_history(case.uuid, user, f"Task Module {module} used on instances: {', '.join(list(instances.keys))}")
 
 def get_all_notes(case):
     """Get all tasks' notes"""
@@ -913,6 +920,6 @@ def modif_note_core(cid, current_user, notes):
         case.notes = notes
         CommonModel.update_last_modif(cid)
         db.session.commit()
-        CommonModel.save_history(case.uuid, current_user, f"Notes for '{case.title}' modified")
+        CommonModel.save_history(case.uuid, current_user, f"Case's Notes modified")
         return True
     return False

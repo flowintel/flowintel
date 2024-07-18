@@ -458,7 +458,7 @@ def create_template(cid):
         if "case_title_template" in request.json:
             case_title_template = request.json["case_title_template"]
 
-            new_template = CaseModel.create_template_from_case(cid, case_title_template)
+            new_template = CaseModel.create_template_from_case(cid, case_title_template, current_user)
             if type(new_template) == dict:
                 return new_template
             return {"template_id": new_template.id}, 201

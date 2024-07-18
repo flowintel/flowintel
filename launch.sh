@@ -1,6 +1,7 @@
 #!/bin/bash -i
 isscripted=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1`
 source env/bin/activate
+history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 function killscript {
     if  [ $isscripted ]; then
@@ -15,6 +16,7 @@ function db_upgrade {
 
 function launch {
     export FLASKENV="development"
+    export HISTORY_DIR=$history_dir/history
     killscript
     screen -dmS "fcm"
     screen -S "fcm" -X screen -t "recurring_notification" bash -c "python3 startNotif.py; read x"
@@ -23,7 +25,9 @@ function launch {
 
 function test {
     export FLASKENV="testing"
+    export HISTORY_DIR=$history_dir/history_test
     pytest
+    rm -r $HISTORY_DIR
 }
 
 function production {
