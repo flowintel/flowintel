@@ -116,6 +116,9 @@ class Case(db.Model):
         
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Case_Custom_Tags.case_id==self.id).all()]
+        
+        json_dict["link_to"] = [{"id": clc.id, "title": clc.title, "description": clc.description} for clc in Case.query.join(Case_Link_Case, Case_Link_Case.case_id_2==Case.id)\
+                                                    .where(Case_Link_Case.case_id_1==self.id).all()]
 
         return json_dict
     
@@ -772,6 +775,11 @@ class Task_Template_Custom_Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_template_id = db.Column(db.Integer, index=True)
     custom_tag_id = db.Column(db.Integer, index=True)
+
+class Case_Link_Case(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id_1 = db.Column(db.Integer, index=True)
+    case_id_2 = db.Column(db.Integer, index=True)
 
 login_manager.anonymous_user = AnonymousUser
 

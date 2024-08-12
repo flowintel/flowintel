@@ -49,6 +49,7 @@ def create_case():
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
+            form_dict["link_to"] = request.form.getlist("link_to")
             case = CaseModel.create_case(form_dict, current_user)
             flash("Case created", "success")
             return redirect(f"/case/{case.id}")
@@ -84,6 +85,7 @@ def edit_case(cid):
                 if isinstance(res, dict):
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
+                    form_dict["link_to"] = request.form.getlist("link_to")
                     CaseModel.edit_case(form_dict, cid, current_user)
                     flash("Case edited", "success")
                     return redirect(f"/case/{cid}")
@@ -201,7 +203,9 @@ def get_case(cid):
 @login_required
 def search():
     """Return cases matching search terms"""
-    text_search = request.args.get("text")
+    text_search = ""
+    if "text" in request.args:
+        text_search = request.args.get("text")
     cases = CommonModel.search(text_search)
     if cases:
         return {"cases": [case.to_json() for case in cases]}, 200
@@ -705,3 +709,33 @@ def download_file(cid):
             return CaseModel.download_history(case)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+@case_blueprint.route("/<cid>/add_new_link", methods=['GET', 'POST'])
+@login_required
+@editor_required
+def add_new_link(cid):
+    """Add a new link to the case"""
+    if CommonModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if request.json:
+                if "case_id" in request.json:
+                    if CaseModel.add_new_link(request.json, cid, current_user):
+                        return {"message": "Link added", "toast_class": "success-subtle"}, 200
+                    return {"message": "A Case doesn't exist", "toast_class": "danger-subtle"}, 404
+                return {"message": "Need to pass 'case_id'", "toast_class": "warning-subtle"}, 400
+            return {"message": "An error occur", "toast_class": "warning-subtle"}, 400
+        return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+@case_blueprint.route("/<cid>/remove_case_link/<clid>", methods=['GET'])
+@login_required
+@editor_required
+def remove_case_link(cid, clid):
+    """Remove an org to the case"""
+    if CommonModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CaseModel.remove_case_link(cid, clid, current_user):
+                return {"message": "Link removed", "toast_class": "success-subtle"}, 200
+            return {"message": "Error removing link from case", "toast_class": "danger-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404

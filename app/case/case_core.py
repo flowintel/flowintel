@@ -40,6 +40,8 @@ def delete_case(cid, current_user):
         Case_Org.query.filter_by(case_id=case.id).delete()
         Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
         Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
+        Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
+        Case_Link_Case.query.filter_by(case_id_2=case.id).delete()
         db.session.delete(case)
         db.session.commit()
         return True
@@ -142,6 +144,23 @@ def create_case(form_dict, user):
         )
         db.session.add(case_org)
         db.session.commit()
+
+        for case_title_to_link in form_dict["link_to"]:
+            case_to_link = CommonModel.get_case_by_title(case_title_to_link)
+            c_l_c = Case_Link_Case(
+                case_id_1=case.id,
+                case_id_2=case_to_link.id
+            )
+            db.session.add(c_l_c)
+            db.session.commit()
+
+            c_l_c = Case_Link_Case(
+                case_id_1=case_to_link.id,
+                case_id_2=case.id
+            )
+            db.session.add(c_l_c)
+            db.session.commit()
+
 
     CommonModel.save_history(case.uuid, user, "Case Created")
 
@@ -272,12 +291,12 @@ def add_orgs_case(form_dict, cid, current_user):
                     db.session.commit()
 
             NotifModel.create_notification_org(f"{CommonModel.get_org(org_id).name} add to case: '{case.id}-{case.title}'", cid, org_id, html_icon="fa-solid fa-sitemap", current_user=current_user)
+            CommonModel.save_history(case.uuid, current_user, f"Org {org_id} added")
         else:
             return False
 
     CommonModel.update_last_modif(cid)
     db.session.commit()
-    CommonModel.save_history(case.uuid, current_user, f"Org {org_id} added")
     return True
 
 
@@ -308,7 +327,7 @@ def remove_org_case(case_id, org_id, current_user):
         for user in org.users:
             for task in case.tasks:
                 task
-                t_u = Task_User.query.filter_by(user_id=user.id, task_id=task.id)
+                t_u = Task_User.query.filter_by(user_id=user.id, task_id=task.id).first()
                 if t_u:
                     db.session.delete(t_u)
 
@@ -933,3 +952,51 @@ def download_history(case):
         return send_file(history_path, as_attachment=True, download_name=f"{case.title}_history")
     else:
         return {"message": "History file not found", "toast_class": "danger-subtle"}, 404
+    
+def add_new_link(form_dict, cid, current_user):
+    """Add a new link to case in the DB"""
+    case = CommonModel.get_case(cid)
+    for loop_case_id in form_dict["case_id"]:
+        case_link = CommonModel.get_case(loop_case_id)
+        if case_link:
+            case_link_case = Case_Link_Case(
+                case_id_1=cid, 
+                case_id_2=case_link.id
+            )
+            db.session.add(case_link_case)
+            db.session.commit()
+
+            case_link_case = Case_Link_Case(
+                case_id_1=case_link.id, 
+                case_id_2=cid
+            )
+            db.session.add(case_link_case)
+            db.session.commit()
+
+            CommonModel.save_history(case.uuid, current_user, f"Case linked to case {case_link.id}- {case_link.title} added")
+            CommonModel.save_history(case_link.uuid, current_user, f"Case linked to case {case.id}- {case.title}, from the other case")
+        else:
+            return False
+
+    CommonModel.update_last_modif(cid)
+    db.session.commit()
+    return True
+
+def remove_case_link(case_id, case_link_id, current_user):
+    """Remove an org from a case"""
+    case_link_case = Case_Link_Case.query.filter_by(case_id_1=case_id, case_id_2=case_link_id).first()
+    if case_link_case:
+        case_link_case_2 = Case_Link_Case.query.filter_by(case_id_1=case_link_id, case_id_2=case_id).first()
+        db.session.delete(case_link_case)
+        db.session.delete(case_link_case_2)
+
+        case = CommonModel.get_case(case_id)
+        case_2 = CommonModel.get_case(case_link_id)
+
+        CommonModel.update_last_modif(case_id)
+        db.session.commit()
+        case = CommonModel.get_case(case_id)
+        CommonModel.save_history(case.uuid, current_user, f"Case link {case_2.id}- {case_2.title} removed")
+        CommonModel.save_history(case_2.uuid, current_user, f"Case link {case.id}- {case.title} removed, from the other case")
+        return True
+    return False

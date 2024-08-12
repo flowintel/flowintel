@@ -148,7 +148,12 @@
                 <div style="display:flex">
                     <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">[[ case_loc.id ]]-[[ case_loc.title ]]</h4>
+                            <h4 class="mb-1">
+                                [[ case_loc.id ]]-[[ case_loc.title ]]
+                                <button v-if="case_loc.link_to.length" disabled class="btn btn-outline-primary btn-sm" style="margin-left: 20px;">
+                                    <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[case_loc.link_to.length]]</span>
+                                </button>
+                            </h4>                            
                             <small><i>Changed [[ (dayjs.utc(case_loc.last_modif).fromNow()) ]]</i></small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">

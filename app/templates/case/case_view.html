@@ -13,7 +13,46 @@
     <small v-if="status_info" style="margin-left: 10px;">
         <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style">[[ status_info.status[ {{case.status_id}} -1].name ]]</span>
     </small>
-
+    
+    <!-- Example single danger button -->
+    <template v-if="cases_info">
+        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" style="margin-left: 10px;">
+            <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[cases_info.case.link_to.length]]</span>
+        </button>
+        <ul class="dropdown-menu">
+            <button class="btn btn-primary btn-sm" title="New link" style="margin-left: 60px;" data-bs-toggle="modal" data-bs-target="#add_new_link"><i class="fa-solid fa-paperclip"></i>+</button>
+            <li><hr class="dropdown-divider"></li>
+            <template v-for="case_link in cases_info.case.link_to">
+                <li>
+                    <div class="d-flex">
+                        <a class="dropdown-item" :href="'/case/'+case_link.id" style="margin-right: 5px;" :title="case_link.description">[[case_link.title]]</a>
+                        <button class="btn btn-danger btn-sm" @click="remove_case_link(cases_info, case_link)">Remove</button>
+                    </div>
+                </li>
+            </template>
+        </ul>
+    </template>
+  
+    <!-- Modal add new link -->
+    <div class="modal fade" id="add_new_link" tabindex="-1" aria-labelledby="add_new_link_modal" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="add_new_link_modal">Add New link</h1>
+                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Link to:
+                    <select class="new-link-ajax" name="link_to" tabindex="-1" multiple data-placeholder="Link To"></select>
+                    <div style="color: brown;" id="add_new_link_error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button @click="submit_add_new_link()" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+        
     <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right; display: grid;">
         <a class="btn btn-primary btn-sm"  :href="`/case/${cases_info.case.id}/download`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
         <button type="button" class="btn btn-secondary btn-sm" title="Send to connectors" data-bs-toggle="modal" data-bs-target="#Send_to_modal">
@@ -600,6 +639,8 @@
 
                 const orgs = ref([])
 
+                const case_for_link = ref([])
+
                 async function fetch_history(){
                     const res = await fetch("/case/history/" + cases_info.value.case.id)
                     if(await res.status==404 ){
@@ -659,6 +700,9 @@
                                     }
                                 }
                             }
+                            var myModalEl = document.getElementById('add_orgs');
+                            var modal = bootstrap.Modal.getInstance(myModalEl)
+                            modal.hide();
                         }
                         display_toast(res)
                     }
@@ -1250,9 +1294,88 @@
                     setTimeout(autosave_case_note, 30000);
                 }
 
+                async function submit_add_new_link() {    
+                    $("#add_new_link_error").text("")
+                    if($(".new-link-ajax").val().includes("None") || !$(".new-link-ajax").val().length){
+                        $("#add_new_link_error").text("Give me more")
+                    }else{
+                        const res = await fetch('/case/' + cases_info.value.case.id + '/add_new_link',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"case_id": $(".new-link-ajax").val()})
+                        })
+                        if(await res.status == 200){
+                            let loc = $(".new-link-ajax").val()
+                            for(let index in loc){
+                                for(let i in case_for_link.value){
+                                    if(case_for_link.value[i].id == loc[index]){
+                                        cases_info.value.case.link_to.push({"id":case_for_link.value[i].id, "title": case_for_link.value[i].text})
+                                    }
+                                }
+                            }
+                            var myModalEl = document.getElementById('add_new_link');
+                            var modal = bootstrap.Modal.getInstance(myModalEl)
+                            modal.hide();
+                        }
+                        display_toast(res)
+                    }
+                }
+
+                async function remove_case_link(cases_info, case_loc){
+                    const res = await fetch('/case/' + cases_info.case.id + '/remove_case_link/' + case_loc.id)
+                    if (await res.status == 200){
+                        let index = cases_info.case.link_to.indexOf(case_loc)
+                        if(index > -1)
+                            cases_info.case.link_to.splice(index, 1)
+                    }
+                    display_toast(res)
+                }
+
                 onMounted(() => {
                     initialize_select2()
                     autosave_case_note()
+
+                    const list = [].slice.call(
+                        document.querySelectorAll('[data-bs-toggle="popover"]'))
+                        list.map((el) => {
+                            let opts = {
+                                animation: false,
+                            }
+                            if (el.hasAttribute('data-bs-content-id')) {
+                                opts.content = document.getElementById(el.getAttribute('data-bs-content-id')).innerHTML;
+                                opts.html = true;
+                            }
+                            new bootstrap.Popover(el, opts);
+                        }
+                    )
+
+                    $('.new-link-ajax').select2({
+                        ajax: {
+                            url: '/case/search',
+                            data: function (params) {
+                                var query = {
+                                    text: params.term
+                                }
+
+                                // Query parameters will be ?text=[term]
+                                return query;
+                            },
+                            processResults: function (data) {
+                                case_for_link.value = []
+                                for(let i in data.cases){
+                                    case_for_link.value.push({id: data.cases[i].id, text: data.cases[i].title})
+                                }
+                                
+                                return {
+                                    results: case_for_link.value
+                                };
+                            }
+                        },
+                        minimumInputLength: 1,
+                        width: "50%",
+                        dropdownParent: $('#add_new_link')
+                    });
+
                 })
                 
     
@@ -1276,6 +1399,8 @@
                     asc_desc_filter,
                     active_tab,
                     submit_module,
+                    submit_add_new_link,
+                    remove_case_link,
                     getTextColor,
                     mapIcon,
                     taxonomies,
