@@ -1,5 +1,6 @@
 import os
 import ast
+import requests
 import uuid
 import datetime
 
@@ -956,8 +957,8 @@ def add_new_link(form_dict, cid, current_user):
             db.session.add(case_link_case)
             db.session.commit()
 
-            CommonModel.save_history(case.uuid, current_user, f"Case linked to case {case_link.id}- {case_link.title} added")
-            CommonModel.save_history(case_link.uuid, current_user, f"Case linked to case {case.id}- {case.title}, from the other case")
+            CommonModel.save_history(case.uuid, current_user, f"Case linked to case '{case_link.id}- {case_link.title}' added")
+            CommonModel.save_history(case_link.uuid, current_user, f"Case linked to case '{case.id}- {case.title}', from the other case")
         else:
             return False
 
@@ -979,7 +980,34 @@ def remove_case_link(case_id, case_link_id, current_user):
         CommonModel.update_last_modif(case_id)
         db.session.commit()
         case = CommonModel.get_case(case_id)
-        CommonModel.save_history(case.uuid, current_user, f"Case link {case_2.id}- {case_2.title} removed")
-        CommonModel.save_history(case_2.uuid, current_user, f"Case link {case.id}- {case.title} removed, from the other case")
+        CommonModel.save_history(case.uuid, current_user, f"Case link '{case_2.id}- {case_2.title}' removed")
+        CommonModel.save_history(case_2.uuid, current_user, f"Case link '{case.id}- {case.title}' removed, from the other case")
         return True
     return False
+
+def change_hedgedoc_url(form_dict, cid, current_user):
+    case = CommonModel.get_case(cid)
+    loc_hedgedoc_url = form_dict["hedgedoc_url"]
+    if loc_hedgedoc_url.endswith("#"):
+        loc_hedgedoc_url = loc_hedgedoc_url[:-1]
+    if loc_hedgedoc_url.endswith("?both"):
+        loc_hedgedoc_url = loc_hedgedoc_url[:-5]
+    if loc_hedgedoc_url.endswith("?edit"):
+        loc_hedgedoc_url = loc_hedgedoc_url[:-5]
+
+    case.hedgedoc_url = loc_hedgedoc_url
+    db.session.commit()
+    CommonModel.save_history(case.uuid, current_user, f"Hedgedoc url changed")
+    return True
+
+def get_hedgedoc_notes(cid):
+    case = CommonModel.get_case(cid)
+    if case.hedgedoc_url:
+        try:
+            md = requests.get(f"{case.hedgedoc_url}/download")
+            if md.status_code == 200:
+                return {"notes": md.text}, 200
+            return {"message": "Notes not found", 'toast_class': "danger-subtle"}, 404
+        except:
+            return {"message": "Error with the url", 'toast_class': "warning-subtle"}, 400
+    return {"notes": ""}, 200

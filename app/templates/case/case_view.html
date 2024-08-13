@@ -16,7 +16,7 @@
     
     <!-- Example single danger button -->
     <template v-if="cases_info">
-        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" style="margin-left: 10px;">
+        <button type="button" title="Link to other Case" class="btn btn-outline-primary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" style="margin-left: 10px;">
             <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[cases_info.case.link_to.length]]</span>
         </button>
         <ul class="dropdown-menu">
@@ -352,6 +352,9 @@
         <li class="nav-item">
             <button class="nav-link" id="tab-all" @click="active_tab('all')">Tasks notes</button>
         </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-hedgedoc" @click="active_tab('hedgedoc')">Hedgedoc</button>
+        </li>
     </ul>
 
 
@@ -579,6 +582,13 @@
             <div class="all-tasks-notes" v-html="md.render(notes)"></div>
         </template>
     </template>
+
+    <template v-else-if="main_tab == 'hedgedoc'">
+        <hedgedoc_template 
+            :cases_info="cases_info"
+            :status_info="status_info">
+        </hedgedoc_template>
+    </template>
     
     <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
@@ -590,12 +600,14 @@
     <script type="module">
         const { createApp, ref, computed, nextTick, onMounted } = Vue
         import case_tasks from '/static/js/case/case_tasks.js'
+        import hedgedoc_template from '/static/js/case/hedgedoc_template.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
-                case_tasks
+                case_tasks,
+                hedgedoc_template
             },
             setup() {
                 const cases_info = ref(null)
@@ -999,6 +1011,7 @@
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-case").classList.remove("active")
                             document.getElementById("tab-all").classList.remove("active")
+                            document.getElementById("tab-hedgedoc").classList.remove("active")
                             await nextTick()
 
                             initialize_select2()
@@ -1010,6 +1023,7 @@
                             document.getElementById("tab-main").classList.remove("active")
                             document.getElementById("tab-case").classList.remove("active")
                             document.getElementById("tab-all").classList.remove("active")
+                            document.getElementById("tab-hedgedoc").classList.remove("active")
                         }
                     }else if(tab_name == 'case'){
                         let loc_tab = main_tab.value 
@@ -1019,6 +1033,7 @@
                             document.getElementById("tab-main").classList.remove("active")
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-all").classList.remove("active")
+                            document.getElementById("tab-hedgedoc").classList.remove("active")
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'case'){
@@ -1040,6 +1055,19 @@
                         main_tab.value = 'all'
                         if ( !document.getElementById("tab-all").classList.contains("active") ){
                             document.getElementById("tab-all").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-case").classList.remove("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                            document.getElementById("tab-hedgedoc").classList.remove("active")
+                        }
+                        await fetch_all_notes()
+                        await nextTick()
+                        md.mermaid.init()
+                    }else if(tab_name == 'hedgedoc'){
+                        main_tab.value = 'hedgedoc'
+                        if ( !document.getElementById("tab-hedgedoc").classList.contains("active") ){
+                            document.getElementById("tab-hedgedoc").classList.add("active")
+                            document.getElementById("tab-all").classList.remove("active")
                             document.getElementById("tab-main").classList.remove("active")
                             document.getElementById("tab-case").classList.remove("active")
                             document.getElementById("tab-history").classList.remove("active")

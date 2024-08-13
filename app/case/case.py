@@ -739,3 +739,30 @@ def remove_case_link(cid, clid):
             return {"message": "Error removing link from case", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/change_hedgedoc_url", methods=['POST'])
+@login_required
+@editor_required
+def change_hedgedoc_url(cid):
+    """Change hedgedoc url of the case"""
+    if CommonModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "hedgedoc_url" in request.json:
+                if CaseModel.change_hedgedoc_url(request.json, cid, current_user):
+                    return {"message": "Link removed", "toast_class": "success-subtle"}, 200
+                return {"message": "Error removing link from case", "toast_class": "danger-subtle"}, 400
+            return {"message": "Need to pass 'hedgedoc_url'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<cid>/get_hedgedoc_notes", methods=['GET'])
+@login_required
+@editor_required
+def get_hedgedoc_notes(cid):
+    """Get hedgedoc notes of the case"""
+    if CommonModel.get_case(cid):
+        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            return CaseModel.get_hedgedoc_notes(cid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404

@@ -76,6 +76,7 @@ class Case(db.Model):
     recurring_type = db.Column(db.String(30), index=True)
     nb_tasks = db.Column(db.Integer, index=True)
     notes = db.Column(db.String, nullable=True)
+    hedgedoc_url = db.Column(db.String, nullable=True)
 
     def to_json(self):
         json_dict = {
@@ -91,7 +92,8 @@ class Case(db.Model):
             "notif_deadline_id": self.notif_deadline_id,
             "recurring_type": self.recurring_type,
             "nb_tasks": self.nb_tasks,
-            "notes": self.notes
+            "notes": self.notes,
+            "hedgedoc_url": self.hedgedoc_url
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
