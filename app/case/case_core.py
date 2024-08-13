@@ -145,23 +145,6 @@ def create_case(form_dict, user):
         db.session.add(case_org)
         db.session.commit()
 
-        for case_title_to_link in form_dict["link_to"]:
-            case_to_link = CommonModel.get_case_by_title(case_title_to_link)
-            c_l_c = Case_Link_Case(
-                case_id_1=case.id,
-                case_id_2=case_to_link.id
-            )
-            db.session.add(c_l_c)
-            db.session.commit()
-
-            c_l_c = Case_Link_Case(
-                case_id_1=case_to_link.id,
-                case_id_2=case.id
-            )
-            db.session.add(c_l_c)
-            db.session.commit()
-
-
     CommonModel.save_history(case.uuid, user, "Case Created")
 
     return case
