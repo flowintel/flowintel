@@ -671,7 +671,14 @@ export default {
 	},
 	template: `
 	<div style="display: flex;">                          
-		<a :href="'#collapse'+task.id" class="list-group-item list-group-item-action" data-bs-toggle="collapse" role="button" aria-expanded="false" :aria-controls="'collapse'+task.id">
+		<a :href="'#collapse'+task.id" 
+			class="list-group-item list-group-item-action" 
+			data-bs-toggle="collapse" 
+			role="button" 
+			aria-expanded="false" 
+			:aria-controls="'collapse'+task.id" 
+			style="border-top-left-radius: 15px; border-top-right-radius: 15px;"
+		>
 			<div class="d-flex w-100 justify-content-between">
 				<h5 class="mb-1">[[ key_loop ]]- [[task.title]]</h5>
 				<small><i>Changed [[ formatNow(task.last_modif) ]] </i></small>
@@ -829,19 +836,66 @@ export default {
 	<!-- Collapse Part -->
 	<div class="collapse" :id="'collapse'+task.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
-			<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-				<div class="d-flex w-100 justify-content-between">
-					<div v-if="users_in_case">
-						<h5>Assign</h5>
-						<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
-							<template v-for="user in users_in_case.users_list">
-								<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]] [[user.last_name]]</option>
-							</template>
-						</select>
-						<button class="btn btn-primary" @click="assign_user_task()">Assign</button>
-					</div>
-					<div style="margin-right: 5px">
-						<h5>Change Status</h5>
+			<div class="row">
+				<div class="col" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+					<fieldset class="analyzer-select-case">
+						<legend class="analyzer-select-case"><i class="fa-solid fa-user"></i> Assign</legend>
+						<div v-if="users_in_case">
+							<select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
+								<template v-for="user in users_in_case.users_list">
+									<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]] [[user.last_name]]</option>
+								</template>
+							</select>
+							<button class="btn btn-primary" @click="assign_user_task()">Assign</button>
+						</div>
+						<hr>
+						<div v-if="task.users.length">
+							<div v-for="user in task.users">
+								<span style="margin-right: 5px"><i class="fa-solid fa-user"></i> [[user.first_name]] [[user.last_name]]</span>
+								<button v-if="cases_info.current_user.id != user.id" class="btn btn-primary btn-sm" data-bs-toggle="modal" :data-bs-target="'#notify_modal_'+task.id+'_'+user.id" title="Use a module to notify user"><i class="fa-solid fa-bell"></i></button>
+								<button class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
+							
+								<div class="modal fade" :id="'notify_modal_'+task.id+'_'+user.id" tabindex="-1" aria-labelledby="notify_modalLabel" aria-hidden="true">
+									<div class="modal-dialog modal-lg">
+										<div class="modal-content">
+											<div class="modal-header">
+												<h1 class="modal-title fs-5" id="notify_modalLabel">Notify user</h1>
+												<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+											</div>
+											<div class="modal-body">
+												<div class="d-flex w-100 justify-content-center">
+													<label :for="'modules_select_'+task.id+'_'+user.id">Modules:</label>
+												</div>
+												<div class="d-flex w-100 justify-content-center">
+													
+													<select data-placeholder="Modules" class="select2-select form-control" style="min-width: 100px; max-width: 300px;" :name="'modules_select_'+task.id+'_'+user.id" :id="'modules_select_'+task.id+'_'+user.id" >
+														<option value="None">--</option>
+														<option value="flowintel">flowintel</option>
+														<template v-for="module, key in modules">
+															<option v-if="module.type == 'notify_user' && module.config.case_task == 'task'" :value="[[key]]">[[key]]</option>
+														</template>
+													</select>
+													<div id="modules_errors" class="invalid-feedback"></div>
+												</div>
+											</div>
+											<div class="modal-footer">
+												<button v-if="module_loader" class="btn btn-primary" type="button" disabled>
+													<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+													<span role="status">Loading...</span>
+												</button>
+												<button v-else type="button" @click="submit_module_task(user.id)" class="btn btn-primary">Submit</button>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</fieldset>
+				</div>
+		
+				<div class="col" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+					<fieldset class="analyzer-select-case">
+						<legend class="analyzer-select-case"><i class="fa-solid fa-temperature-three-quarters"></i> Change Status</legend>
 						<div>
 							<div class="dropdown" :id="'dropdown_status_'+task.id">
 								<template v-if="status_info">
@@ -858,107 +912,66 @@ export default {
 								</template>
 							</div>
 						</div>
-					</div>
+					</fieldset>
 				</div>
-				<div class="d-flex w-100 justify-content-between">
-					<div v-if="task.users.length">
-						<h5>Remove assign</h5>
-						<div v-for="user in task.users">
-							<span style="margin-right: 5px">[[user.first_name]] [[user.last_name]]</span>
-							<button v-if="cases_info.current_user.id != user.id" class="btn btn-primary btn-sm" data-bs-toggle="modal" :data-bs-target="'#notify_modal_'+task.id+'_'+user.id" title="Use a module to notify user"><i class="fa-solid fa-bell"></i></button>
-							<button class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
-						
-							<div class="modal fade" :id="'notify_modal_'+task.id+'_'+user.id" tabindex="-1" aria-labelledby="notify_modalLabel" aria-hidden="true">
-								<div class="modal-dialog modal-lg">
-									<div class="modal-content">
-										<div class="modal-header">
-											<h1 class="modal-title fs-5" id="notify_modalLabel">Notify user</h1>
-											<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-										</div>
-										<div class="modal-body">
-											<div class="d-flex w-100 justify-content-center">
-												<label :for="'modules_select_'+task.id+'_'+user.id">Modules:</label>
-											</div>
-											<div class="d-flex w-100 justify-content-center">
-												
-												<select data-placeholder="Modules" class="select2-select form-control" style="min-width: 100px; max-width: 300px;" :name="'modules_select_'+task.id+'_'+user.id" :id="'modules_select_'+task.id+'_'+user.id" >
-													<option value="None">--</option>
-													<option value="flowintel">flowintel</option>
-													<template v-for="module, key in modules">
-														<option v-if="module.type == 'notify_user' && module.config.case_task == 'task'" :value="[[key]]">[[key]]</option>
-													</template>
-												</select>
-												<div id="modules_errors" class="invalid-feedback"></div>
-											</div>
-										</div>
-										<div class="modal-footer">
-											<button v-if="module_loader" class="btn btn-primary" type="button" disabled>
-												<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-												<span role="status">Loading...</span>
-											</button>
-											<button v-else type="button" @click="submit_module_task(user.id)" class="btn btn-primary">Submit</button>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-			<hr>
-			<div class="d-flex w-100 justify-content-between">
-				<div v-if="task.url">
-					<div>
-						<h5>Tool/Url</h5>
-					</div>
-					<div>
+				<div class="col" v-if="task.url">
+					<fieldset class="analyzer-select-case">
+						<legend class="analyzer-select-case"><i class="fa-solid fa-screwdriver-wrench"></i> Tool/Url</legend>
 						[[task.url]]
-					</div>
-				</div>
-				<div v-if="task.instances.length">
-					<div>
-						<h5>Connectors</h5>
-					</div>
-					<div v-for="instance in task.instances" :title="instance.description">
-						<img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
-						<a style="margin-left: 5px" :href="instance.url">[[instance.url]]</a>
-						<span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>
-					</div>
-				</div>
-			</div>
-			<hr v-if="task.url || task.instances.length">
-			<div class="d-flex w-100 justify-content-between">
-				<div>
-					<div>
-						<h5>Files</h5>
-					</div>
-					<div style="display: flex;">
-						<input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
-						<button class="btn btn-primary btn-sm" @click="add_file(task)" style="margin-left: 2px;">Submit</button>
-					</div>
-					<br/>
-					<template v-if="task.files.length">
-						<template v-for="file in task.files">
-							<div>
-								<a class="btn btn-link" :href="'/case/task/'+task.id+'/download_file/'+file.id">
-									[[ file.name ]]
-								</a>
-								<button class="btn btn-danger" @click="delete_file(file, task)"><i class="fa-solid fa-trash"></i></button>
-							</div>
-						</template>
-					</template>
+					</fieldset>
 				</div>
 			</div>
 			<hr>
-			<div class="d-flex w-100 justify-content-between">
-				<div class="w-100">
-					<div>
-						<h5>Notes <a class="btn btn-primary btn-sm" :href="'/analyzer/?case_id='+task.case_id+'&task_id='+task.id" style="margin-bottom: 1px;"><i class="fa-solid fa-magnifying-glass"></i> Analyze</a></h5> 
-					</div>
+			<div class="row">
+				<div class="col">
+					<fieldset class="analyzer-select-case">
+						<legend class="analyzer-select-case"><i class="fa-solid fa-file"></i> Files</legend>
+						<div style="display: flex;">
+							<input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
+							<button class="btn btn-primary btn-sm" @click="add_file(task)" style="margin-left: 2px;">Submit</button>
+						</div>
+						<br/>
+						<template v-if="task.files.length">
+							<template v-for="file in task.files">
+								<div>
+									<a class="btn btn-link" :href="'/case/task/'+task.id+'/download_file/'+file.id">
+										[[ file.name ]]
+									</a>
+									<button class="btn btn-danger" @click="delete_file(file, task)"><i class="fa-solid fa-trash"></i></button>
+								</div>
+							</template>
+						</template>
+					</fieldset>
+				</div>
+				<div class="col" v-if="task.instances.length">
+					<fieldset class="analyzer-select-case">
+						<legend class="analyzer-select-case"><i class="fa-solid fa-link"></i> Connectors</legend>
+						<div v-for="instance in task.instances" :title="instance.description">
+							<img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
+							<a style="margin-left: 5px" :href="instance.url">[[instance.url]]</a>
+							<span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>
+						</div>
+					</fieldset>
+				</div>
+			</div>
+			<hr>
+			<div>
+				<fieldset class="analyzer-select-case">
+					<legend class="analyzer-select-case">
+						<i class="fa-solid fa-note-sticky"></i> 
+						Notes 
+						<a class="btn btn-primary btn-sm" :href="'/analyzer/?case_id='+task.case_id+'&task_id='+task.id" style="margin-bottom: 1px;">
+							<i class="fa-solid fa-magnifying-glass"></i> 
+							Analyze
+						</a>
+					</legend>
+					<!-- Task contains notes -->
 					<div v-if="task.notes.length">
 						<template v-for="task_note, key in task.notes">
 							<h5>#[[key+1]]</h5>
+							<!-- Note is not empty -->
 							<template v-if="task_note.note">
+								<!-- Edit existing note -->
 								<template v-if="edit_mode == task_note.id">
 									<div>
 										<button class="btn btn-primary" @click="modif_note(task, task_note.id, key)" type="button" :id="'note_'+task.id">
@@ -971,6 +984,7 @@ export default {
 										<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[key])"></div>
 									</div>
 								</template>
+								<!-- Render an existing note -->
 								<template v-else>
 									<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 										<button class="btn btn-primary btn-sm" @click="edit_note(task, task_note.id, key)" :id="'note_'+task.id" style="margin-bottom: 1px;">
@@ -1006,6 +1020,7 @@ export default {
 									<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(task_note.note)"></p>
 								</template>
 							</template>
+							<!-- Note is empty -->
 							<template v-else>
 								<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 									<div>
@@ -1026,6 +1041,7 @@ export default {
 						</template>
 						<button class="btn btn-primary" @click="add_notes_task()">Add notes</button>
 					</div>
+					<!-- Task doesn't contains notes -->
 					<div v-else>
 						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 							<div>
@@ -1040,7 +1056,7 @@ export default {
 							</div>
 						</template>
 					</div>
-				</div>
+				</fieldset>
 			</div>
 		</div>
 	</div>
