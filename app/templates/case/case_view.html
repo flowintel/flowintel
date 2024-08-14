@@ -17,7 +17,7 @@
     <!-- Example single danger button -->
     <template v-if="cases_info">
         <button type="button" title="Link to other Case" class="btn btn-outline-primary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" style="margin-left: 10px;">
-            <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[cases_info.case.link_to.length]]</span>
+            <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary" style="z-index: -1;">[[cases_info.case.link_to.length]]</span>
         </button>
         <ul class="dropdown-menu">
             <button class="btn btn-primary btn-sm" title="New link" style="margin-left: 60px;" data-bs-toggle="modal" data-bs-target="#add_new_link"><i class="fa-solid fa-paperclip"></i>+</button>
