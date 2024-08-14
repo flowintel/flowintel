@@ -32,6 +32,7 @@ function test {
 
 function production {
     export FLASKENV="development"
+    export HISTORY_DIR=$history_dir/history
     killscript
     db_upgrade
     screen -dmS "fcm"
@@ -42,6 +43,7 @@ function production {
 
 function init_db {
 	export FLASKENV="development"
+	export HISTORY_DIR=$history_dir/history
 	python3 app.py -i
 	python3 app.py -tg
 }
