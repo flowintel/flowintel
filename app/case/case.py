@@ -633,13 +633,7 @@ def get_open_close(cid):
     """Get the numbers of open and closed tasks"""
     case = CommonModel.get_case(cid)
     if case:
-        cp_open = 0
-        cp_closed = 0
-        for task in case.tasks:
-            if task.completed:
-                cp_closed += 1
-            else:
-                cp_open += 1
+        cp_open, cp_closed = CaseModel.open_closed(case)
         return {"open": cp_open, "closed": cp_closed}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 

@@ -162,6 +162,9 @@
 
                             <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
                         </div>
+                        <div class="d-flex w-100">
+                            <small><i>[[case_loc.open_tasks]] open/ [[case_loc.closed_tasks]] closed</i></small>
+                        </div>
                         <div class="d-flex w-100" v-if="case_loc.custom_tags" style="margin-top: 5px;">
                             <template v-for="custom_tag in case_loc.custom_tags">
                                 <div class="tag" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">

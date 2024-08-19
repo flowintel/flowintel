@@ -357,7 +357,9 @@ def regroup_case_info(cases, user, nb_pages=None):
         case_loc = case.to_json()
         case_loc["present_in_case"] = get_present_in_case(case.id, user)
         case_loc["current_user_permission"] = CommonModel.get_role(user).to_json()
+        case_loc["open_tasks"], case_loc["closed_tasks"] = open_closed(case)
         loc["cases"].append(case_loc)
+
 
     if nb_pages:
         loc["nb_pages"] = nb_pages
@@ -368,6 +370,16 @@ def regroup_case_info(cases, user, nb_pages=None):
             pass
 
     return loc
+
+def open_closed(case):
+    cp_open = 0
+    cp_closed = 0
+    for task in case.tasks:
+        if task.completed:
+            cp_closed += 1
+        else:
+            cp_open += 1
+    return cp_open, cp_closed
 
 
 def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, filter=None):
