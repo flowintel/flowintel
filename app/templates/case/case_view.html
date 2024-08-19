@@ -14,7 +14,6 @@
         <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style">[[ status_info.status[ {{case.status_id}} -1].name ]]</span>
     </small>
     
-    <!-- Example single danger button -->
     <template v-if="cases_info">
         <button type="button" title="Link to other Case" class="btn btn-outline-primary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" style="margin-left: 10px;">
             <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary" style="z-index: -1;">[[cases_info.case.link_to.length]]</span>
@@ -52,109 +51,12 @@
             </div>
         </div>
     </div>
-        
-    <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right; display: grid;">
-        <a class="btn btn-primary btn-sm"  :href="`/case/${cases_info.case.id}/download`" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
-        <button type="button" class="btn btn-secondary btn-sm" title="Send to connectors" data-bs-toggle="modal" data-bs-target="#Send_to_modal">
-            <i class="fa-solid fa-share-from-square"></i>
-        </button>
-        <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
-            <i class="fa-solid fa-trash"></i>
-        </button>
-    </div>
-    <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right">
-        <button v-if="cases_info.case.completed" class="btn btn-secondary btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-backward"></i></button>
-        <button v-else class="btn btn-success btn-sm"  @click="complete_case(cases_info.case)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
-        <a class="btn btn-primary btn-sm" :href="`/case/edit/${cases_info.case.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
-        <a class="btn btn-secondary btn-sm"  :href="`/case/${cases_info.case.id}/recurring`" type="button" title="Recurring Case"><i class="fa-solid fa-clock"></i></a>
 
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Fork the case">
-            <i class="fa-solid fa-code-fork"></i>
-        </button>
-        <ul class="dropdown-menu">
-            <li>
-                <input id="case_title_fork" placeholder="Case title"/>
-                <button class="btn btn-primary btn-sm" @click="fork_case(cases_info.case.id)">Fork</button>
-            </li>
-        </ul>
-
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Create a template from the case">
-            <i class="fa-solid fa-bookmark"></i>
-        </button>
-        <ul class="dropdown-menu">
-            <li>
-                <input id="case_title_template" placeholder="Case title"/>
-                <button class="btn btn-primary btn-sm" @click="create_template(cases_info.case)">Template</button>
-            </li>
-        </ul>
-    </div>
-    <br>
-
-    <!-- Modal delete case -->
-    <div class="modal fade" id="delete_case_modal" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content" v-if="cases_info">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="delete_case_modal">Delete '[[cases_info.case.title]]' ?</h1>
-                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)"><i class="fa-solid fa-trash"></i> Confirm</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal send to -->
-    <div class="modal fade" id="Send_to_modal" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="Send_to_modalLabel">Send to modules</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div style="display: flex;">
-                        <div>
-                            <label for="modules_select">Modules:</label>
-                            <select data-placeholder="Modules" class="select2-select form-control" name="modules_select" id="modules_select" >
-                                <option value="None">--</option>
-                                <template v-for="module, key in modules">
-                                    <option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
-                                </template>
-                            </select>
-                            <div id="modules_errors" class="invalid-feedback"></div>
-                        </div>
-                        <div style="min-width: 100%;">
-                            <label for="instances_select">Instances:</label>
-                            <select data-placeholder="Instances" class="select2-select form-control" multiple name="instances_select" id="instances_select" >
-                                <template v-if="module_selected">
-                                    <template v-for="instance, key in module_selected">
-                                        <option :value="[[instance.name]]">[[instance.name]]</option>
-                                    </template>
-                                </template>
-                            </select>
-                            <div id="instances_errors" class="invalid-feedback"></div>
-                        </div>
-                    </div>
-                    <div class="row" v-if="instances_selected">
-                        <div class="mb-3 w-50" v-for="instance, key in instances_selected" >
-                            <label :for="'identifier_' + instance.id">Identifier for <u><i>[[instance.name]]</i></u></label>
-                            <input :id="'identifier_' + instance.id" class="form-control" :value="instance.identifier" :name="'identifier_' + instance.id" type="text">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button v-if="module_loader" class="btn btn-primary" type="button" disabled>
-                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                        <span role="status">Loading...</span>
-                    </button>
-                    <button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Components that contains all button that provide an action on the case -->
+    <action_buttons 
+        :cases_info="cases_info"
+        :status_info="status_info">
+    </action_buttons>
 
     {% if case.custom_tags %}
         <div style="display: flex; margin-bottom: 5px;">
@@ -246,89 +148,9 @@
         </div>
     {%endif%}
 
-    <div id="assign" style="float: right;" v-if="cases_info">
-        <div class="dropdown" id="dropdown_user_case">
-            <button class="btn btn-secondary dropdown-toggle" style="margin-top: -2px" data-bs-toggle="dropdown" aria-expanded="false">Orgs</button>
-            <ul class="dropdown-menu">
-                <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                    <li>
-                        <div class="justify-content-center" style="display: flex;">
-                            <button class="btn btn-primary btn-sm" title="Add an org to the case" style="margin-right: 3px" data-bs-toggle="modal" data-bs-target="#add_orgs">
-                                <i class="fa-solid fa-users"></i>+
-                            </button>
-                            <button class="btn btn-primary btn-sm" title="Change owner of the case" data-bs-toggle="modal" data-bs-target="#change_owner">
-                                <i class="fa-solid fa-user-pen"></i>
-                            </button>
-                        </div>
-                    </li>
-                    <li><hr class="dropdown-divider"></li>
-                </template>
-                <template v-for="org in cases_info.orgs_in_case" :key="org.id">
-                    <li>
-                        <div style="display: flex;">
-                            <button class="dropdown-item">[[org.name]]</button>
-                            <template v-if="org.id != cases_info.case.owner_org_id">
-                                <button class="btn btn-danger btn-sm" style="margin-right: 5px;" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">Delete</button>
-                            </template>
-                            <template v-else>
-                                <small style="margin-right: 20px; color: green;"><i>owner</i></small>
-                            </template>
-                        </div>
-                    </li>
-                </template>
-            </ul>
-            <!-- Modal add orgs -->
-            <div class="modal fade" id="add_orgs" tabindex="-1" aria-labelledby="add_orgs_modal" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="add_orgs_modal">Add Orgs</h1>
-                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            Orgs:
-                            <select data-placeholder="Orgs" class="select2-select-add-orgs form-control" multiple name="add_orgs_select" id="add_orgs_select">
-                                <option value="None">--</option>
-                                <template v-for="org in orgs">
-                                    <option v-if="!check_org_not_in(org.id)" :value="[[org.id]]">[[org.name]]</option>
-                                    <!-- <option :value="[[org.id]]">[[org.name]]</option> -->
-                                </template>
-                            </select>
-                            <div style="color: brown;" id="add_orgs_error"></div>
-                        </div>
-                        <div class="modal-footer">
-                            <button @click="submit_add_orgs()" class="btn btn-primary">Submit</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Modal change owner -->
-            <div class="modal fade" id="change_owner" tabindex="-1" aria-labelledby="change_owner_modal" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="change_owner_modal">Change Owner</h1>
-                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            Orgs:
-                            <select class="form-control" name="change_owner_select" id="change_owner_select" style="width: 50%">
-                                <option value="None">--</option>
-                                <template v-for="org in orgs">
-                                    <option v-if="org.id != cases_info.case.owner_org_id" :value="[[org.id]]">[[org.name]]</option>
-                                </template>
-                            </select>
-                            <div style="color: brown;" id="change_owner_error"></div>
-                        </div>
-                        <div class="modal-footer">
-                            <button @click="submit_change_owner()" class="btn btn-primary">Submit</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Component to manage orgs -->
+    <manage_orgs :cases_info="cases_info"></manage_orgs>
+
     
     {% if case.description %}
     <div>
@@ -601,13 +423,17 @@
         const { createApp, ref, computed, nextTick, onMounted } = Vue
         import case_tasks from '/static/js/case/case_tasks.js'
         import hedgedoc_template from '/static/js/case/hedgedoc_template.js'
+        import action_buttons from '/static/js/case/action_buttons.js'
+        import manage_orgs from '/static/js/case/manage_orgs.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
                 case_tasks,
-                hedgedoc_template
+                hedgedoc_template,
+                action_buttons,
+                manage_orgs
             },
             setup() {
                 const cases_info = ref(null)
@@ -635,11 +461,6 @@
                 const selected_galaxies = ref([])
                 const selected_clusters = ref([])
 
-                const modules = ref()
-                const module_selected = ref()
-                const instances_selected = ref([])
-                const module_loader = ref(false)
-
                 const open_closed = ref({})
                 const all_notes = ref("")
                 let editor
@@ -648,8 +469,6 @@
 
                 const md = window.markdownit()			// Library to Parse and display markdown
 		        md.use(mermaidMarkdown.default)			// Use mermaid library
-
-                const orgs = ref([])
 
                 const case_for_link = ref([])
 
@@ -670,70 +489,6 @@
                     }else{
                         let loc = await res.json()
                         open_closed.value = loc
-                    }
-                }
-                
-                async function fetch_orgs(){
-                    const res = await fetch("/case/get_orgs")
-                    if(await res.status==404 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        orgs.value = loc
-                    }
-                }
-                fetch_orgs()
-
-                function check_org_not_in(org_id){
-                    for(let i in cases_info.value.orgs_in_case){
-                        if(cases_info.value.orgs_in_case[i].id == org_id){
-                            return true
-                        }
-                    }
-                    return false
-                }
-
-                async function submit_add_orgs(){
-                    $("#add_orgs_error").text("")
-                    if($("#add_orgs_select").val().includes("None") || !$("#add_orgs_select").val().length){
-                        $("#add_orgs_error").text("Give me more")
-                    }else{
-                        const res = await fetch('/case/' + cases_info.value.case.id + '/add_orgs',{
-                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                            method: "POST",
-                            body: JSON.stringify({"org_id": $("#add_orgs_select").val()})
-                        })
-                        if(await res.status == 200){
-                            let loc = $("#add_orgs_select").val()
-                            for(let index in loc){
-                                for(let i in orgs.value){
-                                    if(orgs.value[i].id == loc[index]){
-                                        cases_info.value.orgs_in_case.push(orgs.value[i])
-                                    }
-                                }
-                            }
-                            var myModalEl = document.getElementById('add_orgs');
-                            var modal = bootstrap.Modal.getInstance(myModalEl)
-                            modal.hide();
-                        }
-                        display_toast(res)
-                    }
-                }
-
-                async function submit_change_owner(){
-                    $("#change_owner_error").text("")
-                    if($("#change_owner_select").val() == "None" || !$("#change_owner_select")){
-                        $("#change_owner_error").text("Give me more")
-                    }else{
-                        const res = await fetch('/case/' + cases_info.value.case.id  + '/change_owner',{
-                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                            method: "POST",
-                            body: JSON.stringify({"org_id": $("#change_owner_select").val()})
-                        })
-                        if(await res.status == 200){
-                            cases_info.value.case.owner_org_id=$("#change_owner_select").val()
-                        }
-                        display_toast(res)
                     }
                 }
 
@@ -857,108 +612,6 @@
                     }else{
                         users_in_case.value = await res.json()
                     }
-                }
-
-
-                async function delete_case(case_id){
-                    const res = await fetch('/case/' + case_id.toString() + '/delete')
-                    if (await res.status == 200)
-                        return window.location.href="/case"
-                    display_toast(res)
-                }
-
-                async function complete_case(case_loc){
-                    const res = await fetch('/case/' + case_loc.id + '/complete_case')
-                    if (await res.status == 200){
-                        if(status_info.value.status[case_loc.status_id -1].name == 'Finished'){
-                            for(let i in status_info.value.status){
-                                if(status_info.value.status[i].name == 'Created')
-                                case_loc.status_id = status_info.value.status[i].id
-                            }
-                            if(case_loc.status_id == status)
-                                case_loc.status_id = 1
-
-                                await fetch('/case/' + case_loc.id + '/change_status',{
-                                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                    method: "POST",
-                                    body: JSON.stringify({"status": case_loc.status_id})
-                                })
-                        }else{
-                            for(let i in status_info.value.status){
-                                if(status_info.value.status[i].name == 'Finished'){
-                                    case_loc.status_id = status_info.value.status[i].id
-                                    await fetch('/case/' + case_loc.id + '/change_status',{
-                                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                        method: "POST",
-                                        body: JSON.stringify({"status": case_loc.status_id})
-                                    })
-                                    break
-                                }
-                            }
-                        }
-                        return window.location.href="/case"
-                    }
-                    display_toast(res)
-                }
-
-                async function remove_org_case(cases_info, org){
-                    const res = await fetch('/case/' + cases_info.case.id + '/remove_org/' + org.id)
-                    if (await res.status == 200){
-                        let index = cases_info.orgs_in_case.indexOf(org)
-                        if(index > -1)
-                            cases_info.orgs_in_case.splice(index, 1)
-                    }
-                    display_toast(res)
-                }
-
-                async function fork_case(case_id){
-                    if(await fetch_case_title($("#case_title_fork").val())){
-                        $("#collapseForkBody").append(
-                            $("<span>").text("Already exist").css("color", 'red')
-                        )
-                    }else{
-                        const res = await fetch("/case/" + case_id + "/fork",{
-                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                            method: "POST",
-                            body: JSON.stringify({"case_title_fork": $("#case_title_fork").val()})
-                        })
-                        let loc = await res.json()
-                        window.location.href="/case/" + loc["new_case_id"]
-                    }
-                }
-
-                async function fetch_case_title(case_title_fork){
-                    const res = await fetch("/case/check_case_title_exist?title="+case_title_fork)
-                    let loc = await res.json()
-                    if(loc["title_already_exist"]){
-                        return true
-                    }
-                    return false
-                }
-
-
-                async function create_template(case_loc){
-                    if(await fetch_case_template_title($("#case_title_template").val())){
-                        $("#collapseTemplateBody").append(
-                            $("<span>").text("Already exist").css("color", 'red')
-                        )
-                    }else{
-                        const res = await fetch("/case/" + case_loc.id + "/create_template",{
-                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                            method: "POST",
-                            body: JSON.stringify({"case_title_template": $("#case_title_template").val()})
-                        })
-                        let loc = await res.json()
-                        window.location.href="/tools/template/case/" + loc["template_id"]
-                    }
-                }
-                async function fetch_case_template_title(case_title_template){
-                    const res = await fetch("/case/check_case_template_title_exist?title="+case_title_template)
-                    let loc = await res.json()
-                    if(loc["title_already_exist"]){
-                        return true
-                    }
-                    return false
                 }
 
                 function onInput(e){
@@ -1127,88 +780,6 @@
                     }
                 }
 
-
-                async function fetch_modules(){
-                    // Get modules and instances linked on
-                    const res = await fetch("/case/get_case_modules")
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        modules.value = loc["modules"]
-                    }
-                }
-                fetch_modules()
-
-                async function fetch_module_selected(module){
-                    // Get modules and instances linked on
-                    const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/get_instance_module?type=send_to&module="+module)
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        module_selected.value = loc["instances"]
-                        await nextTick()
-                        $('#instances_select').select2({
-                            theme: 'bootstrap-5',
-                            width: '50%',
-                            closeOnSelect: false
-                        })
-                        $('#instances_select').on('change.select2', function (e) {
-                            let name_instance = $(this).select2('data').map(item => item.id)
-                            instances_selected.value = []
-                            for( let index in module_selected.value){
-                                if (name_instance.includes(module_selected.value[index].name)){
-                                    if(!instances_selected.value.includes(module_selected.value[index]))
-                                        instances_selected.value.push(module_selected.value[index])
-                                }
-                            }
-                        })
-                    }
-                }
-
-                async function submit_module(){
-                    module_loader.value = true
-                    $("#modules_errors").hide()
-                    $("#instances_errors").hide()
-                    if(!$("#modules_select").val() || $("#modules_select").val() == "None"){
-                        $("#modules_errors").text("Select an item")
-                        $("#modules_errors").show()
-                    }
-                    if(!$("#instances_select").val() || $("#instances_select").val().length<1){
-                        $("#instances_errors").text("Select an item")
-                        $("#instances_errors").show()
-                    }
-
-                    let i_s = $("#instances_select").val()
-                    let int_sel = {}
-                    for(let index in i_s){
-                        for( let j in module_selected.value){
-                            if (module_selected.value[j].name == i_s[index]){
-                                let loc_val = $("#identifier_"+module_selected.value[j].id).val()
-                                int_sel[module_selected.value[j].name] = loc_val
-                                for(let k in instances_selected.value){
-                                    if(instances_selected.value[k].name == module_selected.value[j].name){
-                                        instances_selected.value[k].identifier = loc_val
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/call_module_case?module=" + $("#modules_select").val() , {
-                        method: "POST",
-                        body: JSON.stringify({
-                            int_sel
-                        }),
-                        headers: {
-                            "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-                        }
-                    });
-                    module_loader.value = false
-
-                    display_toast(res, true)
-                }
-
                 async function save_note_case(){
                     let notes_loc = editor.state.doc.toString()
                     if(notes_loc.trim().length == 0){
@@ -1291,14 +862,6 @@
                     $('#clusters_select').on('select2:select', function (e) {
                         selected_clusters.value = $(this).select2('data').map(item => item.id);
                         asc_desc_filter()
-                    })
-
-                    $('#modules_select').on('select2:select', function (e) {
-                        if($(this).select2('data').map(item => item.id)[0] == "None"){
-                            module_selected.value = []
-                        }else{
-                            fetch_module_selected($(this).select2('data').map(item => item.id))
-                        }
                     })
                 }
 
@@ -1416,17 +979,11 @@
                     main_tab,
                     history,
                     is_exporting,
-                    delete_case,
-                    remove_org_case,
-                    complete_case,
-                    fork_case,
-                    create_template,
                     onInput,
                     filter_ongoing,
                     sort_by_filter,
                     asc_desc_filter,
                     active_tab,
-                    submit_module,
                     submit_add_new_link,
                     remove_case_link,
                     getTextColor,
@@ -1435,21 +992,13 @@
                     tags_list,
                     galaxies,
                     cluster_list,
-                    modules,
-                    module_selected,
-                    instances_selected,
-                    module_loader,
                     open_closed,
                     md,
                     all_notes,
                     note_editor_render,
                     edit_mode,
-                    orgs,
                     save_note_case,
                     edit_note,
-                    submit_add_orgs,
-                    submit_change_owner,
-                    check_org_not_in,
                     export_notes
                 }
             }
