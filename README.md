@@ -4,13 +4,16 @@ flowIntel is an open-source platform designed to assist analysts in organizing t
 
 ## Features
 
-- **Case and Task Management**: Tailored for security analysts, enabling efficient tracking and organization.
-- **Rich Documentation Tools**: Includes Markdown and Mermaid integration for detailed notes, with export options like PDF.
+- **Case and Task Management**: Tailored for case handlers, investigators and security analysts, enabling efficient tracking and organization.
+- **Rich Documentation Tools**: Includes Markdown and Mermaid integration for detailed notes, with export options like PDF and DOCX.
 - **Integration with MISP standard**: Seamless connection with [MISP taxonomies](https://github.com/MISP/misp-taxonomies) and [MISP galaxy](https://www.misp-galaxy.org/).
 - **Calendar and Notifications**: Features an efficient calendar view and notifications for timely task management.
 - **Templating System**: Provides templates for cases and tasks, creating a playbook and process repository for cybersecurity.
 - **Flexible Data Export**: Offers modules for exporting data to platforms like [MISP](https://www.misp-project.org/), [AIL](https://www.ail-project.org/), and more.
-- **Accessible API**: Exposes an API for easy interaction with FlowIntel CM's functionalities.
+- **Accessible API**: Exposes an API for easy automation and of processes, interaction with FlowIntel CM's functionalities and interaction with other forensic tools, and streamline the collection and analysis of data.
+- Support for **external analysers** (MISP-modules, such as Passive DNS, Passive SSL, JoeSandbox, AbuseIPDB) and **external connectors** (MISP, AIL).
+- Basic **organisation and user management**, including queueing system and task assignment.
+- Full **audit trail** of all actions.
 
 ![task-management](./doc/case_example.png)
 
