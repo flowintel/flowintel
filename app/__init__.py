@@ -64,6 +64,7 @@ def create_app():
     from .tools.importer_api import api_importer_blueprint
     from .my_assignment.my_assignment_api import api_assignment_blueprint
     from .analyzer.analyzer_api import api_analyzer_blueprint
+    from .custom_tags.custom_tags_api import api_custom_tags_blueprint
     csrf.exempt(api_case_blueprint)
     csrf.exempt(api_task_blueprint)
     csrf.exempt(api_admin_blueprint)
@@ -71,6 +72,7 @@ def create_app():
     csrf.exempt(api_importer_blueprint)
     csrf.exempt(api_assignment_blueprint)
     csrf.exempt(api_analyzer_blueprint)
+    csrf.exempt(api_custom_tags_blueprint)
     app.register_blueprint(api_case_blueprint, url_prefix="/api/case")
     app.register_blueprint(api_task_blueprint, url_prefix="/api/task")
     app.register_blueprint(api_admin_blueprint, url_prefix="/api/admin")
@@ -78,5 +80,6 @@ def create_app():
     app.register_blueprint(api_importer_blueprint, url_prefix="/api/importer")
     app.register_blueprint(api_assignment_blueprint, url_prefix="/api/my_assignment")
     app.register_blueprint(api_analyzer_blueprint, url_prefix="/api/analyzer")
+    app.register_blueprint(api_custom_tags_blueprint, url_prefix="/api/custom_tags")
 
     return app
