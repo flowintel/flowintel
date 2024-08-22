@@ -333,7 +333,7 @@ def add_file_core(task, files_list, current_user):
     return True
 
 def modif_note_core(tid, current_user, notes, note_id):
-    """Modify a noe of a task to the DB"""
+    """Modify a note of a task to the DB"""
     task = CommonModel.get_task(tid)
     if note_id == '-1':
         note = Note(

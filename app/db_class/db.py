@@ -1,3 +1,4 @@
+import json
 from .. import db, login_manager
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
@@ -739,6 +740,25 @@ class Analyzer(db.Model):
             "url": self.url,
             "is_active": self.is_active
         }
+        return json_dict
+
+class Analyzer_Result(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    origin_url = db.Column(db.String, index=True)
+    is_pending = db.Column(db.Boolean, default=True)
+    request_date = db.Column(db.DateTime, index=True)
+    result = db.Column(db.String)
+    user_id = db.Column(db.Integer, index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "origin_url": self.origin_url,
+            "is_pending": self.is_pending,
+            "request_date": self.request_date,
+            "result": json.loads(self.result)
+        }
+        json_dict["user"] = User.query.get(self.user_id).to_json()
         return json_dict
     
 class Custom_Tags(db.Model):

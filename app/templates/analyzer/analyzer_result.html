@@ -28,7 +28,7 @@
             
             <h6>Select note</h6>
             <div class="accordion" v-if="Object.keys(analyzer_results).length" style="width: 95%">
-                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in analyzer_results">
+                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in JSON.parse(analyzer_results.result)">
                     <h2 class="accordion-header">
                         <button class="accordion-button" :title="key_query" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenMain-'+key_query" aria-expanded="true" :aria-controls="'panelsStayOpenMain-'+key_query">
                             <template v-if="key_query.length > 45">
@@ -136,7 +136,7 @@ Value: [[misp_attr]]
 
                 async function fetch_result(){
                     analyzer_results.value = {}
-                    const res = await fetch("/analyzer/get_analyzer_results")
+                    const res = await fetch("/analyzer/get_analyzer_results/"+window.location.pathname.split("/").slice(-1))
                     let loc = await res.json()
                     analyzer_results.value = loc
                 }
@@ -173,7 +173,7 @@ Value: [[misp_attr]]
                 async function nextPage(){
                     let data_to_pass = editor.state.doc.toString().trim()
                     if(!data_to_pass){
-                        data_to_pass = analyzer_results.value
+                        data_to_pass = analyzer_results.value.result
                     }
 
                     $('#insert_form').append(

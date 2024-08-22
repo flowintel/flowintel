@@ -1,0 +1,106 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <div style="display: flex;">
+        <h2 ><a type="button" class="btn" href="/analyzer"><i class="fa-solid fa-arrow-left"></i></a></h2>
+        <h2>Pending Analyzers results</h2>
+    </div>
+    <div id="top"></div>
+    <hr>
+
+    <button v-if="!is_loading" class="btn btn-primary mb-3" @click="fetch_pending_results(current_page)">Refresh</button>
+    <button v-else class="btn btn-primary mb-3" type="button" disabled>
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span role="status">Loading...</span>
+    </button>
+      
+    <!-- pagination -->
+    <nav aria-label="Page navigation example" v-if="pending_results_list && pending_results_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_pending_results(Math.max(1, current_page-1))">Previous</button></li>
+            <template v-for="cp in pending_results_list.nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_pending_results(cp)">[[cp]]</button></li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == pending_results_list.nb_pages}"><button class="page-link" @click="fetch_pending_results(Math.min(current_page+1, pending_results_list.nb_pages))">Next</button></li>
+        </ul>
+    </nav>
+    <!-- pagination -->
+
+    <div class="list-group" v-if="pending_results_list.length">
+        <div v-for="pending_result in pending_results_list" style="display:flex;">
+            <a :href="'/analyzer/analyzer_result/'+pending_result.id" class="list-group-item list-group-item-action" style="border-radius: 10px;" :title="pending_result.description" >
+                <div class="d-flex w-100 justify-content-between">
+                    <p>[[pending_result.origin_url]]</p>
+                    <p class="btn btn-primary btn-sm person">[[pending_result.user.first_name]] [[pending_result.user.last_name]]</p>
+                    <p>[[pending_result.request_date]]</p>
+                </div>
+            </a>
+            <button class="btn btn-danger" @click="delete_pending_result(pending_result.id)"><i class="fa-solid fa-trash"></i></button>
+        </div>
+    </div>
+    <div v-else>
+        <i>No pending results</i>
+    </div>
+
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, onMounted, nextTick } = Vue
+        import {display_toast, message_list, create_message} from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+
+                const pending_results_list = ref([])
+                const current_page = ref(1)
+                const is_loading = ref(false)
+
+                async function fetch_pending_results(page){
+                    is_loading.value = true
+                    let res = await fetch("/analyzer/get_pending_result?page="+page)
+                    let loc = await res.json()
+                    pending_results_list.value = loc
+                    current_page.value = page
+                    is_loading.value = false
+                }
+                fetch_pending_results(1)
+
+                async function delete_pending_result(pending_result_id) {
+                    const res = await fetch("/analyzer/delete_pending_result/"+pending_result_id)
+                    if (res.status == 200){
+                        let key
+                        for(let i in pending_results_list.value){
+                            if (pending_results_list.value[i].id == pending_result_id){
+                                key = i
+                            }
+                        }
+                        if(key){
+                            pending_results_list.value.splice(key, 1)
+                        }
+                    }
+                    display_toast(res)
+                    
+                }
+
+               
+                return {
+                    message_list,
+                    pending_results_list,
+                    current_page,
+                    is_loading,
+                    fetch_pending_results,
+                    delete_pending_result
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
+{% endblock %}

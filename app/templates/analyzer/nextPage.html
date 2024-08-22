@@ -290,6 +290,8 @@
                     let loc_case_id
                     if(case_selected.value) loc_case_id = case_selected.value["id"]
                     else loc_case_id = ""
+
+                    let prepare_request = {}
                     // Create a new case
                     if(create_case.value){
                         let case_title = $("#case-title").val()
@@ -298,24 +300,7 @@
                             return
                         }
                         let case_description = $("#case-description").val()
-                        
-                        // create case
-                        const res = await fetch('/api/case/create', {
-                            method: "POST",
-                            headers: {
-                                "X-API-KEY": "{{current_user.api_key}}", "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({"title": case_title, "description": case_description})
-                        })
-                        if(await res.status==400 ){
-                            display_toast(res, false, "warning-subtle")
-                            return
-                        }else{
-                            let loc = await res.json()
-                            let case_id = loc["case_id"]
-                            loc_case_id = case_id
-                            loc_url = '/case/'+case_id+'/modif_note_case'
-                        }
+                        prepare_request["create_case"] = {"title": case_title, "description": case_description}
                     }
                     // Create a new task
                     if(create_task.value){
@@ -325,64 +310,44 @@
                             return
                         }
                         let task_description = $("#task-description").val()
-                        // create task
-                        const res = await fetch('/api/case/'+loc_case_id+'/create_task', {
-                            method: "POST",
-                            headers: {
-                                "X-API-KEY": "{{current_user.api_key}}", "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({"title": task_title, "description": task_description})
-                        })
-                        if(await res.status==400 ){
-                            display_toast(res, false, "warning-subtle")
-                            return
-                        }else{
-                            let loc = await res.json()
-                            let task_id = loc["task_id"]
 
-                            const res_create_note = await fetch('/case/'+loc_case_id+'/create_note/'+task_id)
-                            let loc_note = await res_create_note.json()
-                            console.log(loc_note);
-                            loc_url = '/case/'+loc_case_id+'/modif_note/'+task_id+"?note_id="+loc_note["note"]["id"]
-                        }
+                        prepare_request["create_task"] = {"title": task_title, "description": task_description}
+                        prepare_request["case_id"] = loc_case_id
                     }
                     // Edit an existing task, so it's not case notes
                     else if(task_note_index.value){
                         let task_id = task_selected.value["id"]
                         let case_id = task_selected.value["case_id"]
                         let note_id = task_selected.value["notes"][task_note_index.value]["id"]
-
-                        loc_url = '/case/'+case_id+'/modif_note/'+task_id+"?note_id="+note_id
-                        loc_case_id = case_id
+                        prepare_request["existing_task_note"] = {"task_id": task_id, "case_id": case_id, "note_id": note_id}
                     }
                     // Create a new note for the task
                     else if (task_selected.value){
                         let task_id = task_selected.value["id"]
                         let case_id = task_selected.value["case_id"]
-                        const res_create = await fetch('/case/'+case_id+'/create_note/'+task_id)
-                        let loc = await res_create.json()
-
-                        loc_url = '/case/'+case_id+'/modif_note/'+task_id+"?note_id="+loc["note"]["id"]
-                        loc_case_id = case_id
+                        prepare_request["create_note"] = {"task_id": task_id, "case_id": case_id}
                     }
                     // Case note
                     else if(case_selected.value){
                         let case_id = case_selected.value["id"]
-                        loc_url = '/case/'+case_id+'/modif_note_case'
+                        prepare_request["case_note"] = {"case_id": case_id}
                     }
 
-                    const res = await fetch(loc_url, {
+                    prepare_request["notes"] = editor.state.doc.toString()
+
+                    const res = await fetch("/analyzer/manage_notes_selected", {
                         method: "POST",
                         headers: {
                             "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
                         },
-                        body: JSON.stringify({"notes": editor.state.doc.toString()})
+                        body: JSON.stringify(prepare_request)
                     })
                     if(await res.status==400 ){
                         display_toast(res)
                         return
                     }else{
-                        window.location.href='/case/'+loc_case_id
+                        let loc = await res.json()
+                        window.location.href='/case/'+loc["case_id"]
                     }
                 }
 

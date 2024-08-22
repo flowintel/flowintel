@@ -11,6 +11,14 @@
             <a class="btn btn-outline-primary mt-1 mx-3" href="/analyzer/config" style="float: right">
                 Config
             </a>
+            <a type="button" class="btn btn-outline-primary position-relative mt-1 mx-2" href="/analyzer/pending" style="float: right">
+                Pending
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    <!-- Change here -->
+                    [[len_pending_results]]
+                    <span class="visually-hidden">unread messages</span>
+                </span>
+            </a>
         </h1>
         
     </div>
@@ -120,6 +128,8 @@
                 const all_notes = ref()
                 const analyzers_list = ref([])
 
+                const len_pending_results = ref(0)
+
                 let editor = ""
 
                 const md = window.markdownit()			// Library to Parse and display markdown
@@ -133,6 +143,18 @@
                     analyzers_list.value = await res.json()
                 }
                 fetchAnalyzers()
+
+                async function fetch_len_pending(){
+                    const res = await fetch('/analyzer/get_len_pending_result')
+                        if (await res.status == 200){
+                            let loc = await res.json()
+                            len_pending_results.value = loc["len"]
+                        }
+                        else{
+                            display_toast(res)
+                        }
+                }
+                fetch_len_pending()
 
 
                 async function onInputCase(e){
@@ -265,6 +287,7 @@
                     all_notes,
                     md,
                     analyzers_list,
+                    len_pending_results,
                     onInputCase,
                     select_case,
                     active_tab,

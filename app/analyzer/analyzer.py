@@ -1,5 +1,5 @@
 from flask import Blueprint, redirect, render_template, request, session
-from flask_login import login_required
+from flask_login import current_user, login_required
 from ..db_class.db import *
 from ..utils.utils import form_to_dict
 from ..decorators import editor_required
@@ -31,23 +31,20 @@ def index():
     return render_template("analyzer/analyzer_index.html", case_id=case_id, task_id=task_id)
 
 
-@analyzer_blueprint.route("/recieve_result", methods=['GET', 'POST'])
+@analyzer_blueprint.route("/analyzer_result/<pid>", methods=['GET', 'POST'])
 @login_required
-def recieve_result():
+def analyzer_result(pid):
     """Recieve result form analyzers"""
-    if "results" in request.form:
-        session["analyzer_results"] = request.form["results"]
-    elif "results" in request.json:
-        session["analyzer_results"] = request.json["results"]
-    else:
-        session["analyzer_results"] = None
+    session["pending_id"] = pid
     return render_template("analyzer/analyzer_result.html")
 
-@analyzer_blueprint.route("/get_analyzer_results", methods=['GET', 'POST'])
+
+@analyzer_blueprint.route("/get_analyzer_results/<pid>", methods=['GET', 'POST'])
 @login_required
-def get_analyzer_results():
+def get_analyzer_results(pid):
     """Get result from analyzers"""
-    return session.get("analyzer_results")
+    p = AnalyzerModel.get_pending_result(pid)
+    return p.to_json()
 
 
 @analyzer_blueprint.route("/nextPage", methods=['GET', 'POST'])
@@ -63,6 +60,16 @@ def get_note_selected():
     """Get notes selected"""
     return session.get("note_selected")
 
+
+@analyzer_blueprint.route("/manage_notes_selected", methods=['GET', 'POST'])
+@login_required
+@editor_required
+def manage_notes_selected():
+    """Manage notes selected"""
+    case_id = AnalyzerModel.manage_notes_selected(request.json, current_user, session.get("pending_id"))
+    session["note_selected"] = ""
+    session["pending_id"] = ""
+    return {"case_id": case_id}, 200
 
 ##########
 # Config #
@@ -135,3 +142,41 @@ def change_config():
             return {'message': 'Need to pass "analyzer_url"', 'toast_class': "warning-subtle"}, 400
         return {'message': 'Need to pass "analyzer_name"', 'toast_class': "warning-subtle"}, 400
     return {'message': 'Need to pass "analyzer_id"', 'toast_class': "warning-subtle"}, 400
+
+
+
+###################
+# Pending Results # 
+###################
+
+@analyzer_blueprint.route("/pending", methods=['GET'])
+@login_required
+def pending():
+    """Pending page"""
+    return render_template("analyzer/pending_index.html")
+
+
+@analyzer_blueprint.route("/get_pending_result", methods=['GET'])
+@login_required
+def get_pending_result():
+    """Get Pending result"""
+    page = request.args.get('page', 1, type=int)
+    pendings = AnalyzerModel.get_pending_results(page)
+    return [pending.to_json() for pending in pendings]
+
+@analyzer_blueprint.route("/get_len_pending_result", methods=['GET'])
+@login_required
+def get_len_pending_result():
+    """Get length Pending result"""
+    return {"len": AnalyzerModel.get_len_pending_results()}
+
+@analyzer_blueprint.route("/delete_pending_result/<pid>", methods=['GET'])
+@login_required
+def delete_pending_result(pid):
+    """Get length Pending result"""
+    p = AnalyzerModel.get_pending_result(pid)
+    if p:
+        AnalyzerModel.delete_pending_result(pid)
+        return {"message": "Pending result deleted", "toast_class": "success-subtle"}, 200
+    return {"message": "Pending result not found", "toast_class": "danger-subtle"}, 404
+
