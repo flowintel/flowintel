@@ -54,5 +54,6 @@ def delete_custom_tag(ctid):
         Case_Template_Custom_Tags.query.filter_by(custom_tag_id=ctid).delete()
         Task_Template_Custom_Tags.query.filter_by(custom_tag_id=ctid).delete()
         db.session.delete(custom_tag)
+        db.session.commit()
         return True
     return False
