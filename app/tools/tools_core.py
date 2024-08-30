@@ -432,6 +432,15 @@ def create_case_from_template(cid, case_title_fork, user):
             )
             db.session.add(task_custom_tags)
             db.session.commit()
+
+        ## Task subtasks
+        for sub in task.subtasks:
+            subtask = Subtask(
+                task_id=t.id,
+                description=sub.description
+            )
+            db.session.add(subtask)
+            db.session.commit()
     
     common_core.save_history(case.uuid, user, f"Case created from template: {case_template.id} - {case_template.title}")
     return case
@@ -548,4 +557,11 @@ def read_json_file(files_list, current_user):
             except Exception as e:
                 print(e)
                 return {"message": "Something went wrong"}
-            
+
+
+def regroup_task_info(template, current_user):
+    loc_template = template.to_json()
+    loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
+    loc_template["instances"] = TaskModel.get_task_info(template)
+    loc_template["subtasks"] = [subtask.to_json() for subtask in template.subtasks]
+    return loc_template

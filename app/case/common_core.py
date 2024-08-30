@@ -484,6 +484,15 @@ def create_task_from_template(template_id, cid):
         db.session.add(task_custom_tags)
         db.session.commit()
 
+    ## Task subtasks
+    for sub in task.subtasks:
+        subtask = Subtask(
+            task_id=task.id,
+            descritpion=sub.description
+        )
+        db.session.add(subtask)
+        db.session.commit()
+
     return task
 
 

@@ -255,10 +255,7 @@ def get_page_task_templates():
     if templates:
         templates_list = list()
         for template in templates:
-            loc_template = template.to_json()
-            loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
-            loc_template["instances"] = TaskModel.get_task_info(template)
-            templates_list.append(loc_template)
+            templates_list.append(ToolsModel.regroup_task_info(template, current_user))
         return {"templates": templates_list, "nb_pages": nb_pages}
     return {"message": "Template not found"}
 
@@ -272,9 +269,7 @@ def get_task_by_case(cid):
     if templates:
         templates_list = list()
         for template in templates:
-            loc_template = template.to_json()
-            loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
-            loc_template["instances"] = TaskModel.get_task_info(template)
+            loc_template = ToolsModel.regroup_task_info(template, current_user)
             loc_template["case_order_id"] = CommonModel.get_task_by_case_class(cid, template.id).case_order_id
             templates_list.append(loc_template)
         return {"tasks": templates_list}
@@ -508,6 +503,50 @@ def get_custom_tags_task(cid):
     task = CommonModel.get_task_template(cid)
     if task:
         return {"custom_tags": CommonModel.get_task_custom_tags_name(task.id)}, 200
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@tools_blueprint.route("/template/task/<tid>/create_subtask", methods=['POST'])
+@login_required
+@editor_required
+def create_subtask(tid):
+    """Create a subtask for a task template"""
+    task = CommonModel.get_task_template(tid)
+    if task:
+        if "description" in request.json:
+            description = request.json["description"]
+            subtask = TaskModel.create_subtask(tid, description)
+            if subtask:
+                return {"message": f"Subtask created, id: {subtask.id}", 'toast_class': "success-subtle"}, 200 
+            return {"message": "Error creating subtask", 'toast_class': "danger-subtle"}, 400
+        return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@tools_blueprint.route("/template/task/<tid>/edit_subtask/<sid>", methods=['POST'])
+@login_required
+@editor_required
+def edit_subtask(tid, sid):
+    """Edit a subtask of a task template"""
+    task = CommonModel.get_task_template(tid)
+    if task:
+        if "description" in request.json:
+            description = request.json["description"]
+            if TaskModel.edit_subtask(tid, sid, description):
+                return {"message": "Subtask edited", 'toast_class': "success-subtle"}, 200 
+            return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
+        return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@tools_blueprint.route("/template/task/<tid>/delete_subtask/<sid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_subtask(tid, sid):
+    """Delete a subtask of a task template"""
+    task = CommonModel.get_task_template(tid)
+    if task:
+        if TaskModel.delete_subtask(tid, sid):
+            return {"message": "Subtask deleted", 'toast_class': "success-subtle"}, 200 
+        return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 ############

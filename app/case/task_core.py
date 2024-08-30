@@ -492,6 +492,14 @@ def get_task_info(tasks_list, user):
         finalTask["files"] = file_list
         finalTask["case_title"] = case.title
 
+        finalTask["subtasks"] = []
+        cp_open=0
+        for subtask in task.subtasks:
+            finalTask["subtasks"].append(subtask.to_json())
+            if not subtask.completed:
+                cp_open += 1
+        finalTask["nb_open_subtasks"] = cp_open
+
         finalTask["instances"] = list()
         for task_connector in CommonModel.get_task_connectors(task.id):
             finalTask["instances"].append(CommonModel.get_instance_with_icon(task_connector.instance_id, case_task=False, case_task_id=task.id))
@@ -711,3 +719,42 @@ def call_module_task_no_instance(module, task, case, current_user, user_id):
     if isinstance(res, dict):
         return res
 
+
+def get_subtask(sid):
+    return Subtask.query.get(sid)
+
+def complete_subtask(tid, sid):
+    subtask = get_subtask(sid)
+    if subtask:
+        if subtask.task_id == int(tid):
+            subtask.completed = not subtask.completed
+            db.session.commit()
+            return True
+    return False
+
+def delete_subtask(tid, sid):
+    subtask = get_subtask(sid)
+    if subtask:
+        if subtask.task_id == int(tid):
+            db.session.delete(subtask)
+            db.session.commit()
+            return True
+    return False
+
+def create_subtask(tid, subtask_description):
+    subtask = Subtask(
+        description=subtask_description,
+        task_id=tid
+    )
+    db.session.add(subtask)
+    db.session.commit()
+    return subtask
+
+def edit_subtask(tid, sid, subtask_description):
+    subtask = get_subtask(sid)
+    if subtask:
+        if subtask.task_id == int(tid):
+            subtask.description = subtask_description
+            db.session.commit()
+            return True
+    return False

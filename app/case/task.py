@@ -596,3 +596,57 @@ def get_custom_tags_task(tid):
     if task:
         return {"custom_tags": [CustomModel.get_custom_tag(c_t.custom_tag_id).name for c_t in CommonModel.get_task_custom_tags(task.id)]}, 200
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/task/<tid>/create_subtask", methods=['POST'])
+@login_required
+@editor_required
+def create_subtask(cid,tid):
+    """Create a new subtask"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if "description" in request.json:
+            subtask = TaskModel.create_subtask(tid, request.json["description"])
+            if subtask:
+                return {"message": f"Subtask created, id: {subtask.id}", 'toast_class': "success-subtle"}, 200 
+            return {"message": "Error creating subtask", 'toast_class': "danger-subtle"}, 400
+        return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/<cid>/task/<tid>/edit_subtask/<sid>", methods=['POST'])
+@login_required
+@editor_required
+def edit_subtask(cid, tid, sid):
+    """Edit a subtask"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if "description" in request.json:
+            if TaskModel.edit_subtask(tid, sid, request.json["description"]):
+                return {"message": "Subtask edited", 'toast_class': "success-subtle"}, 200 
+            return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
+        return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/<cid>/task/<tid>/complete_subtask/<sid>", methods=['GET'])
+@login_required
+@editor_required
+def complete_subtask(cid, tid, sid):
+    """Complete a subtask"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if TaskModel.complete_subtask(tid, sid):
+            return {"message": "Subtask completed", 'toast_class': "success-subtle"}, 200 
+        return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/<cid>/task/<tid>/delete_subtask/<sid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_subtask(cid, tid, sid):
+    """Delete a subtask"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if TaskModel.delete_subtask(tid, sid):
+            return {"message": "Subtask deleted", 'toast_class': "success-subtle"}, 200 
+        return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404

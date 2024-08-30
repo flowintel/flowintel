@@ -340,3 +340,31 @@ def change_order(case, task, up_down):
                 break
 
     db.session.commit()
+
+
+def create_subtask(tid, description):
+    subtask = Subtask_Template(
+        description=description,
+        template_id=tid
+    )
+    db.session.add(subtask)
+    db.session.commit()
+    return subtask
+
+def edit_subtask(tid, sid, description):
+    subtask = CommonModel.get_subtask_template(sid)
+    if subtask:
+        if subtask.template_id == int(tid):
+            subtask.description = description
+            db.session.commit()
+            return True
+    return False
+
+def delete_subtask(tid, sid):
+    subtask = CommonModel.get_subtask_template(sid)
+    if subtask:
+        if subtask.template_id == int(tid):
+            db.session.delete(subtask)
+            db.session.commit()
+            return True
+    return False

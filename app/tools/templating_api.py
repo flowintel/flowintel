@@ -381,3 +381,76 @@ class MoveTaskDown(Resource):
                 return {"message": "Order changed"}, 200
             return {"message": "Task Not found"}, 404
         return {"message": "Case Not found"}, 404
+
+
+###########
+# Subtask #
+###########
+
+@api.route('/task/<tid>/create_subtask', methods=['POST'])
+@api.doc(description='Create a subtask')
+class CreateSubtask(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        'description': 'Required. Description of the subtask'
+    })
+    def post(self, tid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            if "description" in request.json:
+                subtask = TaskModel.create_subtask(tid, request.json["description"])
+                if subtask:
+                    return {"message": f"Subtask created, id: {subtask.id}", "subtask_id": subtask.id}, 201 
+            return {"message": "Need to pass 'description'"}, 400
+        return {"message": "Task Not found"}, 404
+    
+@api.route('/task/<tid>/edit_subtask/<sid>', methods=['POST'])
+@api.doc(description='Edit a subtask')
+class EditSubtask(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        'description': 'Required. Description of the subtask'
+    })
+    def post(self, tid, sid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            if "description" in request.json:
+                subtask = TaskModel.edit_subtask(tid, sid, request.json["description"])
+                if subtask:
+                    return {"message": f"Subtask edited"}, 200 
+            return {"message": "Need to pass 'description'"}, 400
+        return {"message": "Task Not found"}, 404
+    
+@api.route('/task/<tid>/list_subtasks', methods=['GET'])
+@api.doc(description='List subtasks of a task')
+class ListSubtask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            return {"subtasks": [subtask.to_json() for subtask in task.subtasks]}, 200
+        return {"message": "task Not found"}, 404
+    
+@api.route('/task/<tid>/subtask/<sid>', methods=['GET'])
+@api.doc(description='Get a subtask of a task')
+class GetSubtask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid, sid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            subtask = CommonModel.get_subtask_template(sid)
+            if subtask:
+                return subtask.to_json()
+        return {"message": "task Not found"}, 404
+    
+@api.route('/task/<tid>/delete_subtask/<sid>', methods=['GET'])
+@api.doc(description='Delete a subtask')
+class DeleteSubtask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid, sid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            if TaskModel.delete_subtask(tid, sid):
+                return {"message": "Subtask deleted"}, 200
+            return {"message": "Subtask not found"}, 404
+        return {"message": "task Not found"}, 404

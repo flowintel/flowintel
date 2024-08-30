@@ -424,5 +424,102 @@ class GetConnectors(Resource):
                     if ident:
                         loc[instance] = ident.identifier
                 return {"instances": loc}, 200
-            return {"Need to pass 'instances'"}, 400
+            return {"message": "Need to pass 'instances'"}, 400
         return {"message": "Task Not found"}, 404
+    
+
+###########
+# Subtask #
+###########
+
+@api.route('/<tid>/create_subtask', methods=['POST'])
+@api.doc(description='Create a subtask')
+class CreateSubtask(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        'description': 'Required. Description of the subtask'
+    })
+    def post(self, tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if "description" in request.json:
+                    subtask = TaskModel.create_subtask(tid, request.json["description"])
+                    if subtask:
+                        return {"message": f"Subtask created, id: {subtask.id}", "subtask_id": subtask.id}, 201 
+                return {"message": "Need to pass 'description'"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Task Not found"}, 404
+    
+@api.route('/<tid>/edit_subtask/<sid>', methods=['POST'])
+@api.doc(description='Edit a subtask')
+class EditSubtask(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        'description': 'Required. Description of the subtask'
+    })
+    def post(self, tid, sid):
+        task = CommonModel.get_task(tid)
+        if task:
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if "description" in request.json:
+                    subtask = TaskModel.edit_subtask(tid, sid, request.json["description"])
+                    if subtask:
+                        return {"message": f"Subtask edited"}, 200 
+                return {"message": "Need to pass 'description'"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Task Not found"}, 404
+    
+@api.route('/<tid>/list_subtasks', methods=['GET'])
+@api.doc(description='List subtasks of a task')
+class ListSubtask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            return {"subtasks": [subtask.to_json() for subtask in task.subtasks]}, 200
+        return {"message": "task Not found"}, 404
+    
+@api.route('/<tid>/subtask/<sid>', methods=['GET'])
+@api.doc(description='Get a subtask of a task')
+class GetSubtask(Resource):
+    method_decorators = [api_required]
+    def get(self, tid, sid):
+        task = CommonModel.get_task(tid)
+        if task:
+            subtask = TaskModel.get_subtask(sid)
+            if subtask:
+                return subtask.to_json()
+        return {"message": "task Not found"}, 404
+    
+@api.route('/<tid>/complete_subtask/<sid>', methods=['GET'])
+@api.doc(description='Complete a subtask')
+class CompleteSubtask(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, tid, sid):
+        task = CommonModel.get_task(tid)
+        if task:
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.complete_subtask(tid, sid):
+                    return {"message": "Subtask completed"}, 200
+                return {"message": "Subtask not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "task Not found"}, 404
+    
+@api.route('/<tid>/delete_subtask/<sid>', methods=['GET'])
+@api.doc(description='Delete a subtask')
+class DeleteSubtask(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, tid, sid):
+        task = CommonModel.get_task(tid)
+        if task:
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.delete_subtask(tid, sid):
+                    return {"message": "Subtask deleted"}, 200
+                return {"message": "Subtask not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "task Not found"}, 404

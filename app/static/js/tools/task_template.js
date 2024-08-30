@@ -1,4 +1,4 @@
-import {display_toast} from '../toaster.js'
+import {display_toast, create_message} from '../toaster.js'
 const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -235,6 +235,73 @@ export default {
 			return 0
 		}
 
+		async function create_subtask(task){
+			$("#create-subtask-error-"+task.id).text("")
+			let description = $("#create-subtask-"+task.id).val()
+			if(!description){
+				$("#create-subtask-error-"+task.id).text("Cannot be empty...").css("color", "brown")
+			}
+			
+			const res = await fetch("/tools/template/task/"+task.id+"/create_subtask", {
+				method: "POST",
+				headers: {
+					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+				},
+				body: JSON.stringify({
+					"description": description
+				})				
+			});
+			if( await res.status == 200){
+				let loc= res.json()["id"]
+				task.subtasks.push({"id": loc, "description": description, "task_id": task.id, "completed": false})
+				create_message("Subtask created", "success-subtle")
+			}else{
+				await display_toast(res)
+			}
+		}
+
+		async function edit_subtask(task, subtask_id){
+			$("#edit-subtask-error-"+subtask_id).text("")
+			let description = $("#edit-subtask-"+subtask_id).val()
+			if(!description){
+				$("#edit-subtask-error-"+subtask_id).text("Cannot be empty...").css("color", "brown")
+			}
+			const res = await fetch("/tools/template/task/"+task.id+"/edit_subtask/"+subtask_id, {
+				method: "POST",
+				headers: {
+					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+				},
+				body: JSON.stringify({
+					"description": description
+				})				
+			});
+			if( await res.status == 200){
+				for(let i in task.subtasks){
+					if (task.subtasks[i].id == subtask_id){
+						task.subtasks[i].description = description
+						break
+					}
+				}
+			}
+			await display_toast(res)
+		}
+
+		async function delete_subtask(task, subtask_id){			
+			const res = await fetch('/tools/template/task/' + task.id+"/delete_subtask/"+subtask_id)
+
+			if( await res.status == 200){
+				let loc_i
+				for(let i in task.subtasks){
+					if (task.subtasks[i].id == subtask_id){
+						loc_i=i
+						break
+					}
+				}
+				task.subtasks.splice(loc_i, 1)
+			}
+			await display_toast(res)
+		}
+
 		return {
 			note_editor_render,
 			md,
@@ -250,7 +317,11 @@ export default {
 			move_task_up,
 			move_task_down,
 			remove_task,
-			add_notes_task
+			add_notes_task,
+
+			create_subtask,
+			edit_subtask,
+			delete_subtask
 		}
 	},
 	template: `
@@ -302,13 +373,37 @@ export default {
                     </template>
                 </div>
             </div>
+			<div class="d-flex w-100 justify-content-between">
+				<div></div>
+				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
+					<i>[[template.notes.length]] Notes</i>
+				</span>
+			</div>
+			<p class="mt-1" v-if="template.subtasks.length" style="background-color: #f5f5f5; border: 1px solid grey; border-radius: 5px; padding: 5px;">
+				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
+				<template v-for="subtask in template.subtasks">
+					<div v-if="!subtask.completed">
+						- [[subtask.description]]
+					</div>
+				</template>
+			</p>
         </a>
-        <div v-if="!template.current_user_permission.read_only" style="display: grid;">
-            <a class="btn btn-primary btn-sm" :href="'/tools/template/edit_task/'+template.id" type="button" title="Edit the task template">
-                <i class="fa-solid fa-pen-to-square"></i>
-            </a>
-            <button v-if="task_in_case" class="btn btn-warning btn-sm" @click="remove_task(template, templates_list)" title="Remove the task template from the case"><i class="fa-solid fa-trash"></i></button>
-            <button class="btn btn-danger btn-sm" @click="delete_task(template, templates_list)" title="Delete the task template"><i class="fa-solid fa-trash"></i></button>
+        <div v-if="!template.current_user_permission.read_only">
+			<div>
+				<a class="btn btn-primary btn-sm" :href="'/tools/template/edit_task/'+template.id" type="button" title="Edit the task template">
+					<i class="fa-solid fa-pen-to-square"></i>
+				</a>
+			</div>
+			<div>
+            	<button v-if="task_in_case" class="btn btn-warning btn-sm" @click="remove_task(template, templates_list)" title="Remove the task template from the case">
+					<i class="fa-solid fa-trash"></i>
+				</button>
+			</div>
+			<div>
+            	<button class="btn btn-danger btn-sm" @click="delete_task(template, templates_list)" title="Delete the task template">
+					<i class="fa-solid fa-trash"></i>
+				</button>
+			</div>
         </div>
 		<div v-if="!template.current_user_permission.read_only" style="display: grid;">
 			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task_up(template, true)">
@@ -324,11 +419,73 @@ export default {
 	<!-- Collapse Part -->
 	<div class="collapse" :id="'collapse'+template.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
-			<div class="d-flex w-100 justify-content-between">
-				<div class="w-100">
-					<div>
-						<h5>Notes</h5>
+			<div>
+				<fieldset class="analyzer-select-case">
+					<legend class="analyzer-select-case">
+						<i class="fa-solid fa-list"></i> 
+						Subtasks
+						<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" data-bs-target="#create_subtask" style="float: right; margin-left:3px;">
+							+
+						</button>
+					</legend>
+					<template v-for="subtask in template.subtasks">
+						<div>
+							[[subtask.description]]
+							<button @click="delete_subtask(template, subtask.id)" class="btn btn-danger btn-sm" style="float: right;" ><i class="fa-solid fa-trash"></i></button>
+							<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" data-bs-target="#edit_subtask" style="float: right;">
+								<i class="fa-solid fa-pen-to-square"></i>
+							</button>
+						</div>
+						<hr>
+						<!-- Modal edit subtask -->
+						<div class="modal fade" id="edit_subtask" tabindex="-1" aria-labelledby="edit_subtask_modal" aria-hidden="true">
+							<div class="modal-dialog modal-lg">
+								<div class="modal-content">
+									<div class="modal-header">
+										<h1 class="modal-title fs-5" id="edit_subtask_modal">Edit subtask</h1>
+										<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+									</div>
+									<div class="modal-body">
+										<textarea class="form-control" :value="subtask.description" :id="'edit-subtask-'+subtask.id"/>
+										<div :id="'edit-subtask-error-'+subtask.id"></div>
+									</div>
+									<div class="modal-footer">
+										<button @click="edit_subtask(template, subtask.id)" class="btn btn-primary">Submit</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</template>
+				</fieldset>
+
+				<!-- Modal create subtask -->
+				<div class="modal fade" id="create_subtask" tabindex="-1" aria-labelledby="create_subtask_modal" aria-hidden="true">
+					<div class="modal-dialog modal-lg">
+						<div class="modal-content">
+							<div class="modal-header">
+								<h1 class="modal-title fs-5" id="create_subtask_modal">Create subtask</h1>
+								<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+							</div>
+							<div class="modal-body">
+								<b>Create a new subtask</b>
+								<br>
+								<textarea class="form-control" :id="'create-subtask-'+template.id"/>
+								<div :id="'create-subtask-error-'+template.id"></div>
+							</div>
+							<div class="modal-footer">
+								<button @click="create_subtask(template)" class="btn btn-primary">Submit</button>
+							</div>
+						</div>
 					</div>
+				</div>
+			</div>
+			<hr>
+			<div>
+				<fieldset class="analyzer-select-case">
+					<legend class="analyzer-select-case">
+						<i class="fa-solid fa-note-sticky"></i> 
+						Notes
+					</legend>
 					<div v-if="template.notes.length">
 						<template v-for="template_note, key in template.notes">
 							<h5>#[[key+1]]</h5>
@@ -392,7 +549,7 @@ export default {
 							</div>
 						</template>
 					</div>
-				</div>
+				</fieldset>
 			</div>
 		</div>
 	</div>

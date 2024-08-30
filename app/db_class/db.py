@@ -169,6 +169,7 @@ class Task(db.Model):
     case_order_id = db.Column(db.Integer, index=True)
     files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
     nb_notes = db.Column(db.Integer, index=True)
+    subtasks = db.relationship('Subtask', backref='Task', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
         json_dict = {
@@ -225,6 +226,22 @@ class Task(db.Model):
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
 
         return json_dict
+    
+class Subtask(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
+    completed = db.Column(db.Boolean, default=False)
+    description = db.Column(db.String, nullable=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "task_id": self.task_id,
+            "completed": self.completed,
+            "description": self.description
+        }
+        return json_dict
+
 
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -423,6 +440,7 @@ class Task_Template(db.Model):
     notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade="all, delete-orphan")
     nb_notes = db.Column(db.Integer, index=True)
     last_modif = db.Column(db.DateTime, index=True)
+    subtasks = db.relationship('Subtask_Template', backref='task_template', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
         json_dict =  {
@@ -457,6 +475,21 @@ class Task_Template(db.Model):
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
 
+        return json_dict
+    
+class Subtask_Template(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('task__template.id', ondelete="CASCADE"))
+    completed = db.Column(db.Boolean, default=False)
+    description = db.Column(db.String, nullable=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "template_id": self.template_id,
+            "completed": self.completed,
+            "description": self.description
+        }
         return json_dict
     
 class Note_Template(db.Model):

@@ -1,4 +1,4 @@
-import {display_toast} from '../toaster.js'
+import {display_toast, create_message} from '../toaster.js'
 const { ref, nextTick, watch } = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -8,8 +8,7 @@ export default {
 		users_in_case: Object,
 		task: Object,
 		key_loop: Number,
-		open_closed: Object,
-		modules: Object
+		open_closed: Object
 	},
 	setup(props) {
 		// Variables part
@@ -566,6 +565,93 @@ export default {
 		}		
 
 
+		async function create_subtask(task){
+			$("#create-subtask-error-"+task.id).text("")
+			let description = $("#create-subtask-"+task.id).val()
+			if(!description){
+				$("#create-subtask-error-"+task.id).text("Cannot be empty...").css("color", "brown")
+			}
+			
+			const res = await fetch("/case/"+ task.case_id +"/task/"+task.id+"/create_subtask", {
+				method: "POST",
+				headers: {
+					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+				},
+				body: JSON.stringify({
+					"description": description
+				})				
+			});
+			if( await res.status == 200){
+				let loc= res.json()["id"]
+				task.subtasks.push({"id": loc, "description": description, "task_id": task.id, "completed": false})
+				create_message("Subtask created", "success-subtle")
+			}else{
+				await display_toast(res)
+			}
+		}
+
+		async function edit_subtask(task, subtask_id){
+			$("#edit-subtask-error-"+subtask_id).text("")
+			let description = $("#edit-subtask-"+subtask_id).val()
+			if(!description){
+				$("#edit-subtask-error-"+subtask_id).text("Cannot be empty...").css("color", "brown")
+			}
+			const res = await fetch("/case/"+ task.case_id +"/task/"+task.id+"/edit_subtask/"+subtask_id, {
+				method: "POST",
+				headers: {
+					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+				},
+				body: JSON.stringify({
+					"description": description
+				})				
+			});
+			if( await res.status == 200){
+				for(let i in task.subtasks){
+					if (task.subtasks[i].id == subtask_id){
+						task.subtasks[i].description = description
+						break
+					}
+				}
+			}
+			await display_toast(res)
+		}
+
+		async function delete_subtask(task, subtask_id){
+			const res = await fetch('/case/' + task.case_id + '/task/' + task.id+"/delete_subtask/"+subtask_id)
+
+			if( await res.status == 200){
+				let loc_i
+				for(let i in task.subtasks){
+					if (task.subtasks[i].id == subtask_id){
+						loc_i=i
+						break
+					}
+				}
+				task.subtasks.splice(loc_i, 1)
+			}
+			await display_toast(res)
+		}
+
+		async function complete_subtask(task, subtask_id, completed){
+			const res = await fetch('/case/' + task.case_id + '/task/' + task.id+"/complete_subtask/"+subtask_id)
+
+			if( await res.status == 200){
+				for(let i in task.subtasks){
+					if (task.subtasks[i].id == subtask_id){
+						task.subtasks[i].completed=!task.subtasks[i].completed
+						if(completed){
+							task.nb_open_subtasks -= 1
+						}else{
+							task.nb_open_subtasks += 1
+						}
+						break
+					}
+				}
+			}
+			await display_toast(res)
+		}
+
+
 		// Vue function
 		Vue.onMounted( () => {
 			select2_change(props.task.id)
@@ -666,7 +752,12 @@ export default {
 			move_task,
 			add_notes_task,
 			submit_module_task,
-			submit_module
+			submit_module,
+
+			create_subtask,
+			edit_subtask,
+			delete_subtask,
+			complete_subtask
 		}
 	},
 	template: `
@@ -748,29 +839,47 @@ export default {
 					<i>[[task.notes.length]] Notes</i>
 				</span>
 			</div>
+			<p class="mt-1" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="background-color: #f5f5f5; border: 1px solid grey; border-radius: 5px; padding: 5px;">
+				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
+				<template v-for="subtask in task.subtasks">
+					<div v-if="!subtask.completed">
+						- [[subtask.description]]
+					</div>
+				</template>
+			</p>
 		</a>
-		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin" style="display: grid;">
-			<button v-if="task.completed" class="btn btn-secondary btn-sm"  @click="complete_task(task)" title="Revive the task">
-				<i class="fa-solid fa-backward"></i>
-			</button>
-			<button v-else class="btn btn-success btn-sm" @click="complete_task(task)" title="Complete the task">
-				<i class="fa-solid fa-check"></i>
-			</button>
-			<button v-if="!task.is_current_user_assigned" class="btn btn-secondary btn-sm" @click="take_task(task, cases_info.current_user)" title="Be assigned to the task">
-				<i class="fa-solid fa-hand"></i>
-			</button>
-			<button v-else class="btn btn-secondary btn-sm" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
-				<i class="fa-solid fa-handshake-slash"></i>
-			</button>
-			<button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" :data-bs-target="'#Send_to_modal_task_'+task.id">
-				<i class="fa-solid fa-share-from-square"></i>
-			</button>
-			<a class="btn btn-primary btn-sm" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
-				<i class="fa-solid fa-pen-to-square"></i>
-			</a>
-			<button class="btn btn-danger btn-sm" @click="delete_task(task, cases_info.tasks)" title="Delete the task">
-				<i class="fa-solid fa-trash"></i>
-			</button>
+		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+			<div>
+				<button v-if="task.completed" class="btn btn-secondary btn-sm"  @click="complete_task(task)" title="Revive the task">
+					<i class="fa-solid fa-backward"></i>
+				</button>
+				<button v-else class="btn btn-success btn-sm" @click="complete_task(task)" title="Complete the task">
+					<i class="fa-solid fa-check"></i>
+				</button>
+			</div>
+			<div>
+				<button v-if="!task.is_current_user_assigned" class="btn btn-secondary btn-sm" @click="take_task(task, cases_info.current_user)" title="Be assigned to the task">
+					<i class="fa-solid fa-hand"></i>
+				</button>
+				<button v-else class="btn btn-secondary btn-sm" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
+					<i class="fa-solid fa-handshake-slash"></i>
+				</button>
+			</div>
+			<div>
+				<button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" :data-bs-target="'#Send_to_modal_task_'+task.id">
+					<i class="fa-solid fa-share-from-square"></i>
+				</button>
+			</div>
+			<div>
+				<a class="btn btn-primary btn-sm" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
+					<i class="fa-solid fa-pen-to-square"></i>
+				</a>
+			</div>
+			<div>
+				<button class="btn btn-danger btn-sm" @click="delete_task(task, cases_info.tasks)" title="Delete the task">
+					<i class="fa-solid fa-trash"></i>
+				</button>
+			</div>
 		</div>
 		<div v-if="(!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin) && !task.completed" style="display: grid;">
 			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task(task, true)">
@@ -871,7 +980,7 @@ export default {
 													<select data-placeholder="Modules" class="select2-select form-control" style="min-width: 100px; max-width: 300px;" :name="'modules_select_'+task.id+'_'+user.id" :id="'modules_select_'+task.id+'_'+user.id" >
 														<option value="None">--</option>
 														<option value="flowintel">flowintel</option>
-														<template v-for="module, key in modules">
+														<template v-for="module, key in task_modules">
 															<option v-if="module.type == 'notify_user' && module.config.case_task == 'task'" :value="[[key]]">[[key]]</option>
 														</template>
 													</select>
@@ -955,6 +1064,77 @@ export default {
 				</div>
 			</div>
 			<hr>
+
+			<div>
+				<fieldset class="analyzer-select-case">
+					<legend class="analyzer-select-case">
+						<i class="fa-solid fa-list"></i> 
+						Subtasks
+						<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" data-bs-target="#create_subtask" style="float: right; margin-left:3px;">
+							+
+						</button>
+					</legend>
+					<template v-for="subtask in task.subtasks">
+						<div>
+							<div v-if="subtask.completed" >
+								<input type="checkbox" checked @click="complete_subtask(task, subtask.id, false)"/>
+								<span style="text-decoration-line: line-through; margin-left: 3px">[[subtask.description]]</span>
+							</div>
+							<div v-else>
+								<input type="checkbox" @click="complete_subtask(task, subtask.id, true)"/>
+								[[subtask.description]]
+								<button @click="delete_subtask(task, subtask.id)" class="btn btn-danger btn-sm" style="float: right;" ><i class="fa-solid fa-trash"></i></button>
+								<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" data-bs-target="#edit_subtask" style="float: right;">
+									<i class="fa-solid fa-pen-to-square"></i>
+								</button>
+							</div>
+							
+						</div>
+						<hr>
+						<!-- Modal edit subtask -->
+						<div class="modal fade" id="edit_subtask" tabindex="-1" aria-labelledby="edit_subtask_modal" aria-hidden="true">
+							<div class="modal-dialog modal-lg">
+								<div class="modal-content">
+									<div class="modal-header">
+										<h1 class="modal-title fs-5" id="edit_subtask_modal">Edit subtask</h1>
+										<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+									</div>
+									<div class="modal-body">
+										<textarea class="form-control" :value="subtask.description" :id="'edit-subtask-'+subtask.id"/>
+										<div :id="'edit-subtask-error-'+subtask.id"></div>
+									</div>
+									<div class="modal-footer">
+										<button @click="edit_subtask(task, subtask.id)" class="btn btn-primary">Submit</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</template>
+				</fieldset>
+			</div>
+			<hr>
+
+			<!-- Modal create subtask -->
+			<div class="modal fade" id="create_subtask" tabindex="-1" aria-labelledby="create_subtask_modal" aria-hidden="true">
+				<div class="modal-dialog modal-lg">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h1 class="modal-title fs-5" id="create_subtask_modal">Create subtask</h1>
+							<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						</div>
+						<div class="modal-body">
+							<b>Create a new subtask</b>
+							<br>
+							<textarea class="form-control" :id="'create-subtask-'+task.id"/>
+							<div :id="'create-subtask-error-'+task.id"></div>
+						</div>
+						<div class="modal-footer">
+							<button @click="create_subtask(task)" class="btn btn-primary">Submit</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
 			<div>
 				<fieldset class="analyzer-select-case">
 					<legend class="analyzer-select-case">

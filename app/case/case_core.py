@@ -705,12 +705,22 @@ def create_template_from_case(cid, case_title_template, current_user):
                 db.session.add(task_connector)
                 db.session.commit()
 
+            ## Task Custom tags
             for c_t in CommonModel.get_task_custom_tags(task.id):
                 task_template_custom_tags = Task_Template_Custom_Tags(
                     task_template_id=task_template.id,
                     custom_tag_id=c_t.custom_tag_id
                 )
                 db.session.add(task_template_custom_tags)
+                db.session.commit()
+
+            ## Task subtasks
+            for sub in task.subtasks:
+                subtask = Subtask_Template(
+                    tempalte_id=task_template.id,
+                    descritpion=sub.description
+                )
+                db.session.add(subtask)
                 db.session.commit()
 
             case_task_template = Case_Task_Template(

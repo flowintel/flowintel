@@ -410,3 +410,52 @@ def test_fork_case(client):
 
     response = client.get("/api/case/2", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and response.json["title"] == "Test fork case"
+
+###########
+# Subtask #
+###########
+
+def test_create_subtask(client):
+    test_create_task(client, True)
+    
+    response = client.post("/api/task/1/create_subtask",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"description": "Test create subtask"}
+                        )
+    assert response.status_code == 201
+
+    response = client.get("/api/task/1/subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["description"] == "Test create subtask"
+
+
+def test_edit_subtask(client):
+    test_create_subtask(client)
+    
+    response = client.post("/api/task/1/edit_subtask/1",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"description": "Test edit subtask"}
+                        )
+    assert response.status_code == 200
+
+    response = client.get("/api/task/1/subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["description"] == "Test edit subtask"
+
+def test_complete_subtask(client):
+    test_create_subtask(client)
+    
+    response = client.get("/api/task/1/complete_subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+
+    response = client.get("/api/task/1/subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["completed"] == True
+
+def test_delete_subtask(client):
+    test_create_subtask(client)
+    
+    response = client.get("/api/task/1/delete_subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+
+    response = client.get("/api/task/1/subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 404

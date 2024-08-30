@@ -144,6 +144,10 @@ def get_task_custom_tags_both(task_id, custom_tag_id):
     return Task_Template_Custom_Tags.query.filter_by(task_template_id=task_id, custom_tag_id=custom_tag_id).first()
 
 
+def get_subtask_template(sid):
+    return Subtask_Template.query.get(sid)
+
+
 def update_last_modif(case_id):
     """Update 'last_modif' of a case"""
     case = Case_Template.query.get(case_id)

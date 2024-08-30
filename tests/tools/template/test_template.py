@@ -122,6 +122,47 @@ def test_delete_task_template(client):
     response = client.get("/api/template/task/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 404 and b"Task template not found" in response.data
 
+###########
+# Subtask #
+###########
+
+def test_create_subtask(client):
+    test_create_task_template(client)
+    
+    response = client.post("/api/template/task/1/create_subtask",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"description": "Test create subtask"}
+                        )
+    assert response.status_code == 201
+
+    response = client.get("/api/template/task/1/subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["description"] == "Test create subtask"
+
+def test_edit_subtask(client):
+    test_create_subtask(client)
+    
+    response = client.post("/api/template/task/1/edit_subtask/1",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"description": "Test edit subtask"}
+                        )
+    assert response.status_code == 200
+
+    response = client.get("/api/template/task/1/subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and response.json["description"] == "Test edit subtask"
+
+def test_delete_subtask(client):
+    test_create_subtask(client)
+    
+    response = client.get("/api/template/task/1/delete_subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+
+    response = client.get("/api/template/task/1/subtask/1", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 404
+
+
+
 
 ########
 # Task #
