@@ -7,6 +7,7 @@ Create Date: 2024-04-24 10:28:32.663416
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.exc import OperationalError
 
 
 # revision identifiers, used by Alembic.
@@ -46,16 +47,29 @@ def upgrade():
 				sa.text(f"UPDATE task__connector__instance SET identifier = {ident} WHERE id = {t_c.id}")
             )
 
-    with op.batch_alter_table('case__connector__id', schema=None) as batch_op:
-        batch_op.drop_index('ix_case__connector__id_case_id')
-        batch_op.drop_index('ix_case__connector__id_instance_id')
+    try:
+        with op.batch_alter_table('case__connector__id', schema=None) as batch_op:
+            batch_op.drop_index('ix_case__connector__id_case_id')
+            batch_op.drop_index('ix_case__connector__id_instance_id')
+    except OperationalError:
+        print("Index already dropped from 'case__connector__id'")
 
-    op.drop_table('case__connector__id')
-    with op.batch_alter_table('task__connector__id', schema=None) as batch_op:
-        batch_op.drop_index('ix_task__connector__id_instance_id')
-        batch_op.drop_index('ix_task__connector__id_task_id')
+    try:
+        op.drop_table('case__connector__id')
+    except OperationalError:
+        print("Table 'case__connector__id' already dropped")
 
-    op.drop_table('task__connector__id')
+    try:
+        with op.batch_alter_table('task__connector__id', schema=None) as batch_op:
+            batch_op.drop_index('ix_task__connector__id_instance_id')
+            batch_op.drop_index('ix_task__connector__id_task_id')
+    except OperationalError:
+        print("Index already dropped from 'task__connector__id'")
+
+    try:
+        op.drop_table('task__connector__id')
+    except OperationalError:
+        print("Table 'task__connector__id' already dropped")
     # ### end Alembic commands ###
 
 
