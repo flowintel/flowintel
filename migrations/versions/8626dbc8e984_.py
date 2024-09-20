@@ -47,6 +47,37 @@ def upgrade():
     except OperationalError:
         print("Index already dropped")
 
+    try:
+        with op.batch_alter_table('task', schema=None) as batch_op:
+            batch_op.alter_column('title', existing_type=sa.String(length=64),
+                    type_=sa.String())
+            batch_op.alter_column('url', existing_type=sa.String(length=64),
+                    type_=sa.String())
+    except OperationalError:
+        print("Task Title already changed")
+    
+    try:
+        with op.batch_alter_table('case', schema=None) as batch_op:
+            batch_op.alter_column('title', existing_type=sa.String(length=64),
+                    type_=sa.String())
+    except OperationalError:
+        print("Case Title already changed")
+
+    try:
+        with op.batch_alter_table('case__template', schema=None) as batch_op:
+            batch_op.alter_column('title', existing_type=sa.String(length=64),
+                    type_=sa.String())
+    except OperationalError:
+        print("Case template Title already changed")
+
+    try:
+        with op.batch_alter_table('task__template', schema=None) as batch_op:
+            batch_op.alter_column('title', existing_type=sa.String(length=64),
+                    type_=sa.String())
+            batch_op.alter_column('url', existing_type=sa.String(length=64),
+                    type_=sa.String())
+    except OperationalError:
+        print("Task template Title already changed")
     # ### end Alembic commands ###
 
 
