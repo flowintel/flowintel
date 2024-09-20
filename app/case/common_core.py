@@ -496,7 +496,7 @@ def create_task_from_template(template_id, cid):
     return task
 
 
-def get_instance_with_icon(instance_id, case_task, case_task_id):
+def get_instance_with_icon(instance_id, switch_option, case_task_id):
     """Return an instance of a connector with its icon"""
     loc_instance = get_instance(instance_id).to_json()
     loc_instance["icon"] = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
@@ -504,13 +504,17 @@ def get_instance_with_icon(instance_id, case_task, case_task_id):
                                     .join(Connector_Instance, Connector_Instance.connector_id==Connector.id)\
                                     .where(Connector_Instance.id==instance_id)\
                                     .first().uuid
-    if case_task:
+    if switch_option == "case":
         identifier = Case_Connector_Instance.query\
                 .where(Case_Connector_Instance.case_id==case_task_id, Case_Connector_Instance.instance_id==instance_id)\
                 .first()
-    else:
+    elif switch_option == "task":
         identifier = Task_Connector_Instance.query\
                 .where(Task_Connector_Instance.task_id==case_task_id, Task_Connector_Instance.instance_id==instance_id)\
+                .first()
+    elif switch_option == "object":
+        identifier = Case_Misp_Object_Connector_Instance.query\
+                .where(Case_Misp_Object_Connector_Instance.case_id==case_task_id, Case_Misp_Object_Connector_Instance.instance_id==instance_id)\
                 .first()
     
     loc_instance["identifier"] = ""
@@ -526,3 +530,15 @@ def get_modules_by_case_task(case_task):
         if MODULES_CONFIG[module]["config"]["case_task"] == case_task:
             loc_list[module] = MODULES_CONFIG[module]
     return loc_list
+
+
+def module_error_check(event):
+    if isinstance(event, dict):
+        if "message" in event:
+            return event
+        if type(event["errors"][1]["errors"]) == dict:
+            return {"message": event["errors"][1]["errors"]["value"][0]}
+        else:
+            loc = re.search(r"\{.*\}", event["errors"][1]["errors"])
+            return {"message": json.loads(loc.group())["value"][0]}
+    return

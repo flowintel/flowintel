@@ -11,7 +11,9 @@
     <h1 style="display: inline-block; font-size: xx-large;">{{case.id}}- {{case.title}}</h1>
     <span><i style="font-size: 12px; margin-left: 5px;">{{case.uuid}}</i></span>
     <small v-if="status_info" style="margin-left: 10px;">
-        <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style">[[ status_info.status[ {{case.status_id}} -1].name ]]</span>
+        <span :class="'d-none badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
+            [[ status_info.status[ {{case.status_id}} -1].name ]]
+        </span>
     </small>
     
     <template v-if="cases_info">
@@ -95,16 +97,22 @@
 
     <br>
 
+    <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConnectors" aria-expanded="false" aria-controls="collapseConnectors">
+        <i class="fa-solid fa-link"></i> Connectors
+    </button>
+    <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMispObject" aria-expanded="false" aria-controls="collapseMispObject">
+        <i class="fa-solid fa-cubes"></i> MISP objects
+        <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
+    </button>
+
     {% if case.instances %}
-        <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConnectors" aria-expanded="false" aria-controls="collapseConnectors">
-            <i class="fa-solid fa-link"></i> Connectors
-        </button>
         <div class="collapse" id="collapseConnectors">
             <div class="card card-body">
                 <table class="table">
                     <tr>
                         <th>Instance name</th>
                         <th>Instance url</th>
+                        <th>Type</th>
                         <th>Identifier on the instance</th>
                     </tr>
                     {% for instance in case.instances %}
@@ -118,6 +126,11 @@
                             <td>
                                 <a style="margin-left: 5px" href="{{instance.url}}">{{instance.url}}</a>
                             </td>
+                            {% if instance.type %}
+                                <td><span style="margin-left: 3px;" title="type of the module">{{instance.type}}</span></td>
+                            {%else%}
+                                <td><i>None</i></td>
+                            {%endif%}
                             {% if instance.identifier %}
                                 <td><span style="margin-left: 3px;" title="identifier used by module">{{instance.identifier}}</span></td>
                             {%else%}
@@ -131,6 +144,8 @@
             </div>
         </div>
     {%endif%}
+
+    <misp_object :cases_info="cases_info"></misp_object>
 
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
         <i :title="cases_info.case.creation_date">Created: [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]</i>
@@ -424,6 +439,7 @@
         import hedgedoc_template from '/static/js/case/hedgedoc_template.js'
         import action_buttons from '/static/js/case/action_buttons.js'
         import manage_orgs from '/static/js/case/manage_orgs.js'
+        import misp_object from '/static/js/case/misp_object.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
@@ -432,7 +448,8 @@
                 case_tasks,
                 hedgedoc_template,
                 action_buttons,
-                manage_orgs
+                manage_orgs,
+                misp_object
             },
             setup() {
                 const cases_info = ref(null)
@@ -459,6 +476,8 @@
                 const cluster_list = ref([])
                 const selected_galaxies = ref([])
                 const selected_clusters = ref([])
+
+                const nb_misp_objects = ref(0)
 
                 const open_closed = ref({})
                 const all_notes = ref("")
@@ -587,6 +606,7 @@
                         await nextTick()
                         scrollIntoSelectedElement()
                         fetch_open_closed()
+                        fetch_nb_misp_objects()
 
                         $('.select2-select-add-orgs').select2({
                             theme: 'bootstrap-5',
@@ -921,6 +941,14 @@
                     display_toast(res)
                 }
 
+                async function fetch_nb_misp_objects() {
+                    const res = await fetch('/case/' + cases_info.value.case.id + '/nb_objects')
+                    if (await res.status == 200){
+                        let loc = await res.json()
+                        nb_misp_objects.value = loc["nb_objects"]
+                    }
+                }
+
                 onMounted(() => {
                     initialize_select2()
                     autosave_case_note()
@@ -966,6 +994,8 @@
                         dropdownParent: $('#add_new_link')
                     });
 
+                    $("#id-nb-misp-object").removeClass("d-none")
+                    $("#id-case-status").removeClass("d-none")
                 })
                 
     
@@ -978,6 +1008,7 @@
                     main_tab,
                     history,
                     is_exporting,
+                    nb_misp_objects,
                     onInput,
                     filter_ongoing,
                     sort_by_filter,

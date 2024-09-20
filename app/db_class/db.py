@@ -62,7 +62,7 @@ class AnonymousUser(AnonymousUserMixin):
 class Case(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    title = db.Column(db.String(64), index=True)
+    title = db.Column(db.String)
     description = db.Column(db.String)
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
@@ -154,7 +154,7 @@ class Case(db.Model):
 class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    title = db.Column(db.String(64), index=True)
+    title = db.Column(db.String)
     description = db.Column(db.String, nullable=True)
     url = db.Column(db.String(64), index=True)
     notes = db.relationship('Note', backref='task', lazy='dynamic', cascade="all, delete-orphan")
@@ -835,6 +835,88 @@ class Case_Link_Case(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id_1 = db.Column(db.Integer, index=True)
     case_id_2 = db.Column(db.Integer, index=True)
+
+
+class Case_Misp_Object(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    template_uuid = db.Column(db.String(36), index=True)
+    name = db.Column(db.String)
+    attributes = db.relationship('Misp_Attribute', backref='Case_Misp_Object', lazy='dynamic', cascade="all, delete-orphan")
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "case_id": self.case_id,
+            "template_uuid": self.template_uuid,
+            "name": self.name
+        }
+        return json_dict
+
+class Misp_Attribute(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"))
+    value = db.Column(db.String, index=True)
+    type = db.Column(db.String, index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "case_misp_object_id": self.case_misp_object_id,
+            "value": self.value,
+            "type": self.type
+        }
+
+        return json_dict
+
+class Case_Misp_Object_Connector_Instance(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    instance_id = db.Column(db.Integer, index=True)
+    identifier = db.Column(db.String)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "case_id": self.case_id,
+            "instance_id": self.instance_id,
+            "identifier": self.identifier
+        }
+
+        return json_dict
+        
+class Misp_Object_Instance_Uuid(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    instance_id = db.Column(db.Integer, index=True)
+    misp_object_id = db.Column(db.Integer, index=True)
+    object_instance_uuid = db.Column(db.String(36), index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "misp_object_id": self.misp_object_id,
+            "instance_id": self.instance_id,
+            "object_instance_uuid": self.object_instance_uuid
+        }
+
+        return json_dict
+    
+class Misp_Attribute_Instance_Uuid(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    instance_id = db.Column(db.Integer, index=True)
+    misp_attribute_id = db.Column(db.Integer, index=True)
+    attribute_instance_uuid = db.Column(db.String(36), index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "misp_attribute_id": self.misp_attribute_id,
+            "instance_id": self.instance_id,
+            "attribute_instance_uuid": self.attribute_instance_uuid
+        }
+
+        return json_dict
+    
 
 login_manager.anonymous_user = AnonymousUser
 

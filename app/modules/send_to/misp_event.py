@@ -1,6 +1,7 @@
 from pymisp import MISPEvent, MISPObject, PyMISP
 import uuid
 import conf.config_module as Config
+from .misp_object_event import all_object_to_misp, manage_object_creation
 
 module_config = {
     "connector": "misp",
@@ -97,6 +98,7 @@ def handler(instance, case, user):
     except:
         return {"message": "Error connecting to MISP"}
     flag = False
+    object_uuid_list = {}
     if "identifier" in instance and instance["identifier"]:
         event = misp.get_event(instance["identifier"], pythonify=True)
         if 'errors' in event:
@@ -223,6 +225,10 @@ def handler(instance, case, user):
 
                 event = misp.update_event(event, pythonify=True)
 
+            res, object_uuid_list = all_object_to_misp(misp, event, case["objects"], object_uuid_list)
+            if "errors" in res:
+                return res, object_uuid_list
+
     ## Case have no id for this connector or the event doesn't exist anymore  
     else: 
         flag = True
@@ -272,8 +278,15 @@ def handler(instance, case, user):
                 "content": loc_notes
             }   
             misp.add_event_report(event.get("id"), event_report)
+
+        for object in case["objects"]:
+            res, object_uuid_list = manage_object_creation(misp, event, object, object_uuid_list)
+            if "errors" in res:
+                return res, object_uuid_list
     
-    return event.get("id")
+    if "errors" in event:
+        return event, object_uuid_list
+    return event.get("id"), object_uuid_list
 
 def introspection():
     return module_config

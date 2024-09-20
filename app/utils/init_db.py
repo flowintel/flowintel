@@ -83,8 +83,8 @@ def create_misp_ail_connector():
     db.session.commit()
 
     misp_connector = Connector(
-        name="Misp",
-        description="Misp connector",
+        name="MISP",
+        description="MISP connector",
         uuid=str(uuid.uuid4()),
         icon_id=icon.id
     )

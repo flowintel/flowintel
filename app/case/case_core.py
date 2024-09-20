@@ -1,5 +1,6 @@
 import os
 import ast
+import re
 import requests
 import uuid
 import datetime
@@ -903,10 +904,20 @@ def call_module_case(module, instances, case, user):
         if instances[instance_key]:
             instance["identifier"] = instances[instance_key]
 
-        event_id = MODULES[module].handler(instance, case, user)
-        if isinstance(event_id, dict):
-            return event_id
+        case["objects"] = get_misp_object_instance(case["id"], instance["id"])
 
+        #######
+        # RUN #
+        #######
+        event_id, object_uuid_list = MODULES[module].handler(instance, case, user)
+
+        res = CommonModel.module_error_check(event_id)
+        if res:
+            return res
+
+        ###########
+        # RESULTS #
+        ###########
         if not case_instance_id:
             cc_instance = Case_Connector_Instance(
                 case_id=case["id"],
@@ -918,8 +929,16 @@ def call_module_case(module, instances, case, user):
         elif not case_instance_id.identifier == event_id:
             case_instance_id.identifier = event_id
             db.session.commit()
+        
+        if object_uuid_list:
+            result_misp_object_module(object_uuid_list, instance["id"])
+            loc_instance = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case["id"], instance_id=instance["id"]).first()
+            if loc_instance:
+                if not loc_instance.identifier == event_id:
+                    loc_instance.identifier = event_id
+                    db.session.commit()                
     
-    CommonModel.save_history(case.uuid, user, f"Task Module {module} used on instances: {', '.join(list(instances.keys))}")
+    CommonModel.save_history(case["uuid"], user, f"Task Module {module} used on instances: {', '.join(list(instances.keys()))}")
 
 def get_all_notes(case):
     """Get all tasks' notes"""
@@ -1033,3 +1052,234 @@ def get_hedgedoc_notes(cid):
         except:
             return {"message": "Error with the url", 'toast_class': "warning-subtle"}, 400
     return {"notes": ""}, 200
+
+
+###############
+# MISP Object #
+###############
+
+def create_misp_object(cid, request_json):
+    """Create a new misp object"""
+    case_misp_object = Case_Misp_Object(
+        case_id=cid,
+        template_uuid=request_json["object-template"]["uuid"],
+        name=request_json["object-template"]["name"]
+    )
+    db.session.add(case_misp_object)
+    db.session.commit()
+
+    for attribute in request_json["attributes"]:
+        attr = Misp_Attribute(
+            case_misp_object_id=case_misp_object.id,
+            value=attribute["value"],
+            type=attribute["type"]
+        )
+        db.session.add(attr)
+        db.session.commit()
+    return case_misp_object
+
+def get_misp_object_by_case(cid):
+    return Case_Misp_Object.query.filter_by(case_id=cid).all()
+
+def get_misp_object(oid):
+    """Get a misp object by id"""
+    return Case_Misp_Object.query.get(oid)
+
+def get_misp_attribute(aid):
+    """Get a misp attribute by id"""
+    return Misp_Attribute.query.get(aid)
+
+
+def delete_object(cid, oid):
+    """Delete a misp object"""
+    misp_object = get_misp_object(oid)
+    if int(cid) == misp_object.case_id:
+        db.session.delete(misp_object)
+        db.session.commit()
+        return True
+    return False
+
+def add_attributes_object(cid, oid, request_json):
+    misp_object = get_misp_object(oid)
+    if int(cid) == misp_object.case_id:
+        for attribute in request_json["attributes"]:
+            attr = Misp_Attribute(
+                case_misp_object_id=misp_object.id,
+                value=attribute["value"],
+                type=attribute["type"]
+            )
+            db.session.add(attr)
+            db.session.commit()
+        return True
+    return False
+
+def edit_attr(case_id, object_id, attr_id, request_json):
+    misp_object = get_misp_object(object_id)
+    if int(case_id) == misp_object.case_id:
+        attribute = get_misp_attribute(attr_id)
+        if attribute.case_misp_object_id == int(object_id):
+            attribute.value = request_json["value"]
+            attribute.type = request_json["type"]
+            db.session.commit()
+            return {"message": "Attribute updated", "toast_class": "success-subtle"}, 200
+        return {"message": "Attribute not found in this object", "toast_class": "warning-subtle"}, 404
+    return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
+
+
+def delete_attribute(case_id, object_id, attr_id):
+    misp_object = get_misp_object(object_id)
+    if int(case_id) == misp_object.case_id:
+        attribute = get_misp_attribute(attr_id)
+        if attribute.case_misp_object_id == int(object_id):
+            db.session.delete(attribute)
+            db.session.commit()
+            return {"message": "Attribute deleted", "toast_class": "success-subtle"}, 200
+        return {"message": "Attribute not found in this object", "toast_class": "warning-subtle"}, 404
+    return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
+        
+
+def get_misp_object_connectors(cid) -> list:
+    """Return all instances of connectors in json for misp object in a case"""
+    instances = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=cid)
+    return [instance.to_json() for instance in instances]
+
+
+def add_misp_object_connector(cid, request_json) -> bool:
+    for connector in request_json["connectors"]:
+        instance = CommonModel.get_instance_by_name(connector["name"])
+        if "identifier" in connector: loc_identfier = connector["identifier"]
+        else: loc_identfier = ""
+        c = Case_Misp_Object_Connector_Instance(
+            case_id=cid,
+            instance_id=instance.id,
+            identifier=loc_identfier
+        )
+        db.session.add(c)
+        db.session.commit()
+    return True
+
+def remove_connector(case_id, instance_id):
+    try:
+        Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).delete()
+    except:
+        return False
+    return True
+
+def edit_connector(case_id, instance_id, request_json):
+    c = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
+    if c:
+        c.identifier = request_json["identifier"]
+        db.session.commit()
+        return True
+    return False
+
+def get_case_misp_object_by_case_id(case_id):
+    return Case_Misp_Object.query.filter_by(case_id=case_id).all()
+
+def get_misp_object_instance_uuid(object_id, instance_id):
+    return Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=object_id, instance_id=instance_id).first()
+
+def get_misp_attribute_instance_uuid(attr_id, instance_id):
+    return Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr_id, instance_id=instance_id).first()
+
+
+def get_misp_connector_by_user(user_id):
+    connector = CommonModel.get_connector_by_name("MISP")
+    instances_list = []
+    if connector:
+        for instance in connector.instances:
+            if CommonModel.get_user_instance_both(user_id, instance.id):
+                instances_list.append(instance.to_json())
+    return instances_list
+
+
+def get_misp_object_instance(case_id, instance_id):
+    """Get uuid of objects and attributes on a instance of MISP"""
+    all_object = get_case_misp_object_by_case_id(case_id)
+    object_list = list()
+    for object in all_object:
+        loc_object = object.to_json()
+        # Get the uuid for the object for this specific instance
+        loc_object["uuid"] = ""
+        loc_object_uuid = get_misp_object_instance_uuid(object.id, instance_id)
+        if loc_object_uuid:
+            loc_object["uuid"] = loc_object_uuid.object_instance_uuid
+
+        loc_object["attributes"] = list()
+        for attribute in object.attributes:
+            loc_attr = attribute.to_json()
+            # Get the uuid for the attribute for this specific instance
+            loc_attr["uuid"] = ""
+            loc_attr_uuid = get_misp_attribute_instance_uuid(attribute.id, instance_id)
+            if loc_attr_uuid:
+                loc_attr["uuid"] = loc_attr_uuid.attribute_instance_uuid
+
+            loc_object["attributes"].append(loc_attr)
+        object_list.append(loc_object)
+    return object_list
+
+
+def result_misp_object_module(object_uuid_list, instance_id):
+    """Save uuid of objects and attributes for a instance of MISP"""
+    for object_id in object_uuid_list:
+        loc_object_uuid = get_misp_object_instance_uuid(object_id, instance_id)
+        if loc_object_uuid:
+            loc_object_uuid.object_instance_uuid = object_uuid_list[object_id]["uuid"]
+            db.session.commit()
+        else:
+            o = Misp_Object_Instance_Uuid(
+                instance_id=instance_id,
+                misp_object_id=object_id,
+                object_instance_uuid=object_uuid_list[object_id]["uuid"]
+            )
+            db.session.add(o)
+            db.session.commit()
+
+        for attr in object_uuid_list[object_id]["attributes"]:
+            loc_attr_uuid = get_misp_attribute_instance_uuid(attr["attribute_id"], instance_id)
+            if loc_attr_uuid:
+                loc_attr_uuid.attribute_instance_uuid = attr["uuid"]
+                db.session.commit()
+            else:
+                a = Misp_Attribute_Instance_Uuid(
+                    instance_id=instance_id,
+                    misp_attribute_id=attr["attribute_id"],
+                    attribute_instance_uuid=attr["uuid"]
+                )
+                db.session.add(a)
+                db.session.commit()
+
+def call_module_misp(instance_id, case, user):
+    """Use to send objects to MISP"""
+    instance = CommonModel.get_instance(instance_id)
+    user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
+
+    instance = instance.to_json()
+    if user_instance:
+        instance["api_key"] = user_instance.api_key
+
+    loc_instance = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case.id, instance_id=instance_id).first()
+    if loc_instance:
+        instance["identifier"] = loc_instance.identifier
+
+    case = case.to_json()
+    case["objects"] = get_misp_object_instance(case["id"], instance_id)
+
+    #######
+    # RUN #
+    #######
+    event_id, object_uuid_list = MODULES["misp_object_event"].handler(instance, case, user)
+
+    res = CommonModel.module_error_check(event_id)
+    if res:
+        return res
+
+    ###########
+    # RESULTS #
+    ###########
+
+    if not loc_instance.identifier == event_id:
+        loc_instance.identifier = event_id
+        db.session.commit()
+    if object_uuid_list:
+        result_misp_object_module(object_uuid_list, instance_id)

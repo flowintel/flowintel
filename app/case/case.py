@@ -8,7 +8,7 @@ from . import common_core as CommonModel
 from . import task_core as TaskModel
 from ..db_class.db import Task_Template, Case_Template
 from ..decorators import editor_required
-from ..utils.utils import form_to_dict
+from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags_connectors
 from ..custom_tags import custom_tags_core as CustomModel
 
@@ -66,7 +66,7 @@ def view(cid):
         case_loc = case.to_json()
         case_loc["instances"] = list()
         for case_connector in CommonModel.get_case_connectors(case.id):
-            case_loc["instances"].append(CommonModel.get_instance_with_icon(case_connector.instance_id, case_task=True, case_task_id=case.id))
+            case_loc["instances"].append(CommonModel.get_instance_with_icon(case_connector.instance_id, switch_option="case", case_task_id=case.id))
         return render_template("case/case_view.html", case=case_loc, present_in_case=present_in_case)
     return render_template("404.html")
 
@@ -760,3 +760,177 @@ def get_hedgedoc_notes(cid):
             return CaseModel.get_hedgedoc_notes(cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+###############
+# MISP Object #
+###############
+@case_blueprint.route("/<cid>/get_case_misp_object", methods=['GET'])
+@login_required
+def get_case_misp_object(cid):
+    """Get case list of misp object"""
+    if CommonModel.get_case(cid):
+        misp_object = CaseModel.get_misp_object_by_case(cid)
+        loc_object = list()
+        for object in misp_object:
+            loc_attr = list()
+            for attribute in object.attributes:
+                loc_attr.append(attribute.to_json())
+
+            loc_object.append({
+                "object_name": object.name,
+                "attributes": loc_attr,
+                "object_id": object.id,
+                "object_uuid": object.template_uuid
+            })
+        return {"misp-object": loc_object}
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/get_misp_object", methods=['GET'])
+@login_required
+def get_misp_object():
+    """Get list of misp object"""
+
+    return {"misp-object": get_object_templates()}, 200
+
+@case_blueprint.route("/<cid>/create_misp_object", methods=['POST'])
+@login_required
+@editor_required
+def create_misp_object(cid):
+    """Create misp object"""
+    if CommonModel.get_case(cid):
+        if "object-template" in request.json:
+            if "attributes" in request.json:
+                CaseModel.create_misp_object(cid, request.json)
+                return {"message": "Object created", "toast_class": "success-subtle"}, 200
+            return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Need to pass 'object-template'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<cid>/delete_object/<oid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_object(cid, oid):
+    """Delete an object from case"""
+    if CommonModel.get_case(cid):
+        if CaseModel.delete_object(cid, oid):
+            return {"message": "Object deleted", "toast_class": "success-subtle"}, 200
+        return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<cid>/add_attributes/<oid>", methods=['POST'])
+@login_required
+@editor_required
+def add_attributes(cid, oid):
+    """Add attributes to an existing object"""
+    if CommonModel.get_case(cid):
+        if "object-template" in request.json:
+            if "attributes" in request.json:
+                if CaseModel.add_attributes_object(cid, oid, request.json):
+                    return {"message": "Receive", "toast_class": "success-subtle"}, 200
+                return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
+            return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Need to pass 'object-template'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/misp_object/<oid>/edit_attr/<aid>", methods=['POST'])
+@login_required
+@editor_required
+def edit_attr(cid, oid, aid):
+    """Create misp object"""
+    if CommonModel.get_case(cid):
+        if "value" in request.json:
+            if "type" in request.json:
+                return CaseModel.edit_attr(cid, oid, aid, request.json)
+            return {"message": "Need to pass 'value'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Need to pass 'type'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/misp_object/<oid>/delete_attribute/<aid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_attribute(cid, oid, aid):
+    """Delete an object from case"""
+    if CommonModel.get_case(cid):
+        return CaseModel.delete_attribute(cid, oid, aid)
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/misp_object_connectors", methods=['GET'])
+@login_required
+def misp_object_connectors(cid):
+    """Delete an object from case"""
+    if CommonModel.get_case(cid):
+        instances_list = list()
+        for object_connector in CaseModel.get_misp_object_connectors(cid):
+            instances_list.append(CommonModel.get_instance_with_icon(object_connector["instance_id"], switch_option="object", case_task_id=cid))
+        return instances_list, 200
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/misp_connectors", methods=['GET'])
+@login_required
+def misp_connectors():
+    """Return list of misp connectors"""
+    return {"misp_connectors": CaseModel.get_misp_connector_by_user(current_user.id)}, 200
+
+
+@case_blueprint.route("/<cid>/add_misp_object_connector", methods=['POST'])
+@login_required
+@editor_required
+def add_misp_object_connector(cid):
+    """Add MISP Connector"""
+    if CommonModel.get_case(cid):
+        if "connectors" in request.json:
+            if CaseModel.add_misp_object_connector(cid, request.json):
+                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<cid>/misp_object_connectors/<iid>/remove_connector", methods=['GET'])
+@login_required
+@editor_required
+def remove_connector(cid, iid):
+    """Remove MISP Connector"""
+    if CommonModel.get_case(cid):
+        if CaseModel.remove_connector(cid, iid):
+            return {"message": "Connector removed successfully", "toast_class": "success-subtle"}, 200
+        return {"message": "Error removing connector", "toast_class": "danger-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/misp_object_connectors/<iid>/edit_connector", methods=['POST'])
+@login_required
+@editor_required
+def edit_connector(cid, iid):
+    """Edit MISP Connector"""
+    if CommonModel.get_case(cid):
+        if "identifier" in request.json:
+            if CaseModel.edit_connector(cid, iid, request.json):
+                return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
+            return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
+        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/misp_object_connectors/<iid>/call_module_misp", methods=['GET'])
+@login_required
+@editor_required
+def call_module_misp(cid, iid):
+    """Remove MISP Connector"""
+    case = CommonModel.get_case(cid)
+    if case:
+        res = CaseModel.call_module_misp(iid, case, current_user)
+        if res:
+            res["toast_class"] = "danger-subtle"
+            return jsonify(res), 400
+        return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<cid>/nb_objects", methods=['GET'])
+@login_required
+def nb_objects(cid):
+    """Return nb of misp objects"""
+    return {"nb_objects": len(CaseModel.get_misp_object_by_case(cid))}, 200

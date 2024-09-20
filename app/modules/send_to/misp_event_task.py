@@ -187,6 +187,8 @@ def handler(instance, case, task, user):
             }   
             misp.add_event_report(event.get("id"), event_report)
     
+    if "errors" in event:
+        return event
     return event.get("id")
 
 def introspection():

@@ -56,7 +56,7 @@ span#goTop, span#project-version{
 	overflow-x: hidden;
 	bottom: 3em;
 	right: calc(var(--bs-gutter-x) * .5);
-	height: 58%;
+	height: 48%;
 }
 
 

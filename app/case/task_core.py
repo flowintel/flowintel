@@ -502,7 +502,7 @@ def get_task_info(tasks_list, user):
 
         finalTask["instances"] = list()
         for task_connector in CommonModel.get_task_connectors(task.id):
-            finalTask["instances"].append(CommonModel.get_instance_with_icon(task_connector.instance_id, case_task=False, case_task_id=task.id))
+            finalTask["instances"].append(CommonModel.get_instance_with_icon(task_connector.instance_id, switch_option="task", case_task_id=task.id))
 
         tasks.append(finalTask)
     return tasks
@@ -692,10 +692,17 @@ def call_module_task(module, instances, case, task, user):
         if instances[instance_key]:
             instance["identifier"] = instances[instance_key]
 
-        ## Handler
+        #######
+        # RUN #
+        #######
         event_id = MODULES[module].handler(instance, case, task, user)
-        if isinstance(event_id, dict):
-            return event_id
+        res = CommonModel.module_error_check(event_id)
+        if res:
+            return res
+        
+        ###########
+        # RESULTS #
+        ###########
 
         if not task_instance_id:
             tc_instance = Task_Connector_Instance(

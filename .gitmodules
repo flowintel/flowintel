@@ -6,3 +6,6 @@
 	path = modules/misp-taxonomies
 	url = https://github.com/MISP/misp-taxonomies
 	branch = main
+[submodule "modules/misp-objects"]
+	path = modules/misp-objects
+	url = https://github.com/MISP/misp-objects
