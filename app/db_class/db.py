@@ -156,7 +156,7 @@ class Task(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String)
     description = db.Column(db.String, nullable=True)
-    url = db.Column(db.String(64), index=True)
+    url = db.Column(db.String, index=True)
     notes = db.relationship('Note', backref='task', lazy='dynamic', cascade="all, delete-orphan")
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
@@ -393,7 +393,7 @@ class Recurring_Notification(db.Model):
 class Case_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    title = db.Column(db.String(64), index=True)
+    title = db.Column(db.String, index=True)
     description = db.Column(db.String, nullable=True)
     last_modif = db.Column(db.DateTime, index=True)
 
@@ -434,9 +434,9 @@ class Case_Template(db.Model):
 class Task_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    title = db.Column(db.String(64), index=True)
+    title = db.Column(db.String, index=True)
     description = db.Column(db.String, nullable=True)
-    url = db.Column(db.String(64), index=True)
+    url = db.Column(db.String, index=True)
     notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade="all, delete-orphan")
     nb_notes = db.Column(db.Integer, index=True)
     last_modif = db.Column(db.DateTime, index=True)

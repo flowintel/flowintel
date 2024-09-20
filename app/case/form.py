@@ -16,12 +16,12 @@ from ..db_class.db import Case, Case_Org
 
 
 class CaseForm(FlaskForm):
-    title = StringField('Title', validators=[Optional(), Length(1, 64)])
+    title = StringField('Title', validators=[Optional()])
     description = TextAreaField('Description', validators=[Optional()])
     deadline_date = DateField('deadline_date', validators=[Optional()])
     deadline_time = TimeField("deadline_time", validators=[Optional()])
     template_select = SelectMultipleField(u'Templates', coerce=int)
-    title_template = StringField('New Title', validators=[Optional(), Length(1, 64)])
+    title_template = StringField('New Title', validators=[Optional()])
     tasks_templates = SelectMultipleField(u'Tasks Templates', coerce=int)
     submit = SubmitField('Create')
 
@@ -48,7 +48,7 @@ class CaseForm(FlaskForm):
             raise ValidationError("The title already exist")
 
 class CaseEditForm(FlaskForm):
-    title = StringField('Title', validators=[InputRequired(), Length(1, 64)])
+    title = StringField('Title', validators=[InputRequired()])
     description = TextAreaField('Description', validators=[Optional()])
     deadline_date = DateField('deadline_date', validators=[Optional()])
     deadline_time = TimeField("deadline_time", validators=[Optional()])
@@ -60,7 +60,7 @@ class CaseEditForm(FlaskForm):
 
 
 class TaskForm(FlaskForm):
-    title = StringField('Title', validators=[Optional(), Length(1, 64)])
+    title = StringField('Title', validators=[Optional()])
     description = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     deadline_date = DateField('deadline_date', validators=[Optional()])
@@ -83,7 +83,7 @@ class TaskForm(FlaskForm):
 
 
 class TaskEditForm(FlaskForm):
-    title = StringField('Title', validators=[InputRequired(), Length(1, 64)])
+    title = StringField('Title', validators=[InputRequired()])
     description = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     deadline_date = DateField('deadline_date', validators=[Optional()])

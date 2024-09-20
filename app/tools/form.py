@@ -14,7 +14,7 @@ from ..db_class.db import Case_Template, Task_Template
 
 
 class TaskTemplateForm(FlaskForm):
-    title = StringField('Title', validators=[Optional(),Length(1, 64)])
+    title = StringField('Title', validators=[Optional()])
     body = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     tasks = SelectMultipleField(u'Task Template', coerce=int, validators=[Optional()])
@@ -34,7 +34,7 @@ class TaskTemplateForm(FlaskForm):
 
 class TaskTemplateEditForm(FlaskForm):
     template_id = HiddenField("")
-    title = StringField('Title', validators=[InputRequired(),Length(1, 64)])
+    title = StringField('Title', validators=[InputRequired()])
     body = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
 
@@ -48,7 +48,7 @@ class TaskTemplateEditForm(FlaskForm):
     
 
 class CaseTemplateForm(FlaskForm):
-    title = StringField('Title', validators=[InputRequired(),Length(1, 64)])
+    title = StringField('Title', validators=[InputRequired()])
     description = TextAreaField('Description', validators=[Optional()])
     tasks = SelectMultipleField(u'Task Template', coerce=int, validators=[Optional()])
     
@@ -62,7 +62,7 @@ class CaseTemplateForm(FlaskForm):
 
 class CaseTemplateEditForm(FlaskForm):
     template_id = HiddenField("")
-    title = StringField('Title', validators=[InputRequired(),Length(1, 64)])
+    title = StringField('Title', validators=[InputRequired()])
     description = TextAreaField('Description', validators=[Optional()])
     
     submit = SubmitField('Save')
