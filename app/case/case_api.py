@@ -56,7 +56,6 @@ class CreateCase(Resource):
         "deadline_time": "Time(%H-%M)",
         "tags": "list of tags from taxonomies",
         "clusters": "list of tags from galaxies",
-        "connectors": "List of name of connectors",
         "identifier": "Dictionnary with connector as key and identifier as value",
         "custom_tags" : "List of custom tags created on the instance"
     })
@@ -84,7 +83,6 @@ class EditCase(Resource):
                      "deadline_time": "Time(%H-%M)",
                      "tags": "list of tags from taxonomies",
                      "clusters": "list of tags from galaxies",
-                     "connectors": "List of name of connectors",
                      "identifier": "Dictionnary with connector as key and identifier as value",
                      "custom_tags" : "List of custom tags created on the instance"
                     })
@@ -442,7 +440,7 @@ class GetConnectorsCaseId(Resource):
                     if ident:
                         loc[instance] = ident.identifier
                 return {"instances": loc}, 200
-            return {"message": "Need to pass 'instances'"}
+            return {"message": "Need to pass 'instances'"}, 400
         return {"message": "Case Not found"}, 404
 
 @api.route('/<cid>/call_module_case', methods=['POST'])
@@ -451,22 +449,22 @@ class CallModuleCase(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={
         "module": "Required. Name of the module to call",
-        "instances": "Required. List of name or id of instances to use for the module"
+        "instance_id": "Required. List of name or id of instances to use for the module"
     })
     def post(self, cid):
         case = CommonModel.get_case(cid)
-        if "module" in request.json:
-            if "instances" in request.json:
-                if case:
-                    current_user = CaseModelApi.get_user_api(request.headers)
-                    if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                        res = CaseModel.call_module_case(request.json["module"], request.json["instances"], case, current_user)
+        if case:
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if "module" in request.json:
+                    if "instance_id" in request.json:
+                        res = CaseModel.call_module_case(request.json["module"], request.json["instance_id"], case, current_user)
                         if res:
                             return res, 400
                         return {"message": "Connector used"}, 200
-                    return {"message": "Permission denied"}, 403
+                    return {"message": "Please give 'instance_id''"}, 400
                 return {"message": "Please enter a 'module''"}, 400
-            return {"message": "Please give 'instances''"}, 400
+            return {"message": "Permission denied"}, 403
         return {"message": "Case doesn't exist"}, 404
     
 
@@ -570,7 +568,6 @@ class CreateTask(Resource):
         "deadline_time": "Time(%H-%M)",
         "tags": "list of tags from taxonomies",
         "clusters": "list of tags from galaxies",
-        "connectors": "List of name of connectors",
         "identifier": "Dictionnary with connector as key and identifier as value",
         "custom_tags" : "List of custom tags created on the instance"
     })

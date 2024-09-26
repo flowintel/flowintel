@@ -1,5 +1,4 @@
 import {display_toast} from '../toaster.js'
-const { ref, nextTick, onMounted} = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
@@ -7,49 +6,6 @@ export default {
 		status_info: Object
 	},
 	setup(props) {
-        const modules = ref()
-        const module_selected = ref()
-        const instances_selected = ref([])
-        const module_loader = ref(false)
-
-        async function fetch_modules(){
-            // Get modules and instances linked on
-            const res = await fetch("/case/get_case_modules")
-            if(await res.status==400 ){
-                display_toast(res)
-            }else{
-                let loc = await res.json()
-                modules.value = loc["modules"]
-            }
-        }
-        fetch_modules()
-
-        async function fetch_module_selected(module){
-            // Get modules and instances linked on
-            const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/get_instance_module?type=send_to&module="+module)
-            if(await res.status==400 ){
-                display_toast(res)
-            }else{
-                let loc = await res.json()
-                module_selected.value = loc["instances"]
-                await nextTick()
-                $('#instances_select').select2({
-                    theme: 'bootstrap-5',
-                    width: '50%',
-                    closeOnSelect: false
-                })
-                $('#instances_select').on('change.select2', function (e) {
-                    let name_instance = $(this).select2('data').map(item => item.id)
-                    instances_selected.value = []
-                    for( let index in module_selected.value){
-                        if (name_instance.includes(module_selected.value[index].name)){
-                            if(!instances_selected.value.includes(module_selected.value[index]))
-                                instances_selected.value.push(module_selected.value[index])
-                        }
-                    }
-                })
-            }
-        }
 
         async function delete_case(case_id){
             const res = await fetch('/case/' + case_id.toString() + '/delete')
@@ -141,77 +97,16 @@ export default {
             return false
         }
 
-        async function submit_module(){
-            module_loader.value = true
-            $("#modules_errors").hide()
-            $("#instances_errors").hide()
-            if(!$("#modules_select").val() || $("#modules_select").val() == "None"){
-                $("#modules_errors").text("Select an item")
-                $("#modules_errors").show()
-            }
-            if(!$("#instances_select").val() || $("#instances_select").val().length<1){
-                $("#instances_errors").text("Select an item")
-                $("#instances_errors").show()
-            }
-
-            let i_s = $("#instances_select").val()
-            let int_sel = {}
-            for(let index in i_s){
-                for( let j in module_selected.value){
-                    if (module_selected.value[j].name == i_s[index]){
-                        let loc_val = $("#identifier_"+module_selected.value[j].id).val()
-                        int_sel[module_selected.value[j].name] = loc_val
-                        for(let k in instances_selected.value){
-                            if(instances_selected.value[k].name == module_selected.value[j].name){
-                                instances_selected.value[k].identifier = loc_val
-                            }
-                        }
-                    }
-                }
-            }
-            const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/call_module_case?module=" + $("#modules_select").val() , {
-                method: "POST",
-                body: JSON.stringify({
-                    int_sel
-                }),
-                headers: {
-                    "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-                }
-            });
-            module_loader.value = false
-
-            display_toast(res, true)
-        }
-
-        onMounted(() => {
-            $('#modules_select').on('select2:select', function (e) {
-                if($(this).select2('data').map(item => item.id)[0] == "None"){
-                    module_selected.value = []
-                }else{
-                    fetch_module_selected($(this).select2('data').map(item => item.id))
-                }
-            })
-        })
-
-
 		return {
-            modules,
-            module_selected,
-            instances_selected,
-            module_loader,
             delete_case,
 			complete_case,
             fork_case,
             create_template,
-            submit_module
 		}
     },
 	template: `
 		<div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right; display: grid;">
             <a class="btn btn-primary btn-sm"  :href="'/case/'+cases_info.case.id+'/download'" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
-            <button type="button" class="btn btn-secondary btn-sm" title="Send to connectors" data-bs-toggle="modal" data-bs-target="#Send_to_modal">
-                <i class="fa-solid fa-share-from-square"></i>
-            </button>
             <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
                 <i class="fa-solid fa-trash"></i>
             </button>
@@ -256,56 +151,6 @@ export default {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)"><i class="fa-solid fa-trash"></i> Confirm</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal send to -->
-        <div class="modal fade" id="Send_to_modal" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="Send_to_modalLabel">Send to modules</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div style="display: flex;">
-                            <div>
-                                <label for="modules_select">Modules:</label>
-                                <select data-placeholder="Modules" class="select2-select form-control" name="modules_select" id="modules_select" >
-                                    <option value="None">--</option>
-                                    <template v-for="module, key in modules">
-                                        <option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
-                                    </template>
-                                </select>
-                                <div id="modules_errors" class="invalid-feedback"></div>
-                            </div>
-                            <div style="min-width: 100%;">
-                                <label for="instances_select">Instances:</label>
-                                <select data-placeholder="Instances" class="select2-select form-control" multiple name="instances_select" id="instances_select" >
-                                    <template v-if="module_selected">
-                                        <template v-for="instance, key in module_selected">
-                                            <option :value="[[instance.name]]">[[instance.name]]</option>
-                                        </template>
-                                    </template>
-                                </select>
-                                <div id="instances_errors" class="invalid-feedback"></div>
-                            </div>
-                        </div>
-                        <div class="row" v-if="instances_selected">
-                            <div class="mb-3 w-50" v-for="instance, key in instances_selected" >
-                                <label :for="'identifier_' + instance.id">Identifier for <u><i>[[instance.name]]</i></u></label>
-                                <input :id="'identifier_' + instance.id" class="form-control" :value="instance.identifier" :name="'identifier_' + instance.id" type="text">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button v-if="module_loader" class="btn btn-primary" type="button" disabled>
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            <span role="status">Loading...</span>
-                        </button>
-                        <button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
                     </div>
                 </div>
             </div>

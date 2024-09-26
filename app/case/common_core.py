@@ -1,4 +1,4 @@
-import os
+import os, re
 import shutil
 import datetime
 import subprocess
@@ -467,14 +467,6 @@ def create_task_from_template(template_id, cid):
         db.session.add(task_tag)
         db.session.commit()
 
-    for t_t in Task_Template_Connector_Instance.query.filter_by(template_id=template.id).all():
-        task_instance = Task_Connector_Instance(
-            task_id=task.id,
-            instance_id=t_t.instance_id
-        )
-        db.session.add(task_instance)
-        db.session.commit()
-
     ## Task Custom Tags
     for c_t in Task_Template_Custom_Tags.query.filter_by(task_template_id=template.id).all():
         task_custom_tags = Task_Custom_Tags(
@@ -540,5 +532,7 @@ def module_error_check(event):
             return {"message": event["errors"][1]["errors"]["value"][0]}
         else:
             loc = re.search(r"\{.*\}", event["errors"][1]["errors"])
-            return {"message": json.loads(loc.group())["value"][0]}
+            if loc:
+                return {"message": json.loads(loc.group())["value"][0]}
+            return {"message": event["errors"][1]["errors"]}
     return

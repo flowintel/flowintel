@@ -128,15 +128,6 @@ def add_task_template_core(form_dict):
         db.session.add(task_tag)
         db.session.commit()
 
-    for instance in form_dict["connectors"]:
-        instance = CommonModel.get_instance_by_name(instance)
-        task_instance = Task_Template_Connector_Instance(
-            template_id=template.id,
-            instance_id=instance.id
-        )
-        db.session.add(task_instance)
-        db.session.commit()
-
     for custom_tag_name in form_dict["custom_tags"]:
         custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
         if custom_tag:
@@ -194,25 +185,6 @@ def edit_task_template(form_dict, tid):
             Task_Template_Galaxy_Tags.query.filter_by(id=task_cluster.id).delete()
             db.session.commit()
 
-    ## Connectors
-    task_connector_db = CommonModel.get_task_template_connectors_name(tid)
-    for connectors in form_dict["connectors"]:
-        if not connectors in task_connector_db:
-            instance = CommonModel.get_instance_by_name(connectors)
-            task_tag = Task_Template_Connector_Instance(
-                instance_id=instance.id,
-                template_id=template.id
-            )
-            db.session.add(task_tag)
-            db.session.commit()
-            task_connector_db.append(connectors)
-    for c_t_db in task_connector_db:
-        if not c_t_db in form_dict["connectors"]:
-            loc_connector = CommonModel.get_instance_by_name(c_t_db)
-            task_connector = CommonModel.get_task_template_connectors_both(tid, loc_connector.id)
-            Task_Template_Connector_Instance.query.filter_by(id=task_connector.id).delete()
-            db.session.commit()
-
     # Custom tags
     task_custom_tags_db = CommonModel.get_task_custom_tags_name(template.id)
     for custom_tag in form_dict["custom_tags"]:
@@ -244,27 +216,12 @@ def delete_task_template(tid):
         db.session.commit()
     Task_Template_Tags.query.filter_by(task_id=tid).delete()
     Task_Template_Galaxy_Tags.query.filter_by(template_id=tid).delete()
-    Task_Template_Connector_Instance.query.filter_by(template_id=tid).delete()
     Task_Template_Custom_Tags.query.filter_by(task_template_id=tid).delete()
     Note_Template.query.filter_by(template_id=tid)
     template = CommonModel.get_task_template(tid)
     db.session.delete(template)
     db.session.commit()
     return True
-
-
-def get_task_info(task):
-    instances_list = list()
-    for task_connector in CommonModel.get_task_connectors(task.id):
-        loc_instance = CommonModel.get_instance(task_connector.instance_id).to_json()
-        loc_instance["icon"] = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
-                                        .join(Connector, Connector.icon_id==Connector_Icon.id)\
-                                        .join(Connector_Instance, Connector_Instance.connector_id==Connector.id)\
-                                        .where(Connector_Instance.id==task_connector.instance_id)\
-                                        .first().uuid
-        instances_list.append(loc_instance)
-    return instances_list
-
 
 def create_note(tid):
     """Create a new empty note in the template"""

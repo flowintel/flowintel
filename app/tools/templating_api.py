@@ -66,7 +66,6 @@ class CreateCaseTemaplte(Resource):
             "description": "Description of the template",
             "tags": "list of tags from taxonomies",
             "clusters": "list of tags from galaxies",
-            "connectors": "List of name of connectors",
             "custom_tags" : "List of custom tags created on the instance"
         })
     def post(self):
@@ -87,7 +86,6 @@ class EditCaseTemaplte(Resource):
             "description": "Description of the template",
             "tags": "list of tags from taxonomies",
             "clusters": "list of tags from galaxies",
-            "connectors": "List of name of connectors",
             "custom_tags" : "List of custom tags created on the instance"
         })
     def post(self, cid):
@@ -200,16 +198,6 @@ class GetGalaxiesCase(Resource):
                     clusters[index] = cluster.tag
             return {"clusters": clusters, "galaxies": galaxies}
         return {"message": "Case Not found"}, 404
-    
-@api.route('/get_connectors_case/<cid>', methods=["GET"])
-@api.doc(description='Get Connectors of a case', params={'cid': 'id of a case template'})
-class GetConnectorsCase(Resource):
-    method_decorators = [api_required]
-    def get(self, cid):
-        case = CommonModel.get_case_template(cid)
-        if case:
-            return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}
-        return {"message": "Case Not found"}, 404
 
 ##########
 ## Task ##
@@ -262,7 +250,6 @@ class CreateTaskTemaplte(Resource):
             "url": "Link to a tool or a ressource",
             "tags": "list of tags from taxonomies",
             "clusters": "list of tags from galaxies",
-            "connectors": "List of name of connectors",
             "custom_tags" : "List of custom tags created on the instance"
         })
     def post(self):
@@ -285,7 +272,6 @@ class EditCaseTemaplte(Resource):
             "url": "Link to a tool or a ressource",
             "tags": "list of tags from taxonomies",
             "clusters": "list of tags from galaxies",
-            "connectors": "List of name of connectors",
             "custom_tags" : "List of custom tags created on the instance"
         })
     def post(self, tid):
@@ -342,17 +328,6 @@ class GetGalaxiesTask(Resource):
                     clusters[index] = cluster.tag
             return {"clusters": clusters, "galaxies": galaxies}
         return {"message": "Case Not found"}, 404
-    
-@api.route('/get_connectors_task/<tid>', methods=["GET"])
-@api.doc(description='Get Connectors of a task', params={'tid': 'id of a task template'})
-class GetConnectorsTask(Resource):
-    method_decorators = [api_required]
-    def get(self, tid):
-        task = CommonModel.get_task_template(tid)
-        if task:
-            return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}
-        return {"message": "Task Not found"}, 404
-
 
 @api.route('/case/<cid>/move_task_up/<tid>', methods=["GET"])
 @api.doc(description='Move the task up', params={"cid": "id of a case", "tid": "id of a task"})

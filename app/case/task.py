@@ -8,7 +8,7 @@ from . import task_core as TaskModel
 from ..custom_tags import custom_tags_core as CustomModel
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
-from ..utils.formHelper import prepare_tags_connectors
+from ..utils.formHelper import prepare_tags
 
 task_blueprint = Blueprint(
     'task',
@@ -30,8 +30,15 @@ def create_task(cid):
             form.template_select.choices.insert(0, (0," "))
 
             if form.validate_on_submit():
-                res = prepare_tags_connectors(request)
+                res = prepare_tags(request)
                 if isinstance(res, dict):
+                    connector_list = request.form.getlist("connectors_select")
+                    identifier_dict = dict()
+                    for connector in connector_list:
+                        identifier_dict[connector] = request.form.get(f"identifier_{connector}")
+                    res["connectors"] = connector_list
+                    res["identifier"] = identifier_dict
+                    
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
                     if TaskModel.create_task(form_dict, cid, current_user):
@@ -54,8 +61,15 @@ def edit_task(cid, tid):
             form = TaskEditForm()
 
             if form.validate_on_submit():
-                res = prepare_tags_connectors(request)
+                res = prepare_tags(request)
                 if isinstance(res, dict):
+                    connector_list = request.form.getlist("connectors_select")
+                    identifier_dict = dict()
+                    for connector in connector_list:
+                        identifier_dict[connector] = request.form.get(f"identifier_{connector}")
+                    res["connectors"] = connector_list
+                    res["identifier"] = identifier_dict
+
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
                     TaskModel.edit_task_core(form_dict, tid, current_user)

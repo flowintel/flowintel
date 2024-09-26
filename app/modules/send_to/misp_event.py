@@ -96,7 +96,7 @@ def handler(instance, case, user):
     try:
         misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
     except:
-        return {"message": "Error connecting to MISP"}
+        return {"message": "Error connecting to MISP"}, {}
     flag = False
     object_uuid_list = {}
     if "identifier" in instance and instance["identifier"]:
@@ -209,6 +209,8 @@ def handler(instance, case, user):
                                 misp.add_event_report(event.get("id"), event_report)
                 
                 event = misp.update_event(event, pythonify=True)
+                if "errors" in event:
+                    return event, object_uuid_list
 
             ## Case doesn't exist in the event
             else:
@@ -224,6 +226,8 @@ def handler(instance, case, user):
                         event.add_object(misp_object)
 
                 event = misp.update_event(event, pythonify=True)
+                if "errors" in event:
+                    return event, object_uuid_list
 
             res, object_uuid_list = all_object_to_misp(misp, event, case["objects"], object_uuid_list)
             if "errors" in res:

@@ -71,36 +71,6 @@
             </div>
         </div>
         <hr>
-        <div class="accordion">
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-                        Connectors <i class="fa fa-question" title="Add connectors to the case" style="margin-left: 5px;"></i>
-                    </button>
-                </h2>
-                <div id="collapseOne" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        <div class="w-50">
-                            <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
-                                <template v-if="connectors">
-                                    <template v-for="(instances, connector) in connectors">
-                                        <optgroup :label="[[connector]]">
-                                            <option :value="[[instance.name]]" v-for="instance in instances">[[instance.name]]</option>
-                                        </optgroup>
-                                    </template>
-                                </template>
-                            </select>
-                        </div>
-                        <div class="row" v-if="connectors_selected">
-                            <div class="mb-3 w-25" v-for="instance in connectors_selected" >
-                                <label :for="'identifier_' + instance">[[instance]] Complement</label>
-                                <input :id="'identifier_' + instance" class="form-control" :name="'identifier_' + instance" type="text">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         <div class="accordion mt-4">
             <div class="accordion-item">
                 <h2 class="accordion-header">
@@ -221,22 +191,9 @@
             const galaxies = ref([])
             const cluster_list = ref([])
             const selected_galaxies = ref([])
-
-            const connectors = ref()
-            const connectors_selected = ref()
             
             const custom_tags = ref([])
 
-            async function fetchConnectors(){
-                const res = await fetch("/case/get_connectors")
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    connectors.value = loc["connectors"]
-                }
-            }
-            fetchConnectors()
 
             let to_hide = true
             function hide_case_creation(){
@@ -322,9 +279,6 @@
                     selected_galaxies.value = $(this).select2('data').map(item => item.id);
                     fetch_cluster()
                 })
-                $('#connectors_select').on('change.select2', function (e) {
-                    connectors_selected.value = $(this).select2('data').map(item => item.id)
-                })
             })
 
             return {
@@ -334,8 +288,6 @@
                 galaxies,
                 tags_list,
                 cluster_list,
-                connectors,
-                connectors_selected,
                 custom_tags,
                 hide_case_creation
             }

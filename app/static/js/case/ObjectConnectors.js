@@ -147,7 +147,7 @@ export default {
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modal-add-connectors">
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modal-add-misp-connectors">
                             <i class="fa-solid fa-plus"></i>
                         </button>
                         <table class="table" v-if="objects_connectors_list && objects_connectors_list.length">
@@ -225,7 +225,7 @@ export default {
 
 
         <!-- Add Connectors -->
-        <div class="modal fade" id="modal-add-connectors" tabindex="-1" aria-labelledby="AddConnectorsLabel" aria-hidden="true">
+        <div class="modal fade" id="modal-add-misp-connectors" tabindex="-1" aria-labelledby="AddConnectorsLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">

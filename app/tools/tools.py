@@ -7,7 +7,7 @@ from ..custom_tags import custom_tags_core as CustomModel
 from ..decorators import editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
 from ..utils.utils import form_to_dict, MODULES_CONFIG, get_modules_list
-from ..utils.formHelper import prepare_tags_connectors
+from ..utils.formHelper import prepare_tags
 
 tools_blueprint = Blueprint(
     'tools',
@@ -45,7 +45,7 @@ def create_case_template():
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list]
     
     if form.validate_on_submit():
-        res = prepare_tags_connectors(request)
+        res = prepare_tags(request)
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
@@ -64,7 +64,7 @@ def create_task_template():
     form = TaskTemplateForm()
     form.tasks.choices = [(template.id, template.title) for template in  CommonModel.get_all_task_templates()]
     if form.validate_on_submit():
-        res = prepare_tags_connectors(request)
+        res = prepare_tags(request)
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
@@ -97,7 +97,7 @@ def add_task_case(cid):
     task_id_list = [tid.id for tid in task_by_case]
     form.tasks.choices = [(template.id, template.title) for template in task_template_query_list if template.id not in task_id_list]
     if form.validate_on_submit():
-        res = prepare_tags_connectors(request)
+        res = prepare_tags(request)
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
@@ -118,7 +118,7 @@ def edit_case(cid):
         form = CaseTemplateEditForm()
         form.template_id.data = cid
         if form.validate_on_submit():
-            res = prepare_tags_connectors(request)
+            res = prepare_tags(request)
             if isinstance(res, dict):
                 form_dict = form_to_dict(form)
                 form_dict.update(res)
@@ -144,7 +144,7 @@ def edit_task(tid):
         form = TaskTemplateEditForm()
         form.template_id.data = tid
         if form.validate_on_submit():
-            res = prepare_tags_connectors(request)
+            res = prepare_tags(request)
             if isinstance(res, dict):
                 form_dict = form_to_dict(form)
                 form_dict.update(res)
@@ -231,7 +231,6 @@ def get_all_task_templates():
     for template in templates:
         loc_template = template.to_json()
         loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
-        loc_template["instances"] = TaskModel.get_task_info(template)
         templates_list.append(loc_template)
     return {"templates": templates_list}
 
@@ -450,23 +449,6 @@ def get_galaxies_task(tid):
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
-
-
-@tools_blueprint.route("/template/get_connectors_case/<cid>", methods=['GET'])
-@login_required
-def get_connectors_case(cid):
-    case = CommonModel.get_case_template(cid)
-    if case:
-        return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}
-    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
-
-@tools_blueprint.route("/template/get_connectors_task/<tid>", methods=['GET'])
-@login_required
-def get_connectors_task(tid):
-    task = CommonModel.get_task_template(tid)
-    if task:
-        return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}
-    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 @tools_blueprint.route("/template/<cid>/change_order/<tid>", methods=['GET'])
 @login_required

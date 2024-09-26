@@ -9,8 +9,7 @@ from . import task_core as TaskModel
 from ..db_class.db import Task_Template, Case_Template
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict, get_object_templates
-from ..utils.formHelper import prepare_tags_connectors
-from ..custom_tags import custom_tags_core as CustomModel
+from ..utils.formHelper import prepare_tags
 
 case_blueprint = Blueprint(
     'case',
@@ -45,7 +44,7 @@ def create_case():
     form.tasks_templates.choices.insert(0, (0," "))
     
     if form.validate_on_submit():
-        res = prepare_tags_connectors(request)
+        res = prepare_tags(request)
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
@@ -63,11 +62,7 @@ def view(cid):
     case = CommonModel.get_case(cid)
     if case:
         present_in_case = CaseModel.get_present_in_case(cid, current_user)
-        case_loc = case.to_json()
-        case_loc["instances"] = list()
-        for case_connector in CommonModel.get_case_connectors(case.id):
-            case_loc["instances"].append(CommonModel.get_instance_with_icon(case_connector.instance_id, switch_option="case", case_task_id=case.id))
-        return render_template("case/case_view.html", case=case_loc, present_in_case=present_in_case)
+        return render_template("case/case_view.html", case=case.to_json(), present_in_case=present_in_case)
     return render_template("404.html")
 
 
@@ -81,7 +76,7 @@ def edit_case(cid):
             form = CaseEditForm()
 
             if form.validate_on_submit():
-                res = prepare_tags_connectors(request)
+                res = prepare_tags(request)
                 if isinstance(res, dict):
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
@@ -617,9 +612,9 @@ def call_module_case(cid):
     """Run a module"""
     case = CommonModel.get_case(cid)
     if case:
-        instances = request.get_json()["int_sel"]
-        module = request.args.get("module")
-        res = CaseModel.call_module_case(module, instances, case, current_user)
+        instance_id = request.get_json()["instance_id"]
+        module = request.get_json()["module"]
+        res = CaseModel.call_module_case(module, instance_id, case, current_user)
         if res:
             res["toast_class"] = "danger-subtle"
             return jsonify(res), 400
@@ -892,10 +887,10 @@ def add_misp_object_connector(cid):
 @case_blueprint.route("/<cid>/misp_object_connectors/<iid>/remove_connector", methods=['GET'])
 @login_required
 @editor_required
-def remove_connector(cid, iid):
+def remove_misp_connector(cid, iid):
     """Remove MISP Connector"""
     if CommonModel.get_case(cid):
-        if CaseModel.remove_connector(cid, iid):
+        if CaseModel.remove_misp_connector(cid, iid):
             return {"message": "Connector removed successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Error removing connector", "toast_class": "danger-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -904,11 +899,11 @@ def remove_connector(cid, iid):
 @case_blueprint.route("/<cid>/misp_object_connectors/<iid>/edit_connector", methods=['POST'])
 @login_required
 @editor_required
-def edit_connector(cid, iid):
+def edit_misp_connector(cid, iid):
     """Edit MISP Connector"""
     if CommonModel.get_case(cid):
         if "identifier" in request.json:
-            if CaseModel.edit_connector(cid, iid, request.json):
+            if CaseModel.edit_misp_connector(cid, iid, request.json):
                 return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
@@ -934,3 +929,60 @@ def call_module_misp(cid, iid):
 def nb_objects(cid):
     """Return nb of misp objects"""
     return {"nb_objects": len(CaseModel.get_misp_object_by_case(cid))}, 200
+
+
+
+#############
+# Connector #
+#############
+
+@case_blueprint.route("/<cid>/get_case_connectors", methods=['GET', 'POST'])
+@login_required
+def get_case_connectors(cid):
+    """View of a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        instance_list = list()
+        for case_connector in CommonModel.get_case_connectors(case.id):
+            instance_list.append(CommonModel.get_instance_with_icon(case_connector.instance_id, switch_option="case", case_task_id=case.id))
+        return {"case_connectors": instance_list}, 200
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/add_connector", methods=['POST'])
+@login_required
+@editor_required
+def add_connector(cid):
+    """Add MISP Connector"""
+    if CommonModel.get_case(cid):
+        if "connectors" in request.json:
+            if CaseModel.add_connector(cid, request.json):
+                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/connectors/<ciid>/remove_connector", methods=['GET'])
+@login_required
+@editor_required
+def remove_connector(cid, ciid):
+    """Remove a connector from case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CaseModel.remove_connector(cid, ciid):
+            return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
+        return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<cid>/connectors/<ciid>/edit_connector", methods=['POST'])
+@login_required
+@editor_required
+def edit_connector(cid, ciid):
+    """Edit Connector"""
+    if CommonModel.get_case(cid):
+        if "identifier" in request.json:
+            if CaseModel.edit_connector(cid, ciid, request.json):
+                return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
+            return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
+        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404

@@ -130,15 +130,6 @@ def create_case_template(form_dict):
         db.session.add(case_tag)
         db.session.commit()
 
-    for instance in form_dict["connectors"]:
-        instance = CommonModel.get_instance_by_name(instance)
-        case_instance = Case_Template_Connector_Instance(
-            template_id=case_template.id,
-            instance_id=instance.id
-        )
-        db.session.add(case_instance)
-        db.session.commit()
-
     for custom_tag_name in form_dict["custom_tags"]:
         custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
         if custom_tag:
@@ -238,25 +229,6 @@ def edit_case_template(form_dict, cid):
             Case_Template_Galaxy_Tags.query.filter_by(id=case_cluster.id).delete()
             db.session.commit()
 
-     ## Connectors
-    case_connector_db = CommonModel.get_case_template_connectors_name(cid)
-    for connectors in form_dict["connectors"]:
-        if not connectors in case_connector_db:
-            instance = CommonModel.get_instance_by_name(connectors)
-            case_tag = Case_Template_Connector_Instance(
-                instance_id=instance.id,
-                template_id=template.id
-            )
-            db.session.add(case_tag)
-            db.session.commit()
-            case_connector_db.append(connectors)
-    for c_t_db in case_connector_db:
-        if not c_t_db in form_dict["connectors"]:
-            loc_connector = CommonModel.get_instance_by_name(c_t_db)
-            case_connector = CommonModel.get_case_template_connectors_both(cid, loc_connector.id)
-            Case_Template_Connector_Instance.query.filter_by(id=case_connector.id).delete()
-            db.session.commit()
-
     # Custom tags
     case_custom_tags_db = CommonModel.get_case_custom_tags_name(template.id)
     for custom_tag in form_dict["custom_tags"]:
@@ -287,8 +259,7 @@ def delete_case_template(cid):
         db.session.delete(to_do)
         db.session.commit()
     Case_Template_Tags.query.filter_by(case_id=cid).delete() 
-    Case_Template_Galaxy_Tags.query.filter_by(template_id=cid).delete() 
-    Case_Template_Connector_Instance.query.filter_by(template_id=cid).delete()
+    Case_Template_Galaxy_Tags.query.filter_by(template_id=cid).delete()
     Case_Template_Custom_Tags.query.filter_by(case_template_id=cid).delete()
     template = CommonModel.get_case_template(cid)
     db.session.delete(template)
@@ -342,15 +313,6 @@ def create_case_from_template(cid, case_title_fork, user):
         db.session.add(case_cluster)
         db.session.commit()
 
-    ## Case Connectors
-    for c_t in Case_Template_Connector_Instance.query.filter_by(template_id=case_template.id).all():
-        case_connector = Case_Connector_Instance(
-            case_id=case.id,
-            instance_id=c_t.instance_id
-        )
-        db.session.add(case_connector)
-        db.session.commit()
-    
     ## Case Custom Tags
     for c_t in CommonModel.get_case_custom_tags(case_template.id):
         case_custom_tags = Case_Custom_Tags(
@@ -413,15 +375,6 @@ def create_case_from_template(cid, case_title_fork, user):
                 cluster_id=t_t.cluster_id
             )
             db.session.add(task_cluster)
-            db.session.commit()
-
-        ## Task Connectors
-        for t_c in Task_Template_Connector_Instance.query.filter_by(template_id=task.id).all():
-            task_connector = Task_Connector_Instance(
-                task_id=t.id,
-                instance_id=t_c.instance_id
-            )
-            db.session.add(task_connector)
             db.session.commit()
 
         ## Task Custom Tags
@@ -494,9 +447,6 @@ def core_read_json_file(case, current_user):
         if not utils.check_tag(tag):
             return {"message": f"Case '{case['title']}': tag '{tag}' doesn't exist"}
         
-    # connectors
-    case['connectors'] = []
-        
     
     #######################
     ## Task Verification ##
@@ -521,8 +471,6 @@ def core_read_json_file(case, current_user):
         for tag in task["tags"]:
             if not utils.check_tag(tag):
                 return {"message": f"Task '{task['title']}': tag '{tag}' doesn't exist"}
-        
-        task['connectors'] = []
 
 
     #################
@@ -562,6 +510,5 @@ def read_json_file(files_list, current_user):
 def regroup_task_info(template, current_user):
     loc_template = template.to_json()
     loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
-    loc_template["instances"] = TaskModel.get_task_info(template)
     loc_template["subtasks"] = [subtask.to_json() for subtask in template.subtasks]
     return loc_template

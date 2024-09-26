@@ -36,22 +36,6 @@
                 {%endif%}
             </div>
             <hr>
-                
-            <div class="mb-3 w-50">
-                <h5 style="padding: 4px;">Connectors:</h5>
-                <template v-if="connectors">
-                <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
-                        <template v-for="(instances, connector) in connectors">
-                            <optgroup :label="[[connector]]">
-                                <template v-for="instance in instances">
-                                    <option :value="[[instance.name]]" :selected="check_connectors_exist(instance.name)">[[instance.name]]</option>
-                                </template>
-                            </optgroup>
-                        </template>
-                    </select>
-                </template>
-            </div>
-            <hr>
 
             <h5>Custom Tags</h5>
             <div v-if="custom_tags" class="col-6">
@@ -137,9 +121,6 @@
             const clusters_task = ref([])
             const selected_taxo = ref([])
             const selected_galaxies = ref([])
-
-            const connectors = ref([])
-            const connectors_task = ref([])
 
             const custom_tags = ref([])
             const custom_tags_task = ref([])
@@ -231,27 +212,6 @@
                 }
             }
 
-            async function fetchConnectors(){
-                const res = await fetch("/case/get_connectors")
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    connectors.value = loc["connectors"]
-                }
-            }
-            fetchConnectors()
-
-            async function fetchConnectorsTask(){
-                const res = await fetch("/tools/template/get_connectors_task/" +window.location.pathname.split("/").slice(-1))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    connectors_task.value = loc["connectors"]
-                }
-            }
-
             async function fetch_custom_tags_task(){
                 const res = await fetch("/tools/template/get_custom_tags_task/" +window.location.pathname.split("/").slice(-1))
                 if(await res.status==400 ){
@@ -283,11 +243,6 @@
                     return cluster === field
                 })
             }
-            function check_connectors_exist(connector){
-                return connectors_task.value.some(function(field){
-                    return connector === field && $('#connectors_select').trigger('change')
-                })
-            }
             function check_custom_tag_exist(custom_tag){
                 return custom_tags_task.value.some(function(field){
                     return custom_tag === field
@@ -296,7 +251,6 @@
             
 
             onMounted(() => {
-                fetchConnectorsTask()
                 fetch_custom_tags_task()
 
                 $('.select2-select').select2({
@@ -321,13 +275,11 @@
                 galaxies,
                 tags_list,
                 cluster_list,
-                connectors,
                 custom_tags,
                 check_taxo_exist,
                 check_galaxy_exist,
                 check_tag_exist,
                 check_cluster_exist,
-                check_connectors_exist,
                 check_custom_tag_exist
             }
         }

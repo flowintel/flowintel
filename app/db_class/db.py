@@ -409,8 +409,6 @@ class Case_Template(db.Model):
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
-        json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Case_Template_Connector_Instance, Case_Template_Connector_Instance.instance_id==Connector_Instance.id)\
-                                                        .where(Case_Template_Connector_Instance.template_id==self.id).all()]
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Case_Template_Custom_Tags.case_template_id==self.id).all()]
 
@@ -456,8 +454,6 @@ class Task_Template(db.Model):
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
-        json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Task_Template_Connector_Instance, Task_Template_Connector_Instance.instance_id==Connector_Instance.id)\
-                                                        .where(Task_Template_Connector_Instance.template_id==self.id).all()]
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Task_Template_Custom_Tags, Task_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Task_Template_Custom_Tags.task_template_id==self.id).all()]
 
@@ -740,17 +736,6 @@ class Task_Connector_Instance(db.Model):
     task_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
     identifier = db.Column(db.String)
-
-class Case_Template_Connector_Instance(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    template_id = db.Column(db.Integer, index=True)
-    instance_id = db.Column(db.Integer, index=True)
-
-class Task_Template_Connector_Instance(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    template_id = db.Column(db.Integer, index=True)
-    instance_id = db.Column(db.Integer, index=True)
-
 
 
 class User_Connector_Instance(db.Model):

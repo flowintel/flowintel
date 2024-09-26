@@ -1,6 +1,6 @@
 import os
 from .. import db
-from ..db_class.db import Case_Connector_Instance, Case_Template_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, Task_Template_Connector_Instance, User_Connector_Instance
+from ..db_class.db import Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance
 import uuid
 from werkzeug.utils import secure_filename
 
@@ -201,8 +201,6 @@ def delete_connector_instance_core(iid):
     User_Connector_Instance.query.filter_by(instance_id=iid).delete()
     Case_Connector_Instance.query.filter_by(instance_id=iid).delete()
     Task_Connector_Instance.query.filter_by(instance_id=iid).delete()
-    Case_Template_Connector_Instance.query.filter_by(instance_id=iid).delete()
-    Task_Template_Connector_Instance.query.filter_by(instance_id=iid).delete()
 
     instance = get_instance(iid)
     db.session.delete(instance)

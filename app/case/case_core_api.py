@@ -1,7 +1,6 @@
 from ..db_class.db import Case, User
 from datetime import datetime
 from . import common_core as CommonModel
-from ..utils.utils import check_tag
 from ..utils.datadictHelper import edition_verification_tags_connectors, creation_verification_tags_connectors
 
 
@@ -62,16 +61,16 @@ def verif_create_case_task(data_dict, isCase):
 
     data_dict = creation_verification_tags_connectors(data_dict)
 
-    if "identifier" in data_dict:
-        loc = CommonModel.check_connector(list(data_dict["identifier"].keys()))   # dictionnary with connector as key and identifier as value
-        if not isinstance(loc, bool):
-            return {"message": f"Connector '{loc}' doesn't exist"}
-    else:
-        data_dict["identifier"] = []
-
     if not isCase:
         if "url" not in data_dict or not data_dict["url"]:
             data_dict["url"] = ""
+
+        if "connectors" in data_dict:
+            loc = CommonModel.check_connector(data_dict["connectors"])
+            if not isinstance(loc, bool):
+                return {"message": f"Connector '{loc}' doesn't exist"}
+        else:
+            data_dict["connectors"] = []
 
 
     return data_dict
@@ -103,13 +102,6 @@ def common_verif(data_dict, case_task):
         data_dict["deadline_time"] = ""
 
     data_dict = edition_verification_tags_connectors(data_dict, case_task)
-
-    if "identifier" in data_dict:
-        loc = CommonModel.check_connector(list(data_dict["identifier"].keys()))   # dictionnary with connector as key and identifier as value
-        if not isinstance(loc, bool):
-            return {"message": f"Connector '{loc}' doesn't exist"}
-    else:
-        data_dict["identifier"] = []
     
     return data_dict
 
@@ -135,5 +127,14 @@ def verif_edit_task(data_dict, task_id):
 
     if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = task.url
+
+    if "connectors" in data_dict:
+        loc = CommonModel.check_connector(data_dict["connectors"])
+        if not isinstance(loc, bool):
+            return {"message": f"Connector '{loc}' doesn't exist"}
+    elif task.to_json()["connectors"]:
+        data_dict["connectors"] = task.to_json()["connectors"]
+    else:
+        data_dict["connectors"] = []
 
     return data_dict

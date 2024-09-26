@@ -88,41 +88,6 @@ def get_task_template_clusters_both(task_id, cluster_id):
     """Return a list of clusters present in a task template"""
     return Task_Template_Galaxy_Tags.query.filter_by(template_id=task_id, cluster_id=cluster_id).first()
 
-def get_connectors():
-    return Connector.query.all()
-
-def get_instance(iid):
-    return Connector_Instance.query.get(iid)
-
-def get_instance_by_name(name):
-    return Connector_Instance.query.filter_by(name=name).first()
-
-def get_case_connectors(cid):
-    return Case_Template_Connector_Instance.query.filter_by(template_id=cid).all()
-
-def get_case_template_connectors_name(cid):
-    """Return a list of name connectors present in a case"""
-    return [instance.name for instance in \
-            Connector_Instance.query.join(Case_Template_Connector_Instance, Case_Template_Connector_Instance.instance_id==Connector_Instance.id)\
-                .filter_by(template_id=cid).all()]
-
-def get_case_template_connectors_both(case_id, instance_id):
-    """Return an instance of Case_Template_Connector_Instance depending of a case template id and an instance id"""
-    return Case_Template_Connector_Instance.query.filter_by(template_id=case_id, instance_id=instance_id).first()
-
-def get_task_connectors(tid):
-    return Task_Template_Connector_Instance.query.filter_by(template_id=tid).all()
-
-def get_task_template_connectors_name(tid):
-    """Return a list of name connectors present in a task"""
-    return [instance.name for instance in \
-            Connector_Instance.query.join(Task_Template_Connector_Instance, Task_Template_Connector_Instance.instance_id==Connector_Instance.id)\
-                .filter_by(template_id=tid).all()]
-
-def get_task_template_connectors_both(task_id, instance_id):
-    """Return an instance of Task_Template_Connector_Instance depending of a task template id and an instance id"""
-    return Task_Template_Connector_Instance.query.filter_by(template_id=task_id, instance_id=instance_id).first()
-
 def get_case_custom_tags(case_id):
     return Case_Template_Custom_Tags.query.filter_by(case_template_id=case_id).all()
 

@@ -1,6 +1,5 @@
 import os
 import ast
-import re
 import requests
 import uuid
 import datetime
@@ -44,10 +43,23 @@ def delete_case(cid, current_user):
         Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
         Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
         Case_Link_Case.query.filter_by(case_id_2=case.id).delete()
+
+        for obj in get_misp_object_by_case(cid):
+            delete_misp_object(obj.id)
+        Case_Misp_Object.query.filter_by(case_id=case.id).delete()
+        Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case.id).delete()
+        
         db.session.delete(case)
         db.session.commit()
         return True
     return False
+
+def delete_misp_object(oid):
+    misp_object = get_misp_object(oid)
+    if misp_object:
+        for attr in misp_object.attributes:
+            Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
+        Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=attr.id).delete()
 
 
 def complete_case(cid, current_user):
@@ -112,19 +124,6 @@ def create_case(form_dict, user):
             db.session.add(case_galaxy)
             db.session.commit()
 
-        for instance in form_dict["connectors"]:
-            instance = CommonModel.get_instance_by_name(instance)
-            loc_identifier = None
-            if instance.name in form_dict["identifier"]:
-                loc_identifier = form_dict["identifier"][instance.name]
-            case_instance = Case_Connector_Instance(
-                case_id=case.id,
-                instance_id=instance.id,
-                identifier=loc_identifier
-            )
-            db.session.add(case_instance)
-            db.session.commit()
-
         for custom_tag_name in form_dict["custom_tags"]:
             custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
             if custom_tag:
@@ -156,12 +155,6 @@ def edit_case(form_dict, cid, current_user):
     """Edit a case to the DB"""
     case = CommonModel.get_case(cid)
     deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
-
-    ## Check if instance is from current user
-    for instance in form_dict["connectors"]:
-        instance = CommonModel.get_instance_by_name(instance)
-        if not CommonModel.get_user_instance_by_instance(instance.id):
-            return False
 
     case.title = form_dict["title"]
     case.description=form_dict["description"]
@@ -203,33 +196,6 @@ def edit_case(form_dict, cid, current_user):
             cluster = CommonModel.get_cluster_by_name(c_t_db)
             case_cluster = CommonModel.get_case_clusters_both(cid, cluster.id)
             Case_Galaxy_Tags.query.filter_by(id=case_cluster.id).delete()
-            db.session.commit()
-
-    ## Connectors
-    case_connector_db = CommonModel.get_case_connectors_name(cid)
-    for connectors in form_dict["connectors"]:
-        if not connectors in case_connector_db:
-            instance = CommonModel.get_instance_by_name(connectors)
-            case_tag = Case_Connector_Instance(
-                instance_id=instance.id,
-                case_id=case.id,
-                identifier=form_dict["identifier"][connectors]
-            )
-            db.session.add(case_tag)
-            db.session.commit()
-            case_connector_db.append(connectors)
-        else:
-            loc_connector = CommonModel.get_instance_by_name(connectors)
-            case_connector = CommonModel.get_case_connectors_both(cid, loc_connector.id)
-            if not case_connector.identifier == form_dict["identifier"][connectors]:
-                case_connector.identifier = form_dict["identifier"][connectors]
-                db.session.commit()
-    
-    for c_t_db in case_connector_db:
-        if not c_t_db in form_dict["connectors"]:
-            loc_connector = CommonModel.get_instance_by_name(c_t_db)
-            case_connector = CommonModel.get_case_connectors_both(cid, loc_connector.id)
-            Case_Connector_Instance.query.filter_by(id=case_connector.id).delete()
             db.session.commit()
 
     # Custom tags
@@ -636,15 +602,6 @@ def create_template_from_case(cid, case_title_template, current_user):
         db.session.add(case_cluster)
         db.session.commit()
 
-    ## Connectors
-    for c_t in Case_Connector_Instance.query.filter_by(case_id=case.id).all():
-        case_connector = Case_Template_Connector_Instance(
-            template_id=new_template.id,
-            instance_id=c_t.instance_id
-        )
-        db.session.add(case_connector)
-        db.session.commit()
-
     ## Custom Tags
     for c_t in CommonModel.get_case_custom_tags(case.id):
         case_template_custom_tags = Case_Template_Custom_Tags(
@@ -695,15 +652,6 @@ def create_template_from_case(cid, case_title_template, current_user):
                     cluster_id=t_t.cluster_id
                 )
                 db.session.add(task_cluster)
-                db.session.commit()
-
-            ## Task Connectors
-            for t_c in Task_Connector_Instance.query.filter_by(task_id=task.id).all():
-                task_connector = Task_Template_Connector_Instance(
-                    template_id=task_template.id,
-                    instance_id=t_c.instance_id
-                )
-                db.session.add(task_connector)
                 db.session.commit()
 
             ## Task Custom tags
@@ -875,7 +823,42 @@ def get_instance_module_core(module, type_module, case_id, user_id):
     return []
 
 
-def call_module_case(module, instances, case, user):
+##############
+# Connectors #
+##############
+
+def add_connector(cid, request_json) -> bool:
+    for connector in request_json["connectors"]:
+        instance = CommonModel.get_instance_by_name(connector["name"])
+        if "identifier" in connector: loc_identfier = connector["identifier"]
+        else: loc_identfier = ""
+        c = Case_Connector_Instance(
+            case_id=cid,
+            instance_id=instance.id,
+            identifier=loc_identfier
+        )
+        db.session.add(c)
+        db.session.commit()
+    return True
+
+def remove_connector(case_id, instance_id):
+    try:
+        Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).delete()
+    except:
+        return False
+    return True
+
+def edit_connector(case_id, instance_id, request_json):
+    c = Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
+    if c:
+        c.identifier = request_json["identifier"]
+        db.session.commit()
+        return True
+    return False
+
+
+
+def call_module_case(module, instance_id, case, user):
     """Run a module"""
     org = CommonModel.get_org(case.owner_org_id)
 
@@ -891,54 +874,51 @@ def call_module_case(module, instances, case, user):
     case["tasks"] = tasks
     case["status"] = CommonModel.get_status(case["status_id"]).name
 
+    instance = CommonModel.get_instance(instance_id)
 
-    for instance in list(instances.keys()):
-        instance_key = instance
-        instance = CommonModel.get_instance_by_name(instance)
-        user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
-        case_instance_id = CommonModel.get_case_connector_id(instance.id, case["id"])
+    user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
+    case_instance_id = CommonModel.get_case_connector_id(instance.id, case["id"])
 
-        instance = instance.to_json()
-        if user_instance:
-            instance["api_key"] = user_instance.api_key
-        if instances[instance_key]:
-            instance["identifier"] = instances[instance_key]
+    instance = instance.to_json()
+    if user_instance:
+        instance["api_key"] = user_instance.api_key
+    instance["identifier"] = case_instance_id.identifier
 
-        case["objects"] = get_misp_object_instance(case["id"], instance["id"])
+    case["objects"] = get_misp_object_instance(case["id"], instance["id"])
 
-        #######
-        # RUN #
-        #######
-        event_id, object_uuid_list = MODULES[module].handler(instance, case, user)
+    #######
+    # RUN #
+    #######
+    event_id, object_uuid_list = MODULES[module].handler(instance, case, user)
 
-        res = CommonModel.module_error_check(event_id)
-        if res:
-            return res
+    res = CommonModel.module_error_check(event_id)
+    if res:
+        return res
 
-        ###########
-        # RESULTS #
-        ###########
-        if not case_instance_id:
-            cc_instance = Case_Connector_Instance(
-                case_id=case["id"],
-                instance_id=instance["id"],
-                identifier=event_id
-            )
-            db.session.add(cc_instance)
-            db.session.commit()
-        elif not case_instance_id.identifier == event_id:
-            case_instance_id.identifier = event_id
-            db.session.commit()
-        
-        if object_uuid_list:
-            result_misp_object_module(object_uuid_list, instance["id"])
-            loc_instance = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case["id"], instance_id=instance["id"]).first()
-            if loc_instance:
-                if not loc_instance.identifier == event_id:
-                    loc_instance.identifier = event_id
-                    db.session.commit()                
+    ###########
+    # RESULTS #
+    ###########
+    if not case_instance_id:
+        cc_instance = Case_Connector_Instance(
+            case_id=case["id"],
+            instance_id=instance["id"],
+            identifier=event_id
+        )
+        db.session.add(cc_instance)
+        db.session.commit()
+    elif not case_instance_id.identifier == event_id:
+        case_instance_id.identifier = event_id
+        db.session.commit()
     
-    CommonModel.save_history(case["uuid"], user, f"Task Module {module} used on instances: {', '.join(list(instances.keys()))}")
+    if object_uuid_list:
+        result_misp_object_module(object_uuid_list, instance["id"])
+        loc_instance = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case["id"], instance_id=instance["id"]).first()
+        if loc_instance:
+            if not loc_instance.identifier == event_id:
+                loc_instance.identifier = event_id
+                db.session.commit()                
+    
+    CommonModel.save_history(case["uuid"], user, f"Task Module {module} used on instance: {instance['name']}")
 
 def get_all_notes(case):
     """Get all tasks' notes"""
@@ -1158,14 +1138,14 @@ def add_misp_object_connector(cid, request_json) -> bool:
         db.session.commit()
     return True
 
-def remove_connector(case_id, instance_id):
+def remove_misp_connector(case_id, instance_id):
     try:
         Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).delete()
     except:
         return False
     return True
 
-def edit_connector(case_id, instance_id, request_json):
+def edit_misp_connector(case_id, instance_id, request_json):
     c = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
     if c:
         c.identifier = request_json["identifier"]
@@ -1283,3 +1263,4 @@ def call_module_misp(instance_id, case, user):
         db.session.commit()
     if object_uuid_list:
         result_misp_object_module(object_uuid_list, instance_id)
+

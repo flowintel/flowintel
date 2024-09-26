@@ -105,45 +105,7 @@
         <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
     </button>
 
-    {% if case.instances %}
-        <div class="collapse" id="collapseConnectors">
-            <div class="card card-body">
-                <table class="table">
-                    <tr>
-                        <th>Instance name</th>
-                        <th>Instance url</th>
-                        <th>Type</th>
-                        <th>Identifier on the instance</th>
-                    </tr>
-                    {% for instance in case.instances %}
-                        <tr>
-                            <td>
-                                <div title="{{instance.description}}">
-                                    <img src="/static/icons/{{instance.icon}}" style="max-width: 30px;">
-                                    {{instance.name}}
-                                </div>
-                            </td>
-                            <td>
-                                <a style="margin-left: 5px" href="{{instance.url}}">{{instance.url}}</a>
-                            </td>
-                            {% if instance.type %}
-                                <td><span style="margin-left: 3px;" title="type of the module">{{instance.type}}</span></td>
-                            {%else%}
-                                <td><i>None</i></td>
-                            {%endif%}
-                            {% if instance.identifier %}
-                                <td><span style="margin-left: 3px;" title="identifier used by module">{{instance.identifier}}</span></td>
-                            {%else%}
-                                <td><i>None</i></td>
-                            {%endif%}
-                        </tr>
-                        
-                    {%endfor%}
-
-                </table>
-            </div>
-        </div>
-    {%endif%}
+    <caseconnectors :cases_info="cases_info"></caseconnectors>
 
     <misp_object :cases_info="cases_info"></misp_object>
 
@@ -440,6 +402,7 @@
         import action_buttons from '/static/js/case/action_buttons.js'
         import manage_orgs from '/static/js/case/manage_orgs.js'
         import misp_object from '/static/js/case/misp_object.js'
+        import caseconnectors from '/static/js/case/CaseConnectors.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
@@ -449,7 +412,8 @@
                 hedgedoc_template,
                 action_buttons,
                 manage_orgs,
-                misp_object
+                misp_object,
+                caseconnectors
             },
             setup() {
                 const cases_info = ref(null)
