@@ -111,6 +111,10 @@ export default {
 				let index = template_array.indexOf(template)
 				if(index > -1)
 					template_array.splice(index, 1)
+
+				var myModalEl = document.getElementById('delete_task_template_modal_'+template.id);
+				var modal = bootstrap.Modal.getInstance(myModalEl)
+				modal.hide();
 			}
             display_toast(res)
         }
@@ -400,7 +404,8 @@ export default {
 				</button>
 			</div>
 			<div>
-            	<button class="btn btn-danger btn-sm" @click="delete_task(template, templates_list)" title="Delete the task template">
+				<button type="button" class="btn btn-danger btn-sm" title="Delete the task template" data-bs-toggle="modal" 
+				:data-bs-target="'#delete_task_template_modal_'+template.id">
 					<i class="fa-solid fa-trash"></i>
 				</button>
 			</div>
@@ -412,6 +417,22 @@ export default {
 			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task_down(template, false)">
 				<i class="fa-solid fa-chevron-down"></i>
 			</button>
+		</div>
+	</div>
+
+	<!-- Modal delete task template -->
+	<div class="modal fade" :id="'delete_task_template_modal_'+template.id" tabindex="-1" aria-labelledby="delete_task_template_modal" aria-hidden="true">
+		<div class="modal-dialog modal-sm">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 class="modal-title fs-5" id="delete_task_template_modal">Delete '[[template.title]]' ?</h1>
+					<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+					<button class="btn btn-danger btn-sm"  @click="delete_task(template, templates_list)"><i class="fa-solid fa-trash"></i> Confirm</button>
+				</div>
+			</div>
 		</div>
 	</div>
 

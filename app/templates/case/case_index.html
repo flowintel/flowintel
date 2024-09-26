@@ -220,14 +220,14 @@
                         <button v-if="case_loc.completed" class="btn btn-secondary btn-sm"  @click="complete_case(case_loc, case_list.cases, true)" title="Revive the case"><i class="fa-solid fa-backward"></i></button>
                         <button v-else class="btn btn-success btn-sm"  @click="complete_case(case_loc, case_list.cases, false)" title="Complete the case"><i class="fa-solid fa-check"></i></button>
                         <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
-                        <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
+                        <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" :data-bs-target="'#delete_case_modal_'+case_loc.id">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
                 </div>
             </div>
             <!-- Modal delete case -->
-            <div class="modal fade" id="delete_case_modal" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
+            <div class="modal fade" :id="'delete_case_modal_'+case_loc.id" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
                 <div class="modal-dialog modal-sm">
                     <div class="modal-content">
                         <div class="modal-header">
@@ -331,7 +331,7 @@
                         if(index > -1)
                             case_list.cases.splice(index, 1)
 
-                        var myModalEl = document.getElementById('delete_case_modal');
+                        var myModalEl = document.getElementById('delete_case_modal_'+case_loc.id);
                         var modal = bootstrap.Modal.getInstance(myModalEl)
                         modal.hide();
                     }

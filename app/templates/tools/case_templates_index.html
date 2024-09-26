@@ -168,7 +168,26 @@
                     </a>
                     <div v-if="!template.current_user_permission.read_only" style="display: grid;">
                         <a class="btn btn-primary btn-sm" :href="`/tools/template/edit_case/${template.id}`" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
-                        <button class="btn btn-danger btn-sm"  @click="delete_case(template)" title="Delete the case"><i class="fa-solid fa-trash"></i></button>
+                        <!-- <button class="btn btn-danger btn-sm"  @click="delete_case(template)" title="Delete the case"><i class="fa-solid fa-trash"></i></button> -->
+                        <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" :data-bs-target="'#delete_template_modal_'+template.id">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal delete case template -->
+            <div class="modal fade" :id="'delete_template_modal_'+template.id" tabindex="-1" aria-labelledby="delete_template_modal" aria-hidden="true">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="delete_template_modal">Delete '[[template.title]]' ?</h1>
+                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button class="btn btn-danger btn-sm"  @click="delete_case(template)"><i class="fa-solid fa-trash"></i> Confirm</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -249,6 +268,10 @@
                         let index = templates_list.value.templates.indexOf(case_template)
                         if(index > -1)
                             templates_list.value.templates.splice(index, 1)
+
+                        var myModalEl = document.getElementById('delete_template_modal_'+case_template.id);
+                        var modal = bootstrap.Modal.getInstance(myModalEl)
+                        modal.hide();
                     }
                     display_toast(res)
                 }
