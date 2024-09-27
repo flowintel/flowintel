@@ -851,33 +851,33 @@ export default {
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 			<div>
 				<button v-if="task.completed" class="btn btn-secondary btn-sm"  @click="complete_task(task)" title="Revive the task">
-					<i class="fa-solid fa-backward"></i>
+					<i class="fa-solid fa-backward fa-fw"></i>
 				</button>
 				<button v-else class="btn btn-success btn-sm" @click="complete_task(task)" title="Complete the task">
-					<i class="fa-solid fa-check"></i>
+					<i class="fa-solid fa-check fa-fw"></i>
 				</button>
 			</div>
 			<div>
 				<button v-if="!task.is_current_user_assigned" class="btn btn-secondary btn-sm" @click="take_task(task, cases_info.current_user)" title="Be assigned to the task">
-					<i class="fa-solid fa-hand"></i>
+					<i class="fa-solid fa-hand fa-fw"></i>
 				</button>
 				<button v-else class="btn btn-secondary btn-sm" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
-					<i class="fa-solid fa-handshake-slash"></i>
+					<i class="fa-solid fa-handshake-slash fa-fw"></i>
 				</button>
 			</div>
 			<div>
 				<button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" :data-bs-target="'#Send_to_modal_task_'+task.id">
-					<i class="fa-solid fa-share-from-square"></i>
+					<i class="fa-solid fa-share-from-square fa-fw"></i>
 				</button>
 			</div>
 			<div>
 				<a class="btn btn-primary btn-sm" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
-					<i class="fa-solid fa-pen-to-square"></i>
+					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
 			</div>
 			<div>
 				<button class="btn btn-danger btn-sm" @click="delete_task(task, cases_info.tasks)" title="Delete the task">
-					<i class="fa-solid fa-trash"></i>
+					<i class="fa-solid fa-trash fa-fw"></i>
 				</button>
 			</div>
 		</div>

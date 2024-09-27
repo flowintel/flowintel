@@ -82,8 +82,12 @@ legend.analyzer-select-case {
 	font-size: 1.2em !important;
 	text-align: left !important;
 	width:auto;
-	padding:0 10px;
+	padding: 1px 4px;
 	border-bottom:none;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px groove #ddd !important;
+  box-shadow: 0px 1px 2px 1px #0000001a;
 }
 
 /* Analyzers */
@@ -137,4 +141,14 @@ legend.analyzer-select-case {
 	border-radius: 10px;
 	padding: 5px;
 	margin-bottom: 10px;
+}
+
+.cluster {
+  padding: 2px 3px; 
+  border-radius: 3px; 
+  font-weight: bold; 
+  background-color: #0088cc; 
+  filter: drop-shadow(-1px 2px 3px rgba(50, 50, 0, 0.5)); 
+  color: white;
+  font-size: 15px;
 }

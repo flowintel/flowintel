@@ -210,8 +210,10 @@
                         <div class="d-flex w-100" v-if="case_loc.clusters">
                             <template v-for="cluster in case_loc.clusters">
                                 <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
-                                    <span v-html="mapIcon(cluster.icon)"></span>
+                                    <span class="cluster">
+                                        <span v-html="mapIcon(cluster.icon)"></span>
                                     [[cluster.tag]]
+                                    </span>
                                 </div>
                             </template>
                         </div>

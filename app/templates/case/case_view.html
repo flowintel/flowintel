@@ -88,8 +88,10 @@
         {% if case.clusters %}
             {% for cluster in case.clusters %}
                 <div title="Description: &#013;{{cluster.description}}&#013;&#013; Metadata: &#013;{{cluster.meta}}">
-                    <span v-html="mapIcon('{{cluster.icon}}')"></span>
-                    {{cluster.tag}}
+                    <span class="cluster">
+                        <span v-html="mapIcon('{{cluster.icon}}')"></span>
+                        {{cluster.tag}}
+                    </span>
                 </div>
             {%endfor%}
         {%endif%}
@@ -100,7 +102,7 @@
     <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConnectors" aria-expanded="false" aria-controls="collapseConnectors">
         <i class="fa-solid fa-link"></i> Connectors
     </button>
-    <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMispObject" aria-expanded="false" aria-controls="collapseMispObject">
+    <button class="btn btn-outline-primary ms-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMispObject" aria-expanded="false" aria-controls="collapseMispObject">
         <i class="fa-solid fa-cubes"></i> MISP objects
         <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
     </button>
