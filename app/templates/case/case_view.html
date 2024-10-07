@@ -305,7 +305,9 @@
                                 :status_info="status_info" 
                                 :task="task" 
                                 :key_loop="key"
-                                :open_closed="open_closed">
+                                :open_closed="open_closed"
+                                :task_modules="task_modules"
+                                :md="md">
                     </case_tasks>
                 </div>
             </template>
@@ -456,6 +458,8 @@
 
                 const case_for_link = ref([])
 
+                const task_modules = ref()
+
                 async function fetch_history(){
                     const res = await fetch("/case/history/" + cases_info.value.case.id)
                     if(await res.status==404 ){
@@ -475,6 +479,19 @@
                         open_closed.value = loc
                     }
                 }
+
+                async function fetch_modules(){
+                    // Get modules and instances linked on
+                    const res = await fetch("/case/get_task_modules")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        task_modules.value = loc["modules"]
+                    }
+                }
+                fetch_modules()
+
 
                 async function export_notes(case_id, type){
                     // Export notes in different format and download it
@@ -975,6 +992,7 @@
                     history,
                     is_exporting,
                     nb_misp_objects,
+                    task_modules,
                     onInput,
                     filter_ongoing,
                     sort_by_filter,
