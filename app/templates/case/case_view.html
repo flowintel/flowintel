@@ -107,7 +107,19 @@
         <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
     </button>
 
-    <caseconnectors :cases_info="cases_info"></caseconnectors>
+    <template v-if="cases_info">
+        <div class="collapse" id="collapseConnectors">
+            <caseconnectors 
+                :case_task_connectors_list="case_connectors_list"
+                :all_connectors_list="all_connectors_list"
+                :modules="modules"
+                :is_case="true"
+                :object_id="cases_info.case.id"
+                @case_connectors="(msg) => fetch_case_connectors()"
+                @task_connectors="123">
+            </caseconnectors>
+        </div>
+    </template>
 
     <misp_object :cases_info="cases_info"></misp_object>
 
@@ -306,8 +318,9 @@
                                 :task="task" 
                                 :key_loop="key"
                                 :open_closed="open_closed"
-                                :task_modules="task_modules"
-                                :md="md">
+                                :md="md"
+                                :all_connectors_list="all_connectors_list"
+                                :task_modules="task_modules">
                     </case_tasks>
                 </div>
             </template>
@@ -445,6 +458,11 @@
                 const selected_galaxies = ref([])
                 const selected_clusters = ref([])
 
+                const case_connectors_list = ref([])
+                const all_connectors_list = ref([])
+                const modules = ref()
+                const task_modules = ref()
+
                 const nb_misp_objects = ref(0)
 
                 const open_closed = ref({})
@@ -457,8 +475,6 @@
 		        md.use(mermaidMarkdown.default)			// Use mermaid library
 
                 const case_for_link = ref([])
-
-                const task_modules = ref()
 
                 async function fetch_history(){
                     const res = await fetch("/case/history/" + cases_info.value.case.id)
@@ -480,7 +496,39 @@
                     }
                 }
 
+                async function fetch_case_connectors(){
+                    const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/get_case_connectors")
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        case_connectors_list.value = loc["case_connectors"]
+                    }
+                }
+                async function fetch_connectors(){
+                    const res = await fetch("/case/get_connectors")
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        all_connectors_list.value = loc["connectors"]
+                    }
+                }
+                fetch_connectors()
+
                 async function fetch_modules(){
+                    // Get modules and instances linked on
+                    const res = await fetch("/case/get_case_modules")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        modules.value = loc["modules"]
+                    }
+                }
+                fetch_modules()
+
+                async function fetch_task_modules(){
                     // Get modules and instances linked on
                     const res = await fetch("/case/get_task_modules")
                     if(await res.status==400 ){
@@ -490,8 +538,7 @@
                         task_modules.value = loc["modules"]
                     }
                 }
-                fetch_modules()
-
+                fetch_task_modules()
 
                 async function export_notes(case_id, type){
                     // Export notes in different format and download it
@@ -935,6 +982,7 @@
                 onMounted(() => {
                     initialize_select2()
                     autosave_case_note()
+                    fetch_case_connectors()
 
                     const list = [].slice.call(
                         document.querySelectorAll('[data-bs-toggle="popover"]'))
@@ -992,7 +1040,6 @@
                     history,
                     is_exporting,
                     nb_misp_objects,
-                    task_modules,
                     onInput,
                     filter_ongoing,
                     sort_by_filter,
@@ -1011,9 +1058,14 @@
                     all_notes,
                     note_editor_render,
                     edit_mode,
+                    case_connectors_list,
+                    all_connectors_list,
+                    modules,
+                    task_modules,
                     save_note_case,
                     edit_note,
-                    export_notes
+                    export_notes,
+                    fetch_case_connectors
                 }
             }
         }).mount('#main-container')

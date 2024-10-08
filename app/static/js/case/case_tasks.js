@@ -4,6 +4,7 @@ import tabNote from './TaskComponent/tab-note.js'
 import tabConnector from './TaskComponent/tab-connector.js'
 import tabFile from './TaskComponent/tab-file.js'
 import tabInfo from './TaskComponent/tab-info.js'
+import caseconnectors from './CaseConnectors.js'
 const { ref, nextTick} = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -14,15 +15,17 @@ export default {
 		task: Object,
 		key_loop: Number,
 		open_closed: Object,
+		md: Object,
+		all_connectors_list: Object,
 		task_modules: Object,
-		md: Object
 	},
 	components: {
         tabMain,
 		tabNote,
 		tabConnector,
 		tabFile,
-		tabInfo
+		tabInfo,
+		caseconnectors
     },
 	setup(props) {
 		// Variables part
@@ -32,6 +35,7 @@ export default {
 		const module_loader = ref(false)
 		const task_instances_selected = ref([])
 		const task_module_selected = ref()
+		const task_connectors_list = ref()
 		
 
 		async function complete_task(task){
@@ -87,10 +91,22 @@ export default {
 				let index = task_array.indexOf(task)
 				if(index > -1)
 					task_array.splice(index, 1)
+
+				$("#modal-delete-task-"+task.id).modal("hide")
 			}
 			await display_toast(res)
 		}
 
+		async function fetch_task_connectors(){			
+			const res = await fetch("/case/get_task_connectors/"+props.task.id)
+			if(await res.status==404 ){
+				display_toast(res)
+			}else{
+				let loc = await res.json()
+				task_connectors_list.value = loc["task_connectors"]
+			}
+		}
+		
 		async function fetch_module_selected(module){
 			// Get modules and instances linked on
 			const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.task.id+"/get_instance_module?type=send_to&module="+module)
@@ -125,12 +141,10 @@ export default {
 
 			const res = await fetch('/case/' + task.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
 			await display_toast(res)
-			console.log(task.case_order_id);
 			for( let i in props.cases_info.tasks){
 				if(props.cases_info.tasks[i]["case_order_id"] == task.case_order_id+cp){
 					props.cases_info.tasks[i]["case_order_id"] = task.case_order_id
 					task.case_order_id += cp
-					console.log(task.case_order_id);
 					break
 				}
 			}
@@ -286,6 +300,8 @@ export default {
 					document.getElementById("tab-task-info").classList.remove("active")
 				}
 			}else if(tab_name == 'connectors'){
+				// await fetch_task_connectors()
+				await nextTick()
 				selected_tab.value = 'connectors'
 				if ( !document.getElementById("tab-task-connectors").classList.contains("active") ){
 					document.getElementById("tab-task-connectors").classList.add("active")
@@ -312,6 +328,7 @@ export default {
 
 		// Vue function
 		Vue.onMounted( () => {
+			fetch_task_connectors()
 			select2_change(props.task.id)
 			$('.select2-select').select2({
 				theme: 'bootstrap-5',
@@ -350,6 +367,7 @@ export default {
 			task_instances_selected,
 			task_module_selected,
 			selected_tab,
+			task_connectors_list,
 
 			take_task,
 			remove_assign_task,
@@ -361,7 +379,8 @@ export default {
 			move_task,
 			submit_module,
 
-			select_tab_task
+			select_tab_task,
+			fetch_task_connectors
 		}
 	},
 	template: `
@@ -480,9 +499,9 @@ export default {
 				</a>
 			</div>
 			<div>
-				<button class="btn btn-danger btn-sm" @click="delete_task(task, cases_info.tasks)" title="Delete the task">
-					<i class="fa-solid fa-trash fa-fw"></i>
-				</button>
+				<button class="btn btn-danger btn-sm" title="Delete the task" data-bs-toggle="modal" :data-bs-target="'#modal-delete-task-'+task.id">
+                    <i class="fa-solid fa-trash fa-fw"></i>
+                </button>
 			</div>
 		</div>
 		<div v-if="(!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin) && !task.completed" style="display: grid;">
@@ -492,6 +511,22 @@ export default {
 			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task(task, false)">
 				<i class="fa-solid fa-chevron-down"></i>
 			</button>
+		</div>
+	</div>
+
+	<!-- Modal delete task -->
+	<div class="modal fade" :id="'modal-delete-task-'+task.id" tabindex="-1" aria-labelledby="delete_task_modal" aria-hidden="true">
+		<div class="modal-dialog modal-sm">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 class="modal-title fs-5" id="delete_task_modal">Delete '[[task.title]]' ?</h1>
+					<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+					<button class="btn btn-danger btn-sm" @click="delete_task(task, cases_info.tasks)"><i class="fa-solid fa-trash"></i> Confirm</button>
+				</div>
+			</div>
 		</div>
 	</div>
 
@@ -586,7 +621,15 @@ export default {
 			</template>
 
 			<template v-else-if="selected_tab == 'connectors'">
-				<tabConnector :task="task"></tabConnector>
+				<caseconnectors 
+					:case_task_connectors_list="task_connectors_list"
+                    :all_connectors_list="all_connectors_list"
+                    :modules="task_modules"
+                    :is_case="false"
+					:object_id="task.id"
+					@case_connectors="123"
+                	@task_connectors="(msg) => fetch_task_connectors()">
+				</caseconnectors>
 			</template>
 
 			<template v-else-if="selected_tab == 'files'">

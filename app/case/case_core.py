@@ -918,7 +918,7 @@ def call_module_case(module, instance_id, case, user):
                 loc_instance.identifier = event_id
                 db.session.commit()                
     
-    CommonModel.save_history(case["uuid"], user, f"Task Module {module} used on instance: {instance['name']}")
+    CommonModel.save_history(case["uuid"], user, f"Case Module {module} used on instance: {instance['name']}")
 
 def get_all_notes(case):
     """Get all tasks' notes"""

@@ -52,27 +52,6 @@
                 {%endif%}
             </div>
             <hr>
-            <div class="mb-3 w-50">
-                <h5 style="padding: 4px;">Connectors:</h5>
-                <template v-if="connectors">
-                    <select data-placeholder="Connectors" class="select2-select form-control" multiple name="connectors_select" id="connectors_select" >
-                        <template v-for="(instances, connector) in connectors">
-                            <optgroup :label="[[connector]]">
-                                <template v-for="instance in instances">
-                                    <option :value="[[instance.name]]" :selected="check_connectors_exist(instance.name)">[[instance.name]]</option>
-                                </template>
-                            </optgroup>
-                        </template>
-                    </select>
-                </template>
-            </div>
-            <div class="row" v-if="connectors_selected">
-                <div class="mb-3 w-50" v-for="instance in connectors_selected" >
-                    <label :for="'identifier_' + instance">[[instance]] Complement</label>
-                    <input v-if="connectors_value" :id="'identifier_' + instance" class="form-control" :value="connectors_value[instance]" :name="'identifier_' + instance" type="text">
-                </div>
-            </div>
-            <hr>
 
             <h5>Custom Tags</h5>
             <div v-if="custom_tags" class="col-6">
@@ -155,11 +134,6 @@
             const clusters_task = ref([])
             const selected_taxo = ref([])
             const selected_galaxies = ref([])
-
-            const connectors = ref([])
-            const connectors_task = ref([])
-            const connectors_selected = ref([])
-            const connectors_value = ref({})
 
             const custom_tags = ref([])
             const custom_tags_task = ref([])
@@ -260,39 +234,6 @@
                 }
             }
 
-            async function fetchConnectors(){
-                const res = await fetch("/case/get_connectors")
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    connectors.value = loc["connectors"]
-                }
-            }
-            fetchConnectors()
-
-            async function fetchConnectorsTask(){
-                const res = await fetch("/case/get_connectors_task/" +window.location.pathname.split("/").slice(-1))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    connectors_task.value = loc["connectors"]
-                    fetchConnectorsTaskId()
-                }
-            }
-
-            async function fetchConnectorsTaskId(){
-                const res = await fetch("/case/get_connectors_task_id/" +window.location.pathname.split("/").slice(-1) + "?instances=" + JSON.stringify(connectors_task.value))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    connectors_value.value = loc["instances"]
-                    $('#connectors_select').trigger('change')
-                }
-            }
-
             function check_taxo_exist(taxo){
                 return taxonomies_task.value.some(function(field) {
                     return taxo === field
@@ -314,13 +255,6 @@
                 })
             }
 
-            function check_connectors_exist(connector){
-                return connectors_task.value.some(function(field){
-                    // return connector === field && ($('#connectors_select').trigger('change')) // Make sure to refresh select2 state
-                    return connector === field
-                })
-            }
-
             function check_custom_tag_exist(custom_tag){
                 return custom_tags_task.value.some(function(field){
                     return custom_tag === field
@@ -329,7 +263,6 @@
 
             onMounted(() => {
                 fetch_custom_tags_task()
-                fetchConnectorsTask()
                 fetch_custom_tags()
                 
                 $('.select2-select').select2({
@@ -345,9 +278,6 @@
                     selected_galaxies.value = $(this).select2('data').map(item => item.id);
                     fetch_cluster(selected_galaxies.value)
                 })
-                $('#connectors_select').on('change.select2', function (e) {
-                    connectors_selected.value = $(this).select2('data').map(item => item.id)
-                })
             })
 
             return {
@@ -358,14 +288,10 @@
                 tags_list,
                 cluster_list,
                 custom_tags,
-                connectors,
-                connectors_selected,
-                connectors_value,
                 check_taxo_exist,
                 check_galaxy_exist,
                 check_tag_exist,
                 check_cluster_exist,
-                check_connectors_exist,
                 check_custom_tag_exist
             }
         }

@@ -106,12 +106,6 @@ def create_task(form_dict, cid, current_user):
     else:
         deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
-        ## Check if instance is from current user
-        for instance in form_dict["connectors"]:
-            instance = CommonModel.get_instance_by_name(instance)
-            if not CommonModel.get_user_instance_by_instance(instance.id):
-                return False
-            
         case = CommonModel.get_case(cid)
         nb_tasks = 1
         if case.nb_tasks:
@@ -164,19 +158,6 @@ def create_task(form_dict, cid, current_user):
             db.session.add(task_galaxy_tag)
             db.session.commit()
 
-        for instance in form_dict["connectors"]:
-            instance = CommonModel.get_instance_by_name(instance)
-            loc_identifier = None
-            if instance.name in form_dict["identifier"]:
-                loc_identifier = form_dict["identifier"][instance.name]
-            task_instance = Task_Connector_Instance(
-                task_id=task.id,
-                instance_id=instance.id,
-                identifier=loc_identifier
-            )
-            db.session.add(task_instance)
-            db.session.commit()
-        
         for custom_tag_name in form_dict["custom_tags"]:
             custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
             if custom_tag:
@@ -199,12 +180,6 @@ def edit_task_core(form_dict, tid, current_user):
     """Edit a task to the DB"""
     task = CommonModel.get_task(tid)
     deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
-
-    ## Check if instance is from current user
-    for instance in form_dict["connectors"]:
-        instance = CommonModel.get_instance_by_name(instance)
-        if not CommonModel.get_user_instance_by_instance(instance.id):
-            return False
 
     task.title = form_dict["title"]
     task.description=form_dict["description"]
@@ -247,33 +222,6 @@ def edit_task_core(form_dict, tid, current_user):
             cluster = CommonModel.get_cluster_by_name(c_t_db)
             task_cluster = CommonModel.get_task_clusters_both(tid, cluster.id)
             Task_Galaxy_Tags.query.filter_by(id=task_cluster.id).delete()
-            db.session.commit()
-    
-    ## Connectors
-    task_connector_db = CommonModel.get_task_connectors_name(tid)
-    for connectors in form_dict["connectors"]:
-        if not connectors in task_connector_db:
-            instance = CommonModel.get_instance_by_name(connectors)
-            task_tag = Task_Connector_Instance(
-                instance_id=instance.id,
-                task_id=task.id,
-                identifier=form_dict["identifier"][connectors]
-            )
-            db.session.add(task_tag)
-            db.session.commit()
-            task_connector_db.append(connectors)
-        else:
-            loc_connector = CommonModel.get_instance_by_name(connectors)
-            task_connector = CommonModel.get_task_connectors_both(tid, loc_connector.id)
-            if not task_connector.identifier == form_dict["identifier"][connectors]:
-                task_connector.identifier = form_dict["identifier"][connectors]
-                db.session.commit()        
-    
-    for c_t_db in task_connector_db:
-        if not c_t_db in form_dict["connectors"]:
-            loc_connector = CommonModel.get_instance_by_name(c_t_db)
-            task_connector = CommonModel.get_task_connectors_both(tid, loc_connector.id)
-            Task_Connector_Instance.query.filter_by(id=task_connector.id).delete()
             db.session.commit()
 
     # Custom tags
@@ -500,10 +448,6 @@ def get_task_info(tasks_list, user):
                 cp_open += 1
         finalTask["nb_open_subtasks"] = cp_open
 
-        finalTask["instances"] = list()
-        for task_connector in CommonModel.get_task_connectors(task.id):
-            finalTask["instances"].append(CommonModel.get_instance_with_icon(task_connector.instance_id, switch_option="task", case_task_id=task.id))
-
         tasks.append(finalTask)
     return tasks
 
@@ -668,7 +612,7 @@ def get_instance_module_core(module, type_module, task_id, user_id):
     return []
 
 
-def call_module_task(module, instances, case, task, user):
+def call_module_task(module, instance_id, case, task, user):
     """Run a module"""
     org = CommonModel.get_org(case.owner_org_id)
 
@@ -680,44 +624,42 @@ def call_module_task(module, instances, case, task, user):
     task = task.to_json()
     task["status"] = CommonModel.get_status(task["status_id"]).name
 
-    for instance in list(instances.keys()):
-        instance_key = instance
-        instance = CommonModel.get_instance_by_name(instance)
-        user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
-        task_instance_id = CommonModel.get_task_connector_id(instance.id, task["id"])
 
-        instance = instance.to_json()
-        if user_instance:
-            instance["api_key"] = user_instance.api_key
-        if instances[instance_key]:
-            instance["identifier"] = instances[instance_key]
+    instance = CommonModel.get_instance(instance_id)
+    user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
+    task_instance_id = CommonModel.get_task_connector_id(instance.id, task["id"])
 
-        #######
-        # RUN #
-        #######
-        event_id = MODULES[module].handler(instance, case, task, user)
-        res = CommonModel.module_error_check(event_id)
-        if res:
-            return res
-        
-        ###########
-        # RESULTS #
-        ###########
+    instance = instance.to_json()
+    if user_instance:
+        instance["api_key"] = user_instance.api_key
+    instance["identifier"] = task_instance_id.identifier
 
-        if not task_instance_id:
-            tc_instance = Task_Connector_Instance(
-                task_id=task["id"],
-                instance_id=instance["id"],
-                identifier=event_id
-            )
-            db.session.add(tc_instance)
-            db.session.commit()
+    #######
+    # RUN #
+    #######
+    event_id = MODULES[module].handler(instance, case, task, user)
+    res = CommonModel.module_error_check(event_id)
+    if res:
+        return res
+    
+    ###########
+    # RESULTS #
+    ###########
 
-        elif not task_instance_id.identifier == event_id:
-            task_instance_id.identifier = event_id
-            db.session.commit()
+    if not task_instance_id:
+        tc_instance = Task_Connector_Instance(
+            task_id=task["id"],
+            instance_id=instance["id"],
+            identifier=event_id
+        )
+        db.session.add(tc_instance)
+        db.session.commit()
 
-    CommonModel.save_history(case.uuid, user, f"Task Module {module} used on instances: {', '.join(list(instances.keys))}")
+    elif not task_instance_id.identifier == event_id:
+        task_instance_id.identifier = event_id
+        db.session.commit()
+
+    CommonModel.save_history(case.uuid, user, f"Task Module {module} used on instances: {instance['name']}")
 
 
 def call_module_task_no_instance(module, task, case, current_user, user_id):
@@ -764,4 +706,34 @@ def edit_subtask(tid, sid, subtask_description):
             subtask.description = subtask_description
             db.session.commit()
             return True
+    return False
+
+
+def add_connector(tid, request_json) -> bool:
+    for connector in request_json["connectors"]:
+        instance = CommonModel.get_instance_by_name(connector["name"])
+        if "identifier" in connector: loc_identfier = connector["identifier"]
+        else: loc_identfier = ""
+        c = Task_Connector_Instance(
+            task_id=tid,
+            instance_id=instance.id,
+            identifier=loc_identfier
+        )
+        db.session.add(c)
+        db.session.commit()
+    return True
+
+def remove_connector(task_id, instance_id):
+    try:
+        Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).delete()
+    except:
+        return False
+    return True
+
+def edit_connector(task_id, instance_id, request_json):
+    c = Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).first()
+    if c:
+        c.identifier = request_json["identifier"]
+        db.session.commit()
+        return True
     return False

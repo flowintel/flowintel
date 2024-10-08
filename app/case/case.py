@@ -580,31 +580,6 @@ def get_instance_module(cid):
         return {"instances": CaseModel.get_instance_module_core(module, type_module, cid, current_user.id)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
-@case_blueprint.route("/get_connectors_case/<cid>", methods=['GET'])
-@login_required
-def get_connectors_case(cid):
-    """Get all connectors instances for a case"""
-    case = CommonModel.get_case(cid)
-    if case:
-        return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}, 200
-    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
-
-@case_blueprint.route("/get_connectors_case_id/<cid>", methods=['GET'])
-@login_required
-def get_connectors_case_id(cid):
-    """Get identifier for a list of connectors instances"""
-    case = CommonModel.get_case(cid)
-    if case:
-        loc = dict()
-        instances = ast.literal_eval(request.args.get("instances"))
-        for instance in instances:
-            ident = CommonModel.get_case_connector_id(CommonModel.get_instance_by_name(instance).id, case.id)
-            if ident:
-                loc[instance] = ident.identifier
-        return {"instances": loc}, 200
-    return {"message": "case Not found", 'toast_class': "danger-subtle"}, 404
-
-
 
 @case_blueprint.route("/<cid>/call_module_case", methods=['GET', 'POST'])
 @login_required
@@ -939,12 +914,11 @@ def nb_objects(cid):
 @case_blueprint.route("/<cid>/get_case_connectors", methods=['GET', 'POST'])
 @login_required
 def get_case_connectors(cid):
-    """View of a case"""
-    case = CommonModel.get_case(cid)
-    if case:
+    """Get all connectors for a case"""
+    if CommonModel.get_case(cid):
         instance_list = list()
-        for case_connector in CommonModel.get_case_connectors(case.id):
-            instance_list.append(CommonModel.get_instance_with_icon(case_connector.instance_id, switch_option="case", case_task_id=case.id))
+        for case_connector in CommonModel.get_case_connectors(cid):
+            instance_list.append(CommonModel.get_instance_with_icon(case_connector.instance_id, switch_option="case", case_task_id=cid))
         return {"case_connectors": instance_list}, 200
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 

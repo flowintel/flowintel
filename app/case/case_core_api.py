@@ -128,13 +128,4 @@ def verif_edit_task(data_dict, task_id):
     if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = task.url
 
-    if "connectors" in data_dict:
-        loc = CommonModel.check_connector(data_dict["connectors"])
-        if not isinstance(loc, bool):
-            return {"message": f"Connector '{loc}' doesn't exist"}
-    elif task.to_json()["connectors"]:
-        data_dict["connectors"] = task.to_json()["connectors"]
-    else:
-        data_dict["connectors"] = []
-
     return data_dict

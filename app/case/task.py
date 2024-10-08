@@ -32,13 +32,6 @@ def create_task(cid):
             if form.validate_on_submit():
                 res = prepare_tags(request)
                 if isinstance(res, dict):
-                    connector_list = request.form.getlist("connectors_select")
-                    identifier_dict = dict()
-                    for connector in connector_list:
-                        identifier_dict[connector] = request.form.get(f"identifier_{connector}")
-                    res["connectors"] = connector_list
-                    res["identifier"] = identifier_dict
-                    
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
                     if TaskModel.create_task(form_dict, cid, current_user):
@@ -63,13 +56,6 @@ def edit_task(cid, tid):
             if form.validate_on_submit():
                 res = prepare_tags(request)
                 if isinstance(res, dict):
-                    connector_list = request.form.getlist("connectors_select")
-                    identifier_dict = dict()
-                    for connector in connector_list:
-                        identifier_dict[connector] = request.form.get(f"identifier_{connector}")
-                    res["connectors"] = connector_list
-                    res["identifier"] = identifier_dict
-
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
                     TaskModel.edit_task_core(form_dict, tid, current_user)
@@ -307,7 +293,7 @@ def delete_file(tid, fid):
         if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if TaskModel.delete_file(file, task, current_user):
                 return {"message": "File Deleted", "toast_class": "success-subtle"}, 200
-            return {"message": "Error deleting file"}, 400
+            return {"message": "Error deleting file", "toast_class": "warning-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
     return {"message": "File not found", "toast_class": "danger-subtle"}, 404
 
@@ -482,48 +468,6 @@ def get_galaxies_task(tid):
     return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
 
 
-@task_blueprint.route("/get_connectors", methods=['GET'])
-@login_required
-def get_connectors():
-    """Get all connectors and instances"""
-    connectors_list = CommonModel.get_connectors()
-    connectors_dict = dict()
-    for connector in connectors_list:
-        loc = list()
-        for instance in connector.instances:
-            if CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
-                loc.append(instance.to_json())
-        if loc:
-            connectors_dict[connector.name] = loc
-    
-    return jsonify({"connectors": connectors_dict}), 200
-
-@task_blueprint.route("/get_connectors_task/<tid>", methods=['GET'])
-@login_required
-def get_connectors_task(tid):
-    """Get all connectors for a task"""
-    task = CommonModel.get_task(tid)
-    if task:
-        return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}, 200
-    return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
-
-
-@task_blueprint.route("/get_connectors_task_id/<tid>", methods=['GET'])
-@login_required
-def get_connectors_task_id(tid):
-    """Get all identifier for connectors instances"""
-    task = CommonModel.get_task(tid)
-    if task:
-        loc = dict()
-        instances = ast.literal_eval(request.args.get("instances"))
-        for instance in instances:
-            ident = CommonModel.get_task_connector_id(CommonModel.get_instance_by_name(instance).id, task.id)
-            if ident:
-                loc[instance] = ident.identifier
-        return {"instances": loc}, 200
-    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
-
-
 @task_blueprint.route("/<cid>/change_order/<tid>", methods=['GET'])
 @login_required
 @editor_required
@@ -575,8 +519,8 @@ def call_module_task(cid, tid):
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CommonModel.get_task(tid)
             if task:
-                instances = request.get_json()["int_sel"]
-                module = request.args.get("module")
+                instances = request.get_json()["instance_id"]
+                module = request.get_json()["module"]
                 res = TaskModel.call_module_task(module, instances, case, task, current_user)
                 if res:
                     res["toast_class"] = "danger-subtle"
@@ -664,3 +608,73 @@ def delete_subtask(cid, tid, sid):
             return {"message": "Subtask deleted", 'toast_class': "success-subtle"}, 200 
         return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+##############
+# Connectors #
+##############
+
+@task_blueprint.route("/get_connectors", methods=['GET'])
+@login_required
+def get_connectors():
+    """Get all connectors and instances"""
+    connectors_list = CommonModel.get_connectors()
+    connectors_dict = dict()
+    for connector in connectors_list:
+        loc = list()
+        for instance in connector.instances:
+            if CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+                loc.append(instance.to_json())
+        if loc:
+            connectors_dict[connector.name] = loc
+    
+    return jsonify({"connectors": connectors_dict}), 200
+
+@task_blueprint.route("/get_task_connectors/<tid>", methods=['GET'])
+@login_required
+def get_task_connectors(tid):
+    """Get all connectors for a task"""
+    if CommonModel.get_task(tid):
+        instance_list = list()
+        for task_connector in CommonModel.get_task_connectors(tid):
+            instance_list.append(CommonModel.get_instance_with_icon(task_connector.instance_id, switch_option="task", case_task_id=tid))
+        return {"task_connectors": instance_list}, 200
+    return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+
+
+@task_blueprint.route("/task/<tid>/add_connector", methods=['POST'])
+@login_required
+@editor_required
+def add_connector(tid):
+    """Add Connector"""
+    if CommonModel.get_task(tid):
+        if "connectors" in request.json:
+            if TaskModel.add_connector(tid, request.json):
+                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/task/<tid>/remove_connector/<ciid>", methods=['GET'])
+@login_required
+@editor_required
+def remove_connector(tid, ciid):
+    """Remove a connector from task"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if TaskModel.remove_connector(tid, ciid):
+            return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
+        return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
+    return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/task/<tid>/edit_connector/<ciid>", methods=['POST'])
+@login_required
+@editor_required
+def edit_connector(tid, ciid):
+    """Edit Connector"""
+    if CommonModel.get_task(tid):
+        if "identifier" in request.json:
+            if TaskModel.edit_connector(tid, ciid, request.json):
+                return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
+            return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
+        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+
