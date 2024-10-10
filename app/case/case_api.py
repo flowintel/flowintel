@@ -412,36 +412,6 @@ class GetInstanceModules(Resource):
             return {"instances": CaseModel.get_instance_module_core(module, type_module, case.id, current_user.id)}, 200
         return {"message": "Case Not found"}, 404
     
-@api.route('/get_connectors_case/<cid>', methods=['GET'])
-@api.doc(description='Get all connectors instance for a case')
-class GetConnectorsCase(Resource):
-    method_decorators = [api_required]
-    def get(self, cid):
-        case = CommonModel.get_case(cid)
-        if case:
-            return {"connectors": [CommonModel.get_instance(case_instance.instance_id).name for case_instance in CommonModel.get_case_connectors(case.id) ]}, 200
-        return {"message": "Case Not found"}, 404
-
-@api.route('/get_connectors_case_id/<cid>', methods=['POST'])
-@api.doc(description='Get identifier for a list of connectors instances')
-class GetConnectorsCaseId(Resource):
-    method_decorators = [api_required]
-    @api.doc(params={
-        'instances': 'Required. List of name of instances'
-    })
-    def post(self, cid):
-        case = CommonModel.get_case(cid)
-        if case:
-            if "instances" in request.json:
-                loc = dict()
-                instances = request.json["instances"]
-                for instance in instances:
-                    ident = CommonModel.get_case_connector_id(CommonModel.get_instance_by_name(instance).id, case.id)
-                    if ident:
-                        loc[instance] = ident.identifier
-                return {"instances": loc}, 200
-            return {"message": "Need to pass 'instances'"}, 400
-        return {"message": "Case Not found"}, 404
 
 @api.route('/<cid>/call_module_case', methods=['POST'])
 @api.doc(description='Call a module on a case')
@@ -503,6 +473,10 @@ class ListStatus(Resource):
         return [status.to_json() for status in CommonModel.get_all_status()], 200
     
 
+##############
+# Connectors #
+##############
+
 @api.route('/get_connectors', methods=['GET'])
 @api.doc(description='Get all connectors and instances')
 class GetConnectors(Resource):
@@ -519,6 +493,76 @@ class GetConnectors(Resource):
             if loc:
                 connectors_dict[connector.name] = loc
         return {"connectors": connectors_dict}, 200
+    
+@api.route('/get_case_connectors/<cid>', methods=['GET'])
+@api.doc(description='Get all connectors instance for a case')
+class GetConnectorsCase(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            instance_list = []
+            for case_instance in CommonModel.get_case_connectors(case.id):
+                loc_instance = CommonModel.get_instance(case_instance.instance_id)
+                instance_list.append({
+                    "id": loc_instance.id,
+                    "name": loc_instance.name,
+                    "identifier": case_instance.identifier
+                })
+            return {"connectors": instance_list}, 200
+        return {"message": "Case Not found"}, 404
+    
+@api.route('/<cid>/add_connectors', methods=['POST'])
+@api.doc(description='Add connectors to a case')
+class AddConnectorsCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        "connectors": "Required. List of connectors instance. Dict with 'name' and 'identifier' as keys."
+    })
+    def post(self, cid):
+        if CommonModel.get_case(cid):
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if "connectors" in request.json:
+                    if CaseModel.add_connector(cid, request.json):
+                        return {"message": "Connector added"}, 200
+                    return {"message": "Error Connector added"}, 400
+                return {"message": "Please give a list of connectors"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case doesn't exist"}, 404
+    
+@api.route('/<cid>/edit_connector/<ciid>', methods=['POST'])
+@api.doc(description='Edit connector')
+class EditConnectorsCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        "identifier": "Required. Identifier used by modules to identify where to send data."
+    })
+    def post(self, cid, ciid):
+        if CommonModel.get_case(cid):
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if "identifier" in request.json:
+                    if CaseModel.edit_connector(cid, ciid, request.json):
+                        return {"message": "Connector edited"}, 200
+                    return {"message": "Error Connector edited"}, 400
+                return {"message": "Please give a list of connectors"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case doesn't exist"}, 404
+    
+@api.route('/<cid>/remove_connector/<ciid>', methods=['GET'])
+@api.doc(description='Remove a connector')
+class RemoveConnectors(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid, ciid):
+        if CommonModel.get_case(cid):
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if CaseModel.remove_connector(cid, ciid):
+                    return {"message": "Connector removed"}, 200
+                return {"message": "Error Connector removed"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case doesn't exist"}, 404
 
 #########
 # Tasks #

@@ -726,6 +726,7 @@ def add_connector(tid, request_json) -> bool:
 def remove_connector(task_id, instance_id):
     try:
         Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).delete()
+        db.session.commit()
     except:
         return False
     return True

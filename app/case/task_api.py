@@ -378,55 +378,85 @@ class GetGalaxiesTask(Resource):
                     clusters[index] = cluster.tag
             return {"clusters": clusters, "galaxies": galaxies}
         return {"message": "task Not found"}, 404
-        
-@api.route('/get_connectors', methods=['GET'])
-@api.doc(description='Get all connectors and instances')
-class GetConnectors(Resource):
-    method_decorators = [api_required]
-    def get(self):
-        current_user = CaseModelApi.get_user_api(request.headers)
-        connectors_list = CommonModel.get_connectors()
-        connectors_dict = dict()
-        for connector in connectors_list:
-            loc = list()
-            for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
-                    loc.append(instance.to_json())
-            if loc:
-                connectors_dict[connector.name] = loc
-        return {"connectors": connectors_dict}, 200
 
-@api.route('/<tid>/get_connectors_task', methods=['GET'])
+
+##############
+# Connectors #
+##############
+
+@api.route('/<tid>/get_connectors', methods=['GET'])
 @api.doc(description='Get all connectors for a task')
 class GetConnectors(Resource):
     method_decorators = [api_required]
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            return {"connectors": [CommonModel.get_instance(task_instance.instance_id).name for task_instance in CommonModel.get_task_connectors(task.id) ]}, 200
-        return {"message": "task Not found"}, 404
+            instance_list = []
+            for task_instance in CommonModel.get_task_connectors(task.id):
+                loc_instance = CommonModel.get_instance(task_instance.instance_id)
+                instance_list.append({
+                    "id": loc_instance.id,
+                    "name": loc_instance.name,
+                    "identifier": task_instance.identifier
+                })
+            return {"connectors": instance_list}, 200
+        return {"message": "Task Not found"}, 404
 
-@api.route('/<tid>/get_connectors_task_id', methods=['POST'])
-@api.doc(description='Get all identifier for connectors instances')
-class GetConnectors(Resource):
-    method_decorators = [api_required]
+
+@api.route('/<tid>/add_connectors', methods=['POST'])
+@api.doc(description='Add connectors to a task')
+class AddConnectorsTask(Resource):
+    method_decorators = [editor_required, api_required]
     @api.doc(params={
-        'instances': 'Required. List of name of instances'
+        "connectors": "Required. List of connectors instance. Dict with 'name' and 'identifier' as keys."
     })
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            if "instances" in request.json:
-                loc = dict()
-                instances = request.json["instances"]
-                for instance in instances:
-                    ident = CommonModel.get_task_connector_id(CommonModel.get_instance_by_name(instance).id, task.id)
-                    if ident:
-                        loc[instance] = ident.identifier
-                return {"instances": loc}, 200
-            return {"message": "Need to pass 'instances'"}, 400
-        return {"message": "Task Not found"}, 404
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if "connectors" in request.json:
+                    if TaskModel.add_connector(tid, request.json):
+                        return {"message": "Connector added"}, 200
+                    return {"message": "Error Connector added"}, 400
+                return {"message": "Please give a list of connectors"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Task doesn't exist"}, 404
     
+@api.route('/<tid>/edit_connector/<ciid>', methods=['POST'])
+@api.doc(description='Edit connector')
+class EditConnectorTask(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        "identifier": "Required. Identifier used by modules to identify where to send data."
+    })
+    def post(self, tid, ciid):
+        task = CommonModel.get_task(tid)
+        if task:
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if "identifier" in request.json:
+                    if TaskModel.edit_connector(tid, ciid, request.json):
+                        return {"message": "Connector edited"}, 200
+                    return {"message": "Error Connector edited"}, 400
+                return {"message": "Please give a list of connectors"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Task doesn't exist"}, 404
+    
+@api.route('/<tid>/remove_connector/<ciid>', methods=['GET'])
+@api.doc(description='Remove a connector')
+class RemoveConnectorTask(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, tid, ciid):
+        task = CommonModel.get_task(tid)
+        if task:
+            current_user = CaseModelApi.get_user_api(request.headers)
+            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.remove_connector(tid, ciid):
+                    return {"message": "Connector removed"}, 200
+                return {"message": "Error Connector removed"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case doesn't exist"}, 404
 
 ###########
 # Subtask #

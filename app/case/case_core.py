@@ -844,6 +844,7 @@ def add_connector(cid, request_json) -> bool:
 def remove_connector(case_id, instance_id):
     try:
         Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).delete()
+        db.session.commit()
     except:
         return False
     return True
@@ -1141,6 +1142,7 @@ def add_misp_object_connector(cid, request_json) -> bool:
 def remove_misp_connector(case_id, instance_id):
     try:
         Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).delete()
+        db.session.commit()
     except:
         return False
     return True
