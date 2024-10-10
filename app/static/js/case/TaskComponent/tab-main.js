@@ -240,7 +240,7 @@ export default {
         <div class="col" v-if="task.url">
             <fieldset class="analyzer-select-case">
                 <legend class="analyzer-select-case"><i class="fa-solid fa-screwdriver-wrench"></i> Tool/Url</legend>
-                [[task.url]]
+                <a :href="task.url" target="_blank">[[task.url]]</a>
             </fieldset>
         </div>
     </div>

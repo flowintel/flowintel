@@ -152,3 +152,12 @@ legend.analyzer-select-case {
   color: white;
   font-size: 15px;
 }
+
+.subtask-tree {
+  border-left: 2px solid grey;
+  border-bottom: 2px solid grey;
+  width: 15px;
+  height: 15px;
+  margin-left: 0.5em;
+  margin-right: 3px;
+}

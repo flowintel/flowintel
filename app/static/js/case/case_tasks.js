@@ -462,11 +462,12 @@ export default {
 					<i>[[task.notes.length]] Notes</i>
 				</span>
 			</div>
-			<p class="mt-1" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="background-color: #f5f5f5; border: 1px solid grey; border-radius: 5px; padding: 5px;">
+			<p class="mt-1 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
 				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
 				<template v-for="subtask in task.subtasks">
-					<div v-if="!subtask.completed">
-						- [[subtask.description]]
+					<div v-if="!subtask.completed" style="display: flex;">
+						<div class="subtask-tree"></div>
+						[[subtask.description]]
 					</div>
 				</template>
 			</p>

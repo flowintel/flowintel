@@ -26,10 +26,10 @@ export default {
 		}
 
         async function create_subtask(task){
-			$("#create-subtask-error-"+task.id).text("")
-			let description = $("#create-subtask-"+task.id).val()
+			$("#textarea-subtask-error-"+task.id).text("")
+			let description = $("#textarea-subtask-"+task.id).val()
 			if(!description){
-				$("#create-subtask-error-"+task.id).text("Cannot be empty...").css("color", "brown")
+				$("#textarea-subtask-error-"+task.id).text("Cannot be empty...").css("color", "brown")
 			}
 			
 			const res = await fetch("/case/"+ task.case_id +"/task/"+task.id+"/create_subtask", {
@@ -42,10 +42,12 @@ export default {
 				})				
 			});
 			if( await res.status == 200){
-				let loc= res.json()["id"]
-				task.subtasks.push({"id": loc, "description": description, "task_id": task.id, "completed": false})
+				let loc = await res.json()
+				
+				task.subtasks.push({"id": loc["id"], "description": description, "task_id": task.id, "completed": false})
 				create_message("Subtask created", "success-subtle")
-                $("#create_subtask").modal("hide")
+				$("#textarea-subtask-"+task.id).val("")
+                $("#create_subtask_"+task.id).modal("hide")
 			}else{
 				await display_toast(res)
 			}
@@ -107,7 +109,7 @@ export default {
             <legend class="analyzer-select-case">
                 <i class="fa-solid fa-list"></i> 
                 Subtasks
-                <button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" data-bs-target="#create_subtask" style="float: right; margin-left:3px;">
+                <button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" :data-bs-target="'#create_subtask_'+task.id" style="float: right; margin-left:3px;">
                     <i class="fa-solid fa-plus"></i>
                 </button>
             </legend>
@@ -151,7 +153,7 @@ export default {
     </div>
 
     <!-- Modal create subtask -->
-    <div class="modal fade" id="create_subtask" tabindex="-1" aria-labelledby="create_subtask_modal" aria-hidden="true">
+    <div class="modal fade" :id="'create_subtask_'+task.id" tabindex="-1" aria-labelledby="create_subtask_modal" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -159,10 +161,11 @@ export default {
                     <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <b>Create a new subtask</b>
-                    <br>
-                    <textarea class="form-control" :id="'create-subtask-'+task.id"/>
-                    <div :id="'create-subtask-error-'+task.id"></div>
+					<div class="form-floating">
+						<textarea class="form-control" :id="'textarea-subtask-'+task.id"/>
+						<label>New Subtask</label>
+						<div :id="'textarea-subtask-error-'+task.id"></div>
+					</div>
                 </div>
                 <div class="modal-footer">
                     <button @click="create_subtask(task)" class="btn btn-primary">Submit</button>
