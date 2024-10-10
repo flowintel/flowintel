@@ -67,6 +67,7 @@ def edit_task(cid, tid):
                 form.description.data = task_modif.description
                 form.title.data = task_modif.title
                 form.url.data = task_modif.url
+                form.time_required.data = task_modif.time_required
                 form.deadline_date.data = task_modif.deadline
                 form.deadline_time.data = task_modif.deadline
             
@@ -566,7 +567,7 @@ def create_subtask(cid,tid):
         if "description" in request.json:
             subtask = TaskModel.create_subtask(tid, request.json["description"])
             if subtask:
-                return {"message": f"Subtask created, id: {subtask.id}", 'toast_class': "success-subtle"}, 200 
+                return {"message": f"Subtask created", "id": subtask.id, 'toast_class': "success-subtle"}, 200 
             return {"message": "Error creating subtask", 'toast_class': "danger-subtle"}, 400
         return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404

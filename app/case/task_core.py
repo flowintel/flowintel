@@ -130,7 +130,8 @@ def create_task(form_dict, cid, current_user):
             status_id=1,
             case_order_id=nb_tasks,
             completed=completed,
-            nb_notes=0
+            nb_notes=0,
+            time_required=form_dict["time_required"]
         )
         db.session.add(task)
         db.session.commit()
@@ -185,6 +186,7 @@ def edit_task_core(form_dict, tid, current_user):
     task.description=form_dict["description"]
     task.url=form_dict["url"]
     task.deadline=deadline
+    task.time_required = form_dict["time_required"]
 
     ## Tags
     task_tag_db = CommonModel.get_task_tags(tid)

@@ -170,6 +170,7 @@ class Task(db.Model):
     files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
     nb_notes = db.Column(db.Integer, index=True)
     subtasks = db.relationship('Subtask', backref='Task', lazy='dynamic', cascade="all, delete-orphan")
+    time_required = db.Column(db.String)
 
     def to_json(self):
         json_dict = {
@@ -186,6 +187,7 @@ class Task(db.Model):
             "notif_deadline_id": self.notif_deadline_id,
             "case_order_id": self.case_order_id,
             "nb_notes": self.nb_notes,
+            "time_required": self.time_required
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
         if self.deadline:

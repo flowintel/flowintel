@@ -627,7 +627,7 @@ export default {
                     :modules="task_modules"
                     :is_case="false"
 					:object_id="task.id"
-					@case_connectors="123"
+					@case_connectors=""
                 	@task_connectors="(msg) => fetch_task_connectors()">
 				</caseconnectors>
 			</template>
