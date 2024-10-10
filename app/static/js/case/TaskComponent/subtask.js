@@ -45,7 +45,7 @@ export default {
 				let loc = await res.json()
 				
 				task.subtasks.push({"id": loc["id"], "description": description, "task_id": task.id, "completed": false})
-				create_message("Subtask created", "success-subtle")
+				create_message("Subtask created", "success-subtle", false, "fas fa-plus")
 				$("#textarea-subtask-"+task.id).val("")
                 $("#create_subtask_"+task.id).modal("hide")
 			}else{

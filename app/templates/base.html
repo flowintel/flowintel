@@ -57,7 +57,7 @@
                                     <div class="d-flex">
                                         <div class="toast-body">
                                             <template v-if="message.message">
-                                                [[message.message]]
+                                                <i :class="message.icon" style="margin-right: 5px;"></i> [[message.message]]
                                             </template>
                                         </div>
                                         <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
