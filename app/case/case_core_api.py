@@ -60,6 +60,9 @@ def verif_create_case_task(data_dict, isCase):
                 return {"message": f"Connector '{loc}' doesn't exist"}
         else:
             data_dict["connectors"] = []
+        
+        if "time_required" not in data_dict or not data_dict["time_required"]:
+            data_dict["time_required"] = ""
 
 
     return data_dict
@@ -116,5 +119,8 @@ def verif_edit_task(data_dict, task_id):
 
     if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = task.url
+    
+    if "time_required" not in data_dict or not data_dict["time_required"]:
+        data_dict["time_required"] = task.time_required
 
     return data_dict
