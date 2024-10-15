@@ -3,6 +3,7 @@ from . import tools_core as ToolModel
 from . import tools_core_api as ApiToolModel
 from . import common_template_core as CommonModel
 from . import task_template_core as TaskModel
+from ..utils import utils
 
 from flask_restx import Api, Resource
 from ..decorators import api_required
@@ -156,7 +157,7 @@ class CreateCaseFromTemplate(Resource):
         if template:
             if request.json:
                 if "title" in request.json:
-                    new_case = ToolModel.create_case_from_template(cid, request.json["title"], ApiToolModel.get_user_api(request.headers["X-API-KEY"]))
+                    new_case = ToolModel.create_case_from_template(cid, request.json["title"], utils.get_user_api(request.headers["X-API-KEY"]))
                     if type(new_case) == dict:
                         return new_case
                     return {"message": f"New case created, id: {new_case.id}"}, 201

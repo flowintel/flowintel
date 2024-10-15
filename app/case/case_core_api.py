@@ -4,17 +4,6 @@ from . import common_core as CommonModel
 from ..utils.datadictHelper import edition_verification_tags_connectors, creation_verification_tags_connectors
 
 
-def get_user_api(headers):
-    if "MATRIX-ID" in headers:
-        bot = User.query.filter_by(last_name="Bot", first_name="Matrix").first()
-        if bot:
-            if bot.api_key == headers["X-API-KEY"]:
-                user = User.query.filter_by(matrix_id=headers["MATRIX-ID"]).first()
-                if user:
-                    return user
-    return User.query.filter_by(api_key=headers["X-API-KEY"]).first()
-
-
 def verif_set_recurring(data_dict):
     if "once" in data_dict:
         try:

@@ -1,10 +1,9 @@
-import ast
-import json
 from flask import Blueprint, request
 from . import case_core as CaseModel
 from . import common_core as CommonModel
 from . import task_core as TaskModel
 from . import case_core_api as CaseModelApi
+from ..utils import utils
 
 from flask_restx import Api, Resource
 from ..decorators import api_required, editor_required
@@ -60,7 +59,7 @@ class CreateCase(Resource):
         "custom_tags" : "List of custom tags created on the instance"
     })
     def post(self):
-        user = CaseModelApi.get_user_api(request.headers)
+        user = utils.get_user_from_api(request.headers)
 
         if request.json:
             verif_dict = CaseModelApi.verif_create_case_task(request.json, True)
@@ -87,7 +86,7 @@ class EditCase(Resource):
                      "custom_tags" : "List of custom tags created on the instance"
                     })
     def post(self, id):
-        current_user = CaseModelApi.get_user_api(request.headers)
+        current_user = utils.get_user_from_api(request.headers)
         if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_edit_case(request.json, id)
@@ -108,7 +107,7 @@ class ForkCase(Resource):
         "case_title_fork": "Required. Title for the case"
     })
     def post(self, cid):
-        user = CaseModelApi.get_user_api(request.headers)
+        user = utils.get_user_from_api(request.headers)
 
         if request.json:
             if "case_title_fork" in request.json:
@@ -156,7 +155,7 @@ class GetCaseTitle(Resource):
 class CompleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers)
+        current_user = utils.get_user_from_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             case = CommonModel.get_case(cid)
             if case:
@@ -171,7 +170,7 @@ class CompleteCase(Resource):
 class DeleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers)
+        current_user = utils.get_user_from_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_case(cid, current_user):
                 return {"message": "Case deleted"}, 200
@@ -184,7 +183,7 @@ class AddOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     @api.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
     def post(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers)
+        current_user = utils.get_user_from_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "name" in request.json:
                 org = CommonModel.get_org_by_name(request.json["name"])
@@ -208,7 +207,7 @@ class AddOrgCase(Resource):
 class RemoveOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, oid):
-        current_user = CaseModelApi.get_user_api(request.headers)
+        current_user = utils.get_user_from_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             org = CommonModel.get_org(oid)
 
@@ -242,7 +241,7 @@ class CreateTemplate(Resource):
     def post(self, cid):
         if "title_template" in request.json:
             if CommonModel.get_case(cid):
-                current_user = CaseModelApi.get_user_api(request.headers)
+                current_user = utils.get_user_from_api(request.headers)
                 new_template = CaseModel.create_template_from_case(cid, request.json["title_template"], current_user)
                 if type(new_template) == dict:
                     return new_template
@@ -263,7 +262,7 @@ class RecurringCase(Resource):
         "remove": "Boolean"
     })
     def post(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers)
+        current_user = utils.get_user_from_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_set_recurring(request.json)
@@ -302,7 +301,7 @@ class ChangeStatusCase(Resource):
         if "status_id" in request.json:
             case = CommonModel.get_case(cid)
             if case:
-                current_user = CaseModelApi.get_user_api(request.headers)
+                current_user = utils.get_user_from_api(request.headers)
                 if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     CaseModel.change_status_core(request.json["status_id"], case, current_user)
                     return {"message": "Status changed"}, 200
@@ -402,7 +401,7 @@ class GetInstanceModules(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if "module" in request.args:
                 module = request.args.get("module")
             if "type" in request.args:
@@ -424,7 +423,7 @@ class CallModuleCase(Resource):
     def post(self, cid):
         case = CommonModel.get_case(cid)
         if case:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "module" in request.json:
                     if "instance_id" in request.json:
@@ -454,7 +453,7 @@ class GetNote(Resource):
 class GetAllUsers(Resource):
     method_decorators = [api_required]
     def get(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers)
+        current_user = utils.get_user_from_api(request.headers)
         case = CommonModel.get_case(cid)
         if case:
             users_list = list()
@@ -482,7 +481,7 @@ class ListStatus(Resource):
 class GetConnectors(Resource):
     method_decorators = [api_required]
     def get(self):
-        current_user = CaseModelApi.get_user_api(request.headers)
+        current_user = utils.get_user_from_api(request.headers)
         connectors_list = CommonModel.get_connectors()
         connectors_dict = dict()
         for connector in connectors_list:
@@ -521,7 +520,7 @@ class AddConnectorsCase(Resource):
     })
     def post(self, cid):
         if CommonModel.get_case(cid):
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "connectors" in request.json:
                     if CaseModel.add_connector(cid, request.json):
@@ -540,7 +539,7 @@ class EditConnectorsCase(Resource):
     })
     def post(self, cid, ciid):
         if CommonModel.get_case(cid):
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "identifier" in request.json:
                     if CaseModel.edit_connector(cid, ciid, request.json):
@@ -556,7 +555,7 @@ class RemoveConnectors(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, ciid):
         if CommonModel.get_case(cid):
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if CaseModel.remove_connector(cid, ciid):
                     return {"message": "Connector removed"}, 200
@@ -616,7 +615,7 @@ class CreateTask(Resource):
         "custom_tags" : "List of custom tags created on the instance"
     })
     def post(self, cid):
-        current_user = CaseModelApi.get_user_api(request.headers)
+        current_user = utils.get_user_from_api(request.headers)
         if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_create_case_task(request.json, False)
@@ -636,7 +635,7 @@ class MoveTaskUp(Resource):
     def get(self, cid, tid):
         case = CommonModel.get_case(cid)
         if case:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 task = CommonModel.get_task(tid)
                 if task:
@@ -653,7 +652,7 @@ class MoveTaskDown(Resource):
     def get(self, cid, tid):
         case = CommonModel.get_case(cid)
         if case:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 task = CommonModel.get_task(tid)
                 if task:
@@ -683,7 +682,7 @@ class ModifNoteCase(Resource):
     def post(self, cid):
         case = CommonModel.get_case(cid)
         if case:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "note" in request.json:
                     if CaseModel.modif_note_core(cid, current_user, request.json["note"]):

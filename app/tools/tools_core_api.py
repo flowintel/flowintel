@@ -2,9 +2,6 @@ from ..db_class.db import Case_Template, User, Task_Template
 from ..utils.datadictHelper import edition_verification_tags_connectors, creation_verification_tags_connectors
 
 
-def get_user_api(api_key):
-    return User.query.filter_by(api_key=api_key).first()
-
 def common_creation(data_dict):
     return creation_verification_tags_connectors(data_dict)
 

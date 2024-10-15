@@ -99,12 +99,13 @@ def add_instance(cid):
         type_list = get_module_type()
         form.type_select.choices = list()
         for i in range(0, len(type_list)):
-            form.type_select.choices.append((i, type_list[i]))
+            form.type_select.choices.append((type_list[i], type_list[i]))
         form.type_select.choices.insert(0, ("None","--"))
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            ConnectorModel.add_connector_instance_core(cid, form_dict, current_user.id, type_list)
-            return redirect("/connectors")
+            if ConnectorModel.add_connector_instance_core(cid, form_dict, current_user.id):
+                return redirect("/connectors")
+            return render_template("connectors/add_instance.html", form=form, edit_mode=False)
         return render_template("connectors/add_instance.html", form=form, edit_mode=False)
     return render_template("404.html")
 
@@ -166,14 +167,14 @@ def edit_instance(cid, iid):
         form.type_select.choices = list()
         for i in range(0, len(type_list)):
             if not type_list[i] == loc_instance.type:
-                form.type_select.choices.append((i+1, type_list[i]))
+                form.type_select.choices.append((type_list[i]), type_list[i])
         form.type_select.choices.insert(0, ("None","--"))
         if loc_instance.type:
-            form.type_select.choices.insert(0, (0, loc_instance.type))
+            form.type_select.choices.insert(0, (loc_instance.type, loc_instance.type))
 
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            if not ConnectorModel.edit_connector_instance_core(iid, form_dict, type_list):
+            if not ConnectorModel.edit_connector_instance_core(iid, form_dict):
                 flash("Error editing connector")
             return redirect("/connectors")
         else:

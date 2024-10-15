@@ -3,6 +3,7 @@ from . import case_core as CaseModel
 from . import common_core as CommonModel
 from . import task_core as TaskModel
 from . import case_core_api as CaseModelApi
+from ..utils import utils
 
 from flask_restx import Api, Resource
 from ..decorators import api_required, editor_required
@@ -28,7 +29,7 @@ class GetTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             loc = dict()
-            loc["users_assign"], loc["is_current_user_assign"] = TaskModel.get_users_assign_task(task.id, CaseModelApi.get_user_api(request.headers))
+            loc["users_assign"], loc["is_current_user_assign"] = TaskModel.get_users_assign_task(task.id, utils.get_user_from_api(request.headers))
             loc["task"] = task.to_json()
             return loc, 200
         return {"message": "Task not found"}, 404
@@ -65,7 +66,7 @@ class EditTake(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if request.json:
                     verif_dict = CaseModelApi.verif_edit_task(request.json, tid)
@@ -86,7 +87,7 @@ class DeleteTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.delete_task(tid, current_user):
                     return {"message": "Task deleted"}, 200
@@ -102,7 +103,7 @@ class CompleteTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.complete_task(tid, current_user):
                     return {"message": f"Task {tid} completed"}, 200
@@ -145,7 +146,7 @@ class ModifNoteTask(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "note_id" in request.json:
                     if "note" in request.json:
@@ -166,7 +167,7 @@ class CreateNoteTask(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "note" in request.json:
                     res = TaskModel.modif_note_core(tid, current_user, request.json["note"], '-1')
@@ -199,7 +200,7 @@ class AssignTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             print(current_user.to_json())
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
@@ -216,7 +217,7 @@ class RemoveOrgCase(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     return {"message": f"Removed from assignment"}, 200
@@ -233,7 +234,7 @@ class AssignUsers(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 users_list = request.json["users_id"]
                 for user in users_list:
@@ -251,7 +252,7 @@ class RemoveAssignUser(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 user_id = request.json["user_id"]
                 if TaskModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
@@ -276,7 +277,7 @@ class ChangeStatus(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.change_task_status(request.json["status_id"], task, current_user):
                     return {"message": "Status changed"}, 200
@@ -305,7 +306,7 @@ class UploadFile(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.add_file_core(task, request.files, current_user):
                     return {"message": "File added"}, 200
@@ -321,7 +322,7 @@ class DownloadFile(Resource):
     def get(self, tid, fid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 file = CommonModel.get_file(fid)
                 if file and file in task.files:
@@ -336,7 +337,7 @@ class DeleteFile(Resource):
     def get(self, tid, fid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 file = CommonModel.get_file(fid)
                 if file and file in task.files:
@@ -413,7 +414,7 @@ class AddConnectorsTask(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "connectors" in request.json:
                     if TaskModel.add_connector(tid, request.json):
@@ -433,7 +434,7 @@ class EditConnectorTask(Resource):
     def post(self, tid, ciid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "identifier" in request.json:
                     if TaskModel.edit_connector(tid, ciid, request.json):
@@ -450,7 +451,7 @@ class RemoveConnectorTask(Resource):
     def get(self, tid, ciid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.remove_connector(tid, ciid):
                     return {"message": "Connector removed"}, 200
@@ -472,7 +473,7 @@ class CreateSubtask(Resource):
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "description" in request.json:
                     subtask = TaskModel.create_subtask(tid, request.json["description"])
@@ -492,7 +493,7 @@ class EditSubtask(Resource):
     def post(self, tid, sid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "description" in request.json:
                     subtask = TaskModel.edit_subtask(tid, sid, request.json["description"])
@@ -531,7 +532,7 @@ class CompleteSubtask(Resource):
     def get(self, tid, sid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.complete_subtask(tid, sid):
                     return {"message": "Subtask completed"}, 200
@@ -546,7 +547,7 @@ class DeleteSubtask(Resource):
     def get(self, tid, sid):
         task = CommonModel.get_task(tid)
         if task:
-            current_user = CaseModelApi.get_user_api(request.headers)
+            current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.delete_subtask(tid, sid):
                     return {"message": "Subtask deleted"}, 200

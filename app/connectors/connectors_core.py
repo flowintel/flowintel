@@ -66,15 +66,12 @@ def add_connector_core(form_dict):
     )
     db.session.add(connector)
     db.session.commit()
-    return True
+    return connector
 
-def add_connector_instance_core(cid, form_dict, user_id, type_list=[]):
+def add_connector_instance_core(cid, form_dict, user_id):
 
     if form_dict["type_select"] and not form_dict["type_select"] == "None":
-        try:
-            type_select = type_list[int(form_dict["type_select"])]
-        except:
-            return False
+        type_select = form_dict["type_select"]
     else:
         type_select = ""
 
@@ -147,16 +144,13 @@ def edit_connector_core(cid, form_dict):
         return True
     return False
 
-def edit_connector_instance_core(iid, form_dict, type_list=[]):
+def edit_connector_instance_core(iid, form_dict):
     instance_db = get_instance(iid)
     if instance_db:
         if form_dict["type_select"] and not form_dict["type_select"] == "None":
-            try:
-                type_select = type_list[int(form_dict["type_select"])-1]
-            except:
-                return False
+            type_select = form_dict["type_select"]
         else:
-            type_select = ""
+            type_select = instance_db.type
         instance_db.name = form_dict["name"]
         instance_db.url = form_dict["url"]
         instance_db.description = form_dict["description"]

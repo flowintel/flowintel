@@ -1,6 +1,6 @@
 import json
 from flask import Blueprint, request
-from ..case import case_core_api as CaseModelApi
+from ..utils.utils import get_user_from_api
 from . import analyzer_core as AnalyzerModel
 
 from flask_restx import Api, Resource
@@ -25,8 +25,7 @@ class ReiceveResult(Resource):
         "results": "Required. Results from external tool"
     })
     def post(self):
-        user = CaseModelApi.get_user_api(request.headers)
-        print(request.json)
+        user = get_user_from_api(request.headers)
         if request.json:
             AnalyzerModel.add_pending_result(request.headers.get('Origin'), request.json["results"], user)
             return {"message": "Results receive"}, 200
