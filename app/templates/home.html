@@ -5,75 +5,118 @@
 {% extends 'base.html' %}
 
 {% block content %}
+    <div style="text-align: center;">
+        <a href="https://github.com/flowintel/flowintel" style="text-decoration: none;">
+            <img src="{{ url_for('static',filename='image/flowintel.png') }}" height="100" alt="flowintel Logo" loading="lazy"/>
+            <div style="margin-left:120px">
+                    <i style="font-size: 15px; color: #666470;">Version: 1.1.0</i>
+            </div>
+        </a>
+    </div>
+    <!-- <hr> -->
+
     <div>
-        <header>
-        </header>
-        <h1>flowintel</h1>
+        <h1>Last modifications</h1>
     </div>
 
-    <hr>
-    <br/>
-    <br/>
-    <div class="card card-body">
-        <div class="d-flex w-100 justify-content-evenly">
-            <div>
-                <div><h3><u><a href="/case">My Cases</a></u></h3></div>
-                <div>
-                    <h6>Open: {{cases_open_len}}</h6>
-                </div>
-                <div>
-                    <h6>Closed: {{cases_closed_len}}</h6>
-                </div>
-            </div>
-            <div>
-                <div><h3><u><a href="/my_assignment">My Tasks</a></u></h3></div>
-                <div>
-                    <h6>Open: {{tasks_open_len}}</h6>
-                </div>
-                <div>
-                    <h6>Closed: {{tasks_closed_len}}</h6>
-                </div>
-            </div>
-        </div>
-    </div>
-    <br/>
+    <!-- <hr> -->
 
-    {% if current_user.is_admin() %}
-    <div class="card card-body">
-        <div class="d-flex w-100 justify-content-evenly">
-            <div>
-                <div><h3><u> All Cases</u></h3></div>
-                <div>
-                    <h6>Open: {{all_cases_open}}</h6>
-                </div>
-                <div>
-                    <h6>Closed: {{all_cases_closed}}</h6>
+    <template v-if="case_list">
+        <template v-for="case_loc in case_list">
+            <div class="list-group" style="margin-bottom: 20px;">
+                <div style="display:flex; border-radius: 15px;">
+                    <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1">
+                                [[ case_loc.id ]]-[[ case_loc.title ]]
+                                <button v-if="case_loc.link_to.length" disabled class="btn btn-outline-primary btn-sm" style="margin-left: 20px;">
+                                    <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[case_loc.link_to.length]]</span>
+                                </button>
+                            </h4>                            
+                            <small><i>Changed [[ (dayjs.utc(case_loc.last_modif).fromNow()) ]]</i></small>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+
+                            <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
+                        </div>
+                        <div class="d-flex w-100">
+                            <small><i>[[case_loc.open_tasks]] open/ [[case_loc.closed_tasks]] closed</i></small>
+                        </div>
+                        <div class="d-flex w-100" v-if="case_loc.custom_tags" style="margin-top: 5px;">
+                            <template v-for="custom_tag in case_loc.custom_tags">
+                                <div class="tag" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">
+                                    <i v-if="custom_tag.icon" :class="custom_tag.icon"></i>
+                                    [[custom_tag.name]]
+                                </div>
+                            </template>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <div v-if="case_loc.tags">
+                                <template v-for="tag in case_loc.tags">
+                                    <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                                        [[tag.name]]
+                                    </div>
+                                </template>
+                            </div>
+                            <div v-else></div>
+                            <small v-if="case_loc.deadline" :title="case_loc.deadline"><i>Deadline [[dayjs.utc(case_loc.deadline).endOf().fromNow()]]</i></small>
+                            <small v-else><i>No deadline</i></small>
+                        </div>
+                        <div class="d-flex w-100" v-if="case_loc.clusters">
+                            <template v-for="cluster in case_loc.clusters">
+                                <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
+                                    <span class="cluster">
+                                        <span v-html="mapIcon(cluster.icon)"></span>
+                                    [[cluster.tag]]
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
+                    </a>
                 </div>
             </div>
-            <div>
-                <div><h3><u>All Tasks</u></h3></div>
-                <div>
-                    <h6>Open: {{all_tasks_open}}</h6>
-                </div>
-                <div>
-                    <h6>Closed: {{all_tasks_closed}}</h6>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
+        </template>
+    </template>
+
     <span id="project-version"><a href="https://github.com/flowintel/flowintel"><i>version 1.1.0</i></a></span>
 {% endblock %}
 
 {% block script %}
 <script type="module">
-    const { createApp} = Vue
-    import {message_list} from '../../static/js/toaster.js'
+    const { createApp, ref} = Vue
+    import {message_list} from '/static/js/toaster.js'
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
+            const case_list = ref(null)
+            const status_info = ref(null)
+
+            async function fetchCase() {
+                case_list.value = null
+                const res = await fetch("/last_case")
+                let loc = await res.json()
+                case_list.value = loc["cases"]
+                
+            }
+            fetchCase()
+
+            async function fetchStatus() {
+                status_info.value = null
+                const res = await fetch(
+                    '/case/get_status'
+                )
+                status_info.value = await res.json()
+            }
             return {
-                message_list
+                message_list,
+                case_list,
+                status_info,
+                dayjs,
+                getTextColor,
+                mapIcon
             }
         }
     }).mount('#main-container')
