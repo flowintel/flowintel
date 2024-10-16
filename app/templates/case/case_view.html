@@ -121,7 +121,7 @@
         </div>
     </template>
 
-    <misp_object :cases_info="cases_info"></misp_object>
+    <misp_object v-if="cases_info" :case_id="cases_info.case.id"></misp_object>
 
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
         <i :title="cases_info.case.creation_date">Created: [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]</i>

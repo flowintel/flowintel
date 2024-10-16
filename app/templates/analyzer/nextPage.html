@@ -113,8 +113,32 @@
             </div>
         </div>
         <div class="col-6 note-editor-container d-none" id="editor_id">
-            <h6>Note to edit</h6>
-            <div id="editor-selected-notes" class="card card-body"></div>
+            <div class="accordion" id="accordionExample">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                        Note to Edit
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordionExample">
+                        <div class="accordion-body">
+                            <div id="editor-selected-notes" class="card card-body"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item" v-if="case_selected">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                        MISP Objects
+                        </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
+                        <div class="accordion-body">
+                            <misp_object :case_id="case_selected.id" @list_misp_objects="(msg) => list_misp_objects = msg"></misp_object>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -127,9 +151,13 @@
     <script type="module">
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
+        import misp_object from '/static/js/analyzer/misp_object.js'
 
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                misp_object
+            },
             setup() {
                 const result_search = ref([])
                 const result_search_task = ref([])
@@ -140,6 +168,8 @@
                 const task_note_index = ref()
                 const create_case = ref(false)
                 const create_task = ref(false)
+
+                const list_misp_objects = ref([])
 
                 let editor = ""
 
@@ -334,6 +364,7 @@
                     }
 
                     prepare_request["notes"] = editor.state.doc.toString()
+                    prepare_request["misp-objects"] = list_misp_objects.value
 
                     const res = await fetch("/analyzer/manage_notes_selected", {
                         method: "POST",
@@ -373,6 +404,7 @@
                     bool_case_task_note,
                     create_case,
                     create_task,
+                    list_misp_objects,
                     onInputCase,
                     select_case,
                     submit,

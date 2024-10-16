@@ -79,6 +79,10 @@ def manage_notes_selected(request_json, current_user, pid):
         case_id = request_json["case_note"]["case_id"]
         CaseModel.modif_note_core(case_id, current_user, request_json["notes"])
 
+    if "misp-objects" in request_json:
+        for misp_obj in request_json["misp-objects"]:
+            CaseModel.create_misp_object(case_id, misp_obj)
+
     # Delete pending
     delete_pending_result(pid)
     return case_id
@@ -108,15 +112,15 @@ def add_pending_result(origin_url, pending_result, user):
     return True
 
 def get_len_pending_results():
-    pendings = Analyzer_Result.query.all()
-    cp = 0
-    for _ in pendings:
-        cp+=1
-    return cp
+    return Analyzer_Result.query.count()
 
 def delete_pending_result(pid):
     p = get_pending_result(pid)
-    # print(pid)
     if p:
         db.session.delete(p)
         db.session.commit()
+
+def depending_results(pid):
+    p = get_pending_result(pid)
+    p.is_pending = False
+    db.session.commit()

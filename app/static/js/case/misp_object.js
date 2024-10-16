@@ -5,7 +5,7 @@ const { ref, onMounted, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
-		cases_info: Object
+		case_id: Number
 	},
     components: {
         AddObjectAttributes,
@@ -29,8 +29,8 @@ export default {
         };
 		
         async function fetch_case_misp_object(){
-            // const res = await fetch("/case/"+props.cases_info.case.id+"/get_case_misp_object")
-            const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/get_case_misp_object")
+            const res = await fetch("/case/"+props.case_id+"/get_case_misp_object")
+            // const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/get_case_misp_object")
             if(await res.status==404 ){
                 display_toast(res)
             }else{
@@ -52,9 +52,9 @@ export default {
             if(list_attr.value.length){
                 let url = ""
                 if (object_id){
-                    url = "/case/"+props.cases_info.case.id+"/add_attributes/"+object_id
+                    url = "/case/"+props.case_id+"/add_attributes/"+object_id
                 }else{
-                    url = "/case/"+props.cases_info.case.id+"/create_misp_object"
+                    url = "/case/"+props.case_id+"/create_misp_object"
                 }
                 const res = await fetch(url, {
                     method: "POST",
@@ -95,7 +95,7 @@ export default {
         }
 
         async function delete_object(object_id){
-            const res = await fetch("/case/"+props.cases_info.case.id+"/delete_object/"+object_id)
+            const res = await fetch("/case/"+props.case_id+"/delete_object/"+object_id)
             if(await res.status==200 ){
                 let loc
                 for(let i in case_misp_objects.value){
@@ -121,7 +121,7 @@ export default {
             let type = $("#select-type-attr-"+attr_id).val()
 
             if(value){
-                let url = "/case/"+props.cases_info.case.id+"/misp_object/"+misp_object_id+"/edit_attr/"+attr_id
+                let url = "/case/"+props.case_id+"/misp_object/"+misp_object_id+"/edit_attr/"+attr_id
                 const res = await fetch(url, {
                     method: "POST",
                     headers: {
@@ -151,7 +151,7 @@ export default {
         }
 
         async function delete_attribute(attribute_id, misp_object_id) {
-            const res = await fetch("/case/"+props.cases_info.case.id+"/misp_object/"+misp_object_id+"/delete_attribute/"+attribute_id)
+            const res = await fetch("/case/"+props.case_id+"/misp_object/"+misp_object_id+"/delete_attribute/"+attribute_id)
             if(await res.status==200 ){
                 let loc
 
@@ -190,7 +190,6 @@ export default {
                     (objectTemplate) => objectTemplate.uuid === $(this).select2('data').map(item => item.id)[0]
                 );
             })
-
             
         })
 
