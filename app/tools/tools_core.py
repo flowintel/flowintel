@@ -105,7 +105,8 @@ def create_case_template(form_dict):
         title=form_dict["title"],
         description=form_dict["description"],
         uuid=str(uuid.uuid4()),
-        last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
+        time_required=form_dict["time_required"]
     )
     db.session.add(case_template)
     db.session.commit()
@@ -190,6 +191,7 @@ def edit_case_template(form_dict, cid):
 
     template.title=form_dict["title"]
     template.description=form_dict["description"]
+    template.time_required = form_dict["time_required"]
 
     ## Tags
     case_tag_db = CommonModel.get_case_template_tags(cid)
@@ -397,6 +399,22 @@ def create_case_from_template(cid, case_title_fork, user):
     
     common_core.save_history(case.uuid, user, f"Case created from template: {case_template.id} - {case_template.title}")
     return case
+
+
+
+
+def modif_note_core(cid, notes):
+    case = CommonModel.get_case_template(cid)
+    if case:
+        case.notes = notes
+        db.session.commit()
+        return True
+    return False
+
+
+
+
+
 
 def core_read_json_file(case, current_user):
     if not utils.validateCaseJson(case):

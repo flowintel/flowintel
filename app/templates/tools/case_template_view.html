@@ -4,19 +4,25 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<template v-if="case_template">
+    <div id="top"></div>
     <div>
-    <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/tools/template/cases"><i class="fa-solid fa-arrow-left"></i></a></h1>
-    <h1 style="display: inline-block; font-size: xxx-large;">Template</h1>
+        <h1 style="display: inline-block; font-size: xxx-large;">
+            <a type="button" class="btn" href="/tools/template/cases">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+        </h1>
+        <h1 style="display: inline-block; font-size: xxx-large;">Template</h1>
     </div>
-    <h2 style="display: inline-block;">{{case.id}} - {{case.title}}</h2>
+    <h2 style="display: inline-block;">[[case_template.id]] - [[case_template.title]]</h2>
 
     <div style="float:right; display: grid;">
-        <a class="btn btn-primary btn-sm"  href="/tools/template/case/{{case.id}}/download" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
+        <a class="btn btn-primary btn-sm"  href="/tools/template/case/{{case_id}}/download" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
         <button class="btn btn-danger btn-sm"  @click="delete_case({{case}})" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
     </div>
 
     <div style="float:right">
-        <a class="btn btn-primary btn-sm" href="/tools/template/edit_case/{{case.id}}" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
+        <a class="btn btn-primary btn-sm" href="/tools/template/edit_case/{{case_id}}" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
         
         <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Create a Case from template">
             <i class="fa-solid fa-file"></i>
@@ -24,84 +30,126 @@
         <ul class="dropdown-menu">
             <li>
                 <input id="case_title_fork" placeholder="Case title"/>
-                <button class="btn btn-primary btn-sm" @click="fork_case({{case.id}})">Create</button>
+                <button class="btn btn-primary btn-sm" @click="fork_case({{case_id}})">Create</button>
             </li>
         </ul>
     </div>
 
-    {% if case.custom_tags %}
+    <template v-if="case_template.custom_tags">
         <div style="display: flex; margin-bottom: 5px;">
-            {% for tag in case.custom_tags %}
-                <div class="tag" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
-                    {% if tag.icon %}
-                        <i class="{{tag.icon}}"></i>
-                    {%endif%}
-                    {{tag.name}}
+            <template v-for="tag in case_template.custom_tags">
+                <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                    <i v-if="tag.icon" :class="tag.icon"></i>
+                    [[tag.name]]
                 </div>
-            {%endfor%}
+            </template>
         </div>
-    {%endif%}
+    </template>
 
-    {% if case.tags %}
+    <template v-if="case_template.tags">
         <div style="display: flex;">
-            {% for tag in case.tags%}
-                <div class="tag" title="{{tag.description}}" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
+            <template v-for="tag in case_template.tags">
+                <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
                     <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                    {{tag.name}}
+                    [[tag.name]]
                 </div>
-            {%endfor%}
+            </template>
         </div>
-    {%endif%}
+    </template>
 
-    <div style="margin-top: 5px;">
-        {% if case.clusters %}
-            {% for cluster in case.clusters %}
-                <div title="Description: &#013;{{cluster.description}}&#013;&#013; Metadata: &#013;{{cluster.meta}}">
-                    <span v-html="mapIcon('{{cluster.icon}}')"></span>
-                    {{cluster.tag}}
-                </div>
-            {%endfor%}
-        {%endif%}
+    <div style="margin-top: 5px;" v-if="case_template.clusters">
+        <!-- <div v-for="cluster in case_template.clusters" :title="'Description: &#013;'+cluster.description+'&#013;&#013; Metadata: &#013;'+cluster.meta"> -->
+        <div v-for="cluster in case_template.clusters" :title="'Description: '+cluster.description+'\n\nMetadata: '+cluster.meta">
+            <span v-html="mapIcon(cluster.icon)"></span>
+            [[cluster.tag]]
+        </div>
     </div>
 
     <hr>
 
-    {% if case.description %}
-    <div>
-        <p>{{case.description}}</p>
+    <div v-if="case_template.description">
+        <p>[[case_template.description]]</p>
         <hr>
     </div>
-    {%endif%}
 
-    <div id="top"></div>
-    <div style="display: flex;">
-        <h3>Tasks</h3>
-        <span style="padding-left: 10px;">
-            <a href="/tools/template/case/{{case.id}}/add_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
-        </span>
-    </div>
 
-    <template v-if="tasks_list">
-        <template v-for="template, key in tasks_list" :key="template.id">
-            <div class="list-group" style="margin-bottom: 20px;">
-                <task_template :template="template" :key_loop="key" :templates_list="tasks_list" :task_in_case="true" :case_id="{{case.id}}"></task_template>
+    <ul class="nav nav-tabs" style="margin-bottom: 10px;">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')">Main</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-note" @click="active_tab('note')">Notes</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-info" @click="active_tab('info')">Info</button>
+        </li>
+    </ul>
+
+    
+    <template v-if="selected_tab == 'main'">
+        <div style="display: flex;">
+            <h3>Tasks</h3>
+            <span style="padding-left: 10px;">
+                <a href="/tools/template/case/{{case_id}}/add_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
+            </span>
+        </div>
+
+        <template v-if="tasks_list">
+            <template v-for="template, key in tasks_list" :key="template.id">
+                <div class="list-group" style="margin-bottom: 20px;">
+                    <task_template :template="template" :key_loop="key" :templates_list="tasks_list" :task_in_case="true" :case_id="case_template.id"></task_template>
+                </div>
+            </template>
+        </template>
+        <template v-else>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
         </template>
     </template>
-    <template v-else>
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
+
+    <template v-else-if="selected_tab == 'note'">
+        <div v-if="case_template.notes">
+            <template v-if="edit_mode">
+                <button class="btn btn-primary" @click="save_note_case()">Save</button>
+                <div style="display: flex;">
+                    <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
+                    <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+                </div>
+            </template>
+            <template v-else>
+                <button class="btn btn-primary btn-sm" @click="edit_note()">Edit</button>
+                <div v-html="md.render(case_template.notes)" style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px;"></div>
+            </template>
+        </div>
+        <template v-else>
+            <button class="btn btn-primary" @click="save_note_case()">Save</button>
+            <div style="display: flex;">
+                <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
+                <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+            </div>
+        </template>
+    </template>
+
+    <template v-else-if="selected_tab == 'info'">
+        <div class="row">
+            <div class="col-auto">
+                <fieldset class="analyzer-select-case" style="text-align: center;">
+                    <legend class="analyzer-select-case">Time required</legend>
+                    <i>[[case_template.time_required]]</i>
+                </fieldset>
+            </div>
         </div>
     </template>
 
     <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
-        
+</template>
 {% endblock %}
 
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, onMounted } = Vue
+        const { createApp, ref, computed, onMounted, nextTick } = Vue
         import task_template from '/static/js/tools/task_template.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
@@ -111,7 +159,26 @@
                 task_template
             },
             setup() {
+                const case_template = ref()
                 const tasks_list = ref(null)
+                const selected_tab = ref("main")
+
+                let editor
+                const note_editor_render = ref("")
+                const edit_mode = ref(false)
+
+                const md = window.markdownit()			// Library to Parse and display markdown
+		        md.use(mermaidMarkdown.default)			// Use mermaid library
+
+                async function fetch_case_template() {
+                    const res = await fetch(
+                        // '/tools/get_case_template/'+window.location.pathname.split("/").slice(-1)
+                        '/tools/get_case_template/{{case_id}}'
+                    )
+                    let loc = await res.json()
+                    case_template.value = loc["template"]
+                }
+                fetch_case_template()
 
                 async function fetchTasks() {
                     tasks_list.value = null
@@ -152,13 +219,138 @@
                     }
                     return false
                 }
+
+                function prepare_editor(){
+                    md.mermaid.init()
+                    const targetElement = document.getElementById('editor')
+                    editor = new Editor.EditorView({
+                        doc: case_template.value.notes,
+                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            if (v.docChanged) {
+                                note_editor_render.value = editor.state.doc.toString()
+                            }
+                        })],
+                        parent: targetElement
+                    })
+                }
+
+                async function active_tab(tab_name){
+                    if(tab_name == 'main'){
+                        selected_tab.value = 'main'
+                        if ( !document.getElementById("tab-main").classList.contains("active") ){
+                            document.getElementById("tab-main").classList.add("active")
+                            document.getElementById("tab-note").classList.remove("active")
+                            document.getElementById("tab-info").classList.remove("active")
+                        }
+                    }else if(tab_name == 'note'){
+                        let loc_tab = selected_tab.value
+                        
+                        selected_tab.value = 'note'
+                        if ( !document.getElementById("tab-note").classList.contains("active") ){
+                            document.getElementById("tab-note").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-info").classList.remove("active")
+                        }
+                        await nextTick()
+                        if(!case_template.value.notes && loc_tab != 'note'){                            
+                            const targetElement = document.getElementById('editor')
+                            editor = new Editor.EditorView({
+                                doc: "\n\n",
+                                extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                                    if (v.docChanged) {
+                                        note_editor_render.value = editor.state.doc.toString()
+                                    }
+                                })],
+                                parent: targetElement
+                            })
+                        }else{
+                            prepare_editor()
+                        }
+                    }else if(tab_name == 'info'){
+                        selected_tab.value = 'info'
+                        if ( !document.getElementById("tab-info").classList.contains("active") ){
+                            document.getElementById("tab-info").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-note").classList.remove("active")
+                        }
+                    }
+                }
+
+                async function edit_note(){
+                    edit_mode.value = true
+                    
+                    note_editor_render.value = case_template.value.notes
+                    await nextTick()
+                    // prepare_editor()
+                    md.mermaid.init()
+                    const targetElement = document.getElementById('editor')
+                    editor = new Editor.EditorView({
+                        doc: case_template.value.notes,
+                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            if (v.docChanged) {
+                                note_editor_render.value = editor.state.doc.toString()
+                            }
+                        })],
+                        parent: targetElement
+                    })
+                }
+
+                async function save_note_case(){
+                    let notes_loc = editor.state.doc.toString()
+                    if(notes_loc.trim().length == 0){
+                        notes_loc = notes_loc.trim()
+                    }
+                    const res_msg = await fetch(
+                        '/tools/template/'+case_template.value.id+'/modif_note_case',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"notes": notes_loc})
+                        }
+                    )
+                    if(await res_msg.status == 200){
+                        edit_mode.value = false
+                        case_template.value.notes = notes_loc
+                        // notes.value = notes_loc
+                        await nextTick()
+                        
+                        if(!notes_loc){
+                            const targetElement = document.getElementById('editor')
+                            if(targetElement.innerHTML === ""){
+                                editor = new Editor.EditorView({
+                                    doc: "\n\n",
+                                    extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                                        if (v.docChanged) {
+                                            note_editor_render.value = editor.state.doc.toString()
+                                        }
+                                    })],
+                                    parent: targetElement
+                                })
+                            }
+                            
+                        }
+                        md.mermaid.init()
+                    }
+                    await display_toast(res_msg)
+                }
                 
 
                 return {
                     message_list,
+                    case_template,
                     tasks_list,
+                    selected_tab,
+                    note_editor_render,
+                    edit_mode,
+                    md,
+
+                    active_tab,
                     delete_case,
                     fork_case,
+
+                    edit_note,
+                    save_note_case,
+
+
                     getTextColor,
                     mapIcon
                 }

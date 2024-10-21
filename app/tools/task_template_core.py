@@ -103,7 +103,8 @@ def add_task_template_core(form_dict):
         url=form_dict["url"],
         uuid=str(uuid.uuid4()),
         nb_notes=0,
-        last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
+        time_required=form_dict["time_required"]
     )
     db.session.add(template)
     db.session.commit()
@@ -146,6 +147,7 @@ def edit_task_template(form_dict, tid):
     template.title=form_dict["title"]
     template.description=form_dict["body"]
     template.url=form_dict["url"]
+    template.time_required = form_dict["time_required"]
     
     ## Tags
     task_tag_db = CommonModel.get_task_template_tags(tid)

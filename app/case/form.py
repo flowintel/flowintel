@@ -23,6 +23,7 @@ class CaseForm(FlaskForm):
     template_select = SelectMultipleField(u'Templates', coerce=int)
     title_template = StringField('New Title', validators=[Optional()])
     tasks_templates = SelectMultipleField(u'Tasks Templates', coerce=int)
+    time_required = StringField('Time required', validators=[Optional()])
     submit = SubmitField('Create')
 
     def validate_title(self, field):
@@ -52,6 +53,7 @@ class CaseEditForm(FlaskForm):
     description = TextAreaField('Description', validators=[Optional()])
     deadline_date = DateField('deadline_date', validators=[Optional()])
     deadline_time = TimeField("deadline_time", validators=[Optional()])
+    time_required = StringField('Time required', validators=[Optional()])
     submit = SubmitField('Save')
 
     def validate_deadline_time(self, field):

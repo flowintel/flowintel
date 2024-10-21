@@ -77,14 +77,20 @@ def create_task_template():
 
 @tools_blueprint.route("/template/case/<cid>", methods=['GET','POST'])
 @login_required
-@editor_required
 def case_template_view(cid):
     """View a case Template"""
     template = CommonModel.get_case_template(cid)
     if template:
         case = template.to_json()
-        return render_template("tools/case_template_view.html", case=case)
+        return render_template("tools/case_template_view.html", case_id=cid)
     return render_template("404.html")
+
+@tools_blueprint.route("/get_case_template/<cid>", methods=['GET'])
+@login_required
+def get_case_template(cid):
+    """View a case Template"""
+    template = CommonModel.get_case_template(cid)
+    return {"template": template.to_json()}
 
 @tools_blueprint.route("/template/case/<cid>/add_task", methods=['GET','POST'])
 @login_required
@@ -129,6 +135,7 @@ def edit_case(cid):
         else:
             form.title.data = template.title
             form.description.data = template.description
+            form.time_required.data = template.time_required
 
         return render_template("tools/edit_case_template.html", form=form)
     return render_template("404.html")
@@ -156,6 +163,7 @@ def edit_task(tid):
             form.title.data = template.title
             form.body.data = template.description
             form.url.data = template.url
+            form.time_required.data = template.time_required
 
         return render_template("tools/edit_task_template.html", form=form)
     return render_template("404.html")
@@ -336,6 +344,18 @@ def download_case(cid):
     return_dict = case.download()
     return_dict["tasks_template"] = task_list
     return jsonify(return_dict), 200, {'Content-Disposition': f'attachment; filename=template_case_{case.title}.json'}
+
+@tools_blueprint.route("/template/<cid>/modif_note_case", methods=['POST'])
+@login_required
+@editor_required
+def modif_note_case(cid):
+    """Modify note of the task"""
+    if CommonModel.get_case_template(cid):
+        notes = request.json["notes"]
+        if ToolsModel.modif_note_core(cid, notes):
+            return {"message": "Notes modified", "toast_class": "success-subtle"}, 200
+        return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @tools_blueprint.route("/template/create_note/<tid>", methods=['GET'])

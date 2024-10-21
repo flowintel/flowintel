@@ -61,7 +61,8 @@ class EditTake(Resource):
                      "clusters": "list of tags from galaxies",
                      "connectors": "List of name of connectors",
                      "identifier": "Dictionnary with connector as key and identifier as value",
-                     "custom_tags" : "List of custom tags created on the instance"
+                     "custom_tags" : "List of custom tags created on the instance",
+                     "time_required": "Time required to realize the task"
                     })
     def post(self, tid):
         task = CommonModel.get_task(tid)

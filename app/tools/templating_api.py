@@ -67,7 +67,8 @@ class CreateCaseTemaplte(Resource):
             "description": "Description of the template",
             "tags": "list of tags from taxonomies",
             "clusters": "list of tags from galaxies",
-            "custom_tags" : "List of custom tags created on the instance"
+            "custom_tags" : "List of custom tags created on the instance",
+            "time_required": "Time required to realize the case"
         })
     def post(self):
         if request.json:
@@ -251,7 +252,8 @@ class CreateTaskTemaplte(Resource):
             "url": "Link to a tool or a ressource",
             "tags": "list of tags from taxonomies",
             "clusters": "list of tags from galaxies",
-            "custom_tags" : "List of custom tags created on the instance"
+            "custom_tags" : "List of custom tags created on the instance",
+            "time_required": "Time required to realize the task"
         })
     def post(self):
         if request.json:

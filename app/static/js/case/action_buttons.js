@@ -150,7 +150,7 @@ export default {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button class="btn btn-danger btn-sm"  @click="delete_case(cases_info.case.id)"><i class="fa-solid fa-trash"></i> Confirm</button>
+                        <button class="btn btn-danger" @click="delete_case(cases_info.case.id)"><i class="fa-solid fa-trash"></i> Confirm</button>
                     </div>
                 </div>
             </div>

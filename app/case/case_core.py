@@ -99,7 +99,8 @@ def create_case(form_dict, user):
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             deadline=deadline,
             status_id=1,
-            owner_org_id=user.org_id
+            owner_org_id=user.org_id,
+            time_required=form_dict["time_required"]
         )
         db.session.add(case)
         db.session.commit()
@@ -159,6 +160,7 @@ def edit_case(form_dict, cid, current_user):
     case.title = form_dict["title"]
     case.description=form_dict["description"]
     case.deadline=deadline
+    case.time_required=form_dict["time_required"]
 
     ## Tags
     case_tag_db = CommonModel.get_case_tags(cid)

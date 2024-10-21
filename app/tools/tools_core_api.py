@@ -3,9 +3,13 @@ from ..utils.datadictHelper import edition_verification_tags_connectors, creatio
 
 
 def common_creation(data_dict):
+    if "time_required" not in data_dict or not data_dict["time_required"]:
+        data_dict["time_required"] = ""
     return creation_verification_tags_connectors(data_dict)
 
 def common_edit(data_dict, case_task):
+    if "time_required" not in data_dict or not data_dict["time_required"]:
+        data_dict["time_required"] = case_task.time_required
     return edition_verification_tags_connectors(data_dict, case_task)
 
 def verif_create_case_template(data_dict):

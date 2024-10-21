@@ -56,7 +56,8 @@ class CreateCase(Resource):
         "tags": "list of tags from taxonomies",
         "clusters": "list of tags from galaxies",
         "identifier": "Dictionnary with connector as key and identifier as value",
-        "custom_tags" : "List of custom tags created on the instance"
+        "custom_tags" : "List of custom tags created on the instance",
+        "time_required": "Time required to realize the case"
     })
     def post(self):
         user = utils.get_user_from_api(request.headers)
@@ -612,7 +613,8 @@ class CreateTask(Resource):
         "tags": "list of tags from taxonomies",
         "clusters": "list of tags from galaxies",
         "identifier": "Dictionnary with connector as key and identifier as value",
-        "custom_tags" : "List of custom tags created on the instance"
+        "custom_tags" : "List of custom tags created on the instance",
+        "time_required": "Time required to realize the task"
     })
     def post(self, cid):
         current_user = utils.get_user_from_api(request.headers)

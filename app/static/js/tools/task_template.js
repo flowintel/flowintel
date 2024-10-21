@@ -383,11 +383,12 @@ export default {
 					<i>[[template.notes.length]] Notes</i>
 				</span>
 			</div>
-			<p class="mt-1" v-if="template.subtasks.length" style="background-color: #f5f5f5; border: 1px solid grey; border-radius: 5px; padding: 5px;">
+			<p class="mt-1 card card-body" v-if="template.subtasks.length" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
 				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
 				<template v-for="subtask in template.subtasks">
-					<div v-if="!subtask.completed">
-						- [[subtask.description]]
+					<div v-if="!subtask.completed" style="display: flex;">
+						<div class="subtask-tree"></div>
+						[[subtask.description]]
 					</div>
 				</template>
 			</p>
@@ -395,18 +396,18 @@ export default {
         <div v-if="!template.current_user_permission.read_only">
 			<div>
 				<a class="btn btn-primary btn-sm" :href="'/tools/template/edit_task/'+template.id" type="button" title="Edit the task template">
-					<i class="fa-solid fa-pen-to-square"></i>
+					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
 			</div>
 			<div>
             	<button v-if="task_in_case" class="btn btn-warning btn-sm" @click="remove_task(template, templates_list)" title="Remove the task template from the case">
-					<i class="fa-solid fa-trash"></i>
+					<i class="fa-solid fa-trash fa-fw"></i>
 				</button>
 			</div>
 			<div>
 				<button type="button" class="btn btn-danger btn-sm" title="Delete the task template" data-bs-toggle="modal" 
 				:data-bs-target="'#delete_task_template_modal_'+template.id">
-					<i class="fa-solid fa-trash"></i>
+					<i class="fa-solid fa-trash fa-fw"></i>
 				</button>
 			</div>
         </div>
@@ -440,6 +441,19 @@ export default {
 	<!-- Collapse Part -->
 	<div class="collapse" :id="'collapse'+template.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
+			<template v-if="template.time_required">
+				<div class="row">
+					<div class="col-auto">
+						<fieldset class="analyzer-select-case" style="text-align: center;">
+							<legend class="analyzer-select-case">
+								Time Required
+							</legend>
+							[[template.time_required]]
+						</fieldset>
+					</div>
+				</div>
+				<hr>
+			</template>
 			<div>
 				<fieldset class="analyzer-select-case">
 					<legend class="analyzer-select-case">

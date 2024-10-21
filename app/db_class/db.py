@@ -78,6 +78,7 @@ class Case(db.Model):
     nb_tasks = db.Column(db.Integer, index=True)
     notes = db.Column(db.String, nullable=True)
     hedgedoc_url = db.Column(db.String, nullable=True)
+    time_required = db.Column(db.String)
 
     def to_json(self):
         json_dict = {
@@ -94,7 +95,8 @@ class Case(db.Model):
             "recurring_type": self.recurring_type,
             "nb_tasks": self.nb_tasks,
             "notes": self.notes,
-            "hedgedoc_url": self.hedgedoc_url
+            "hedgedoc_url": self.hedgedoc_url,
+            "time_required": self.time_required,
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
@@ -131,7 +133,8 @@ class Case(db.Model):
             "title": self.title,
             "description": self.description,
             "recurring_type": self.recurring_type,
-            "notes": self.notes
+            "notes": self.notes,
+            "time_required": self.time_required,
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
@@ -215,7 +218,8 @@ class Task(db.Model):
             "uuid": self.uuid, 
             "title": self.title, 
             "description": self.description,
-            "url": self.url
+            "url": self.url,
+            "time_required": self.time_required
         }
         json_dict["notes"] = [note.download() for note in self.notes]
         if self.deadline:
@@ -398,6 +402,8 @@ class Case_Template(db.Model):
     title = db.Column(db.String, index=True)
     description = db.Column(db.String, nullable=True)
     last_modif = db.Column(db.DateTime, index=True)
+    time_required = db.Column(db.String)
+    notes = db.Column(db.String, nullable=True)
 
     def to_json(self):
         json_dict =  {
@@ -405,7 +411,9 @@ class Case_Template(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "time_required": self.time_required,
+            "notes": self.notes
         }
 
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
@@ -421,7 +429,9 @@ class Case_Template(db.Model):
         json_dict = {
             "uuid": self.uuid,
             "title": self.title,
-            "description": self.description
+            "description": self.description,
+            "time_required": self.time_required,
+            "notes": self.notes
         }
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
@@ -441,6 +451,7 @@ class Task_Template(db.Model):
     nb_notes = db.Column(db.Integer, index=True)
     last_modif = db.Column(db.DateTime, index=True)
     subtasks = db.relationship('Subtask_Template', backref='task_template', lazy='dynamic', cascade="all, delete-orphan")
+    time_required = db.Column(db.String)
 
     def to_json(self):
         json_dict =  {
@@ -450,7 +461,8 @@ class Task_Template(db.Model):
             "description": self.description,
             "url": self.url,
             "nb_notes": self.nb_notes,
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "time_required": self.time_required
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
@@ -467,6 +479,7 @@ class Task_Template(db.Model):
             "title": self.title,
             "description": self.description,
             "url": self.url,
+            "time_required": self.time_required
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]

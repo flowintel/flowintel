@@ -50,6 +50,9 @@ def verif_create_case_task(data_dict, isCase):
 
     data_dict = creation_verification_tags_connectors(data_dict)
 
+    if "time_required" not in data_dict or not data_dict["time_required"]:
+        data_dict["time_required"] = ""
+
     if not isCase:
         if "url" not in data_dict or not data_dict["url"]:
             data_dict["url"] = ""
@@ -61,8 +64,7 @@ def verif_create_case_task(data_dict, isCase):
         else:
             data_dict["connectors"] = []
         
-        if "time_required" not in data_dict or not data_dict["time_required"]:
-            data_dict["time_required"] = ""
+        
 
 
     return data_dict
@@ -93,6 +95,9 @@ def common_verif(data_dict, case_task):
     else:
         data_dict["deadline_time"] = ""
 
+    if "time_required" not in data_dict or not data_dict["time_required"]:
+        data_dict["time_required"] = case_task.time_required
+
     data_dict = edition_verification_tags_connectors(data_dict, case_task)
     
     return data_dict
@@ -119,8 +124,5 @@ def verif_edit_task(data_dict, task_id):
 
     if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = task.url
-    
-    if "time_required" not in data_dict or not data_dict["time_required"]:
-        data_dict["time_required"] = task.time_required
 
     return data_dict
