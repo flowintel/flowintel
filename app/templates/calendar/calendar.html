@@ -1,27 +1,17 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+{{ super() }}
+
+<script src="{{ url_for('static',filename='js/daypilot-all.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/MonthPicker.js') }}"></script>
+
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/daypilot.css') }}">
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/MonthPicker.css') }}">
+{%endblock%}
+
 {% block content %}
-<style>
-    a.navi-button {
-        width: 200px;
-        padding: 10px 10px;
-        text-align: center;
-        display: inline-block;
-        background-color: #3495CF;
-        color: white;
-        text-decoration: none;
-        box-sizing: border-box;
-    }
-
-    .ui-datepicker-calendar {
-    display: none;
-    }
-
-    .ui-widget {
-        font-size:.7em;
-    }
-</style>
 
 <div>
     <!-- Modal -->
@@ -89,7 +79,7 @@
 {% block script %}
 <script type="module">
     const { createApp, ref, computed, onMounted, reactive } = Vue
-    
+    import {message_list} from '/static/js/toaster.js'
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
@@ -272,6 +262,7 @@
 
 
             return {
+                message_list,
                 openModal, closeModal, select_case_filter, select_task_filter, select_dead_filter, select_creation_filter,
                 change_date
             }

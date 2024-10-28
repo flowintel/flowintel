@@ -4,6 +4,14 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <div id="top"></div>
     <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/case"><i class="fa-solid fa-arrow-left"></i></a></h1>

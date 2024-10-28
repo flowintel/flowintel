@@ -3,6 +3,14 @@
 -->
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <h1>
         Task Templates

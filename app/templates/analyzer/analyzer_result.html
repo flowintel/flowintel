@@ -4,6 +4,13 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/jsonParser.js') }}"></script>
+<script src="{{ url_for('static',filename='js/mispParser.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <h1>Analyzers Results</h1>
     <i>Select note to inject this in case or task</i>
