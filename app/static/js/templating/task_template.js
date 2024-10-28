@@ -70,7 +70,7 @@ export default {
 
 		async function add_notes_task(){
 			// Create a new empty note in the task
-			const res = await fetch('/tools/template/create_note/' + props.template.id)
+			const res = await fetch('/templating/task/'+props.template.id+'/create_note')
 
 			if(await res.status == 200){
 				let loc = await res.json()
@@ -97,7 +97,7 @@ export default {
 		
 		async function delete_note(template, note_id, key){
 			// Delete a note of the task
-			const res = await fetch('/tools/template/delete_note/' + template.id + '?note_id='+note_id)
+			const res = await fetch('/templating/' + template.id + '/delete_note?note_id='+note_id)
 
 			if( await res.status == 200){
 				props.template.notes.splice(key, 1);
@@ -106,7 +106,7 @@ export default {
 		}
 
         async function delete_task(template, template_array){
-            const res = await fetch("/tools/template/delete_task/" + template.id)
+            const res = await fetch("/templating/delete_task/" + template.id)
             if( await res.status == 200){
 				let index = template_array.indexOf(template)
 				if(index > -1)
@@ -120,7 +120,7 @@ export default {
         }
 
         async function remove_task(template, template_array){
-            const res = await fetch("/tools/template/" + props.case_id + "/remove_task/" + template.id)
+            const res = await fetch("/templating/case/" + props.case_id + "/remove_task/" + template.id)
             if(await res.status == 200){
                 let index = template_array.indexOf(template)
                 if(index > -1)
@@ -133,7 +133,7 @@ export default {
 		async function edit_note(template, note_id, key){
             edit_mode.value = note_id
 
-			const res = await fetch('/tools/template/get_note/' + template.id + "?note_id=" + note_id)
+			const res = await fetch('/templating/task/'+template.id+'/get_note?note_id=' + note_id)
 			let loc = await res.json()
 			template.notes[key].note = loc["notes"]
 
@@ -156,7 +156,7 @@ export default {
 				notes_loc = notes_loc.trim()
 			}
 			const res_msg = await fetch(
-				'/tools/template/modif_note/' + template.id + "?note_id=" + note_id,{
+				'/templating/' + template.id + '/modif_note?note_id=' + note_id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"notes": notes_loc})
@@ -205,7 +205,7 @@ export default {
 		}
 
 		async function move_task_up(task, up_down){
-			const res = await fetch('/tools/template/' + props.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
+			const res = await fetch('/templating/case/' + props.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
 			await display_toast(res)
 			for( let i in props.templates_list){
 				if(props.templates_list[i]["case_order_id"] == task.case_order_id-1){
@@ -217,7 +217,7 @@ export default {
 			props.templates_list.sort(order_task)
 		}
 		async function move_task_down(task, up_down){
-			const res = await fetch('/tools/template/' + props.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
+			const res = await fetch('/templating/case/' + props.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
 			await display_toast(res)
 			for( let i in props.templates_list){
 				if(props.templates_list[i]["case_order_id"] == task.case_order_id+1){
@@ -246,7 +246,7 @@ export default {
 				$("#create-subtask-error-"+task.id).text("Cannot be empty...").css("color", "brown")
 			}
 			
-			const res = await fetch("/tools/template/task/"+task.id+"/create_subtask", {
+			const res = await fetch("/templating/task/"+task.id+"/create_subtask", {
 				method: "POST",
 				headers: {
 					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
@@ -270,7 +270,7 @@ export default {
 			if(!description){
 				$("#edit-subtask-error-"+subtask_id).text("Cannot be empty...").css("color", "brown")
 			}
-			const res = await fetch("/tools/template/task/"+task.id+"/edit_subtask/"+subtask_id, {
+			const res = await fetch("/templating/task/"+task.id+"/edit_subtask/"+subtask_id, {
 				method: "POST",
 				headers: {
 					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
@@ -286,12 +286,13 @@ export default {
 						break
 					}
 				}
+				$("#edit_subtask_"+subtask_id).modal("hide")
 			}
 			await display_toast(res)
 		}
 
 		async function delete_subtask(task, subtask_id){			
-			const res = await fetch('/tools/template/task/' + task.id+"/delete_subtask/"+subtask_id)
+			const res = await fetch('/templating/task/' + task.id+"/delete_subtask/"+subtask_id)
 
 			if( await res.status == 200){
 				let loc_i
@@ -395,7 +396,7 @@ export default {
         </a>
         <div v-if="!template.current_user_permission.read_only">
 			<div>
-				<a class="btn btn-primary btn-sm" :href="'/tools/template/edit_task/'+template.id" type="button" title="Edit the task template">
+				<a class="btn btn-primary btn-sm" :href="'/templating/edit_task/'+template.id" type="button" title="Edit the task template">
 					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
 			</div>
@@ -467,13 +468,13 @@ export default {
 						<div>
 							[[subtask.description]]
 							<button @click="delete_subtask(template, subtask.id)" class="btn btn-danger btn-sm" style="float: right;" ><i class="fa-solid fa-trash"></i></button>
-							<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" data-bs-target="#edit_subtask" style="float: right;">
+							<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" :data-bs-target="'#edit_subtask_'+subtask.id" style="float: right;">
 								<i class="fa-solid fa-pen-to-square"></i>
 							</button>
 						</div>
 						<hr>
 						<!-- Modal edit subtask -->
-						<div class="modal fade" id="edit_subtask" tabindex="-1" aria-labelledby="edit_subtask_modal" aria-hidden="true">
+						<div class="modal fade" :id="'edit_subtask_'+subtask.id" tabindex="-1" aria-labelledby="edit_subtask_modal" aria-hidden="true">
 							<div class="modal-dialog modal-lg">
 								<div class="modal-content">
 									<div class="modal-header">

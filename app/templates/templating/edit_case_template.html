@@ -153,7 +153,7 @@
             }
 
             async function fetch_taxonomies_case(){
-                const res = await fetch("/tools/template/get_taxonomies_case/" +window.location.pathname.split("/").slice(-1))
+                const res = await fetch("/templating/get_taxonomies_case/" +window.location.pathname.split("/").slice(-1))
                 if(await res.status==400 ){
                     display_toast(res)
                 }else{
@@ -167,7 +167,7 @@
             }
 
             async function fetch_galaxies_case(){
-                const res = await fetch("/tools/template/get_galaxies_case/" +window.location.pathname.split("/").slice(-1))
+                const res = await fetch("/templating/get_galaxies_case/" +window.location.pathname.split("/").slice(-1))
                 if(await res.status==400 ){
                     display_toast(res)
                 }else{
@@ -205,7 +205,7 @@
             }
 
             async function fetch_custom_tags_case(){
-                const res = await fetch("/tools/template/get_custom_tags_case/" +window.location.pathname.split("/").slice(-1))
+                const res = await fetch("/templating/get_custom_tags_case/" +window.location.pathname.split("/").slice(-1))
                 if(await res.status==400 ){
                     display_toast(res)
                 }else{

@@ -16,7 +16,7 @@
     <div id="top"></div>
     <div>
         <h1 style="display: inline-block; font-size: xxx-large;">
-            <a type="button" class="btn" href="/tools/template/cases">
+            <a type="button" class="btn" href="/templating/cases">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
         </h1>
@@ -25,12 +25,16 @@
     <h2 style="display: inline-block;">[[case_template.id]] - [[case_template.title]]</h2>
 
     <div style="float:right; display: grid;">
-        <a class="btn btn-primary btn-sm"  href="/tools/template/case/{{case_id}}/download" type="button" title="Download the case in json"><i class="fa-solid fa-download"></i></a>
+        <a class="btn btn-primary btn-sm"  href="/templating/case/{{case_id}}/download" type="button" title="Download the case in json">
+            <i class="fa-solid fa-download"></i>
+        </a>
         <button class="btn btn-danger btn-sm"  @click="delete_case({{case}})" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
     </div>
 
     <div style="float:right">
-        <a class="btn btn-primary btn-sm" href="/tools/template/edit_case/{{case_id}}" type="button" title="Edit the case"><i class="fa-solid fa-pen-to-square"></i></a>
+        <a class="btn btn-primary btn-sm" href="/templating/edit_case/{{case_id}}" type="button" title="Edit the case">
+            <i class="fa-solid fa-pen-to-square"></i>
+        </a>
         
         <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Create a Case from template">
             <i class="fa-solid fa-file"></i>
@@ -66,7 +70,6 @@
     </template>
 
     <div style="margin-top: 5px;" v-if="case_template.clusters">
-        <!-- <div v-for="cluster in case_template.clusters" :title="'Description: &#013;'+cluster.description+'&#013;&#013; Metadata: &#013;'+cluster.meta"> -->
         <div v-for="cluster in case_template.clusters" :title="'Description: '+cluster.description+'\n\nMetadata: '+cluster.meta">
             <span v-html="mapIcon(cluster.icon)"></span>
             [[cluster.tag]]
@@ -98,7 +101,9 @@
         <div style="display: flex;">
             <h3>Tasks</h3>
             <span style="padding-left: 10px;">
-                <a href="/tools/template/case/{{case_id}}/add_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
+                <a href="/templating/case/{{case_id}}/add_task" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i>
+                </a>
             </span>
         </div>
 
@@ -158,7 +163,7 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed, onMounted, nextTick } = Vue
-        import task_template from '/static/js/tools/task_template.js'
+        import task_template from '/static/js/templating/task_template.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
@@ -180,8 +185,7 @@
 
                 async function fetch_case_template() {
                     const res = await fetch(
-                        // '/tools/get_case_template/'+window.location.pathname.split("/").slice(-1)
-                        '/tools/get_case_template/{{case_id}}'
+                        '/templating/get_case_template/{{case_id}}'
                     )
                     let loc = await res.json()
                     case_template.value = loc["template"]
@@ -191,7 +195,7 @@
                 async function fetchTasks() {
                     tasks_list.value = null
                     const res = await fetch(
-                        '/tools/get_task_by_case/'+window.location.pathname.split("/").slice(-1)
+                        '/templating/get_task_by_case/'+window.location.pathname.split("/").slice(-1)
                     )
                     let loc = await res.json()
                     tasks_list.value = loc["tasks"]
@@ -199,8 +203,8 @@
                 fetchTasks()
 
                 async function delete_case(case_template){
-                    const res = await fetch("/tools/template/delete_case/" + case_template.id)
-                    return window.location.href = "/tools/template/cases"
+                    const res = await fetch("/templating/delete_case/"+case_template.id)
+                    return window.location.href = "/templating/cases"
                 }
 
                 async function fork_case(case_id){
@@ -209,7 +213,7 @@
                             $("<span>").text("Already exist").css("color", 'red')
                         )
                     }else{
-                        const res = await fetch("/tools/template/create_case_from_template/" + case_id,{
+                        const res = await fetch("/templating/create_case_from_template/" + case_id,{
                                 headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                                 method: "POST",
                                 body: JSON.stringify({"case_title_fork": $("#case_title_fork").val()})
@@ -309,7 +313,7 @@
                         notes_loc = notes_loc.trim()
                     }
                     const res_msg = await fetch(
-                        '/tools/template/'+case_template.value.id+'/modif_note_case',{
+                        '/templating/case/'+case_template.value.id+'/modif_note_case',{
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
                             body: JSON.stringify({"notes": notes_loc})

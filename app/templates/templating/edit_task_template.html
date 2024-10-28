@@ -168,7 +168,7 @@
             fetch_custom_tags()
 
             async function fetch_taxonomies_task(){
-                const res = await fetch("/tools/template/get_taxonomies_task/" +window.location.pathname.split("/").slice(-1))
+                const res = await fetch("/templating/get_taxonomies_task/" +window.location.pathname.split("/").slice(-1))
                 if(await res.status==400 ){
                     display_toast(res)
                 }else{
@@ -183,7 +183,7 @@
             fetch_taxonomies_task()
 
             async function fetch_galaxies_task(){
-                const res = await fetch("/tools/template/get_galaxies_task/" +window.location.pathname.split("/").slice(-1))
+                const res = await fetch("/templating/get_galaxies_task/" +window.location.pathname.split("/").slice(-1))
                 if(await res.status==400 ){
                     display_toast(res)
                 }else{
@@ -222,7 +222,7 @@
             }
 
             async function fetch_custom_tags_task(){
-                const res = await fetch("/tools/template/get_custom_tags_task/" +window.location.pathname.split("/").slice(-1))
+                const res = await fetch("/templating/get_custom_tags_task/" +window.location.pathname.split("/").slice(-1))
                 if(await res.status==400 ){
                     display_toast(res)
                 }else{

@@ -1,4 +1,4 @@
-from ..db_class.db import Case_Template, User, Task_Template
+from ..db_class.db import Case_Template, Task_Template
 from ..utils.datadictHelper import edition_verification_tags_connectors, creation_verification_tags_connectors
 
 

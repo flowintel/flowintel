@@ -1,6 +1,6 @@
 from flask import Blueprint, request
-from . import tools_core as ToolModel
-from . import tools_core_api as ApiToolModel
+from . import templating_core as TemplateModel
+from . import templating_core_api as ApiTemplateModel
 from . import common_template_core as CommonModel
 from . import task_template_core as TaskModel
 from ..utils import utils
@@ -72,9 +72,9 @@ class CreateCaseTemaplte(Resource):
         })
     def post(self):
         if request.json:
-            verif_dict = ApiToolModel.verif_create_case_template(request.json)
+            verif_dict = ApiTemplateModel.verif_create_case_template(request.json)
             if "message" not in verif_dict:
-                template = ToolModel.create_case_template(verif_dict)
+                template = TemplateModel.create_case_template(verif_dict)
                 return {"message": f"Template created, id: {template.id}"}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -92,9 +92,9 @@ class EditCaseTemaplte(Resource):
         })
     def post(self, cid):
         if request.json:
-            verif_dict = ApiToolModel.verif_edit_case_template(request.json, cid)
+            verif_dict = ApiTemplateModel.verif_edit_case_template(request.json, cid)
             if "message" not in verif_dict:
-                ToolModel.edit_case_template(verif_dict, cid)
+                TemplateModel.edit_case_template(verif_dict, cid)
                 return {"message": f"Template case edited"}, 200
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -113,7 +113,7 @@ class AddTaskCase(Resource):
             if request.json:
                 if 'tasks' in request.json:
                     form_dict = request.json
-                    ToolModel.add_task_case_template(form_dict, cid)
+                    TemplateModel.add_task_case_template(form_dict, cid)
                     return {"message": "Tasks added"}, 200
                 return {"message": "The list 'tasks' is missing"}, 400
             return {"message": "Please give data"}, 400
@@ -127,7 +127,7 @@ class RemoveTaskCaseTemplate(Resource):
     def get(self, cid, tid):
         if CommonModel.get_case_template(cid):
             if CommonModel.get_task_template(tid):
-                if ToolModel.remove_task_case(cid, tid):
+                if TemplateModel.remove_task_case(cid, tid):
                     return {"message": "Task template removed"}, 200
                 return {"message": "Error task template removed"}, 400
             return {"message": "Task template not found"}, 404
@@ -140,7 +140,7 @@ class DeleteCaseTemplate(Resource):
     method_decorators = [api_required]
     def get(self, cid):
         if CommonModel.get_case_template(cid):
-            if ToolModel.delete_case_template(cid):
+            if TemplateModel.delete_case_template(cid):
                 return {"message": "Case template deleted"}, 200
             return {"message": "Error case template deleted"}, 400
         return {"message": "Template not found"}, 404
@@ -158,7 +158,7 @@ class CreateCaseFromTemplate(Resource):
         if template:
             if request.json:
                 if "title" in request.json:
-                    new_case = ToolModel.create_case_from_template(cid, request.json["title"], utils.get_user_api(request.headers["X-API-KEY"]))
+                    new_case = TemplateModel.create_case_from_template(cid, request.json["title"], utils.get_user_api(request.headers["X-API-KEY"]))
                     if type(new_case) == dict:
                         return new_case
                     return {"message": f"New case created, id: {new_case.id}"}, 201
@@ -257,7 +257,7 @@ class CreateTaskTemaplte(Resource):
         })
     def post(self):
         if request.json:
-            verif_dict = ApiToolModel.verif_add_task_template(request.json)
+            verif_dict = ApiTemplateModel.verif_add_task_template(request.json)
             if "message" not in verif_dict:
                 template = TaskModel.add_task_template_core(verif_dict)
                 return {"message": f"Template created, id: {template.id}"}, 201
@@ -279,7 +279,7 @@ class EditCaseTemaplte(Resource):
         })
     def post(self, tid):
         if request.json:
-            verif_dict = ApiToolModel.verif_edit_task_template(request.json, tid)
+            verif_dict = ApiTemplateModel.verif_edit_task_template(request.json, tid)
             if "message" not in verif_dict:
                 TaskModel.edit_task_template(verif_dict, tid)
                 return {"message": f"Template edited"}, 200

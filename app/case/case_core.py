@@ -12,7 +12,7 @@ from ..db_class.db import *
 from sqlalchemy import desc, and_
 from ..notification import notification_core as NotifModel
 from dateutil import relativedelta
-from ..tools.tools_core import create_case_from_template
+from ..templating.templating_core import create_case_from_template
 from ..custom_tags import custom_tags_core as CustomModel
 
 from . import common_core as CommonModel

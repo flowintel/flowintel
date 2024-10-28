@@ -39,32 +39,32 @@
 				<a href="/admin/users" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fa-solid fa-user fa-fw me-3"></i><span>Users</span>
 				</a>
-				<a href="/admin/taxonomies" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-tag fa-fw me-3"></i><span>Taxonomies</span>
-				</a>
-				<a href="/admin/galaxies" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-globe fa-fw me-3"></i><span>Galaxies</span>
-				</a>
-				<a href="/custom_tags/" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-tags fa-fw me-3"></i><span>Custom Tags</span>
-				</a>
 				<a href="/connectors" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fa-solid fa-link fa-fw me-3"></i><span>Connectors</span>
 				</a>
 				<a href="/analyzer" class="list-group-item list-group-item-action py-2 ripple">
 					<i class="fa-solid fa-magnifying-glass fa-fw me-3"></i><span>Analyzers</span>
 				</a>
+				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#template-collapse" aria-expanded="false">
+					<i class="fa-solid fa-bookmark fa-fw me-2"></i><span>Templates</span>
+				</button>
+				<div class="collapse" id="template-collapse">
+					<a href="/templating/cases" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Case</a>
+					<a href="/templating/tasks" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Task</a>
+				</div>
 				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">
 					<i class="fa-solid fa-toolbox fa-fw me-3"></i><span>Tools</span>
 				</button>
 				<div class="collapse" id="tools-collapse">
-					<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#template-collapse" aria-expanded="false">
-						<i class="fa-solid fa-bookmark fa-fw me-2"></i><span>Templates</span>
-					</button>
-					<div class="collapse" id="template-collapse">
-						<a href="/tools/template/cases" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Case</a>
-						<a href="/tools/template/tasks" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Task</a>
-					</div>
+					<a href="/custom_tags/" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-tags fa-fw me-3"></i><span>Custom Tags</span>
+					</a>
+					<a href="/admin/taxonomies" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-tag fa-fw me-3"></i><span>Taxonomies</span>
+					</a>
+					<a href="/admin/galaxies" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-globe fa-fw me-3"></i><span>Galaxies</span>
+					</a>
 					<a href="/tools/importer_view" class="list-group-item list-group-item-action py-2 ripple">
 						<i class="fa-solid fa-file-import fa-fw me-2"></i><span>Importer</span>
 					</a>

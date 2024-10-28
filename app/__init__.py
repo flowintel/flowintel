@@ -43,6 +43,7 @@ def create_app():
     from .connectors.connectors import connector_blueprint
     from .analyzer.analyzer import analyzer_blueprint
     from .custom_tags.custom_tags import custom_tags_blueprint
+    from .templating.templating import templating_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -50,6 +51,7 @@ def create_app():
     app.register_blueprint(calendar_blueprint, url_prefix="/calendar")
     app.register_blueprint(notification_blueprint, url_prefix="/notification")
     app.register_blueprint(tools_blueprint, url_prefix="/tools")
+    app.register_blueprint(templating_blueprint, url_prefix="/templating")
     app.register_blueprint(my_assignment_blueprint, url_prefix="/my_assignment")
     app.register_blueprint(connector_blueprint, url_prefix="/connectors")
     app.register_blueprint(analyzer_blueprint, url_prefix="/analyzer")
@@ -60,7 +62,7 @@ def create_app():
     from .case.case_api import api_case_blueprint
     from .case.task_api import api_task_blueprint
     from .admin.admin_api import api_admin_blueprint
-    from .tools.templating_api import api_templating_blueprint
+    from .templating.templating_api import api_templating_blueprint
     from .tools.importer_api import api_importer_blueprint
     from .my_assignment.my_assignment_api import api_assignment_blueprint
     from .analyzer.analyzer_api import api_analyzer_blueprint

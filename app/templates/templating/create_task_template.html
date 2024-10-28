@@ -6,12 +6,13 @@
 
 {% block content %}
     <div>
-        <h2 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/tools/template/cases"><i class="fa-solid fa-arrow-left"></i></a></h2>
-        <h2 style="display: inline-block;">Create a Case template</h2>
+        <h2 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/templating/tasks"><i class="fa-solid fa-arrow-left"></i></a></h2>
+        <h2 style="display: inline-block;">Create a Task template</h2>
         <hr>
 
         <form action="" method="post">
             {{ form.hidden_tag() }}
+            {{ form.template_id }}
             
             <div class="row">
                 <div class="mb-3 w-50">
@@ -23,13 +24,20 @@
                 </div>
                 <div class="mb-3 w-50">
                     <label for="description" class="col-form-label">Description:</label>
-                    {{form.description(class_="form-control")}}
-                    {% if form.description.errors %}
-                        <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                    {{form.body(class_="form-control")}}
+                    {% if form.body.errors %}
+                        <div style="color: red;">{{form.body.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
             </div>
             <div class="row">
+                <div class="mb-3 w-50">
+                    {{form.url.label(class_="col-form-label")}}:
+                    {{form.url(class_="form-control")}}
+                    {% if form.url.errors %}
+                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
                 <div class="mb-3 w-50">
                     {{form.time_required.label(class_="col-form-label")}}:
                     {{form.time_required(class_="form-control")}}
@@ -38,8 +46,8 @@
                     {%endif%}
                 </div>
             </div>
-            <hr>
 
+            <hr>
             <div class="accordion mt-4">
                 <div class="accordion-item">
                     <h2 class="accordion-header">
@@ -93,8 +101,7 @@
                     </div>
                 </div>
             </div>
-
-            <div class="accordion mt-4">
+            <div class="accordion mt-4 mb-4">
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
@@ -127,19 +134,6 @@
                 </div>
             </div>
 
-            <hr>
-            <h5>Task</h5>
-            <div class="mb-3 w-50">
-                <select data-placeholder="Task Template" multiple class="select2-select form-control" name="tasks" id="tasks">
-                    {% for choice in form.tasks.choices %}
-                        <option value="{{choice[0]}}">{{choice[1]}}</option>
-                    {% endfor %}
-                </select>
-                {% if form.tasks.errors %}
-                    <div style="color: red;">{{form.tasks.errors[0] | safe}}</div>
-                {%endif%}
-            </div>
-            
             {{form.submit(class='btn btn-primary')}}
         </form>
     </div>
@@ -148,7 +142,7 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, onMounted, ref} = Vue
+    const { createApp, onMounted, nextTick, ref} = Vue
     import {message_list} from '/static/js/toaster.js'
     createApp({
         delimiters: ['[[', ']]'],
@@ -216,10 +210,10 @@
                     custom_tags.value = loc
                 }
             }
-            fetch_custom_tags()
-            
 
             onMounted(() => {
+                fetch_custom_tags()
+
                 $('.select2-select').select2({
                     theme: 'bootstrap-5',
                     closeOnSelect: false

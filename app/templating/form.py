@@ -5,8 +5,7 @@ from wtforms.fields import (
     SubmitField,
     SelectMultipleField,
     TextAreaField,
-    HiddenField,
-    IntegerField
+    HiddenField
 )
 from wtforms.validators import InputRequired, Length, Optional
 
