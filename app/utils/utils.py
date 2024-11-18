@@ -1,7 +1,6 @@
 import fnmatch
 import importlib
 import os
-import glob
 import json
 import re
 import sys
@@ -10,31 +9,12 @@ import random
 import string
 import jsonschema
 from ..db_class.db import User
-from pytaxonomies import Taxonomies
-from pymispgalaxies import Galaxies, Clusters
 from functools import lru_cache
 
 MODULES = {}
 MODULES_CONFIG = {}
 MODULE_PATH = os.path.join(os.getcwd(), "app", "modules")
 
-manifest = os.path.join(os.getcwd(), "modules/misp-taxonomies/MANIFEST.json")
-
-galaxies_list = []
-root_dir_galaxies = os.path.join(os.getcwd(), 'modules/misp-galaxy/galaxies')
-for galaxy_file in glob.glob(os.path.join(root_dir_galaxies, '*.json')):
-    with open(galaxy_file, 'r') as f:
-        galaxies_list.append(json.load(f))
-
-clusters_list = []
-root_dir_clusters = os.path.join(os.getcwd(), 'modules/misp-galaxy/clusters')
-for galaxy_file in glob.glob(os.path.join(root_dir_clusters, '*.json')):
-    with open(galaxy_file, 'r') as f:
-        clusters_list.append(json.load(f))
-
-taxonomies = Taxonomies(manifest_path=manifest)
-galaxies = Galaxies(galaxies=galaxies_list)
-clusters = Clusters(clusters=clusters_list)
 
 def isUUID(uid):
     try:

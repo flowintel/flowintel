@@ -1,11 +1,35 @@
-import json
 import os
+import json
+import glob
 from ..db_class.db import db
 from ..db_class.db import Taxonomy, Tags, Galaxy, Cluster
-from .utils import taxonomies, galaxies, clusters
+
+from pytaxonomies import Taxonomies
+from pymispgalaxies import Galaxies, Clusters
 
 
-def create_tag(tag, taxo_id):
+def get_taxonomies():
+    manifest = os.path.join(os.getcwd(), "modules/misp-taxonomies/MANIFEST.json")
+    return Taxonomies(manifest_path=manifest)
+
+def get_galaxies():
+    galaxies_list = []
+    root_dir_galaxies = os.path.join(os.getcwd(), 'modules/misp-galaxy/galaxies')
+    for galaxy_file in glob.glob(os.path.join(root_dir_galaxies, '*.json')):
+        with open(galaxy_file, 'r') as f:
+            galaxies_list.append(json.load(f))
+
+    clusters_list = []
+    root_dir_clusters = os.path.join(os.getcwd(), 'modules/misp-galaxy/clusters')
+    for galaxy_file in glob.glob(os.path.join(root_dir_clusters, '*.json')):
+        with open(galaxy_file, 'r') as f:
+            clusters_list.append(json.load(f))
+
+    return Galaxies(galaxies=galaxies_list), Clusters(clusters=clusters_list)
+
+
+def create_tag(tag, taxo_id, taxonomies):
+    
     revert_match = taxonomies.revert_machinetag(tag)[1].colour
     if not revert_match:
         namespace = tag.split(":")[0]
@@ -32,6 +56,7 @@ def create_tag(tag, taxo_id):
 
 def create_taxonomies():
     print("[+] Create/Update Taxonomies...")
+    taxonomies = get_taxonomies()
     for taxonomy in list(taxonomies.keys()):
         if not Taxonomy.query.filter_by(name=taxonomy).first():
             taxo = Taxonomy(
@@ -42,11 +67,12 @@ def create_taxonomies():
             db.session.commit()
 
             for tag in taxonomies.get(taxonomy).machinetags():
-                create_tag(tag, taxo.id)
+                create_tag(tag, taxo.id, taxonomies)
 
 
 def create_galaxies():
     print("[+] Create/Update Galaxies...")
+    galaxies, clusters = get_galaxies()
     for galaxy in list(galaxies.keys()):
         current_galaxy = galaxies.get(galaxy)
         galaxy_db = Galaxy.query.filter_by(uuid=current_galaxy.uuid).first()
