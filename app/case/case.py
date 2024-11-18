@@ -772,7 +772,7 @@ def create_misp_object(cid):
     if CommonModel.get_case(cid):
         if "object-template" in request.json:
             if "attributes" in request.json:
-                CaseModel.create_misp_object(cid, request.json)
+                CaseModel.create_misp_object(cid, request.json, current_user)
                 return {"message": "Object created", "toast_class": "success-subtle"}, 200
             return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
         return {"message": "Need to pass 'object-template'", "toast_class": "warning-subtle"}, 400
@@ -784,7 +784,7 @@ def create_misp_object(cid):
 def delete_object(cid, oid):
     """Delete an object from case"""
     if CommonModel.get_case(cid):
-        if CaseModel.delete_object(cid, oid):
+        if CaseModel.delete_object(cid, oid, current_user):
             return {"message": "Object deleted", "toast_class": "success-subtle"}, 200
         return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -832,7 +832,7 @@ def delete_attribute(cid, oid, aid):
 @case_blueprint.route("/<cid>/misp_object_connectors", methods=['GET'])
 @login_required
 def misp_object_connectors(cid):
-    """Delete an object from case"""
+    """Get MISP object connectors"""
     if CommonModel.get_case(cid):
         instances_list = list()
         for object_connector in CaseModel.get_misp_object_connectors(cid):
@@ -855,7 +855,7 @@ def add_misp_object_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
         if "connectors" in request.json:
-            if CaseModel.add_misp_object_connector(cid, request.json):
+            if CaseModel.add_misp_object_connector(cid, request.json, current_user):
                 return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -866,7 +866,7 @@ def add_misp_object_connector(cid):
 def remove_misp_connector(cid, iid):
     """Remove MISP Connector"""
     if CommonModel.get_case(cid):
-        if CaseModel.remove_misp_connector(cid, iid):
+        if CaseModel.remove_misp_connector(cid, iid, current_user):
             return {"message": "Connector removed successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Error removing connector", "toast_class": "danger-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -931,7 +931,7 @@ def add_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
         if "connectors" in request.json:
-            if CaseModel.add_connector(cid, request.json):
+            if CaseModel.add_connector(cid, request.json, current_user):
                 return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404

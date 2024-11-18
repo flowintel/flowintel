@@ -886,6 +886,7 @@ class Case_Misp_Object_Connector_Instance(db.Model):
         return json_dict
         
 class Misp_Object_Instance_Uuid(db.Model):
+    # UUID of an object on a misp instance
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     instance_id = db.Column(db.Integer, index=True)
     misp_object_id = db.Column(db.Integer, index=True)
@@ -902,6 +903,7 @@ class Misp_Object_Instance_Uuid(db.Model):
         return json_dict
     
 class Misp_Attribute_Instance_Uuid(db.Model):
+    # UUID of an attribute on a misp instance
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     instance_id = db.Column(db.Integer, index=True)
     misp_attribute_id = db.Column(db.Integer, index=True)

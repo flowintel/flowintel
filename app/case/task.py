@@ -137,7 +137,7 @@ def create_note(cid, tid):
     if CommonModel.get_case(cid):
         if CommonModel.get_task(tid):
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                res_note = TaskModel.create_note(tid)
+                res_note = TaskModel.create_note(tid, current_user)
                 if res_note:
                     return {"note": res_note.to_json(), "message": "Note created", "toast_class": "success-subtle"}, 200
                 return {"message": "Error create note", "toast_class": "danger-subtle"}, 400
@@ -154,7 +154,7 @@ def delete_note(cid, tid):
         if CommonModel.get_task(tid):
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "note_id" in request.args:
-                    if TaskModel.delete_note(tid, request.args.get("note_id")):
+                    if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
                         return {"message": "Note deleted", "toast_class": "success-subtle"}, 200
                     return {"message": "Error delete note", "toast_class": "danger-subtle"}, 400
                 return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
@@ -569,7 +569,7 @@ def create_subtask(cid,tid):
     task = CommonModel.get_task(tid)
     if task:
         if "description" in request.json:
-            subtask = TaskModel.create_subtask(tid, request.json["description"])
+            subtask = TaskModel.create_subtask(tid, request.json["description"], current_user)
             if subtask:
                 return {"message": f"Subtask created", "id": subtask.id, 'toast_class': "success-subtle", "icon": "fas fa-plus"}, 200 
             return {"message": "Error creating subtask", 'toast_class': "danger-subtle"}, 400
@@ -584,7 +584,7 @@ def edit_subtask(cid, tid, sid):
     task = CommonModel.get_task(tid)
     if task:
         if "description" in request.json:
-            if TaskModel.edit_subtask(tid, sid, request.json["description"]):
+            if TaskModel.edit_subtask(tid, sid, request.json["description"], current_user):
                 return {"message": "Subtask edited", 'toast_class': "success-subtle"}, 200 
             return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
         return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
@@ -597,7 +597,7 @@ def complete_subtask(cid, tid, sid):
     """Complete a subtask"""
     task = CommonModel.get_task(tid)
     if task:
-        if TaskModel.complete_subtask(tid, sid):
+        if TaskModel.complete_subtask(tid, sid, current_user):
             return {"message": "Subtask completed", 'toast_class': "success-subtle"}, 200 
         return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
@@ -609,7 +609,7 @@ def delete_subtask(cid, tid, sid):
     """Delete a subtask"""
     task = CommonModel.get_task(tid)
     if task:
-        if TaskModel.delete_subtask(tid, sid):
+        if TaskModel.delete_subtask(tid, sid, current_user):
             return {"message": "Subtask deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200 
         return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404

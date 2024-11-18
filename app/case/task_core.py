@@ -312,7 +312,7 @@ def modif_note_core(tid, current_user, notes, note_id):
     CommonModel.save_history(case.uuid, current_user, f"Notes for '{task.title}' modified")
     return note
 
-def create_note(tid):
+def create_note(tid, current_user):
     """Create a new empty note in the task"""
     task = CommonModel.get_task(tid)
     if task:
@@ -325,16 +325,29 @@ def create_note(tid):
         task.nb_notes += 1
         db.session.add(note)
         db.session.commit()
+
+        CommonModel.update_last_modif(task.case_id)
+        CommonModel.update_last_modif_task(task.id)
+        db.session.commit()
+        case = CommonModel.get_case(task.case_id)
+        CommonModel.save_history(case.uuid, current_user, f"Notes for '{task.title}' created")
         return note
     return False
 
-def delete_note(tid, note_id):
+def delete_note(tid, note_id, current_user):
     """Delete note"""
     note = Note.query.get(note_id)
     if note:
         if note.task_id == int(tid):
             Note.query.filter_by(id=note_id).delete()
             db.session.commit()
+
+            task = CommonModel.get_task(tid)
+            CommonModel.update_last_modif(task.case_id)
+            CommonModel.update_last_modif_task(task.id)
+            db.session.commit()
+            case = CommonModel.get_case(task.case_id)
+            CommonModel.save_history(case.uuid, current_user, f"Notes for '{task.title}' created")
             return True
     return False
 
@@ -422,6 +435,9 @@ def delete_file(file, task, current_user):
 
     db.session.delete(file)
     db.session.commit()
+
+    CommonModel.update_last_modif(task.case_id)
+    CommonModel.update_last_modif_task(task.id)
     case = CommonModel.get_case(task.case_id)
     CommonModel.save_history(case.uuid, current_user, f"File deleted for task '{task.title}'")
     return True
@@ -674,44 +690,75 @@ def call_module_task_no_instance(module, task, case, current_user, user_id):
 def get_subtask(sid):
     return Subtask.query.get(sid)
 
-def complete_subtask(tid, sid):
+def complete_subtask(tid, sid, current_user):
     subtask = get_subtask(sid)
     if subtask:
         if subtask.task_id == int(tid):
             subtask.completed = not subtask.completed
             db.session.commit()
+
+            task = CommonModel.get_task(tid)
+            CommonModel.update_last_modif(task.case_id)
+            CommonModel.update_last_modif_task(task.id)
+            db.session.commit()
+            case = CommonModel.get_case(task.case_id)
+            CommonModel.save_history(case.uuid, current_user, f"Subtask '{subtask.description}' completed for '{task.title}'")
             return True
     return False
 
-def delete_subtask(tid, sid):
+def delete_subtask(tid, sid, current_user):
     subtask = get_subtask(sid)
     if subtask:
         if subtask.task_id == int(tid):
             db.session.delete(subtask)
             db.session.commit()
+
+            task = CommonModel.get_task(tid)
+            CommonModel.update_last_modif(task.case_id)
+            CommonModel.update_last_modif_task(task.id)
+            db.session.commit()
+            case = CommonModel.get_case(task.case_id)
+            CommonModel.save_history(case.uuid, current_user, f"Subtask '{subtask.description}' deleted for '{task.title}'")
             return True
     return False
 
-def create_subtask(tid, subtask_description):
+def create_subtask(tid, subtask_description, current_user):
     subtask = Subtask(
         description=subtask_description,
         task_id=tid
     )
     db.session.add(subtask)
     db.session.commit()
+
+    task = CommonModel.get_task(tid)
+    CommonModel.update_last_modif(task.case_id)
+    CommonModel.update_last_modif_task(task.id)
+    db.session.commit()
+    case = CommonModel.get_case(task.case_id)
+    CommonModel.save_history(case.uuid, current_user, f"Subtask '{subtask.description}' deleted for '{task.title}'")
     return subtask
 
-def edit_subtask(tid, sid, subtask_description):
+def edit_subtask(tid, sid, subtask_description, current_user):
     subtask = get_subtask(sid)
     if subtask:
         if subtask.task_id == int(tid):
             subtask.description = subtask_description
             db.session.commit()
+
+            task = CommonModel.get_task(tid)
+            CommonModel.update_last_modif(task.case_id)
+            CommonModel.update_last_modif_task(task.id)
+            db.session.commit()
+            case = CommonModel.get_case(task.case_id)
+            CommonModel.save_history(case.uuid, current_user, f"Subtask '{subtask.description}' deleted for '{task.title}'")
             return True
     return False
 
 
-def add_connector(tid, request_json) -> bool:
+def add_connector(tid, request_json, current_user) -> bool:
+    task = CommonModel.get_task(tid)
+    case = CommonModel.get_case(task.case_id)
+
     for connector in request_json["connectors"]:
         instance = CommonModel.get_instance_by_name(connector["name"])
         if "identifier" in connector: loc_identfier = connector["identifier"]
@@ -723,6 +770,12 @@ def add_connector(tid, request_json) -> bool:
         )
         db.session.add(c)
         db.session.commit()
+
+        CommonModel.update_last_modif(task.case_id)
+        CommonModel.update_last_modif_task(task.id)
+        db.session.commit()
+        
+        CommonModel.save_history(case.uuid, current_user, f"Connector {instance.name} added to task {task.title}")
     return True
 
 def remove_connector(task_id, instance_id):

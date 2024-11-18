@@ -524,7 +524,7 @@ class AddConnectorsCase(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "connectors" in request.json:
-                    if CaseModel.add_connector(cid, request.json):
+                    if CaseModel.add_connector(cid, request.json, current_user):
                         return {"message": "Connector added"}, 200
                     return {"message": "Error Connector added"}, 400
                 return {"message": "Please give a list of connectors"}, 400

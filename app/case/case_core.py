@@ -762,6 +762,7 @@ def change_recurring(form_dict, cid, current_user):
         return False
 
     db.session.commit()
+    CommonModel.update_last_modif(cid)
     CommonModel.save_history(case.uuid, current_user, "Recurring changed")
     return True
 
@@ -829,7 +830,7 @@ def get_instance_module_core(module, type_module, case_id, user_id):
 # Connectors #
 ##############
 
-def add_connector(cid, request_json) -> bool:
+def add_connector(cid, request_json, current_user) -> bool:
     for connector in request_json["connectors"]:
         instance = CommonModel.get_instance_by_name(connector["name"])
         if "identifier" in connector: loc_identfier = connector["identifier"]
@@ -841,6 +842,9 @@ def add_connector(cid, request_json) -> bool:
         )
         db.session.add(c)
         db.session.commit()
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, f"New Connector added")
+        CommonModel.update_last_modif(cid)
     return True
 
 def remove_connector(case_id, instance_id):
@@ -1020,6 +1024,7 @@ def change_hedgedoc_url(form_dict, cid, current_user):
         loc_hedgedoc_url = loc_hedgedoc_url[:-5]
 
     case.hedgedoc_url = loc_hedgedoc_url
+    CommonModel.update_last_modif(cid)
     db.session.commit()
     CommonModel.save_history(case.uuid, current_user, f"Hedgedoc url changed")
     return True
@@ -1041,7 +1046,7 @@ def get_hedgedoc_notes(cid):
 # MISP Object #
 ###############
 
-def create_misp_object(cid, request_json):
+def create_misp_object(cid, request_json, current_user):
     """Create a new misp object"""
     case_misp_object = Case_Misp_Object(
         case_id=cid,
@@ -1059,6 +1064,10 @@ def create_misp_object(cid, request_json):
         )
         db.session.add(attr)
         db.session.commit()
+
+    case = CommonModel.get_case(cid)
+    CommonModel.save_history(case.uuid, current_user, f"New MISP-Object created")
+    CommonModel.update_last_modif(cid)
     return case_misp_object
 
 def get_misp_object_by_case(cid):
@@ -1073,12 +1082,16 @@ def get_misp_attribute(aid):
     return Misp_Attribute.query.get(aid)
 
 
-def delete_object(cid, oid):
+def delete_object(cid, oid, current_user):
     """Delete a misp object"""
     misp_object = get_misp_object(oid)
     if int(cid) == misp_object.case_id:
         db.session.delete(misp_object)
         db.session.commit()
+
+        case = CommonModel.get_case(int(cid))
+        CommonModel.save_history(case.uuid, current_user, f"MISP-Object deleted")
+        CommonModel.update_last_modif(cid)
         return True
     return False
 
@@ -1127,7 +1140,7 @@ def get_misp_object_connectors(cid) -> list:
     return [instance.to_json() for instance in instances]
 
 
-def add_misp_object_connector(cid, request_json) -> bool:
+def add_misp_object_connector(cid, request_json, current_user) -> bool:
     for connector in request_json["connectors"]:
         instance = CommonModel.get_instance_by_name(connector["name"])
         if "identifier" in connector: loc_identfier = connector["identifier"]
@@ -1139,12 +1152,21 @@ def add_misp_object_connector(cid, request_json) -> bool:
         )
         db.session.add(c)
         db.session.commit()
+
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, f"Connector {instance.name} added")
+        CommonModel.update_last_modif(cid)
     return True
 
-def remove_misp_connector(case_id, instance_id):
+def remove_misp_connector(case_id, instance_id, current_user):
     try:
         Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).delete()
         db.session.commit()
+
+        case = CommonModel.get_case(case_id)
+        instance = CommonModel.get_instance(instance_id)
+        CommonModel.save_history(case.uuid, current_user, f"Connector {instance.name} added")
+        CommonModel.update_last_modif(case_id)
     except:
         return False
     return True
@@ -1268,3 +1290,5 @@ def call_module_misp(instance_id, case, user):
     if object_uuid_list:
         result_misp_object_module(object_uuid_list, instance_id)
 
+    CommonModel.save_history(case.uuid, user, f"Module 'misp_object_event' called with connector '{instance['name']}'")
+    CommonModel.update_last_modif(case.id)

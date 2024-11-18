@@ -188,7 +188,8 @@ class GetNoteTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             if "note_id" in request.args:
-                if TaskModel.delete_note(tid, request.args.get("note_id")):
+                current_user = utils.get_user_from_api(request.headers)
+                if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
                     return {"message": "Note deleted"}, 200
             return {"message": "Need to pass a note id"}, 400
         return {"message": "Task not found"}, 404
@@ -477,7 +478,7 @@ class CreateSubtask(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "description" in request.json:
-                    subtask = TaskModel.create_subtask(tid, request.json["description"])
+                    subtask = TaskModel.create_subtask(tid, request.json["description"], current_user)
                     if subtask:
                         return {"message": f"Subtask created, id: {subtask.id}", "subtask_id": subtask.id}, 201 
                 return {"message": "Need to pass 'description'"}, 400
@@ -497,7 +498,7 @@ class EditSubtask(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "description" in request.json:
-                    subtask = TaskModel.edit_subtask(tid, sid, request.json["description"])
+                    subtask = TaskModel.edit_subtask(tid, sid, request.json["description"], current_user)
                     if subtask:
                         return {"message": f"Subtask edited"}, 200 
                 return {"message": "Need to pass 'description'"}, 400
@@ -535,7 +536,7 @@ class CompleteSubtask(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-                if TaskModel.complete_subtask(tid, sid):
+                if TaskModel.complete_subtask(tid, sid, current_user):
                     return {"message": "Subtask completed"}, 200
                 return {"message": "Subtask not found"}, 404
             return {"message": "Permission denied"}, 403
@@ -550,7 +551,7 @@ class DeleteSubtask(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-                if TaskModel.delete_subtask(tid, sid):
+                if TaskModel.delete_subtask(tid, sid, current_user):
                     return {"message": "Subtask deleted"}, 200
                 return {"message": "Subtask not found"}, 404
             return {"message": "Permission denied"}, 403
