@@ -8,7 +8,7 @@ import uuid
 import random
 import string
 import jsonschema
-from ..db_class.db import User
+from ..db_class.db import Tags, User
 from functools import lru_cache
 
 MODULES = {}
@@ -165,11 +165,11 @@ def validateTaskJson(json_data):
     return True
 
 def check_tag(tag):
-    try:
-        name = tag.split(":")[0]
-        return tag in taxonomies.get(name).machinetags()
-    except:
-        return False
+    r = Tags.query.filter_by(name=tag).first()
+    if r:
+        return True
+    return False
+
 
 
 @lru_cache
