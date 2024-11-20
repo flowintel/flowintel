@@ -118,7 +118,7 @@ caseSchema = {
         },
         "clusters":{
             "type": "array",
-            "items": {"type": "string"},
+            "items": {"type": "object"},
         },
     },
     "required": ['title']
