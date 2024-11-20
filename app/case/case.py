@@ -314,7 +314,16 @@ def sort_by_ongoing():
     clusters = request.args.get('clusters')
     or_and_galaxies = request.args.get("or_and_galaxies")
 
-    cases_list = CaseModel.sort_by_status(page, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=False)
+    custom_tags = request.args.get('custom_tags')
+
+    cases_list = CaseModel.sort_by_status(page, 
+                                          taxonomies, 
+                                          galaxies, 
+                                          tags, 
+                                          clusters, 
+                                          custom_tags,
+                                          or_and_taxo, or_and_galaxies, 
+                                          completed=True)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -332,7 +341,16 @@ def sort_by_finished():
     clusters = request.args.get('clusters')
     or_and_galaxies = request.args.get("or_and_galaxies")
 
-    cases_list = CaseModel.sort_by_status(page, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=True)
+    custom_tags = request.args.get('custom_tags')
+
+    cases_list = CaseModel.sort_by_status(page, 
+                                          taxonomies, 
+                                          galaxies, 
+                                          tags, 
+                                          clusters, 
+                                          custom_tags,
+                                          or_and_taxo, or_and_galaxies, 
+                                          completed=True)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -350,8 +368,18 @@ def ongoing_sort_by_filter():
     clusters = request.args.get('clusters')
     or_and_galaxies = request.args.get("or_and_galaxies")
 
+    custom_tags = request.args.get('custom_tags')
+
     if filter:
-        cases_list, nb_pages = CaseModel.sort_by_filter(filter, page, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=False)
+        cases_list, nb_pages = CaseModel.sort_by_filter(filter, 
+                                                        page, 
+                                                        taxonomies, 
+                                                        galaxies, 
+                                                        tags, 
+                                                        clusters,
+                                                        custom_tags,
+                                                        or_and_taxo, or_and_galaxies,
+                                                        completed=False)
         return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 
@@ -370,8 +398,18 @@ def finished_sort_by_filter():
     clusters = request.args.get('clusters')
     or_and_galaxies = request.args.get("or_and_galaxies")
 
+    custom_tags = request.args.get('custom_tags')
+
     if filter:
-        cases_list, nb_pages = CaseModel.sort_by_filter(filter, page, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=True)
+        cases_list, nb_pages = CaseModel.sort_by_filter(filter, 
+                                                        page, 
+                                                        taxonomies, 
+                                                        galaxies, 
+                                                        tags, 
+                                                        clusters,
+                                                        custom_tags,
+                                                        or_and_taxo, or_and_galaxies,
+                                                        completed=False)
         return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 

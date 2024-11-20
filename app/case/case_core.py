@@ -351,7 +351,7 @@ def open_closed(case):
     return cp_open, cp_closed
 
 
-def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, filter=None):
+def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, filter=None):
     """Build a case query depending on parameters"""
     query = Case.query
     conditions = [Case.completed == completed]
@@ -360,11 +360,9 @@ def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None,
         query = query.join(Case_Tags, Case_Tags.case_id == Case.id)
         query = query.join(Tags, Case_Tags.tag_id == Tags.id)
         if tags:
-            tags = ast.literal_eval(tags)
             conditions.append(Tags.name.in_(list(tags)))
 
         if taxonomies:
-            taxonomies = ast.literal_eval(taxonomies)
             query = query.join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)
             conditions.append(Taxonomy.name.in_(list(taxonomies)))
 
@@ -372,13 +370,16 @@ def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None,
         query = query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id == Case.id)
         query = query.join(Cluster, Case_Galaxy_Tags.cluster_id == Cluster.id)
         if clusters:
-            clusters = ast.literal_eval(clusters)
             conditions.append(Cluster.name.in_(list(clusters)))
 
         if galaxies:
-            galaxies = ast.literal_eval(galaxies)
             query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
             conditions.append(Galaxy.name.in_(list(galaxies)))
+    
+    if custom_tags:
+        query = query.join(Case_Custom_Tags, Case_Custom_Tags.case_id == Case.id)
+        query = query.join(Custom_Tags, Case_Custom_Tags.custom_tag_id == Custom_Tags.id)
+        conditions.append(Custom_Tags.name.in_(list(custom_tags)))
 
     if filter:
         query = query.order_by(desc(filter))
@@ -386,9 +387,8 @@ def build_case_query(page, completed, tags=None, taxonomies=None, galaxies=None,
     return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
 
 
-def sort_by_status(page, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
+def sort_by_status(page, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
     """Sort all cases by completed and depending of taxonomies and galaxies"""
-    cases = build_case_query(page, completed, tags, taxonomies, galaxies, clusters)
 
     if tags:
         tags = ast.literal_eval(tags)
@@ -399,6 +399,11 @@ def sort_by_status(page, taxonomies=[], galaxies=[], tags=[], clusters=[], or_an
         galaxies = ast.literal_eval(galaxies)
     if clusters:
         clusters = ast.literal_eval(clusters)
+
+    if custom_tags:
+        custom_tags = ast.literal_eval(custom_tags)
+
+    cases = build_case_query(page, completed, tags, taxonomies, galaxies, clusters, custom_tags)
 
     if tags or taxonomies or galaxies or clusters:
         if or_and_taxo == "false":
@@ -432,10 +437,9 @@ def sort_by_status(page, taxonomies=[], galaxies=[], tags=[], clusters=[], or_an
     return cases
 
 
-def sort_by_filter(filter, page, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
+def sort_by_filter(filter, page, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
     """Sort all cases by a filter and taxonomies and galaxies"""
-    cases = build_case_query(page, completed, tags, taxonomies, galaxies, clusters, filter)
-    nb_pages = cases.pages
+
     if tags:
         tags = ast.literal_eval(tags)
     if taxonomies:
@@ -445,8 +449,14 @@ def sort_by_filter(filter, page, taxonomies=[], galaxies=[], tags=[], clusters=[
         galaxies = ast.literal_eval(galaxies)
     if clusters:
         clusters = ast.literal_eval(clusters)
+    
+    if custom_tags:
+        custom_tags = ast.literal_eval(custom_tags)
 
-    if tags or taxonomies or galaxies or clusters:
+    cases = build_case_query(page, completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
+    nb_pages = cases.pages
+
+    if tags or taxonomies or galaxies or clusters or custom_tags:
         if or_and_taxo == "false":
             glob_list = []
 
