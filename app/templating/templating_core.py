@@ -9,7 +9,7 @@ from . import common_template_core as CommonModel
 from . import task_template_core as TaskModel
 from ..custom_tags import custom_tags_core as CustomModel
 
-def build_case_query(page, tags=None, taxonomies=None, galaxies=None, clusters=None, title_filter=None):
+def build_case_query(page, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, title_filter=None):
     query = Case_Template.query
     conditions = []
 
@@ -17,11 +17,9 @@ def build_case_query(page, tags=None, taxonomies=None, galaxies=None, clusters=N
         query = query.join(Case_Template_Tags, Case_Template_Tags.case_id == Case_Template.id)
         query = query.join(Tags, Case_Template_Tags.tag_id == Tags.id)
         if tags:
-            tags = ast.literal_eval(tags)
             conditions.append(Tags.name.in_(list(tags)))
 
         if taxonomies:
-            taxonomies = ast.literal_eval(taxonomies)
             query = query.join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)
             conditions.append(Taxonomy.name.in_(list(taxonomies)))
 
@@ -29,13 +27,16 @@ def build_case_query(page, tags=None, taxonomies=None, galaxies=None, clusters=N
         query = query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id == Case_Template.id)
         query = query.join(Cluster, Case_Template_Galaxy_Tags.cluster_id == Cluster.id)
         if clusters:
-            clusters = ast.literal_eval(clusters)
             conditions.append(Cluster.name.in_(list(clusters)))
 
         if galaxies:
-            galaxies = ast.literal_eval(galaxies)
             query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
             conditions.append(Galaxy.name.in_(list(galaxies)))
+
+    if custom_tags:
+        query = query.join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.case_template_id == Case_Template.id)
+        query = query.join(Custom_Tags, Case_Template_Custom_Tags.custom_tag_id == Custom_Tags.id)
+        conditions.append(Custom_Tags.name.in_(list(custom_tags)))
 
     if title_filter=='true':
         query = query.order_by('title')
@@ -45,9 +46,7 @@ def build_case_query(page, tags=None, taxonomies=None, galaxies=None, clusters=N
     return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
 
 
-def get_page_case_templates(page, title_filter, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true"):
-    cases = build_case_query(page, tags, taxonomies, galaxies, clusters, title_filter)
-    nb_pages = cases.pages
+def get_page_case_templates(page, title_filter, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true"):
 
     if tags:
         tags = ast.literal_eval(tags)
@@ -59,7 +58,13 @@ def get_page_case_templates(page, title_filter, taxonomies=[], galaxies=[], tags
     if clusters:
         clusters = ast.literal_eval(clusters)
 
-    if tags or taxonomies or galaxies or clusters:
+    if custom_tags:
+        custom_tags = ast.literal_eval(custom_tags)
+
+    cases = build_case_query(page, tags, taxonomies, galaxies, clusters, custom_tags, title_filter)
+    nb_pages = cases.pages
+
+    if tags or taxonomies or galaxies or clusters or custom_tags:
         if or_and_taxo == "false":
             glob_list = []
 

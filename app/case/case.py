@@ -323,7 +323,7 @@ def sort_by_ongoing():
                                           clusters, 
                                           custom_tags,
                                           or_and_taxo, or_and_galaxies, 
-                                          completed=True)
+                                          completed=False)
     return CaseModel.regroup_case_info(cases_list, current_user)
 
 
@@ -409,7 +409,7 @@ def finished_sort_by_filter():
                                                         clusters,
                                                         custom_tags,
                                                         or_and_taxo, or_and_galaxies,
-                                                        completed=False)
+                                                        completed=True)
         return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
     return {"message": "No filter pass"}
 

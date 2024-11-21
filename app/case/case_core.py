@@ -405,7 +405,7 @@ def sort_by_status(page, taxonomies=[], galaxies=[], tags=[], clusters=[], custo
 
     cases = build_case_query(page, completed, tags, taxonomies, galaxies, clusters, custom_tags)
 
-    if tags or taxonomies or galaxies or clusters:
+    if tags or taxonomies or galaxies or clusters or custom_tags:
         if or_and_taxo == "false":
             glob_list = []
 

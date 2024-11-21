@@ -196,7 +196,17 @@ def get_page_case_templates():
     clusters = request.args.get('clusters')
     or_and_galaxies = request.args.get("or_and_galaxies")
 
-    templates, nb_pages = TemplateModel.get_page_case_templates(page, title_filter, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
+    custom_tags = request.args.get('custom_tags')
+
+    templates, nb_pages = TemplateModel.get_page_case_templates(page, 
+                                                                title_filter, 
+                                                                taxonomies,
+                                                                galaxies, 
+                                                                tags, 
+                                                                clusters, 
+                                                                custom_tags,
+                                                                or_and_taxo, 
+                                                                or_and_galaxies)
     templates_list = list()
     for template in templates:
         loc_template = template.to_json()
@@ -256,7 +266,17 @@ def get_page_task_templates():
     clusters = request.args.get('clusters')
     or_and_galaxies = request.args.get("or_and_galaxies")
 
-    templates, nb_pages = TaskModel.get_page_task_templates(page, title_filter, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
+    custom_tags = request.args.get('custom_tags')
+
+    templates, nb_pages = TaskModel.get_page_task_templates(page, 
+                                                            title_filter, 
+                                                            taxonomies, 
+                                                            galaxies, 
+                                                            tags, 
+                                                            clusters,
+                                                            custom_tags,
+                                                            or_and_taxo, 
+                                                            or_and_galaxies)
     if templates:
         templates_list = list()
         for template in templates:

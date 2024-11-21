@@ -470,7 +470,7 @@ def get_task_info(tasks_list, user):
     return tasks
 
 
-def build_task_query(completed, tags=None, taxonomies=None, galaxies=None, clusters=None, filter=None):
+def build_task_query(completed, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, filter=None):
     """Build a task query depending on parameters"""
     query = Task.query
     conditions = [Task.completed == completed]
@@ -479,11 +479,9 @@ def build_task_query(completed, tags=None, taxonomies=None, galaxies=None, clust
         query = query.join(Task_Tags, Task_Tags.task_id == Task.id)
         query = query.join(Tags, Task_Tags.tag_id == Tags.id)
         if tags:
-            tags = ast.literal_eval(tags)
             conditions.append(Tags.name.in_(list(tags)))
 
         if taxonomies:
-            taxonomies = ast.literal_eval(taxonomies)
             query = query.join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)
             conditions.append(Taxonomy.name.in_(list(taxonomies)))
 
@@ -491,22 +489,24 @@ def build_task_query(completed, tags=None, taxonomies=None, galaxies=None, clust
         query = query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id == Task.id)
         query = query.join(Cluster, Task_Galaxy_Tags.cluster_id == Cluster.id)
         if clusters:
-            clusters = ast.literal_eval(clusters)
             conditions.append(Cluster.name.in_(list(clusters)))
 
         if galaxies:
-            galaxies = ast.literal_eval(galaxies)
             query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
             conditions.append(Galaxy.name.in_(list(galaxies)))
+    
+    if custom_tags:
+        query = query.join(Task_Custom_Tags, Task_Custom_Tags.task_id == Task.id)
+        query = query.join(Custom_Tags, Task_Custom_Tags.custom_tag_id == Custom_Tags.id)
+        conditions.append(Custom_Tags.name.in_(list(custom_tags)))
 
     if filter:
         query = query.order_by(desc(filter))
     
     return query.filter(and_(*conditions)).order_by(Task.case_order_id).all()
 
-def sort_by_status_task_core(case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False, no_info=False, filter=False):
+def sort_by_status_task_core(case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False, no_info=False, filter=False):
     """Sort all tasks by completed and depending of taxonomies and galaxies"""
-    tasks = build_task_query(completed, tags, taxonomies, galaxies, clusters, filter)
 
     if tags:
         tags = ast.literal_eval(tags)
@@ -518,7 +518,12 @@ def sort_by_status_task_core(case, user, taxonomies=[], galaxies=[], tags=[], cl
     if clusters:
         clusters = ast.literal_eval(clusters)
 
-    if tags or taxonomies or galaxies or clusters:
+    if custom_tags:
+        custom_tags = ast.literal_eval(custom_tags)
+
+    tasks = build_task_query(completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
+
+    if tags or taxonomies or galaxies or clusters or custom_tags:
         if or_and_taxo == "false":
             glob_list = []
 
@@ -553,9 +558,9 @@ def sort_by_status_task_core(case, user, taxonomies=[], galaxies=[], tags=[], cl
     return get_task_info(tasks, user)
 
 
-def sort_tasks_by_filter(case, user, filter, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
+def sort_tasks_by_filter(case, user, filter, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False):
     """Sort all tasks by a filter and taxonomies and galaxies"""
-    tasks_list = sort_by_status_task_core(case, user, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed, no_info=True, filter=filter)
+    tasks_list = sort_by_status_task_core(case, user, taxonomies, galaxies, tags, clusters, custom_tags, or_and_taxo, or_and_galaxies, completed, no_info=True, filter=filter)
 
     loc_list = list()
     if filter == "assigned_tasks":

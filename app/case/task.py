@@ -343,7 +343,17 @@ def sort_by_ongoing_task(cid):
     clusters = request.args.get('clusters')
     or_and_galaxies = request.args.get("or_and_galaxies")
 
-    return TaskModel.sort_by_status_task_core(case, current_user, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=False)
+    custom_tags = request.args.get('custom_tags')
+
+    return TaskModel.sort_by_status_task_core(case, 
+                                              current_user, 
+                                              taxonomies, 
+                                              galaxies, 
+                                              tags, 
+                                              clusters,
+                                              custom_tags,
+                                              or_and_taxo, or_and_galaxies, 
+                                              completed=False)
 
 
 @task_blueprint.route("/<cid>/sort_by_finished_task", methods=['GET'])
@@ -359,7 +369,17 @@ def sort_by_finished_task(cid):
     clusters = request.args.get('clusters')
     or_and_galaxies = request.args.get("or_and_galaxies")
 
-    return TaskModel.sort_by_status_task_core(case, current_user, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=True)
+    custom_tags = request.args.get('custom_tags')
+
+    return TaskModel.sort_by_status_task_core(case, 
+                                              current_user, 
+                                              taxonomies, 
+                                              galaxies, 
+                                              tags, 
+                                              clusters,
+                                              custom_tags,
+                                              or_and_taxo, or_and_galaxies, 
+                                              completed=True)
 
 
 @task_blueprint.route("/<cid>/tasks/ongoing", methods=['GET'])
@@ -375,9 +395,21 @@ def ongoing_tasks_sort_by_filter(cid):
     or_and_galaxies = request.args.get("or_and_galaxies")
     filter = request.args.get('filter')
 
+    custom_tags = request.args.get('custom_tags')
+
     if filter:
         case = CommonModel.get_case(cid)
-        return TaskModel.sort_tasks_by_filter(case, current_user, filter, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=False)
+        return TaskModel.sort_tasks_by_filter(case, 
+                                              current_user, 
+                                              filter, 
+                                              taxonomies, 
+                                              galaxies, 
+                                              tags, 
+                                              clusters, 
+                                              custom_tags,
+                                              or_and_taxo, 
+                                              or_and_galaxies, 
+                                              completed=False)
     return {"message": "No filter pass"}, 400
 
 
@@ -394,9 +426,21 @@ def finished_tasks_sort_by_filter(cid):
     clusters = request.args.get('clusters')
     or_and_galaxies = request.args.get("or_and_galaxies")
 
+    custom_tags = request.args.get('custom_tags')
+
     if filter:
         case = CommonModel.get_case(cid)
-        return TaskModel.sort_tasks_by_filter(case, current_user, filter, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies, completed=True)
+        return TaskModel.sort_tasks_by_filter(case, 
+                                              current_user, 
+                                              filter, 
+                                              taxonomies, 
+                                              galaxies, 
+                                              tags, 
+                                              clusters, 
+                                              custom_tags,
+                                              or_and_taxo, 
+                                              or_and_galaxies, 
+                                              completed=True)
     return {"message": "No filter pass"}, 400
 
 

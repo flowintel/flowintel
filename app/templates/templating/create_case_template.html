@@ -190,6 +190,7 @@
             fetch_galaxies()
 
             async function fetch_tags(){
+                tags_list.value = []
                 const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
                 if(await res.status==400 ){
                     display_toast(res)
@@ -201,6 +202,7 @@
             }
 
             async function fetch_cluster(){
+                cluster_list.value = []
                 const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
                 if(await res.status==400 ){
                     display_toast(res)

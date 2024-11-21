@@ -111,6 +111,19 @@
                     </select>
                 </template>
             </div>
+
+            <hr>
+
+            <div>Custom Tags:</div>
+            <div>
+                <template v-if="custom_tags">
+                    <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
+                        <template v-for="custom_tag, key in custom_tags">
+                            <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
+                        </template>
+                    </select>
+                </template>
+            </div>
 		</div>
 	</div>
     <hr>
@@ -192,18 +205,23 @@
                 const selected_galaxies = ref([])
                 const selected_clusters = ref([])
 
+                const custom_tags = ref([])
+                const selected_custom_tags = ref([])
+
                 async function fetch_template(page){
                     templates_list.value = null
                     let tags = ""
                     let taxo = ""
                     let galax = ""
                     let clusters = ""
+                    let custom_tg = ""
                     if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
                     if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
                     if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
                     if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
+                    if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
 
-                    const res = await fetch(`/templating/get_page_task_templates?page=${page}&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}`)
+                    const res = await fetch(`/templating/get_page_task_templates?page=${page}&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`)
                     let loc = await res.json()
                     templates_list.value = loc
                     current_page.value = page
@@ -224,12 +242,14 @@
                         let taxo = ""
                         let galax = ""
                         let clusters = ""
+                        let custom_tg = ""
                         if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
                         if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
                         if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
                         if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
+                        if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
 
-                    let res = await fetch(`/templating/get_page_task_templates?page=1&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}`)
+                    let res = await fetch(`/templating/get_page_task_templates?page=1&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`)
                     
                     let loc = await res.json()
                     if(asc_desc){
@@ -280,6 +300,7 @@
                 fetch_galaxies()
 
                 async function fetch_tags(){
+                    tags_list.value = []
                     const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
                     if(await res.status==400 ){
                         display_toast(res)
@@ -290,6 +311,7 @@
                     }
                 }
                 async function fetch_cluster(){
+                    cluster_list.value = []
                     const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
                     if(await res.status==400 ){
                         display_toast(res)
@@ -299,6 +321,17 @@
                         $('#clusters_select').trigger('change');
                     }
                 }
+
+                async function fetch_custom_tags(){
+                    const res = await fetch("/custom_tags/list")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        custom_tags.value = loc
+                    }                    
+                }
+                fetch_custom_tags()
 
 
                 onMounted(() => {
@@ -324,6 +357,10 @@
                         selected_clusters.value = $(this).select2('data').map(item => item.id);
                         asc_desc_filter()
                     })
+                    $('#custom_tags_select').on('select2:select select2:unselect', function (e) {
+                        selected_custom_tags.value = $(this).select2('data').map(item => item.id);
+                        asc_desc_filter()
+                    })
                 })
     
                 return {
@@ -339,7 +376,8 @@
                     taxonomies,
                     tags_list,
                     galaxies,
-                    cluster_list
+                    cluster_list,
+                    custom_tags
                 }
             }
         }).mount('#main-container')
