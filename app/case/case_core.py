@@ -678,8 +678,8 @@ def create_template_from_case(cid, case_title_template, current_user):
             ## Task subtasks
             for sub in task.subtasks:
                 subtask = Subtask_Template(
-                    tempalte_id=task_template.id,
-                    descritpion=sub.description
+                    template_id=task_template.id,
+                    description=sub.description
                 )
                 db.session.add(subtask)
                 db.session.commit()

@@ -85,7 +85,7 @@ export default {
                     body: JSON.stringify({"case_title_template": $("#case_title_template").val()})
                 })
                 let loc = await res.json()
-                window.location.href="/tools/template/case/" + loc["template_id"]
+                window.location.href="/templating/case/" + loc["template_id"]
             }
         }
         async function fetch_case_template_title(case_title_template){
@@ -131,8 +131,8 @@ export default {
             <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Create a template from the case">
                 <i class="fa-solid fa-bookmark"></i>
             </button>
-            <ul class="dropdown-menu">
-                <li>
+            <ul class="dropdown-menu" id="collapseTemplateBody">
+                <li >
                     <input id="case_title_template" placeholder="Case title"/>
                     <button class="btn btn-primary btn-sm" @click="create_template(cases_info.case)">Template</button>
                 </li>
