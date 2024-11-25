@@ -167,7 +167,7 @@ def edit_instance(cid, iid):
         form.type_select.choices = list()
         for i in range(0, len(type_list)):
             if not type_list[i] == loc_instance.type:
-                form.type_select.choices.append((type_list[i]), type_list[i])
+                form.type_select.choices.append((type_list[i], type_list[i]))
         form.type_select.choices.insert(0, ("None","--"))
         if loc_instance.type:
             form.type_select.choices.insert(0, (loc_instance.type, loc_instance.type))
