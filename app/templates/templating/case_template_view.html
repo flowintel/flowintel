@@ -28,7 +28,7 @@
         <a class="btn btn-primary btn-sm"  href="/templating/case/{{case_id}}/download" type="button" title="Download the case in json">
             <i class="fa-solid fa-download"></i>
         </a>
-        <button class="btn btn-danger btn-sm"  @click="delete_case({{case}})" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
+        <button class="btn btn-danger btn-sm"  @click="delete_case({{case_id}})" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
     </div>
 
     <div style="float:right">
@@ -202,8 +202,8 @@
                 }
                 fetchTasks()
 
-                async function delete_case(case_template){
-                    const res = await fetch("/templating/delete_case/"+case_template.id)
+                async function delete_case(case_template_id){
+                    const res = await fetch("/templating/delete_case/"+case_template_id)
                     return window.location.href = "/templating/cases"
                 }
 
