@@ -67,10 +67,18 @@ def get_tag(tag):
 
 def get_cluster_by_name(cluster):
     return Cluster.query.filter_by(name=cluster).first()
+def get_cluster_by_uuid(cluster):
+    return Cluster.query.filter_by(uuid=cluster).first()
 
 def get_case_template_clusters_name(cid):
-    """Return a list of clusters present in a case template"""
+    """Return a list of clusters name present in a case template"""
     return [cluster.name for cluster in \
+            Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.cluster_id==Cluster.id)\
+                   .filter_by(template_id=cid).all()]
+
+def get_case_template_clusters_uuid(cid):
+    """Return a list of clusters uuid present in a case template"""
+    return [cluster.uuid for cluster in \
             Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.cluster_id==Cluster.id)\
                    .filter_by(template_id=cid).all()]
 
@@ -79,8 +87,14 @@ def get_case_template_clusters_both(case_id, cluster_id):
     return Case_Template_Galaxy_Tags.query.filter_by(template_id=case_id, cluster_id=cluster_id).first()
 
 def get_task_template_clusters_name(tid):
-    """Return a list of clusters present in a task template"""
+    """Return a list of clusters name present in a task template"""
     return [cluster.name for cluster in \
+            Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.cluster_id==Cluster.id)\
+                   .filter_by(template_id=tid).all()]
+
+def get_task_template_clusters_uuid(tid):
+    """Return a list of clusters uuid present in a task template"""
+    return [cluster.uuid for cluster in \
             Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.cluster_id==Cluster.id)\
                    .filter_by(template_id=tid).all()]
 

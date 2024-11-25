@@ -146,6 +146,10 @@ def get_cluster_by_name(cluster):
     """Return a cluster by its name"""
     return Cluster.query.filter_by(name=cluster).first()
 
+def get_cluster_by_uuid(cluster_uuid):
+    """Return a cluster by its uuid"""
+    return Cluster.query.filter_by(uuid=cluster_uuid).first()
+
 def get_clusters_galaxy(galaxies) -> dict:
     """Return a dictionary with each clusters for each galaxies"""
     out = dict()
@@ -187,8 +191,14 @@ def get_case_clusters_both(case_id, cluster_id):
     return Case_Galaxy_Tags.query.filter_by(case_id=case_id, cluster_id=cluster_id).first()
 
 def get_case_clusters_name(cid):
-    """Return a list of clusters present in a case"""
+    """Return a list of clusters name present in a case"""
     return [cluster.name for cluster in \
+            Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id)\
+                .filter_by(case_id=cid).all()]
+
+def get_case_clusters_uuid(cid):
+    """Return a list of clusters uuid present in a case"""
+    return [cluster.uuid for cluster in \
             Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id)\
                 .filter_by(case_id=cid).all()]
 
@@ -207,8 +217,14 @@ def get_task_clusters(tid):
                 .filter_by(task_id=tid).all()]
 
 def get_task_clusters_name(task_id):
-    """Return a list of clusters present in a task"""
+    """Return a list of clusters name present in a task"""
     return [cluster.name for cluster in \
+            Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id)\
+                .filter_by(task_id=task_id).all()]
+
+def get_task_clusters_uuid(task_id):
+    """Return a list of clusters uuid present in a task"""
+    return [cluster.uuid for cluster in \
             Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id)\
                 .filter_by(task_id=task_id).all()]
 
@@ -396,7 +412,7 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
 
 def check_cluster_db(cluster):
     """Check if a cluster exist in db"""
-    return Cluster.query.filter_by(name=cluster).first()
+    return Cluster.query.filter_by(uuid=cluster).first()
 
 def check_tag(tag_list):
     """Check if a list of tags exist"""

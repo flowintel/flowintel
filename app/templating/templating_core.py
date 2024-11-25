@@ -216,10 +216,10 @@ def edit_case_template(form_dict, cid):
             db.session.commit()
 
     ## Clusters
-    case_cluster_db = CommonModel.get_case_template_clusters_name(cid)
+    case_cluster_db = CommonModel.get_case_template_clusters_uuid(cid)
     for clusters in form_dict["clusters"]:
         if not clusters in case_cluster_db:
-            cluster = CommonModel.get_cluster_by_name(clusters)
+            cluster = CommonModel.get_cluster_by_uuid(clusters)
             case_tag = Case_Template_Galaxy_Tags(
                 cluster_id=cluster.id,
                 template_id=template.id
@@ -229,7 +229,7 @@ def edit_case_template(form_dict, cid):
             case_cluster_db.append(clusters)
     for c_t_db in case_cluster_db:
         if not c_t_db in form_dict["clusters"]:
-            cluster = CommonModel.get_cluster_by_name(c_t_db)
+            cluster = CommonModel.get_cluster_by_uuid(c_t_db)
             case_cluster = CommonModel.get_case_template_clusters_both(cid, cluster.id)
             Case_Template_Galaxy_Tags.query.filter_by(id=case_cluster.id).delete()
             db.session.commit()

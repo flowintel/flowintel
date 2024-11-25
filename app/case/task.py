@@ -61,7 +61,7 @@ def edit_task(cid, tid):
                     TaskModel.edit_task_core(form_dict, tid, current_user)
                     flash("Task edited", "success")
                     return redirect(f"/case/{cid}")
-                return render_template("case/create_task.html", form=form)
+                return render_template("case/edit_task.html", form=form)
             else:
                 task_modif = CommonModel.get_task(tid)
                 form.description.data = task_modif.description
@@ -508,7 +508,7 @@ def get_galaxies_task(tid):
                 if not loc_g.name in galaxies:
                     galaxies.append(loc_g.name)
                 index = clusters.index(cluster)
-                clusters[index] = cluster.tag
+                clusters[index] = cluster.uuid
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
 

@@ -593,7 +593,7 @@ def get_galaxies_case(cid):
                 if not loc_g.name in galaxies:
                     galaxies.append(loc_g.name)
                 index = clusters.index(cluster)
-                clusters[index] = cluster.tag
+                clusters[index] = cluster.uuid
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 

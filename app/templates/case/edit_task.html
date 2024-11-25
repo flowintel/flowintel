@@ -111,7 +111,7 @@
                         <template v-for="(clusters, galaxy) in cluster_list">
                             <optgroup :label="[[galaxy]]">
                                 <template v-for="cluster in clusters">
-                                    <option :selected="check_cluster_exist(cluster.tag)" :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
+                                    <option :selected="check_cluster_exist(cluster.tag)" :value="[[cluster.uuid]]" :title="cluster.description">[[cluster.tag]]</option>
                                 </template>
                             </optgroup>
                         </template>

@@ -175,10 +175,10 @@ def edit_task_template(form_dict, tid):
             db.session.commit()
 
     ## Clusters
-    task_cluster_db = CommonModel.get_task_template_clusters_name(tid)
+    task_cluster_db = CommonModel.get_task_template_clusters_uuid(tid)
     for clusters in form_dict["clusters"]:
         if not clusters in task_cluster_db:
-            cluster = CommonModel.get_cluster_by_name(clusters)
+            cluster = CommonModel.get_cluster_by_uuid(clusters)
             task_tag = Task_Template_Galaxy_Tags(
                 cluster_id=cluster.id,
                 template_id=template.id
@@ -188,7 +188,7 @@ def edit_task_template(form_dict, tid):
             task_cluster_db.append(clusters)
     for c_t_db in task_cluster_db:
         if not c_t_db in form_dict["clusters"]:
-            cluster = CommonModel.get_cluster_by_name(c_t_db)
+            cluster = CommonModel.get_cluster_by_uuid(c_t_db)
             task_cluster = CommonModel.get_task_template_clusters_both(tid, cluster.id)
             Task_Template_Galaxy_Tags.query.filter_by(id=task_cluster.id).delete()
             db.session.commit()
