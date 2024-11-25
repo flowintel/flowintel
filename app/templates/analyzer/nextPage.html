@@ -4,6 +4,13 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
+
 {% block content %}
     <h1>Analyzers</h1>
     <hr>

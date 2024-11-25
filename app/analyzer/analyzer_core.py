@@ -81,7 +81,7 @@ def manage_notes_selected(request_json, current_user, pid):
 
     if "misp-objects" in request_json:
         for misp_obj in request_json["misp-objects"]:
-            CaseModel.create_misp_object(case_id, misp_obj)
+            CaseModel.create_misp_object(case_id, misp_obj, current_user)
 
     # Delete pending
     delete_pending_result(pid)
