@@ -697,7 +697,7 @@ def add_connector(tid):
     """Add Connector"""
     if CommonModel.get_task(tid):
         if "connectors" in request.json:
-            if TaskModel.add_connector(tid, request.json):
+            if TaskModel.add_connector(tid, request.json, current_user):
                 return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
     return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404

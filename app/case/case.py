@@ -534,7 +534,8 @@ def history(cid):
 @login_required
 def get_taxonomies():
     """Get all taxonomies"""
-    return {"taxonomies": CommonModel.get_taxonomies()}, 200
+    loc_tax = CommonModel.get_taxonomies()
+    return {"taxonomies": [t["name"] for t in loc_tax]}, 200
 
 @case_blueprint.route("/get_tags", methods=['GET'])
 @login_required
@@ -553,10 +554,10 @@ def get_taxonomies_case(cid):
     """Get all taxonomies present in a case"""
     case = CommonModel.get_case(cid)
     if case:
-        tags = CommonModel.get_case_tags(case.id)
+        tags = CommonModel.get_case_tags_json(case.id)
         taxonomies = []
         if tags:
-            taxonomies = [tag.split(":")[0] for tag in tags]
+            taxonomies = [tag["name"].split(":")[0] for tag in tags]
         return {"tags": tags, "taxonomies": taxonomies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -590,10 +591,10 @@ def get_galaxies_case(cid):
         if clusters:
             for cluster in clusters:
                 loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
-                if not loc_g.name in galaxies:
-                    galaxies.append(loc_g.name)
+                if not loc_g in galaxies:
+                    galaxies.append(loc_g.to_json())
                 index = clusters.index(cluster)
-                clusters[index] = cluster.uuid
+                clusters[index] = cluster.to_json()
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -699,7 +700,7 @@ def get_custom_tags_case(cid):
     """Get all custom tags for a case"""
     case = CommonModel.get_case(cid)
     if case:
-        return {"custom_tags": CommonModel.get_case_custom_tags_name(case.id)}, 200
+        return {"custom_tags": CommonModel.get_case_custom_tags_json(case.id)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/download_history", methods=['GET'])

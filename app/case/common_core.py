@@ -176,6 +176,10 @@ def get_case_tags(cid):
     """Return a list of tags present in a case"""
     return [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
 
+def get_case_tags_json(cid):
+    """Return a list of tags present in a case"""
+    return [tag.to_json() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=cid).all()]
+
 def get_case_tags_both(case_id, tag_id):
     """Return a list of tags present in a case"""
     return Case_Tags.query.filter_by(case_id=case_id, tag_id=tag_id).first()
@@ -307,6 +311,11 @@ def get_case_custom_tags_name(case_id):
             Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                 .where(Case_Custom_Tags.case_id==case_id).all()]
 
+def get_case_custom_tags_json(case_id):
+    return [c_t.to_json() for c_t in \
+            Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                .where(Case_Custom_Tags.case_id==case_id).all()]
+
 def get_case_custom_tags_both(case_id, custom_tag_id):
     return Case_Custom_Tags.query.filter_by(case_id=case_id, custom_tag_id=custom_tag_id).first()
 
@@ -315,6 +324,11 @@ def get_task_custom_tags(task_id):
 
 def get_task_custom_tags_name(task_id):
     return [c_t.name for c_t in \
+            Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                .where(Task_Custom_Tags.task_id==task_id).all()]
+
+def get_task_custom_tags_json(task_id):
+    return [c_t.to_json() for c_t in \
             Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                 .where(Task_Custom_Tags.task_id==task_id).all()]
 
@@ -410,9 +424,13 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
     return send_file(temp_export, as_attachment=True, download_name=download_filename)
 
 
-def check_cluster_db(cluster):
+def check_cluster_uuid_db(cluster):
     """Check if a cluster exist in db"""
     return Cluster.query.filter_by(uuid=cluster).first()
+
+def check_cluster_tags_db(cluster):
+    """Check if a cluster exist in db"""
+    return Cluster.query.filter_by(tag=cluster).first()
 
 def check_tag(tag_list):
     """Check if a list of tags exist"""
@@ -422,9 +440,16 @@ def check_tag(tag_list):
     return True
 
 def check_cluster(cluster_list):
-    """Check if a list of clusters exist"""
+    """Check if a list of clusters exist by uuid"""
     for cluster in cluster_list:
-        if not check_cluster_db(cluster):
+        if not check_cluster_uuid_db(cluster):
+            return cluster
+    return True
+
+def check_cluster_tags(cluster_list):
+    """Check if a list of clusters exist by tags"""
+    for cluster in cluster_list:
+        if not check_cluster_tags_db(cluster):
             return cluster
     return True
 

@@ -202,6 +202,8 @@
                     let loc = await res.json()
                     clusters_task.value = loc["clusters"]
                     galaxies_task.value = loc["galaxies"]
+                    await nextTick()
+                    $('#galaxies_select').trigger('change')
                 }
                 if(galaxies_task.value.length > 0){
                     fetch_cluster(galaxies_task.value)

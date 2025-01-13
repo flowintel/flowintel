@@ -97,10 +97,16 @@ export default {
                     </template>
                 </select>
                 
+            </div>
+            <div class="input-group has-validation mb-3">
+                <label class="input-group-text">first seen</label>
+                <input class="form-control" id="input-first-seen" type="date">
+                <label class="input-group-text" for="input-last-seen">last seen</label>
+                <input class="form-control" id="input-last-seen" name="input-last-seen" type="date">
+            </div>
                 <button @click="add_attribute()" class="btn btn-outline-primary">
                     Add Attribute
                 </button>
-            </div>
 
         </div>
     `
