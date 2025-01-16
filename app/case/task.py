@@ -491,7 +491,9 @@ def get_taxonomies_task(tid):
         tags = CommonModel.get_task_tags_json(tid)
         taxonomies = []
         if tags:
-            taxonomies = [tag["name"].split(":")[0] for tag in tags]
+            for tag in tags:
+                if not tag["name"].split(":")[0] in taxonomies:
+                    taxonomies.append(tag["name"].split(":")[0])
         return {"tags": tags, "taxonomies": taxonomies}
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 

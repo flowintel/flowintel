@@ -557,7 +557,9 @@ def get_taxonomies_case(cid):
         tags = CommonModel.get_case_tags_json(case.id)
         taxonomies = []
         if tags:
-            taxonomies = [tag["name"].split(":")[0] for tag in tags]
+            for tag in tags:
+                if not tag["name"].split(":")[0] in taxonomies:
+                    taxonomies.append(tag["name"].split(":")[0])
         return {"tags": tags, "taxonomies": taxonomies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
