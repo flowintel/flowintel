@@ -49,6 +49,7 @@ function init_db {
 }
 
 function reload_db {
+    export HISTORY_DIR=$history_dir/history
 	python3 app.py -r
 }
 
