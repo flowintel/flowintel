@@ -12,9 +12,9 @@ rm pandoc*
 
 mkdir -p ~/.pandoc/templates
 wget -q https://github.com/Wandmalfarbe/pandoc-latex-template/releases/latest/download/Eisvogel.tar.gz 
-tar -xf Eisvogel.tar.gz eisvogel.latex
-mv eisvogel.latex ~/.pandoc/templates
-rm Eisvogel.tar.gz
+tar -xf Eisvogel.tar.gz
+cp Eisvogel-*/eisvogel.latex ~/.pandoc/templates
+rm -r Eisvogel.tar.gz Eisvogel-*
 
 
 # install node and mmdc command

@@ -17,6 +17,7 @@ MODULE_PATH = os.path.join(os.getcwd(), "app", "modules")
 
 
 def isUUID(uid):
+    """Verify an uuid"""
     try:
         uuid.UUID(str(uid))
         return True
@@ -25,13 +26,16 @@ def isUUID(uid):
 
 
 def generate_api_key(length=60):
+    """Generate a new api key"""
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
 
 
 def get_user_api(api_key):
+    """Get a user by its api key"""
     return User.query.filter_by(api_key=api_key).first()
 
 def get_user_from_api(headers):
+    """Try to get bot user by matrix id. If not, get basic user"""
     if "MATRIX-ID" in headers:
         bot = User.query.filter_by(last_name="Bot", first_name="Matrix").first()
         if bot:
@@ -39,10 +43,11 @@ def get_user_from_api(headers):
                 user = User.query.filter_by(matrix_id=headers["MATRIX-ID"]).first()
                 if user:
                     return user
-    return User.query.filter_by(api_key=headers["X-API-KEY"]).first()
+    return get_user_api(headers["X-API-KEY"])
 
 
 def verif_api_key(headers):
+    """Check if api key belong to a user"""
     if not "X-API-KEY" in headers:
         return {"message": "Error no API key pass"}, 403
     user = get_user_api(headers["X-API-KEY"])
@@ -51,6 +56,7 @@ def verif_api_key(headers):
     return {}
 
 def form_to_dict(form):
+    """Parse a form into a dict"""
     loc_dict = dict()
     for field in form._fields:
         if field == "files_upload":
@@ -62,17 +68,20 @@ def form_to_dict(form):
     return loc_dict
 
 def create_specific_dir(specific_dir):
+    """Create a specific directory if it doesn't exist"""
     if not os.path.isdir(specific_dir):
         os.mkdir(specific_dir)
 
 
 def get_module_type():
+    """Get module by type. Enumerate directory of modules."""
     type_list = list()
     for dir in os.listdir(MODULE_PATH):
         type_list.append(dir)
     return type_list
 
 def get_modules_list():
+    """Get modules available"""
     modulename_list = list()
     sys.path.append(MODULE_PATH)
     for root, dirnames, filenames in os.walk(MODULE_PATH):
@@ -149,6 +158,7 @@ taskSchema = {
 }
 
 def validateCaseJson(json_data):
+    """Validate the format of a case's JSON"""
     try:
         jsonschema.validate(instance=json_data, schema=caseSchema)
     except jsonschema.exceptions.ValidationError as err:
@@ -157,6 +167,7 @@ def validateCaseJson(json_data):
     return True
 
 def validateTaskJson(json_data):
+    """Validate the format of a task's JSON"""
     try:
         jsonschema.validate(instance=json_data, schema=taskSchema)
     except jsonschema.exceptions.ValidationError as err:
@@ -165,6 +176,7 @@ def validateTaskJson(json_data):
     return True
 
 def check_tag(tag):
+    """Check if a tag exist in db"""
     r = Tags.query.filter_by(name=tag).first()
     if r:
         return True
@@ -174,6 +186,10 @@ def check_tag(tag):
 
 @lru_cache
 def get_object_templates():
+    """Get object template.
+    
+    Enumerate misp-objects by walking through misp-objects submodule directory
+    """
     templates = []
     objects_dir = os.path.join(os.getcwd(), "modules/misp-objects/objects")
 
