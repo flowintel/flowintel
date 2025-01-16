@@ -584,9 +584,8 @@ def get_clusters():
 @login_required
 def get_galaxies_case(cid):
     """Get all galaxies present in a case"""
-    case = CommonModel.get_case(cid)
-    if case:
-        clusters = CommonModel.get_case_clusters(case.id)
+    if CommonModel.get_case(cid):
+        clusters = CommonModel.get_case_clusters(cid)
         galaxies = []
         if clusters:
             for cluster in clusters:
@@ -698,9 +697,8 @@ def get_orgs():
 @login_required
 def get_custom_tags_case(cid):
     """Get all custom tags for a case"""
-    case = CommonModel.get_case(cid)
-    if case:
-        return {"custom_tags": CommonModel.get_case_custom_tags_json(case.id)}, 200
+    if CommonModel.get_case(cid):
+        return {"custom_tags": CommonModel.get_case_custom_tags_json(cid)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/download_history", methods=['GET'])

@@ -210,6 +210,10 @@ def get_task_tags(tid):
     """Return a list of tags present in a task"""
     return [tag.name for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
 
+def get_task_tags_json(tid):
+    """Return a list of tags present in a task in json"""
+    return [tag.to_json() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=tid).all()]
+
 def get_task_tags_both(task_id, tag_id):
     """Return a list of tags present in a task"""
     return Task_Tags.query.filter_by(task_id=task_id, tag_id=tag_id).first()

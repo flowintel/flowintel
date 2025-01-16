@@ -488,10 +488,10 @@ def export_notes(cid, tid):
 def get_taxonomies_task(tid):
     """Get all taxonomies for a task"""
     if CommonModel.get_task(tid):
-        tags = CommonModel.get_task_tags(tid)
+        tags = CommonModel.get_task_tags_json(tid)
         taxonomies = []
         if tags:
-            taxonomies = [tag.split(":")[0] for tag in tags]
+            taxonomies = [tag["name"].split(":")[0] for tag in tags]
         return {"tags": tags, "taxonomies": taxonomies}
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -505,10 +505,10 @@ def get_galaxies_task(tid):
         if clusters:
             for cluster in clusters:
                 loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
-                if not loc_g.name in galaxies:
-                    galaxies.append(loc_g.name)
+                if not loc_g in galaxies:
+                    galaxies.append(loc_g.to_json())
                 index = clusters.index(cluster)
-                clusters[index] = cluster.uuid
+                clusters[index] = cluster.to_json()
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -595,9 +595,8 @@ def call_module_task_no_instance(cid, tid):
 @login_required
 def get_custom_tags_task(tid):
     """Get all custom tags for a task"""
-    task = CommonModel.get_task(tid)
-    if task:
-        return {"custom_tags": [CustomModel.get_custom_tag(c_t.custom_tag_id).name for c_t in CommonModel.get_task_custom_tags(task.id)]}, 200
+    if CommonModel.get_task(tid):
+        return {"custom_tags": CommonModel.get_task_custom_tags_json(tid)}, 200
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 
