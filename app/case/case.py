@@ -98,7 +98,7 @@ def edit_case(cid):
             flash("Access denied", "error")
     else:
         return render_template("404.html")
-    return redirect(f"/case/{id}")
+    return redirect(f"/case/{cid}")
 
 
 @case_blueprint.route("/<cid>/add_orgs", methods=['GET', 'POST'])

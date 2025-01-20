@@ -5,111 +5,61 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <div>
-        <h2 style="display: inline-block;">Edit a Task template</h2>
+    <h2 style="display: inline-block;">Edit a Task template</h2>
+    <hr>
+
+    <form action="" method="post" id="form">
+        {{ form.hidden_tag() }}
+        {{ form.template_id }}
+        <div class="row">
+            <div class="mb-3 w-50">
+                {{form.title.label(class_="col-form-label")}}:
+                {{form.title(class_="form-control")}}
+                {% if form.title.errors %}
+                    <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div class="mb-3 w-50">
+                <label for="description" class="col-form-label">Description:</label>
+                {{form.body(class_="form-control")}}
+                {% if form.body.errors %}
+                    <div style="color: red;">{{form.body.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+        </div>
+        <div class="row">
+            <div class="mb-3 w-50">
+                {{form.url.label(class_="col-form-label")}}:
+                {{form.url(class_="form-control")}}
+                {% if form.url.errors %}
+                    <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div class="mb-3 w-50">
+                {{form.time_required.label(class_="col-form-label")}}:
+                {{form.time_required(class_="form-control")}}
+                {% if form.time_required.errors %}
+                    <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+        </div>
         <hr>
 
-        <form action="" method="post">
-            {{ form.hidden_tag() }}
-            {{ form.template_id }}
-            <div class="row">
-                <div class="mb-3 w-50">
-                    {{form.title.label(class_="col-form-label")}}:
-                    {{form.title(class_="form-control")}}
-                    {% if form.title.errors %}
-                        <div style="color: red;">{{form.title.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                <div class="mb-3 w-50">
-                    <label for="description" class="col-form-label">Description:</label>
-                    {{form.body(class_="form-control")}}
-                    {% if form.body.errors %}
-                        <div style="color: red;">{{form.body.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-            </div>
-            <div class="row">
-                <div class="mb-3 w-50">
-                    {{form.url.label(class_="col-form-label")}}:
-                    {{form.url(class_="form-control")}}
-                    {% if form.url.errors %}
-                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                <div class="mb-3 w-50">
-                    {{form.time_required.label(class_="col-form-label")}}:
-                    {{form.time_required(class_="form-control")}}
-                    {% if form.time_required.errors %}
-                        <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-            </div>
-            <hr>
-
-            <h5>Custom Tags</h5>
-            <div v-if="custom_tags" class="col-6">
-                <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
-                    <template v-for="c_t in custom_tags">
-                        <option :value="[[c_t.name]]" :selected="check_custom_tag_exist(c_t.name)">[[c_t.name]]</option>
-                    </template>
-                </select>
-            </div>
-            <hr>
-
-            <h5>Taxonomies:</h5>
-            <div style="display: flex;">
-                <template v-if="taxonomies">
-                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                        <template v-for="taxonomy in taxonomies">
-                            <option :value="[[taxonomy.name]]" v-if="check_taxo_exist(taxonomy.name)" selected>[[taxonomy.name]]</option>
-                            <option :value="[[taxonomy.name]]" v-else>[[taxonomy.name]]</option>
-                        </template>
-                    </select>
-                </template>
-                
-                <template v-if="tags_list">
-                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                        <template v-for="(tags, taxo) in tags_list">
-                            <optgroup :label="[[taxo]]">
-                                <template v-for="tag in tags">
-                                    <option :value="[[tag.name]]" :title="tag.description" v-if="check_tag_exist(tag.name)" selected>[[tag.name]]</option>
-                                    <option :value="[[tag.name]]" :title="tag.description" v-else>[[tag.name]]</option>
-                                </template>
-                            </optgroup>
-                        </template>
-                    </select>
-                </template>
-            </div>
-            <hr>
-
-            <h5>Galaxies:</h5>
-            <div style="display: flex;">
-                <template v-if="galaxies">
-                    <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                        <template v-for="galaxy, key in galaxies">
-                            <option :value="[[galaxy.name]]" v-if="check_galaxy_exist(galaxy.name)" selected>[[galaxy.name]]</option>
-                            <option :value="[[galaxy.name]]" v-else>[[galaxy.name]]</option>
-                        </template>
-                    </select>
-                </template>
-                
-                <template v-if="cluster_list">
-                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
-                        <template v-for="(clusters, galaxy) in cluster_list">
-                            <optgroup :label="[[galaxy]]">
-                                <template v-for="cluster in clusters">
-                                    <option v-if="check_cluster_exist(cluster.uuid)" :value="[[cluster.uuid]]" :title="cluster.description" selected>[[cluster.tag]]</option>
-                                    <option v-else :value="[[cluster.name]]" :title="cluster.description">[[cluster.tag]]</option>
-                                </template>
-                            </optgroup>
-                        </template>
-                    </select>
-                </template>
-            </div>
-            
-            {{form.submit(class='btn btn-primary')}}
-        </form>
-    </div>
+        <edition_select 
+            :type_object="'task_template'"
+            @st="(msg) => selected_tags=selected_tags.concat(msg)"
+            @sc="(msg) => selected_clusters=selected_clusters.concat(msg)"
+            @sct="(msg) => selected_custom_tags=selected_custom_tags.concat(msg)"
+            @delete_st="(msg) => selected_tags.splice(msg, 1)"
+            @delete_sc="(msg) => selected_clusters.splice(msg, 1)"
+            @delete_sct="(msg) => selected_custom_tags.splice(msg, 1)"
+        >
+        </edition_select>
+        
+        <div style="margin-top: 10px;">
+            <button class="btn btn-primary" @click="submit_form()">Save</button>
+        </div>
+    </form>
 {% endblock %}
 
 
@@ -117,181 +67,43 @@
 <script type="module">
     const { createApp, onMounted, nextTick, ref} = Vue
     import {message_list} from '/static/js/toaster.js'
+    import edition_select from '/static/js/case/edition_select.js'
     createApp({
         delimiters: ['[[', ']]'],
+        components: {
+            edition_select
+        },
         setup() {
-            const taxonomies = ref([])
-            const galaxies = ref([])
-            const tags_list = ref([])
-            const cluster_list = ref([])
-            const taxonomies_task = ref([])
-            const galaxies_task = ref([])
-            const tags_task = ref([])
-            const clusters_task = ref([])
-            const selected_taxo = ref([])
-            const selected_galaxies = ref([])
+            const selected_tags = ref([])
+            const selected_clusters = ref([])
+            const selected_custom_tags = ref([])
 
-            const custom_tags = ref([])
-            const custom_tags_task = ref([])
-
-            async function fetch_taxonomies(){
-                const res = await fetch("/case/get_taxonomies")
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    taxonomies.value = loc["taxonomies"]
-                }
+            function submit_form(){
+                $("#form").submit( function(eventObj) {
+                    $.each(selected_clusters.value, function(i, v){
+                        var input = $("<input>").attr({"type":"hidden","name":"clusters_select"}).val(v.uuid);
+                        $('#form').append(input);    
+                    });
+                    $.each(selected_tags.value, function(i, v){
+                        var input = $("<input>").attr({"type":"hidden","name":"tags_select"}).val(v.name);
+                        $('#form').append(input);    
+                    });
+                    $.each(selected_custom_tags.value, function(i, v){
+                        var input = $("<input>").attr({"type":"hidden","name":"custom_select"}).val(v.name);
+                        $('#form').append(input);    
+                    });
+                    return true;
+                });
             }
-            fetch_taxonomies()
-
-            async function fetch_galaxies(){
-                const res = await fetch("/case/get_galaxies")
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    galaxies.value = loc["galaxies"]
-                }
-            }
-            fetch_galaxies()
-
-            async function fetch_custom_tags(){
-                const res = await fetch("/custom_tags/list")
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    custom_tags.value = loc
-                }
-            }
-            fetch_custom_tags()
-
-            async function fetch_taxonomies_task(){
-                const res = await fetch("/templating/get_taxonomies_task/" +window.location.pathname.split("/").slice(-1))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    tags_task.value = loc["tags"]
-                    taxonomies_task.value = loc["taxonomies"]
-                }
-                if(taxonomies_task.value.length > 0){
-                    fetch_tags(taxonomies_task.value)
-                }
-            }
-            fetch_taxonomies_task()
-
-            async function fetch_galaxies_task(){
-                const res = await fetch("/templating/get_galaxies_task/" +window.location.pathname.split("/").slice(-1))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    clusters_task.value = loc["clusters"]
-                    galaxies_task.value = loc["galaxies"]
-                }
-                if(galaxies_task.value.length > 0){
-                    fetch_cluster(galaxies_task.value)
-                }
-            }
-            fetch_galaxies_task()
-
-            async function fetch_tags(s_taxo){
-                tags_list.value = []
-                const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(s_taxo))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    tags_list.value = loc["tags"]
-                    await nextTick()
-                    $('#tags_select').trigger('change');
-                }
-            }
-
-            async function fetch_cluster(s_galaxies){
-                cluster_list.value = []
-                const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(s_galaxies))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    cluster_list.value = loc["clusters"]
-                    await nextTick()
-                    $('#clusters_select').trigger('change');
-                }
-            }
-
-            async function fetch_custom_tags_task(){
-                const res = await fetch("/templating/get_custom_tags_task/" +window.location.pathname.split("/").slice(-1))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    custom_tags_task.value = loc["custom_tags"]
-                }
-            }
-            
-
-            function check_taxo_exist(taxo){
-                return taxonomies_task.value.some(function(field) {
-                    return taxo === field
-                })
-            }
-            function check_galaxy_exist(galaxy){
-                return galaxies_task.value.some(function(field) {
-                    return galaxy === field
-                })
-            }
-            function check_tag_exist(tag){
-                return tags_task.value.some(function(field) {
-                    return tag === field
-                })
-            }
-            function check_cluster_exist(cluster){
-                return clusters_task.value.some(function(field) {
-                    return cluster === field
-                })
-            }
-            function check_custom_tag_exist(custom_tag){
-                return custom_tags_task.value.some(function(field){
-                    return custom_tag === field
-                })
-            }
-            
-
-            onMounted(() => {
-                fetch_custom_tags_task()
-
-                $('.select2-select').select2({
-                    theme: 'bootstrap-5',
-                    closeOnSelect: false
-                })
-
-                $('#taxonomies_select').on('change.select2', function (e) {
-                    selected_taxo.value = $(this).select2('data').map(item => item.id);
-                    fetch_tags(selected_taxo.value)
-                })
-                $('#galaxies_select').on('change.select2', function (e) {
-                    selected_galaxies.value = $(this).select2('data').map(item => item.id);
-                    fetch_cluster(selected_galaxies.value)
-                })
-            })
 
             return {
-                selected_taxo,
                 message_list,
-                taxonomies,
-                galaxies,
-                tags_list,
-                cluster_list,
-                custom_tags,
-                check_taxo_exist,
-                check_galaxy_exist,
-                check_tag_exist,
-                check_cluster_exist,
-                check_custom_tag_exist
+
+                selected_tags,
+                selected_clusters,
+                selected_custom_tags,
+
+                submit_form,
             }
         }
     }).mount('#main-container')

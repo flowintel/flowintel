@@ -3,7 +3,7 @@ import {message_list} from '/static/js/toaster.js'
 const { ref, nextTick, onMounted } = Vue
 export default {
     delimiters: ['[[', ']]'],
-    props:{is_case: Boolean},
+    props:{type_object: String},
 	emits: ['st', 'sc', 'sct', "delete_st", "delete_sc", "delete_sct"],
 	setup(props, {emit}) {
 		const taxonomies = ref([])
@@ -80,10 +80,19 @@ export default {
 
         async function fetch_taxonomies_case_task(){
             let url
-            if(props.is_case)
+
+            if(props.type_object == "case"){
                 url = "/case/get_taxonomies_case/" +window.location.pathname.split("/").slice(-1)
-            else
+            }
+            else if(props.type_object == "task"){
                 url = "/case/get_taxonomies_task/" +window.location.pathname.split("/").slice(-1)
+            }
+            else if(props.type_object == "case_template"){
+                url = "/templating/get_taxonomies_case/" +window.location.pathname.split("/").slice(-1)
+            }
+            else if(props.type_object == "task_template"){
+                url = "/templating/get_taxonomies_task/" +window.location.pathname.split("/").slice(-1)
+            }
 
             const res = await fetch(url)
             if(await res.status==400 ){
@@ -108,10 +117,18 @@ export default {
 
         async function fetch_galaxies_case_task(){
             let url 
-            if(props.is_case)
+            if(props.type_object == "case"){
                 url = "/case/get_galaxies_case/" +window.location.pathname.split("/").slice(-1)
-            else
+            }
+            else if(props.type_object == "task"){
                 url = "/case/get_galaxies_task/" +window.location.pathname.split("/").slice(-1)
+            }
+            else if(props.type_object == "case_template"){
+                url = "/templating/get_galaxies_case/" +window.location.pathname.split("/").slice(-1)
+            }
+            else if(props.type_object == "task_template"){
+                url = "/templating/get_galaxies_task/" +window.location.pathname.split("/").slice(-1)
+            }
 
             const res = await fetch(url)
             if(await res.status==400 ){
@@ -134,11 +151,20 @@ export default {
         fetch_galaxies_case_task()
 
         async function fetch_custom_tags_case_task(){
-            let url 
-            if(props.is_case)
+            let url
+
+            if(props.type_object == "case"){
                 url = "/case/get_custom_tags_case/" +window.location.pathname.split("/").slice(-1)
-            else
+            }
+            else if(props.type_object == "task"){
                 url = "/case/get_custom_tags_task/" +window.location.pathname.split("/").slice(-1)
+            }
+            else if(props.type_object == "case_template"){
+                url = "/templating/get_custom_tags_case/" +window.location.pathname.split("/").slice(-1)
+            }
+            else if(props.type_object == "task_template"){
+                url = "/templating/get_custom_tags_task/" +window.location.pathname.split("/").slice(-1)
+            }
 
             const res = await fetch(url)
             if(await res.status==400 ){
@@ -217,7 +243,7 @@ export default {
                 }
             }
             selected_custom_tags.value.splice(loc, 1)
-            emit("delete_cts", loc)
+            emit("delete_sct", loc)
         }
         
 
@@ -310,9 +336,7 @@ export default {
                 for( let c in custom_tags.value){
                     if(custom_tags.value[c].name == loc_name){
                         if(!selected_custom_tags.value.includes(custom_tags.value[c]) ){
-                            selected_custom_tags.value.push(custom_tags.value[c])
-                            console.log(custom_tags.value[c]);
-                            
+                            selected_custom_tags.value.push(custom_tags.value[c])                            
                             emit("sct", custom_tags.value[c])
                             break
                         }

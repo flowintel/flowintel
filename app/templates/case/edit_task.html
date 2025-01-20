@@ -62,7 +62,7 @@
         <hr>
 
         <edition_select 
-            :is_case="false"
+            :type_object="'task'"
             @st="(msg) => selected_tags=selected_tags.concat(msg)"
             @sc="(msg) => selected_clusters=selected_clusters.concat(msg)"
             @sct="(msg) => selected_custom_tags=selected_custom_tags.concat(msg)"

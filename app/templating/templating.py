@@ -431,24 +431,18 @@ def task_modif_note(tid):
 @templating_blueprint.route("/get_taxonomies_case/<cid>", methods=['GET'])
 @login_required
 def get_taxonomies_case(cid):
-    case = CommonModel.get_case_template(cid)
-    if case:
-        tags = CommonModel.get_case_template_tags(case.id)
-        taxonomies = []
-        if tags:
-            taxonomies = [tag.split(":")[0] for tag in tags]
+    if CommonModel.get_case_template(cid):
+        tags = CommonModel.get_case_template_tags_json(cid)
+        taxonomies = CommonModel.get_taxonomies_from_tags(tags)
         return {"tags": tags, "taxonomies": taxonomies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 @templating_blueprint.route("/get_taxonomies_task/<tid>", methods=['GET'])
 @login_required
 def get_taxonomies_task(tid):
-    task = CommonModel.get_task_template(tid)
-    if task:
-        tags = CommonModel.get_task_template_tags(task.id)
-        taxonomies = []
-        if tags:
-            taxonomies = [tag.split(":")[0] for tag in tags]
+    if CommonModel.get_task_template(tid):
+        tags = CommonModel.get_task_template_tags_json(tid)
+        taxonomies = CommonModel.get_taxonomies_from_tags(tags)
         return {"tags": tags, "taxonomies": taxonomies}
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -456,34 +450,18 @@ def get_taxonomies_task(tid):
 @templating_blueprint.route("/get_galaxies_case/<cid>", methods=['GET'])
 @login_required
 def get_galaxies_case(cid):
-    case = CommonModel.get_case_template(cid)
-    if case:
-        clusters = CommonModel.get_case_clusters(case.id)
-        galaxies = []
-        if clusters:
-            for cluster in clusters:
-                loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
-                if not loc_g.name in galaxies:
-                    galaxies.append(loc_g.name)
-                index = clusters.index(cluster)
-                clusters[index] = cluster.uuid
+    if CommonModel.get_case_template(cid):
+        clusters = CommonModel.get_case_clusters(cid)
+        clusters, galaxies = CommonModel.get_galaxies_from_clusters(clusters)
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 @templating_blueprint.route("/get_galaxies_task/<tid>", methods=['GET'])
 @login_required
 def get_galaxies_task(tid):
-    task = CommonModel.get_task_template(tid)
-    if task:
-        clusters = CommonModel.get_task_clusters(task.id)
-        galaxies = []
-        if clusters:
-            for cluster in clusters:
-                loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
-                if not loc_g.name in galaxies:
-                    galaxies.append(loc_g.name)
-                index = clusters.index(cluster)
-                clusters[index] = cluster.uuid
+    if CommonModel.get_task_template(tid):
+        clusters = CommonModel.get_task_clusters(tid)
+        clusters, galaxies = CommonModel.get_galaxies_from_clusters(clusters)
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -513,7 +491,7 @@ def get_custom_tags_case(cid):
     """Get all custom tags for a case template"""
     case = CommonModel.get_case_template(cid)
     if case:
-        return {"custom_tags": CommonModel.get_case_custom_tags_name(case.id)}, 200
+        return {"custom_tags": CommonModel.get_case_custom_tags_json(case.id)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 @templating_blueprint.route("/get_custom_tags_task/<cid>", methods=['GET'])
@@ -522,7 +500,7 @@ def get_custom_tags_task(cid):
     """Get all custom tags for a task template"""
     task = CommonModel.get_task_template(cid)
     if task:
-        return {"custom_tags": CommonModel.get_task_custom_tags_name(task.id)}, 200
+        return {"custom_tags": CommonModel.get_task_custom_tags_json(task.id)}, 200
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 
