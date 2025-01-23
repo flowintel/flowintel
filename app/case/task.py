@@ -2,10 +2,9 @@ import ast
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from .form import TaskEditForm, TaskForm
 from flask_login import login_required, current_user
-from . import case_core as CaseModel
+from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from . import task_core as TaskModel
-from ..custom_tags import custom_tags_core as CustomModel
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
 from ..utils.formHelper import prepare_tags

@@ -1,9 +1,10 @@
 import ast
 import json
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
-from .form import CaseForm, CaseEditForm, RecurringForm
 from flask_login import login_required, current_user
-from . import case_core as CaseModel
+
+from .form import CaseForm, CaseEditForm, RecurringForm
+from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from . import task_core as TaskModel
 from ..db_class.db import Task_Template, Case_Template
@@ -81,7 +82,7 @@ def edit_case(cid):
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
                     form_dict["link_to"] = request.form.getlist("link_to")
-                    CaseModel.edit_case(form_dict, cid, current_user)
+                    CaseModel.edit(form_dict, cid, current_user)
                     flash("Case edited", "success")
                     return redirect(f"/case/{cid}")
                 return render_template("case/edit_case.html", form=form)
@@ -172,21 +173,6 @@ def recurring(cid):
 # Function #
 #  Route   #
 ############
-
-@case_blueprint.route("/get_cases_page", methods=['GET'])
-@login_required
-def get_cases():
-    """Return all cases by page"""
-    page = request.args.get('page', 1, type=int)
-    tags = request.args.get('tags')
-    taxonomies = request.args.get('taxonomies')
-    or_and = request.args.get("or_and")
-
-    cases = CaseModel.sort_by_status(page, tags, taxonomies, or_and, completed=False)
-    role = CommonModel.get_role(current_user).to_json()
-
-    loc = CaseModel.regroup_case_info(cases, current_user)
-    return jsonify({"cases": loc["cases"], "role": role, "nb_pages": cases.pages}), 200
 
 @case_blueprint.route("/get_case/<cid>", methods=['GET'])
 @login_required
@@ -301,65 +287,13 @@ def get_status():
     return jsonify({"status": status_list}), 200
 
 
-@case_blueprint.route("/sort_by_ongoing", methods=['GET'])
+@case_blueprint.route("/sort_cases", methods=['GET'])
 @login_required
-def sort_by_ongoing():
-    """Sort Case by living one"""
-    page = request.args.get('page', 1, type=int)
-    tags = request.args.get('tags')
-    taxonomies = request.args.get('taxonomies')
-    or_and_taxo = request.args.get("or_and_taxo")
-
-    galaxies = request.args.get('galaxies')
-    clusters = request.args.get('clusters')
-    or_and_galaxies = request.args.get("or_and_galaxies")
-
-    custom_tags = request.args.get('custom_tags')
-
-    cases_list = CaseModel.sort_by_status(page, 
-                                          taxonomies, 
-                                          galaxies, 
-                                          tags, 
-                                          clusters, 
-                                          custom_tags,
-                                          or_and_taxo, or_and_galaxies, 
-                                          completed=False)
-    return CaseModel.regroup_case_info(cases_list, current_user)
-
-
-
-@case_blueprint.route("/sort_by_finished", methods=['GET'])
-@login_required
-def sort_by_finished():
-    """Sort Case by finished one"""
-    page = request.args.get('page', 1, type=int)
-    tags = request.args.get('tags')
-    taxonomies = request.args.get('taxonomies')
-    or_and_taxo = request.args.get("or_and_taxo")
-
-    galaxies = request.args.get('galaxies')
-    clusters = request.args.get('clusters')
-    or_and_galaxies = request.args.get("or_and_galaxies")
-
-    custom_tags = request.args.get('custom_tags')
-
-    cases_list = CaseModel.sort_by_status(page, 
-                                          taxonomies, 
-                                          galaxies, 
-                                          tags, 
-                                          clusters, 
-                                          custom_tags,
-                                          or_and_taxo, or_and_galaxies, 
-                                          completed=True)
-    return CaseModel.regroup_case_info(cases_list, current_user)
-
-
-@case_blueprint.route("/ongoing", methods=['GET'])
-@login_required
-def ongoing_sort_by_filter():
-    """Sort by filter for living case"""
+def sort_cases():
+    """Sort Cases"""
     page = request.args.get('page', 1, type=int)
     filter = request.args.get('filter')
+    status = request.args.get('status')
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
     or_and_taxo = request.args.get("or_and_taxo")
@@ -370,48 +304,36 @@ def ongoing_sort_by_filter():
 
     custom_tags = request.args.get('custom_tags')
 
-    if filter:
-        cases_list, nb_pages = CaseModel.sort_by_filter(filter, 
-                                                        page, 
-                                                        taxonomies, 
-                                                        galaxies, 
-                                                        tags, 
-                                                        clusters,
-                                                        custom_tags,
-                                                        or_and_taxo, or_and_galaxies,
-                                                        completed=False)
-        return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
-    return {"message": "No filter pass"}
+    if status == 'true':
+        status = True
+    elif status == 'false':
+        status = False
 
+    if tags:
+        tags = ast.literal_eval(tags)
+    if taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
 
-@case_blueprint.route("/finished", methods=['GET'])
-@login_required
-def finished_sort_by_filter():
-    """Sort by filter for finished task"""
-    page = request.args.get('page', 1, type=int)
-    filter = request.args.get('filter')
-    tags = request.args.get('tags')
-    taxonomies = request.args.get('taxonomies')
-    or_and_taxo = request.args.get("or_and_taxo")
+    if galaxies:
+        galaxies = ast.literal_eval(galaxies)
+    if clusters:
+        clusters = ast.literal_eval(clusters)
 
-    galaxies = request.args.get('galaxies')
-    clusters = request.args.get('clusters')
-    or_and_galaxies = request.args.get("or_and_galaxies")
+    if custom_tags:
+        custom_tags = ast.literal_eval(custom_tags)
 
-    custom_tags = request.args.get('custom_tags')
-
-    if filter:
-        cases_list, nb_pages = CaseModel.sort_by_filter(filter, 
-                                                        page, 
-                                                        taxonomies, 
-                                                        galaxies, 
-                                                        tags, 
-                                                        clusters,
-                                                        custom_tags,
-                                                        or_and_taxo, or_and_galaxies,
-                                                        completed=True)
-        return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
-    return {"message": "No filter pass"}
+    cases_list, nb_pages = CaseModel.sort_cases(page=page, 
+                                      completed=status,
+                                      taxonomies=taxonomies, 
+                                      galaxies=galaxies, 
+                                      tags=tags, 
+                                      clusters=clusters, 
+                                      custom_tags=custom_tags,
+                                      or_and_taxo=or_and_taxo, 
+                                      or_and_galaxies=or_and_galaxies,
+                                      filter=filter)
+    
+    return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
 
 
 @case_blueprint.route("/<cid>/get_all_users", methods=['GET'])

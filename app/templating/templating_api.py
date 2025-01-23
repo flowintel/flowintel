@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from . import templating_core as TemplateModel
-from . import templating_core_api as ApiTemplateModel
+from . import validation_api as ApiTemplateModel
 from . import common_template_core as CommonModel
 from . import task_template_core as TaskModel
 from ..utils import utils

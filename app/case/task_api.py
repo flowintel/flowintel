@@ -1,8 +1,8 @@
 from flask import Blueprint, request
-from . import case_core as CaseModel
+from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from . import task_core as TaskModel
-from . import case_core_api as CaseModelApi
+from . import validation_api as CaseModelApi
 from ..utils import utils
 
 from flask_restx import Api, Resource

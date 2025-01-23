@@ -2,9 +2,9 @@ import json
 import datetime
 from .. import db
 from ..db_class.db import *
-from ..case import case_core as CaseModel
+from ..case.CaseCore import CaseModel
 from ..case import task_core as TaskModel
-from ..case import case_core_api as CaseModelApi
+from ..case import validation_api as CaseModelApi
 from ..case import common_core as CommonModel
 
 

@@ -1,6 +1,7 @@
+import ast
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from flask_login import login_required, current_user
-from . import templating_core as TemplateModel
+from .TemplateCase import TemplateCase
 from . import common_template_core as CommonModel
 from . import task_template_core as TaskModel
 from ..decorators import editor_required
@@ -14,6 +15,8 @@ templating_blueprint = Blueprint(
     template_folder='templates',
     static_folder='static'
 )
+
+TemplateModel = TemplateCase()
 
 ##########
 # Render #
@@ -47,7 +50,7 @@ def create_case_template():
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
-            template = TemplateModel.create_case_template(form_dict)
+            template = TemplateModel.create_case(form_dict)
             flash("Template created", "success")
             return redirect(f"/templating/case/{template.id}")
         return render_template("templating/create_case_template.html", form=form)
@@ -126,7 +129,7 @@ def edit_case(cid):
             if isinstance(res, dict):
                 form_dict = form_to_dict(form)
                 form_dict.update(res)
-                template = TemplateModel.edit_case_template(form_dict, cid)
+                template = TemplateModel.edit(form_dict, cid)
                 flash("Template edited", "success")
                 return redirect(f"/templating/case/{cid}")
             return render_template("templating/edit_case_template.html", form=form)
@@ -198,15 +201,29 @@ def get_page_case_templates():
 
     custom_tags = request.args.get('custom_tags')
 
-    templates, nb_pages = TemplateModel.get_page_case_templates(page, 
-                                                                title_filter, 
-                                                                taxonomies,
-                                                                galaxies, 
-                                                                tags, 
-                                                                clusters, 
-                                                                custom_tags,
-                                                                or_and_taxo, 
-                                                                or_and_galaxies)
+    if tags:
+        tags = ast.literal_eval(tags)
+    if taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
+
+    if galaxies:
+        galaxies = ast.literal_eval(galaxies)
+    if clusters:
+        clusters = ast.literal_eval(clusters)
+
+    if custom_tags:
+        custom_tags = ast.literal_eval(custom_tags)
+
+    templates, nb_pages = TemplateModel.sort_cases(page, 
+                                        title_filter, 
+                                        taxonomies,
+                                        galaxies, 
+                                        tags, 
+                                        clusters, 
+                                        custom_tags,
+                                        or_and_taxo, 
+                                        or_and_galaxies)
+
     templates_list = list()
     for template in templates:
         loc_template = template.to_json()
@@ -268,15 +285,32 @@ def get_page_task_templates():
 
     custom_tags = request.args.get('custom_tags')
 
-    templates, nb_pages = TaskModel.get_page_task_templates(page, 
-                                                            title_filter, 
-                                                            taxonomies, 
-                                                            galaxies, 
-                                                            tags, 
-                                                            clusters,
-                                                            custom_tags,
-                                                            or_and_taxo, 
-                                                            or_and_galaxies)
+    if tags:
+        tags = ast.literal_eval(tags)
+    if taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
+
+    if galaxies:
+        galaxies = ast.literal_eval(galaxies)
+    if clusters:
+        clusters = ast.literal_eval(clusters)
+
+    if custom_tags:
+        custom_tags = ast.literal_eval(custom_tags)
+
+    templates = TaskModel.get_page_task_templates(page, 
+                                                    title_filter, 
+                                                    taxonomies, 
+                                                    galaxies, 
+                                                    tags, 
+                                                    clusters,
+                                                    custom_tags,
+                                                    or_and_taxo, 
+                                                    or_and_galaxies)
+    try:
+        nb_pages = templates.pages
+    except:
+        pass
     if templates:
         templates_list = list()
         for template in templates:
@@ -331,7 +365,7 @@ def delete_task(tid):
 def delete_case(cid):
     """Delete a case template"""
     if CommonModel.get_case_template(cid):
-        if TemplateModel.delete_case_template(cid):
+        if TemplateModel.delete_case(cid):
             return {"message":"Case Template deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error Case Template deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"Template not found", "toast_class": "danger-subtle"}, 404

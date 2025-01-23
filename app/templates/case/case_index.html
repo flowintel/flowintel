@@ -27,11 +27,11 @@
 			<div class="d-flex w-100 justify-content-between">
 				<div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_ongoing(true)" checked>
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="change_status_sort(false)" checked>
 						<label class="form-check-label" for="radioStatusOngoing">Ongoing Cases</label>
 					</div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_ongoing(false)">
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="change_status_sort(true)">
 						<label class="form-check-label" for="radioStatusFinished">Finished Cases</label>
 					</div>
 				</div>
@@ -55,13 +55,12 @@
 					</div>
 				</div>
 
-				<div style="display:flex">
-				    <span style="margin-right: 10px">Asc</span>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" checked role="switch" id="flexSwitchCheckDefault" @click="asc_desc_filter(true)">
-						<label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
+                <div>
+                    Change order
+                    <div class="form-check form-switch" style="margin-left: 35%;">
+						<input class="form-check-input" type="checkbox" checked role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
                     </div>
-				</div>
+                </div>
 			</div>
             <hr>
             <div>Taxonomies:</div>
@@ -69,7 +68,7 @@
                 <div style="display:flex">
 				    <span style="margin-right: 10px">OR</span>
 					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false,true)">
+						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
 						<label class="form-check-label" for="switchOperator">AND</label>
                     </div>
 				</div>
@@ -78,7 +77,7 @@
                 <template v-if="taxonomies">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                         <template v-for="taxonomy, key in taxonomies">
-                            <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                            <option :value="[[taxonomy]]">[[taxonomy]]</option>
                         </template>
                     </select>
                 </template>
@@ -100,7 +99,7 @@
                 <div style="display:flex">
 				    <span style="margin-right: 10px">OR</span>
 					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false, false, true)">
+						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
 						<label class="form-check-label" for="switchOperator">AND</label>
                     </div>
 				</div>
@@ -145,11 +144,11 @@
     <!-- pagination -->
     <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchCase(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button></li>
             <template v-for="cp in case_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchCase(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button></li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetchCase(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
         </ul>
     </nav>
     <!-- pagination -->
@@ -166,7 +165,7 @@
                                     <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[case_loc.link_to.length]]</span>
                                 </button>
                             </h4>                            
-                            <small><i>Changed [[ (dayjs.utc(case_loc.last_modif).fromNow()) ]]</i></small>
+                            <small :title="case_loc.last_modif"><i>Changed [[ (dayjs.utc(case_loc.last_modif).fromNow()) ]]</i></small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
                             <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
@@ -256,11 +255,11 @@
 
     <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchCase(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button></li>
             <template v-for="cp in case_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchCase(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button></li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetchCase(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
         </ul>
     </nav>
 
@@ -276,12 +275,12 @@
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
-                const case_list = ref(null)
+                const case_list = ref([])
                 const status_info = ref(null)
                 const current_page = ref(1)
                 const current_filter = ref("last_modif")
 
-                let show_ongoing = true
+                let completed = false
                 let asc_desc = true
                 let temp_case_list = []
                 let or_and_taxo = true
@@ -300,9 +299,25 @@
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
 
+                async function change_status_sort(status){
+                    completed = status
+                    await fetch_sorted_cases(1)
+                }
+                function change_switch_check(change=false, changeOperator=false, changeOperatorGalaxies=false){
+                    if (change) asc_desc = !asc_desc
+                    if (changeOperator) or_and_taxo = !or_and_taxo
+                    if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
 
-                async function fetchCase(page) {
-                    let url
+                    fetch_sorted_cases(1)
+                }
+
+                async function fetch_sorted_cases(page){
+                    let loc_page = `page=${page}`
+                    let loc_filter = `&filter=${current_filter.value}`
+                    let loc_status = `&status=${completed}`
+                    let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
+                    let loc_or_and_galaxies = `&or_and_galaxies=${or_and_galaxies}`
+
                     let tags = ""
                     let taxo = ""
                     let galax = ""
@@ -314,17 +329,23 @@
                     if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
                     if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
 
-                    if(current_filter.value)
-                        url = `/case/ongoing?page=${page}&filter=${current_filter.value}${tags}${taxo}${galax}${clusters}${custom_tg}`
-                    else
-                        url = `/case/get_cases_page?page=${page}${tags}${taxo}${galax}${clusters}${custom_tg}`
+                    let url = `/case/sort_cases?${loc_page}${loc_filter}${loc_status}${loc_or_and_taxo}${loc_or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`
 
-                    case_list.value = null
                     const res = await fetch(url)
-                    case_list.value = await res.json()
+                    let loc = await res.json()
+                    case_list.value.nb_pages = loc.nb_pages
                     current_page.value = page
+
+                    if(!asc_desc){
+                        case_list.value.cases = loc.cases.reverse()
+                    }else{
+                        case_list.value.cases = loc.cases
+                    }
+                    
                     temp_case_list = case_list.value.cases
                 }
+                fetch_sorted_cases(1)
+
 
                 async function fetchStatus() {
                     status_info.value = null
@@ -333,6 +354,7 @@
                     )
                     status_info.value = await res.json()
                 }
+                fetchStatus()
 
                 async function delete_case(case_list, case_loc){
                     const res = await fetch('/case/' + case_loc.id.toString() + '/delete')
@@ -385,73 +407,12 @@
                     display_toast(res)
                 }
 
-                async function filter_ongoing(ongoing){
-                    show_ongoing = ongoing
-
-                    let loc
-                    let tags = ""
-                    let taxo = ""
-                    let galax = ""
-                    let clusters = ""
-                    let custom_tg = ""
-                    if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
-                    if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                    if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
-                    if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
-                    if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
-
-                    if(show_ongoing){
-                        const res = await fetch(`/case/sort_by_ongoing?page=1&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`)
-                        loc = await res.json()
-                    }else{
-                        const res = await fetch(`/case/sort_by_finished?page=1&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`)
-                        loc = await res.json()
-                    }
-                    case_list.value.cases = loc.cases
-                    case_list.value.nb_pages = loc.nb_pages
-                    temp_case_list = case_list.value.cases
-                }
 
                 function sort_by_filter(filter){
                     current_filter.value = filter
-                    asc_desc_filter()
+                    fetch_sorted_cases(1)
                 }
 
-                async function asc_desc_filter(change=false, changeOperator=false, changeOperatorGalaxies=false){
-                    if (change) asc_desc = !asc_desc
-                    if (changeOperator) or_and_taxo = !or_and_taxo
-                    if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
-
-                    let res
-                    if (current_filter.value){
-                        let tags = ""
-                        let taxo = ""
-                        let galax = ""
-                        let clusters = ""
-                        let custom_tg = ""
-                        if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
-                        if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                        if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
-                        if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
-                        if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
-
-                        if(show_ongoing)
-                            res = await fetch(`/case/ongoing?page=1&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&filter=${current_filter.value}${tags}${taxo}${galax}${clusters}${custom_tg}`)
-                        else
-                            res = await fetch(`/case/finished?page=1&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&filter=${current_filter.value}${tags}${taxo}${galax}${clusters}${custom_tg}`)
-                        let loc = await res.json()
-                        if(asc_desc){
-                            case_list.value.cases = loc.cases.reverse()
-                        }
-                        else{
-                            case_list.value.cases = loc.cases
-                        }
-                        case_list.value.nb_pages = loc.nb_pages
-                        temp_case_list = case_list.value.cases
-                    }else{
-                        filter_ongoing(show_ongoing)
-                    }
-                }
 
                 function onInput(e){
                     case_list.value.cases = []
@@ -460,13 +421,9 @@
                             return cases.title.toLowerCase().includes(e.target.value.toLowerCase())
                         })
                     }else{
-                        case_list.value.cases = asc_desc_filter()
+                        case_list.value.cases = fetch_sorted_cases(1)
                     }
                 }
-
-                fetchCase(1)
-                fetchStatus()
-
 
                 async function fetch_taxonomies(){
                     const res = await fetch("/case/get_taxonomies")
@@ -536,7 +493,7 @@
                     })
                     $('#tags_select').on('change.select2', function (e) {
                         selected_tags.value = $(this).select2('data').map(item => item.id);
-                        asc_desc_filter()
+                        fetch_sorted_cases(1)
                     })
                     $('#galaxies_select').on('change.select2', function (e) {
                         selected_galaxies.value = $(this).select2('data').map(item => item.id);
@@ -544,35 +501,37 @@
                     })
                     $('#clusters_select').on('change.select2', function (e) {
                         selected_clusters.value = $(this).select2('data').map(item => item.id);
-                        asc_desc_filter()
+                        fetch_sorted_cases(1)
                     })
                     $('#custom_tags_select').on('change.select2', function (e) {
                         selected_custom_tags.value = $(this).select2('data').map(item => item.id);
-                        asc_desc_filter()
+                        fetch_sorted_cases(1)
                     })
                 })
 
                 return {
                     message_list,
-                    case_list,
-                    status_info,
-                    delete_case,
-                    complete_case,
                     dayjs,
-                    fetchCase,
-                    current_page,
-                    current_filter,
-                    filter_ongoing,
-                    sort_by_filter,
-                    asc_desc_filter,
                     getTextColor,
                     mapIcon,
-                    onInput,
+
+                    case_list,
+                    status_info,
                     taxonomies,
                     tags_list,
                     galaxies,
                     cluster_list,
-                    custom_tags
+                    custom_tags,
+                    current_page,
+                    current_filter,
+
+                    delete_case,
+                    complete_case,
+                    sort_by_filter,
+                    onInput,
+                    change_status_sort,
+                    change_switch_check,
+                    fetch_sorted_cases
                 }
             }
         }).mount('#main-container')

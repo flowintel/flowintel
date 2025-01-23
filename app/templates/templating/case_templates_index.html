@@ -37,7 +37,7 @@
 				<div style="display:flex">
 				<span style="margin-right: 10px">Asc</span>
 					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="asc_desc_filter(true)">
+						<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
 						<label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
 					</div>
 				</div>
@@ -48,7 +48,7 @@
                 <div style="display:flex">
 				    <span style="margin-right: 10px">OR</span>
 					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false,true)">
+						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
 						<label class="form-check-label" for="switchOperator">AND</label>
                     </div>
 				</div>
@@ -57,7 +57,7 @@
                 <template v-if="taxonomies">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                         <template v-for="taxonomy, key in taxonomies">
-                            <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                            <option :value="[[taxonomy]]">[[taxonomy]]</option>
                         </template>
                     </select>
                 </template>
@@ -79,7 +79,7 @@
                 <div style="display:flex">
                     <span style="margin-right: 10px">OR</span>
                     <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false, false, true)">
+                        <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
                         <label class="form-check-label" for="switchOperator">AND</label>
                     </div>
                 </div>
@@ -243,7 +243,7 @@
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
-                const templates_list = ref(null)
+                const templates_list = ref([])
                 const current_page = ref(1)
 
                 let title_filter = false
@@ -265,7 +265,11 @@
                 const selected_custom_tags = ref([])
 
                 async function fetch_templates(page){
-                    templates_list.value = null
+                    let loc_page = `page=${page}`
+                    let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
+                    let loc_or_and_galax = `&or_and_galaxies=${or_and_galaxies}`
+                    let loc_title = `&title=${title_filter}`
+
                     let tags = ""
                     let taxo = ""
                     let galax = ""
@@ -277,12 +281,21 @@
                     if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
                     if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
 
-                    const res = await fetch(`/templating/get_page_case_templates?page=${page}&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`)
+                    let url = `/templating/get_page_case_templates?${loc_page}${loc_or_and_taxo}${loc_or_and_galax}${loc_title}${tags}${taxo}${galax}${clusters}${custom_tg}`
+                    const res = await fetch(url)
                     let loc = await res.json()
-                    templates_list.value = loc
+
+                    if(asc_desc){
+                        templates_list.value.templates = loc.templates
+                    }
+                    else{
+                        templates_list.value.templates = loc.templates.reverse()
+                    }
+                    templates_list.value.nb_pages = loc.nb_pages
                     current_page.value = page
                     temp_case_list = templates_list.value.templates
                 }
+                fetch_templates(1)
 
 
                 async function delete_case(case_template){
@@ -301,37 +314,15 @@
 
                 function sort_by_title(){
                     title_filter = !title_filter
-                    asc_desc_filter()
+                    fetch_templates(1)
                 }
 
-                async function asc_desc_filter(change=false, changeOperator=false, changeOperatorGalaxies=false){
+                function change_switch_check(change=false, changeOperator=false, changeOperatorGalaxies=false){
                     if (change) asc_desc = !asc_desc
                     if (changeOperator) or_and_taxo = !or_and_taxo
                     if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
 
-                    let tags = ""
-                    let taxo = ""
-                    let galax = ""
-                    let clusters = ""
-                    let custom_tg = ""
-                    if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
-                    if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                    if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
-                    if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
-                    if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
-
-                    const res = await fetch(`/templating/get_page_case_templates?page=1&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`)
-                    
-                    let loc = await res.json()
-                    if(asc_desc){
-                        templates_list.value.templates = loc.templates
-                    }
-                    else{
-                        templates_list.value.templates = loc.templates.reverse()
-                    }
-                    templates_list.value.nb_pages = loc.nb_pages
-                    temp_case_list = templates_list.value.templates
-                    
+                    fetch_templates(1)
                 }
 
                 function onInput(e){
@@ -341,12 +332,9 @@
                             return template.title.toLowerCase().includes(e.target.value.toLowerCase())
                         })
                     }else{
-                        templates_list.value.templates = asc_desc_filter()
+                        templates_list.value.templates = fetch_templates(1)
                     }
                 }
-
-                fetch_templates(1)
-
                 
 
                 async function fetch_taxonomies(){
@@ -419,7 +407,7 @@
                     })
                     $('#tags_select').on('change.select2', function (e) {
                         selected_tags.value = $(this).select2('data').map(item => item.id);
-                        asc_desc_filter()
+                        fetch_templates(1)
                     })
                     $('#galaxies_select').on('change.select2', function (e) {
                         selected_galaxies.value = $(this).select2('data').map(item => item.id);
@@ -427,30 +415,32 @@
                     })
                     $('#clusters_select').on('change.select2', function (e) {
                         selected_clusters.value = $(this).select2('data').map(item => item.id);
-                        asc_desc_filter()
+                        fetch_templates(1)
                     })
                     $('#custom_tags_select').on('select2:select select2:unselect', function (e) {
                         selected_custom_tags.value = $(this).select2('data').map(item => item.id);
-                        asc_desc_filter()
+                        fetch_templates(1)
                     })
                 })
     
                 return {
                     message_list,
-                    templates_list,
-                    current_page,
-                    delete_case,
-                    fetch_templates,
-                    sort_by_title,
-                    asc_desc_filter,
-                    onInput,
                     getTextColor,
                     mapIcon,
+
+                    templates_list,
+                    current_page,
                     taxonomies,
                     tags_list,
                     galaxies,
                     cluster_list,
-                    custom_tags
+                    custom_tags,
+
+                    delete_case,
+                    fetch_templates,
+                    sort_by_title,
+                    onInput,
+                    change_switch_check
                 }
             }
         }).mount('#main-container')

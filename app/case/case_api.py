@@ -1,8 +1,8 @@
 from flask import Blueprint, request
-from . import case_core as CaseModel
+from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from . import task_core as TaskModel
-from . import case_core_api as CaseModelApi
+from . import validation_api as CaseModelApi
 from ..utils import utils
 
 from flask_restx import Api, Resource
@@ -17,7 +17,6 @@ api = Api(api_case_blueprint,
         default_label='Generic flowintel API', 
         doc='/doc/'
     )
-
 
 
 @api.route('/all')
@@ -93,7 +92,7 @@ class EditCase(Resource):
                 verif_dict = CaseModelApi.verif_edit_case(request.json, id)
 
                 if "message" not in verif_dict:
-                    CaseModel.edit_case(verif_dict, id, current_user)
+                    CaseModel.edit(verif_dict, id, current_user)
                     return {"message": f"Case {id} edited"}, 200
 
                 return verif_dict, 400

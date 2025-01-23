@@ -1,7 +1,6 @@
 from flask import Blueprint, request
 from . import my_assignment_core as AssignModel
 from ..case import task_core as TaskModel
-from ..case import case_core_api as CaseModelApi
 
 from flask_restx import Api, Resource
 from ..decorators import api_required
