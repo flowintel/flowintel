@@ -4,7 +4,7 @@ from ..db_class.db import Case, Case_Org, Connector, Connector_Icon, Icon_File, 
 from ..db_class.db import User, Role, Org, Status
 from .utils import generate_api_key
 from ..case import common_core as CommonModel
-from ..case import task_core as TaskModel
+from ..case.TaskCore import TaskModel
 
 def create_admin_role():
     role = Role(

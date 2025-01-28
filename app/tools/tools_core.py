@@ -3,7 +3,7 @@ import uuid
 import json
 import datetime
 from ..utils import utils
-from ..case import task_core
+from ..case.TaskCore import TaskModel
 from ..case.CaseCore import CaseModel
 
 
@@ -93,11 +93,11 @@ def core_read_json_file(case, current_user):
 
     ## Task creation
     for task in case["tasks"]:
-        task_created = task_core.create_task(task, case_created.id, current_user)
+        task_created = TaskModel.create_task(task, case_created.id, current_user)
         if task["notes"]:
             for note in task["notes"]:
-                loc_note = task_core.create_note(task_created.id)
-                task_core.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
+                loc_note = TaskModel.create_note(task_created.id)
+                TaskModel.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
 
     
 def read_json_file(files_list, current_user):

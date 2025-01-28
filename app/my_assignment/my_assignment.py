@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request
 from flask_login import login_required, current_user
-from ..case import task_core as TaskModel
+from ..case.TaskCore import TaskModel
 from . import my_assignment_core as AssignModel
 
 my_assignment_blueprint = Blueprint(

@@ -3,7 +3,7 @@ import datetime
 from .. import db
 from ..db_class.db import *
 from ..case.CaseCore import CaseModel
-from ..case import task_core as TaskModel
+from ..case.TaskCore import TaskModel
 from ..case import validation_api as CaseModelApi
 from ..case import common_core as CommonModel
 

@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
-from . import task_core as TaskModel
+from .TaskCore import TaskModel
 from ..db_class.db import Task_Template, Case_Template
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict, get_object_templates

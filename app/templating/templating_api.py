@@ -1,8 +1,8 @@
 from flask import Blueprint, request
-from . import templating_core as TemplateModel
+from .TemplateCase import TemplateModel
+from .TaskTemplateCore import TaskModel
 from . import validation_api as ApiTemplateModel
 from . import common_template_core as CommonModel
-from . import task_template_core as TaskModel
 from ..utils import utils
 
 from flask_restx import Api, Resource
@@ -74,7 +74,7 @@ class CreateCaseTemaplte(Resource):
         if request.json:
             verif_dict = ApiTemplateModel.verif_create_case_template(request.json)
             if "message" not in verif_dict:
-                template = TemplateModel.create_case_template(verif_dict)
+                template = TemplateModel.create_case(verif_dict)
                 return {"message": f"Template created, id: {template.id}"}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -94,7 +94,7 @@ class EditCaseTemaplte(Resource):
         if request.json:
             verif_dict = ApiTemplateModel.verif_edit_case_template(request.json, cid)
             if "message" not in verif_dict:
-                TemplateModel.edit_case_template(verif_dict, cid)
+                TemplateModel.edit(verif_dict, cid)
                 return {"message": f"Template case edited"}, 200
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -140,7 +140,7 @@ class DeleteCaseTemplate(Resource):
     method_decorators = [api_required]
     def get(self, cid):
         if CommonModel.get_case_template(cid):
-            if TemplateModel.delete_case_template(cid):
+            if TemplateModel.delete_case(cid):
                 return {"message": "Case template deleted"}, 200
             return {"message": "Error case template deleted"}, 400
         return {"message": "Template not found"}, 404

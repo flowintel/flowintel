@@ -395,7 +395,7 @@ export default {
 		>
 			<div class="d-flex w-100 justify-content-between">
 				<h5 class="mb-1">[[ key_loop ]]- [[task.title]]</h5>
-				<small><i>Changed [[ formatNow(task.last_modif) ]] </i></small>
+				<small :title="task.last_modif"><i>Changed [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
 
 			<div class="d-flex w-100 justify-content-between">

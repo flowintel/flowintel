@@ -210,11 +210,11 @@
                 <div class="d-flex w-100 justify-content-between">
                     <div>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_ongoing(true)" checked>
+                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="change_status_sort(false)" checked>
                             <label class="form-check-label" for="radioStatusOngoing">Ongoing Tasks</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_ongoing(false)">
+                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="change_status_sort(true)">
                             <label class="form-check-label" for="radioStatusFinished">Finished Tasks</label>
                         </div>
                     </div>
@@ -246,13 +246,11 @@
                         </div>
                     </div>
 
-                    <div style="display:flex">
-                    <span style="margin-right: 10px">Asc</span>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="asc_desc_filter(true)">
-                            <label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
+                    <div>
+                        Change order
+                        <div class="form-check form-switch" style="margin-left: 35%;">
+                            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
                         </div>
-                
                     </div>
                 </div>
                 <hr>
@@ -261,7 +259,7 @@
                     <div style="display:flex">
                         <span style="margin-right: 10px">OR</span>
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false,true)">
+                            <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
                             <label class="form-check-label" for="switchOperator">AND</label>
                         </div>
                     </div>
@@ -270,7 +268,7 @@
                     <template v-if="taxonomies">
                         <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                             <template v-for="taxonomy, key in taxonomies">
-                                <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                                <option :value="[[taxonomy]]">[[taxonomy]]</option>
                             </template>
                         </select>
                     </template>
@@ -292,7 +290,7 @@
                     <div style="display:flex">
                         <span style="margin-right: 10px">OR</span>
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="asc_desc_filter(false, false, true)">
+                            <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
                             <label class="form-check-label" for="switchOperator">AND</label>
                         </div>
                     </div>
@@ -475,7 +473,7 @@
                 const is_exporting = ref(false)
                 let loc_tasks_list = []
 
-                let show_ongoing = true
+                let completed = false
                 let current_filter = ""
                 let asc_desc = true
                 let or_and_taxo = true
@@ -598,10 +596,25 @@
                     is_exporting.value = false
                 }
 
-                async function filter_ongoing(ongoing){
-                    show_ongoing = ongoing
+                async function change_status_sort(status){
+                    completed = status
+                    await fetch_sorted_tasks()
+                }
 
-                    let loc
+                function change_switch_check(change=false, changeOperator=false, changeOperatorGalaxies=false){
+                    if (change) asc_desc = !asc_desc
+                    if (changeOperator) or_and_taxo = !or_and_taxo
+                    if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
+
+                    fetch_sorted_tasks()
+                }
+
+                async function fetch_sorted_tasks() {
+                    let loc_status = `status=${completed}`
+                    let loc_filter = `&filter=${current_filter}`
+                    let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
+                    let loc_or_and_galaxies = `&or_and_galaxies=${or_and_galaxies}`
+
                     let tags = ""
                     let taxo = ""
                     let galax = ""
@@ -613,54 +626,22 @@
                     if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
                     if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
 
-                    if(show_ongoing){
-                        const res = await fetch(`/case/${cases_info.value.case.id}/sort_by_ongoing_task?or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`)
-                        loc = await res.json()
-                    }else{
-                        const res = await fetch(`/case/${cases_info.value.case.id}/sort_by_finished_task?or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`)
-                        loc = await res.json()
-                    }
-                    cases_info.value.tasks = loc
+                    let url = `/case/${cases_info.value.case.id}/sort_tasks?${loc_status}${loc_filter}${loc_or_and_taxo}${loc_or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`
+                    
+                    const res = await fetch(url)
+                    let loc = await res.json()
+
+                    if(asc_desc)
+                        cases_info.value.tasks = loc.reverse()
+                    else
+                        cases_info.value.tasks = loc
+
                     loc_tasks_list = cases_info.value.tasks
                 }
 
                 function sort_by_filter(filter){
                     current_filter = filter
-                    asc_desc_filter()
-                }
-
-                async function asc_desc_filter(change=false, changeOperator=false, changeOperatorGalaxies=false){
-                    if (change) asc_desc = !asc_desc
-                    if (changeOperator) or_and_taxo = !or_and_taxo
-                    if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
-
-                    let res
-                    if (current_filter){
-                        let tags = ""
-                        let taxo = ""
-                        let galax = ""
-                        let clusters = ""
-                        let custom_tg = ""
-                        if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
-                        if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                        if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
-                        if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
-                        if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
-
-                        if(show_ongoing)
-                            res = await fetch(`/case/${cases_info.value.case.id}/tasks/ongoing?or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&filter=${current_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`)
-                        else
-                            res = await fetch(`/case/${cases_info.value.case.id}/tasks/finished?or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&filter=${current_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`)
-                        let loc = await res.json()
-                        if(asc_desc)
-                            cases_info.value.tasks = loc.reverse()
-                        else
-                            cases_info.value.tasks = loc
-
-                        loc_tasks_list = cases_info.value.tasks
-                    }else{
-                        filter_ongoing(show_ongoing)   
-                    }
+                    fetch_sorted_tasks()
                 }
 
 
@@ -687,6 +668,7 @@
                         })
                     }
                 }
+                fetchCase()
 
                 async function fetchStatus() {
                     status_info.value = null
@@ -695,6 +677,7 @@
                     )
                     status_info.value = await res.json()
                 }
+                fetchStatus()
 
                 async function get_all_users_case(){
                     users_in_case.value = null
@@ -705,6 +688,7 @@
                         users_in_case.value = await res.json()
                     }
                 }
+                get_all_users_case()
 
                 function onInput(e){
                     cases_info.value.tasks = []
@@ -713,7 +697,7 @@
                             return task.title.toLowerCase().includes(e.target.value.toLowerCase())
                         })
                     }else{
-                        cases_info.value.tasks = asc_desc_filter()
+                        cases_info.value.tasks = fetch_sorted_tasks()
                     }
                 }
 
@@ -842,11 +826,6 @@
                 }
 
 
-                fetchCase()
-                fetchStatus()
-                get_all_users_case()
-
-
                 async function fetch_taxonomies(){
                     const res = await fetch("/case/get_taxonomies")
                     if(await res.status==400 ){
@@ -968,35 +947,28 @@
                         closeOnSelect: false
                     })
 
-                    $('#taxonomies_select').on('select2:select', function (e) {
+
+                    $('#taxonomies_select').on('change', function (e) {
                         selected_taxo.value = $(this).select2('data').map(item => item.id);
                         fetch_tags()
                     })
-                    // $('#taxonomies_select').on('select2:unselect', function (e) {
-                    //     $('#tags_select').each(function () { //added a each loop here
-                    //         $(this).select2('val', '')
-                    //     });
-                    // })
-                    $('#tags_select').on('select2:select select2:unselect', function (e) {
+
+                    $('#tags_select').on('change', function (e) {
                         selected_tags.value = $(this).select2('data').map(item => item.id);
-                        asc_desc_filter()
+                        fetch_sorted_tasks()
                     })
-                    $('#galaxies_select').on('select2:select', function (e) {
+                    $('#galaxies_select').on('change', function (e) {
                         selected_galaxies.value = $(this).select2('data').map(item => item.id);
                         fetch_cluster()
                     })
-                    // $('#galaxies_select').on('select2:unselect', function (e) {
-                    //     selected_clusters.value = []
-                    //     asc_desc_filter()
-                    // })
-                    $('#clusters_select').on('select2:select select2:unselect', function (e) {
+                    $('#clusters_select').on('change', function (e) {
                         selected_clusters.value = $(this).select2('data').map(item => item.id);
-                        asc_desc_filter()
+                        fetch_sorted_tasks()
                     })
 
-                    $('#task_custom_tags_select').on('select2:select select2:unselect', function (e) {
+                    $('#task_custom_tags_select').on('schange', function (e) {
                         selected_custom_tags.value = $(this).select2('data').map(item => item.id);
-                        asc_desc_filter()
+                        fetch_sorted_tasks()
                     })
                 }
 
@@ -1127,9 +1099,7 @@
                     is_exporting,
                     nb_misp_objects,
                     onInput,
-                    filter_ongoing,
                     sort_by_filter,
-                    asc_desc_filter,
                     active_tab,
                     submit_add_new_link,
                     remove_case_link,
@@ -1152,7 +1122,11 @@
                     save_note_case,
                     edit_note,
                     export_notes,
-                    fetch_case_connectors
+                    fetch_case_connectors,
+
+                    change_status_sort,
+                    change_switch_check,
+                    fetch_sorted_tasks
                 }
             }
         }).mount('#main-container')

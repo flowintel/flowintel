@@ -1,17 +1,37 @@
+from typing import List
 from ..db_class.db import *
 import uuid
 from .. import db
 import datetime
 from ..case import common_core
-from ..case.CaseAbstract import CaseAbstract
+from ..case.CommonAbstract import CommonAbstract
+from ..case.FilteringAbstract import FilteringAbstract
 from sqlalchemy import and_, desc
 from . import common_template_core as CommonModel
-from . import task_template_core as TaskModel
+from .TaskTemplateCore import TaskModel
 from ..custom_tags import custom_tags_core as CustomModel
 
-class TemplateCase(CaseAbstract):
-    def get_case(self, case_id):
-        return Case_Template.query.get(case_id)
+class TemplateCase(CommonAbstract, FilteringAbstract):
+    def get_class(self) -> Case_Template:
+        return Case_Template
+    
+    def get_tags(self) -> Case_Template_Tags:
+        return Case_Template_Tags
+
+    def get_tag_class_id(self) -> int:
+        return Case_Template_Tags.case_id
+
+    def get_galaxies(self) -> Case_Template_Galaxy_Tags:
+        return Case_Template_Galaxy_Tags
+
+    def get_galaxies_class_id(self) -> int:
+        return Case_Template_Galaxy_Tags.template_id
+
+    def get_custom_tags(self) -> Case_Template_Custom_Tags:
+        return Case_Template_Custom_Tags
+
+    def get_custom_tags_class_id(self) -> int:
+        return Case_Template_Custom_Tags.case_template_id
 
     def create_case(self, form_dict):
         case_template = Case_Template(
@@ -27,17 +47,17 @@ class TemplateCase(CaseAbstract):
         for tag in form_dict["tags"]:
             tag = CommonModel.get_tag(tag)
             
-            self.add_tag_to_case(tag, case_template.id)
+            self.add_tag(tag, case_template.id)
 
         for cluster in form_dict["clusters"]:
             cluster = CommonModel.get_cluster_by_name(cluster)
             
-            self.add_cluster_to_case(cluster, case_template.id)
+            self.add_cluster(cluster, case_template.id)
 
         for custom_tag_name in form_dict["custom_tags"]:
             custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
             if custom_tag:
-                self.add_custom_tag_to_case(custom_tag, case_template.id)
+                self.add_custom_tag(custom_tag, case_template.id)
 
         cp = 1
         for tid in form_dict["tasks"]:
@@ -64,65 +84,65 @@ class TemplateCase(CaseAbstract):
         db.session.commit()
         return True
 
-    def get_case_tags(self, case_id) -> list:
-        return [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=case_id).all()]
+    def get_assigned_tags(self, class_id) -> List:
+        return [tag.name for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=class_id).all()]
 
-    def get_case_tags_both(self, case_id, tag_id):
+    def get_case_tags_both(self, class_id, tag_id):
         """Return a list of tags present in a case"""
-        return Case_Template_Tags.query.filter_by(case_id=case_id, tag_id=tag_id).first()
+        return Case_Template_Tags.query.filter_by(case_id=class_id, tag_id=tag_id).first()
 
-    def get_case_clusters_uuid(self, case_id) -> list:
+    def get_assigned_clusters_uuid(self, class_id) -> List:
         """Return a list of clusters uuid present in a case template"""
         return [cluster.uuid for cluster in \
                 Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.cluster_id==Cluster.id)\
-                    .filter_by(template_id=case_id).all()]
+                    .filter_by(template_id=class_id).all()]
 
-    def get_case_custom_tags_name(self, case_id) -> list:
+    def get_assigned_custom_tags_name(self, class_id) -> List:
         c_ts = Custom_Tags.query\
             .join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
-            .where(Case_Template_Custom_Tags.case_template_id==case_id).all()
+            .where(Case_Template_Custom_Tags.case_template_id==class_id).all()
         return [c_t.name for c_t in c_ts]
 
-    def add_tag_to_case(self, tag, case_id) -> str:
+    def add_tag(self, tag, class_id) -> str:
         case_tag = Case_Template_Tags(
             tag_id=tag.id,
-            case_id=case_id
+            case_id=class_id
         )
         db.session.add(case_tag)
         db.session.commit()
 
-    def delete_tag_from_case(self, tag, case_id) -> None:
-        case_tag = CommonModel.get_case_template_tags_both(case_id, tag.id)
+    def delete_tag(self, tag, class_id) -> None:
+        case_tag = CommonModel.get_case_template_tags_both(class_id, tag.id)
         Case_Template_Tags.query.filter_by(id=case_tag.id).delete()
         db.session.commit()
 
-    def add_cluster_to_case(self, cluster, case_id) -> str:
+    def add_cluster(self, cluster, class_id) -> str:
         case_tag = Case_Template_Galaxy_Tags(
             cluster_id=cluster.id,
-            template_id=case_id
+            template_id=class_id
         )
         db.session.add(case_tag)
         db.session.commit()
 
-    def delete_cluster_from_case(self, cluster, case_id) -> None:
-        case_cluster = CommonModel.get_case_template_clusters_both(case_id, cluster.id)
+    def delete_cluster(self, cluster, class_id) -> None:
+        case_cluster = CommonModel.get_case_template_clusters_both(class_id, cluster.id)
         Case_Template_Galaxy_Tags.query.filter_by(id=case_cluster.id).delete()
         db.session.commit()
 
-    def add_custom_tag_to_case(self, custom_tag, case_id) -> str:
+    def add_custom_tag(self, custom_tag, class_id) -> str:
         c_t = Case_Template_Custom_Tags(
-            case_template_id=case_id,
+            case_template_id=class_id,
             custom_tag_id=custom_tag.id
         )
         db.session.add(c_t)
         db.session.commit()
 
-    def delete_custom_tag_from_case(self, custom_tag, case_id) -> None:
-        case_custom_tag = CommonModel.get_case_custom_tags_both(case_id, custom_tag_id=custom_tag.id)
+    def delete_custom_tag(self, custom_tag, class_id) -> None:
+        case_custom_tag = CommonModel.get_case_custom_tags_both(class_id, custom_tag_id=custom_tag.id)
         Case_Template_Custom_Tags.query.filter_by(id=case_custom_tag.id).delete()
         db.session.commit()
 
-    def update_case_time_modification(case, current_user=None):
+    def update_case_time_modification(self, case):
         CommonModel.update_last_modif(case.id)
 
         db.session.commit()
@@ -140,33 +160,7 @@ class TemplateCase(CaseAbstract):
         
 
     def build_case_query(self, page, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, title_filter=None):
-        query = Case_Template.query
-        conditions = []
-
-        if tags or taxonomies:
-            query = query.join(Case_Template_Tags, Case_Template_Tags.case_id == Case_Template.id)
-            query = query.join(Tags, Case_Template_Tags.tag_id == Tags.id)
-            if tags:
-                conditions.append(Tags.name.in_(list(tags)))
-
-            if taxonomies:
-                query = query.join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)
-                conditions.append(Taxonomy.name.in_(list(taxonomies)))
-
-        if clusters or galaxies:
-            query = query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id == Case_Template.id)
-            query = query.join(Cluster, Case_Template_Galaxy_Tags.cluster_id == Cluster.id)
-            if clusters:
-                conditions.append(Cluster.name.in_(list(clusters)))
-
-            if galaxies:
-                query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
-                conditions.append(Galaxy.name.in_(list(galaxies)))
-
-        if custom_tags:
-            query = query.join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.case_template_id == Case_Template.id)
-            query = query.join(Custom_Tags, Case_Template_Custom_Tags.custom_tag_id == Custom_Tags.id)
-            conditions.append(Custom_Tags.name.in_(list(custom_tags)))
+        query, conditions = self._build_sort_query(None, tags, taxonomies, galaxies, clusters, custom_tags)
 
         if title_filter=='true':
             query = query.order_by('title')
@@ -176,11 +170,10 @@ class TemplateCase(CaseAbstract):
         return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
 
     def sort_cases(self, page, title_filter, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true"):
-        cases = self.build_case_query(page, tags, taxonomies, galaxies, clusters, custom_tags, title_filter)
-        nb_pages = cases.pages
-
         if tags or taxonomies or galaxies or clusters or custom_tags:
-            cases = self._sort_cases(cases, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
+            cases = self.build_case_query(page, tags, taxonomies, galaxies, clusters, custom_tags, title_filter)
+            nb_pages = cases.pages
+            cases = self._sort(cases, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
         else:
             query = Case_Template.query
             if title_filter == 'true':

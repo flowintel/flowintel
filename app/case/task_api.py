@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
-from . import task_core as TaskModel
+from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..utils import utils
 

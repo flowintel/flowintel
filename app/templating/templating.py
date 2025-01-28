@@ -1,9 +1,9 @@
 import ast
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from flask_login import login_required, current_user
-from .TemplateCase import TemplateCase
+from .TemplateCase import TemplateModel
 from . import common_template_core as CommonModel
-from . import task_template_core as TaskModel
+from .TaskTemplateCore import TaskModel
 from ..decorators import editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
 from ..utils.utils import form_to_dict
@@ -16,7 +16,6 @@ templating_blueprint = Blueprint(
     static_folder='static'
 )
 
-TemplateModel = TemplateCase()
 
 ##########
 # Render #
@@ -298,19 +297,16 @@ def get_page_task_templates():
     if custom_tags:
         custom_tags = ast.literal_eval(custom_tags)
 
-    templates = TaskModel.get_page_task_templates(page, 
-                                                    title_filter, 
-                                                    taxonomies, 
-                                                    galaxies, 
-                                                    tags, 
-                                                    clusters,
-                                                    custom_tags,
-                                                    or_and_taxo, 
-                                                    or_and_galaxies)
-    try:
-        nb_pages = templates.pages
-    except:
-        pass
+    templates, nb_pages = TaskModel.sort_tasks(page, 
+                                                title_filter, 
+                                                taxonomies, 
+                                                galaxies, 
+                                                tags, 
+                                                clusters,
+                                                custom_tags,
+                                                or_and_taxo, 
+                                                or_and_galaxies)
+
     if templates:
         templates_list = list()
         for template in templates:

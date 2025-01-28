@@ -4,7 +4,7 @@ from .form import TaskEditForm, TaskForm
 from flask_login import login_required, current_user
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
-from . import task_core as TaskModel
+from .TaskCore import TaskModel
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
 from ..utils.formHelper import prepare_tags
@@ -329,97 +329,16 @@ def get_files(cid, tid):
     return {"message":"Case not found", "toast_class": "danger-subtle"}, 404
 
 
-@task_blueprint.route("/<cid>/sort_by_ongoing_task", methods=['GET'])
+@task_blueprint.route("/<cid>/sort_tasks", methods=['GET'])
 @login_required
-def sort_by_ongoing_task(cid):
-    """Sort Task by living one"""
+def sort_tasks(cid):
+    """Sort Tasks"""
     case = CommonModel.get_case(cid)
-    tags = request.args.get('tags')
-    or_and_taxo = request.args.get("or_and_taxo")
-    taxonomies = request.args.get('taxonomies')
-
-    galaxies = request.args.get('galaxies')
-    clusters = request.args.get('clusters')
-    or_and_galaxies = request.args.get("or_and_galaxies")
-
-    custom_tags = request.args.get('custom_tags')
-
-    return TaskModel.sort_by_status_task_core(case, 
-                                              current_user, 
-                                              taxonomies, 
-                                              galaxies, 
-                                              tags, 
-                                              clusters,
-                                              custom_tags,
-                                              or_and_taxo, or_and_galaxies, 
-                                              completed=False)
-
-
-@task_blueprint.route("/<cid>/sort_by_finished_task", methods=['GET'])
-@login_required
-def sort_by_finished_task(cid):
-    """Sort task by finished one"""
-    case = CommonModel.get_case(cid)
-    tags = request.args.get('tags')
-    or_and_taxo = request.args.get("or_and_taxo")
-    taxonomies = request.args.get('taxonomies')
-
-    galaxies = request.args.get('galaxies')
-    clusters = request.args.get('clusters')
-    or_and_galaxies = request.args.get("or_and_galaxies")
-
-    custom_tags = request.args.get('custom_tags')
-
-    return TaskModel.sort_by_status_task_core(case, 
-                                              current_user, 
-                                              taxonomies, 
-                                              galaxies, 
-                                              tags, 
-                                              clusters,
-                                              custom_tags,
-                                              or_and_taxo, or_and_galaxies, 
-                                              completed=True)
-
-
-@task_blueprint.route("/<cid>/tasks/ongoing", methods=['GET'])
-@login_required
-def ongoing_tasks_sort_by_filter(cid):
-    """Sort by filter for living task"""
-    tags = request.args.get('tags')
-    or_and_taxo = request.args.get("or_and_taxo")
-    taxonomies = request.args.get('taxonomies')
-
-    galaxies = request.args.get('galaxies')
-    clusters = request.args.get('clusters')
-    or_and_galaxies = request.args.get("or_and_galaxies")
     filter = request.args.get('filter')
-
-    custom_tags = request.args.get('custom_tags')
-
-    if filter:
-        case = CommonModel.get_case(cid)
-        return TaskModel.sort_tasks_by_filter(case, 
-                                              current_user, 
-                                              filter, 
-                                              taxonomies, 
-                                              galaxies, 
-                                              tags, 
-                                              clusters, 
-                                              custom_tags,
-                                              or_and_taxo, 
-                                              or_and_galaxies, 
-                                              completed=False)
-    return {"message": "No filter pass"}, 400
-
-
-@task_blueprint.route("/<cid>/tasks/finished", methods=['GET'])
-@login_required
-def finished_tasks_sort_by_filter(cid):
-    """Sort by filter for finished task"""
+    status = request.args.get('status')
     tags = request.args.get('tags')
-    or_and_taxo = request.args.get("or_and_taxo")
     taxonomies = request.args.get('taxonomies')
-    filter = request.args.get('filter')
+    or_and_taxo = request.args.get("or_and_taxo")
 
     galaxies = request.args.get('galaxies')
     clusters = request.args.get('clusters')
@@ -427,20 +346,34 @@ def finished_tasks_sort_by_filter(cid):
 
     custom_tags = request.args.get('custom_tags')
 
-    if filter:
-        case = CommonModel.get_case(cid)
-        return TaskModel.sort_tasks_by_filter(case, 
-                                              current_user, 
-                                              filter, 
-                                              taxonomies, 
-                                              galaxies, 
-                                              tags, 
-                                              clusters, 
-                                              custom_tags,
-                                              or_and_taxo, 
-                                              or_and_galaxies, 
-                                              completed=True)
-    return {"message": "No filter pass"}, 400
+    if status == 'true':
+        status = True
+    elif status == 'false':
+        status = False
+
+    if tags:
+        tags = ast.literal_eval(tags)
+    if taxonomies:
+        taxonomies = ast.literal_eval(taxonomies)
+
+    if galaxies:
+        galaxies = ast.literal_eval(galaxies)
+    if clusters:
+        clusters = ast.literal_eval(clusters)
+
+    if custom_tags:
+        custom_tags = ast.literal_eval(custom_tags)
+
+    return TaskModel.sort_tasks(case, 
+                                current_user, 
+                                taxonomies, 
+                                galaxies, 
+                                tags, 
+                                clusters,
+                                custom_tags,
+                                or_and_taxo, or_and_galaxies, 
+                                completed=status,
+                                filter=filter)
 
 
 @task_blueprint.route("/<cid>/task/<tid>/notify_user", methods=['POST'])

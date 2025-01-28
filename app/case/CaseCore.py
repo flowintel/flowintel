@@ -1,4 +1,5 @@
 import os
+from typing import List
 import uuid
 import datetime
 import requests
@@ -10,29 +11,39 @@ from dateutil import relativedelta
 
 from .. import db
 from ..db_class.db import *
-from .CaseAbstract import CaseAbstract
+from .CommonAbstract import CommonAbstract
+from .FilteringAbstract import FilteringAbstract
 from . import common_core as CommonModel
-from . import task_core as TaskModel
-from ..utils.utils import isUUID, MODULES, MODULES_CONFIG
+from . TaskCore import TaskModel
+from ..utils.utils import MODULES, MODULES_CONFIG
 from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 
-from ..templating.TemplateCase import TemplateCase
-
-CaseTemplateModel = TemplateCase()
+from ..templating.TemplateCase import TemplateModel as CaseTemplateModel
 
 
-class CaseModel(CaseAbstract):
+class CaseCore(CommonAbstract, FilteringAbstract):
+    def get_class(self) -> Case:
+        return Case
+    
+    def get_tags(self) -> Case_Tags:
+        return Case_Tags
 
-    def get_case(self, case_id):
-        """Return a case by is id"""
-        if isUUID(case_id):
-            case = Case.query.filter_by(uuid=case_id).first()
-        elif str(case_id).isdigit():
-            case = Case.query.get(case_id)
-        else:
-            case = None
-        return case
+    def get_tag_class_id(self) -> int:
+        return Case_Tags.case_id
+
+    def get_galaxies(self) -> Case_Galaxy_Tags:
+        return Case_Galaxy_Tags
+
+    def get_galaxies_class_id(self) -> int:
+        return Case_Galaxy_Tags.case_id
+
+    def get_custom_tags(self) -> Case_Custom_Tags:
+        return Case_Custom_Tags
+
+    def get_custom_tags_class_id(self) -> int:
+        return Case_Custom_Tags.case_id
+
 
     def create_case(self, form_dict, user):
         if "template_select" in form_dict and not 0 in form_dict["template_select"]:
@@ -59,17 +70,17 @@ class CaseModel(CaseAbstract):
             for tags in form_dict["tags"]:
                 tag = CommonModel.get_tag(tags)
                 
-                self.add_tag_to_case(tag, case.id)
+                self.add_tag(tag, case.id)
             
             for clusters in form_dict["clusters"]:
                 cluster = CommonModel.get_cluster_by_name(clusters)
                 
-                self.add_cluster_to_case(cluster, case.id)
+                self.add_cluster(cluster, case.id)
 
             for custom_tag_name in form_dict["custom_tags"]:
                 custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
                 if custom_tag:
-                    self.add_custom_tag_to_case(custom_tag, case.id)
+                    self.add_custom_tag(custom_tag, case.id)
 
             if "tasks_templates" in form_dict and not 0 in form_dict["tasks_templates"]:
                 for tid in form_dict["tasks_templates"]:
@@ -129,66 +140,59 @@ class CaseModel(CaseAbstract):
                 Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
             Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=attr.id).delete()
 
-    def get_case_tags(self, case_id) -> list:
+    def get_assigned_tags(self, class_id) -> List:
         """Return a list of tags present in a case"""
-        return [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=case_id).all()]
+        return [tag.name for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=class_id).all()]
 
-    def get_case_clusters_uuid(self, case_id) -> list:
+    def get_assigned_clusters_uuid(self, class_id) -> list:
         """Return a list of clusters uuid present in a case"""
         return [cluster.uuid for cluster in \
                 Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id)\
-                    .filter_by(case_id=case_id).all()]
+                    .filter_by(case_id=class_id).all()]
 
-    def get_case_custom_tags_name(self, case_id) -> list:
+    def get_assigned_custom_tags_name(self, class_id) -> list:
         return [c_t.name for c_t in \
             Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id)\
-                .where(Case_Custom_Tags.case_id==case_id).all()]
+                .where(Case_Custom_Tags.case_id==class_id).all()]
 
-    def add_tag_to_case(self, tag, case_id) -> None:
+    def add_tag(self, tag, class_id) -> None:
         case_tag = Case_Tags(
             tag_id=tag.id,
-            case_id=case_id
+            case_id=class_id
         )
         db.session.add(case_tag)
         db.session.commit()
 
-    def delete_tag_from_case(self, tag, case_id) -> None:
-        case_tag = CommonModel.get_case_tags_both(case_id, tag.id)
+    def delete_tag(self, tag, class_id) -> None:
+        case_tag = CommonModel.get_case_tags_both(class_id, tag.id)
         Case_Tags.query.filter_by(id=case_tag.id).delete()
         db.session.commit()
 
-    def add_cluster_to_case(self, cluster, case_id) -> None:
+    def add_cluster(self, cluster, class_id) -> None:
         case_galaxy_tag = Case_Galaxy_Tags(
             cluster_id=cluster.id,
-            case_id=case_id
+            case_id=class_id
         )
         db.session.add(case_galaxy_tag)
         db.session.commit()
 
-    def delete_cluster_from_case(self, cluster, case_id) -> None:
-        case_cluster = CommonModel.get_case_clusters_both(case_id, cluster.id)
+    def delete_cluster(self, cluster, class_id) -> None:
+        case_cluster = CommonModel.get_case_clusters_both(class_id, cluster.id)
         Case_Galaxy_Tags.query.filter_by(id=case_cluster.id).delete()
         db.session.commit()
 
-    def add_custom_tag_to_case(self, custom_tag, case_id) -> None:
+    def add_custom_tag(self, custom_tag, class_id) -> None:
         c_t = Case_Custom_Tags(
-            case_id=case_id,
+            case_id=class_id,
             custom_tag_id=custom_tag.id
         )
         db.session.add(c_t)
         db.session.commit()
 
-    def delete_custom_tag_from_case(self, custom_tag, case_id) -> None:
-        case_custom_tag = CommonModel.get_case_custom_tags_both(case_id, custom_tag_id=custom_tag.id)
+    def delete_custom_tag(self, custom_tag, class_id) -> None:
+        case_custom_tag = CommonModel.get_case_custom_tags_both(class_id, custom_tag_id=custom_tag.id)
         Case_Custom_Tags.query.filter_by(id=case_custom_tag.id).delete()
-        db.session.commit()
-
-
-    def update_case_time_modification(self, case, current_user):
-        CommonModel.update_last_modif(case.id)
-        db.session.commit()
-
-        CommonModel.save_history(case.uuid, current_user, f"Case edited")
+        db.session.commit()        
 
     def edit(self, form_dict, cid, current_user):
         """Edit a case to the DB"""
@@ -202,51 +206,26 @@ class CaseModel(CaseAbstract):
 
         self._edit(form_dict, cid)
 
-        self.update_case_time_modification(case, current_user)
+        CommonModel.update_last_modif(case.id)
+        db.session.commit()
+
+        CommonModel.save_history(case.uuid, current_user, f"Case edited")
 
     def build_case_query(self, page, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, filter=None):
         """Build a case query depending on parameters"""
-        query = Case.query
-        conditions = [Case.completed == completed]
-
-        if tags or taxonomies:
-            query = query.join(Case_Tags, Case_Tags.case_id == Case.id)
-            query = query.join(Tags, Case_Tags.tag_id == Tags.id)
-            if tags:
-                conditions.append(Tags.name.in_(list(tags)))
-
-            if taxonomies:
-                query = query.join(Taxonomy, Taxonomy.id == Tags.taxonomy_id)
-                conditions.append(Taxonomy.name.in_(list(taxonomies)))
-
-        if clusters or galaxies:
-            query = query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id == Case.id)
-            query = query.join(Cluster, Case_Galaxy_Tags.cluster_id == Cluster.id)
-            if clusters:
-                conditions.append(Cluster.name.in_(list(clusters)))
-
-            if galaxies:
-                query = query.join(Galaxy, Galaxy.id == Cluster.galaxy_id)
-                conditions.append(Galaxy.name.in_(list(galaxies)))
-        
-        if custom_tags:
-            query = query.join(Case_Custom_Tags, Case_Custom_Tags.case_id == Case.id)
-            query = query.join(Custom_Tags, Case_Custom_Tags.custom_tag_id == Custom_Tags.id)
-            conditions.append(Custom_Tags.name.in_(list(custom_tags)))
+        query, conditions = self._build_sort_query(completed, tags, taxonomies, galaxies, clusters, custom_tags)
 
         if filter:
             query = query.order_by(desc(filter))
         
         return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
-        # return query.filter(and_(*conditions)).all()
     
 
     def sort_cases(self, page, completed, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", filter=None):
-        cases = self.build_case_query(page, completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
-        nb_pages = cases.pages
-
         if tags or taxonomies or galaxies or clusters or custom_tags:
-            cases = self._sort_cases(cases, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
+            cases = self.build_case_query(page, completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
+            nb_pages = cases.pages
+            cases = self._sort(cases, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
         else:
             cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=25, max_per_page=50)
             nb_pages = cases.pages
@@ -1216,4 +1195,4 @@ class CaseModel(CaseAbstract):
         CommonModel.save_history(case.uuid, user, f"Module 'misp_object_event' called with connector '{instance['name']}'")
         CommonModel.update_last_modif(case.id)
 
-CaseModel = CaseModel()
+CaseModel = CaseCore()

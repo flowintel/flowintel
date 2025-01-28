@@ -1,4 +1,4 @@
-from ..db_class.db import Case, User
+from ..db_class.db import Case
 from datetime import datetime
 from . import common_core as CommonModel
 from ..utils.datadictHelper import edition_verification_tags_connectors, creation_verification_tags_connectors
