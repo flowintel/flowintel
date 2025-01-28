@@ -70,7 +70,7 @@
     </template>
 
     <div style="margin-top: 5px;" v-if="case_template.clusters">
-        <div v-for="cluster in case_template.clusters" :title="'Description: '+cluster.description+'\n\nMetadata: '+cluster.meta">
+        <div v-for="cluster in case_template.clusters" class="cluster" :title="'Description: '+cluster.description+'\n\nMetadata: '+cluster.meta">
             <span v-html="mapIcon(cluster.icon)"></span>
             [[cluster.tag]]
         </div>
