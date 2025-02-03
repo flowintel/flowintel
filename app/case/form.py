@@ -18,12 +18,13 @@ from ..db_class.db import Case, Case_Org
 class CaseForm(FlaskForm):
     title = StringField('Title', validators=[Optional()])
     description = TextAreaField('Description', validators=[Optional()])
-    deadline_date = DateField('deadline_date', validators=[Optional()])
-    deadline_time = TimeField("deadline_time", validators=[Optional()])
+    deadline_date = DateField('Deadline date', validators=[Optional()])
+    deadline_time = TimeField("Deadline time", validators=[Optional()])
     template_select = SelectMultipleField(u'Templates', coerce=int)
     title_template = StringField('New Title', validators=[Optional()])
     tasks_templates = SelectMultipleField(u'Tasks Templates', coerce=int)
     time_required = StringField('Time required', validators=[Optional()])
+    is_private = BooleanField("Private Case")
     submit = SubmitField('Create')
 
     def validate_title(self, field):
@@ -51,9 +52,10 @@ class CaseForm(FlaskForm):
 class CaseEditForm(FlaskForm):
     title = StringField('Title', validators=[InputRequired()])
     description = TextAreaField('Description', validators=[Optional()])
-    deadline_date = DateField('deadline_date', validators=[Optional()])
-    deadline_time = TimeField("deadline_time", validators=[Optional()])
+    deadline_date = DateField('Deadline date', validators=[Optional()])
+    deadline_time = TimeField("Deadline time", validators=[Optional()])
     time_required = StringField('Time required', validators=[Optional()])
+    is_private = BooleanField("Private Case")
     submit = SubmitField('Save')
 
     def validate_deadline_time(self, field):
@@ -66,8 +68,8 @@ class TaskForm(FlaskForm):
     description = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     time_required = StringField('Time required', validators=[Optional()])
-    deadline_date = DateField('deadline_date', validators=[Optional()])
-    deadline_time = TimeField("deadline_time", validators=[Optional()])
+    deadline_date = DateField('Deadline date', validators=[Optional()])
+    deadline_time = TimeField("Deadline time", validators=[Optional()])
     template_select = SelectMultipleField(u'Templates', coerce=int)
     submit = SubmitField('Create')
 
@@ -90,8 +92,8 @@ class TaskEditForm(FlaskForm):
     description = TextAreaField('Description', validators=[Optional()])
     url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     time_required = StringField('Time required', validators=[Optional()])
-    deadline_date = DateField('deadline_date', validators=[Optional()])
-    deadline_time = TimeField("deadline_time", validators=[Optional()])
+    deadline_date = DateField('Deadline date', validators=[Optional()])
+    deadline_time = TimeField("Deadline time", validators=[Optional()])
     submit = SubmitField('Save')
 
     def validate_deadline_time(self, field):

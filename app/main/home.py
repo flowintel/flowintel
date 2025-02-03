@@ -1,8 +1,10 @@
-from flask import Flask, Blueprint, render_template
+from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from sqlalchemy import desc
 
-from ..db_class.db import Case, Task, Task_User, Case_Org, Status
+from ..db_class.db import Case
+
+from ..case import common_core as CommonModel
 
 home_blueprint = Blueprint(
     'home',
@@ -20,5 +22,18 @@ def home():
 @home_blueprint.route("/last_case")
 @login_required
 def last_case():
-    last_case = Case.query.order_by(desc('last_modif')).limit(10).all()
-    return {"cases": [c.to_json() for c in last_case]}
+    # display 10 without private that cannot be seen
+    cp = 0
+    last_case = []
+    all_case = Case.query.order_by(desc('last_modif')).all()
+    for case in all_case:
+        if cp < 10:
+            if case.is_private:
+                if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
+                    last_case.append(case.to_json())
+                    cp += 1
+            else:
+                last_case.append(case.to_json())
+                cp += 1
+    return {"cases": last_case}, 200
+

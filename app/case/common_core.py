@@ -2,6 +2,7 @@ import os, re
 import shutil
 import datetime
 import subprocess
+from typing import List
 import uuid
 
 from flask import send_file
@@ -17,6 +18,31 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
 HISTORY_DIR = os.environ.get("HISTORY_DIR")
 
+
+def get_present_in_case(case_id: int, current_user: User) -> bool:
+    """Return if current user is present in a case"""
+    orgs_in_case = get_orgs_in_case(case_id)
+
+    present_in_case = False
+    for org in orgs_in_case:
+        if org.id == current_user.org_id:
+            present_in_case = True
+            break
+
+    return present_in_case
+
+def check_user_in_private_cases(cases: List[Case], current_user: User) -> List[Case]:
+    if current_user.is_admin(): # admin have access to all cases
+        return cases
+
+    loc_case = list()
+    for case in cases:
+        if case.is_private:
+            if get_present_in_case(case.id, current_user):
+                loc_case.append(case)
+        else:
+            loc_case.append(case)
+    return loc_case
 
 def get_case(cid):
     """Return a case by is id"""
@@ -38,21 +64,36 @@ def get_task(tid):
         case = None
     return case
 
-def get_all_cases():
+def get_all_cases(current_user: User) -> List[Case]:
     """Return all cases"""
-    return Case.query.filter_by(completed=False).order_by(desc(Case.last_modif))
+    cases = Case.query.filter_by(completed=False).order_by(desc(Case.last_modif))
+    return check_user_in_private_cases(cases, current_user)
 
-def get_case_by_completed(completed):
+def get_case_by_completed(completed, current_user: User) -> List[Case]:
     """Return a list of case depending on completed"""
-    return Case.query.filter_by(completed=completed).all()
+    cases = Case.query.filter_by(completed=completed).all()
+    return check_user_in_private_cases(cases, current_user)
 
-def get_case_by_title(title):
+
+def get_case_by_title(title: str, current_user: User):
     """Return a case by its title """
-    return Case.query.where(func.lower(Case.title).contains(func.lower(title))).first()
+    case = Case.query.where(func.lower(Case.title).contains(func.lower(title))).first()
+    if case and case.is_private:
+        if get_present_in_case(case.id, current_user):
+            return case
+        return None
+    return case
 
-def get_task_by_title(title):
+def get_task_by_title(title, current_user):
     """Return a tas by its title"""
-    return Task.query.where(func.lower(Task.title).contains(func.lower(title))).first()
+    task = Task.query.where(func.lower(Task.title).contains(func.lower(title))).first()
+    case = get_case(task.case_id)
+    if case.is_private:
+        if get_present_in_case(case.id, current_user):
+            return task
+        return None
+    return task
+
 
 def get_case_template_by_title(title):
     """Return a case template by its title"""
@@ -63,10 +104,10 @@ def get_task_templates():
     """Return a list of task template"""
     return Task_Template.query.all()
 
-def search(text):
+def search(text: str, current_user: User) -> List[Case]:
     """Return cases containing text"""
-    return Case.query.where(Case.title.contains(text), Case.completed==False).paginate(page=1, per_page=30, max_per_page=50)
-
+    cases = Case.query.where(Case.title.contains(text), Case.completed==False).paginate(page=1, per_page=30, max_per_page=50)
+    return check_user_in_private_cases(cases, current_user)
 
 def get_all_org_case(case):
     """Return a list of all orgs in a case"""

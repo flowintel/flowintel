@@ -1,4 +1,6 @@
 from flask import Blueprint, request
+
+from app.db_class.db import Case, User
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
@@ -19,7 +21,12 @@ api = Api(api_task_blueprint,
     )
 
 
-
+def check_user_private_case(case: Case, request_headers = None, current_user: User = None):
+    if not current_user:
+        current_user = utils.get_user_from_api(request_headers)
+    if case.is_private and not CommonModel.get_present_in_case(case.id, current_user) and not current_user.is_admin():
+        return False
+    return True
 
 @api.route('/<tid>')
 @api.doc(description='Get a task by id', params={"tid": "id of a task"})
@@ -28,8 +35,12 @@ class GetTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
+            current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(CommonModel.get_case(task.case_id), current_user=current_user):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
             loc = dict()
-            loc["users_assign"], loc["is_current_user_assign"] = TaskModel.get_users_assign_task(task.id, utils.get_user_from_api(request.headers))
+            loc["users_assign"], loc["is_current_user_assign"] = TaskModel.get_users_assign_task(task.id, current_user)
             loc["task"] = task.to_json()
             return loc, 200
         return {"message": "Task not found"}, 404
@@ -42,7 +53,8 @@ class GetTaskTitle(Resource):
     @api.doc(params={"title": "Title of a task"})
     def post(self):
         if "title" in request.json:
-            task = CommonModel.get_task_by_title(request.json["title"])
+            current_user = utils.get_user_from_api(request.headers)
+            task = CommonModel.get_task_by_title(request.json["title"], current_user)
             if task:
                 return task.to_json(), 200
             return {"message": "Task not found"}, 404
@@ -68,7 +80,7 @@ class EditTake(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if request.json:
                     verif_dict = CaseModelApi.verif_edit_task(request.json, tid)
 
@@ -89,7 +101,7 @@ class DeleteTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.delete_task(tid, current_user):
                     return {"message": "Task deleted"}, 200
                 return {"message": "Error task deleted"}, 400
@@ -105,7 +117,7 @@ class CompleteTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.complete_task(tid, current_user):
                     return {"message": f"Task {tid} completed"}, 200
                 return {"message": f"Error task {tid} completed"}, 400
@@ -120,6 +132,9 @@ class GetAllNotesTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
             return {"notes": [note.to_json() for note in task.notes]}, 200
         return {"message": "Task not found"}, 404
     
@@ -130,6 +145,9 @@ class GetNoteTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
             if "note_id" in request.args:
                 task_note = CommonModel.get_task_note(request.args.get("note_id"))
                 if task_note:
@@ -148,7 +166,7 @@ class ModifNoteTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "note_id" in request.json:
                     if "note" in request.json:
                         res = TaskModel.modif_note_core(tid, current_user, request.json["note"], request.json["note_id"])
@@ -169,7 +187,7 @@ class CreateNoteTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "note" in request.json:
                     res = TaskModel.modif_note_core(tid, current_user, request.json["note"], '-1')
                     if type(res) == dict:
@@ -187,11 +205,13 @@ class GetNoteTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
-            if "note_id" in request.args:
-                current_user = utils.get_user_from_api(request.headers)
-                if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
-                    return {"message": "Note deleted"}, 200
-            return {"message": "Need to pass a note id"}, 400
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if "note_id" in request.args:
+                    current_user = utils.get_user_from_api(request.headers)
+                    if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
+                        return {"message": "Note deleted"}, 200
+                return {"message": "Need to pass a note id"}, 400
+            return {"message": "Permission denied"}, 403
         return {"message": "Task not found"}, 404
 
 
@@ -203,8 +223,7 @@ class AssignTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            print(current_user.to_json())
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     return {"message": f"Task Take"}, 200
                 return {"message": f"Error Task Take"}, 400
@@ -220,7 +239,7 @@ class RemoveOrgCase(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     return {"message": f"Removed from assignment"}, 200
                 return {"message": f"Error Removed from assignment"}, 400
@@ -237,7 +256,7 @@ class AssignUsers(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 users_list = request.json["users_id"]
                 for user in users_list:
                     TaskModel.assign_task(tid, user=user, current_user=current_user, flag_current_user=False)
@@ -255,7 +274,7 @@ class RemoveAssignUser(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 user_id = request.json["user_id"]
                 if TaskModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
                     return {"message": "User Removed from assignment"}, 200
@@ -280,7 +299,7 @@ class ChangeStatus(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.change_task_status(request.json["status_id"], task, current_user):
                     return {"message": "Status changed"}, 200
                 return {"message": "Error chnaging status"}, 400
@@ -295,6 +314,9 @@ class DownloadFile(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
             file_list = [file.to_json() for file in task.files]
             return {"files": file_list}, 200
         return {"message": "Task Not found"}, 404
@@ -309,7 +331,7 @@ class UploadFile(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.add_file_core(task, request.files, current_user):
                     return {"message": "File added"}, 200
                 return {"message": "Error file added"}, 400
@@ -325,7 +347,7 @@ class DownloadFile(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 file = CommonModel.get_file(fid)
                 if file and file in task.files:
                     return TaskModel.download_file(file)
@@ -340,7 +362,7 @@ class DeleteFile(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 file = CommonModel.get_file(fid)
                 if file and file in task.files:
                     if TaskModel.delete_file(file, task, current_user):
@@ -355,7 +377,11 @@ class DeleteFile(Resource):
 class GetTaxonomiesTask(Resource):
     method_decorators = [api_required]
     def get(self, tid):
-        if CommonModel.get_task(tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
             tags = CommonModel.get_task_tags(tid)
             taxonomies = []
             if tags:
@@ -369,7 +395,11 @@ class GetTaxonomiesTask(Resource):
 class GetGalaxiesTask(Resource):
     method_decorators = [api_required]
     def get(self, tid):
-        if CommonModel.get_task(tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
             clusters = CommonModel.get_task_clusters(tid)
             galaxies = []
             if clusters:
@@ -394,6 +424,9 @@ class GetConnectors(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
             instance_list = []
             for task_instance in CommonModel.get_task_connectors(task.id):
                 loc_instance = CommonModel.get_instance(task_instance.instance_id)
@@ -417,7 +450,7 @@ class AddConnectorsTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "connectors" in request.json:
                     if TaskModel.add_connector(tid, request.json):
                         return {"message": "Connector added"}, 200
@@ -437,7 +470,7 @@ class EditConnectorTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "identifier" in request.json:
                     if TaskModel.edit_connector(tid, ciid, request.json):
                         return {"message": "Connector edited"}, 200
@@ -454,7 +487,7 @@ class RemoveConnectorTask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.remove_connector(tid, ciid):
                     return {"message": "Connector removed"}, 200
                 return {"message": "Error Connector removed"}, 400
@@ -476,7 +509,7 @@ class CreateSubtask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "description" in request.json:
                     subtask = TaskModel.create_subtask(tid, request.json["description"], current_user)
                     if subtask:
@@ -496,7 +529,7 @@ class EditSubtask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "description" in request.json:
                     subtask = TaskModel.edit_subtask(tid, sid, request.json["description"], current_user)
                     if subtask:
@@ -512,6 +545,9 @@ class ListSubtask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
             return {"subtasks": [subtask.to_json() for subtask in task.subtasks]}, 200
         return {"message": "task Not found"}, 404
     
@@ -522,6 +558,9 @@ class GetSubtask(Resource):
     def get(self, tid, sid):
         task = CommonModel.get_task(tid)
         if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
             subtask = TaskModel.get_subtask(sid)
             if subtask:
                 return subtask.to_json()
@@ -535,7 +574,7 @@ class CompleteSubtask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.complete_subtask(tid, sid, current_user):
                     return {"message": "Subtask completed"}, 200
                 return {"message": "Subtask not found"}, 404
@@ -550,9 +589,10 @@ class DeleteSubtask(Resource):
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.delete_subtask(tid, sid, current_user):
                     return {"message": "Subtask deleted"}, 200
                 return {"message": "Subtask not found"}, 404
             return {"message": "Permission denied"}, 403
         return {"message": "task Not found"}, 404
+    

@@ -63,8 +63,11 @@ def verif_create_case_task(data_dict, isCase):
                 return {"message": f"Connector '{loc}' doesn't exist"}
         else:
             data_dict["connectors"] = []
-        
-        
+    else:
+        if "is_private" not in data_dict or not data_dict["is_private"]:
+            data_dict["is_private"] = False
+        elif not isinstance(data_dict["is_private"], bool):
+            return {"message": "'is_private' need a bool"}
 
 
     return data_dict
@@ -109,6 +112,9 @@ def verif_edit_case(data_dict, case_id):
         data_dict["title"] = case.title
     elif Case.query.filter_by(title=data_dict["title"]).first():
         return {"message": "Title already exist"}
+    
+    if "is_private" not in data_dict or not data_dict["is_private"]:
+        data_dict["is_private"] = case.is_private
 
     data_dict = common_verif(data_dict, case)
 

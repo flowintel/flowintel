@@ -62,7 +62,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 deadline=deadline,
                 status_id=1,
                 owner_org_id=user.org_id,
-                time_required=form_dict["time_required"]
+                time_required=form_dict["time_required"],
+                is_private=form_dict["is_private"]
             )
             db.session.add(case)
             db.session.commit()
@@ -203,6 +204,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         case.description=form_dict["description"]
         case.deadline=deadline
         case.time_required=form_dict["time_required"]
+        case.is_private = form_dict["is_private"]
 
         self._edit(form_dict, cid)
 
@@ -221,7 +223,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
     
 
-    def sort_cases(self, page, completed, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", filter=None):
+    def sort_cases(self, page, completed, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", filter=None, user: User = None):
         if tags or taxonomies or galaxies or clusters or custom_tags:
             cases = self.build_case_query(page, completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
             nb_pages = cases.pages
@@ -230,13 +232,21 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=25, max_per_page=50)
             nb_pages = cases.pages
 
+        list_case_user_in = list()
+        for case in cases:
+            if case.is_private:
+                if user.is_admin() or CommonModel.get_present_in_case(case.id, user):
+                    list_case_user_in.append(case)
+            else:
+                list_case_user_in.append(case)
+
         if filter:
             loc = list()
-            for case in cases:
+            for case in list_case_user_in:
                 if getattr(case, filter):
                     loc.append(case)
             return loc, nb_pages
-        return cases, nb_pages
+        return list_case_user_in, nb_pages
 
 
 
@@ -330,17 +340,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return True
         return False
     
-    def get_present_in_case(self, case_id, user):
-        """Return if current user is present in a case"""
-        orgs_in_case = CommonModel.get_orgs_in_case(case_id)
-
-        present_in_case = False
-        for org in orgs_in_case:
-            if org.id == user.org_id:
-                present_in_case = True
-
-        return present_in_case
-
 
     def change_status_core(self, status, case, current_user):
         """Change the status of a case"""
@@ -358,7 +357,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         
         for case in cases:
             case_loc = case.to_json()
-            case_loc["present_in_case"] = self.get_present_in_case(case.id, user)
+            case_loc["present_in_case"] = CommonModel.get_present_in_case(case.id, user)
             case_loc["current_user_permission"] = CommonModel.get_role(user).to_json()
             case_loc["open_tasks"], case_loc["closed_tasks"] = self.open_closed(case)
             loc["cases"].append(case_loc)
@@ -387,7 +386,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def fork_case_core(self, cid, case_title_fork, user):
         """Fork a case into an other with nearly all informations"""
-        case_title_stored = CommonModel.get_case_by_title(case_title_fork)
+        case_title_stored = CommonModel.get_case_by_title(case_title_fork, user)
         if case_title_stored:
             return {"message": "Error, title already exist"}
         case = CommonModel.get_case(cid)

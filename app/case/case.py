@@ -7,7 +7,7 @@ from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
-from ..db_class.db import Task_Template, Case_Template
+from ..db_class.db import Case, Task_Template, Case_Template
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
@@ -25,6 +25,13 @@ case_blueprint.register_blueprint(task_blueprint)
 ##########
 # Render #
 ##########
+
+def check_user_private_case(case: Case, present_in_case: bool = None) -> bool:
+    if not present_in_case:
+        present_in_case = CommonModel.get_present_in_case(case.id, current_user)
+    if case.is_private and not present_in_case and not current_user.is_admin():
+        return False
+    return True
 
 
 @case_blueprint.route("/", methods=['GET', 'POST'])
@@ -62,7 +69,9 @@ def view(cid):
     """View of a case"""
     case = CommonModel.get_case(cid)
     if case:
-        present_in_case = CaseModel.get_present_in_case(cid, current_user)
+        present_in_case = CommonModel.get_present_in_case(cid, current_user)
+        if not check_user_private_case(case, present_in_case):
+            return render_template("404.html")
         return render_template("case/case_view.html", case=case.to_json(), present_in_case=present_in_case)
     return render_template("404.html")
 
@@ -73,7 +82,7 @@ def view(cid):
 def edit_case(cid):
     """Edit the case"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             form = CaseEditForm()
 
             if form.validate_on_submit():
@@ -93,6 +102,7 @@ def edit_case(cid):
                 form.deadline_date.data = case_modif.deadline
                 form.deadline_time.data = case_modif.deadline
                 form.time_required.data = case_modif.time_required
+                form.is_private.data = case_modif.is_private
 
             return render_template("case/edit_case.html", form=form)
         else:
@@ -108,7 +118,7 @@ def edit_case(cid):
 def add_orgs(cid):
     """Add orgs to the case"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 if "org_id" in request.json:
                     if CaseModel.add_orgs_case(request.json, cid, current_user):
@@ -125,7 +135,7 @@ def add_orgs(cid):
 def change_owner(cid):
     """Change owner of a case"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 if "org_id" in request.json:
                     if CaseModel.change_owner_core(request.json["org_id"], cid, current_user):
@@ -143,7 +153,7 @@ def recurring(cid):
     """Recurring form"""
 
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             form = RecurringForm()
             form.case_id.data = cid
 
@@ -177,8 +187,11 @@ def recurring(cid):
 @case_blueprint.route("/get_case/<cid>", methods=['GET'])
 @login_required
 def get_case(cid):
-    """Return all cases by page"""
-    return CommonModel.get_case(cid).to_json()
+    """Return a case by id"""
+    case = CommonModel.get(cid)
+    if not check_user_private_case(case):
+        return None, 200
+    return case.to_json(), 200
 
 
 @case_blueprint.route("/search", methods=['GET'])
@@ -188,7 +201,7 @@ def search():
     text_search = ""
     if "text" in request.args:
         text_search = request.args.get("text")
-    cases = CommonModel.search(text_search)
+    cases = CommonModel.search(text_search, current_user)
     if cases:
         return {"cases": [case.to_json() for case in cases]}, 200
     return {"message": "No case", 'toast_class': "danger-subtle"}, 404
@@ -200,12 +213,12 @@ def search():
 def delete(cid):
     """Delete the case"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_case(cid, current_user):
                 return {"message": "Case deleted", "toast_class": "success-subtle"}, 200
             else:
                 return {"message": "Error case deleted", 'toast_class': "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -214,13 +227,15 @@ def delete(cid):
 def get_case_info(cid):
     """Return all info of the case"""
     case = CommonModel.get_case(cid)
-    if case:    
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
         tasks = TaskModel.sort_tasks(case, current_user, completed=False)
 
         o_in_c = CommonModel.get_orgs_in_case(case.id)
         orgs_in_case = [o_c.to_json() for o_c in o_in_c]
         permission = CommonModel.get_role(current_user).to_json()
-        present_in_case = CaseModel.get_present_in_case(cid, current_user)
+        present_in_case = CommonModel.get_present_in_case(cid, current_user)
 
         return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -232,7 +247,7 @@ def get_case_info(cid):
 def complete_case(cid):
     """Mark a case as completed"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.complete_case(cid, current_user):
                 flash("Case Completed")
                 if request.args.get('revived', 1) == "true":
@@ -242,7 +257,7 @@ def complete_case(cid):
                 if request.args.get('revived', 1) == "true":
                     return {"message": "Error case revived", 'toast_class': "danger-subtle"}, 400
                 return {"message": "Error case completed", 'toast_class': "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -252,11 +267,11 @@ def complete_case(cid):
 def remove_org_case(cid, oid):
     """Remove an org to the case"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.remove_org_case(cid, oid, current_user):
                 return {"message": "Org removed from case", "toast_class": "success-subtle"}, 200
             return {"message": "Error removing org from case", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -269,10 +284,10 @@ def change_status(cid):
     case = CommonModel.get_case(cid)
 
     if case:
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             CaseModel.change_status_core(status, case, current_user)
             return {"message": "Status changed", "toast_class": "success-subtle"}, 200
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -331,7 +346,8 @@ def sort_cases():
                                       custom_tags=custom_tags,
                                       or_and_taxo=or_and_taxo, 
                                       or_and_galaxies=or_and_galaxies,
-                                      filter=filter)
+                                      filter=filter, 
+                                      user=current_user)
     
     return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
 
@@ -342,6 +358,8 @@ def get_all_users(cid):
     """Get all users in case"""
     case = CommonModel.get_case(cid)
     if case:
+        if not check_user_private_case(case):
+            return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
         users_list = list()
         orgs = CommonModel.get_all_org_case(case)
         for org in orgs:
@@ -356,8 +374,11 @@ def get_all_users(cid):
 @login_required
 def get_assigned_users(cid, tid):
     """Get assigned users to the task"""
-
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
+        
         users, _ = TaskModel.get_users_assign_task(tid, current_user)
         return users
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -369,6 +390,9 @@ def download_case(cid):
     """Download a case"""
     case = CommonModel.get_case(cid)
     if case:
+        if not check_user_private_case(case):
+            return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
+        
         task_list = list()
         for task in case.tasks:
             task_list.append(task.download())
@@ -384,7 +408,11 @@ def download_case(cid):
 @editor_required
 def fork_case(cid):
     """Assign current user to the task"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         if "case_title_fork" in request.json:
             case_title_fork = request.json["case_title_fork"]
 
@@ -401,7 +429,7 @@ def fork_case(cid):
 def check_case_title_exist():
     """Check if a title for a case exist"""
     data_dict = dict(request.args)
-    if CommonModel.get_case_by_title(data_dict["title"]):
+    if CommonModel.get_case_by_title(data_dict["title"], current_user):
         flag = True
     else:
         flag = False
@@ -414,7 +442,10 @@ def check_case_title_exist():
 @editor_required
 def create_template(cid):
     """Create a case template from a case"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         if "case_title_template" in request.json:
             case_title_template = request.json["case_title_template"]
 
@@ -445,6 +476,9 @@ def history(cid):
     """Get the history of a case"""
     case = CommonModel.get_case(cid)
     if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         history = CommonModel.get_history(case.uuid)
         if history:
             return {"history": history}
@@ -476,6 +510,9 @@ def get_taxonomies_case(cid):
     """Get all taxonomies present in a case"""
     case = CommonModel.get_case(cid)
     if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         tags = CommonModel.get_case_tags_json(case.id)
         taxonomies = []
         if tags:
@@ -508,7 +545,10 @@ def get_clusters():
 @login_required
 def get_galaxies_case(cid):
     """Get all galaxies present in a case"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         clusters = CommonModel.get_case_clusters(cid)
         galaxies = []
         if clusters:
@@ -533,7 +573,11 @@ def get_case_modules():
 @login_required
 def get_instance_module(cid):
     """Get all connectors instances by modules"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         if "module" in request.args:
             module = request.args.get("module")
         if "type" in request.args:
@@ -550,6 +594,9 @@ def call_module_case(cid):
     """Run a module"""
     case = CommonModel.get_case(cid)
     if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         instance_id = request.get_json()["instance_id"]
         module = request.get_json()["module"]
         res = CaseModel.call_module_case(module, instance_id, case, current_user)
@@ -566,6 +613,9 @@ def get_open_close(cid):
     """Get the numbers of open and closed tasks"""
     case = CommonModel.get_case(cid)
     if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         cp_open, cp_closed = CaseModel.open_closed(case)
         return {"open": cp_open, "closed": cp_closed}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
@@ -577,6 +627,9 @@ def all_notes(cid):
     """Get all tasks notes for a case"""
     case = CommonModel.get_case(cid)
     if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         notes = CaseModel.get_all_notes(case)
         return {"notes": notes}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
@@ -588,12 +641,12 @@ def all_notes(cid):
 def modif_note(cid):
     """Modify note of the task"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             notes = request.json["notes"]
             if CaseModel.modif_note_core(cid, current_user, notes):
                 return {"message": "Note modified", "toast_class": "success-subtle"}, 200
             return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
@@ -601,7 +654,10 @@ def modif_note(cid):
 @login_required
 def export_notes(cid):
     """Export note of a case"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         if "type" in request.args:
             res = CommonModel.export_notes(case_task=True, case_task_id=cid, type_req=request.args.get("type"))
             CommonModel.delete_temp_folder()
@@ -621,7 +677,10 @@ def get_orgs():
 @login_required
 def get_custom_tags_case(cid):
     """Get all custom tags for a case"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         return {"custom_tags": CommonModel.get_case_custom_tags_json(cid)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -631,9 +690,9 @@ def download_file(cid):
     """Download the file"""
     case = CommonModel.get_case(cid)
     if case:
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             return CaseModel.download_history(case)
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/add_new_link", methods=['GET', 'POST'])
@@ -642,7 +701,7 @@ def download_file(cid):
 def add_new_link(cid):
     """Add a new link to the case"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 if "case_id" in request.json:
                     if CaseModel.add_new_link(request.json, cid, current_user):
@@ -659,11 +718,11 @@ def add_new_link(cid):
 def remove_case_link(cid, clid):
     """Remove an org to the case"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.remove_case_link(cid, clid, current_user):
                 return {"message": "Link removed", "toast_class": "success-subtle"}, 200
             return {"message": "Error removing link from case", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -673,13 +732,13 @@ def remove_case_link(cid, clid):
 def change_hedgedoc_url(cid):
     """Change hedgedoc url of the case"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "hedgedoc_url" in request.json:
                 if CaseModel.change_hedgedoc_url(request.json, cid, current_user):
                     return {"message": "Link removed", "toast_class": "success-subtle"}, 200
                 return {"message": "Error removing link from case", "toast_class": "danger-subtle"}, 400
             return {"message": "Need to pass 'hedgedoc_url'", "toast_class": "warning-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/get_hedgedoc_notes", methods=['GET'])
@@ -688,9 +747,9 @@ def change_hedgedoc_url(cid):
 def get_hedgedoc_notes(cid):
     """Get hedgedoc notes of the case"""
     if CommonModel.get_case(cid):
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             return CaseModel.get_hedgedoc_notes(cid)
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 401
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -701,7 +760,11 @@ def get_hedgedoc_notes(cid):
 @login_required
 def get_case_misp_object(cid):
     """Get case list of misp object"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         misp_object = CaseModel.get_misp_object_by_case(cid)
         loc_object = list()
         for object in misp_object:
@@ -731,12 +794,14 @@ def get_misp_object():
 def create_misp_object(cid):
     """Create misp object"""
     if CommonModel.get_case(cid):
-        if "object-template" in request.json:
-            if "attributes" in request.json:
-                CaseModel.create_misp_object(cid, request.json, current_user)
-                return {"message": "Object created", "toast_class": "success-subtle"}, 200
-            return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
-        return {"message": "Need to pass 'object-template'", "toast_class": "warning-subtle"}, 400
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "object-template" in request.json:
+                if "attributes" in request.json:
+                    CaseModel.create_misp_object(cid, request.json, current_user)
+                    return {"message": "Object created", "toast_class": "success-subtle"}, 200
+                return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
+            return {"message": "Need to pass 'object-template'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/delete_object/<oid>", methods=['GET'])
@@ -745,9 +810,11 @@ def create_misp_object(cid):
 def delete_object(cid, oid):
     """Delete an object from case"""
     if CommonModel.get_case(cid):
-        if CaseModel.delete_object(cid, oid, current_user):
-            return {"message": "Object deleted", "toast_class": "success-subtle"}, 200
-        return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CaseModel.delete_object(cid, oid, current_user):
+                return {"message": "Object deleted", "toast_class": "success-subtle"}, 200
+            return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/add_attributes/<oid>", methods=['POST'])
@@ -756,13 +823,15 @@ def delete_object(cid, oid):
 def add_attributes(cid, oid):
     """Add attributes to an existing object"""
     if CommonModel.get_case(cid):
-        if "object-template" in request.json:
-            if "attributes" in request.json:
-                if CaseModel.add_attributes_object(cid, oid, request.json):
-                    return {"message": "Receive", "toast_class": "success-subtle"}, 200
-                return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
-            return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
-        return {"message": "Need to pass 'object-template'", "toast_class": "warning-subtle"}, 400
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "object-template" in request.json:
+                if "attributes" in request.json:
+                    if CaseModel.add_attributes_object(cid, oid, request.json):
+                        return {"message": "Receive", "toast_class": "success-subtle"}, 200
+                    return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
+                return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
+            return {"message": "Need to pass 'object-template'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -772,11 +841,13 @@ def add_attributes(cid, oid):
 def edit_attr(cid, oid, aid):
     """Create misp object"""
     if CommonModel.get_case(cid):
-        if "value" in request.json:
-            if "type" in request.json:
-                return CaseModel.edit_attr(cid, oid, aid, request.json)
-            return {"message": "Need to pass 'value'", "toast_class": "warning-subtle"}, 400
-        return {"message": "Need to pass 'type'", "toast_class": "warning-subtle"}, 400
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "value" in request.json:
+                if "type" in request.json:
+                    return CaseModel.edit_attr(cid, oid, aid, request.json)
+                return {"message": "Need to pass 'value'", "toast_class": "warning-subtle"}, 400
+            return {"message": "Need to pass 'type'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -786,7 +857,9 @@ def edit_attr(cid, oid, aid):
 def delete_attribute(cid, oid, aid):
     """Delete an object from case"""
     if CommonModel.get_case(cid):
-        return CaseModel.delete_attribute(cid, oid, aid)
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            return CaseModel.delete_attribute(cid, oid, aid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -794,7 +867,11 @@ def delete_attribute(cid, oid, aid):
 @login_required
 def misp_object_connectors(cid):
     """Get MISP object connectors"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         instances_list = list()
         for object_connector in CaseModel.get_misp_object_connectors(cid):
             instances_list.append(CommonModel.get_instance_with_icon(object_connector["instance_id"], switch_option="object", case_task_id=cid))
@@ -815,10 +892,12 @@ def misp_connectors():
 def add_misp_object_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
-        if "connectors" in request.json:
-            if CaseModel.add_misp_object_connector(cid, request.json, current_user):
-                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
-        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "connectors" in request.json:
+                if CaseModel.add_misp_object_connector(cid, request.json, current_user):
+                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/misp_object_connectors/<iid>/remove_connector", methods=['GET'])
@@ -827,9 +906,11 @@ def add_misp_object_connector(cid):
 def remove_misp_connector(cid, iid):
     """Remove MISP Connector"""
     if CommonModel.get_case(cid):
-        if CaseModel.remove_misp_connector(cid, iid, current_user):
-            return {"message": "Connector removed successfully", "toast_class": "success-subtle"}, 200
-        return {"message": "Error removing connector", "toast_class": "danger-subtle"}, 400
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CaseModel.remove_misp_connector(cid, iid, current_user):
+                return {"message": "Connector removed successfully", "toast_class": "success-subtle"}, 200
+            return {"message": "Error removing connector", "toast_class": "danger-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -839,11 +920,13 @@ def remove_misp_connector(cid, iid):
 def edit_misp_connector(cid, iid):
     """Edit MISP Connector"""
     if CommonModel.get_case(cid):
-        if "identifier" in request.json:
-            if CaseModel.edit_misp_connector(cid, iid, request.json):
-                return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
-            return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
-        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "identifier" in request.json:
+                if CaseModel.edit_misp_connector(cid, iid, request.json):
+                    return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
+                return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
+            return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -854,18 +937,25 @@ def call_module_misp(cid, iid):
     """Remove MISP Connector"""
     case = CommonModel.get_case(cid)
     if case:
-        res = CaseModel.call_module_misp(iid, case, current_user)
-        if res:
-            res["toast_class"] = "danger-subtle"
-            return jsonify(res), 400
-        return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            res = CaseModel.call_module_misp(iid, case, current_user)
+            if res:
+                res["toast_class"] = "danger-subtle"
+                return jsonify(res), 400
+            return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/nb_objects", methods=['GET'])
 @login_required
 def nb_objects(cid):
     """Return nb of misp objects"""
-    return {"nb_objects": len(CaseModel.get_misp_object_by_case(cid))}, 200
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        return {"nb_objects": len(CaseModel.get_misp_object_by_case(cid))}, 200
+    return {"message": "Case not found"}, 404
 
 
 
@@ -877,7 +967,11 @@ def nb_objects(cid):
 @login_required
 def get_case_connectors(cid):
     """Get all connectors for a case"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
         instance_list = list()
         for case_connector in CommonModel.get_case_connectors(cid):
             instance_list.append(CommonModel.get_instance_with_icon(case_connector.instance_id, switch_option="case", case_task_id=cid))
@@ -891,10 +985,12 @@ def get_case_connectors(cid):
 def add_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
-        if "connectors" in request.json:
-            if CaseModel.add_connector(cid, request.json, current_user):
-                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
-        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "connectors" in request.json:
+                if CaseModel.add_connector(cid, request.json, current_user):
+                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -905,9 +1001,11 @@ def remove_connector(cid, ciid):
     """Remove a connector from case"""
     case = CommonModel.get_case(cid)
     if case:
-        if CaseModel.remove_connector(cid, ciid):
-            return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
-        return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CaseModel.remove_connector(cid, ciid):
+                return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
+            return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/connectors/<ciid>/edit_connector", methods=['POST'])
@@ -916,9 +1014,11 @@ def remove_connector(cid, ciid):
 def edit_connector(cid, ciid):
     """Edit Connector"""
     if CommonModel.get_case(cid):
-        if "identifier" in request.json:
-            if CaseModel.edit_connector(cid, ciid, request.json):
-                return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
-            return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
-        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "identifier" in request.json:
+                if CaseModel.edit_connector(cid, ciid, request.json):
+                    return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
+                return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
+            return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404

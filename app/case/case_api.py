@@ -1,4 +1,6 @@
 from flask import Blueprint, request
+
+from app.db_class.db import Case, User
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
@@ -19,12 +21,21 @@ api = Api(api_case_blueprint,
     )
 
 
+
+def check_user_private_case(case: Case, request_headers, current_user: User = None):
+    if not current_user:
+        current_user = utils.get_user_from_api(request_headers)
+    if case.is_private and not CommonModel.get_present_in_case(case.id, current_user) and not current_user.is_admin():
+        return False
+    return True
+
 @api.route('/all')
 @api.doc(description='Get all cases')
 class GetCases(Resource):
     method_decorators = [api_required]
     def get(self):
-        cases = CommonModel.get_all_cases()
+        user = utils.get_user_from_api(request.headers)
+        cases = CommonModel.get_all_cases(user)
         return {"cases": [case.to_json() for case in cases]}, 200
 
 @api.route('/<cid>')
@@ -34,6 +45,8 @@ class GetCase(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
             case_json = case.to_json()
             orgs = CommonModel.get_orgs_in_case(cid)
             case_json["orgs"] = list()
@@ -56,7 +69,8 @@ class CreateCase(Resource):
         "clusters": "list of tags from galaxies",
         "identifier": "Dictionnary with connector as key and identifier as value",
         "custom_tags" : "List of custom tags created on the instance",
-        "time_required": "Time required to realize the case"
+        "time_required": "Time required to realize the case",
+        "is_private": "Specify if a case is private or not. By default a case is public"
     })
     def post(self):
         user = utils.get_user_from_api(request.headers)
@@ -72,7 +86,7 @@ class CreateCase(Resource):
         return {"message": "Please give data"}, 400
     
 
-@api.route('/<id>/edit', methods=['POST'])
+@api.route('/<cid>/edit', methods=['POST'])
 @api.doc(description='Edit a case', params={'id': 'id of a case'})
 class EditCase(Resource):
     method_decorators = [editor_required, api_required]
@@ -83,21 +97,28 @@ class EditCase(Resource):
                      "tags": "list of tags from taxonomies",
                      "clusters": "list of tags from galaxies",
                      "identifier": "Dictionnary with connector as key and identifier as value",
-                     "custom_tags" : "List of custom tags created on the instance"
+                     "custom_tags" : "List of custom tags created on the instance",
+                     "is_private": "Specify if a case is private or not. By default a case is public"
                     })
-    def post(self, id):
-        current_user = utils.get_user_from_api(request.headers)
-        if CaseModel.get_present_in_case(id, current_user) or current_user.is_admin():
-            if request.json:
-                verif_dict = CaseModelApi.verif_edit_case(request.json, id)
+    def post(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, current_user):
+                return {"message": "Permission denied"}, 403
+            
+            if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
+                if request.json:
+                    verif_dict = CaseModelApi.verif_edit_case(request.json, cid)
 
-                if "message" not in verif_dict:
-                    CaseModel.edit(verif_dict, id, current_user)
-                    return {"message": f"Case {id} edited"}, 200
+                    if "message" not in verif_dict:
+                        CaseModel.edit(verif_dict, cid, current_user)
+                        return {"message": f"Case {cid} edited"}, 200
 
-                return verif_dict, 400
-            return {"message": "Please give data"}, 400
-        return {"message": "Permission denied"}, 403
+                    return verif_dict, 400
+                return {"message": "Please give data"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
     
 @api.route('/<cid>/fork', methods=['POST'])
 @api.doc(description='Fork a case', params={'cid': 'id of a case'})
@@ -107,23 +128,29 @@ class ForkCase(Resource):
         "case_title_fork": "Required. Title for the case"
     })
     def post(self, cid):
-        user = utils.get_user_from_api(request.headers)
-
-        if request.json:
-            if "case_title_fork" in request.json:
-                new_case = CaseModel.fork_case_core(cid, request.json["case_title_fork"], user)
-                if type(new_case) == dict:
-                    return new_case, 400
-                return {"new_case_id": new_case.id}, 201
-            return {"message": "Need to pass 'case_title_fork'"}, 400
-        return {"message": "Please give data"}, 400
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, current_user):
+                return {"message": "Permission denied"}, 403
+            
+            if request.json:
+                if "case_title_fork" in request.json:
+                    new_case = CaseModel.fork_case_core(cid, request.json["case_title_fork"], current_user)
+                    if type(new_case) == dict:
+                        return new_case, 400
+                    return {"new_case_id": new_case.id}, 201
+                return {"message": "Need to pass 'case_title_fork'"}, 400
+            return {"message": "Please give data"}, 400
+        return {"message": "Case not found"}, 404
 
 @api.route('/not_completed')
 @api.doc(description='Get all not completed cases')
 class GetCases_not_completed(Resource):
     method_decorators = [api_required]
     def get(self):
-        cases = CommonModel.get_case_by_completed(False)
+        current_user = utils.get_user_from_api(request.headers)
+        cases = CommonModel.get_case_by_completed(False, current_user)
         return {"cases": [case.to_json() for case in cases]}, 200
     
 @api.route('/completed')
@@ -131,7 +158,8 @@ class GetCases_not_completed(Resource):
 class GetCases_not_completed(Resource):
     method_decorators = [api_required]
     def get(self):
-        cases = CommonModel.get_case_by_completed(True)
+        current_user = utils.get_user_from_api(request.headers)
+        cases = CommonModel.get_case_by_completed(True, current_user)
         return {"cases": [case.to_json() for case in cases]}, 200    
     
 @api.route('/title', methods=["POST"])
@@ -141,7 +169,8 @@ class GetCaseTitle(Resource):
     @api.doc(params={"title": "Title of a case"})
     def post(self):
         if "title" in request.json:
-            case = CommonModel.get_case_by_title(request.json["title"])
+            current_user = utils.get_user_from_api(request.headers)
+            case = CommonModel.get_case_by_title(request.json["title"], current_user)
             if case:
                 case_json = case.to_json()
                 orgs = CommonModel.get_orgs_in_case(case.id)
@@ -156,7 +185,7 @@ class CompleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
         current_user = utils.get_user_from_api(request.headers)
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             case = CommonModel.get_case(cid)
             if case:
                 if CaseModel.complete_case(cid, current_user):
@@ -171,7 +200,7 @@ class DeleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
         current_user = utils.get_user_from_api(request.headers)
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_case(cid, current_user):
                 return {"message": "Case deleted"}, 200
             return {"message": "Error case deleted"}, 400
@@ -184,7 +213,7 @@ class AddOrgCase(Resource):
     @api.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
     def post(self, cid):
         current_user = utils.get_user_from_api(request.headers)
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "name" in request.json:
                 org = CommonModel.get_org_by_name(request.json["name"])
             elif "oid" in request.json:
@@ -208,7 +237,7 @@ class RemoveOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, oid):
         current_user = utils.get_user_from_api(request.headers)
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             org = CommonModel.get_org(oid)
 
             if org:
@@ -227,10 +256,12 @@ class History(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
             history = CommonModel.get_history(case.uuid)
             if history:
-                return {"history": history}
-            return {"history": None}
+                return {"history": history}, 200
+            return {"history": None}, 200
         return {"message": "Case Not found"}, 404
 
 @api.route('/<cid>/create_template', methods=["POST"])
@@ -240,8 +271,11 @@ class CreateTemplate(Resource):
     @api.doc(params={"title_template": "Title for the template that will be create"})
     def post(self, cid):
         if "title_template" in request.json:
-            if CommonModel.get_case(cid):
+            case = CommonModel.get_case(cid)
+            if case:
                 current_user = utils.get_user_from_api(request.headers)
+                if not check_user_private_case(case, request.headers, current_user):
+                    return {"message": "Permission denied"}, 403
                 new_template = CaseModel.create_template_from_case(cid, request.json["title_template"], current_user)
                 if type(new_template) == dict:
                     return new_template
@@ -263,7 +297,7 @@ class RecurringCase(Resource):
     })
     def post(self, cid):
         current_user = utils.get_user_from_api(request.headers)
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_set_recurring(request.json)
 
@@ -302,7 +336,7 @@ class ChangeStatusCase(Resource):
             case = CommonModel.get_case(cid)
             if case:
                 current_user = utils.get_user_from_api(request.headers)
-                if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     CaseModel.change_status_core(request.json["status_id"], case, current_user)
                     return {"message": "Status changed"}, 200
                 return {"message": "Permission denied"}, 403
@@ -352,6 +386,9 @@ class GetTaxonomiesCase(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
+            
             tags = CommonModel.get_case_tags(case.id)
             taxonomies = []
             if tags:
@@ -373,6 +410,9 @@ class GetGalaxiesCase(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
+            
             clusters = CommonModel.get_case_clusters(case.id)
             galaxies = []
             if clusters:
@@ -402,6 +442,9 @@ class GetInstanceModules(Resource):
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
+            
             if "module" in request.args:
                 module = request.args.get("module")
             if "type" in request.args:
@@ -424,7 +467,7 @@ class CallModuleCase(Resource):
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "module" in request.json:
                     if "instance_id" in request.json:
                         res = CaseModel.call_module_case(request.json["module"], request.json["instance_id"], case, current_user)
@@ -444,6 +487,8 @@ class GetNote(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
             return {"note": case.notes}
         return {"message": "Case not found"}, 404
 
@@ -456,6 +501,8 @@ class GetAllUsers(Resource):
         current_user = utils.get_user_from_api(request.headers)
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers, current_user):
+                return {"message": "Permission denied"}, 403
             users_list = list()
             for org in CommonModel.get_all_org_case(case):
                 for user in org.users:
@@ -500,6 +547,8 @@ class GetConnectorsCase(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
             instance_list = []
             for case_instance in CommonModel.get_case_connectors(case.id):
                 loc_instance = CommonModel.get_instance(case_instance.instance_id)
@@ -521,7 +570,7 @@ class AddConnectorsCase(Resource):
     def post(self, cid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "connectors" in request.json:
                     if CaseModel.add_connector(cid, request.json, current_user):
                         return {"message": "Connector added"}, 200
@@ -540,7 +589,7 @@ class EditConnectorsCase(Resource):
     def post(self, cid, ciid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "identifier" in request.json:
                     if CaseModel.edit_connector(cid, ciid, request.json):
                         return {"message": "Connector edited"}, 200
@@ -556,7 +605,7 @@ class RemoveConnectors(Resource):
     def get(self, cid, ciid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if CaseModel.remove_connector(cid, ciid):
                     return {"message": "Connector removed"}, 200
                 return {"message": "Error Connector removed"}, 400
@@ -574,6 +623,9 @@ class GetTasks(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
+            
             tasks = list()
             for task in case.tasks:
                 if not task.completed:
@@ -590,6 +642,9 @@ class GetTasksFinished(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
+            
             tasks = list()
             for task in case.tasks:
                 if task.completed:
@@ -617,7 +672,7 @@ class CreateTask(Resource):
     })
     def post(self, cid):
         current_user = utils.get_user_from_api(request.headers)
-        if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 verif_dict = CaseModelApi.verif_create_case_task(request.json, False)
 
@@ -637,7 +692,7 @@ class MoveTaskUp(Resource):
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 task = CommonModel.get_task(tid)
                 if task:
                     TaskModel.change_order(case, task, "true")
@@ -654,7 +709,7 @@ class MoveTaskDown(Resource):
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 task = CommonModel.get_task(tid)
                 if task:
                     TaskModel.change_order(case, task, "false")
@@ -671,6 +726,9 @@ class GetAllNotes(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
+            
             return {"notes": CaseModel.get_all_notes(case)}
         return {"message": "Case not found"}, 404
 
@@ -684,7 +742,7 @@ class ModifNoteCase(Resource):
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CaseModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "note" in request.json:
                     if CaseModel.modif_note_core(cid, current_user, request.json["note"]):
                         return {"message": f"Note for Case {cid} edited"}, 200

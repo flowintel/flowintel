@@ -161,6 +161,10 @@
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">
                                 [[ case_loc.id ]]-[[ case_loc.title ]]
+                                <span style="font-size: 12px; vertical-align: middle;">
+                                    <i v-if="case_loc.is_private" class="fa-solid fa-lock" title="The case is private, only org present in can see this case"></i>
+                                    <i v-else class="fa-solid fa-unlock" title="The case is public anyone can see this case but only org present in case can modify it"></i>
+                                </span>
                                 <button v-if="case_loc.link_to.length" disabled class="btn btn-outline-primary btn-sm" style="margin-left: 20px;">
                                     <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[case_loc.link_to.length]]</span>
                                 </button>

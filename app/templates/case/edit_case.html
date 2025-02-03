@@ -50,6 +50,13 @@
                     <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
                 {%endif%}
             </div>
+            <div class="mb-3 w-50">
+                {{form.is_private.label(class_="col-form-label")}}:
+                {{form.is_private()}}
+                {% if form.is_private.errors %}
+                    <div style="color: red;">{{form.is_private.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
         </div>
         <hr>
 

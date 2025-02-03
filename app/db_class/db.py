@@ -79,6 +79,7 @@ class Case(db.Model):
     notes = db.Column(db.String, nullable=True)
     hedgedoc_url = db.Column(db.String, nullable=True)
     time_required = db.Column(db.String)
+    is_private = db.Column(db.Boolean, default=False)
 
     def to_json(self):
         json_dict = {
@@ -97,6 +98,7 @@ class Case(db.Model):
             "notes": self.notes,
             "hedgedoc_url": self.hedgedoc_url,
             "time_required": self.time_required,
+            "is_private": self.is_private
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
@@ -135,6 +137,7 @@ class Case(db.Model):
             "recurring_type": self.recurring_type,
             "notes": self.notes,
             "time_required": self.time_required,
+            "is_private": self.is_private
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
