@@ -24,28 +24,69 @@
     </div>
     <h2 style="display: inline-block;">[[case_template.id]] - [[case_template.title]]</h2>
 
-    <div style="float:right; display: grid;">
-        <a class="btn btn-primary btn-sm"  href="/templating/case/{{case_id}}/download" type="button" title="Download the case in json">
-            <i class="fa-solid fa-download"></i>
-        </a>
-        <button class="btn btn-danger btn-sm"  @click="delete_case({{case_id}})" title="Delete the Case"><i class="fa-solid fa-trash"></i></button>
-    </div>
-
-    <div style="float:right">
-        <a class="btn btn-primary btn-sm" href="/templating/edit_case/{{case_id}}" type="button" title="Edit the case">
-            <i class="fa-solid fa-pen-to-square"></i>
-        </a>
-        
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Create a Case from template">
-            <i class="fa-solid fa-file"></i>
+    <div class="dropdown" style="float:right;">
+        <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Actions
         </button>
         <ul class="dropdown-menu">
             <li>
-                <input id="case_title_fork" placeholder="Case title"/>
-                <button class="btn btn-primary btn-sm" @click="fork_case({{case_id}})">Create</button>
+                <a class="dropdown-item" href="/templating/case/{{case_id}}/download" type="button" title="Download the case in json">
+                    <span class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i></span> Download
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="/templating/edit_case/{{case_id}}" type="button" title="Edit the case template">
+                    <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-pen-to-square"></i></span> Edit
+                </a>
+            </li>
+            <li>
+                <button type="button" class="dropdown-item" title="Create a case from this template" data-bs-toggle="modal" data-bs-target="#fork_case_modal">
+                    <span class="btn btn-primary btn-sm"><i class="fa-solid fa-file"></i></span> Create case
+                </button>
+            </li>
+            <li>
+                <button type="button" class="dropdown-item" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
+                    <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
+                </button>
             </li>
         </ul>
     </div>
+
+    <!-- Modal delete case -->
+    <div class="modal fade" id="delete_case_modal" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="delete_case_modal">Delete '[[case_template.title]]' ?</h1>
+                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button class="btn btn-danger" @click="delete_case({{case_id}})"><i class="fa-solid fa-trash"></i> Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal fork case -->
+    <div class="modal fade" id="fork_case_modal" tabindex="-1" aria-labelledby="fork_case_modal" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="fork_case_modal">Create a case from '[[case_template.title]]'</h1>
+                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input id="case_title_fork" placeholder="Case title"/>
+                    <div id="collapseForkBody"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button class="btn btn-primary" @click="fork_case(case_template.id)"><i class="fa-solid fa-check"></i> Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <template v-if="case_template.custom_tags">
         <div style="display: flex; margin-bottom: 5px;">
@@ -70,9 +111,11 @@
     </template>
 
     <div style="margin-top: 5px;" v-if="case_template.clusters">
-        <div v-for="cluster in case_template.clusters" class="cluster" :title="'Description: '+cluster.description+'\n\nMetadata: '+cluster.meta">
-            <span v-html="mapIcon(cluster.icon)"></span>
-            [[cluster.tag]]
+        <div v-for="cluster in case_template.clusters" :title="'Description: '+cluster.description+'\n\nMetadata: '+cluster.meta">
+            <span class="cluster">
+                <span v-html="mapIcon(cluster.icon)"></span>
+                [[cluster.tag]]
+            </span>
         </div>
     </div>
 
