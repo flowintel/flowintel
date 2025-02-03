@@ -117,6 +117,7 @@ caseSchema = {
         "recurring_date:": {"type": "string"},
         "recurring_type:": {"type": "string"},
         "notes:": {"type": "string"},
+        "is_private:": {"type": "boolean"},
         "tasks": {
             "type": "array", 
             "items": {"type": "object"},
@@ -151,7 +152,7 @@ taskSchema = {
         },
         "clusters":{
             "type": "array",
-            "items": {"type": "string"},
+            "items": {"type": "object"},
         },
     },
     "required": ['title']

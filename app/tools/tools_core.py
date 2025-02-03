@@ -55,6 +55,12 @@ def core_read_json_file(case, current_user):
     for tag in case["tags"]:
         if not utils.check_tag(tag):
             return {"message": f"Case '{case['title']}': tag '{tag}' doesn't exist"}
+    
+    # Clusters
+    for i in range(0, len(case["clusters"])):
+        case["clusters"][i] = case["clusters"][i]["name"]
+
+    case["custom_tags"] = []
         
     
     #######################
@@ -80,7 +86,12 @@ def core_read_json_file(case, current_user):
         for tag in task["tags"]:
             if not utils.check_tag(tag):
                 return {"message": f"Task '{task['title']}': tag '{tag}' doesn't exist"}
-
+            
+        # Clusters
+        for i in range(0, len(task["clusters"])):
+            task["clusters"][i] = task["clusters"][i]["name"]
+        
+        task["custom_tags"] = []
 
     #################
     ## DB Creation ##
@@ -96,7 +107,7 @@ def core_read_json_file(case, current_user):
         task_created = TaskModel.create_task(task, case_created.id, current_user)
         if task["notes"]:
             for note in task["notes"]:
-                loc_note = TaskModel.create_note(task_created.id)
+                loc_note = TaskModel.create_note(task_created.id, current_user)
                 TaskModel.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
 
     
