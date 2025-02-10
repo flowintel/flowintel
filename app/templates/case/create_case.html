@@ -120,7 +120,7 @@
                             <div v-if="taxonomies" class="col-4">
                                 <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                                     <template v-for="taxonomy, key in taxonomies">
-                                        <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                                        <option :value="[[taxonomy]]">[[taxonomy]]</option>
                                     </template>
                                 </select>
                             </div>
