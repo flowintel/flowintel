@@ -270,21 +270,21 @@ export default {
 		async function select_tab_task(tab_name){
 			if(tab_name == 'main'){
 				selected_tab.value = 'main'
-				if ( !document.getElementById("tab-task-main").classList.contains("active") ){
-					document.getElementById("tab-task-main").classList.add("active")
-					document.getElementById("tab-task-notes").classList.remove("active")
-					document.getElementById("tab-task-files").classList.remove("active")
-					document.getElementById("tab-task-connectors").classList.remove("active")
-					document.getElementById("tab-task-info").classList.remove("active")
+				if ( !document.getElementById("tab-task-main-"+props.task.id).classList.contains("active") ){
+					document.getElementById("tab-task-main-"+props.task.id).classList.add("active")
+					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
 				}
 			}else if(tab_name == 'notes'){
 				selected_tab.value = 'notes'
-				if ( !document.getElementById("tab-task-notes").classList.contains("active") ){
-					document.getElementById("tab-task-notes").classList.add("active")
-					document.getElementById("tab-task-main").classList.remove("active")
-					document.getElementById("tab-task-files").classList.remove("active")
-					document.getElementById("tab-task-connectors").classList.remove("active")
-					document.getElementById("tab-task-info").classList.remove("active")
+				if ( !document.getElementById("tab-task-notes-"+props.task.id).classList.contains("active") ){
+					document.getElementById("tab-task-notes-"+props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
 				}
 				await nextTick()
 				props.md.mermaid.run({
@@ -292,33 +292,33 @@ export default {
 				})
 			}else if(tab_name == 'files'){
 				selected_tab.value = 'files'
-				if ( !document.getElementById("tab-task-files").classList.contains("active") ){
-					document.getElementById("tab-task-files").classList.add("active")
-					document.getElementById("tab-task-main").classList.remove("active")
-					document.getElementById("tab-task-notes").classList.remove("active")
-					document.getElementById("tab-task-connectors").classList.remove("active")
-					document.getElementById("tab-task-info").classList.remove("active")
+				if ( !document.getElementById("tab-task-files-"+props.task.id).classList.contains("active") ){
+					document.getElementById("tab-task-files-"+props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
 				}
 			}else if(tab_name == 'connectors'){
 				// await fetch_task_connectors()
 				await nextTick()
 				selected_tab.value = 'connectors'
-				if ( !document.getElementById("tab-task-connectors").classList.contains("active") ){
-					document.getElementById("tab-task-connectors").classList.add("active")
-					document.getElementById("tab-task-main").classList.remove("active")
-					document.getElementById("tab-task-notes").classList.remove("active")
-					document.getElementById("tab-task-files").classList.remove("active")
-					document.getElementById("tab-task-info").classList.remove("active")
+				if ( !document.getElementById("tab-task-connectors-"+props.task.id).classList.contains("active") ){
+					document.getElementById("tab-task-connectors-"+props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
 				}
 			}
 			else if(tab_name == 'info'){
 				selected_tab.value = 'info'
-				if ( !document.getElementById("tab-task-info").classList.contains("active") ){
-					document.getElementById("tab-task-info").classList.add("active")
-					document.getElementById("tab-task-main").classList.remove("active")
-					document.getElementById("tab-task-notes").classList.remove("active")
-					document.getElementById("tab-task-files").classList.remove("active")
-					document.getElementById("tab-task-connectors").classList.remove("active")
+				if ( !document.getElementById("tab-task-info-"+props.task.id).classList.contains("active") ){
+					document.getElementById("tab-task-info-"+props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
 
 				}
 			}
@@ -588,19 +588,19 @@ export default {
 			
 			<ul class="nav nav-tabs" style="margin-bottom: 10px;">
 				<li class="nav-item">
-					<button class="nav-link active" id="tab-task-main" aria-current="page" @click="select_tab_task('main')">Main</button>
+					<button class="nav-link active" :id="'tab-task-main-'+task.id" aria-current="page" @click="select_tab_task('main')">Main</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" id="tab-task-notes" @click="select_tab_task('notes')">Notes</button>
+					<button class="nav-link" :id="'tab-task-notes-'+task.id" @click="select_tab_task('notes')">Notes</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" id="tab-task-connectors" @click="select_tab_task('connectors')">Connectors</button>
+					<button class="nav-link" :id="'tab-task-connectors-'+task.id" @click="select_tab_task('connectors')">Connectors</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" id="tab-task-files" @click="select_tab_task('files')">Files</button>
+					<button class="nav-link" :id="'tab-task-files-'+task.id" @click="select_tab_task('files')">Files</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" id="tab-task-info" @click="select_tab_task('info')">Info</button>
+					<button class="nav-link" :id="'tab-task-info-'+task.id" @click="select_tab_task('info')">Info</button>
 				</li>
 			</ul>
 

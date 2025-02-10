@@ -233,12 +233,12 @@ export default {
                         <!-- Render an existing note -->
                         <template v-else>
                             <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                                <button class="btn btn-primary btn-sm" @click="edit_note(task, task_note.id, key)" :id="'note_'+task.id" style="margin-bottom: 1px;">
+                                <button class="btn btn-primary btn-sm" @click="edit_note(task, task_note.id, key)" :id="'note_'+task.id" style="margin-bottom: 3px;">
                                     <div hidden>[[task.title]]</div>
                                     <small><i class="fa-solid fa-pen"></i></small> Edit
                                 </button>
                                 <div class="btn-group">
-                                    <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="margin-bottom: 1px;">
+                                    <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="margin-bottom: 3px;margin-left:3px">
                                         <small><i class="fa-solid fa-download"></i></small> Export
                                     </button>
                                     <ul class="dropdown-menu">
@@ -258,7 +258,7 @@ export default {
                                         </li>
                                     </ul>
                                 </div>
-                                <button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-bottom: 1px;">
+                                <button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-bottom: 3px;margin-left:3px">
                                     <small><i class="fa-solid fa-trash"></i></small> Delete
                                 </button>
 
@@ -272,10 +272,11 @@ export default {
                             <div>
                                 <button class="btn btn-primary btn-sm" @click="modif_note(task, task_note.id, key)" type="button" :id="'note_'+task.id" style="margin-bottom: 3px;">
                                     <div hidden>[[task.title]]</div>
+									<small><i class="fa-solid fa-plus fa-fw"></i></small>
                                     Create
                                 </button>
-                                <button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-bottom: 1px;">
-                                    <small><i class="fa-solid fa-trash"></i></small> Delete
+                                <button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-bottom: 3px; margin-left:3px">
+                                    <small><i class="fa-solid fa-trash fa-fw"></i></small> Delete
                                 </button>
                             </div>
                             <div style="display: flex;">
