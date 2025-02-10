@@ -233,6 +233,8 @@ class Task(db.Model):
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id==self.id)\
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
+        
+        json_dict["subtasks"] = [subtask.download() for subtask in self.subtasks]
 
         return json_dict
     
@@ -247,6 +249,13 @@ class Subtask(db.Model):
             "id": self.id,
             "task_id": self.task_id,
             "completed": self.completed,
+            "description": self.description
+        }
+        return json_dict
+    
+    def download(self):
+        json_dict = {
+            "task_id": self.task_id,
             "description": self.description
         }
         return json_dict

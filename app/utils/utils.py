@@ -154,6 +154,10 @@ taskSchema = {
             "type": "array",
             "items": {"type": "object"},
         },
+        "subtasks:": {
+            "type": "array",
+            "items": {"type": "object"},
+        }
     },
     "required": ['title']
 }

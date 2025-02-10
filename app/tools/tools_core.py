@@ -109,6 +109,10 @@ def core_read_json_file(case, current_user):
             for note in task["notes"]:
                 loc_note = TaskModel.create_note(task_created.id, current_user)
                 TaskModel.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
+        
+        if task["subtasks"]:
+            for subtask in task["subtasks"]:
+                TaskModel.create_subtask(task_created.id, subtask["description"], current_user)
 
     
 def read_json_file(files_list, current_user):
