@@ -3,7 +3,7 @@ import argparse
 from app.utils.init_db import create_admin
 from app.utils.init_taxonomies import create_taxonomies, create_galaxies
 from app.utils.utils import get_modules_list
-from flask import render_template, request, Response
+from flask import jsonify, render_template, request, Response
 import json
 
 import signal
@@ -36,6 +36,14 @@ def error_page_not_found(e):
     if request.path.startswith('/api/'):
         return Response(json.dumps({"status": "error", "reason": "404 Not Found"}, indent=2, sort_keys=True), mimetype='application/json'), 404
     return render_template('404.html'), 404
+
+from flask_wtf.csrf import CSRFError
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    response = {"error": "CSRF token expired", "csrf_token": True}
+    return jsonify(response), 400  # Code 400 pour erreur côté client
+
     
 
 if args.init_db:

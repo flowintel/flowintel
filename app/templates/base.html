@@ -100,6 +100,25 @@
                 if (sec) $el.T = setTimeout(triggerRemove, sec * 1000);
                 });
             })
-          </script>
+
+            document.addEventListener("DOMContentLoaded", function () {
+                (function (originalFetch) {
+                    window.fetch = function () {
+                        return originalFetch.apply(this, arguments)
+                            .then(response => {
+                                if (!response.ok && response.status === 400) {
+                                    // Vérifier si c'est une erreur CSRF
+                                    response.clone().json().then(data => {
+                                        if (data.csrf_token) {
+                                            alert(data.error);
+                                        }
+                                    }).catch(() => {});
+                                }
+                                return response;
+                            });
+                    };
+                })(window.fetch);
+            });
+        </script>
     </body>
 </html>
