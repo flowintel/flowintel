@@ -27,5 +27,5 @@ echo "Submodule"
 echo "Update"
 echo "##########"
 ## Update submodules
-git submodule update
+git submodule update --remote
 python3 app.py -tg

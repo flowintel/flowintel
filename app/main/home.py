@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from sqlalchemy import desc
@@ -37,3 +38,10 @@ def last_case():
                 cp += 1
     return {"cases": last_case}, 200
 
+
+@home_blueprint.route("/version")
+@login_required
+def version():
+    with open(os.path.join(os.getcwd(),"version")) as read_version:
+        loc = read_version.readlines()
+    return {"version": loc[0]}
