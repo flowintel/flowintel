@@ -49,7 +49,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if "template_select" in form_dict and not 0 in form_dict["template_select"]:
             pass
             for template in form_dict["template_select"]:
-                if CaseTemplateModel.get_case(template):
+                if Case_Template.query.get(template):
                     case = CaseTemplateModel.create_case_from_template(template, form_dict["title_template"], user)
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
