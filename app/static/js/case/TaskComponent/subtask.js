@@ -1,9 +1,10 @@
 import {display_toast, create_message} from '/static/js/toaster.js'
-const { ref } = Vue
+const { ref, nextTick} = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
-		task: Object
+		task: Object,
+		cases_info: Object,
 	},
 	setup(props) {
         async function complete_subtask(task, subtask_id, completed){
@@ -109,23 +110,31 @@ export default {
             <legend class="analyzer-select-case">
                 <i class="fa-solid fa-list"></i> 
                 Subtasks
-                <button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" :data-bs-target="'#create_subtask_'+task.id" style="float: right; margin-left:3px;">
-                    <i class="fa-solid fa-plus"></i>
-                </button>
+				<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+					<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" :data-bs-target="'#create_subtask_'+task.id" style="float: right; margin-left:3px;">
+						<i class="fa-solid fa-plus"></i>
+					</button>
+				</template>
             </legend>
             <template v-for="subtask in task.subtasks">
                 <div>
-                    <div v-if="subtask.completed" >
-                        <input type="checkbox" checked @click="complete_subtask(task, subtask.id, false)"/>
+                    <div v-if="subtask.completed">
+						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                        	<input type="checkbox" checked @click="complete_subtask(task, subtask.id, false)"/>
+						</template>
                         <span style="text-decoration-line: line-through; margin-left: 3px">[[subtask.description]]</span>
                     </div>
                     <div v-else>
-                        <input type="checkbox" @click="complete_subtask(task, subtask.id, true)"/>
+						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                        	<input type="checkbox" @click="complete_subtask(task, subtask.id, true)"/>
+						</template>
                         [[subtask.description]]
-                        <button @click="delete_subtask(task, subtask.id)" class="btn btn-danger btn-sm" style="float: right;" ><i class="fa-solid fa-trash"></i></button>
-                        <button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" :data-bs-target="'#edit_subtask_'+subtask.id" style="float: right;">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
+						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+							<button @click="delete_subtask(task, subtask.id)" class="btn btn-danger btn-sm" style="float: right;" ><i class="fa-solid fa-trash"></i></button>
+							<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" :data-bs-target="'#edit_subtask_'+subtask.id" style="float: right;">
+								<i class="fa-solid fa-pen-to-square"></i>
+							</button>
+						</template>
                     </div>
                     
                 </div>

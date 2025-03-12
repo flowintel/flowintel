@@ -3,6 +3,7 @@ const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
+		cases_info: Object,
 		task: Object
 	},
 	setup(props) {
@@ -65,7 +66,7 @@ export default {
 	template: `
 	<fieldset class="analyzer-select-case">
         <legend class="analyzer-select-case"><i class="fa-solid fa-file"></i> Files</legend>
-        <div style="display: flex;">
+        <div style="display: flex;" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
             <input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
             <button class="btn btn-primary btn-sm" @click="add_file(task)" style="margin-left: 2px;">Submit</button>
         </div>
@@ -76,7 +77,9 @@ export default {
                     <a class="btn btn-link" :href="'/case/task/'+task.id+'/download_file/'+file.id">
                         [[ file.name ]]
                     </a>
-                    <button class="btn btn-danger" @click="delete_file(file, task)"><i class="fa-solid fa-trash"></i></button>
+					<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                    	<button class="btn btn-danger" @click="delete_file(file, task)"><i class="fa-solid fa-trash"></i></button>
+					</template>
                 </div>
             </template>
         </template>

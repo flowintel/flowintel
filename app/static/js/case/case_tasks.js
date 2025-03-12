@@ -1,7 +1,6 @@
 import {display_toast} from '/static/js/toaster.js'
 import tabMain from './TaskComponent/tab-main.js'
 import tabNote from './TaskComponent/tab-note.js'
-import tabConnector from './TaskComponent/tab-connector.js'
 import tabFile from './TaskComponent/tab-file.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
@@ -22,7 +21,6 @@ export default {
 	components: {
         tabMain,
 		tabNote,
-		tabConnector,
 		tabFile,
 		tabInfo,
 		caseconnectors
@@ -394,7 +392,7 @@ export default {
 			style="border-top-left-radius: 15px; border-top-right-radius: 15px;"
 		>
 			<div class="d-flex w-100 justify-content-between">
-				<h5 class="mb-1">[[ key_loop ]]- [[task.title]]</h5>
+				<h5 class="mb-1">[[ key_loop+1 ]]- [[task.title]]</h5>
 				<small :title="task.last_modif"><i>Changed [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
 
@@ -434,8 +432,12 @@ export default {
 			<div class="d-flex w-100 justify-content-between">
                 <div v-if="task.users.length">
 					<template v-for="user in task.users">
-						<span v-if="user.nickname" class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name"><i class="fa-solid fa-user"></i> [[user.nickname]]</span>
-						<span v-else class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name"><i class="fa-solid fa-user"></i> [[user.last_name]]</span>
+						<span v-if="user.nickname" class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name">
+							<i class="fa-solid fa-user"></i> [[user.nickname]]
+						</span>
+						<span v-else class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name">
+							<i class="fa-solid fa-user"></i> [[user.last_name]]
+						</span>
 					</template>
                 </div>
 
@@ -628,13 +630,14 @@ export default {
                     :modules="task_modules"
                     :is_case="false"
 					:object_id="task.id"
+					:cases_info="cases_info"
 					@case_connectors=""
                 	@task_connectors="(msg) => fetch_task_connectors()">
 				</caseconnectors>
 			</template>
 
 			<template v-else-if="selected_tab == 'files'">
-				<tabFile :task="task"></tabFile>
+				<tabFile :cases_info="cases_info" :task="task"></tabFile>
 			</template>
 
 			<template v-else-if="selected_tab == 'info'">

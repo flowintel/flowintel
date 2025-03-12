@@ -246,6 +246,6 @@ export default {
     </div>
     <hr>
 
-    <subtask :task="task"></subtask>
+    <subtask :task="task" :cases_info="cases_info"></subtask>
     `
 }

@@ -39,7 +39,9 @@
             <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary" style="z-index: -1;">[[cases_info.case.link_to.length]]</span>
         </button>
         <ul class="dropdown-menu">
-            <button class="btn btn-primary btn-sm" title="New link" style="margin-left: 60px;" data-bs-toggle="modal" data-bs-target="#add_new_link"><i class="fa-solid fa-paperclip"></i>+</button>
+            <button class="btn btn-primary btn-sm" title="New link" style="margin-left: 60px;" data-bs-toggle="modal" data-bs-target="#add_new_link">
+                <i class="fa-solid fa-paperclip"></i>+
+            </button>
             <li><hr class="dropdown-divider"></li>
             <template v-for="case_link in cases_info.case.link_to">
                 <li>
@@ -134,13 +136,14 @@
                 :modules="modules"
                 :is_case="true"
                 :object_id="cases_info.case.id"
+                :cases_info="cases_info"
                 @case_connectors="(msg) => fetch_case_connectors()"
                 @task_connectors="">
             </caseconnectors>
         </div>
     </template>
 
-    <misp_object v-if="cases_info" :case_id="cases_info.case.id"></misp_object>
+    <misp_object :case_id="{{case.id}}" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
 
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
         <i :title="cases_info.case.creation_date">Created: [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]</i>
@@ -1048,7 +1051,7 @@
                 }
 
                 async function fetch_nb_misp_objects() {
-                    const res = await fetch('/case/' + cases_info.value.case.id + '/nb_objects')
+                    const res = await fetch('/case/{{case.id}}/nb_objects')
                     if (await res.status == 200){
                         let loc = await res.json()
                         nb_misp_objects.value = loc["nb_objects"]
@@ -1144,7 +1147,9 @@
 
                     change_status_sort,
                     change_switch_check,
-                    fetch_sorted_tasks
+                    fetch_sorted_tasks,
+
+                    fetch_nb_misp_objects
                 }
             }
         }).mount('#main-container')

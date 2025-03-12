@@ -286,7 +286,9 @@ export default {
                         </template>
                     </template>
                 </template>
-                <button class="btn btn-primary" @click="add_notes_task()">Add notes</button>
+				<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                	<button class="btn btn-primary" @click="add_notes_task()">Add notes</button>
+				</template>
             </div>
             <!-- Task doesn't contains notes -->
             <div v-else>
