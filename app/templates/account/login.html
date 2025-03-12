@@ -1,7 +1,6 @@
 <!-- 
     Author: David Cruciani
 -->
-{% import 'macros/form_macros.html' as f %}
 <!DOCTYPE html>
 <html>
     <head>
@@ -12,13 +11,8 @@
         <script src="{{ url_for('static',filename='js/popper.min.js') }}"></script>
         <script src="{{ url_for('static',filename='bootstrap-5.3.0/js/bootstrap.min.js') }}"></script>
         <script src="{{ url_for('static',filename='js/jquery.min.js') }}"></script>
-        <script src="{{ url_for('static',filename='js/jquery-ui.js') }}"></script>
-        <script src="{{ url_for('static',filename='js/vue.global.js') }}"></script>
 
-        <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='bootstrap-5.3.0/css/bootstrap.min.css') }}">
-        <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='fontawesome-6.3.0/css/fontawesome.css') }}"> 
-        <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='fontawesome-6.3.0/css/solid.css') }}">
-        <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/jquery-ui.css') }}">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='bootstrap-5.3.0/css/bootstrap.min.css') }}">
 
         <style>
             body {
@@ -29,7 +23,6 @@
                 width: 100%;
                 max-width: 330px;
                 padding: 15px;
-
                 top: 25%;
                 left: 40%;
                 position: absolute;
@@ -54,23 +47,19 @@
                 border-top-left-radius: 0;
                 border-top-right-radius: 0;
             }
-
         </style>
     </head>
 
     <body>
-        <main >
+        <main>
             {% include 'macros/_flashes.html' %}
-            <div style="margin-top: 50px;">
-                {% set flashes = {
-                    'error':   get_flashed_messages(category_filter=['form-error']),
-                    'warning': get_flashed_messages(category_filter=['form-check-email']),
-                    'info':    get_flashed_messages(category_filter=['form-info']),
-                    'success': get_flashed_messages(category_filter=['form-success'])
-                } %}
-            </div>
+
             <form action="" method="post" class="form-signin">
                 {{ form.hidden_tag() }}
+
+                <div class="mb-5" style="text-align: center;margin-top: -50px;">
+                    <img src="{{ url_for('static',filename='image/flowintel.png') }}" height="100" alt="flowintel Logo" loading="lazy"/>
+                </div>
                 <div class="mb-3">
                     {{form.email.label}}:
                     {{form.email(class_="form-control")}}
@@ -86,33 +75,10 @@
                     {{form.remember_me.label}}:
                     {{form.remember_me}}
                 </div>
-                {{ f.form_message(flashes['error'], header='Something went wrong.', class='error') }}
-                {{ f.form_message(flashes['warning'], header='Check your email.', class='warning') }}
-                {{ f.form_message(flashes['info'], header='Information', class='info') }}
-                {{ f.form_message(flashes['success'], header='Success!', class='success') }}
+
                 {{form.submit(class='btn btn-primary')}}
             </form>
         </main>
         <!--Main layout-->
-
-        {# Implement CSRF protection for site #}
-        {% if csrf_token()|safe %}
-            <div style="visibility: hidden; display: none">
-            <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token()|safe }}">
-            </div>
-        {% endif %}
-
     </body>
-    <script>
-        $('.message').each((i, el) => {
-              const $el = $(el);
-              const $xx = $el.find('.close');
-              const sec = $el.data('autohide');
-              const triggerRemove = () => clearTimeout($el.trigger('remove').T);
-          
-              $el.one('remove', () => $el.remove());
-              $xx.one('click', triggerRemove);
-              if (sec) $el.T = setTimeout(triggerRemove, sec * 1000);
-            });
-    </script>
 </html>

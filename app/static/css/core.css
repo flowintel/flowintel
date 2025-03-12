@@ -17,7 +17,13 @@ span#goTop, span#project-version{
   position: fixed;
   right: 1em;
   bottom: 1em;
-  background-color: #fafbfc; 
+}
+
+span#createTask{
+  position: fixed;
+  left: calc(var(--sidebar)+10px);
+  bottom: 1em;
+  z-index: 9999;
 }
 
 .tag {

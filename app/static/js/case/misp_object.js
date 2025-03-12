@@ -7,11 +7,12 @@ export default {
 	props: {
 		case_id: Number
 	},
+    emits: ['modif_misp_objects'],
     components: {
         AddObjectAttributes,
         ObjectConnectors
     },
-	setup(props) {
+	setup(props, {emit}) {
         const case_misp_objects = ref([])
         const misp_objects = ref([])
         const activeTemplate = ref({requiredOneOf: [],})
@@ -76,6 +77,7 @@ export default {
                         var myModal = new bootstrap.Modal(document.getElementById("modal-add-attribute-"+key), {});
                         myModal.hide();
                     }
+                    emit("modif_misp_objects", true)
                 }
                 display_toast(res)
             }else{
@@ -105,6 +107,8 @@ export default {
                     }
                 }
                 case_misp_objects.value.splice(loc, 1)
+
+                emit("modif_misp_objects", true)
             }
             display_toast(res)
         }

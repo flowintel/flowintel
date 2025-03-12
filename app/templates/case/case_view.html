@@ -459,8 +459,13 @@
             </div>
         </div>
     </template>
-    
-    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+
+    <span id="createTask" title="Create a new task">
+        <a href="/case/{{case.id}}/create_task" class="btn btn-outline-primary" style="border-radius: 50px;">
+            <i class="fa-solid fa-plus"></i>
+        </a>
+    </span>
+    <span id="goTop"><a href="#top" class="btn btn-outline-primary"><i class="fa-solid fa-chevron-up"></i></a></span>
 {% endblock %}
 
 

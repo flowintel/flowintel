@@ -94,7 +94,10 @@ export default {
 	template: `
 		<div id="assign" style="float: right;" v-if="cases_info">
             <div class="dropdown" id="dropdown_user_case">
-                <button class="btn btn-secondary dropdown-toggle" style="margin-top: -2px" data-bs-toggle="dropdown" aria-expanded="false">Orgs</button>
+                <button class="btn btn-secondary dropdown-toggle" style="margin-top: -2px" data-bs-toggle="dropdown" aria-expanded="false">
+                    Orgs
+                    <span class="badge text-bg-primary">[[cases_info.orgs_in_case.length]]</span>
+                </button>
                 <ul class="dropdown-menu">
                     <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
                         <li>
