@@ -28,10 +28,14 @@ def get_galaxies():
     return Galaxies(galaxies=galaxies_list), Clusters(clusters=clusters_list)
 
 
-def create_tag(tag, taxo_id, taxonomies):
+def create_tag(tag, taxo_id, taxonomies: Taxonomies):
+    revert_match = taxonomies.revert_machinetag(tag)
+    if len(revert_match) == 3:
+        revert_match_colour = revert_match[2].colour
+    else:
+        revert_match_colour = revert_match[1].colour
     
-    revert_match = taxonomies.revert_machinetag(tag)[1].colour
-    if not revert_match:
+    if not revert_match_colour:
         namespace = tag.split(":")[0]
         
         list_to_search = list(taxonomies.get(namespace).machinetags())
@@ -41,11 +45,11 @@ def create_tag(tag, taxo_id, taxonomies):
         color_list = generate_palette_from_string(namespace, taxo_len)
         color_tag = color_list[index]
     else:
-        color_tag = revert_match
+        color_tag = revert_match_colour
 
-    description = taxonomies.revert_machinetag(tag)[1].description
+    description = revert_match[1].description
     if not description:
-        description = taxonomies.revert_machinetag(tag)[1].expanded
+        description = revert_match[1].expanded
         if not description:
             description = ""
 
