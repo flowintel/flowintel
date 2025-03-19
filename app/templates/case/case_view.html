@@ -165,9 +165,14 @@
     <manage_orgs :cases_info="cases_info"></manage_orgs>
 
     
-    {% if case.description %}
+    {% if case.description or case.ticket_id %}
     <div>
         <hr>
+        <div title="Ticket id" class="ticket-id">
+            <i class="fa-solid fa-ticket"></i>
+            {{case.ticket_id}}
+        </div>
+    
         <!-- <pre style="font-family: var(--bs-font-sans-serif);font-size: var(--bs-body-font-size);font-weight: var(--bs-body-font-weight);">{{case.description}}</pre> -->
         <pre>{{case.description}}</pre>
     </div>

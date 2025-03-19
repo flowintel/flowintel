@@ -70,7 +70,8 @@ class CreateCase(Resource):
         "identifier": "Dictionnary with connector as key and identifier as value",
         "custom_tags" : "List of custom tags created on the instance",
         "time_required": "Time required to realize the case",
-        "is_private": "Specify if a case is private or not. By default a case is public"
+        "is_private": "Specify if a case is private or not. By default a case is public",
+        "ticket_id": "Id of a ticket related to the case"
     })
     def post(self):
         user = utils.get_user_from_api(request.headers)
@@ -98,7 +99,8 @@ class EditCase(Resource):
                      "clusters": "list of tags from galaxies",
                      "identifier": "Dictionnary with connector as key and identifier as value",
                      "custom_tags" : "List of custom tags created on the instance",
-                     "is_private": "Specify if a case is private or not. By default a case is public"
+                     "is_private": "Specify if a case is private or not. By default a case is public",
+                     "ticket_id": "Id of a ticket related to the case"
                     })
     def post(self, cid):
         case = CommonModel.get_case(cid)

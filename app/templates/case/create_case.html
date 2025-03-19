@@ -79,6 +79,15 @@
                 {%endif%}
             </div>
             <div class="mb-3 w-50">
+                {{form.ticket_id.label(class_="col-form-label")}}:
+                {{form.ticket_id(class_="form-control")}}
+                {% if form.ticket_id.errors %}
+                    <div style="color: red;">{{form.ticket_id.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+        </div>
+        <div class="row">
+            <div class="mb-3 w-50">
                 {{form.is_private.label(class_="col-form-label")}}:
                 {{form.is_private()}}
                 {% if form.is_private.errors %}

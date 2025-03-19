@@ -25,6 +25,7 @@ class CaseForm(FlaskForm):
     tasks_templates = SelectMultipleField(u'Tasks Templates', coerce=int)
     time_required = StringField('Time required', validators=[Optional()])
     is_private = BooleanField("Private Case")
+    ticket_id = StringField('Ticket id', validators=[Optional()])
     submit = SubmitField('Create')
 
     def validate_title(self, field):
@@ -55,6 +56,7 @@ class CaseEditForm(FlaskForm):
     deadline_date = DateField('Deadline date', validators=[Optional()])
     deadline_time = TimeField("Deadline time", validators=[Optional()])
     time_required = StringField('Time required', validators=[Optional()])
+    ticket_id = StringField('Ticket id', validators=[Optional()])
     is_private = BooleanField("Private Case")
     submit = SubmitField('Save')
 

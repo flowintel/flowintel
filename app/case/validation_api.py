@@ -68,6 +68,9 @@ def verif_create_case_task(data_dict, isCase):
             data_dict["is_private"] = False
         elif not isinstance(data_dict["is_private"], bool):
             return {"message": "'is_private' need a bool"}
+        
+        if "ticket_id" not in data_dict or not data_dict["ticket_id"]:
+            data_dict["ticket_id"] = ""
 
 
     return data_dict
@@ -115,6 +118,9 @@ def verif_edit_case(data_dict, case_id):
     
     if "is_private" not in data_dict or not data_dict["is_private"]:
         data_dict["is_private"] = case.is_private
+
+    if "ticket_id" not in data_dict or not data_dict["ticket_id"]:
+        data_dict["ticket_id"] = case.ticket_id
 
     data_dict = common_verif(data_dict, case)
 

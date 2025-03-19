@@ -103,6 +103,7 @@ def edit_case(cid):
                 form.deadline_time.data = case_modif.deadline
                 form.time_required.data = case_modif.time_required
                 form.is_private.data = case_modif.is_private
+                form.ticket_id.data = case_modif.ticket_id
 
             return render_template("case/edit_case.html", form=form)
         else:

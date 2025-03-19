@@ -63,7 +63,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 status_id=1,
                 owner_org_id=user.org_id,
                 time_required=form_dict["time_required"],
-                is_private=form_dict["is_private"]
+                is_private=form_dict["is_private"],
+                ticket_id=form_dict["ticket_id"]
             )
             db.session.add(case)
             db.session.commit()
@@ -205,6 +206,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         case.deadline=deadline
         case.time_required=form_dict["time_required"]
         case.is_private = form_dict["is_private"]
+        case.ticket_id = form_dict["ticket_id"]
 
         self._edit(form_dict, cid)
 
