@@ -115,6 +115,9 @@ def delete_default_org(user_org_id):
 
 def add_user_core(form_dict):
     """Add a user to the DB"""
+    matrix_id = form_dict["matrix_id"]
+    if not matrix_id:
+        matrix_id = None
     user = User(
         first_name=form_dict["first_name"],
         last_name=form_dict["last_name"],
@@ -123,7 +126,7 @@ def add_user_core(form_dict):
         password=form_dict["password"],
         role_id = form_dict["role"],
         org_id = form_dict["org"],
-        matrix_id=form_dict["matrix_id"],
+        matrix_id=matrix_id,
         api_key = generate_api_key()
     )
     db.session.add(user)
