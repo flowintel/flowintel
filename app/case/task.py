@@ -75,7 +75,6 @@ def edit_task(cid, tid):
                 task_modif = CommonModel.get_task(tid)
                 form.description.data = task_modif.description
                 form.title.data = task_modif.title
-                form.url.data = task_modif.url
                 form.time_required.data = task_modif.time_required
                 form.deadline_date.data = task_modif.deadline
                 form.deadline_time.data = task_modif.deadline
@@ -579,6 +578,60 @@ def get_custom_tags_task(tid):
         if not check_user_private_case(CommonModel.get_case(task.case_id)):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         return {"custom_tags": CommonModel.get_task_custom_tags_json(tid)}, 200
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+
+
+##############
+# Urls/Tools #
+##############
+
+@task_blueprint.route("/<cid>/task/<tid>/create_url_tool", methods=['POST'])
+@login_required
+@editor_required
+def create_url_tool(cid,tid):
+    """Create a new Url/Tool"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "name" in request.json:
+                url_tool = TaskModel.create_url_tool(tid, request.json["name"], current_user)
+                if url_tool:
+                    return {"message": f"Url/Tool created", "id": url_tool.id, 'toast_class': "success-subtle", "icon": "fas fa-plus"}, 200 
+                return {"message": "Error creating Url/Tool", 'toast_class': "danger-subtle"}, 400
+            return {"message": "Need to pass 'name", 'toast_class': "warning-subtle"}, 400
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/<cid>/task/<tid>/edit_url_tool/<utid>", methods=['POST'])
+@login_required
+@editor_required
+def edit_url_tool(cid, tid, utid):
+    """Edit a Url/Tool"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "name" in request.json:
+                if TaskModel.edit_url_tool(tid, utid, request.json["name"], current_user):
+                    return {"message": "Url/Tool edited", 'toast_class': "success-subtle"}, 200 
+                return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
+            return {"message": "Need to pass 'name", 'toast_class': "warning-subtle"}, 400
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@task_blueprint.route("/<cid>/task/<tid>/delete_url_tool/<utid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_url_tool(cid, tid, utid):
+    """Delete a Url/Tool"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if TaskModel.delete_url_tool(tid, utid, current_user):
+                return {"message": "Url/Tool deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200 
+            return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 

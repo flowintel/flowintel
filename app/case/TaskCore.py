@@ -208,7 +208,6 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 uuid=str(uuid.uuid4()),
                 title=form_dict["title"],
                 description=form_dict["description"],
-                url=form_dict["url"],
                 creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
                 last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
                 deadline=deadline,
@@ -255,7 +254,6 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
         task.title = form_dict["title"]
         task.description=form_dict["description"]
-        task.url=form_dict["url"]
         task.deadline=deadline
         task.time_required = form_dict["time_required"]
 
@@ -601,7 +599,54 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         res = MODULES[module].handler(task, case, current_user, user)
         if isinstance(res, dict):
             return res
+        
 
+    ##############
+    # Urls/Tools #
+    ##############
+
+    def get_url_tool(self, utid):
+        return Task_Url_Tool.query.get(utid)
+
+    def delete_url_tool(self, tid, utid, current_user):
+        url_tool = self.get_url_tool(utid)
+        if url_tool:
+            if url_tool.task_id == int(tid):
+                db.session.delete(url_tool)
+                db.session.commit()
+
+                task = CommonModel.get_task(tid)
+                self.update_task_time_modification(task, current_user, f"Url/Tool '{url_tool.name}' deleted for '{task.title}'")
+                return True
+        return False
+
+    def create_url_tool(self, tid, url_tool_name, current_user):
+        url_tool = Task_Url_Tool(
+            name=url_tool_name,
+            task_id=tid
+        )
+        db.session.add(url_tool)
+        db.session.commit()
+
+        task = CommonModel.get_task(tid)
+        self.update_task_time_modification(task, current_user, f"Url/Tool '{url_tool.name}' created for '{task.title}'")
+        return url_tool
+
+    def edit_url_tool(self, tid, utid, url_tool_name, current_user):
+        url_tool = self.get_url_tool(utid)
+        if url_tool:
+            if url_tool.task_id == int(tid):
+                url_tool.name = url_tool_name
+                db.session.commit()
+
+                task = CommonModel.get_task(tid)
+                self.update_task_time_modification(task, current_user, f"Url/Tool '{url_tool.name}' edited for '{task.title}'")
+                return True
+        return False
+    
+    ############
+    # Subtasks #
+    ############
 
     def get_subtask(self, sid):
         return Subtask.query.get(sid)
@@ -654,6 +699,9 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 return True
         return False
 
+    ##############
+    # Connectors #
+    ##############
 
     def add_connector(self, tid, request_json, current_user) -> bool:
         task = CommonModel.get_task(tid)

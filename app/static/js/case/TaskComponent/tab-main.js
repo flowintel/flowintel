@@ -1,10 +1,12 @@
 import {display_toast} from '/static/js/toaster.js'
 const { ref } = Vue
 import subtask from './subtask.js'
+import TaskUrlTool from './TaskUrlTool.js'
 export default {
     delimiters: ['[[', ']]'],
     components: {
-        subtask
+        subtask,
+		TaskUrlTool
     },
 	props: {
 		cases_info: Object,
@@ -216,9 +218,11 @@ export default {
             </fieldset>
         </div>
 
+		<TaskUrlTool :task="task" :cases_info="cases_info" :is_template="false"></TaskUrlTool>
+
         <div class="col" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
             <fieldset class="analyzer-select-case">
-                <legend class="analyzer-select-case"><i class="fa-solid fa-temperature-three-quarters"></i> Change Status</legend>
+                <legend class="analyzer-select-case"><i class="fa-solid fa-temperature-three-quarters"></i> Status</legend>
                 <div>
                     <div class="dropdown" :id="'dropdown_status_'+task.id">
                         <template v-if="status_info">
@@ -237,12 +241,7 @@ export default {
                 </div>
             </fieldset>
         </div>
-        <div class="col" v-if="task.url">
-            <fieldset class="analyzer-select-case">
-                <legend class="analyzer-select-case"><i class="fa-solid fa-screwdriver-wrench"></i> Tool/Url</legend>
-                <a :href="task.url" target="_blank">[[task.url]]</a>
-            </fieldset>
-        </div>
+        
     </div>
     <hr>
 

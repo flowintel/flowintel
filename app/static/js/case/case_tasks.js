@@ -458,10 +458,15 @@ export default {
 				</div>
 				<div v-else></div>
 			</div>
-			<div class="d-flex w-100 justify-content-between">
-				<div></div>
+			<div class="d-flex w-100 mt-2 justify-content-between">
+				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
+					<i>[[task.files.length]] Files</i>
+				</span>
 				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
 					<i>[[task.notes.length]] Notes</i>
+				</span>
+				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
+					<i>[[task.urls_tools.length]] Urls/Tools</i>
 				</span>
 			</div>
 			<p class="mt-1 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">

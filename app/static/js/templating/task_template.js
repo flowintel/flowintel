@@ -1,7 +1,11 @@
 import {display_toast, create_message} from '../toaster.js'
+import TaskUrlTool from '../case/TaskComponent/TaskUrlTool.js'
 const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
+	components: {
+		TaskUrlTool
+    },
 	props: {
         templates_list: Object,
 		template: Object,
@@ -10,6 +14,12 @@ export default {
 		case_id: Number
 	},
 	setup(props) {
+		// Needed for TaskUrlTool component
+		const cases_info = {
+			"permission": {"read_only": false},
+			"present_in_case": true
+		}
+
 		Vue.onMounted(async () => {
 			if(props.template.notes.length){
 				for(let i in props.template.notes){
@@ -313,6 +323,7 @@ export default {
 			getTextColor,
 			mapIcon,
             edit_mode,
+			cases_info,
 			delete_note,
 			delete_task,
 			edit_note,
@@ -379,7 +390,9 @@ export default {
                 </div>
             </div>
 			<div class="d-flex w-100 justify-content-between">
-				<div></div>
+				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
+					<i>[[template.urls_tools.length]] Urls/Tools</i>
+				</span>
 				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
 					<i>[[template.notes.length]] Notes</i>
 				</span>
@@ -455,13 +468,16 @@ export default {
 				</div>
 				<hr>
 			</template>
+
+			<TaskUrlTool :task="template" :cases_info="cases_info" :is_template="true"></TaskUrlTool>
+
 			<div>
 				<fieldset class="analyzer-select-case">
 					<legend class="analyzer-select-case">
 						<i class="fa-solid fa-list"></i> 
 						Subtasks
-						<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" data-bs-target="#create_subtask" style="float: right; margin-left:3px;">
-							+
+						<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" :data-bs-target="'#create_subtask_'+template.id" style="float: right; margin-left:3px;">
+							<i class="fa-solid fa-plus"></i>
 						</button>
 					</legend>
 					<template v-for="subtask in template.subtasks">
@@ -495,7 +511,7 @@ export default {
 				</fieldset>
 
 				<!-- Modal create subtask -->
-				<div class="modal fade" id="create_subtask" tabindex="-1" aria-labelledby="create_subtask_modal" aria-hidden="true">
+				<div class="modal fade" :id="'create_subtask_'+template.id" tabindex="-1" aria-labelledby="create_subtask_modal" aria-hidden="true">
 					<div class="modal-dialog modal-lg">
 						<div class="modal-content">
 							<div class="modal-header">

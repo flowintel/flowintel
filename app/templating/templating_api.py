@@ -249,7 +249,6 @@ class CreateTaskTemaplte(Resource):
     @api.doc(params={
             "title": "Required. Title for the template",
             "description": "Description of the template",
-            "url": "Link to a tool or a ressource",
             "tags": "list of tags from taxonomies",
             "clusters": "list of tags from galaxies",
             "custom_tags" : "List of custom tags created on the instance",
@@ -432,3 +431,78 @@ class DeleteSubtask(Resource):
                 return {"message": "Subtask deleted"}, 200
             return {"message": "Subtask not found"}, 404
         return {"message": "task Not found"}, 404
+    
+
+
+##############
+# Urls/Tools #
+##############
+
+@api.route('/task/<tid>/create_url_tool', methods=['POST'])
+@api.doc(description='Create a Url/Tool')
+class CreateUrlTool(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        'name': 'Required. name of the url or tool'
+    })
+    def post(self, tid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            if "name" in request.json:
+                url_tool = TaskModel.create_url_tool(tid, request.json["name"])
+                if url_tool:
+                    return {"message": f"Url/Tool created, id: {url_tool.id}", "url_tool_id": url_tool.id}, 201 
+            return {"message": "Need to pass 'name'"}, 400
+        return {"message": "Task Not found"}, 404
+    
+@api.route('/<tid>/edit_url_tool/<sid>', methods=['POST'])
+@api.doc(description='Edit a Url/Tool')
+class EditUrlTool(Resource):
+    method_decorators = [api_required]
+    @api.doc(params={
+        'name': 'Required. name of the url or tool'
+    })
+    def post(self, tid, sid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            if "name" in request.json:
+                url_tool = TaskModel.edit_url_tool(tid, sid, request.json["name"])
+                if url_tool:
+                    return {"message": f"Url/Tool edited"}, 200 
+            return {"message": "Need to pass 'name'"}, 400
+        return {"message": "Task Not found"}, 404
+    
+@api.route('/<tid>/list_urls_tools', methods=['GET'])
+@api.doc(description='List Urls/Tools of a task')
+class ListUrlsTools(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            return {"urls_tools": [url_tool.to_json() for url_tool in task.urls_tools]}, 200
+        return {"message": "task Not found"}, 404
+    
+@api.route('/<tid>/url_tool/<utid>', methods=['GET'])
+@api.doc(description='Get a Url/Tool of a task')
+class GetUrlTool(Resource):
+    method_decorators = [api_required]
+    def get(self, tid, utid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            url_tool = TaskModel.get_url_tool_template(utid)
+            if url_tool:
+                return url_tool.to_json()
+        return {"message": "task Not found"}, 404
+    
+@api.route('/<tid>/delete_url_tool/<utid>', methods=['GET'])
+@api.doc(description='Delete a Url/Tool')
+class DeleteUrlTool(Resource):
+    method_decorators = [api_required]
+    def get(self, tid, utid):
+        task = CommonModel.get_task_template(tid)
+        if task:
+            if TaskModel.delete_url_tool(tid, utid):
+                return {"message": "Url/Tool deleted"}, 200
+            return {"message": "Url/Tool not found"}, 404
+        return {"message": "task Not found"}, 404
+    

@@ -165,7 +165,7 @@ class Task(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String)
     description = db.Column(db.String, nullable=True)
-    url = db.Column(db.String, index=True)
+    urls_tools = db.relationship('Task_Url_Tool', backref='task', lazy='dynamic', cascade="all, delete-orphan")
     notes = db.relationship('Note', backref='task', lazy='dynamic', cascade="all, delete-orphan")
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
@@ -187,7 +187,6 @@ class Task(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "url": self.url,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
             "case_id": self.case_id,
@@ -199,6 +198,7 @@ class Task(db.Model):
             "time_required": self.time_required
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
+        json_dict["urls_tools"] = [url_tool.to_json() for url_tool in self.urls_tools]
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
         else:
@@ -224,7 +224,6 @@ class Task(db.Model):
             "uuid": self.uuid, 
             "title": self.title, 
             "description": self.description,
-            "url": self.url,
             "time_required": self.time_required
         }
         json_dict["notes"] = [note.download() for note in self.notes]
@@ -238,6 +237,7 @@ class Task(db.Model):
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
         
         json_dict["subtasks"] = [subtask.download() for subtask in self.subtasks]
+        json_dict["urls_tools"] = [url_tool.download() for url_tool in self.urls_tools]
 
         return json_dict
     
@@ -287,6 +287,26 @@ class Note(db.Model):
             "uuid": self.uuid,
             "note": self.note,
             "task_uuid": Task.query.get(self.task_id).uuid
+        }
+        return json_dict
+    
+class Task_Url_Tool(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
+    name = db.Column(db.String, index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "name": self.name,
+            "task_id": self.task_id,
+        }
+        return json_dict
+
+    def download(self):
+        json_dict = {
+            "name": self.name,
+            "task_id": self.task_id,
         }
         return json_dict
 
@@ -461,7 +481,7 @@ class Task_Template(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String, index=True)
     description = db.Column(db.String, nullable=True)
-    url = db.Column(db.String, index=True)
+    urls_tools = db.relationship('Task_Template_Url_Tool', backref='task', lazy='dynamic', cascade="all, delete-orphan")
     notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade="all, delete-orphan")
     nb_notes = db.Column(db.Integer, index=True)
     last_modif = db.Column(db.DateTime, index=True)
@@ -474,12 +494,12 @@ class Task_Template(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "url": self.url,
             "nb_notes": self.nb_notes,
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
             "time_required": self.time_required
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
+        json_dict["urls_tools"] = [url_tool.to_json() for url_tool in self.urls_tools]
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
@@ -493,10 +513,10 @@ class Task_Template(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "url": self.url,
             "time_required": self.time_required
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
+        json_dict["urls_tools"] = [url_tool.download() for url_tool in self.urls_tools]
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
@@ -533,6 +553,26 @@ class Note_Template(db.Model):
             "template_id": self.template_id,
             "template_uuid": Task_Template.query.get(self.template_id).uuid,
             "template_order_id": self.template_order_id
+        }
+        return json_dict
+    
+class Task_Template_Url_Tool(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('task__template.id', ondelete="CASCADE"))
+    name = db.Column(db.String, index=True)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "name": self.name,
+            "task_id": self.task_id,
+        }
+        return json_dict
+
+    def download(self):
+        json_dict = {
+            "name": self.name,
+            "task_id": self.task_id,
         }
         return json_dict
     

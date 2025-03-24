@@ -54,9 +54,6 @@ def verif_create_case_task(data_dict, isCase):
         data_dict["time_required"] = ""
 
     if not isCase:
-        if "url" not in data_dict or not data_dict["url"]:
-            data_dict["url"] = ""
-
         if "connectors" in data_dict:
             loc = CommonModel.check_connector(data_dict["connectors"])
             if not isinstance(loc, bool):
@@ -133,8 +130,5 @@ def verif_edit_task(data_dict, task_id):
         data_dict["title"] = task.title
 
     data_dict = common_verif(data_dict, task)
-
-    if "url" not in data_dict or not data_dict["url"]:
-        data_dict["url"] = task.url
 
     return data_dict

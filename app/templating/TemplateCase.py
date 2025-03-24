@@ -286,7 +286,6 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
                 uuid=str(uuid.uuid4()),
                 title=task.title,
                 description=task.description,
-                url=task.url,
                 creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
                 last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
                 case_id=case.id,
@@ -305,6 +304,14 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
                     task_order_id=task.nb_notes+1
                 )
                 db.session.add(note)
+                db.session.commit()
+
+            for t_url_tool in task.urls_tools:
+                url_tool = Task_Url_Tool(
+                    task_id=t.id,
+                    name=t_url_tool.name
+                )
+                db.session.add(url_tool)
                 db.session.commit()
 
             ## Task Tags

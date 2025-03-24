@@ -534,6 +534,10 @@ def get_custom_tags_task(cid):
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 
+############
+# Subtasks #
+############
+
 @templating_blueprint.route("/task/<tid>/create_subtask", methods=['POST'])
 @login_required
 @editor_required
@@ -575,4 +579,52 @@ def delete_subtask(tid, sid):
         if TaskModel.delete_subtask(tid, sid):
             return {"message": "Subtask deleted", 'toast_class': "success-subtle"}, 200 
         return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+
+##############
+# Urls/Tools #
+##############
+
+
+@templating_blueprint.route("/task/<tid>/create_url_tool", methods=['POST'])
+@login_required
+@editor_required
+def create_url_tool(tid):
+    """Create a new Url/Tool"""
+    task = CommonModel.get_task_template(tid)
+    if task:
+        if "name" in request.json:
+            url_tool = TaskModel.create_url_tool(tid, request.json["name"])
+            if url_tool:
+                return {"message": f"Url/Tool created", "id": url_tool.id, 'toast_class': "success-subtle", "icon": "fas fa-plus"}, 200 
+            return {"message": "Error creating Url/Tool", 'toast_class': "danger-subtle"}, 400
+        return {"message": "Need to pass 'name", 'toast_class': "warning-subtle"}, 400
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@templating_blueprint.route("/task/<tid>/edit_url_tool/<utid>", methods=['POST'])
+@login_required
+@editor_required
+def edit_url_tool(tid, utid):
+    """Edit a Url/Tool"""
+    task = CommonModel.get_task_template(tid)
+    if task:
+        if "name" in request.json:
+            if TaskModel.edit_url_tool(tid, utid, request.json["name"]):
+                return {"message": "Url/Tool edited", 'toast_class': "success-subtle"}, 200 
+            return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
+        return {"message": "Need to pass 'name", 'toast_class': "warning-subtle"}, 400
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+@templating_blueprint.route("/task/<tid>/delete_url_tool/<utid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_url_tool(tid, utid):
+    """Delete a Url/Tool"""
+    task = CommonModel.get_task_template(tid)
+    if task:
+        if TaskModel.delete_url_tool(tid, utid):
+            return {"message": "Url/Tool deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200 
+        return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404

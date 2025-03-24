@@ -663,7 +663,6 @@ class CreateTask(Resource):
     @api.doc(params={
         "title": "Required. Title for a task", 
         "description": "Description of a task",
-        "url": "Link to a tool or a ressource",
         "deadline_date": "Date(%Y-%m-%d)", 
         "deadline_time": "Time(%H-%M)",
         "tags": "list of tags from taxonomies",

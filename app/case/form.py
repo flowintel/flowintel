@@ -68,7 +68,6 @@ class CaseEditForm(FlaskForm):
 class TaskForm(FlaskForm):
     title = StringField('Title', validators=[Optional()])
     description = TextAreaField('Description', validators=[Optional()])
-    url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     time_required = StringField('Time required', validators=[Optional()])
     deadline_date = DateField('Deadline date', validators=[Optional()])
     deadline_time = TimeField("Deadline time", validators=[Optional()])
@@ -92,7 +91,6 @@ class TaskForm(FlaskForm):
 class TaskEditForm(FlaskForm):
     title = StringField('Title', validators=[InputRequired()])
     description = TextAreaField('Description', validators=[Optional()])
-    url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     time_required = StringField('Time required', validators=[Optional()])
     deadline_date = DateField('Deadline date', validators=[Optional()])
     deadline_time = TimeField("Deadline time", validators=[Optional()])

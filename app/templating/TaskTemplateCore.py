@@ -127,7 +127,6 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         template = Task_Template(
             title=form_dict["title"],
             description=form_dict["body"],
-            url=form_dict["url"],
             uuid=str(uuid.uuid4()),
             nb_notes=0,
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
@@ -158,7 +157,6 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
 
         template.title=form_dict["title"]
         template.description=form_dict["body"]
-        template.url=form_dict["url"]
         template.time_required = form_dict["time_required"]
         
         self._edit(form_dict, tid)
@@ -257,6 +255,9 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
 
         db.session.commit()
 
+    ############
+    # Subtasks #
+    ############
 
     def create_subtask(self, tid, description):
         subtask = Subtask_Template(
@@ -284,5 +285,43 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
                 db.session.commit()
                 return True
         return False
+    
+    
+    ##############
+    # Urls/Tools #
+    ##############
+
+    def get_url_tool_template(self, utid):
+        return Task_Template_Url_Tool.query.get(utid)
+
+    def delete_url_tool(self, tid, utid):
+        url_tool = self.get_url_tool_template(utid)
+        if url_tool:
+            if url_tool.task_id == int(tid):
+                db.session.delete(url_tool)
+                db.session.commit()
+                return True
+        return False
+
+    def create_url_tool(self, tid, url_tool_name):
+        url_tool = Task_Template_Url_Tool(
+            name=url_tool_name,
+            task_id=tid
+        )
+        db.session.add(url_tool)
+        db.session.commit()
+
+        return url_tool
+
+    def edit_url_tool(self, tid, utid, url_tool_name):
+        url_tool = self.get_url_tool_template(utid)
+        if url_tool:
+            if url_tool.task_id == int(tid):
+                url_tool.name = url_tool_name
+                db.session.commit()
+
+                return True
+        return False
+
 
 TaskModel = TaskTemplateCore()

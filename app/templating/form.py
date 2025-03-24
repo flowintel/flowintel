@@ -15,7 +15,6 @@ from ..db_class.db import Case_Template, Task_Template
 class TaskTemplateForm(FlaskForm):
     title = StringField('Title', validators=[Optional()])
     body = TextAreaField('Description', validators=[Optional()])
-    url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     time_required = StringField('Time required', validators=[Optional()])
     tasks = SelectMultipleField(u'Task Template', coerce=int, validators=[Optional()])
 
@@ -36,7 +35,6 @@ class TaskTemplateEditForm(FlaskForm):
     template_id = HiddenField("")
     title = StringField('Title', validators=[InputRequired()])
     body = TextAreaField('Description', validators=[Optional()])
-    url = StringField('Tool/Link', validators=[Optional(), Length(0, 64)])
     time_required = StringField('Time required', validators=[Optional()])
 
     submit = SubmitField('Save')

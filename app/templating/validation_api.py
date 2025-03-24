@@ -45,9 +45,6 @@ def verif_add_task_template(data_dict):
     else:
         data_dict["body"] = data_dict["description"]
 
-    if "url" not in data_dict or not data_dict["url"]:
-        data_dict["url"] = ""
-
     return common_creation(data_dict)
 
 def verif_edit_task_template(data_dict, task_id):
@@ -57,8 +54,5 @@ def verif_edit_task_template(data_dict, task_id):
     
     if "description" not in data_dict or not data_dict["description"]:
         data_dict["body"] = task_template.description
-
-    if "url" not in data_dict or not data_dict["url"]:
-        data_dict["url"] = task_template.url
 
     return common_edit(data_dict, task_template)

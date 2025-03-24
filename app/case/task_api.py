@@ -596,3 +596,91 @@ class DeleteSubtask(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "task Not found"}, 404
     
+
+##############
+# Urls/Tools #
+##############
+
+@api.route('/<tid>/create_url_tool', methods=['POST'])
+@api.doc(description='Create a Url/Tool')
+class CreateUrlTool(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        'name': 'Required. name of the url or tool'
+    })
+    def post(self, tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if "name" in request.json:
+                    url_tool = TaskModel.create_url_tool(tid, request.json["name"], current_user)
+                    if url_tool:
+                        return {"message": f"Url/Tool created, id: {url_tool.id}", "url_tool_id": url_tool.id}, 201 
+                return {"message": "Need to pass 'name'"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Task Not found"}, 404
+    
+@api.route('/<tid>/edit_url_tool/<sid>', methods=['POST'])
+@api.doc(description='Edit a Url/Tool')
+class EditUrlTool(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={
+        'name': 'Required. name of the url or tool'
+    })
+    def post(self, tid, sid):
+        task = CommonModel.get_task(tid)
+        if task:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if "name" in request.json:
+                    url_tool = TaskModel.edit_url_tool(tid, sid, request.json["name"], current_user)
+                    if url_tool:
+                        return {"message": f"Url/Tool edited"}, 200 
+                return {"message": "Need to pass 'name'"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Task Not found"}, 404
+    
+@api.route('/<tid>/list_urls_tools', methods=['GET'])
+@api.doc(description='List Urls/Tools of a task')
+class ListUrlsTools(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        task = CommonModel.get_task(tid)
+        if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
+            return {"urls_tools": [url_tool.to_json() for url_tool in task.urls_tools]}, 200
+        return {"message": "task Not found"}, 404
+    
+@api.route('/<tid>/url_tool/<utid>', methods=['GET'])
+@api.doc(description='Get a Url/Tool of a task')
+class GetUrlTool(Resource):
+    method_decorators = [api_required]
+    def get(self, tid, utid):
+        task = CommonModel.get_task(tid)
+        if task:
+            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
+            url_tool = TaskModel.get_url_tool(utid)
+            if url_tool:
+                return url_tool.to_json()
+        return {"message": "task Not found"}, 404
+    
+@api.route('/<tid>/delete_url_tool/<utid>', methods=['GET'])
+@api.doc(description='Delete a Url/Tool')
+class DeleteUrlTool(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, tid, utid):
+        task = CommonModel.get_task(tid)
+        if task:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.delete_url_tool(tid, utid, current_user):
+                    return {"message": "Url/Tool deleted"}, 200
+                return {"message": "Url/Tool not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "task Not found"}, 404
+    
