@@ -30,12 +30,12 @@ def upgrade():
 
     tasks = connection.execute(sa.text("SELECT * FROM 'task__url__tool'")).fetchall()
     for task_ in tasks:
-        if task_.url_tool == None:
+        if task_.url_tool == None or not task_.url_tool:
             loc_url = sa.null()
         else:
             loc_url = task_.url_tool
         connection.execute(
-            sa.text(f"update task__url__tool SET name={loc_url} Where id={task_.id}")
+            sa.text(f"update task__url__tool SET name='{loc_url}' Where id={task_.id}")
         )
 
     try:
@@ -60,12 +60,12 @@ def downgrade():
     connection = op.get_bind()
     tasks = connection.execute(sa.text("SELECT * FROM 'task__url__tool'")).fetchall()
     for task_ in tasks:
-        if task_.name == None:
+        if task_.name == None or not task_.name:
             loc_url = sa.null()
         else:
             loc_url = task_.name
         connection.execute(
-            sa.text(f"update task__url__tool SET url_tool={loc_url} Where id={task_.id}")
+            sa.text(f"update task__url__tool SET url_tool='{loc_url}' Where id={task_.id}")
         )
 
     try:

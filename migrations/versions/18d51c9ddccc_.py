@@ -41,12 +41,12 @@ def upgrade():
 
     tasks = connection.execute(sa.text("SELECT * FROM 'task'")).fetchall()
     for task_ in tasks:
-        if task_.url == None:
+        if task_.url == None or not task_.url:
             loc_url = sa.null()
         else:
             loc_url = task_.url
         connection.execute(
-            sa.text(f"Insert into task__url__tool (task_id, url_tool) values({task_.id},{loc_url})")
+            sa.text(f"Insert into task__url__tool (task_id, url_tool) values({task_.id},'{loc_url}')")
         )
 
     try:
@@ -72,12 +72,12 @@ def downgrade():
 
     tasks_url_tool = connection.execute(sa.text("SELECT * FROM 'task__url__tool'")).fetchall()
     for task_ in tasks_url_tool:
-        if task_.url_tool == None:
+        if task_.url_tool == None or not task_.url_tool:
             loc_url = sa.null()
         else:
             loc_url = task_.url_tool
         connection.execute(
-            sa.text(f"Insert into task (url) values({loc_url})")
+            sa.text(f"Insert into task (url) values('{loc_url}')")
         )
 
     try:
