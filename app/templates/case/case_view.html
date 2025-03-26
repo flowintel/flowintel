@@ -168,12 +168,16 @@
     {% if case.description or case.ticket_id %}
     <div>
         <hr>
-        <div title="Ticket id" class="ticket-id">
-            <i class="fa-solid fa-ticket"></i>
-            {{case.ticket_id}}
-        </div>
+        {% if case.ticket_id %}
+            <div title="Ticket id" class="ticket-id">
+                <i class="fa-solid fa-ticket"></i>
+                {{case.ticket_id}}
+            </div>
+        {%endif%}
     
-        <pre>{{case.description}}</pre>
+        {% if case.description %}
+            <pre>{{case.description}}</pre>
+        {%endif%}
     </div>
     {%endif%}
     
