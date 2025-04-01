@@ -28,6 +28,7 @@ echo "Update"
 echo "##########"
 ## Update submodules
 git submodule update --remote
+pip install -U pytaxonomies
 python3 app.py -tg
 
 
@@ -35,4 +36,5 @@ echo ""
 echo "################"
 echo "# MISP Modules #"
 echo "################"
+pip install -U misp-modules
 python3 app.py -mm

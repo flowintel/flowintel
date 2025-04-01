@@ -13,8 +13,8 @@ python-dateutil
 schedule
 pytest
 gunicorn
-git+https://github.com/MISP/PyTaxonomies
-git+https://github.com/MISP/PyMISPGalaxies
+pytaxonomies
+pymispgalaxies
 git+https://github.com/DavidCruciani/pandoc-mermaid-filter
 jsonschema
 pymisp
