@@ -131,10 +131,10 @@ def misp_modules_change_config():
 def misp_module_loading(sid):
     """Loading page waiting for results"""
 
-    l = {"query": ["circl.lu"], "input": "domain", "modules": ["circl_passivedns"]}
-    session = SessionModel.Session_class(l, current_user)
-    session.uuid = 12345
-    return render_template("analyzer/misp_modules_loading.html", sid=session.uuid)
+    # l = {"query": ["circl.lu"], "input": "domain", "modules": ["circl_passivedns"]}
+    # session = SessionModel.Session_class(l, current_user)
+    # session.uuid = 12345
+    # return render_template("analyzer/misp_modules_loading.html", sid=session.uuid)
 
     for s in SessionModel.sessions:
         if s.uuid == sid:
@@ -147,10 +147,10 @@ def misp_module_loading(sid):
 @login_required
 def misp_module_loading_status(sid):
     """Loading page waiting for results"""
-    l = {"query": ["circl.lu"], "input": "domain", "modules": ["circl_passivedns"]}
-    session = SessionModel.Session_class(l, current_user)
-    session.uuid = 12345
-    return jsonify(session.status_for_test())
+    # l = {"query": ["circl.lu"], "input": "domain", "modules": ["circl_passivedns"]}
+    # session = SessionModel.Session_class(l, current_user)
+    # session.uuid = 12345
+    # return jsonify(session.status_for_test())
 
     for s in SessionModel.sessions:
         if s.uuid == sid:
