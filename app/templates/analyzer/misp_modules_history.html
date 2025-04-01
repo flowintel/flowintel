@@ -1,0 +1,144 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1 id="top">History</h1>
+
+    <hr>
+    <br>
+    <!-- pagination -->
+    <nav aria-label="Page navigation example" v-if="history && history.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="get_history(Math.max(1, current_page-1))">Previous</button>
+            </li>
+            <template v-for="cp in history.nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="get_history(cp)">[[cp]]</button>
+                </li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == history.nb_pages}">
+                <button class="page-link" @click="get_history(Math.min(current_page+1, history.nb_pages))">Next</button>
+            </li>
+        </ul>
+    </nav>
+    <!-- pagination -->
+    
+    <div v-if="history">
+        <template v-for="h in history.history">
+            <div class="list-group">
+                <div class="mb-3 d-flex" style="margin-bottom: 20px;">
+                    <a :href="'/analyzer/misp-modules/result/'+h.uuid" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">[[h.query.join(", ")]]</h5>
+                            <small><i>[[h.uuid]]</i></small>
+                        </div>
+                        <p class="mb-1" style="color: green;"><u>Input Attribute</u>:</p>
+                        <div>[[h.input]]</div>
+                        <br>
+                        <p class="mb-1" style="color: #2000ff;"><u>Modules</u>:</p>
+                        <div>
+                            [[h.modules.join(", ")]]
+                        </div>
+            
+                        
+                        <div class="d-flex w-100 justify-content-between">
+                            <div></div>
+                            <small><i>[[h.query_date]]</i></small>
+                        </div>
+                    </a>
+                    <div style="margin-top:auto">
+                        <button type="button" class="btn btn-danger" title="Delete misp-module history" data-bs-toggle="modal" :data-bs-target="'#delete_history_modal_'+h.uuid">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>   
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal delete history -->
+            <div class="modal fade" :id="'delete_history_modal_'+h.uuid" tabindex="-1" aria-labelledby="delete_history_modal" aria-hidden="true">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="delete_history_modal">Delete '[[h.query.join(", ")]]' ?</h1>
+                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button class="btn btn-danger" @click="delete_history(h)"><i class="fa-solid fa-trash"></i> Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+    
+    <!-- pagination -->
+    <nav aria-label="Page navigation example" v-if="history && history.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="get_history(Math.max(1, current_page-1))">Previous</button>
+            </li>
+            <template v-for="cp in history.nb_pages">
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="get_history(cp)">[[cp]]</button>
+                </li>
+            </template>
+            <li :class="{'page-item': true, 'disabled': current_page == history.nb_pages}">
+                <button class="page-link" @click="get_history(Math.min(current_page+1, history.nb_pages))">Next</button>
+            </li>
+        </ul>
+    </nav>
+    <!-- pagination -->
+    
+    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, ref} = Vue
+    import {message_list, display_toast} from '/static/js/toaster.js'
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const history = ref({})
+            const current_page = ref(1)
+
+            async function get_history(page){
+                let res = await fetch("/analyzer/misp-modules/history_data?page=" + page)
+                let loc = await res.json()
+                history.value = loc
+                current_page.value = page
+            }
+            get_history(1)
+
+            async function delete_history(loc_history) {
+                let res = await fetch("/analyzer/misp-modules/delete_history/" + loc_history.uuid)
+                if(await res.status == 200){
+                    let index = history.value.history.indexOf(loc_history)
+                    if(index > -1)
+                        history.value.history.splice(index, 1)
+
+                    var myModalEl = document.getElementById('delete_history_modal_'+loc_history.uuid);
+                    var modal = bootstrap.Modal.getInstance(myModalEl)
+                    modal.hide();
+                }
+                display_toast(res)
+            }
+
+
+            return {
+                message_list,
+                history,
+                current_page,
+                get_history,
+                delete_history
+            }
+        }
+    }).mount('#main-container')
+
+</script>
+{% endblock %}

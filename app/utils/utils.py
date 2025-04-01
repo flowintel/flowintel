@@ -8,12 +8,16 @@ import uuid
 import random
 import string
 import jsonschema
+import requests
 from ..db_class.db import Tags, User
 from functools import lru_cache
+from conf.config import Config
 
 MODULES = {}
 MODULES_CONFIG = {}
 MODULE_PATH = os.path.join(os.getcwd(), "app", "modules")
+
+MISP_MODULES = []
 
 
 def isUUID(uid):
@@ -106,6 +110,44 @@ def get_modules_list():
     for elem in loc_elem:
         del MODULES_CONFIG[elem]
         del MODULES[elem]
+
+
+
+
+def query_get_module(headers={'Content-type': 'application/json'}):
+    global MISP_MODULES
+    if not MISP_MODULES:
+        try:
+            r = requests.get(f"http://{Config.MISP_MODULE}/modules", headers=headers)
+        except ConnectionError:
+            return {"message": "Instance of misp-modules is unreachable"}
+        except Exception as e:
+            return {"message": e}
+        MISP_MODULES = r.json()
+        return r.json()
+    else:
+        return MISP_MODULES
+
+def query_post_query(data, headers={'Content-type': 'application/json'}):
+    try:
+        r = requests.post(f"http://{Config.MISP_MODULE}/query", data=json.dumps(data), headers=headers)
+    except ConnectionError:
+        return {"message": "Instance of misp-modules is unreachable"}
+    except Exception as e:
+        return {"message": e}
+    return r.json()
+
+
+def get_object(obj_name):
+    loc_path = os.path.join(os.getcwd(), "modules", "misp-objects", "objects")
+    if os.path.isdir(loc_path):
+        with open(os.path.join(loc_path, obj_name, "definition.json"), "r") as read_json:
+            loc_json = json.load(read_json)
+        return loc_json
+    return False
+
+
+
 
 caseSchema = {
     "type": "object",

@@ -29,3 +29,10 @@ echo "##########"
 ## Update submodules
 git submodule update --remote
 python3 app.py -tg
+
+
+echo ""
+echo "################"
+echo "# MISP Modules #"
+echo "################"
+python3 app.py -mm

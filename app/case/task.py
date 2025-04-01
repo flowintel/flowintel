@@ -371,7 +371,7 @@ def sort_tasks(cid):
 
     if status == 'true':
         status = True
-    elif status == 'false':
+    elif status == 'false' or not status:
         status = False
 
     if tags:

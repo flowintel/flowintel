@@ -3,6 +3,7 @@ import argparse
 from app.utils.init_db import create_admin
 from app.utils.init_taxonomies import create_taxonomies, create_galaxies
 from app.utils.utils import get_modules_list
+from app.utils.init_misp_modules import create_modules_db
 from flask import jsonify, render_template, request, Response
 import json
 
@@ -25,6 +26,7 @@ parser.add_argument("-i", "--init_db", help="Initialise the db if it not exist",
 parser.add_argument("-r", "--recreate_db", help="Delete and initialise the db", action="store_true")
 parser.add_argument("-d", "--delete_db", help="Delete the db", action="store_true")
 parser.add_argument("-tg", "--taxo_galaxies", help="Add or update taxonomies and galaxies", action="store_true")
+parser.add_argument("-mm", "--misp_modules", help="Add or update misp-modules", action="store_true")
 args = parser.parse_args()
 
 os.environ.setdefault('FLASKENV', 'development')
@@ -50,6 +52,7 @@ if args.init_db:
     with app.app_context():
         db.create_all()
         create_admin()
+        create_modules_db()
 elif args.recreate_db:
     with app.app_context():
         db.drop_all()
@@ -62,6 +65,9 @@ elif args.taxo_galaxies:
     with app.app_context():
         create_taxonomies()
         create_galaxies()
+elif args.misp_modules:
+    with app.app_context():
+        create_modules_db()
 else:
     get_modules_list()
     app.run(host=app.config.get("FLASK_URL"), port=app.config.get("FLASK_PORT"))

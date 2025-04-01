@@ -182,7 +182,7 @@
 
                 async function fetch_note_selected(){
                     note_selected.value = {}
-                    const res = await fetch("/analyzer/get_note_selected")
+                    const res = await fetch("/analyzer/misp-modules/get_note_selected")
                     let loc = await res.json()
                     note_selected.value = loc
                 }
@@ -234,7 +234,7 @@
                     $('#radio_case_task_hide').removeClass('d-none')
                     create_case.value = false
 
-                    const res_task = await fetch("/case/"+case_selected.value.id+"/sort_by_ongoing_task")
+                    const res_task = await fetch("/case/"+case_selected.value.id+"/sort_tasks")
                     let loc_task = await res_task.json()
                     result_search_task.value = loc_task
 
@@ -373,7 +373,7 @@
                     prepare_request["notes"] = editor.state.doc.toString()
                     prepare_request["misp-objects"] = list_misp_objects.value
 
-                    const res = await fetch("/analyzer/manage_notes_selected", {
+                    const res = await fetch("/analyzer/misp-modules/manage_notes_selected", {
                         method: "POST",
                         headers: {
                             "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"

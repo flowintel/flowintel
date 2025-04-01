@@ -815,39 +815,74 @@ class User_Connector_Instance(db.Model):
     api_key = db.Column(db.String(100), index=True)
 
 
-class Analyzer(db.Model):
+class Misp_Module(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(64), index=True, unique=True)
-    url = db.Column(db.String, index=True)
-    is_active = db.Column(db.Boolean, default=True)
+    name = db.Column(db.String, index=True, unique=True)
+    description = db.Column(db.String)
+    input_attr = db.Column(db.String)
+    version = db.Column(db.String(15))
 
     def to_json(self):
         json_dict = {
             "id": self.id,
             "name": self.name,
-            "url": self.url,
-            "is_active": self.is_active
+            "description": self.description,
+            "input_attr": self.input_attr,
+            "version": self.version
         }
         return json_dict
+    
 
-class Analyzer_Result(db.Model):
+class Misp_Module_Result(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    origin_url = db.Column(db.String, index=True)
-    is_pending = db.Column(db.Boolean, default=True)
-    request_date = db.Column(db.DateTime, index=True)
-    result = db.Column(db.String)
+    uuid = db.Column(db.String(36), index=True, unique=True)
+    modules_list = db.Column(db.String)
+    query_enter = db.Column(db.String)
+    input_query = db.Column(db.String)
+    result=db.Column(db.String)
+    nb_errors = db.Column(db.Integer, index=True)
+    query_date = db.Column(db.DateTime, index=True)
     user_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
         json_dict = {
             "id": self.id,
-            "origin_url": self.origin_url,
-            "is_pending": self.is_pending,
-            "request_date": self.request_date,
-            "result": json.loads(self.result)
+            "uuid": self.uuid,
+            "modules": json.loads(self.modules_list),
+            "query_enter": json.loads(self.query_enter),
+            "input_query": self.input_query,
+            "result": json.loads(self.result),
+            "nb_errors": self.nb_errors,
+            "query_date": self.query_date.strftime('%Y-%m-%d %H:%M'),
+            "user_id": self.user_id
         }
-        json_dict["user"] = User.query.get(self.user_id).to_json()
         return json_dict
+    
+    def history_json(self):
+        json_dict = {
+            "uuid": self.uuid,
+            "modules": json.loads(self.modules_list),
+            "query": json.loads(self.query_enter),
+            "input": self.input_query,
+            "query_date": self.query_date.strftime('%Y-%m-%d %H:%M')
+        }
+        return json_dict
+    
+
+class Configurable_Fields(db.Model):
+    """List of elements configurable for modules (api_key,url,...)"""
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String, index=True, unique=True)
+
+class Misp_Module_Config(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    module_id = db.Column(db.Integer, index=True)
+    config_id = db.Column(db.Integer, index=True)
+    user_id = db.Column(db.Integer, index=True)
+    value = db.Column(db.String, index=True)
+
+
+
     
 class Custom_Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

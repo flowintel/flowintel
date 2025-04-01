@@ -77,7 +77,7 @@ span#createTask{
 	overflow-x: hidden;
 	bottom: 3em;
 	right: calc(var(--bs-gutter-x) * .5);
-	height: 48%;
+	height: 67%;
 }
 
 
@@ -148,6 +148,9 @@ legend.analyzer-select-case {
     position: fixed;
     max-width: calc((100%) / 2 - 1*var(--bs-gutter-x) * .5);
     right: calc(var(--bs-gutter-x) * .5);
+    overflow-x: auto;
+    padding-top: 2px;
+    padding-bottom: 10px;
 }
 
 @media (min-width: 992px) {

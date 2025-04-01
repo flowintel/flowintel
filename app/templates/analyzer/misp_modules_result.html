@@ -36,7 +36,8 @@
             
             <h6>Select note</h6>
             <div class="accordion" v-if="Object.keys(analyzer_results).length" style="width: 95%">
-                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in JSON.parse(analyzer_results.result)">
+                <!-- <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in JSON.parse(analyzer_results.result)"> -->
+                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in analyzer_results.result">
                     <h2 class="accordion-header">
                         <button class="accordion-button" :title="key_query" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenMain-'+key_query" aria-expanded="true" :aria-controls="'panelsStayOpenMain-'+key_query">
                             <template v-if="key_query.length > 45">
@@ -113,6 +114,38 @@ Value: [[misp_attr]]
                     </div>
                 </div>
             </div>
+
+            <!-- Errors Part -->
+            <hr style="margin-top: 50px; width: 95%">
+            <h3 id="errors_part">Errors</h3>
+            <div class="accordion" style="width: 95%">
+                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in analyzer_results.result">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenMainError-'+key_query" aria-expanded="false" :aria-controls="'panelsStayOpenMainError-'+key_query">
+                            [[key_query]]
+                        </button>
+                    </h2>
+                    <div :id="'panelsStayOpenMainError-'+key_query" class="accordion-collapse collapse">
+                        <div class="accordion" style="padding: 25px">
+                            <div class="accordion-item" :id="'list-item-'+key_query+'-'+key" v-for="result, key in ele">
+                                <template v-if="'error' in result">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button" style="height: 40px;" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenError-'+key_query+'-'+key" aria-expanded="false" :aria-controls="'panelsStayOpenError-'+key_query+'-'+key">
+                                            [[key]]
+                                            <span style="margin-left: 5px;" title="Error">❌</span>
+                                        </button>
+                                    </h2>
+                                    <div :id="'panelsStayOpenError-'+key_query+'-'+key" class="accordion-collapse collapse">
+                                        <template v-if="main_tab == 'visual' || main_tab == 'json'">
+                                            <div class="accordion-body" v-html="generateCoreFormatUI(result)[0].outerHTML"></div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="analyse-editor-container" style="margin-top: 50px; margin-right: 10px;">
             <h6>Note selected</h6>
@@ -144,9 +177,11 @@ Value: [[misp_attr]]
 
                 async function fetch_result(){
                     analyzer_results.value = {}
-                    const res = await fetch("/analyzer/get_analyzer_results/"+window.location.pathname.split("/").slice(-1))
+                    const res = await fetch("/analyzer/misp-modules/result_data/{{sid}}")
                     let loc = await res.json()
                     analyzer_results.value = loc
+                    console.log(analyzer_results.value);
+                    
                 }
                 fetch_result()
 
@@ -185,7 +220,7 @@ Value: [[misp_attr]]
                     }
 
                     $('#insert_form').append(
-                        $('<form>').attr({"action": "/analyzer/nextPage", "name": "flowintel", "method": "post", "style": "display:none"}).append(
+                        $('<form>').attr({"action": "/analyzer/misp-modules/result_to_case", "name": "flowintel", "method": "post", "style": "display:none"}).append(
                             $("<input>").attr({"type": "text", "name": "note_selected"}).val(JSON.stringify(data_to_pass))
                         )
                     );

@@ -1,0 +1,65 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div style="margin-top: 20%;" class="progress" >
+    <div class="progress-bar" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" :style="'width:'+progress + '%;'">
+        [[progress]]%
+    </div>
+</div>
+<span v-if="status_site" style="margin-left: 5px; font-size: 13px; float: right;">[[status_site]]</span>
+
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, onMounted, nextTick } = Vue
+        import {display_toast, message_list, create_message} from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const progress = ref(0)
+                const status_site = ref()
+                let last_registered = 0
+
+                function pollScan() {
+                    // Loop function to update the list of identified domains
+                    $.getJSON('/analyzer/misp-modules/loading_status/{{sid}}', function(data) {
+                        progress.value = Math.round((data['complete']/data['total'])*100)
+                        status_site.value = 'Processed ' + data['complete'] + ' of ' + data['total']
+                        if (data['remaining'] > 0) {
+                            setTimeout(pollScan, 3000);
+                        } else {
+                            let sum = data['complete'] - data["nb_errors"]
+                            // Button Stop pressed
+                            if (data['stopped']){
+                                status_site.value = 'Stopped ! ' + sum + ' Success. ' + data["nb_errors"] + ' Errors. ' + data['complete'] + ' Total.'
+                                // Display result of the search
+                            }else{
+                                status_site.value = sum + ' Success. ' + data["nb_errors"] + ' Errors. ' + data['complete'] + ' Total.'
+                            }
+                        }
+                        if (last_registered < data['registered']) {
+                            last_registered = data['registered']
+                            window.location.href="/analyzer/misp-modules/result/{{sid}}"
+                        }
+                    });
+                }
+                pollScan()
+
+                return {
+                    message_list,
+                    progress,
+                    status_site
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
+{% endblock %}

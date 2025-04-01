@@ -41,7 +41,7 @@ def create_app():
     from .tools.tools import tools_blueprint
     from .my_assignment.my_assignment import my_assignment_blueprint
     from .connectors.connectors import connector_blueprint
-    from .analyzer.analyzer import analyzer_blueprint
+    from .analyzer.misp_modules import analyzer_blueprint
     from .custom_tags.custom_tags import custom_tags_blueprint
     from .templating.templating import templating_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")

@@ -206,7 +206,7 @@ export default {
             <legend class="analyzer-select-case">
                 <i class="fa-solid fa-note-sticky"></i> 
                 Notes 
-                <a class="btn btn-primary btn-sm" :href="'/analyzer/?case_id='+task.case_id+'&task_id='+task.id" style="margin-bottom: 1px;">
+                <a class="btn btn-primary btn-sm" :href="'/analyzer/misp-modules?case_id='+task.case_id+'&task_id='+task.id" style="margin-bottom: 1px;">
                     <i class="fa-solid fa-magnifying-glass"></i> 
                     Analyze
                 </a>

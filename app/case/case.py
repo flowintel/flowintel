@@ -189,7 +189,7 @@ def recurring(cid):
 @login_required
 def get_case(cid):
     """Return a case by id"""
-    case = CommonModel.get(cid)
+    case = CommonModel.get_case(cid)
     if not check_user_private_case(case):
         return None, 200
     return case.to_json(), 200

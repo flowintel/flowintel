@@ -1,17 +1,22 @@
 #!/bin/bash -i
-isscripted=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1`
+isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1`
+isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1`
 source env/bin/activate
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 function killscript {
-    if  [ $isscripted ]; then
+    if  [ $isscripted_fcm ]; then
 		screen -X -S fcm quit
+    fi
+    if  [ $isscripted_misp_mod ]; then
+		screen -X -S misp_mod_flowintel quit
     fi
 }
 
 function db_upgrade {
     export FLASKENV="development"
     python3 app.py -tg
+    python3 app.py -mm
 }
 
 function launch {
@@ -20,6 +25,8 @@ function launch {
     killscript
     screen -dmS "fcm"
     screen -S "fcm" -X screen -t "recurring_notification" bash -c "python3 startNotif.py; read x"
+    screen -dmS "misp_mod_flowintel"
+    screen -S "misp_mod_flowintel" -X screen -t "misp_modules_server" bash -c "misp-modules -l 127.0.0.1; read x"
     python3 app.py
 }
 
@@ -37,6 +44,8 @@ function production {
     db_upgrade
     screen -dmS "fcm"
     screen -S "fcm" -X screen -t "recurring_notification" bash -c "python3 startNotif.py; read x"
+    screen -dmS "misp_mod_flowintel"
+    screen -S "misp_mod_flowintel" -X screen -t "misp_modules_server" bash -c "misp-modules -l 127.0.0.1; read x"
     gunicorn -w 4 'app:create_app()' -b 127.0.0.1:7006 --access-logfile -
 }
 

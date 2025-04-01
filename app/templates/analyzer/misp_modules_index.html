@@ -14,35 +14,21 @@
 
 {% block content %}
     <div>
-        <h1>Analyzers 
+        <h1>MISP-Modules 
             <i class="fa fa-question" title="Select text from note present in case or tasks" style="font-size: initial;"></i>
-            <a class="btn btn-outline-primary mt-1 mx-3" href="/analyzer/config" style="float: right">
-                Config
+            <a class="btn btn-outline-primary mt-1 mx-2" href="/analyzer/misp-modules/config" style="float: right">
+                <i class="fa-solid fa-gear"></i> Config
             </a>
-            <a type="button" class="btn btn-outline-primary position-relative mt-1 mx-2" href="/analyzer/pending" style="float: right">
-                Pending
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                    <!-- Change here -->
-                    [[len_pending_results]]
-                    <span class="visually-hidden">unread messages</span>
-                </span>
+            <a class="btn btn-outline-primary mt-1 mx-2" href="/analyzer/misp-modules/history" style="float: right">
+                <i class="fa-solid fa-clock-rotate-left"></i> History
             </a>
+            
         </h1>
         
     </div>
     <hr>
 
     <div id="top"></div>
-
-    <div>
-        Select an Analyzer: 
-        <select data-placeholder="Select an analyzer" class="select2-select-analyzer form-control" name="analyzer_select" id="analyzer_select">
-            <option value="None">--</option>
-            <option v-for="analyzer, key in analyzers_list" :value="key">[[analyzer.name]]</option>
-        </select>
-        <span id="error-selector" style="color: brown;"></span>
-    </div>
-    <hr>
 
     <div class="row">
         <div class="col-6">
@@ -74,7 +60,6 @@
             </fieldset>
         </div>
     </div>
-    <button class="btn btn-primary" @click="submit()">Submit</button>
 
     <div class="row">
         <div class="col-6">
@@ -108,12 +93,9 @@
                 </template>
             </div>
         </div>
-        <div class="analyse-editor-container d-none" style="margin-top: 50px;">
-            <h6>Note selected</h6>
-            <div class="card card-body">
-                <div id="editor-selected-notes"></div>
-            </div>
-        </div>
+        
+        <misp_modules></misp_modules>
+        
     </div>
     <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
     <div id="insert_form"></div>
@@ -124,9 +106,13 @@
     <script type="module">
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
+        import misp_modules from '/static/js/analyzer/misp_modules.js'
 
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                misp_modules,
+            },
             setup() {
                 const result_search = ref([])
                 const result_search_task = ref([])
@@ -134,35 +120,11 @@
                 const task_selected = ref()
                 const main_tab = ref()
                 const all_notes = ref()
-                const analyzers_list = ref([])
-
-                const len_pending_results = ref(0)
 
                 let editor = ""
 
                 const md = window.markdownit()			// Library to Parse and display markdown
 		        md.use(mermaidMarkdown.default)			// Use mermaid library
-
-                async function fetchAnalyzers() {
-                    analyzers_list.value = null
-                    const res = await fetch(
-                        '/analyzer/analyzers_data'
-                    )
-                    analyzers_list.value = await res.json()
-                }
-                fetchAnalyzers()
-
-                async function fetch_len_pending(){
-                    const res = await fetch('/analyzer/get_len_pending_result')
-                        if (await res.status == 200){
-                            let loc = await res.json()
-                            len_pending_results.value = loc["len"]
-                        }
-                        else{
-                            display_toast(res)
-                        }
-                }
-                fetch_len_pending()
 
 
                 async function onInputCase(e){
@@ -190,7 +152,7 @@
                     let loc = await res.json()
                     all_notes.value = loc["notes"]
 
-                    const res_task = await fetch("/case/"+case_selected.value.id+"/sort_by_ongoing_task")
+                    const res_task = await fetch("/case/"+case_selected.value.id+"/sort_tasks")
                     let loc_task = await res_task.json()
                     result_search_task.value = loc_task
 
@@ -236,27 +198,6 @@
                     md.mermaid.init()
                 }
 
-                async function submit(){
-                    $("#error-selector").text("")
-                    let analyzer_select = $("#analyzer_select").val()
-                    if(!analyzer_select || analyzer_select == 'None'){
-                        $("#error-selector").text("Need to select an analyzer")
-                        return
-                    }
-
-                    let analyzer_url = analyzers_list.value[analyzer_select].url
-                    if(editor.state.doc.toString().trim().length){
-                        $('#insert_form').append(
-                            $('<form>').attr({"action": analyzer_url, "name": "analyzer_form", "method": "post", "style": "display:none"}).append(
-                                $("<input>").attr({"type": "text", "name": "query"}).val(JSON.stringify(editor.state.doc.text))
-                            )
-                        );
-                        document.forms['analyzer_form'].submit();
-                    }else{
-                        create_message("No note passed", 'warning-subtle', true)
-                    }
-                }
-
                 onMounted(async () => {
                     $('.select2-select-analyzer').select2({
                         theme: 'bootstrap-5',
@@ -294,12 +235,9 @@
                     task_selected,
                     all_notes,
                     md,
-                    analyzers_list,
-                    len_pending_results,
                     onInputCase,
                     select_case,
                     active_tab,
-                    submit
                 }
             }
         }).mount('#main-container')
