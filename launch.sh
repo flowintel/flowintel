@@ -13,10 +13,21 @@ function killscript {
     fi
 }
 
-function db_upgrade {
+function taxo_galaxy_update {
     export FLASKENV="development"
+
     python3 app.py -tg
+}
+
+function misp_module_update {
+    export FLASKENV="development"
+
+    screen -dmS "misp_mod_flowintel"
+    screen -S "misp_mod_flowintel" -X screen -t "misp_modules_server" bash -c "misp-modules -l 127.0.0.1; read x"
+
     python3 app.py -mm
+
+    killscript
 }
 
 function launch {
@@ -59,6 +70,8 @@ function init_db {
 
 	python3 app.py -i
 	python3 app.py -tg
+
+    killscript
 }
 
 function reload_db {
@@ -81,7 +94,9 @@ if [ "$1" ]; then
                                         ;;
         -ks | --killscript )        killscript;
                                         ;;
-        -u | --db_upgrade )         db_upgrade;
+        -tg | --taxo_galaxy )       taxo_galaxy_update;
+                                        ;;
+        -mm | --misp_modules )      misp_module_update;
     esac
     shift
 else
