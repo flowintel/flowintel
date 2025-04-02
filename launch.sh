@@ -53,6 +53,10 @@ function production {
 function init_db {
 	export FLASKENV="development"
 	export HISTORY_DIR=$history_dir/history
+
+	screen -dmS "misp_mod_flowintel"
+    screen -S "misp_mod_flowintel" -X screen -t "misp_modules_server" bash -c "misp-modules -l 127.0.0.1; read x"
+
 	python3 app.py -i
 	python3 app.py -tg
 }

@@ -27,51 +27,98 @@ def get_galaxies():
 
     return Galaxies(galaxies=galaxies_list), Clusters(clusters=clusters_list)
 
+def delete_double_tag(tag):
+    tag_db = Tags.query.filter_by(name=tag).all()
+    if len(tag_db) > 1:
+        for tag in tag_db:
+            if not tag.uuid:
+                db.session.delete(tag)
+                db.session.commit()
+                break
 
-def create_tag(tag, taxo_id, taxonomies: Taxonomies):
-    revert_match = taxonomies.revert_machinetag(tag)
-    if len(revert_match) == 3:
-        revert_match_colour = revert_match[2].colour
-    else:
-        revert_match_colour = revert_match[1].colour
-    
-    if not revert_match_colour:
-        namespace = tag.split(":")[0]
+def create_tag_db(loc_tag, tag, taxonomy: Taxonomy, taxonomies: Taxonomies, taxo_id: int):
+    loc_colour = loc_tag.colour
+    loc_uuid = loc_tag.uuid
+    loc_description = loc_tag.description
+    if not loc_colour:
+        namespace = taxonomy
         
         list_to_search = list(taxonomies.get(namespace).machinetags())
-        taxo_len = len(list_to_search)
         index = list_to_search.index(tag)
             
-        color_list = generate_palette_from_string(namespace, taxo_len)
+        color_list = generate_palette_from_string(namespace, len(list_to_search))
         color_tag = color_list[index]
     else:
-        color_tag = revert_match_colour
+        color_tag = loc_colour
 
-    description = revert_match[1].description
-    if not description:
-        description = revert_match[1].expanded
-        if not description:
-            description = ""
+    tag_db = Tags.query.filter_by(uuid=loc_uuid).first()
+    if not tag_db:
+        tag_db = Tags.query.filter_by(name=tag).first()
+    if not tag_db:
+        tag_db = Tags(
+            name=tag, 
+            color=color_tag, 
+            description=loc_description, 
+            taxonomy_id=taxo_id,
+            uuid=loc_uuid
+            )
+        db.session.add(tag_db)
+        db.session.commit()
+    else:
+        tag_db.name = tag
+        tag_db.color = color_tag
+        tag_db.description = loc_description
+        tag_db.uuid = loc_uuid
+        db.session.commit()
 
-    tag_db = Tags(name=tag, color=color_tag, description=description, taxonomy_id=taxo_id)
-    db.session.add(tag_db)
-    db.session.commit()
+def create_tag(taxonomy: Taxonomy, taxo_id: int, taxonomies: Taxonomies):
+    for p in taxonomies.get(taxonomy).values():
+        if taxonomies.get(taxonomy).has_entries():
+            for t in p.values():
+                loc_tag = f'{taxonomy}:{p}="{t}"'
+                create_tag_db(t, loc_tag, taxonomy, taxonomies, taxo_id)
+        else:
+            loc_tag = f'{taxonomy}:{p}'
+            create_tag_db(p, loc_tag, taxonomy, taxonomies, taxo_id)
 
 
 def create_taxonomies():
     print("[+] Create/Update Taxonomies...")
     taxonomies = get_taxonomies()
     for taxonomy in list(taxonomies.keys()):
-        if not Taxonomy.query.filter_by(name=taxonomy).first():
+        t = Taxonomy.query.filter_by(name=taxonomy).first()
+        if not t:
             taxo = Taxonomy(
                 name = taxonomy,
-                description = taxonomies.get(taxonomy).description
+                description = taxonomies.get(taxonomy).description,
+                version = taxonomies.get(taxonomy).version,
+                uuid = taxonomies.get(taxonomy).taxonomy["uuid"]
             )
             db.session.add(taxo)
             db.session.commit()
 
+            create_tag(taxonomy, taxo.id, taxonomies)
+        else:
+            if not t.version:
+                create_tag(taxonomy, t.id, taxonomies)
+
+                t.version = taxonomies.get(taxonomy).version
+                db.session.commit()
+            if not t.uuid:
+                create_tag(taxonomy, t.id, taxonomies)
+
+                t.uuid = taxonomies.get(taxonomy).taxonomy["uuid"]
+                db.session.commit()
+
+            if not int(t.version) == taxonomies.get(taxonomy).version:
+                create_tag(taxonomy, t.id, taxonomies)
+
+                t.version = taxonomies.get(taxonomy).version
+                db.session.commit()
+
+            create_tag(taxonomy, t.id, taxonomies)
             for tag in taxonomies.get(taxonomy).machinetags():
-                create_tag(tag, taxo.id, taxonomies)
+                delete_double_tag(tag)
 
 
 def create_galaxies():

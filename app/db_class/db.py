@@ -586,37 +586,41 @@ class Case_Task_Template(db.Model):
 
 class Taxonomy(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True)
     name = db.Column(db.String)
     description = db.Column(db.String)
     exclude = db.Column(db.Boolean, default=False)
     tags = db.relationship('Tags', backref='taxonomy', lazy='dynamic', cascade="all, delete-orphan")
+    version = db.Column(db.String(15))
 
     def to_json(self):
         return {
             "id": self.id,
+            "uuid": self.uuid,
             "name": self.name,
             "description": self.description,
-            "exclude": self.exclude
+            "exclude": self.exclude,
+            "version": self.version
         }
 
 class Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True)
     name = db.Column(db.String)
     color = db.Column(db.String)
     exclude = db.Column(db.Boolean, default=False)
     description = db.Column(db.String)
     taxonomy_id = db.Column(db.Integer, db.ForeignKey('taxonomy.id', ondelete="CASCADE"))
-    cluster_id = db.Column(db.Integer, db.ForeignKey('cluster.id', ondelete="CASCADE"))
 
     def to_json(self):
         return {
             "id": self.id,
+            "uuid": self.uuid,
             "name": self.name,
             "color": self.color,
             "exclude": self.exclude,
             "description": self.description,
-            "taxonomy_id": self.taxonomy_id,
-            "cluster_id": self.cluster_id
+            "taxonomy_id": self.taxonomy_id
         }
     
     def download(self):

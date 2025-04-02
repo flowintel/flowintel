@@ -229,6 +229,7 @@ def get_tags():
     """Get tags of a taxonomy"""
     taxonomy = request.args.get('taxonomy')
     tags = AdminModel.get_tags(taxonomy)
+    tags.sort(key=lambda x: x["name"])
     return {"tags": tags}
 
 @admin_blueprint.route("/taxonomy_status", methods=['GET'])
