@@ -44,6 +44,8 @@ def upgrade():
             batch_op.drop_column('url_tool')
     except OperationalError:
         print("Column 'url_tool' already dropped in 'task__url__tool'")
+    except ValueError:
+        print("column 'ix_task__url__tool_url_tool' already dropped from Task")
 
     # ### end Alembic commands ###
 

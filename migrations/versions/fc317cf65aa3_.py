@@ -38,13 +38,19 @@ def upgrade():
 
 
     connection = op.get_bind()
+    insp = sa.inspect(connection)
+    columns = insp.get_columns('task')
+    flag = any(c["name"] == 'url' for c in columns)
 
     tasks = connection.execute(sa.text("SELECT * FROM 'task__template'")).fetchall()
     for task_ in tasks:
-        if task_.url == None or not task_.url:
+        if not flag:
             loc_url = sa.null()
         else:
-            loc_url = task_.url
+            if task_.url == None or not task_.url:
+                loc_url = sa.null()
+            else:
+                loc_url = task_.url
         connection.execute(
             sa.text(f"Insert into task__template__url__tool (task_id, name) values({task_.id},'{loc_url}')")
         )
@@ -55,6 +61,8 @@ def upgrade():
             batch_op.drop_column('url')
     except OperationalError:
         print("column 'url' already dropped from Task__Template")
+    except ValueError:
+        print("Index 'ix_task__template_url' already dropped from Task")
 
     # ### end Alembic commands ###
 

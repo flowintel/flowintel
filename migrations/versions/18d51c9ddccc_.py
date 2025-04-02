@@ -38,22 +38,34 @@ def upgrade():
 
 
     connection = op.get_bind()
+    insp = sa.inspect(connection)
+    columns = insp.get_columns('task')
+    flag = any(c["name"] == 'url' for c in columns)
 
     tasks = connection.execute(sa.text("SELECT * FROM 'task'")).fetchall()
     for task_ in tasks:
-        if task_.url == None or not task_.url:
+        if not flag:
             loc_url = sa.null()
         else:
-            loc_url = task_.url
-        connection.execute(
-            sa.text(f"Insert into task__url__tool (task_id, url_tool) values({task_.id},'{loc_url}')")
-        )
+            if not task_.url or task_.url == None:
+                loc_url = sa.null()
+            else:
+                loc_url = task_.url
+        try:
+            connection.execute(
+                sa.text(f"Insert into task__url__tool (task_id, url_tool) values({task_.id},'{loc_url}')")
+            )
+        except OperationalError:
+            print("column 'url_tool' already dropped from Task. It's rename in next migrate script")
+            break
 
     try:
         with op.batch_alter_table('task', schema=None) as batch_op:
             batch_op.drop_index('ix_task_url')
             batch_op.drop_column('url')
     except OperationalError:
+        print("column 'url' already dropped from Task")
+    except ValueError:
         print("column 'url' already dropped from Task")
 
     # ### end Alembic commands ###

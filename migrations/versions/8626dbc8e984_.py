@@ -55,6 +55,8 @@ def upgrade():
                     type_=sa.String())
     except OperationalError:
         print("Task Title already changed")
+    except KeyError:
+        print("Column 'url' already dropped from 'task'")
     
     try:
         with op.batch_alter_table('case', schema=None) as batch_op:
@@ -78,6 +80,8 @@ def upgrade():
                     type_=sa.String())
     except OperationalError:
         print("Task template Title already changed")
+    except KeyError:
+        print("Column 'url' already dropped from 'task'")
     # ### end Alembic commands ###
 
 
