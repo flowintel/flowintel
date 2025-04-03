@@ -11,6 +11,8 @@ import signal
 import sys
 import subprocess
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 
 def signal_handler(sig, frame):
     path = os.path.join(os.getcwd(), "launch.sh")
@@ -20,7 +22,28 @@ def signal_handler(sig, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
+#######
+# Log #
+#######
+logs_folder = os.path.join(os.getcwd(), "logs")
+if not os.path.isdir(logs_folder):
+    os.mkdir(logs_folder)
+rootLogger = logging.getLogger()
 
+my_handler = RotatingFileHandler(f"{logs_folder}/record.log", mode='a', maxBytes=10*1024*1024, 
+                                 backupCount=5, encoding=None, delay=0)
+
+rootLogger.addHandler(my_handler)
+# fileHandler = logging.FileHandler('logs/record.log')
+# rootLogger.addHandler(fileHandler)
+
+consoleHandler = logging.StreamHandler()
+rootLogger.addHandler(consoleHandler)
+
+
+############
+# ArgParse #
+############
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--init_db", help="Initialise the db if it not exist", action="store_true")
 parser.add_argument("-r", "--recreate_db", help="Delete and initialise the db", action="store_true")
