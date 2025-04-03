@@ -4,7 +4,7 @@ from app.utils.init_db import create_admin
 from app.utils.init_taxonomies import create_taxonomies, create_galaxies
 from app.utils.utils import get_modules_list
 from app.utils.init_misp_modules import create_modules_db
-from flask import jsonify, render_template, request, Response
+from flask import jsonify, render_template, request, Response, send_from_directory
 import json
 
 import signal
@@ -46,13 +46,16 @@ def handle_csrf_error(e):
     response = {"error": "CSRF token expired", "csrf_token": True}
     return jsonify(response), 400  # Code 400 pour erreur côté client
 
+@app.route('/favicon.ico') 
+def favicon(): 
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
     
 
 if args.init_db:
     with app.app_context():
         db.create_all()
         create_admin()
-        create_modules_db()
 elif args.recreate_db:
     with app.app_context():
         db.drop_all()
