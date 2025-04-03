@@ -139,7 +139,6 @@
 	</div>
 
     <hr>
-    <div id="top"></div>
 
     <!-- pagination -->
     <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
@@ -272,8 +271,6 @@
             <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
         </ul>
     </nav>
-
-    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
 
 

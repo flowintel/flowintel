@@ -24,7 +24,6 @@
 
     <hr>
 
-    <div id="top"></div>
     <template v-if="users_list">
         <template v-for="user in users_list.users">
             <div class="list-group" style="margin-bottom: 10px;">
@@ -72,8 +71,6 @@
             <li :class="{'page-item': true, 'disabled': current_page == users_list.nb_pages}"><button class="page-link" @click="fetchUsers(Math.min(current_page+1, users_list.nb_pages))">Next</button></li>
         </ul>
     </nav>
-
-    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
 
 

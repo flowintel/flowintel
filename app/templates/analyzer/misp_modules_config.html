@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div id="top"> 
+    <div> 
         <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/analyzer/misp-modules"><i class="fa-solid fa-arrow-left"></i></a></h1>
         <h1 style="display: inline-block; font-size: xx-large;">Modules Config</h1> 
     </div>
@@ -56,8 +56,6 @@
             <button v-if="Object.keys(current_config).length > 3" class="btn btn-primary" @click="change_config()">Save</button>
         </div>
     </div>
-    
-    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
 
 {% block script %}

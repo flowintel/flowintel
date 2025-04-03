@@ -11,7 +11,6 @@
     <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => emit_result(tasks)" @current_filter="filter => current_filter = filter" ></my_assignment_filter>
 </div>
 <hr>
-<div id="top"></div>
 
 <!-- pagination -->
 <nav aria-label="Page navigation example" v-if="tasks_list && tasks_list.nb_pages > 1">
@@ -101,9 +100,6 @@
         <li :class="{'page-item': true, 'disabled': current_page == tasks_list.nb_pages}"><button class="page-link" @click="fetchAssignedTask(Math.min(current_page+1, tasks_list.nb_pages))">Next</button></li>
     </ul>
 </nav>
-
-<span id="goTop">[<a href="#top">Go Back Top</a>]</span>
-
 {% endblock %}
 
 {% block script %}

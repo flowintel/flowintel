@@ -25,6 +25,7 @@ function misp_module_update {
     screen -dmS "misp_mod_flowintel"
     screen -S "misp_mod_flowintel" -X screen -t "misp_modules_server" bash -c "misp-modules -l 127.0.0.1; read x"
 
+    sleep 3
     python3 app.py -mm
 
     killscript
@@ -70,6 +71,7 @@ function init_db {
 
 	python3 app.py -i
 	python3 app.py -tg
+	python3 app.py -mm
 
     killscript
 }

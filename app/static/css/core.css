@@ -13,9 +13,14 @@ body {
   }
 }
 
-span#goTop, span#project-version{
+span#goTop{
   position: fixed;
   right: 1em;
+  bottom: 1em;
+}
+span#project-version{
+  position: fixed;
+  left: 50%;
   bottom: 1em;
 }
 

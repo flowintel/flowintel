@@ -92,8 +92,6 @@
             <li :class="{'page-item': true, 'disabled': current_page == nb_pages}"><button class="page-link" @click="fetchGalaxies(Math.min(current_page+1, nb_pages))">Next</button></li>
         </ul>
     </nav>
-
-    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
 
 

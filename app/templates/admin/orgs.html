@@ -25,7 +25,6 @@
 
     <hr>
 
-    <div id="top"></div>
     {% if current_user.is_admin() %}
         <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New User</a>
     {% endif %}
@@ -113,8 +112,6 @@
             <li :class="{'page-item': true, 'disabled': current_page == orgs_list.nb_pages}"><button class="page-link" @click="fetchOrgs(Math.min(current_page+1, orgs_list.nb_pages))">Next</button></li>
         </ul>
     </nav>
-
-    <span id="goTop">[<a href="#top">Go Back Top</a>]</span>
 {% endblock %}
 
 
