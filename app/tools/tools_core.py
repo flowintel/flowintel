@@ -113,6 +113,10 @@ def core_read_json_file(case, current_user):
         if task["subtasks"]:
             for subtask in task["subtasks"]:
                 TaskModel.create_subtask(task_created.id, subtask["description"], current_user)
+        
+        if task["urls_tools"]:
+            for urls_tools in task["urls_tools"]:
+                TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
 
     
 def read_json_file(files_list, current_user):

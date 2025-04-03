@@ -183,7 +183,10 @@ taskSchema = {
         "description": {"type": "string"},
         "uuid": {"type": "string"},
         "deadline:": {"type": "string"},
-        "url:": {"type": "string"},
+        "urls_tools:": {
+            "type": "array", 
+            "items": {"type": "object"},
+        },
         "notes:": {
             "type": "array", 
             "items": {"type": "object"},
