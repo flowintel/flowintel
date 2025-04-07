@@ -21,12 +21,17 @@ def get_org(id):
 
 def edit_user_core(form_dict, id):
     """Edit the user to the DB"""
+
+    matrix_id = form_dict["matrix_id"]
+    if not matrix_id:
+        matrix_id = None
+
     user = get_user(id)
 
     user.first_name=form_dict["first_name"]
     user.last_name=form_dict["last_name"]
     user.nickname=form_dict["nickname"]
     user.email=form_dict["email"]
-    user.matrix_id=form_dict["matrix_id"]
+    user.matrix_id=matrix_id
 
     db.session.commit()
