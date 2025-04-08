@@ -246,13 +246,15 @@ class Subtask(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
     completed = db.Column(db.Boolean, default=False)
     description = db.Column(db.String, nullable=True)
+    task_order_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
         json_dict = {
             "id": self.id,
             "task_id": self.task_id,
             "completed": self.completed,
-            "description": self.description
+            "description": self.description,
+            "task_order_id": self.task_order_id
         }
         return json_dict
     

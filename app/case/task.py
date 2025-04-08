@@ -700,6 +700,29 @@ def delete_subtask(cid, tid, sid):
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
+@task_blueprint.route("/<cid>/task/<tid>/change_order_subtask/<sid>", methods=['GET'])
+@login_required
+@editor_required
+def change_order_subtask(cid, tid, sid):
+    """Change the order of tasks"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            task = CommonModel.get_task(tid)
+            if task:
+                subtask = TaskModel.get_subtask(sid)
+                if subtask:
+                    up_down = None
+                    if "up_down" in request.args:
+                        up_down = request.args.get("up_down")
+                        TaskModel.change_order_subtask(task, subtask, up_down)
+                        return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
+                    return {"message": "Need to pass up_down", 'toast_class': "danger-subtle"}, 400
+                return {"message": "Subtask Not found", 'toast_class': "danger-subtle"}, 404
+            return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
 ##############
 # Connectors #
 ##############
