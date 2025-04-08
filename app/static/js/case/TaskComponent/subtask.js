@@ -98,11 +98,40 @@ export default {
 			await display_toast(res)
 		}
 
+		async function move_subtask(task, subtask, up_down){
+			// Move the task up and down
+			let cp = 0
+			up_down ? cp = -1 : cp = 1
+
+			const res = await fetch('/case/' + task.case_id +'/task/' + task.id + '/change_order_subtask/' + subtask.id + "?up_down=" + up_down)
+			await display_toast(res)
+			for( let i in props.task.subtasks){
+				if(props.task.subtasks[i]["task_order_id"] == subtask.task_order_id+cp){
+					props.task.subtasks[i]["task_order_id"] = subtask.task_order_id
+					subtask.task_order_id += cp
+					break
+				}
+			}
+			props.task.subtasks.sort(order_task)
+		}
+
+		function order_task(a, b){
+			// Helper for move_task function
+			if(a.task_order_id > b.task_order_id){
+				return 1
+			}
+			if(a.task_order_id < b.task_order_id){
+				return -1
+			}
+			return 0
+		}
+
 		return {
             complete_subtask,
             create_subtask,
             edit_subtask,
-            delete_subtask
+            delete_subtask,
+			move_subtask
 		}
     },
 	template: `
@@ -131,7 +160,15 @@ export default {
 						</template>
                         [[subtask.description]]
 						<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-							<button @click="delete_subtask(task, subtask.id)" class="btn btn-danger btn-sm" style="float: right;" ><i class="fa-solid fa-trash"></i></button>
+							<button class="btn btn-secondary btn-sm" title="Move subtask down" @click="move_subtask(task,subtask,false)" style="float: right;">
+								<i class="fa-solid fa-arrow-down"></i>
+							</button>
+							<button class="btn btn-secondary btn-sm" title="Move subtask up" @click="move_subtask(task,subtask,true)" style="float: right;">
+								<i class="fa-solid fa-arrow-up"></i>
+							</button>
+							<button @click="delete_subtask(task, subtask.id)" class="btn btn-danger btn-sm" style="float: right;">
+								<i class="fa-solid fa-trash"></i>
+							</button>
 							<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" :data-bs-target="'#edit_subtask_'+subtask.id" style="float: right;">
 								<i class="fa-solid fa-pen-to-square"></i>
 							</button>

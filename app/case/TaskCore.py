@@ -440,7 +440,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
             finalTask["subtasks"] = []
             cp_open=0
-            for subtask in task.subtasks:
+            subtasks = Subtask.query.filter_by(task_id=task.id).order_by(Subtask.task_order_id).all()
+            for subtask in subtasks:
                 finalTask["subtasks"].append(subtask.to_json())
                 if not subtask.completed:
                     cp_open += 1
@@ -676,9 +677,15 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         return False
 
     def create_subtask(self, tid, subtask_description, current_user):
+        task = CommonModel.get_task(tid)
+        cp = 0
+        for s in task.subtasks:
+            cp += 1
+
         subtask = Subtask(
             description=subtask_description,
-            task_id=tid
+            task_id=tid,
+            task_order_id=cp
         )
         db.session.add(subtask)
         db.session.commit()
@@ -698,6 +705,22 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 self.update_task_time_modification(task, current_user, f"Subtask '{subtask.description}' edited for '{task.title}'")
                 return True
         return False
+    
+    def change_order_subtask(self, task, subtask, up_down):
+        """Change the order of tasks"""
+        for subtask_in_task in task.subtasks:
+            # A task move up, case_order_id decrease by one
+            if up_down == "true":
+                if subtask_in_task.task_order_id == subtask.task_order_id - 1:
+                    subtask_in_task.task_order_id += 1
+                    subtask.task_order_id -= 1
+                    break
+            else:
+                if subtask_in_task.task_order_id == subtask.task_order_id + 1:
+                    subtask_in_task.task_order_id -= 1
+                    subtask.task_order_id += 1
+                    break
+        db.session.commit()
 
     ##############
     # Connectors #
