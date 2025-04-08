@@ -92,7 +92,7 @@ EOF
 
 # Install Python dependencies (Python 3.9 + pip)
 RUN python3 --version && pip3 --version && pip3 install -r requirements.txt --timeout 240
-
+ENV PATH="/home/flowintel/.local/bin:${PATH}"
 # Init git submodules & app
 RUN git submodule init && git submodule update && chmod +x launch.sh
 RUN script -q -c "./launch.sh --init_db" /dev/null
@@ -102,7 +102,7 @@ RUN screen -wipe || true
 
 # Final permissions check (in case)
 RUN chmod +x ./launch.sh
-ENV PATH="/home/flowintel/.local/bin:${PATH}"
+
 
 # Default command: interactive bash + launch
 CMD ["bash", "-i", "./launch.sh", "-l"]
