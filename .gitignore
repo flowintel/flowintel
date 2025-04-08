@@ -1,9 +1,43 @@
+# Ignore Python compiled files
 *.pyc
+
+# Ignore SQLite database files
 *.sqlite
+
+# Ignore history directory contents
 history/*
+
+# Ignore uploads directory contents
 uploads/*
+
+# Ignore specific error file
 mermaid-filter.err
+
+# Ignore matrix store files in notify_user module
 app/modules/notify_user/matrix_store/*
+
+# Ignore matrix session file in notify_user module
 app/modules/notify_user/matrix_session.txt
+
+# Ignore environment files
 env/*
+
+# Ignore log files
 *.log
+
+# Ignore virtual environment directory
+.venv/*
+
+# Ignore __pycache__ directory
+__pycache__/
+
+# Ignore IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local development
+.env
+.env.local
+tmp/
