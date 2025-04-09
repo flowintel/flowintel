@@ -67,10 +67,14 @@ export default {
 
 		async function query_modules(){
 			let res = await fetch("/analyzer/misp-modules/get_modules")
-			let loc = await res.json()
-			modules_list.value = loc
+			if(await res.status == 200){
+				let loc = await res.json()
+				modules_list.value = loc
 
-			await query_misp_attributes()
+				await query_misp_attributes()
+			}else{
+				display_toast(res, true)
+			}
 		}
 		query_modules()
 

@@ -119,10 +119,8 @@ def query_get_module(headers={'Content-type': 'application/json'}):
     if not MISP_MODULES:
         try:
             r = requests.get(f"http://{Config.MISP_MODULE}/modules", headers=headers)
-        except ConnectionError:
-            return {"message": "Instance of misp-modules is unreachable"}
-        except Exception as e:
-            return {"message": e}
+        except requests.exceptions.ConnectionError:
+            return {"message": "Instance of misp-modules is unreachable", "toast_class": "danger-subtle"}
         MISP_MODULES = r.json()
         return r.json()
     else:
@@ -131,10 +129,10 @@ def query_get_module(headers={'Content-type': 'application/json'}):
 def query_post_query(data, headers={'Content-type': 'application/json'}):
     try:
         r = requests.post(f"http://{Config.MISP_MODULE}/query", data=json.dumps(data), headers=headers)
-    except ConnectionError:
-        return {"message": "Instance of misp-modules is unreachable"}
+    except requests.exceptions.ConnectionError:
+        return {"message": "Instance of misp-modules is unreachable", "toast_class": "danger-subtle"}
     except Exception as e:
-        return {"message": e}
+        return {"message": e, "toast_class": "danger-subtle"}
     return r.json()
 
 
