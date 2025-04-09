@@ -1,0 +1,6 @@
+flowintel:
+  image: ghcr.io/flowintel/flowintel:latest
+  ports:
+    - "7006:7006"
+  volumes:
+    - ./flowintel:/home/flowintel/app
