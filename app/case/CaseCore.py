@@ -966,14 +966,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         db.session.add(case_misp_object)
         db.session.commit()
 
-        for attribute in request_json["attributes"]:
-            attr = Misp_Attribute(
-                case_misp_object_id=case_misp_object.id,
-                value=attribute["value"],
-                type=attribute["type"]
-            )
-            db.session.add(attr)
-            db.session.commit()
+        self.add_attributes_object(cid, case_misp_object.id, request_json)
 
         case = CommonModel.get_case(cid)
         CommonModel.save_history(case.uuid, current_user, f"New MISP-Object created")
@@ -1009,10 +1002,25 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         misp_object = self.get_misp_object(oid)
         if int(cid) == misp_object.case_id:
             for attribute in request_json["attributes"]:
+                first_seen = None
+                last_seen = None
+                ids_flag = False
+                if attribute["first_seen"]:
+                    first_seen = datetime.datetime.strptime(attribute["first_seen"], '%Y-%m-%dT%H:%M')
+                if attribute["last_seen"]:
+                    last_seen = datetime.datetime.strptime(attribute["last_seen"], '%Y-%m-%dT%H:%M')
+
+                if attribute["ids"] and attribute["ids"] == 'true':
+                    ids_flag = True
+
                 attr = Misp_Attribute(
                     case_misp_object_id=misp_object.id,
                     value=attribute["value"],
-                    type=attribute["type"]
+                    type=attribute["type"],
+                    first_seen=first_seen,
+                    last_seen=last_seen,
+                    comment=attribute["comment"],
+                    ids_flag=ids_flag,
                 )
                 db.session.add(attr)
                 db.session.commit()

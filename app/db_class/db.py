@@ -954,14 +954,27 @@ class Misp_Attribute(db.Model):
     case_misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"))
     value = db.Column(db.String, index=True)
     type = db.Column(db.String, index=True)
+    first_seen = db.Column(db.DateTime, index=True)
+    last_seen = db.Column(db.DateTime, index=True)
+    comment = db.Column(db.String, nullable=True)
+    ids_flag = db.Column(db.Boolean)
 
     def to_json(self):
         json_dict = {
             "id": self.id,
             "case_misp_object_id": self.case_misp_object_id,
             "value": self.value,
-            "type": self.type
+            "type": self.type,
+            "first_seen": self.first_seen, # Added to the dict here in case of empty
+            "last_seen": self.last_seen,   # Added to the dict here in case of empty
+            "comment": self.comment,
+            "ids_flag": self.ids_flag
         }
+
+        if self.first_seen:
+            json_dict["first_seen"] = self.first_seen.strftime('%Y-%m-%d %H:%M')
+        if self.last_seen:
+            json_dict["last_seen"] = self.last_seen.strftime('%Y-%m-%d %H:%M')
 
         return json_dict
 

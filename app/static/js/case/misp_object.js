@@ -264,6 +264,10 @@ export default {
                                         <tr>
                                             <th>value</th>
                                             <th>type</th>
+                                            <th>first seen</th>
+                                            <th>last seen</th>
+                                            <th>IDS</th>
+                                            <th>comment</th>
                                             <th></th>
                                         </tr>
                                     </thead>
@@ -271,6 +275,17 @@ export default {
                                         <tr v-for="attribute, key_attr in misp_object.attributes ">
                                             <td>[[attribute.value]]</td>
                                             <td>[[attribute.type]]</td>
+
+                                            <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
+                                            <td v-else><i>none</i></td>
+
+                                            <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
+                                            <td v-else><i>none</i></td>
+
+                                            <td>[[attribute.ids_flag]]</td>
+
+                                            <td v-if="attribute.comment">[[attribute.comment]]</td>
+                                            <td v-else><i>none</i></td>
                                             <td>
                                                 <button type="button" class="btn btn-primary btn-sm" title="Edit attribute"
                                                 @click="open_modal_add_attribute(misp_object.object_uuid, 'modal-edit-attr-', attribute.id)">

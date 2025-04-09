@@ -15,7 +15,11 @@ def create_object(misp, object, event_id):
     misp_object = MISPObject(object["name"], standalone=False)
     attr_uuid_list = list()
     for attr in object["attributes"]:
-        loc_attr = misp_object.add_attribute(attr["type"], value=attr["value"])
+        loc_attr = misp_object.add_attribute(attr["type"], value=attr["value"],
+                                             to_ids=attr["ids_flag"], 
+                                             comment=attr["comment"], 
+                                             first_seen=attr["first_seen"], 
+                                             last_seen=attr["last_seen"])
         attr_uuid_list.append({
             "attribute_id": attr["id"],
             "uuid": loc_attr.uuid
@@ -41,8 +45,24 @@ def all_object_to_misp(misp, event, objects, object_uuid_list):
             for attr in object["attributes"]:
                 try:
                     attribute = loc_object.get_attribute_by_uuid(attr["uuid"])
+                    flag_modif = False
                     if not attr["value"] == attribute.value:
                         attribute.value = attr["value"]
+                        flag_modif = True
+                    if not attr["comment"] == attribute.comment:
+                        attribute.comment = attr["comment"]
+                        flag_modif = True
+                    if not attr["first_seen"] == attribute.first_seen:
+                        attribute.first_seen = attr["first_seen"]
+                        flag_modif = True
+                    if not attr["last_seen"] == attribute.last_seen:
+                        attribute.last_seen = attr["last_seen"]
+                        flag_modif = True
+                    if not attr["ids_flag"] == attribute.to_ids:
+                        attribute.to_ids = attr["ids_flag"]
+                        flag_modif = True
+
+                    if flag_modif:
                         res = misp.update_attribute(attribute)
                         if "errors" in res:
                             return res, object_uuid_list
