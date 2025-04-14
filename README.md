@@ -42,7 +42,7 @@ run the **installation** script `./install.sh`
 - password: `admin`
 
 ## Documentation
-A more detailed documentation can be found here: [flowintel.github.io/flowintel-doc](flowintel.github.io/flowintel-doc)
+A more detailed documentation can be found here: [https://flowintel.github.io/flowintel-doc](https://flowintel.github.io/flowintel-doc)
 
 ## License
 
