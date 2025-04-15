@@ -82,7 +82,7 @@ span#createTask{
 	overflow-x: hidden;
 	bottom: 3em;
 	right: calc(var(--bs-gutter-x) * .5);
-	height: 67%;
+	height: calc(100vh - 360px);
 }
 
 
