@@ -3,7 +3,7 @@ from ..db_class.db import User, Role, Org
 
 def verif_add_user(data_dict):
     if "first_name" not in data_dict or not data_dict["first_name"]:
-        return {"message": "Please give a fist name for the user"}
+        return {"message": "Please give a first name for the user"}
 
     if "last_name" not in data_dict or not data_dict["last_name"]:
         return {"message": "Please give a last name for the user"}
@@ -14,7 +14,7 @@ def verif_add_user(data_dict):
     if "email" not in data_dict or not data_dict["email"]:
         return {"message": "Please give an email for the user"}
     elif User.query.filter_by(email=data_dict["email"]).first():
-        return {"message": "Email already exist"}
+        return {"message": "Email already exists"}
     
     if "matrix_id" not in data_dict or not data_dict["matrix_id"]:
         data_dict["matrix_id"] = None
@@ -66,7 +66,7 @@ def verif_add_org(data_dict):
     if "name" not in data_dict or not data_dict["name"]:
         return {"message": "Please give a name for the org"}
     elif Org.query.filter_by(name=data_dict["name"]).first():
-        return {"message": "Name already exist"}
+        return {"message": "Name already exists"}
 
     if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = ""
@@ -82,7 +82,7 @@ def verif_edit_org(data_dict, org_id):
     if "name" not in data_dict or data_dict["name"] == org.name or not data_dict["name"]:
         data_dict["name"] = org.name
     elif Org.query.filter_by(name=data_dict["name"]).first():
-        return {"message": "Name already exist"}
+        return {"message": "Name already exists"}
 
     if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = org.description
