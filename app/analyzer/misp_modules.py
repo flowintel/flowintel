@@ -23,11 +23,14 @@ def index():
     """Analyzer index page"""
     case_id = ""
     task_id = ""
+    misp_object = ""
     if 'case_id' in request.args:
         case_id = request.args.get('case_id')
     if 'task_id' in request.args:
         task_id = request.args.get('task_id')
-    return render_template("analyzer/misp_modules_index.html", case_id=case_id, task_id=task_id)
+    if "misp_object" in request.args:
+        misp_object = True
+    return render_template("analyzer/misp_modules_index.html", case_id=case_id, task_id=task_id, misp_object=misp_object)
 
 @analyzer_blueprint.route("/misp-modules/result_to_case", methods=['GET', 'POST'])
 @login_required

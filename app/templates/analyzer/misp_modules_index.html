@@ -63,13 +63,24 @@
         <div class="col-6">
             <ul class="nav nav-tabs" style="margin-bottom: 10px;">
                 <li class="nav-item">
-                    <button :disabled="!case_selected || !case_selected.notes" class="nav-link" id="tab-case-notes" @click="active_tab('case')">Case notes</button>
+                    <button :disabled="!case_selected || !case_selected.notes" class="nav-link" id="tab-case-notes" @click="active_tab('case')">
+                        Case notes
+                    </button>
                 </li>
                 <li class="nav-item">
-                    <button :disabled="!case_selected || !case_selected.notes" class="nav-link" id="tab-all-notes" @click="active_tab('all')">All Tasks notes</button>
+                    <button :disabled="!case_selected || !case_selected.notes" class="nav-link" id="tab-all-notes" @click="active_tab('all')">
+                        All Tasks notes
+                    </button>
                 </li>
                 <li class="nav-item">
-                    <button :disabled="!task_selected || !task_selected.notes" class="nav-link" id="tab-task-notes" @click="active_tab('task')">Task notes</button>
+                    <button :disabled="!task_selected || !task_selected.notes" class="nav-link" id="tab-task-notes" @click="active_tab('task')">
+                        Task notes
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button :disabled="!case_selected" class="nav-link" id="tab-misp-object" @click="active_tab('misp-object')">
+                        MISP Objects
+                    </button>
                 </li>
             </ul>
             
@@ -90,6 +101,51 @@
                     <div class="all-tasks-notes" v-html="md.render(note.note)"></div>
                 </template>
             </div>
+            <div v-else-if="main_tab == 'misp-object'">
+                <h6>Select Values</h6>
+                <div v-for="misp_object, key_obj in case_misp_objects" class="accordion p-1" :id="'accordion-'+key_obj">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
+                            [[ misp_object.object_name ]]
+                        </button>
+                        </h2>
+                        <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
+                            <div class="accordion-body">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>value</th>
+                                            <th>type</th>
+                                            <th>first seen</th>
+                                            <th>last seen</th>
+                                            <th>IDS</th>
+                                            <th>comment</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="attribute, key_attr in misp_object.attributes ">
+                                            <td>[[attribute.value]]</td>
+                                            <td>[[attribute.type]]</td>
+
+                                            <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
+                                            <td v-else><i>none</i></td>
+
+                                            <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
+                                            <td v-else><i>none</i></td>
+
+                                            <td>[[attribute.ids_flag]]</td>
+
+                                            <td v-if="attribute.comment">[[attribute.comment]]</td>
+                                            <td v-else><i>none</i></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <misp_modules></misp_modules>
@@ -104,11 +160,13 @@
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import misp_modules from '/static/js/analyzer/misp_modules.js'
+        import misp_object from '/static/js/case/misp_object.js'
 
         createApp({
             delimiters: ['[[', ']]'],
             components: {
                 misp_modules,
+                misp_object
             },
             setup() {
                 const result_search = ref([])
@@ -117,6 +175,7 @@
                 const task_selected = ref()
                 const main_tab = ref()
                 const all_notes = ref()
+                const case_misp_objects = ref()
 
                 let editor = ""
 
@@ -153,6 +212,8 @@
                     let loc_task = await res_task.json()
                     result_search_task.value = loc_task
 
+                    fetch_case_misp_object(case_selected.value.id)
+
                     $('.select2-select').select2({
                         theme: 'bootstrap-5',
                         width: '100%'
@@ -172,6 +233,7 @@
                             document.getElementById("tab-case-notes").classList.add("active")
                             document.getElementById("tab-all-notes").classList.remove("active")
                             document.getElementById("tab-task-notes").classList.remove("active")
+                            document.getElementById("tab-misp-object").classList.remove("active")
                         }
                         await nextTick()
                     }
@@ -181,6 +243,7 @@
                             document.getElementById("tab-all-notes").classList.add("active")
                             document.getElementById("tab-case-notes").classList.remove("active")
                             document.getElementById("tab-task-notes").classList.remove("active")
+                            document.getElementById("tab-misp-object").classList.remove("active")
                             await nextTick()
                         }
                     }else if(tab_name == 'task'){
@@ -189,10 +252,30 @@
                             document.getElementById("tab-task-notes").classList.add("active")
                             document.getElementById("tab-case-notes").classList.remove("active")
                             document.getElementById("tab-all-notes").classList.remove("active")
+                            document.getElementById("tab-misp-object").classList.remove("active")
+                            await nextTick()
+                        }
+                    }else if(tab_name == 'misp-object'){
+                        main_tab.value = 'misp-object'
+                        if ( !document.getElementById("tab-misp-object").classList.contains("active") ){
+                            document.getElementById("tab-misp-object").classList.add("active")
+                            document.getElementById("tab-case-notes").classList.remove("active")
+                            document.getElementById("tab-all-notes").classList.remove("active")
+                            document.getElementById("tab-task-notes").classList.remove("active")
                             await nextTick()
                         }
                     }
                     md.mermaid.init()
+                }
+
+                async function fetch_case_misp_object(case_id){
+                    const res = await fetch("/case/"+case_id+"/get_case_misp_object")
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        case_misp_objects.value = loc["misp-object"]
+                    }
                 }
 
                 onMounted(async () => {
@@ -214,12 +297,21 @@
                         let loc = await res.json()
                         await select_case(loc)
 
-                        for(let i in result_search_task.value){
-                            if(result_search_task.value[i].id == '{{task_id}}'){
-                                task_selected.value = result_search_task.value[i]
-                                break
+                        if("{{misp_object}}"){
+                            fetch_case_misp_object("{{case_id}}")
+                            
+                            active_tab("misp-object")
+                        }else{
+                            for(let i in result_search_task.value){
+                                if(result_search_task.value[i].id == '{{task_id}}'){
+                                    task_selected.value = result_search_task.value[i]
+                                    break
+                                }
                             }
+                            active_tab("task")
                         }
+
+                        
                     }
                 })
 
@@ -232,6 +324,7 @@
                     task_selected,
                     all_notes,
                     md,
+                    case_misp_objects,
                     onInputCase,
                     select_case,
                     active_tab,

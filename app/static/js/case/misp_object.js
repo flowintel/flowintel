@@ -253,6 +253,10 @@ export default {
                     <button class="btn btn-primary" title="Add a new object" data-bs-toggle="modal" data-bs-target="#modal-add-object">
                         <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
                     </button>
+                    <a type="button" class="btn btn-secondary ms-3" title="Analyze misp-objects"
+                    :href="'/analyzer/misp-modules?case_id='+case_id+'&misp_object=True'">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </a>
                     <button class="btn btn-outline-primary" style="float: right;" data-bs-toggle="modal" data-bs-target="#modal-send-to">
                         <i class="fa-solid fa-link"></i> MISP Connectors
                     </button>
