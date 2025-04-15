@@ -4,7 +4,7 @@ export default {
 	props: {
 		template: Object,
         only_attr: Boolean,
-        key: Number
+        key_obj: Number
 	},
     emits:[
         "object-attribute-added",
@@ -14,24 +14,24 @@ export default {
         const list_attr = ref([])
         let attribueCount = 0
 
-        function add_attribute(){
+        function add_attribute(){            
             attribueCount += 1
             
-            list_attr.value.push({
-                "id": attribueCount, "value": $("#input-value").val(), "type": $("#select-type").val(),
-                "first_seen": $("#input-first-seen").val(), "last_seen": $("#input-last-seen").val(),
-                "comment": $("#textarea-comment").val(), "ids": $("#input-ids").is(":checked")
-            })
-            emit('object-attribute-added', 
-                {"id": attribueCount, "value": $("#input-value").val(), "type": $("#select-type").val(),
-                "first_seen": $("#input-first-seen").val(), "last_seen": $("#input-last-seen").val(),
-                "comment": $("#textarea-comment").val(), "ids": $("#input-ids").is(":checked")
-            })
-            $("#input-value").val("")
-            $("#textarea-comment").val("")
-            $("#input-first-seen").val("")
-            $("#input-last-seen").val("")
-            $("#input-ids").prop("checked", false);
+            let loc = {
+                "id": attribueCount, "value": $("#input-value-"+props.key_obj).val(), "type": $("#select-type-"+props.key_obj).val(),
+                "first_seen": $("#input-first-seen-"+props.key_obj).val(), "last_seen": $("#input-last-seen-"+props.key_obj).val(),
+                "comment": $("#textarea-comment-"+props.key_obj).val(), "ids_flag": $("#input-ids-"+props.key_obj).is(":checked")
+            }
+            
+            list_attr.value.push(loc)
+            $("#input-value-"+props.key_obj).val("")
+            $("#textarea-comment-"+props.key_obj).val("")
+            $("#input-first-seen-"+props.key_obj).val("")
+            $("#input-last-seen-"+props.key_obj).val("")
+            $("#input-ids-"+props.key_obj).prop("checked", false);
+
+            emit('object-attribute-added', loc)
+            
         }
 
         function deleteObjectAttribute(attribute_id){
@@ -50,7 +50,7 @@ export default {
             if(props.only_attr){
                 $('.select2-type').select2({
                     theme: 'bootstrap-5',
-                    dropdownParent: $("#modal-add-attribute-"+props.key)
+                    dropdownParent: $("#modal-add-attribute-"+props.key_obj)
                 })
             }else{
                 $('.select2-type').select2({
@@ -105,7 +105,7 @@ export default {
                         <label>last_seen</label>
                     </div>
                     <div class="form-floating col">
-                        <input :name="'attribute_'+attribute.id+'_ids'" :value="attribute.ids" class="form-control" type="checkbox" disabled>
+                        <input :name="'attribute_'+attribute.id+'_ids'" :value="attribute.ids_flag" class="form-control" type="checkbox" disabled>
                         <label>IDS</label>
                     </div>
                     <div class="form-floating col">
@@ -121,9 +121,9 @@ export default {
 
             <div class="input-group has-validation mb-3">
                 <label class="input-group-text" for="input-value">value</label>
-                <input class="form-control" id="input-value">
+                <input class="form-control" :id="'input-value-'+key_obj">
                 <label class="input-group-text" for="select-type">type</label>
-                <select class="select2-type form-control" id="select-type" v-if="template">
+                <select class="select2-type form-control" :id="'select-type-'+key_obj" v-if="template">
                     <template v-for="attr in template.attributes">
                                                  // object_relation::type
                         <option :value="attr.name">[[attr.name]]::[[attr.misp_attribute]]</option>
@@ -132,20 +132,20 @@ export default {
             </div>
             <div class="input-group has-validation mb-3">
                 <label class="input-group-text">first seen</label>
-                <input class="form-control" id="input-first-seen" type="datetime-local">
+                <input class="form-control" :id="'input-first-seen-'+key_obj" type="datetime-local">
 
                 <label class="input-group-text" for="input-last-seen">last seen</label>
-                <input class="form-control" id="input-last-seen" name="input-last-seen" type="datetime-local">
+                <input class="form-control" :id="'input-last-seen-'+key_obj" name="input-last-seen" type="datetime-local">
             </div>
             <div class="input-group has-validation mb-3">
                 <label class="input-group-text">Comment</label>
-                <textarea class="form-control" id="textarea-comment"></textarea>
+                <textarea class="form-control" :id="'textarea-comment-'+key_obj"></textarea>
             </div>
             <div class="d-flex mb-3">
                 <label class="input-group-text me-1" for="input-ids">
                     IDS flag
                 </label>
-                <input id="input-ids" name="input-ids" type="checkbox" value="y">
+                <input :id="'input-ids-'+key_obj" name="input-ids" type="checkbox" value="y">
             </div>
 
             <button @click="add_attribute()" class="btn btn-outline-primary">

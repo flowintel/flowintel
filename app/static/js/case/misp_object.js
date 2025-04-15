@@ -123,6 +123,10 @@ export default {
         async function edit_attr(misp_object_id, attr_id){
             let value = $("#attribute_value_"+attr_id).val()
             let type = $("#select-type-attr-"+attr_id).val()
+            let first_seen = $("#attribute_"+attr_id+"_first_seen").val()
+            let last_seen = $("#attribute_"+attr_id+"_last_seen").val()
+            let ids = $("#attribute_"+attr_id+"_ids").is(":checked")
+            let comment = $("#attribute_"+attr_id+"_comment").val()            
 
             if(value){
                 let url = "/case/"+props.case_id+"/misp_object/"+misp_object_id+"/edit_attr/"+attr_id
@@ -133,7 +137,11 @@ export default {
                     },
                     body: JSON.stringify({
                         "value": value,
-                        "type": type
+                        "type": type,
+                        "first_seen": first_seen,
+                        "last_seen": last_seen,
+                        "comment": comment,
+                        "ids_flag": ids
                     })
                 });
                 if(await res.status==200){
@@ -143,10 +151,16 @@ export default {
                                 if(attr_id == case_misp_objects.value[i].attributes[j].id){
                                     case_misp_objects.value[i].attributes[j].value = value
                                     case_misp_objects.value[i].attributes[j].type = type
+                                    case_misp_objects.value[i].attributes[j].first_seen = first_seen.replace("T", " ");
+                                    case_misp_objects.value[i].attributes[j].last_seen = last_seen.replace("T", " ");
+                                    case_misp_objects.value[i].attributes[j].ids_flag = ids
+                                    case_misp_objects.value[i].attributes[j].comment = comment
                                 }
                             }
                         }
                     }
+                    var myModal = new bootstrap.Modal(document.getElementById("modal-edit-attr-"+attr_id), {});
+                    myModal.hide();
                 }
                 display_toast(res)
             }else{
@@ -244,16 +258,16 @@ export default {
                     </button>
                 </div>
                 <div class="row">
-                <div v-for="misp_object, key in case_misp_objects" class="accordion col-6 p-1" :id="'accordion-'+key">
+                <div v-for="misp_object, key_obj in case_misp_objects" class="accordion col-6 p-1" :id="'accordion-'+key_obj">
                     <div class="accordion-item">
                         <h2 class="accordion-header">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key" aria-expanded="true" :aria-controls="'collapse-'+key">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
                             [[ misp_object.object_name ]]
                         </button>
                         </h2>
-                        <div :id="'collapse-'+key" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key">
+                        <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
                             <div class="accordion-body">
-                                <button type="button" class="btn btn-primary btn-sm" title="Add new attributes" @click="open_modal_add_attribute(misp_object.object_uuid, 'modal-add-attribute-', key)" >
+                                <button type="button" class="btn btn-primary btn-sm" title="Add new attributes" @click="open_modal_add_attribute(misp_object.object_uuid, 'modal-add-attribute-', key_obj)" >
                                     <i class="fa-solid fa-plus"></i>
                                 </button>
                                 <button type="button" class="btn btn-danger btn-sm" @click="delete_object(misp_object.object_id)" title="Delete object">
@@ -308,17 +322,46 @@ export default {
                                                     </div>
                                                     <div class="modal-body">
                                                         <div class="form-floating input-group mb-3">
-                                                            <div class="form-floating">
-                                                                <input :id="'attribute_value_'+attribute.id" class="form-control" :value="attribute.value">
-                                                                <label>value</label>
-                                                            </div>
-                                                            <div class="form-floating">
-                                                                <select class="form-select" :id='"select-type-attr-"+attribute.id'>
-                                                                    <template v-for="attr in activeTemplateAttr.attributes">
-                                                                        <option :value="attr.name">[[attr.name]]</option>
-                                                                    </template>
-                                                                </select>
-                                                                <label>type</label>
+                                                            <div class="row">
+                                                                <div class="form-floating col">
+                                                                    <input :id="'attribute_value_'+attribute.id" class="form-control" :value="attribute.value">
+                                                                    <label>value</label>
+                                                                </div>
+                                                                <div class="form-floating col">
+                                                                    <select class="form-select" :id='"select-type-attr-"+attribute.id'>
+                                                                        <template v-for="attr in activeTemplateAttr.attributes">
+                                                                            <option :value="attr.name">[[attr.name]]</option>
+                                                                        </template>
+                                                                    </select>
+                                                                    <label>type</label>
+                                                                </div>
+                                                                <div class="form-floating col">
+                                                                    <input :id="'attribute_'+attribute.id+'_first_seen'" 
+                                                                            :value="attribute.first_seen" 
+                                                                            class="form-control"
+                                                                            type="datetime-local">
+                                                                    <label>first_seen</label>
+                                                                </div>
+                                                                <div class="form-floating col">
+                                                                    <input :id="'attribute_'+attribute.id+'_last_seen'" 
+                                                                            :value="attribute.last_seen" 
+                                                                            class="form-control"
+                                                                            type="datetime-local">
+                                                                    <label>last_seen</label>
+                                                                </div>
+                                                                <div class="col">
+                                                                    <input :id="'attribute_'+attribute.id+'_ids'" 
+                                                                            :checked="attribute.ids_flag"
+                                                                            type="checkbox">
+                                                                    <label>IDS</label>
+                                                                </div>
+                                                                <div class="form-floating col">
+                                                                    <textarea :id="'attribute_'+attribute.id+'_comment'" 
+                                                                                :value="attribute.comment" 
+                                                                                class="form-control">
+                                                                    </textarea>
+                                                                    <label>Comment</label>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -342,7 +385,7 @@ export default {
                     </div>
 
                     <!-- Modal add attributes -->
-                    <div class="modal fade" :id="'modal-add-attribute-'+key" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
+                    <div class="modal fade" :id="'modal-add-attribute-'+key_obj" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
                         <div class="modal-dialog modal-xl">
                             <div class="modal-content">
                             <div class="modal-header">
@@ -353,13 +396,13 @@ export default {
                                 <AddObjectAttributes v-if="activeTemplateAttr.uuid"
                                     :template="activeTemplateAttr"
                                     :only_attr="true"
-                                    :key="key"
+                                    :key_obj="key_obj"
                                     @object-attribute-added="(object) => add_attribute_list(object)"
                                     @object-attribute-deleted="delete_attribute_list"/>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                <button type="button" class="btn btn-primary" @click="save_changes(misp_object.object_id, key)">Save changes</button>
+                                <button type="button" class="btn btn-primary" @click="save_changes(misp_object.object_id, key_obj)">Save changes</button>
                             </div>
                             </div>
                         </div>
@@ -488,7 +531,7 @@ export default {
                             </div>
                             <div class="tab-pane" id="attributes" role="tabpanel" aria-labelledby="attributes-tab">
                                 <AddObjectAttributes v-if="activeTemplate.uuid"
-                                    :key="activeTemplate.uuid"
+                                    :key_obj="activeTemplate.uuid"
                                     :template="activeTemplate"
                                     :only_attr="false"
                                     @object-attribute-added="(object) => add_attribute_list(object)"

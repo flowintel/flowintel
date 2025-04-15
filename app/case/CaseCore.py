@@ -1010,7 +1010,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 if attribute["last_seen"]:
                     last_seen = datetime.datetime.strptime(attribute["last_seen"], '%Y-%m-%dT%H:%M')
 
-                if attribute["ids"] and attribute["ids"] == 'true':
+                if attribute["ids_flag"] and attribute["ids_flag"] == 'true':
                     ids_flag = True
 
                 attr = Misp_Attribute(
@@ -1032,8 +1032,23 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if int(case_id) == misp_object.case_id:
             attribute = self.get_misp_attribute(attr_id)
             if attribute.case_misp_object_id == int(object_id):
+                first_seen = None
+                last_seen = None
+                ids_flag = False
+                if request_json["first_seen"]:
+                    first_seen = datetime.datetime.strptime(request_json["first_seen"], '%Y-%m-%dT%H:%M')
+                if request_json["last_seen"]:
+                    last_seen = datetime.datetime.strptime(request_json["last_seen"], '%Y-%m-%dT%H:%M')
+
+                if request_json["ids_flag"] and (request_json["ids_flag"] == 'true' or request_json["ids_flag"] == True):
+                    ids_flag = True
+
                 attribute.value = request_json["value"]
                 attribute.type = request_json["type"]
+                attribute.first_seen=first_seen
+                attribute.last_seen=last_seen
+                attribute.comment=request_json["comment"]
+                attribute.ids_flag=ids_flag
                 db.session.commit()
                 return {"message": "Attribute updated", "toast_class": "success-subtle"}, 200
             return {"message": "Attribute not found in this object", "toast_class": "warning-subtle"}, 404
