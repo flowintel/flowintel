@@ -4,68 +4,311 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/chart.umd.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
+<h1>Dashboard</h1>
+<hr class="fading-line">
 
-    <br/>
+<ul class="nav nav-tabs" style="margin-bottom: 10px;">
+    <li class="nav-item">
+        <button class="nav-link active" id="tab-case" aria-current="page" @click="active_tab('case')">Cases</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="tab-task" @click="active_tab('task')">Tasks</button>
+    </li>
+    
+        <li class="nav-item">
+            {% if current_user.is_admin() %}
+                <button class="nav-link" id="tab-admin" @click="active_tab('admin')">Admin</button>
+            {%else%}
+                <button class="nav-link disabled" id="tab-admin" @click="active_tab('admin')">Admin</button>
+            {%endif%}
+        </li>
+</ul>
+
+<template v-if="main_tab == 'case'">
+    <i>Cases where the org is in</i>
+    <div class="card card-body p-4 m-5">
+        <div><canvas id="cases-month"></canvas></div>
+    </div>
+    <div class="card card-body p-4 m-5">
+        <div><canvas id="cases-year"></canvas></div>
+    </div>
+
+    <div class="card card-body p-4 m-5">
+        <div><canvas id="cases-elapsed-time"></canvas></div>
+    </div>
+
     <div class="card card-body">
         <div class="d-flex w-100 justify-content-evenly">
             <div>
-                <div><h3><u><a href="/case">My Cases</a></u></h3></div>
+                <div><h3><u>Total Cases</u></h3></div>
                 <div>
-                    <h6>Open: {{cases_open_len}}</h6>
+                    <h6>Open: [[case_stat.total_opened_cases]]</h6>
                 </div>
                 <div>
-                    <h6>Closed: {{cases_closed_len}}</h6>
-                </div>
-            </div>
-            <div>
-                <div><h3><u><a href="/my_assignment">My Tasks</a></u></h3></div>
-                <div>
-                    <h6>Open: {{tasks_open_len}}</h6>
-                </div>
-                <div>
-                    <h6>Closed: {{tasks_closed_len}}</h6>
+                    <h6>Closed: [[case_stat.total_closed_cases]]</h6>
                 </div>
             </div>
         </div>
     </div>
-    <br/>
+</template>
+<template v-else-if="main_tab == 'task'">
+    <i>Tasks where the org is in</i>
+    <div class="card card-body p-4 m-5">
+        <div><canvas id="tasks-month"></canvas></div>
+    </div>
+    <div class="card card-body p-4 m-5">
+        <div><canvas id="tasks-year"></canvas></div>
+    </div>
 
-    {% if current_user.is_admin() %}
+    <div class="card card-body p-4 m-5">
+        <div><canvas id="tasks-elapsed-time"></canvas></div>
+    </div>
+    <div class="card card-body p-4 m-5">
+        <div><canvas id="tasks-per-case"></canvas></div>
+    </div>
+
     <div class="card card-body">
         <div class="d-flex w-100 justify-content-evenly">
             <div>
-                <div><h3><u> All Cases</u></h3></div>
+                <div><h3><u>Total Tasks</u></h3></div>
                 <div>
-                    <h6>Open: {{all_cases_open}}</h6>
+                    <h6>Open: [[case_stat.total_opened_tasks]]</h6>
                 </div>
                 <div>
-                    <h6>Closed: {{all_cases_closed}}</h6>
-                </div>
-            </div>
-            <div>
-                <div><h3><u>All Tasks</u></h3></div>
-                <div>
-                    <h6>Open: {{all_tasks_open}}</h6>
-                </div>
-                <div>
-                    <h6>Closed: {{all_tasks_closed}}</h6>
+                    <h6>Closed: [[case_stat.total_closed_tasks]]</h6>
                 </div>
             </div>
         </div>
     </div>
-    {% endif %}
+</template>
+<template v-else-if="main_tab == 'admin'">
+    <h3>Months</h3>
+    <div class="row card-stats">
+        <div class="col">
+            <canvas id="admin-cases-month"></canvas>
+        </div>
+        <div class="col">
+            <canvas id="admin-tasks-month"></canvas>
+        </div>
+    </div>
+
+    <h3 class="mt-3">Years</h3>
+    <div class="row card-stats">
+        <div class="col">
+            <canvas id="admin-cases-year"></canvas>
+        </div>
+        <div class="col">
+            <canvas id="admin-tasks-year"></canvas>
+        </div>
+    </div>
+
+    <h3 class="mt-3">Elapsed time</h3>
+    <div class="row card-stats">
+        <div class="col">
+            <canvas id="admin-cases-elapsed-time"></canvas>
+        </div>
+        <div class="col">
+            <canvas id="admin-tasks-elapsed-time"></canvas>
+        </div>
+    </div>
+
+    <h3 class="mt-3">Tasks per case</h3>
+    <div class="card card-body p-4 m-5">
+        <canvas id="admin-tasks-per-case"></canvas>
+    </div>
+
+
+    <div class="card card-body">
+        <div class="row">
+            <div class="d-flex w-100 justify-content-evenly col">
+                <div>
+                    <div><h3><u>Total Cases</u></h3></div>
+                    <div>
+                        <h6>Open: [[admin_stat.total_opened_cases]]</h6>
+                    </div>
+                    <div>
+                        <h6>Closed: [[admin_stat.total_closed_cases]]</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100 justify-content-evenly col">
+                <div>
+                    <div><h3><u>Total Tasks</u></h3></div>
+                    <div>
+                        <h6>Open: [[admin_stat.total_opened_tasks]]</h6>
+                    </div>
+                    <div>
+                        <h6>Closed: [[admin_stat.total_closed_tasks]]</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</template>
 {% endblock %}
 
 {% block script %}
 <script type="module">
-    const { createApp} = Vue
-    import {message_list} from '../../static/js/toaster.js'
+    const { ref, createApp, onMounted, nextTick} = Vue
+    import {message_list} from '/static/js/toaster.js'
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
+            const case_stat = ref([])
+            const admin_stat = ref([])
+            const main_tab = ref("case")
+
+            async function active_tab(tab_name){
+                if(tab_name == 'case'){
+                    main_tab.value = 'case'
+                    if ( !document.getElementById("tab-case").classList.contains("active") ){
+                        document.getElementById("tab-case").classList.add("active")
+                        document.getElementById("tab-task").classList.remove("active")
+                        document.getElementById("tab-admin").classList.remove("active")
+
+                        await nextTick()
+                        init_chart_case()
+                    }
+                }else if(tab_name == 'task'){
+                    main_tab.value = 'task'
+                    if ( !document.getElementById("tab-task").classList.contains("active") ){
+                        document.getElementById("tab-task").classList.add("active")
+                        document.getElementById("tab-case").classList.remove("active")
+                        document.getElementById("tab-admin").classList.remove("active")
+
+                        await nextTick()
+                        init_chart_task()
+                    }
+                }else if(tab_name == 'admin'){
+                    main_tab.value = 'admin'
+                    if ( !document.getElementById("tab-admin").classList.contains("active") ){
+                        document.getElementById("tab-admin").classList.add("active")
+                        document.getElementById("tab-case").classList.remove("active")
+                        document.getElementById("tab-task").classList.remove("active")
+                        
+                        await nextTick()
+
+                        create_chart_double(admin_stat.value, 'line', "admin-cases-month", 'Cases opened by month', 'Cases closed by month', 'cases-opened-month','cases-closed-month', 'Cases per Months')
+                        create_chart_double(admin_stat.value, 'bar', "admin-cases-year", 'Cases opened by year', 'Cases closed by year', 'cases-opened-year','cases-closed-year', 'Cases per Years')
+                        create_chart_simple(admin_stat.value, 'bar', 'admin-cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time', 'Weeks needed to close a case')
+
+                        create_chart_double(admin_stat.value, 'line', "admin-tasks-month", 'Tasks opened by month', 'Tasks closed by month', 'tasks-opened-month','tasks-closed-month', 'Tasks per Months')
+                        create_chart_double(admin_stat.value, 'bar', "admin-tasks-year", 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year','tasks-closed-year', 'Tasks per Years')
+                        create_chart_simple(admin_stat.value, 'bar', 'admin-tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time', 'Weeks needed to close a task')
+                        create_chart_simple(admin_stat.value, 'bar', 'admin-tasks-per-case', 'Number of tasks per case', 'tasks-per-case', 'Number of tasks per case')
+                    }
+                }
+            }
+
+            function create_chart_double(stats_list, chart_type, id_balise, opened_label, closed_label, opened_key, closed_key, chart_title){
+                new Chart(
+                    document.getElementById(id_balise),
+                    {
+                        type: chart_type,
+                        data: {
+                            labels: stats_list[opened_key].map(row => row.calendar),
+                            datasets: [
+                                {
+                                    label: opened_label,
+                                    data: stats_list[opened_key].map(row => row.count),
+                                    borderWidth: 3,
+                                },
+                                {
+                                    label: closed_label,
+                                    data: stats_list[closed_key].map(row => row.count),
+                                    borderWidth: 3,
+                                },
+                            ]
+                        },
+                        options: {
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: (ctx) => chart_title
+                                }
+                            }
+                        }
+                    }
+                );
+            }
+
+            function create_chart_simple(stats_list, chart_type, id_balise, label, dict_key, chart_title){
+                new Chart(
+                    document.getElementById(id_balise),
+                    {
+                        type: chart_type,
+                        data: {
+                            labels: stats_list[dict_key].map(row => row.calendar),
+                            datasets: [
+                                {
+                                    label: label,
+                                    data: stats_list[dict_key].map(row => row.count),
+                                    borderWidth: 3,
+                                },
+                            ]
+                        },
+                        options: {
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: (ctx) => chart_title
+                                }
+                            }
+                        }
+                    }
+                );
+            }
+
+            function init_chart_case(){
+                create_chart_double(case_stat.value, 'line', "cases-month", 'Cases opened by month', 'Cases closed by month', 'cases-opened-month','cases-closed-month', 'Cases per Months')
+                create_chart_double(case_stat.value, 'bar', "cases-year", 'Cases opened by year', 'Cases closed by year', 'cases-opened-year','cases-closed-year', 'Cases per Years')
+                create_chart_simple(case_stat.value, 'bar', 'cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time', 'Weeks needed to close a case')
+            }
+
+            function init_chart_task(){
+                create_chart_double(case_stat.value, 'line', "tasks-month", 'Tasks opened by month', 'Tasks closed by month', 'tasks-opened-month','tasks-closed-month', 'Tasks per Months')
+                create_chart_double(case_stat.value, 'bar', "tasks-year", 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year','tasks-closed-year', 'Tasks per Years')
+                create_chart_simple(case_stat.value, 'bar', 'tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time', 'Weeks needed to close a task')
+                create_chart_simple(case_stat.value, 'bar', 'tasks-per-case', 'Number of tasks per case', 'tasks-per-case', 'Number of tasks per case')
+            }
+
+            async function fetch_case_stat() {
+                const res = await fetch('/tools/case_stats')
+                if (await res.status == 200){
+                    let loc = await res.json()
+                    case_stat.value = loc
+                    
+                    init_chart_case()
+                }
+            }
+            async function fetch_admin_stat() {
+                const res = await fetch('/tools/admin_stats')
+                if (await res.status == 200){
+                    let loc = await res.json()
+                    admin_stat.value = loc
+                }
+            }
+
+            onMounted(() => {
+                fetch_case_stat()
+                fetch_admin_stat()
+            })
+
             return {
-                message_list
+                message_list,
+                case_stat,
+                admin_stat,
+                main_tab,
+
+                active_tab
             }
         }
     }).mount('#main-container')

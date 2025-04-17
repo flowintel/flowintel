@@ -60,31 +60,36 @@ def reload():
 #########
 # Stats #
 #########
-from ..db_class.db import Case, Case_Org, Task, Task_User
+from ..db_class.db import Case, Case_Org
 
 @tools_blueprint.route("/stats")
 @login_required
 def stats():
-    cases_open = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id, Case.completed==False).all()
+    return render_template("tools/stats.html")
 
-    cases_closed = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id, Case.completed==True).all()
+def chart_dict_constructor(input_dict):
+    loc_dict = []
+    for elem in input_dict:
+        loc_dict.append({
+            "calendar": elem,
+            "count": input_dict[elem]
+        })
+    return loc_dict
 
-    tasks_open = Task.query.join(Task_User, Task_User.task_id==Task.id).where(Task_User.user_id==current_user.id, Task.completed==False).all()
-    tasks_closed = Task.query.join(Task_User, Task_User.task_id==Task.id).where(Task_User.user_id==current_user.id, Task.completed ==True).all()
+@tools_blueprint.route("/case_stats")
+@login_required
+def case_stats():
+    cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
+    res_dict = ToolsModel.stats_core(cases)
 
-    all_cases_open = Case.query.filter_by(completed=False).all()
-    all_cases_closed = Case.query.filter_by(completed=True).all()
+    return res_dict
 
-    all_tasks_open = Task.query.filter_by(completed=False).all()
-    all_tasks_closed = Task.query.filter_by(completed=True).all()
-    
-    return render_template("tools/stats.html", 
-                           cases_open_len=len(cases_open), 
-                           cases_closed_len=len(cases_closed), 
-                           tasks_open_len=len(tasks_open), 
-                           tasks_closed_len=len(tasks_closed),
-                           all_cases_open=len(all_cases_open),
-                           all_cases_closed=len(all_cases_closed),
-                           all_tasks_open=len(all_tasks_open),
-                           all_tasks_closed=len(all_tasks_closed))
+@tools_blueprint.route("/admin_stats")
+@login_required
+def admin_stats():
+    if current_user.is_admin():
+        cases = Case.query.all()
+        res_dict = ToolsModel.stats_core(cases)
 
+        return res_dict
+    return {}

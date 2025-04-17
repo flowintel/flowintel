@@ -212,3 +212,22 @@ legend.analyzer-select-case {
 .select2-type ~ .select2-container > .selection > .select2-selection{
   border:0
 }
+
+.fading-line {
+  display: block;
+  border: none;
+  height: 1px;
+  padding: 0;
+  background-image: linear-gradient(to right, rgba(68, 109, 128, 0.75), rgba(68, 109, 128, 0.3), rgba(0, 0, 0, 0));
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  margin: 0 0 1rem 0;
+}
+
+
+.card-stats {
+  background-color: white;
+  border: 1px solid #d2d2d2;
+  border-radius: 5px;
+  margin: 2px
+}
