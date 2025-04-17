@@ -163,11 +163,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             task_users = Task_User.query.where(Task_User.task_id==task.id).all()
             if task.completed:
                 task.status_id = Status.query.filter_by(name="Finished").first().id
+                task.finish_date = datetime.datetime.now(tz=datetime.timezone.utc)
                 task.case_order_id = -1
                 self.reorder_tasks(case, task.case_order_id)
                 message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
             else:
                 task.status_id = Status.query.filter_by(name="Created").first().id
+                task.finish_date = None
                 case.nb_tasks += 1
                 task.case_order_id = case.nb_tasks
                 message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived"
