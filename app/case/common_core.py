@@ -430,6 +430,50 @@ def delete_temp_folder():
     """Delete temp folder"""
     shutil.rmtree(TEMP_FOLDER)
 
+import re
+
+def smart_escape_for_markdown_to_latex(text: str) -> str:
+    # Only escape characters that break LaTeX via Pandoc
+    escape_map = {
+        '\\': r'\\',
+        '{': r'\{',
+        '}': r'\}',
+        '$': r'\$',
+        '&': r'\&',
+        '_': r'\_',
+        '%': r'\%',
+        '^': r'\^{}',
+        '~': r'\~{}',
+    }
+
+    def escape_text(t):
+        pattern = re.compile('|'.join(re.escape(k) for k in escape_map))
+        return pattern.sub(lambda m: escape_map[m.group()], t)
+
+    # Regex patterns for fenced and inline code
+    code_block_pattern = re.compile(r'```.*?```', re.DOTALL)
+    inline_code_pattern = re.compile(r'`[^`\n]+`')
+
+    # Temporarily replace code with placeholders
+    all_code = []
+    def placeholder(match):
+        all_code.append(match.group())
+        return f"§§CODE{len(all_code)}§§"
+
+    temp = code_block_pattern.sub(placeholder, text)
+    temp = inline_code_pattern.sub(placeholder, temp)
+
+    # Escape only outside code
+    escaped = escape_text(temp)
+
+    # Restore code blocks
+    def restore(match):
+        index = int(match.group(1)) - 1
+        return all_code[index]
+
+    result = re.sub(r'§§CODE(\d+)§§', restore, escaped)
+    return result
+
 
 def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int = None):
     """Export notes into a format like pdf or docx"""
@@ -445,7 +489,7 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
     else:
         note = get_case(case_task_id).notes
     with open(temp_md, "w")as write_file:
-        write_file.write(note)
+        write_file.write(smart_escape_for_markdown_to_latex(note))
         
     if type_req == "pdf":
         process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", \
