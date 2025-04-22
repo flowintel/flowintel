@@ -2,6 +2,8 @@
 set -e
 source env/bin/activate
 
+./launch.sh -ks
+
 ## Get update from git
 echo "##########"
 echo "Git pull"

@@ -747,17 +747,21 @@
                     }
                 }
 
-                function prepare_editor(){
+                async function prepare_editor(default_text){
                     const targetElement = document.getElementById('editor')
-                    editor = new Editor.EditorView({
-                        doc: "\n\n",
-                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-                            if (v.docChanged) {
-                                note_editor_render.value = editor.state.doc.toString()
-                            }
-                        })],
-                        parent: targetElement
-                    })
+                    if(targetElement && targetElement.innerHTML === ""){
+                        editor = new Editor.EditorView({
+                            doc: default_text,
+                            extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                                if (v.docChanged) {
+                                    note_editor_render.value = editor.state.doc.toString()
+                                }
+                            })],
+                            parent: targetElement
+                        })
+                    }
+                    await nextTick()
+                    md.mermaid.init()
                 }
 
                 async function fetch_all_notes(){
@@ -801,21 +805,11 @@
                             document.getElementById("tab-hedgedoc").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
                         }
-                        await nextTick()
+                        // await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'case'){
-                            prepare_editor()
+                            prepare_editor("\n\n")
                         }else{
-                            md.mermaid.init()
-                            const targetElement = document.getElementById('editor')
-                            editor = new Editor.EditorView({
-                                doc: cases_info.value.case.notes,
-                                extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-                                    if (v.docChanged) {
-                                        note_editor_render.value = editor.state.doc.toString()
-                                    }
-                                })],
-                                parent: targetElement
-                            })
+                            prepare_editor(cases_info.value.case.notes)
                         }
                     }else if(tab_name == 'all'){
                         main_tab.value = 'all'
@@ -930,23 +924,10 @@
                         edit_mode.value = false
                         cases_info.value.case.last_modif = Date.now()
                         cases_info.value.case.notes = notes_loc
-                        // notes.value = notes_loc
                         await nextTick()
                         
                         if(!notes_loc){
-                            const targetElement = document.getElementById('editor')
-                            if(targetElement.innerHTML === ""){
-                                editor = new Editor.EditorView({
-                                    doc: "\n\n",
-                                    extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-                                        if (v.docChanged) {
-                                            note_editor_render.value = editor.state.doc.toString()
-                                        }
-                                    })],
-                                    parent: targetElement
-                                })
-                            }
-                            
+                            prepare_editor("\n\n")
                         }
                         md.mermaid.init()
                     }
@@ -959,18 +940,7 @@
                     await nextTick()
                     
                     note_editor_render.value = cases_info.value.case.notes
-                    md.mermaid.init()
-                    // Initialize the editor
-                    const targetElement = document.getElementById('editor')
-                    editor = new Editor.EditorView({
-                        doc: cases_info.value.case.notes,
-                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-                            if (v.docChanged) {
-                                note_editor_render.value = editor.state.doc.toString()
-                            }
-                        })],
-                        parent: targetElement
-                    })
+                    prepare_editor(cases_info.value.case.notes)
                     
                 }
 

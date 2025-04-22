@@ -206,9 +206,14 @@ export default {
             <legend class="analyzer-select-case">
                 <i class="fa-solid fa-note-sticky"></i> 
                 Notes 
-                <a class="btn btn-primary btn-sm" :href="'/analyzer/misp-modules?case_id='+task.case_id+'&task_id='+task.id" style="margin-bottom: 1px;">
-                    <i class="fa-solid fa-magnifying-glass"></i> 
-                    Analyze
+				<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                	<button class="btn btn-outline-primary btn-sm me-1" title="Add notes" @click="add_notes_task()" style="margin-bottom: 1px; border-radius: 10px">
+						<i class="fa-solid fa-plus fa-fw"></i>
+					</button>
+				</template>
+                <a class="btn btn-outline-primary btn-sm" :href="'/analyzer/misp-modules?case_id='+task.case_id+'&task_id='+task.id" 
+					style="margin-bottom: 1px;border-radius: 10px" title="Analyze notes">
+                    <i class="fa-solid fa-magnifying-glass fa-fw"></i>
                 </a>
             </legend>
             <!-- Task contains notes -->
@@ -286,9 +291,7 @@ export default {
                         </template>
                     </template>
                 </template>
-				<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                	<button class="btn btn-primary" @click="add_notes_task()">Add notes</button>
-				</template>
+				
             </div>
             <!-- Task doesn't contains notes -->
             <div v-else>
