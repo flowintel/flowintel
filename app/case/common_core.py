@@ -397,7 +397,7 @@ def save_history(case_uuid, current_user, message):
     path_history = os.path.join(HISTORY_DIR, str(case_uuid))
     with open(path_history, "a") as write_history:
         now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-        write_history.write(f"[{now}]({current_user.first_name} {current_user.last_name}): {message}\n")
+        write_history.write(f"[{now}]({current_user.first_name} {current_user.last_name}): {message.rstrip()}\n")
 
 
 def update_last_modif(case_id):
@@ -502,7 +502,7 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
         note = get_case(case_task_id).notes
 
     loc_note = smart_escape_for_markdown_to_latex(note)
-    loc_note = convert_inline_code_to_verb(note)
+    loc_note = convert_inline_code_to_verb(loc_note)
     with open(temp_md, "w")as write_file:
         write_file.write(loc_note)
         
