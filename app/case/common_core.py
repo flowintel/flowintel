@@ -430,7 +430,6 @@ def delete_temp_folder():
     """Delete temp folder"""
     shutil.rmtree(TEMP_FOLDER)
 
-import re
 
 def smart_escape_for_markdown_to_latex(text: str) -> str:
     # Only escape characters that break LaTeX via Pandoc
