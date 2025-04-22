@@ -474,6 +474,19 @@ def smart_escape_for_markdown_to_latex(text: str) -> str:
     result = re.sub(r'§§CODE(\d+)§§', restore, escaped)
     return result
 
+def convert_inline_code_to_verb(text: str) -> str:
+    # Find all inline code spans: `like this`
+    def replace_inline_code(match):
+        content = match.group(0)[1:-1]  # Remove the backticks
+        # If it starts with a LaTeX command, wrap it in \verb
+        if content.strip().startswith("\\"):
+            return r"\verb|" + content + r"|"
+        else:
+            return f"`{content}`"
+
+    inline_code_pattern = re.compile(r'`[^`\n]+`')
+    return inline_code_pattern.sub(replace_inline_code, text)
+
 
 def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int = None):
     """Export notes into a format like pdf or docx"""
@@ -488,8 +501,11 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
         note = get_task_note(note_id).note
     else:
         note = get_case(case_task_id).notes
+
+    loc_note = smart_escape_for_markdown_to_latex(note)
+    loc_note = convert_inline_code_to_verb(note)
     with open(temp_md, "w")as write_file:
-        write_file.write(smart_escape_for_markdown_to_latex(note))
+        write_file.write(loc_note)
         
     if type_req == "pdf":
         process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", \
