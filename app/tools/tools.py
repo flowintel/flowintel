@@ -93,3 +93,11 @@ def admin_stats():
 
         return res_dict
     return {}
+
+@tools_blueprint.route("/case_tags_stats")
+@login_required
+def get_case_by_tags():
+    res = ToolsModel.get_case_by_tags(current_user)
+    if res:
+        return res
+    return {}

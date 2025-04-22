@@ -44,6 +44,23 @@
         <div><canvas id="cases-elapsed-time"></canvas></div>
     </div>
 
+    <div class="card card-body p-4 m-5">
+        <!-- <div style="width: 50%; position: relative; left: 20vw"> -->
+            <div>
+            <canvas id="case-custom-tags"></canvas>
+        </div>
+    </div>
+    <div class="card card-body p-4 m-5">
+        <div>
+            <canvas id="case-tags"></canvas>
+        </div>
+    </div>
+    <div class="card card-body p-4 m-5">
+        <div>
+            <canvas id="case-clusters"></canvas>
+        </div>
+    </div>
+
     <div class="card card-body">
         <div class="d-flex w-100 justify-content-evenly">
             <div>
@@ -165,6 +182,7 @@
             const case_stat = ref([])
             const admin_stat = ref([])
             const main_tab = ref("case")
+            const case_tags_stats = ref([])
 
             async function active_tab(tab_name){
                 if(tab_name == 'case'){
@@ -260,8 +278,13 @@
                                 title: {
                                     display: true,
                                     text: (ctx) => chart_title
+                                },
+                                legend:{
+                                    display: true,
+                                    position: 'right'
                                 }
-                            }
+                            },
+                            responsive: true,
                         }
                     }
                 );
@@ -296,10 +319,22 @@
                     admin_stat.value = loc
                 }
             }
+            async function fetch_case_tag_stat() {
+                const res = await fetch('/tools/case_tags_stats')
+                if (await res.status == 200){
+                    let loc = await res.json()
+                    case_tags_stats.value = loc
+                    create_chart_simple(case_tags_stats.value, 'pie', 'case-custom-tags', 'Case per Custom tags', 'custom_tags', 'Case per Custom tags for the org of current user')
+                    create_chart_simple(case_tags_stats.value, 'polarArea', 'case-tags', 'Case per Taxonomies', 'tags', 'Case per Taxonomies for the org of current user')
+                    create_chart_simple(case_tags_stats.value, 'pie', 'case-clusters', 'Case per Galaxies', 'clusters', 'Case per Galaxies for the org of current user')
+
+                }
+            }
 
             onMounted(() => {
                 fetch_case_stat()
                 fetch_admin_stat()
+                fetch_case_tag_stat()
             })
 
             return {
@@ -307,6 +342,7 @@
                 case_stat,
                 admin_stat,
                 main_tab,
+                case_tags_stats,
 
                 active_tab
             }
