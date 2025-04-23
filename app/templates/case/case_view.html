@@ -805,7 +805,7 @@
                             document.getElementById("tab-hedgedoc").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
                         }
-                        // await nextTick()
+                        await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'case'){
                             prepare_editor("\n\n")
                         }else{
