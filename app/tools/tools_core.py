@@ -282,14 +282,14 @@ def get_case_by_tags(current_user):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
     dict_case_tag = {}
     dict_case_cluster_tag = {}
-    dict_case_cutom_tag = {}
+    dict_case_custom_tag = {}
 
     for case in cases:
         custom = Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(case_id=case.id).all()
         for c in custom:
-            if not c.name in dict_case_cutom_tag:
-                dict_case_cutom_tag[c.name] = 0
-            dict_case_cutom_tag[c.name] += 1
+            if not c.name in dict_case_custom_tag:
+                dict_case_custom_tag[c.name] = 0
+            dict_case_custom_tag[c.name] += 1
 
         tags = Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=case.id).all()
         for t in tags:
@@ -303,6 +303,33 @@ def get_case_by_tags(current_user):
                 dict_case_cluster_tag[cl.tag] = 0
             dict_case_cluster_tag[cl.tag] += 1
 
-    return {"custom_tags": chart_dict_constructor(dict_case_cutom_tag), 
-            "tags": chart_dict_constructor(dict_case_tag), 
-            "clusters": chart_dict_constructor(dict_case_cluster_tag)}
+        
+        dict_task_tag = {}
+        dict_task_cluster_tag = {}
+        dict_task_custom_tag = {}
+        for task in case.tasks:
+            custom = Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(task_id=task.id).all()
+            for c in custom:
+                if not c.name in dict_task_custom_tag:
+                    dict_task_custom_tag[c.name] = 0
+                dict_task_custom_tag[c.name] += 1
+
+            tags = Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=task.id).all()
+            for t in tags:
+                if not t.name in dict_task_tag:
+                    dict_task_tag[t.name] = 0
+                dict_task_tag[t.name] += 1
+            
+            cluster = Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id).filter_by(task_id=task.id).all()
+            for cl in cluster:
+                if not cl.tag in dict_task_cluster_tag:
+                    dict_task_cluster_tag[cl.tag] = 0
+                dict_task_cluster_tag[cl.tag] += 1
+
+
+    return {"case_custom_tags": chart_dict_constructor(dict_case_custom_tag), 
+            "case_tags": chart_dict_constructor(dict_case_tag), 
+            "case_clusters": chart_dict_constructor(dict_case_cluster_tag),
+            "task_custom_tags": chart_dict_constructor(dict_task_custom_tag), 
+            "task_tags": chart_dict_constructor(dict_task_tag), 
+            "task_clusters": chart_dict_constructor(dict_task_cluster_tag)}

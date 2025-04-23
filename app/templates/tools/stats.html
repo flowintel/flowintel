@@ -91,6 +91,22 @@
         <div><canvas id="tasks-per-case"></canvas></div>
     </div>
 
+    <div class="card card-body p-4 m-5">
+        <div>
+            <canvas id="task-custom-tags"></canvas>
+        </div>
+    </div>
+    <div class="card card-body p-4 m-5">
+        <div>
+            <canvas id="task-tags"></canvas>
+        </div>
+    </div>
+    <div class="card card-body p-4 m-5">
+        <div>
+            <canvas id="task-clusters"></canvas>
+        </div>
+    </div>
+
     <div class="card card-body">
         <div class="d-flex w-100 justify-content-evenly">
             <div>
@@ -301,6 +317,11 @@
                 create_chart_double(case_stat.value, 'bar', "tasks-year", 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year','tasks-closed-year', 'Tasks per Years')
                 create_chart_simple(case_stat.value, 'bar', 'tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time', 'Weeks needed to close a task')
                 create_chart_simple(case_stat.value, 'bar', 'tasks-per-case', 'Number of tasks per case', 'tasks-per-case', 'Number of tasks per case')
+
+                create_chart_simple(case_tags_stats.value, 'pie', 'task-custom-tags', 'Task per Custom tags', 'task_custom_tags', 'Task per Custom tags for the org of current user')
+                create_chart_simple(case_tags_stats.value, 'polarArea', 'task-tags', 'Task per Taxonomies', 'task_tags', 'Task per Taxonomies for the org of current user')
+                create_chart_simple(case_tags_stats.value, 'pie', 'task-clusters', 'Task per Galaxies', 'task_clusters', 'Task per Galaxies for the org of current user')
+
             }
 
             async function fetch_case_stat() {
@@ -324,9 +345,9 @@
                 if (await res.status == 200){
                     let loc = await res.json()
                     case_tags_stats.value = loc
-                    create_chart_simple(case_tags_stats.value, 'pie', 'case-custom-tags', 'Case per Custom tags', 'custom_tags', 'Case per Custom tags for the org of current user')
-                    create_chart_simple(case_tags_stats.value, 'polarArea', 'case-tags', 'Case per Taxonomies', 'tags', 'Case per Taxonomies for the org of current user')
-                    create_chart_simple(case_tags_stats.value, 'pie', 'case-clusters', 'Case per Galaxies', 'clusters', 'Case per Galaxies for the org of current user')
+                    create_chart_simple(case_tags_stats.value, 'pie', 'case-custom-tags', 'Case per Custom tags', 'case_custom_tags', 'Case per Custom tags for the org of current user')
+                    create_chart_simple(case_tags_stats.value, 'polarArea', 'case-tags', 'Case per Taxonomies', 'case_tags', 'Case per Taxonomies for the org of current user')
+                    create_chart_simple(case_tags_stats.value, 'pie', 'case-clusters', 'Case per Galaxies', 'case_clusters', 'Case per Galaxies for the org of current user')
 
                 }
             }
