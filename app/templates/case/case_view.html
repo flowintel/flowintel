@@ -8,6 +8,7 @@
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
 <script src="{{ url_for('static',filename='js/editor.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timeline.css') }}">
 
 {{ super() }}
 {%endblock%}
@@ -383,8 +384,40 @@
     <template v-else-if="main_tab == 'history'">
         <template v-if="history">
             <a class="btn btn-primary btn-sm mb-1" :href="'/case/'+cases_info.case.id+'/download_history'">Download</a>
-            <div v-for="h in history">
-                [[h]]
+            <div class="timeline">
+                <template v-for="h, key in history">
+                    <template v-for="month, key_month in h">
+                        <div class="timeline-month">
+                            [[key_month]], [[key]]
+                            <span>[[month.count]] Entries</span>
+                        </div>
+                    
+                        <template v-for="day, key_day in month.days">
+                            <div class="timeline-section">
+                                <div class="timeline-date">
+                                    [[key_day]]
+                                    <span>[[day.length]] Entries</span>
+                                </div>
+                                <div class="row">
+                                    <template v-for="history_data, key_history_data in day">
+                                        <div class="col-sm-4">
+                                            <div class="timeline-box">
+                                                <div class="box-title">
+                                                    <i class="fa fa-asterisk text-success" aria-hidden="true"></i> [[history_data.user]]
+                                                </div>
+                                                <div class="box-content">
+                                                    <div class="box-item"><strong>Modif</strong>: [[history_data.text]]</div>
+                                                </div>
+                                                <div class="box-footer">[[history_data.date]]</div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                        
+                    </template>
+                </template>
             </div>
         </template>
         <template v-else>
@@ -554,6 +587,98 @@
                     }else{
                         let loc = await res.json()
                         history.value = loc["history"]
+
+                        const historyDict = new Map();
+                        const monthOrder = [
+                        "January", "February", "March", "April", "May", "June",
+                        "July", "August", "September", "October", "November", "December"
+                        ];
+
+                        for (const h of history.value) {
+                        const match = h.match(/\[(.*?)\]\((.*?)\)(.*)/);
+                        if (!match) continue;
+
+                        const [_, dateStr, userStr, text] = match;
+                        const date = new Date(dateStr);
+                        const year = date.getFullYear();
+                        const month = date.toLocaleString("default", { month: "long" });
+                        const dayKey = `${String(date.getDate()).padStart(2, "0")}, ${date.toLocaleString("default", { weekday: "short" })}`;
+
+                        if (!historyDict.has(year)) historyDict.set(year, new Map());
+                        const yearMap = historyDict.get(year);
+
+                        if (!yearMap.has(month)) yearMap.set(month, new Map());
+                        const monthMap = yearMap.get(month);
+
+                        if (!monthMap.has(dayKey)) monthMap.set(dayKey, []);
+                        monthMap.get(dayKey).push({
+                            user: userStr,
+                            text: text.trim().slice(1), // remove leading colon and space
+                            date: dateStr
+                        });
+                        }
+
+                        
+                        // Reverse sorted
+                        const sortedHistory = new Map(
+                            [...historyDict.entries()].sort((a, b) => b[0] - a[0])
+                            .map(([year, months]) => [
+                                year,
+                                new Map(
+                                    [...months.entries()]
+                                    .sort((a, b) => monthOrder.indexOf(b[0]) - monthOrder.indexOf(a[0]))
+                                    .map(([month, days]) => {
+                                        const sortedDays = new Map(
+                                        [...days.entries()]
+                                            .sort((a, b) => {
+                                            const aDate = new Date(`${month} ${a[0].split(',')[0]}, ${year}`);
+                                            const bDate = new Date(`${month} ${b[0].split(',')[0]}, ${year}`);
+                                            return bDate - aDate;
+                                            })
+                                            .map(([day, entries]) => [
+                                                day,
+                                                // Sort entries by time, descending
+                                                entries.sort((a, b) =>
+                                                    new Date(b.date) - new Date(a.date)
+                                                )
+                                            ])
+                                        );
+
+                                        const monthCount = [...sortedDays.values()]
+                                        .reduce((sum, entries) => sum + entries.length, 0);
+
+                                        return [
+                                        month,
+                                        {
+                                            count: monthCount,
+                                            days: sortedDays
+                                        }
+                                        ];
+                                    })
+                                )
+                            ])
+                        );
+
+                        // Convert Map to plain object
+                        function mapToObject(map) {
+                            const obj = {};
+                            for (const [key, value] of map.entries()) {
+                                if (value instanceof Map) {
+                                    obj[key] = mapToObject(value);
+                                } else if (value.days instanceof Map) {
+                                    obj[key] = {
+                                        count: value.count,
+                                        days: mapToObject(value.days)
+                                    };
+                                } else {
+                                    obj[key] = value;
+                                }
+                            }
+                            return obj;
+                        }
+
+                        history.value = mapToObject(sortedHistory);
+                        
                     }
                 }
 
