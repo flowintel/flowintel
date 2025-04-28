@@ -1,3 +1,4 @@
+import datetime
 import os
 from .. import db
 from ..db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy
@@ -127,7 +128,8 @@ def add_user_core(form_dict):
         role_id = form_dict["role"],
         org_id = form_dict["org"],
         matrix_id=matrix_id,
-        api_key = generate_api_key()
+        api_key = generate_api_key(),
+        creation_date = datetime.datetime.now(tz=datetime.timezone.utc)
     )
     db.session.add(user)
     db.session.commit()

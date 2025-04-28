@@ -1,3 +1,4 @@
+import datetime
 import json
 from .. import db, login_manager
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -15,6 +16,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128))
     api_key = db.Column(db.String(60), index=True)
     org_id = db.Column(db.Integer, db.ForeignKey('org.id', ondelete="CASCADE"))
+    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
 
     def is_admin(self):
         r = Role.query.get(self.role_id)
@@ -48,7 +50,8 @@ class User(UserMixin, db.Model):
             "email": self.email, 
             "org_id": self.org_id, 
             "role_id": self.role_id,
-            "matrix_id": self.matrix_id
+            "matrix_id": self.matrix_id,
+            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M')
         }
 
 class AnonymousUser(AnonymousUserMixin):
@@ -938,6 +941,8 @@ class Case_Misp_Object(db.Model):
     case_id = db.Column(db.Integer, index=True)
     template_uuid = db.Column(db.String(36), index=True)
     name = db.Column(db.String)
+    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     attributes = db.relationship('Misp_Attribute', backref='Case_Misp_Object', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_json(self):
@@ -945,7 +950,9 @@ class Case_Misp_Object(db.Model):
             "id": self.id,
             "case_id": self.case_id,
             "template_uuid": self.template_uuid,
-            "name": self.name
+            "name": self.name,
+            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
         }
         return json_dict
 
@@ -958,6 +965,8 @@ class Misp_Attribute(db.Model):
     last_seen = db.Column(db.DateTime, index=True)
     comment = db.Column(db.String, nullable=True)
     ids_flag = db.Column(db.Boolean)
+    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
 
     def to_json(self):
         json_dict = {
@@ -968,7 +977,9 @@ class Misp_Attribute(db.Model):
             "first_seen": self.first_seen, # Added to the dict here in case of empty
             "last_seen": self.last_seen,   # Added to the dict here in case of empty
             "comment": self.comment,
-            "ids_flag": self.ids_flag
+            "ids_flag": self.ids_flag,
+            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
         }
 
         if self.first_seen:

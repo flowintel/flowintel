@@ -963,7 +963,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         case_misp_object = Case_Misp_Object(
             case_id=cid,
             template_uuid=request_json["object-template"]["uuid"],
-            name=request_json["object-template"]["name"]
+            name=request_json["object-template"]["name"],
+            creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
         )
         db.session.add(case_misp_object)
         db.session.commit()
@@ -1023,9 +1025,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     last_seen=last_seen,
                     comment=attribute["comment"],
                     ids_flag=ids_flag,
+                    creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
+                    last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
                 )
                 db.session.add(attr)
                 db.session.commit()
+            
+            misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+            db.session.commit()
             return True
         return False
 
@@ -1051,6 +1058,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 attribute.last_seen=last_seen
                 attribute.comment=request_json["comment"]
                 attribute.ids_flag=ids_flag
+                attribute.last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+                db.session.commit()
+
+                misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
                 db.session.commit()
                 return {"message": "Attribute updated", "toast_class": "success-subtle"}, 200
             return {"message": "Attribute not found in this object", "toast_class": "warning-subtle"}, 404

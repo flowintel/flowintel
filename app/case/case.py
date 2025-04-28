@@ -777,7 +777,9 @@ def get_case_misp_object(cid):
                 "object_name": object.name,
                 "attributes": loc_attr,
                 "object_id": object.id,
-                "object_uuid": object.template_uuid
+                "object_uuid": object.template_uuid,
+                "object_creation_date": object.creation_date.strftime('%Y-%m-%d %H:%M'),
+                "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M')
             })
         return {"misp-object": loc_object}
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
