@@ -123,7 +123,7 @@
 .timeline-box{
   position:relative;
   
-  background-color:#325a93;
+  background-color:#4271b5;
   border-radius:15px;
   border-top-left-radius:0px;
   border-bottom-right-radius:0px;
@@ -149,7 +149,7 @@
 
 .box-content{
   padding:5px 15px;
-  background-color:#17191B;
+  background-color:#A1A7AC;
 }
 
 .box-content strong{
@@ -165,7 +165,7 @@
 .box-footer{
   padding:5px 15px;
   border-top: 1px solid #17191B;
-  background-color:#7d7f82;
+  background-color:#4271b5;
   text-align:right;
   font-style:italic;
 }
