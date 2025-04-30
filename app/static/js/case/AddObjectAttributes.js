@@ -1,10 +1,10 @@
-const { ref, onMounted } = Vue
+const { ref, onMounted, onUpdated } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
 		template: Object,
         only_attr: Boolean,
-        key_obj: Number
+        key_obj: String
 	},
     emits:[
         "object-attribute-added",
@@ -58,6 +58,20 @@ export default {
                     dropdownParent: $("#modal-add-object")
                 })
             }
+        })
+        onUpdated(() => {
+            if(props.only_attr){
+                $('.select2-type').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $("#modal-add-attribute-"+props.key_obj)
+                })
+            }else{
+                $('.select2-type').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $("#modal-add-object")
+                })
+            }
+            
         })
 
 		return {
