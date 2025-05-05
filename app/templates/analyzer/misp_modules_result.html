@@ -62,6 +62,9 @@
                                             <div class="accordion-body" >
                                                 <template v-if="'Object' in result.results">
                                                     <template v-for="obj in result.results.Object">
+                                                        <button class="btn btn-primary" @click="select_misp_object(obj)" title="Add this object to selected object">
+                                                            <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
+                                                        </button>
                                                         <div v-html="parseMispObject(obj)[0].outerHTML"></div>
                                                     </template>
                                                 </template>
@@ -151,6 +154,37 @@ Value: [[misp_attr]]
             <div class="card card-body">
                 <div id="editor-selected-notes"></div>
             </div>
+            <div class="row">
+                <div v-for="misp_object, key_obj in misp_object_list" class="accordion p-1" :id="'accordion-'+key_obj">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
+                            [[ misp_object["object-template"].name ]]
+                        </button>
+                        </h2>
+                        <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
+                            <div class="accordion-body">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>object relation</th>
+                                            <th>value</th>
+                                            <th>type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="attribute, key_attr in misp_object.attributes ">
+                                            <td>[[attribute.object_relation]]</td>
+                                            <td>[[attribute.value]]</td>
+                                            <td>[[attribute.type]]</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -169,6 +203,7 @@ Value: [[misp_attr]]
             setup() {
                 const main_tab = ref('visual')
                 const analyzer_results = ref()
+                const misp_object_list = ref([])
 
                 let editor = ""
 
@@ -213,13 +248,39 @@ Value: [[misp_attr]]
                     if(!data_to_pass){
                         data_to_pass = analyzer_results.value.result
                     }
+                    let loc = JSON.stringify(misp_object_list.value)
+                    if(!loc)
+                        loc=null
 
                     $('#insert_form').append(
                         $('<form>').attr({"action": "/analyzer/misp-modules/result_to_case", "name": "flowintel", "method": "post", "style": "display:none"}).append(
-                            $("<input>").attr({"type": "text", "name": "note_selected"}).val(JSON.stringify(data_to_pass))
+                            $("<input>").attr({"type": "text", "name": "note_selected"}).val(JSON.stringify(data_to_pass)),
+                            $("<input>").attr({"type": "text", "name": "misp_object_selected"}).val(loc),
                         )
                     );
                     document.forms['flowintel'].submit();
+                }
+
+                async function select_misp_object(misp_object) {
+                    let loc_dict = []
+                    let cp = 1
+                    for(let i in misp_object.Attribute){
+                        let loc = misp_object.Attribute[i]
+                        loc["first_seen"] = null
+                        loc["last_seen"] = null
+                        loc["comment"] = null
+                        loc["ids_flag"] = loc.to_ids
+                        loc["id"] = cp
+                        cp += 1
+                        loc_dict.push(loc)
+                    }
+                    let loc_object = {"attributes": loc_dict, "object-template": {
+                        "description": misp_object.descripition, "distribution": misp_object.distribution,
+                        "first_seen": misp_object.first_seen, "last_seen": misp_object.last_seen, "meta-category": misp_object["meta-category"],
+                        "name": misp_object.name, "sharing_group_id": misp_object.sharing_group_id,
+                        "template_version": misp_object.template_version, "uuid": misp_object.template_uuid}
+                    }
+                    misp_object_list.value.push(loc_object)
                 }
 
                 onMounted(() => {
@@ -238,8 +299,10 @@ Value: [[misp_attr]]
                     generateCoreFormatUI,
                     parseMispObject,
                     parseMispAttr,
+                    misp_object_list,
                     active_tab,
-                    nextPage
+                    nextPage,
+                    select_misp_object
                 }
             }
         }).mount('#main-container')

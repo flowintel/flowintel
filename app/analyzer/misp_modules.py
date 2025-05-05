@@ -37,6 +37,7 @@ def index():
 def result_to_case():
     """Enrich notes from previous selection"""
     session["note_selected"] = request.form["note_selected"]
+    session["misp_object_selected"] = request.form["misp_object_selected"]
     return render_template("analyzer/misp_modules_result_to_case.html")
 
 @analyzer_blueprint.route("/misp-modules/get_note_selected", methods=['GET', 'POST'])
@@ -44,6 +45,12 @@ def result_to_case():
 def get_note_selected():
     """Get notes selected"""
     return session.get("note_selected")
+
+@analyzer_blueprint.route("/misp-modules/get_misp_object_selected", methods=['GET', 'POST'])
+@login_required
+def get_misp_object_selected():
+    """Get notes selected"""
+    return session.get("misp_object_selected")
 
 
 @analyzer_blueprint.route("/misp-modules/manage_notes_selected", methods=['GET', 'POST'])
@@ -53,6 +60,7 @@ def manage_notes_selected():
     """Manage notes selected"""
     case_id = MispModuleModel.manage_notes_selected(request.json, current_user)
     session["note_selected"] = ""
+    session["misp_object_selected"] = ""
     return {"case_id": case_id}, 200
 
 

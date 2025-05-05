@@ -95,7 +95,7 @@ export default {
             create_message("Object deleted", "success-subtle")
         }
 
-        async function open_modal_add_attribute(template_uuid, modal_id, key){            
+        async function open_modal_add_attribute(template_uuid, modal_id, key){
             activeTemplateAttr.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid);
             await nextTick()
             var myModal = new bootstrap.Modal(document.getElementById(modal_id + key), {});
@@ -154,6 +154,15 @@ export default {
             emit('list_misp_objects', loc_misp_objects.value);
         }
 
+        async function fetch_misp_object_selected(){
+            const res = await fetch("/analyzer/misp-modules/get_misp_object_selected")
+            let loc = await res.json()
+            
+            loc_misp_objects.value=loc_misp_objects.value.concat(loc)
+            emit('list_misp_objects', loc_misp_objects.value);
+        }
+        
+
         watch(selectedQuickTemplate, (newValue, oldValue) => {
             if (defaultObjectTemplates[newValue]) {                
                 activeTemplate.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === defaultObjectTemplates[newValue]);
@@ -163,6 +172,7 @@ export default {
 
 		onMounted(() => {
             fetch_misp_object()
+            fetch_misp_object_selected()
 
             $('.select2-misp-object').select2({
                 theme: 'bootstrap-5',
@@ -217,7 +227,7 @@ export default {
                     <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
                 </button>
             </div>
-            <div class="row">
+            <div class="row" v-if="loc_misp_objects.length">
                 <div v-for="misp_object, key_obj in loc_misp_objects" class="accordion p-1" :id="'accordion-'+key_obj">
                     <div class="accordion-item">
                         <h2 class="accordion-header">
