@@ -154,8 +154,8 @@ export default {
                 let resultDate;
                 if (firstSeenDates.length > 0) {
                     resultDate = new Date(Math.min(...firstSeenDates));
-                } else if (obj.creation_date) {
-                    resultDate = new Date(obj.creation_date);
+                } else if (obj.object_creation_date) {
+                    resultDate = new Date(obj.object_creation_date);
                 } else {
                     resultDate = null;
                 }
@@ -167,19 +167,19 @@ export default {
                     startDate = toStartDateObject(new Date(obj.creation_date))
                 }
 
-                let loc_text = "<div>Object uuid: " + obj.object_uuid + "<table style='margin-left:20px'>"
-                loc_text += "<tr><th>Attribute value</th><th>Attribute type</th><th>Attribute comment</th><th>Attribute first seen</th>"
-                loc_text += "<th>Attribute last seen</th><th>Attribute IDS</th></tr>"
-                for(let at in obj.attributes){
-                    loc_text += "<tr><td>" + obj.attributes[at].value + "</td>"
-                    loc_text += "<td>" + obj.attributes[at].type + "</td>"
-                    loc_text += "<td>" + obj.attributes[at].comment + "</td>"
-                    loc_text += "<td>" + obj.attributes[at].first_seen + "</td>"
-                    loc_text += "<td>" + obj.attributes[at].last_seen + "</td>"
-                    loc_text += "<td>" + obj.attributes[at].ids_flag + "</td></tr>"
-                    loc_text += "<br>"
+                let loc_text = "<div style='margin-bottom:20px'>Object uuid: " + obj.object_uuid + "</div>"
+                loc_text += "<div><h6>Attributes</h6></div>"
+                loc_text += "<table class='table ms-2'><tr><th>value</th><th>type</th><th>comment</th><th>first seen</th>"
+                loc_text += "<th>last seen</th><th>IDS</th></tr>"
+                for(let at in obj.attributes){                    
+                    loc_text += "<tr><td class='p-1'>" + obj.attributes[at].value + "</td>"
+                    loc_text += "<td class='p-1'>" + obj.attributes[at].type + "</td>"
+                    loc_text += "<td class='p-1'>" + obj.attributes[at].comment + "</td>"
+                    loc_text += "<td class='p-1'>" + obj.attributes[at].first_seen + "</td>"
+                    loc_text += "<td class='p-1'>" + obj.attributes[at].last_seen + "</td>"
+                    loc_text += "<td class='p-1'>" + obj.attributes[at].ids_flag + "</td></tr>"
                 }
-                loc_text += "</table></div>"
+                loc_text += "</table>"
 
                 loc_list.push({
                     "start_date": startDate,
