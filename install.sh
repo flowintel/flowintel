@@ -10,10 +10,9 @@ if apt -v &> /dev/null ; then
     rm pandoc*
 elif dnf --version &> /dev/null ; then
     #RockyLinux
-    sudo dnf in python3-venv git tmux libolm librsvg2 wget
     sudo dnf install -y epel-release
     sudo crb enable
-    sudo dnf in -y pandoc
+    sudo dnf in -y pandoc python3 git screen libolm librsvg2 wget
 fi
 
 # Install a template for the export of notes in pdf
