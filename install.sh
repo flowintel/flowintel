@@ -1,12 +1,20 @@
 # https://github.com/flowintel/flowintel
-sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget
-
-# install pandoc from git 
-# pandoc dependencies
-sudo apt install -y texlive texlive-xetex texlive-fonts-extra
-wget https://github.com/jgm/pandoc/releases/download/3.2/pandoc-3.2-1-$(dpkg --print-architecture).deb
-sudo dpkg -i pandoc*.deb
-rm pandoc*
+if apt -v &> /dev/null ; then
+    sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget
+    # pandoc dependencies
+    sudo apt install -y texlive texlive-xetex texlive-fonts-extra
+    # install pandoc from git
+    sudo apt install -y texlive texlive-xetex texlive-fonts-extra
+    wget https://github.com/jgm/pandoc/releases/download/3.2/pandoc-3.2-1-$(dpkg --print-architecture).deb
+    sudo dpkg -i pandoc*.deb
+    rm pandoc*
+elif dnf --version &> /dev/null ; then
+    #RockyLinux
+    sudo dnf in python3-venv git tmux libolm librsvg2 wget
+    sudo dnf install -y epel-release
+    sudo crb enable
+    sudo dnf in -y pandoc
+fi
 
 # Install a template for the export of notes in pdf
 
