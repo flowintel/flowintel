@@ -1,4 +1,5 @@
 import datetime
+from typing import Optional
 from ..db_class.db import *
 from sqlalchemy import func
 
@@ -8,7 +9,7 @@ def get_all_case_templates():
 def get_all_task_templates():
     return Task_Template.query.all()
 
-def get_case_template(cid):
+def get_case_template(cid) -> Optional[Case_Template]:
     return Case_Template.query.get(cid)
 
 def get_case_by_title(title):

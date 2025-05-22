@@ -1,5 +1,7 @@
 import calendar
 import re
+
+from pymisp import PyMISP
 from ..db_class.db import *
 import uuid
 import json
@@ -7,6 +9,7 @@ import datetime
 from ..utils import utils
 from ..case.TaskCore import TaskModel
 from ..case.CaseCore import CaseModel
+from ..templating.TemplateCase import TemplateModel
 
 
 def core_read_json_file(case, current_user):
@@ -333,3 +336,114 @@ def get_case_by_tags(current_user):
             "task_custom_tags": chart_dict_constructor(dict_task_custom_tag), 
             "task_tags": chart_dict_constructor(dict_task_tag), 
             "task_clusters": chart_dict_constructor(dict_task_cluster_tag)}
+
+
+########################
+# Case from MISP Event #
+########################
+
+def check_case_misp_event(request_form, current_user) -> str:
+    if request_form.get("case_title"):
+        if Case.query.filter_by(title=request_form.get("case_title")).first():
+            return "Case already exist"
+    else:
+        return "Case title empty"
+    
+    if not request_form.get("misp_event_id"):
+        return "Need a misp event id"
+    
+    if not request_form.get("misp_connectors_select"):
+        return "Need a misp instance"
+    
+    if not request_form.get("case_template_select"):
+        return "Need a case template"
+    
+    instance = Connector_Instance.query.get(request_form.get("misp_connectors_select"))
+    user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
+    # misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+    try:
+        misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+    except:
+        return "Error connecting to MISP"
+    
+    event = misp.get_event(request_form.get("misp_event_id"), pythonify=True)
+
+    if 'errors' in event:
+        return "Event not found on this MISP instance"
+    
+    return ""
+
+def create_case_misp_event(request_form, current_user):
+    instance = Connector_Instance.query.get(request_form.get("misp_connectors_select"))
+    user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
+    misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+    
+    event = misp.get_event(request_form.get("misp_event_id"), pythonify=True)
+
+    case = TemplateModel.create_case_from_template(request_form.get("case_template_select"), request_form.get("case_title"), current_user)
+
+    case.description = event.info
+    case.ticket_id = f"MISP Event: {request_form.get("misp_event_id")}"
+    case.is_private = True
+    db.session.commit()
+
+    for misp_tags in event.tags:
+        tag = Tags.query.filter_by(name=misp_tags.name).first()
+        if tag:
+            if not Case_Tags.query.filter_by(tag_id=tag.id, case_id=case.id).first():
+                CaseModel.add_tag(tag, case.id)
+
+    for misp_galaxy in event.galaxies:
+        for misp_cluster in misp_galaxy.clusters:
+            cluster = Cluster.query.filter_by(tag=misp_cluster.tag_name).first()
+            if cluster:
+                if not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
+                    CaseModel.add_cluster(cluster, case.id)
+
+    for obje in event.objects:
+        loc_object = Case_Misp_Object(
+            case_id=case.id,
+            template_uuid=obje.template_uuid,
+            name=obje.name,
+            creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+
+        db.session.add(loc_object)
+        db.session.commit()
+
+        for object_attr in obje.attributes:
+            first_seen = None
+            last_seen = None
+
+            if object_attr.get("first_seen"):
+                first_seen = datetime.datetime.strptime(object_attr.get("first_seen"), '%Y-%m-%dT%H:%M')
+            if object_attr.get("last_seen"):
+                last_seen = datetime.datetime.strptime(object_attr.get("last_seen"), '%Y-%m-%dT%H:%M')
+
+            attr = Misp_Attribute(
+                case_misp_object_id=loc_object.id,
+                value=object_attr.value,
+                type=object_attr.object_relation,
+                first_seen=first_seen,
+                last_seen=last_seen,
+                comment=object_attr.get("comment"),
+                ids_flag=object_attr.to_ids,
+                creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
+                last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+            )
+            db.session.add(attr)
+            db.session.commit()
+        
+        loc_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+        db.session.commit()
+
+    case_connector_instance = Case_Connector_Instance(
+        case_id=case.id,
+        instance_id=instance.id,
+        identifier=request_form.get("misp_event_id")
+    )
+    db.session.add(case_connector_instance)
+    db.session.commit()
+
+    return case

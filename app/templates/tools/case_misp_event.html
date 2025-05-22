@@ -1,0 +1,108 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+    <div style="display:flex;">
+        <h1>
+            Create a case from a MISP Event
+        </h1>
+    </div>
+
+    <hr>
+
+    <form action="" method="post">
+        <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token()|safe }}">
+        <div class="container-fluid w-75">
+            <div class="row mt-5">
+                <div class="col">
+                    <label for="case_title">Case title:</label>
+                    <input class="form-control" type="text" id="case_title" name="case_title"/>
+                </div>
+                <div class="col">
+                    <label for="misp_event_id">MISP Event id/UUID:</label>
+                    <input class="form-control" type="text" id="misp_event_id" name="misp_event_id"/>
+                </div>
+            </div>
+            <div class="row mt-5 mb-5">
+                <div class="col">
+                    <label for="misp_connectors_select">MISP Connectors:</label>
+                    <select data-placeholder="MISP Connectors" class="select2-select form-control" name="misp_connectors_select" id="misp_connectors_select" >
+                        <option></option>
+                        <template v-for="m_c in misp_connectors">
+                            <option :value="[[m_c.id]]">[[m_c.name]]</option>
+                        </template>
+                    </select>
+                </div>
+                <div class="col">
+                    <label for="case_template">Case Templates:</label>
+                    <select data-placeholder="Case Templates" class="select2-select form-control" name="case_template_select" id="case_template_select" >
+                        <option></option>
+                        <template v-for="c_t in case_templates">
+                            <option :value="[[c_t.id]]">[[c_t.title]]</option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" style="margin-top: 10px;">Submit</button>
+        </div>
+    </form>
+
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+
+                const misp_connectors = ref([])
+                const case_templates = ref([])
+
+                async function fetch_misp_connectors(){
+                    const res = await fetch("/case/misp_connectors")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        misp_connectors.value = loc["misp_connectors"]
+                    }
+                }
+                fetch_misp_connectors()
+
+                async function fetch_case_templates(){
+                    const res = await fetch("/templating/get_all_case_templates")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        case_templates.value = loc["templates"]
+                    }
+                }
+                fetch_case_templates()
+
+                onMounted(() => {
+                    $('.select2-select').select2({
+                        theme: 'bootstrap-5',
+                        closeOnSelect: false
+                    })
+                })
+                
+    
+                return {
+                    message_list,
+                    misp_connectors,
+                    case_templates
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
+{% endblock %}

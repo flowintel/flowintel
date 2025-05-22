@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, flash, redirect, render_template, request
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..decorators import editor_required
@@ -101,3 +101,21 @@ def get_case_by_tags():
     if res:
         return res
     return {}
+
+
+
+########################
+# Case from MISP Event #
+########################
+
+@tools_blueprint.route("/case_misp_event", methods=["GET", "POST"])
+@login_required
+@editor_required
+def case_misp_event():
+    if request.method == 'POST':
+        res = ToolsModel.check_case_misp_event(request.form, current_user)
+        if not res:
+            case = ToolsModel.create_case_misp_event(request.form, current_user)
+            return redirect(f"/case/{case.id}")
+        flash(res, 'error')
+    return render_template("tools/case_misp_event.html")

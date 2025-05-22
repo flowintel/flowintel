@@ -140,6 +140,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if misp_object:
             for attr in misp_object.attributes:
                 Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
+                Misp_Attribute.query.filter_by(id=attr.id).delete()
             Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=attr.id).delete()
 
     def get_assigned_tags(self, class_id) -> List:
