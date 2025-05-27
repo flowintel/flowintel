@@ -1,0 +1,218 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
+
+{% block content %}
+<div style="float:right;">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editModal">
+        <i class="fa-solid fa-pen-to-square"></i>
+    </button>
+</div>
+
+
+  
+  <!-- Modal -->
+<div v-if="note_template" class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="editModalLabel">Modal title</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label for="title" class="col-form-label">Title:</label>
+                <input class="form-control" :value="note_template.title" id="title-input">
+                <span id="title-error" style="color:brown"></span>
+
+                <label for="description" class="col-form-label">Description:</label>
+                <input class="form-control" :value="note_template.description" id="description-input">
+                <span id="description-error" style="color:brown"></span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" @click="save_modal()" class="btn btn-primary">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+  
+  
+
+<div style="margin-bottom: 10px;">
+    <h1 style="display: inline-block; font-size: xxx-large;">
+        <a type="button" class="btn" href="/tools/note_template_index"><i class="fa-solid fa-arrow-left"></i></a>
+    </h1>
+    <h1 style="display: inline-block; font-size: xx-large;">{{note_template.id}}- {{note_template.title}}</h1>
+    <span><i style="font-size: 12px; margin-left: 5px;">{{note_template.uuid}}</i></span>
+</div>
+<hr class="fading-line">
+
+
+
+{% if note_template.description %}
+    <pre>{{note_template.description}}</pre>
+{%endif%}
+
+<hr class="fading-line">
+
+<template v-if="note_template">
+    <div>
+        version: [[note_template.version]]
+    </div>
+    <template v-if="!is_editing">
+        <button class="btn btn-primary" @click="edit()">Edit</button>
+        <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px;" v-html="md.render(note_editor_render)"></div>
+    </template>
+    <template v-else>
+        <button class="btn btn-primary" @click="save()">Save</button>
+
+        <div style="display: flex;">
+            <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; width: 50%" id="editor"></div>
+            <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+        </div>
+
+    </template>
+</template>
+<template v-else>
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</template>
+{% endblock %}
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, onMounted, nextTick } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const note_template = ref(null)
+
+                let editor
+                const note_editor_render = ref("")
+
+                const md = window.markdownit()			// Library to Parse and display markdown
+                md.use(mermaidMarkdown.default)			// Use mermaid library
+
+                const is_editing = ref(false)
+
+                async function prepare_editor(default_content){
+                    await nextTick()
+                    const targetElement = document.getElementById('editor')
+                    if(targetElement && targetElement.innerHTML === ""){
+                            editor = new Editor.EditorView({
+                                doc: default_content,
+                                extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                                    if (v.docChanged) {
+                                        note_editor_render.value = editor.state.doc.toString()
+                                    }
+                                })],
+                                parent: targetElement
+                            })
+                    }
+                    md.mermaid.init()
+                }
+
+                async function fetchNoteTemplate() {
+                    note_template.value = null
+                    const res = await fetch('/tools/note_template/{{note_template.id}}')
+                    let loc = await res.json()
+                    note_template.value = loc
+                    note_editor_render.value = note_template.value.content
+                    if(!note_editor_render.value){
+                        is_editing.value = true
+                        prepare_editor("\n\n")
+                    }
+                }
+
+                async function save() {
+                    if(note_editor_render.value){
+                        is_editing.value = false
+                        md.mermaid.init()
+
+                        const res_msg = await fetch(
+                            '/tools/note_template/{{note_template.id}}/edit_content',{
+                                headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                method: "POST",
+                                body: JSON.stringify({"content": note_editor_render.value})
+                            }
+                        )
+                        display_toast(res_msg)
+                    }
+                }
+
+                async function edit() {
+                    is_editing.value = true
+                    prepare_editor(note_editor_render.value)
+                }
+                
+                async function save_modal() {
+                    $("#title-error").text("")
+                    $("#description-error").text("")
+
+                    let title=$("#title-input").val()
+                    let description=$("#description-input").val()
+                    if(!title){
+                        $("#title-error").text("Need to pass a title")
+                    }
+                    if(!description){
+                        $("#description-error").text("Need to pass a description")
+                    }
+
+                    if(!title || !description){
+                        return
+                    }
+
+                    const res_msg = await fetch(
+                        '/tools/note_template/{{note_template.id}}/edit',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({"title": title, "description": description})
+                        }
+                    )
+                    if(await res_msg.status == 200){
+                        note_template.value.title = title
+                        note_template.value.description = description
+                    }
+                    display_toast(res_msg)
+                
+                }
+                
+                onMounted(() => {
+                    fetchNoteTemplate()
+                    md.mermaid.init()
+                })
+
+                return {
+                    message_list, // Avoid warning
+                    dayjs,
+                    getTextColor,
+                    mapIcon,
+
+                    note_template,
+                    md,
+                    note_editor_render,
+                    is_editing,
+
+                    save,
+                    edit,
+                    save_modal
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
+{% endblock %}
