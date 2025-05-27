@@ -355,7 +355,7 @@ class CheckTitle(Resource):
     })
     def post(self):
         if "title" in request.json:
-            if CommonModel.get_case_by_title(request.json["title"]):
+            if CommonModel.check_case_title(request.json["title"]):
                 return {"title_already_exist": True}, 200
             return {"title_already_exist": False}, 200
         return {"message": "Please give 'title'"}, 400

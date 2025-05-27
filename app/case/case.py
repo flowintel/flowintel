@@ -430,12 +430,9 @@ def fork_case(cid):
 def check_case_title_exist():
     """Check if a title for a case exist"""
     data_dict = dict(request.args)
-    if CommonModel.get_case_by_title(data_dict["title"], current_user):
-        flag = True
-    else:
-        flag = False
-    
-    return {"title_already_exist": flag}
+    if CommonModel.check_case_title(data_dict["title"]):
+        return {"title_already_exist": True}
+    return {"title_already_exist": False}
 
 
 @case_blueprint.route("/<cid>/create_template", methods=['POST'])
@@ -464,11 +461,8 @@ def check_case_template_title_exist():
     """Check if a title for a case template exist"""
     data_dict = dict(request.args)
     if CommonModel.get_case_template_by_title(data_dict["title"]):
-        flag = True
-    else:
-        flag = False
-    
-    return {"title_already_exist": flag}
+        return {"title_already_exist": True}
+    return {"title_already_exist": False}
 
 
 @case_blueprint.route("/history/<cid>", methods=['GET'])

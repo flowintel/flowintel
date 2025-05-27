@@ -14,42 +14,66 @@
 
     <hr>
 
-    <form action="" method="post">
-        <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token()|safe }}">
-        <div class="container-fluid w-75">
-            <div class="row mt-5">
-                <div class="col">
-                    <label for="case_title">Case title:</label>
-                    <input class="form-control" type="text" id="case_title" name="case_title"/>
-                </div>
-                <div class="col">
-                    <label for="misp_event_id">MISP Event id/UUID:</label>
-                    <input class="form-control" type="text" id="misp_event_id" name="misp_event_id"/>
+    <div class="container-fluid w-75">
+        <div class="row mt-5">
+            <div class="col">
+                <label for="case_title">Case title:</label>
+                <input class="form-control" type="text" id="case_title" name="case_title"/>
+
+                <div class="mt-1">
+                    <button class="btn btn-primary" @click="check_title()">Check title</button>
+                    <span class="ms-1" id="case_title_message"></span>
                 </div>
             </div>
-            <div class="row mt-5 mb-5">
-                <div class="col">
-                    <label for="misp_connectors_select">MISP Connectors:</label>
-                    <select data-placeholder="MISP Connectors" class="select2-select form-control" name="misp_connectors_select" id="misp_connectors_select" >
-                        <option></option>
-                        <template v-for="m_c in misp_connectors">
-                            <option :value="[[m_c.id]]">[[m_c.name]]</option>
-                        </template>
-                    </select>
-                </div>
-                <div class="col">
-                    <label for="case_template">Case Templates:</label>
-                    <select data-placeholder="Case Templates" class="select2-select form-control" name="case_template_select" id="case_template_select" >
-                        <option></option>
-                        <template v-for="c_t in case_templates">
-                            <option :value="[[c_t.id]]">[[c_t.title]]</option>
-                        </template>
-                    </select>
-                </div>
+
+            <div class="col">
+                <label for="case_template">Case Templates:</label>
+                <select data-placeholder="Case Templates" class="select2-select form-control" name="case_template_select" id="case_template_select" >
+                    <option></option>
+                    <template v-for="c_t in case_templates">
+                        <option :value="[[c_t.id]]">[[c_t.title]]</option>
+                    </template>
+                </select>
             </div>
-            <button class="btn btn-primary" style="margin-top: 10px;">Submit</button>
         </div>
-    </form>
+        <div class="row mt-5 mb-5">
+            <div class="col">
+                <label for="misp_connectors_select">MISP Connectors:</label>
+                <select data-placeholder="MISP Connectors" class="select2-select form-control" name="misp_connectors_select" id="misp_connectors_select" >
+                    <option></option>
+                    <template v-for="m_c in misp_connectors">
+                        <option :value="[[m_c.id]]">[[m_c.name]]</option>
+                    </template>
+                </select>
+                <div class="mt-1">
+                    <button class="btn btn-primary" @click="check_connection()">Check Connection</button>
+                    <span class="ms-1" v-if="is_loading_misp_connector">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </span>
+                    <span class="ms-1" id="misp_connectors_message"></span>
+                </div>
+            </div>
+
+            <div class="col">
+                <label for="misp_event_id">MISP Event id/UUID:</label>
+                <input class="form-control" type="text" id="misp_event_id" name="misp_event_id"/>
+                <div class="mt-1">
+                    <button class="btn btn-primary" @click="check_event()">Check Event</button>
+                    <span class="ms-1" v-if="is_loading_misp_event">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </span>
+                    <span class="ms-1" id="misp_event_message"></span>
+                </div>
+                <div v-if="event_info">Event info: [[event_info]]</div>
+            </div>
+            
+        </div>
+        <button class="btn btn-primary" @click="submit()" style="margin-top: 10px;">Submit</button>
+    </div>
 
 {% endblock %}
 
@@ -65,6 +89,9 @@
 
                 const misp_connectors = ref([])
                 const case_templates = ref([])
+                const is_loading_misp_connector = ref(false)
+                const is_loading_misp_event = ref(false)
+                const event_info = ref("")
 
                 async function fetch_misp_connectors(){
                     const res = await fetch("/case/misp_connectors")
@@ -88,6 +115,86 @@
                 }
                 fetch_case_templates()
 
+                async function check_title() {
+                    $("#case_title_message").text("")
+                    if ($("#case_title").val()){
+                        const res = await fetch("/case/check_case_title_exist?title="+$("#case_title").val())
+                        let loc = await res.json()
+                        if(loc["title_already_exist"]){
+                            $("#case_title_message").text("This title already exist").css("color", "brown")
+                        }else{
+                            $("#case_title_message").text("This title is free").css("color", "green")
+                        }
+                    }else{
+                        $("#case_title_message").text("Need to give a title").css("color", "brown")
+                    }
+                    
+                }
+
+                async function check_connection() {
+                    $("#misp_connectors_message").text("")
+                    is_loading_misp_connector.value = true
+                    if($("#misp_connectors_select").val()){
+                        const res = await fetch("/tools/check_connection?misp_instance_id="+$("#misp_connectors_select").val())
+                        let loc = await res.json()
+                        if(loc["is_connection_okay"]){
+                            $("#misp_connectors_message").text("Connection to MISP okay").css("color", "green")
+                        }else{
+                            $("#misp_connectors_message").text("Error connecting to MISP").css("color", "brown")
+                        }
+                    }else{
+                        $("#misp_connectors_message").text("Need to select an instance").css("color", "brown")
+                    }
+                    is_loading_misp_connector.value = false
+                }
+
+                async function check_event() {
+                    $("#misp_event_message").text("")
+                    $("#misp_connectors_message").text("")
+                    is_loading_misp_event.value = true
+                    if($("#misp_connectors_select").val()){
+                        if($("#misp_event_id").val()){
+                            const res = await fetch("/tools/check_misp_event?misp_instance_id="+$("#misp_connectors_select").val()+"&misp_event_id="+$("#misp_event_id").val())
+                            let loc = await res.json()
+                            if(loc["is_connection_okay"]){
+                                if("event_info" in loc)
+                                    event_info.value = loc["event_info"]
+                                $("#misp_connectors_message").text("Connection to MISP okay").css("color", "green")
+                                $("#misp_event_message").text("The event is present on the instance").css("color", "green")
+                            }else{
+                                $("#misp_event_message").text("The event is not found on the instance").css("color", "brown")
+                            }
+                        }else{
+                            $("#misp_event_message").text("Need to pass a MISP Event id").css("color", "brown")
+                        }
+                    }else{
+                        $("#misp_connectors_message").text("Need to select an instance").css("color", "brown")
+                    }
+                    is_loading_misp_event.value = false
+                }
+
+
+                async function submit() {
+                    const res_msg = await fetch(
+                        '/tools/case_misp_event',{
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({
+                                "case_title": $("#case_title").val(),
+                                "misp_connectors_select": $("#misp_connectors_select").val(),
+                                "misp_event_id": $("#misp_event_id").val(),
+                                "case_template_select": $("#case_template_select").val()
+                            })
+                        }
+                    )
+                    if(await res_msg.status == 200){
+                        let loc = await res_msg.json()
+                        window.location.href='/case/'+loc["case_id"]
+                    }else{
+                        await display_toast(res_msg)
+                    }
+                }
+
                 onMounted(() => {
                     $('.select2-select').select2({
                         theme: 'bootstrap-5',
@@ -99,7 +206,15 @@
                 return {
                     message_list,
                     misp_connectors,
-                    case_templates
+                    case_templates,
+                    is_loading_misp_connector,
+                    is_loading_misp_event,
+                    event_info,
+
+                    check_title,
+                    check_connection,
+                    check_event,
+                    submit
                 }
             }
         }).mount('#main-container')

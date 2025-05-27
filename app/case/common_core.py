@@ -76,28 +76,36 @@ def get_case_by_completed(completed, current_user: User) -> List[Case]:
 
 
 def get_case_by_title(title: str, current_user: User):
-    """Return a case by its title """
-    case = Case.query.where(func.lower(Case.title).contains(func.lower(title))).first()
-    if case and case.is_private:
-        if get_present_in_case(case.id, current_user):
-            return case
-        return None
-    return case
+    """Return a case by its title"""
+    case = Case.query.filter_by(title = title).first()
+    if case:
+        if case.is_private:
+            if get_present_in_case(case.id, current_user):
+                return case
+            return None
+        return case
+    return None
+
+def check_case_title(title: str):
+    """Check if a case already exist with the title"""
+    return Case.query.where(func.lower(Case.title) == func.lower(title)).first()
 
 def get_task_by_title(title, current_user):
     """Return a tas by its title"""
-    task = Task.query.where(func.lower(Task.title).contains(func.lower(title))).first()
-    case = get_case(task.case_id)
-    if case.is_private:
-        if get_present_in_case(case.id, current_user):
-            return task
-        return None
-    return task
+    task = Task.query.filter_by(title=title).first()
+    if task:
+        case = get_case(task.case_id)
+        if case.is_private:
+            if get_present_in_case(case.id, current_user):
+                return task
+            return None
+        return task
+    return None
 
 
-def get_case_template_by_title(title):
+def get_case_template_by_title(title: str):
     """Return a case template by its title"""
-    return Case_Template.query.filter_by(title=title).first()
+    return Case_Template.query.where(func.lower(Case_Template.title)==func.lower(title)).first()
 
 
 def get_task_templates():

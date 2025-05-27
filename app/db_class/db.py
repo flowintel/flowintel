@@ -13,7 +13,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(64), unique=True, index=True)
     matrix_id = db.Column(db.String, unique=True, index=True)
     role_id = db.Column(db.Integer, index=True)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(165))
     api_key = db.Column(db.String(60), index=True)
     org_id = db.Column(db.Integer, db.ForeignKey('org.id', ondelete="CASCADE"))
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))

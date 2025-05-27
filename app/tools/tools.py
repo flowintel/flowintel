@@ -113,9 +113,32 @@ def get_case_by_tags():
 @editor_required
 def case_misp_event():
     if request.method == 'POST':
-        res = ToolsModel.check_case_misp_event(request.form, current_user)
-        if not res:
-            case = ToolsModel.create_case_misp_event(request.form, current_user)
-            return redirect(f"/case/{case.id}")
-        flash(res, 'error')
+        res = ToolsModel.check_case_misp_event(request.json, current_user)
+        if not type(res) == str:
+            case = ToolsModel.create_case_misp_event(request.json, current_user)
+            return {"case_id": case.id}, 200
+        else:
+            return {"message": res, "toast_class": "warning-subtle"}, 400
     return render_template("tools/case_misp_event.html")
+
+
+@tools_blueprint.route("/check_connection", methods=["GET"])
+@login_required
+@editor_required
+def check_connection():
+    misp_instance_id = request.args.get('misp_instance_id', 1, type=int)
+    res = ToolsModel.check_connection_misp(misp_instance_id, current_user)
+    if not type(res) == str:
+        return {"is_connection_okay": True}
+    return {"is_connection_okay": False}
+
+@tools_blueprint.route("/check_misp_event", methods=["GET"])
+@login_required
+@editor_required
+def check_misp_event():
+    misp_instance_id = request.args.get('misp_instance_id', 1, type=int)
+    misp_event_id = request.args.get('misp_event_id', 1, type=int)
+    res = ToolsModel.check_event(misp_event_id, misp_instance_id, current_user)
+    if not type(res) == str:
+        return {"is_connection_okay": True, "event_info": res.info}
+    return {"is_connection_okay": False}

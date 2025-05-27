@@ -341,6 +341,29 @@ def get_case_by_tags(current_user):
 ########################
 # Case from MISP Event #
 ########################
+def check_connection_misp(misp_instance_id: int, current_user: User):
+    instance = Connector_Instance.query.get(misp_instance_id)
+    user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
+    # misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+    try:
+        misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+    except:
+        return "Error connecting to MISP"
+    
+    return misp
+
+def check_event(event_id: int, misp_instance_id: int, current_user: User):
+    misp = check_connection_misp(misp_instance_id, current_user)
+    if type(misp) == PyMISP:
+        event = misp.get_event(event_id, pythonify=True)
+
+        if 'errors' in event:
+            return "Event not found on this MISP instance"
+        
+        return event
+    else:
+        return misp
+    
 
 def check_case_misp_event(request_form, current_user) -> str:
     if request_form.get("case_title"):
@@ -358,20 +381,7 @@ def check_case_misp_event(request_form, current_user) -> str:
     if not request_form.get("case_template_select"):
         return "Need a case template"
     
-    instance = Connector_Instance.query.get(request_form.get("misp_connectors_select"))
-    user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
-    # misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
-    try:
-        misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
-    except:
-        return "Error connecting to MISP"
-    
-    event = misp.get_event(request_form.get("misp_event_id"), pythonify=True)
-
-    if 'errors' in event:
-        return "Event not found on this MISP instance"
-    
-    return ""
+    return check_event(request_form.get("misp_event_id"), request_form.get("misp_connectors_select"), current_user)
 
 def create_case_misp_event(request_form, current_user):
     instance = Connector_Instance.query.get(request_form.get("misp_connectors_select"))
