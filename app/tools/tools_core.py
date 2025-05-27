@@ -555,3 +555,66 @@ def create_case_misp_event(request_form, current_user):
     db.session.commit()
 
     return case
+
+
+#################
+# Note Template #
+#################
+
+def get_note_template(note_id: int):
+    """Get a note template model"""
+    return Note_Template_Model.query.get(note_id)
+
+def get_all_note_template():
+    """Get all note template"""
+    return Note_Template_Model.query.all()
+
+def get_note_template_by_page(page: int):
+    """Get note template by page"""
+    return Note_Template_Model.query.paginate(page=page, per_page=20, max_per_page=50)
+
+import re
+
+def extract_variables(template_str: str) -> list:
+    return list(set(re.findall(r"{{\s*(\w+)\s*}}", template_str)))
+
+def create_note_template(request_json: dict, current_user: int) -> Note_Template_Model:
+    """Create a new note template model"""
+    content = request_json["content"]
+    list_params = extract_variables(content)
+    n = Note_Template_Model(
+        title=request_json["title"],
+        description=request_json["description"],
+        content = content,
+        version = 1,
+        params={"list": list_params},
+        author=current_user.id,
+        creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+    )
+    db.session.add(n)
+    db.session.commit()
+
+    return n
+
+
+def edit_content_note_template(note_id: int, request_json: dict) -> bool:
+    content = request_json["content"]
+    list_params = extract_variables(content)
+    note_template = get_note_template(note_id)
+
+    note_template.content = content
+    note_template.params = {"list": list_params}
+
+    db.session.commit()
+    return True
+
+def edit_note_template(note_id: int, request_json: dict) -> bool:
+    note_template = get_note_template(note_id)
+
+    note_template.title = request_json["title"]
+    note_template.description = request_json["description"]
+    # note_template.version = request_json["description"]
+
+    db.session.commit()
+    return True

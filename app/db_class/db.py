@@ -1,5 +1,6 @@
 import datetime
 import json
+import uuid
 from .. import db, login_manager
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
@@ -1052,6 +1053,43 @@ class Misp_Attribute_Instance_Uuid(db.Model):
 
         return json_dict
     
+
+class Note_Template_Model(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True, default=str(uuid.uuid4()))
+    author = db.Column(db.Integer, index=True)
+    title = db.Column(db.String)
+    description = db.Column(db.String)
+    content = db.Column(db.String)
+    params = db.Column(db.JSON)
+    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc), onupdate=datetime.datetime.now(tz=datetime.timezone.utc))
+    version = db.Column(db.Integer, index=True) # Keep an history of all version so case with old version can keep there notes
+    # Will change the version only if params have changes
+    # Stay in same version if content change without adding or modifying params
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "uuid": self.uuid,
+            "author": self.author,
+            "title": self.title,
+            "description": self.description,
+            "content": self.content,
+            "version": self.version,
+            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "params": self.params
+        }
+
+        return json_dict
+
+class Case_Note_Template_Model(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    note_template_id = db.Column(db.Integer, index=True)
+    values = db.Column(db.JSON)
+    template_version = db.Column(db.Integer, index=True) # Keep the version of the template to match the correct params
 
 login_manager.anonymous_user = AnonymousUser
 
