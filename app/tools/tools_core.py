@@ -343,14 +343,18 @@ def get_case_by_tags(current_user):
 ########################
 def check_connection_misp(misp_instance_id: int, current_user: User):
     instance = Connector_Instance.query.get(misp_instance_id)
-    user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
-    # misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
-    try:
-        misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
-    except:
-        return "Error connecting to MISP"
-    
-    return misp
+    if instance:
+        user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
+        if user_connector_instance:
+            # misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+            try:
+                misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+            except:
+                return "Error connecting to MISP"
+            
+            return misp
+        return "No config found for the instance"
+    return "Instance not found"
 
 def check_event(event_id: int, misp_instance_id: int, current_user: User):
     misp = check_connection_misp(misp_instance_id, current_user)
@@ -375,22 +379,22 @@ def check_case_misp_event(request_form, current_user) -> str:
     if not request_form.get("misp_event_id"):
         return "Need a misp event id"
     
-    if not request_form.get("misp_connectors_select"):
+    if not request_form.get("misp_instance_id"):
         return "Need a misp instance"
     
-    if not request_form.get("case_template_select"):
+    if not request_form.get("case_template_id"):
         return "Need a case template"
     
-    return check_event(request_form.get("misp_event_id"), request_form.get("misp_connectors_select"), current_user)
+    return check_event(request_form.get("misp_event_id"), request_form.get("misp_instance_id"), current_user)
 
 def create_case_misp_event(request_form, current_user):
-    instance = Connector_Instance.query.get(request_form.get("misp_connectors_select"))
+    instance = Connector_Instance.query.get(request_form.get("misp_instance_id"))
     user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
     misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
     
     event = misp.get_event(request_form.get("misp_event_id"), pythonify=True)
 
-    case = TemplateModel.create_case_from_template(request_form.get("case_template_select"), request_form.get("case_title"), current_user)
+    case = TemplateModel.create_case_from_template(request_form.get("case_template_id"), request_form.get("case_title"), current_user)
 
     case.description = event.info
     case.ticket_id = f"MISP Event: {request_form.get("misp_event_id")}"
@@ -427,9 +431,15 @@ def create_case_misp_event(request_form, current_user):
             last_seen = None
 
             if object_attr.get("first_seen"):
-                first_seen = datetime.datetime.strptime(object_attr.get("first_seen"), '%Y-%m-%dT%H:%M')
+                if type(object_attr.get("first_seen")) == datetime.datetime:
+                    first_seen = object_attr.get("first_seen")
+                else:
+                    first_seen = datetime.datetime.strptime(object_attr.get("first_seen"), '%Y-%m-%dT%H:%M')
             if object_attr.get("last_seen"):
-                last_seen = datetime.datetime.strptime(object_attr.get("last_seen"), '%Y-%m-%dT%H:%M')
+                if type(object_attr.get("last_seen")) == datetime.datetime:
+                    last_seen = object_attr.get("last_seen")
+                else:
+                    last_seen = datetime.datetime.strptime(object_attr.get("last_seen"), '%Y-%m-%dT%H:%M')
 
             attr = Misp_Attribute(
                 case_misp_object_id=loc_object.id,

@@ -141,7 +141,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             for attr in misp_object.attributes:
                 Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
                 Misp_Attribute.query.filter_by(id=attr.id).delete()
-            Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=attr.id).delete()
+            Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=misp_object.id).delete()
 
     def get_assigned_tags(self, class_id) -> List:
         """Return a list of tags present in a case"""
