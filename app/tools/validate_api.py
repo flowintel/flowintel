@@ -20,8 +20,6 @@ def validate_case_from_misp(request_json: dict, current_user: User):
         instance = Connector_Instance.query.get(int(request_json["misp_instance_id"]))
         if not instance:
             return {"message": "Instance not found"}
-        print(instance)
-        print(current_user)
         
         user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
         if not user_connector_instance:
@@ -36,8 +34,6 @@ def validate_case_from_misp(request_json: dict, current_user: User):
         return {"message": "Please give a misp event id"}
     else:
         instance = Connector_Instance.query.get(int(request_json["misp_instance_id"]))
-        print(instance)
-        print(current_user)
         if not instance:
             return {"message": "Instance not found"}
         user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
