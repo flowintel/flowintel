@@ -1,22 +1,22 @@
 import calendar
-import re
 
 from pymisp import PyMISP
 from ..db_class.db import *
 import uuid
 import json
 import datetime
-from ..utils import utils
+from ..utils import utils, jsonschema_flowintel
 from ..case.TaskCore import TaskModel
 from ..case.CaseCore import CaseModel
 from ..templating.TemplateCase import TemplateModel
+from ..templating.TaskTemplateCore import TaskModel as TaskTemplateModel
 
 
-def core_read_json_file(case, current_user):
-    if not utils.validateCaseJson(case):
+def case_creation_from_importer(case, current_user):
+    if not utils.validateImporterJson(case, jsonschema_flowintel.caseSchema):
         return {"message": f"Case '{case['title']}' format not okay"}
     for task in case["tasks"]:
-        if not utils.validateTaskJson(task):
+        if not utils.validateImporterJson(task, jsonschema_flowintel.taskSchema):
             return {"message": f"Task '{task['title']}' format not okay"}
 
 
@@ -123,18 +123,106 @@ def core_read_json_file(case, current_user):
             for urls_tools in task["urls_tools"]:
                 TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
 
+
+def case_template_creation_from_importer(template):
+    if not utils.validateImporterJson(template, jsonschema_flowintel.caseTemplateSchema):
+        return {"message": f"Case template '{template['title']}' format not okay"}
+    for task in template["tasks_template"]:
+        if not utils.validateImporterJson(task, jsonschema_flowintel.taskTemplateSchema):
+            return {"message": f"Task Template '{task['title']}' format not okay"}
+        
+    #######################
+    ## Case Verification ##
+    #######################
+
+    ## Caseformat is valid
+    # title
+    if Case_Template.query.filter_by(title=template["title"]).first():
+        return {"message": f"Case Template Title '{template['title']}' already exist"}
     
-def read_json_file(files_list, current_user):
+    # uuid
+    if Case_Template.query.filter_by(uuid=template["uuid"]).first():
+        template["uuid"] = str(uuid.uuid4())
+
+    # tags
+    for tag in template["tags"]:
+        if not utils.check_tag(tag):
+            return {"message": f"Case Template '{template['title']}': tag '{tag}' doesn't exist"}
+    
+    # Clusters
+    for i in range(0, len(template["clusters"])):
+        template["clusters"][i] = template["clusters"][i]["name"]
+
+    template["custom_tags"] = []
+        
+    
+    #######################
+    ## Task Verification ##
+    #######################
+
+    ## Task format is valid
+    for task in template["tasks_template"]:
+        if Task.query.filter_by(uuid=task["uuid"]).first():
+            task["uuid"] = str(uuid.uuid4())
+
+        for tag in task["tags"]:
+            if not utils.check_tag(tag):
+                return {"message": f"Task '{task['title']}': tag '{tag}' doesn't exist"}
+            
+        # Clusters
+        for i in range(0, len(task["clusters"])):
+            task["clusters"][i] = task["clusters"][i]["name"]
+        
+        task["custom_tags"] = []
+
+    #################
+    ## DB Creation ##
+    ################
+
+    ## Case creation
+    template["tasks"] = []
+    case_created = TemplateModel.create_case(template)
+    if template["notes"]:
+        TemplateModel.modif_note_core(case_created.id, template["notes"])
+
+    ## Task creation
+    for task in template["tasks_template"]:
+        # task_created = TaskModel.create_task(task, case_created.id, current_user)
+        task_created = TaskTemplateModel.add_task_template_core(task)
+        TemplateModel.add_task_case_template({"tasks": [task_created.id]}, case_created.id)
+        if task["notes"]:
+            for note in task["notes"]:
+                loc_note = TaskTemplateModel.create_note(task_created.id)
+                TaskTemplateModel.modif_note_core(task_created.id, note["note"], loc_note.id)
+        
+        if task["subtasks"]:
+            for subtask in task["subtasks"]:
+                TaskTemplateModel.create_subtask(task_created.id, subtask["description"])
+        
+        if task["urls_tools"]:
+            for urls_tools in task["urls_tools"]:
+                TaskTemplateModel.create_url_tool(task_created.id, urls_tools["name"])
+
+
+
+    
+def importer_core(files_list, current_user, importer_type):
     for file in files_list:
         if files_list[file].filename:
             try:
                 file_data = json.loads(files_list[file].read().decode())
                 if type(file_data) == list:
                     for case in file_data:
-                        res = core_read_json_file(case, current_user)
+                        if importer_type == 'case':
+                            res = case_creation_from_importer(case, current_user)
+                        elif importer_type == 'template':
+                            res = case_template_creation_from_importer(case, current_user)
                         if res: return res
                 else:
-                    return core_read_json_file(file_data, current_user)
+                    if importer_type == 'case':
+                        return case_creation_from_importer(file_data, current_user)
+                    elif importer_type == 'template':
+                        return case_template_creation_from_importer(file_data)
             except Exception as e:
                 print(e)
                 return {"message": "Something went wrong"}

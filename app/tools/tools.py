@@ -28,12 +28,17 @@ def importer_view():
 @editor_required
 def importer():
     """Import case and task"""
-    if len(request.files) > 0:
-        message = ToolsModel.read_json_file(request.files, current_user)
-        if message:
-            message["toast_class"] = "danger-subtle"
-            return message, 400
-        return {"message": "All created", "toast_class": "success-subtle"}, 200
+    importer_type = request.args.get('type', 1, type=str)
+    if importer_type:
+        if len(request.files) > 0:
+            message = ToolsModel.importer_core(request.files, current_user, importer_type)
+            if message:
+                message["toast_class"] = "danger-subtle"
+                return message, 400
+            return {"message": "All created", "toast_class": "success-subtle"}, 200
+        return {"message": "Need to give a least a file", "toast_class": "warning-subtle"}, 400
+    return {"message": "Need to give a type of import", "toast_class": "warning-subtle"}, 400
+    
     
 ###########
 # Modules #

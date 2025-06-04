@@ -30,11 +30,11 @@ class ImportCase(Resource):
             current_user = utils.get_user_api(request.headers["X-API-KEY"])
             if type(request.json) == list:
                 for case in request.json:
-                    res = ToolModel.core_read_json_file(case, current_user)
+                    res = ToolModel.case_creation_from_importer(case, current_user)
                     if res:
                         return res
             else:
-                res = ToolModel.core_read_json_file(request.json, current_user)
+                res = ToolModel.case_creation_from_importer(request.json, current_user)
                 if res:
                     return res
             return {"message": "All created"}

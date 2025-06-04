@@ -126,7 +126,7 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
     def add_task_template_core(self, form_dict):
         template = Task_Template(
             title=form_dict["title"],
-            description=form_dict["body"],
+            description=form_dict["description"],
             uuid=str(uuid.uuid4()),
             nb_notes=0,
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
@@ -156,7 +156,7 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         template = CommonModel.get_task_template(tid)
 
         template.title=form_dict["title"]
-        template.description=form_dict["body"]
+        template.description=form_dict["description"]
         template.time_required = form_dict["time_required"]
         
         self._edit(form_dict, tid)

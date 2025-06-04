@@ -5,20 +5,33 @@
 {% extends 'base.html' %}
 
 {% block content %}
+    <h1>
+        Importer
+    </h1>
 
-    <div style="display:flex;">
-        <h1>
-            Import Case
-        </h1>
-        <i class="fa fa-question" title="Import a case and its tasks"></i>
-    </div>
+    <hr class="fading-line">
 
-    <hr>
+    <ul class="nav nav-tabs" style="margin-bottom: 10px;">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-case" aria-current="page" @click="active_tab('import_case')">Case</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-template" @click="active_tab('import_template')">Template</button>
+        </li>
+    </ul>
 
-    <div class="w-50">
-        <input class="form-control" type="file" id="importer" />
-        <button class="btn btn-primary" @click="read_json()" style="margin-top: 10px;">Add</button>
-    </div>
+    <template v-if="main_tab == 'import_case'">
+        <div class="w-50">
+            <input class="form-control" type="file" id="importer_case" />
+            <button class="btn btn-primary" @click="read_json('importer_case')" style="margin-top: 10px;">Add</button>
+        </div>
+    </template>
+    <template v-else-if="main_tab == 'import_template'">
+        <div class="w-50">
+            <input class="form-control" type="file" id="importer_template" />
+            <button class="btn btn-primary" @click="read_json('importer_template')" style="margin-top: 10px;">Add</button>
+        </div>
+    </template>
 
 {% endblock %}
 
@@ -32,16 +45,41 @@
             delimiters: ['[[', ']]'],
             setup() {
 
-                async function read_json(){
-                    let files = document.getElementById('importer').files
+                const main_tab = ref('import_case')
+
+                function active_tab(tab_name){
+                    if(tab_name == 'import_case'){
+                        main_tab.value = 'import_case'
+                        if ( !document.getElementById("tab-case").classList.contains("active") ){
+                            document.getElementById("tab-case").classList.add("active")
+                            document.getElementById("tab-template").classList.remove("active")
+                        }
+                    }else if(tab_name == 'import_template'){
+                        main_tab.value = 'import_template'
+                        if ( !document.getElementById("tab-template").classList.contains("active") ){
+                            document.getElementById("tab-template").classList.add("active")
+                            document.getElementById("tab-case").classList.remove("active")
+                        }
+                    }
+                }
+
+                async function read_json(importer_id){
+                    let files = document.getElementById(importer_id).files
 
                     let formData = new FormData();
                     for(let i=0;i<files.length;i++){
                         formData.append("files"+i, files[i]);
                     }
 
+                    let url = '/tools/importer?type='
+                    if(importer_id == 'importer_case'){
+                        url += 'case'
+                    }else if(importer_id == 'importer_template'){
+                        url += 'template'
+                    }
+
                     const res = await fetch(
-                        '/tools/importer',{
+                        url, {
                             headers: { "X-CSRFToken": $("#csrf_token").val() },
                             method: "POST",
                             files: files,
@@ -54,7 +92,9 @@
     
                 return {
                     message_list,
-                    read_json
+                    main_tab,
+                    read_json,
+                    active_tab
                 }
             }
         }).mount('#main-container')

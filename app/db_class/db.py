@@ -520,7 +520,8 @@ class Task_Template(db.Model):
             "description": self.description,
             "time_required": self.time_required
         }
-        json_dict["notes"] = [note.to_json() for note in self.notes]
+        json_dict["notes"] = [note.download() for note in self.notes]
+        json_dict["subtasks"] = [subtask.download() for subtask in self.subtasks]
         json_dict["urls_tools"] = [url_tool.download() for url_tool in self.urls_tools]
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
@@ -543,6 +544,12 @@ class Subtask_Template(db.Model):
         }
         return json_dict
     
+    def download(self):
+        json_dict = {
+            "description": self.description
+        }
+        return json_dict
+    
 class Note_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
@@ -561,6 +568,13 @@ class Note_Template(db.Model):
         }
         return json_dict
     
+    def download(self):
+        json_dict = {
+            "note": self.note,
+            "template_uuid": Task_Template.query.get(self.template_id).uuid,
+        }
+        return json_dict
+    
 class Task_Template_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey('task__template.id', ondelete="CASCADE"))
@@ -576,8 +590,7 @@ class Task_Template_Url_Tool(db.Model):
 
     def download(self):
         json_dict = {
-            "name": self.name,
-            "task_id": self.task_id,
+            "name": self.name
         }
         return json_dict
     
