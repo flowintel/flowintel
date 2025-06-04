@@ -8,6 +8,7 @@
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
 <script src="{{ url_for('static',filename='js/editor.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+<script src="{{ url_for('static',filename='js/handlebars.js') }}"></script>
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timeline.css') }}">
 
 <script src="{{ url_for('static',filename='js/timelinejs.js') }}"></script>
@@ -195,6 +196,9 @@
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-case" @click="active_tab('case')">Case notes</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-note-template" @click="active_tab('note_template')">Notes From Template</button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-all" @click="active_tab('all')">Tasks notes</button>
@@ -388,6 +392,9 @@
     </template>
 
     <template v-else-if="main_tab == 'case'">
+        <a class="btn btn-primary" :href="'/case/'+cases_info.case.id+'/add_note_template'">
+            Add note template
+        </a>
         <div v-if="cases_info.case.notes">
             <template v-if="edit_mode">
                 <button class="btn btn-primary" @click="save_note_case()">Save</button>
@@ -430,6 +437,10 @@
             </div>
         </template>
 
+    </template>
+
+    <template v-else-if="main_tab == 'note_template'">
+        <note_from_template :cases_info="cases_info"></note_from_template>
     </template>
 
     <template v-else-if="main_tab == 'all'">
@@ -483,6 +494,7 @@
         import misp_object from '/static/js/case/misp_object.js'
         import caseconnectors from '/static/js/case/CaseConnectors.js'
         import case_history from '/static/js/case/case_history.js'
+        import note_from_template from '/static/js/case/note_from_template.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
@@ -494,7 +506,8 @@
                 manage_orgs,
                 misp_object,
                 caseconnectors,
-                case_history
+                case_history,
+                note_from_template
             },
             setup() {
                 const cases_info = ref(null)
@@ -765,6 +778,7 @@
                             document.getElementById("tab-all").classList.remove("active")
                             document.getElementById("tab-hedgedoc").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
+                            document.getElementById("tab-note-template").classList.remove("active")
                             await nextTick()
 
                             initialize_select2()
@@ -778,6 +792,7 @@
                             document.getElementById("tab-all").classList.remove("active")
                             document.getElementById("tab-hedgedoc").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
+                            document.getElementById("tab-note-template").classList.remove("active")
                         }
                     }else if(tab_name == 'case'){
                         let loc_tab = main_tab.value 
@@ -789,6 +804,7 @@
                             document.getElementById("tab-all").classList.remove("active")
                             document.getElementById("tab-hedgedoc").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
+                            document.getElementById("tab-note-template").classList.remove("active")
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'case'){
@@ -796,6 +812,20 @@
                         }else{
                             prepare_editor(cases_info.value.case.notes)
                         }
+                    }else if(tab_name == 'note_template'){
+                        main_tab.value = 'note_template'
+                        if ( !document.getElementById("tab-note-template").classList.contains("active") ){
+                            document.getElementById("tab-note-template").classList.add("active")
+                            document.getElementById("tab-all").classList.remove("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-case").classList.remove("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                            document.getElementById("tab-hedgedoc").classList.remove("active")
+                            document.getElementById("tab-info").classList.remove("active")
+                        }
+                        await fetch_all_notes()
+                        await nextTick()
+                        md.mermaid.init()
                     }else if(tab_name == 'all'){
                         main_tab.value = 'all'
                         if ( !document.getElementById("tab-all").classList.contains("active") ){
@@ -805,6 +835,7 @@
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-hedgedoc").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
+                            document.getElementById("tab-note-template").classList.remove("active")
                         }
                         await fetch_all_notes()
                         await nextTick()
@@ -818,6 +849,7 @@
                             document.getElementById("tab-case").classList.remove("active")
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
+                            document.getElementById("tab-note-template").classList.remove("active")
                         }
                         await fetch_all_notes()
                         await nextTick()
@@ -831,6 +863,7 @@
                             document.getElementById("tab-case").classList.remove("active")
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-hedgedoc").classList.remove("active")
+                            document.getElementById("tab-note-template").classList.remove("active")
                         }
                         await fetch_all_notes()
                         await nextTick()

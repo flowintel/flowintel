@@ -1019,3 +1019,54 @@ def edit_connector(cid, ciid):
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+
+@case_blueprint.route("/<cid>/add_note_template", methods=['GET'])
+@login_required
+def add_note_template(cid):
+    """Render add note template"""
+    return render_template("case/note_template_add.html", case_id=cid)
+
+@case_blueprint.route("/<cid>/get_note_template", methods=['GET'])
+@login_required
+def get_note_template(cid):
+    """Get note template of a case"""
+    case_note_template = CaseModel.get_case_note_template(cid)
+    if case_note_template:
+        template = CaseModel.get_note_template_model(case_note_template.note_template_id)
+        return {"case_note_template": case_note_template.to_json(), "current_template": template.to_json()}, 200
+    return {"message": "No note template for the case"}, 404
+
+
+@case_blueprint.route("/<cid>/create_note_template_case", methods=['POST'])
+@login_required
+@editor_required
+def create_note_template_case(cid):
+    """Create note template of a case"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "values" in request.json and "template_id" in request.json and "content" in request.json:
+                if CaseModel.create_note_template(cid, request.json, current_user):
+                    return {"message": "Note template modified successfully", "toast_class": "success-subtle"}, 200
+                return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400
+            return {"message": "Missing parameters", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+
+@case_blueprint.route("/<cid>/modif_note_template_case", methods=['POST'])
+@login_required
+@editor_required
+def modif_note_template_case(cid):
+    """Modify note template of a case"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "values" in request.json:
+                if CaseModel.modif_note_template(cid, request.json, current_user):
+                    return {"message": "Note template modified successfully", "toast_class": "success-subtle"}, 200
+                return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400
+            return {"message": "no values passed", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404

@@ -1240,4 +1240,41 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.save_history(case.uuid, user, f"Module 'misp_object_event' called with connector '{instance['name']}'")
         CommonModel.update_last_modif(case.id)
 
+
+    #################
+    # Note Template #
+    #################
+    def get_note_template_model(self, template_id: int):
+        """Return a note template model"""
+        return Note_Template_Model.query.get(template_id)
+
+    def get_case_note_template(self, case_id: int):
+        """Return a case note template"""
+        return Case_Note_Template_Model.query.filter_by(case_id=case_id).first()
+    
+    def create_note_template(self, case_id: int, request_json, current_user: User):
+        case = CommonModel.get_case(case_id)
+        c = Case_Note_Template_Model(
+            case_id=case_id,
+            note_template_id=request_json["template_id"],
+            content = request_json["content"],
+            values={"list": request_json["values"]}
+        )
+        db.session.add(c)
+        db.session.commit()
+        CommonModel.save_history(case.uuid, current_user, f"Note Template created")
+        CommonModel.update_last_modif(case.id)
+        return c
+    
+    def modif_note_template(self, case_id: int, request_json, current_user: User):
+        """Modify a note template of a case"""
+        case = CommonModel.get_case(case_id)
+        c = self.get_case_note_template(case_id)
+        if c:
+            c.values = request_json["values"]
+            db.session.commit()
+        CommonModel.save_history(case.uuid, current_user, f"Note Template modified")
+        CommonModel.update_last_modif(case.id)
+        return True
+
 CaseModel = CaseCore()

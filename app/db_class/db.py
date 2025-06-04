@@ -1089,7 +1089,18 @@ class Case_Note_Template_Model(db.Model):
     case_id = db.Column(db.Integer, index=True)
     note_template_id = db.Column(db.Integer, index=True)
     values = db.Column(db.JSON)
-    template_version = db.Column(db.Integer, index=True) # Keep the version of the template to match the correct params
+    content = db.Column(db.String)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "case_id": self.case_id,
+            "note_template_id": self.note_template_id,
+            "values": self.values,
+            "content": self.content
+        }
+
+        return json_dict
 
 login_manager.anonymous_user = AnonymousUser
 
