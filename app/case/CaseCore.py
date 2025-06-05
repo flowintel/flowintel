@@ -1276,5 +1276,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.save_history(case.uuid, current_user, f"Note Template modified")
         CommonModel.update_last_modif(case.id)
         return True
+    
+    def modif_content_note_template(self, case_id: int, request_json, current_user: User):
+        """Modify content of note template of a case"""
+        case = CommonModel.get_case(case_id)
+        c = self.get_case_note_template(case_id)
+        if c:
+            c.content = request_json["content"]
+            db.session.commit()
+        CommonModel.save_history(case.uuid, current_user, f"Content Note Template modified")
+        CommonModel.update_last_modif(case.id)
+        return True
 
 CaseModel = CaseCore()

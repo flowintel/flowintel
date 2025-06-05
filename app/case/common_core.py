@@ -497,17 +497,20 @@ def convert_inline_code_to_verb(text: str) -> str:
 
 def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int = None):
     """Export notes into a format like pdf or docx"""
-    if not os.path.isdir(TEMP_FOLDER):
-        os.mkdir(TEMP_FOLDER)
-
-    download_filename = f"export_note_task_{case_task_id}.{type_req}"
-    temp_md = os.path.join(TEMP_FOLDER, "index.md")
-    temp_export = os.path.join(TEMP_FOLDER, f"output.{type_req}")
-
     if not case_task:
         note = get_task_note(note_id).note
     else:
         note = get_case(case_task_id).notes
+
+    return export_notes_core(case_task_id, type_req, note)
+
+def export_notes_core(case_task_id: int, type_req: str, note: str):
+    if not os.path.isdir(TEMP_FOLDER):
+        os.mkdir(TEMP_FOLDER)
+
+    download_filename = f"export_note_{case_task_id}.{type_req}"
+    temp_md = os.path.join(TEMP_FOLDER, "index.md")
+    temp_export = os.path.join(TEMP_FOLDER, f"output.{type_req}")
 
     loc_note = smart_escape_for_markdown_to_latex(note)
     loc_note = convert_inline_code_to_verb(loc_note)
