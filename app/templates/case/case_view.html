@@ -392,9 +392,6 @@
     </template>
 
     <template v-else-if="main_tab == 'case'">
-        <a class="btn btn-primary" :href="'/case/'+cases_info.case.id+'/add_note_template'">
-            Add note template
-        </a>
         <div v-if="cases_info.case.notes">
             <template v-if="edit_mode">
                 <button class="btn btn-primary" @click="save_note_case()">Save</button>

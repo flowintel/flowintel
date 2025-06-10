@@ -145,7 +145,7 @@ export default {
                     case_note_template.value.values.list[i] = $("#"+selected_note_template.value.params.list[i]).val()
             }
 
-            if(!no_keep && !rendering_tab.value == 'final'){
+            if(!no_keep && rendering_tab.value != 'final'){
                 const matches = [...current_note_template_content.matchAll(/{{\s*(\w+)\s*}}/g)];
                 matches.forEach(m => {
                     const varName = m[1];
@@ -170,8 +170,7 @@ export default {
                     method: "POST",
                     body: JSON.stringify({
                         "values": loc, 
-                        "template_id": selected_note_template.value.id, 
-                        "content": selected_note_template.value.content
+                        "template_id": selected_note_template.value.id
                     })
                 }
             )
@@ -242,6 +241,19 @@ export default {
             is_exporting.value = false
         }
 
+        async function remove_note_template() {
+            const res = await fetch("/case/"+props.cases_info.case.id+"/remove_note_template")
+            if(res.status == 200){
+                case_note_template.value = {}
+                selected_note_template.value = {}
+                fetch_note_template()
+                var myModalEl = document.getElementById("remove_note_template_modal");
+                var modal = bootstrap.Modal.getInstance(myModalEl)
+                modal.hide();
+            }
+            display_toast(res)
+        }
+
         onMounted(() => {
             fetch_case_note_template()
             md.mermaid.init()
@@ -266,6 +278,7 @@ export default {
             save,
             save_content,
             export_notes,
+            remove_note_template,
 		}
     },
 	template: `
@@ -301,6 +314,24 @@ export default {
                         </button>
                     </li>
                 </ul>
+            </div>
+            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#remove_note_template_modal">
+                <i class="fa-solid fa-minus"></i> Remove
+            </button>
+
+            <div class="modal fade" id="remove_note_template_modal" tabindex="-1" aria-labelledby="remove_note_template_modal" aria-hidden="true">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="remove_note_template_modal">Remove note template ?</h1>
+                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button class="btn btn-danger" @click="remove_note_template()"><i class="fa-solid fa-minus"></i> Confirm</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </template>
 
