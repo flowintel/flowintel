@@ -20,11 +20,10 @@ api = Api(api_importer_blueprint,
     )
 
     
-@api.route('/')
+@api.route('/case')
 @api.doc(description='Import a case. JSON is required')
 class ImportCase(Resource):
     method_decorators = [api_required]
-    # @api.doc(params={})
     def post(self):
         if request.json:
             current_user = utils.get_user_api(request.headers["X-API-KEY"])
@@ -35,6 +34,25 @@ class ImportCase(Resource):
                         return res
             else:
                 res = ToolModel.case_creation_from_importer(request.json, current_user)
+                if res:
+                    return res
+            return {"message": "All created"}
+        
+    
+@api.route('/template')
+@api.doc(description='Import a case template. JSON is required')
+class ImportCaseTemplate(Resource):
+    method_decorators = [api_required]
+    def post(self):
+        if request.json:
+            current_user = utils.get_user_api(request.headers["X-API-KEY"])
+            if type(request.json) == list:
+                for case in request.json:
+                    res = ToolModel.case_template_creation_from_importer(case, current_user)
+                    if res:
+                        return res
+            else:
+                res = ToolModel.case_template_creation_from_importer(request.json, current_user)
                 if res:
                     return res
             return {"message": "All created"}
