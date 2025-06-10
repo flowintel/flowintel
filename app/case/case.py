@@ -1029,13 +1029,6 @@ def edit_connector(cid, ciid):
 # Note Template #
 #################
 
-
-@case_blueprint.route("/<cid>/add_note_template", methods=['GET'])
-@login_required
-def add_note_template(cid):
-    """Render add note template"""
-    return render_template("case/note_template_add.html", case_id=cid)
-
 @case_blueprint.route("/<cid>/get_note_template", methods=['GET'])
 @login_required
 def get_note_template(cid):
