@@ -140,7 +140,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if misp_object:
             for attr in misp_object.attributes:
                 Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
-            Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=attr.id).delete()
+                Misp_Attribute.query.filter_by(id=attr.id).delete()
+            Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=misp_object.id).delete()
 
     def get_assigned_tags(self, class_id) -> List:
         """Return a list of tags present in a case"""
@@ -1238,5 +1239,73 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         CommonModel.save_history(case.uuid, user, f"Module 'misp_object_event' called with connector '{instance['name']}'")
         CommonModel.update_last_modif(case.id)
+
+
+    #################
+    # Note Template #
+    #################
+    def get_note_template_model(self, template_id: int):
+        """Return a note template model"""
+        return Note_Template_Model.query.get(template_id)
+
+    def get_case_note_template(self, case_id: int):
+        """Return a case note template"""
+        return Case_Note_Template_Model.query.filter_by(case_id=case_id).first()
+    
+    def create_note_template(self, case_id: int, request_json, current_user: User):
+        c = self.get_case_note_template(case_id)
+        if not c:
+            note_template = self.get_note_template_model(request_json["template_id"])
+            case = CommonModel.get_case(case_id)
+            values = request_json["values"]
+            if not values:
+                for par in note_template.params.list:
+                    values[par] = ""
+
+            c = Case_Note_Template_Model(
+                case_id=case_id,
+                note_template_id=note_template.id,
+                content = note_template.content,
+                values={"list": values}
+            )
+            db.session.add(c)
+            db.session.commit()
+            CommonModel.save_history(case.uuid, current_user, f"Note Template created")
+            CommonModel.update_last_modif(case.id)
+            return c
+        return False
+    
+    def modif_note_template(self, case_id: int, request_json, current_user: User):
+        """Modify a note template of a case"""
+        case = CommonModel.get_case(case_id)
+        c = self.get_case_note_template(case_id)
+        if c:
+            c.values = request_json["values"]
+            db.session.commit()
+            CommonModel.save_history(case.uuid, current_user, f"Note Template modified")
+            CommonModel.update_last_modif(case.id)
+            return True
+        return False
+    
+    def modif_content_note_template(self, case_id: int, request_json, current_user: User):
+        """Modify content of note template of a case"""
+        case = CommonModel.get_case(case_id)
+        c = self.get_case_note_template(case_id)
+        if c:
+            c.content = request_json["content"]
+            db.session.commit()
+            CommonModel.save_history(case.uuid, current_user, f"Content Note Template modified")
+            CommonModel.update_last_modif(case.id)
+            return True
+        return False
+    
+    def remove_note_template(self, case_id):
+        """Remove a note template from a case"""
+        c = self.get_case_note_template(case_id)
+        if c:
+            db.session.delete(c)
+            db.session.commit()
+            return True
+        return False
 
 CaseModel = CaseCore()

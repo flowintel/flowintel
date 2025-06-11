@@ -430,12 +430,9 @@ def fork_case(cid):
 def check_case_title_exist():
     """Check if a title for a case exist"""
     data_dict = dict(request.args)
-    if CommonModel.get_case_by_title(data_dict["title"], current_user):
-        flag = True
-    else:
-        flag = False
-    
-    return {"title_already_exist": flag}
+    if CommonModel.check_case_title(data_dict["title"]):
+        return {"title_already_exist": True}
+    return {"title_already_exist": False}
 
 
 @case_blueprint.route("/<cid>/create_template", methods=['POST'])
@@ -464,11 +461,8 @@ def check_case_template_title_exist():
     """Check if a title for a case template exist"""
     data_dict = dict(request.args)
     if CommonModel.get_case_template_by_title(data_dict["title"]):
-        flag = True
-    else:
-        flag = False
-    
-    return {"title_already_exist": flag}
+        return {"title_already_exist": True}
+    return {"title_already_exist": False}
 
 
 @case_blueprint.route("/history/<cid>", methods=['GET'])
@@ -661,7 +655,10 @@ def export_notes(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         if "type" in request.args:
             res = CommonModel.export_notes(case_task=True, case_task_id=cid, type_req=request.args.get("type"))
-            CommonModel.delete_temp_folder()
+            try:
+                CommonModel.delete_temp_folder()
+            except:
+                pass
             return res
         return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -1025,3 +1022,102 @@ def edit_connector(cid, ciid):
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+
+#################
+# Note Template #
+#################
+
+@case_blueprint.route("/<cid>/get_note_template", methods=['GET'])
+@login_required
+def get_note_template(cid):
+    """Get note template of a case"""
+    case_note_template = CaseModel.get_case_note_template(cid)
+    if case_note_template:
+        template = CaseModel.get_note_template_model(case_note_template.note_template_id)
+        return {"case_note_template": case_note_template.to_json(), "current_template": template.to_json()}, 200
+    return {"message": "No note template for the case"}, 404
+
+
+@case_blueprint.route("/<cid>/create_note_template_case", methods=['POST'])
+@login_required
+@editor_required
+def create_note_template_case(cid):
+    """Create note template of a case"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "values" in request.json and "template_id" in request.json:
+                if CaseModel.create_note_template(cid, request.json, current_user):
+                    return {"message": "Note template modified successfully", "toast_class": "success-subtle"}, 200
+                return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400
+            return {"message": "Missing parameters", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+
+@case_blueprint.route("/<cid>/modif_note_template_case", methods=['POST'])
+@login_required
+@editor_required
+def modif_note_template_case(cid):
+    """Modify note template of a case"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "values" in request.json:
+                if CaseModel.modif_note_template(cid, request.json, current_user):
+                    return {"message": "Note template modified successfully", "toast_class": "success-subtle"}, 200
+                return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400
+            return {"message": "No values passed", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/modif_note_template_content", methods=['POST'])
+@login_required
+@editor_required
+def modif_note_template_content(cid):
+    """Modify Content of note template of a case"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "content" in request.json:
+                if CaseModel.modif_content_note_template(cid, request.json, current_user):
+                    return {"message": "Note template modified successfully", "toast_class": "success-subtle"}, 200
+                return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400
+            return {"message": "No content passed", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/export_notes_template", methods=['POST'])
+@login_required
+def export_notes_template(cid):
+    """Export note of a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        if "type" in request.args:
+            if "content" in request.json:
+                res = CommonModel.export_notes_core(case_task_id=cid, type_req=request.args.get("type"), note=request.json["content"])
+                try:
+                    CommonModel.delete_temp_folder()
+                except:
+                    pass
+                return res
+            return {"message": "No content passed", "toast_class": "warning-subtle"}, 400
+        return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<cid>/remove_note_template", methods=['GET'])
+@login_required
+@editor_required
+def remove_note_template(cid):
+    """Remove note template of a case"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CaseModel.remove_note_template(cid):
+                return {"message": "Note Template removed", "toast_class": "success-subtle"}, 200
+            return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404

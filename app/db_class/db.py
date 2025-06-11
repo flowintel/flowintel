@@ -1,5 +1,6 @@
 import datetime
 import json
+import uuid
 from .. import db, login_manager
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
@@ -13,7 +14,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(64), unique=True, index=True)
     matrix_id = db.Column(db.String, unique=True, index=True)
     role_id = db.Column(db.Integer, index=True)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(165))
     api_key = db.Column(db.String(60), index=True)
     org_id = db.Column(db.Integer, db.ForeignKey('org.id', ondelete="CASCADE"))
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
@@ -520,7 +521,8 @@ class Task_Template(db.Model):
             "description": self.description,
             "time_required": self.time_required
         }
-        json_dict["notes"] = [note.to_json() for note in self.notes]
+        json_dict["notes"] = [note.download() for note in self.notes]
+        json_dict["subtasks"] = [subtask.download() for subtask in self.subtasks]
         json_dict["urls_tools"] = [url_tool.download() for url_tool in self.urls_tools]
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
@@ -543,6 +545,12 @@ class Subtask_Template(db.Model):
         }
         return json_dict
     
+    def download(self):
+        json_dict = {
+            "description": self.description
+        }
+        return json_dict
+    
 class Note_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
@@ -561,6 +569,13 @@ class Note_Template(db.Model):
         }
         return json_dict
     
+    def download(self):
+        json_dict = {
+            "note": self.note,
+            "template_uuid": Task_Template.query.get(self.template_id).uuid,
+        }
+        return json_dict
+    
 class Task_Template_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey('task__template.id', ondelete="CASCADE"))
@@ -576,8 +591,7 @@ class Task_Template_Url_Tool(db.Model):
 
     def download(self):
         json_dict = {
-            "name": self.name,
-            "task_id": self.task_id,
+            "name": self.name
         }
         return json_dict
     
@@ -1039,6 +1053,54 @@ class Misp_Attribute_Instance_Uuid(db.Model):
 
         return json_dict
     
+
+class Note_Template_Model(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True, default=str(uuid.uuid4()))
+    author = db.Column(db.Integer, index=True)
+    title = db.Column(db.String)
+    description = db.Column(db.String)
+    content = db.Column(db.String)
+    params = db.Column(db.JSON)
+    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc), onupdate=datetime.datetime.now(tz=datetime.timezone.utc))
+    version = db.Column(db.Integer, index=True) # Keep an history of all version so case with old version can keep there notes
+    # Will change the version only if params have changes
+    # Stay in same version if content change without adding or modifying params
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "uuid": self.uuid,
+            "author": self.author,
+            "title": self.title,
+            "description": self.description,
+            "content": self.content,
+            "version": self.version,
+            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "params": self.params
+        }
+
+        return json_dict
+
+class Case_Note_Template_Model(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    note_template_id = db.Column(db.Integer, index=True)
+    values = db.Column(db.JSON)
+    content = db.Column(db.String)
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "case_id": self.case_id,
+            "note_template_id": self.note_template_id,
+            "values": self.values,
+            "content": self.content
+        }
+
+        return json_dict
 
 login_manager.anonymous_user = AnonymousUser
 

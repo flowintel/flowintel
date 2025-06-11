@@ -21,9 +21,9 @@
             </div>
             <div class="mb-3 w-50">
                 <label for="description" class="col-form-label">Description:</label>
-                {{form.body(class_="form-control")}}
-                {% if form.body.errors %}
-                    <div style="color: red;">{{form.body.errors[0] | safe}}</div>
+                {{form.description(class_="form-control")}}
+                {% if form.description.errors %}
+                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                 {%endif%}
             </div>
         </div>

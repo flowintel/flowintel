@@ -166,7 +166,7 @@ export default {
 				notes_loc = notes_loc.trim()
 			}
 			const res_msg = await fetch(
-				'/templating/' + template.id + '/modif_note?note_id=' + note_id,{
+				'/templating/task/' + template.id + '/modif_note?note_id=' + note_id,{
 					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 					method: "POST",
 					body: JSON.stringify({"notes": notes_loc})

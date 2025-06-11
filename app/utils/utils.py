@@ -147,77 +147,10 @@ def get_object(obj_name):
 
 
 
-caseSchema = {
-    "type": "object",
-    "properties": {
-        "title": {"type": "string"},
-        "description": {"type": "string"},
-        "uuid": {"type": "string"},
-        "deadline:": {"type": "string"},
-        "recurring_date:": {"type": "string"},
-        "recurring_type:": {"type": "string"},
-        "notes:": {"type": "string"},
-        "is_private:": {"type": "boolean"},
-        "tasks": {
-            "type": "array", 
-            "items": {"type": "object"},
-        },
-        "tags":{
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "clusters":{
-            "type": "array",
-            "items": {"type": "object"},
-        },
-    },
-    "required": ['title']
-}
-
-taskSchema = {
-    "type": "object",
-    "properties": {
-        "title": {"type": "string"},
-        "description": {"type": "string"},
-        "uuid": {"type": "string"},
-        "deadline:": {"type": "string"},
-        "urls_tools:": {
-            "type": "array", 
-            "items": {"type": "object"},
-        },
-        "notes:": {
-            "type": "array", 
-            "items": {"type": "object"},
-        },
-        "tags":{
-            "type": "array",
-            "items": {"type": "string"}
-        },
-        "clusters":{
-            "type": "array",
-            "items": {"type": "object"},
-        },
-        "subtasks:": {
-            "type": "array",
-            "items": {"type": "object"},
-        }
-    },
-    "required": ['title']
-}
-
-def validateCaseJson(json_data):
+def validateImporterJson(json_data, jsonschema_flowintel):
     """Validate the format of a case's JSON"""
     try:
-        jsonschema.validate(instance=json_data, schema=caseSchema)
-    except jsonschema.exceptions.ValidationError as err:
-        print(err)
-        return False
-    return True
-
-def validateTaskJson(json_data):
-    """Validate the format of a task's JSON"""
-    try:
-        jsonschema.validate(instance=json_data, schema=taskSchema)
+        jsonschema.validate(instance=json_data, schema=jsonschema_flowintel)
     except jsonschema.exceptions.ValidationError as err:
         print(err)
         return False

@@ -222,8 +222,8 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         return True
 
 
-    def create_case_from_template(self, cid, case_title_fork, user):
-        case_title_stored = Case.query.filter_by(title=case_title_fork).first()
+    def create_case_from_template(self, cid: int, case_title_fork: str, user: User) -> dict|Case:
+        case_title_stored = Case.query.filter_by(title=case_title_fork.strip()).first()
         if case_title_stored:
             return {"message": "Error, title already exist"}
         
@@ -231,14 +231,15 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         case_tasks = CommonModel.get_all_tasks_by_case(cid)
 
         case = Case(
-            title=case_title_fork,
+            title=case_title_fork.strip(),
             description=case_template.description,
             uuid=str(uuid.uuid4()),
             creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             status_id=1,
             owner_org_id=user.org_id,
-            nb_tasks=len(case_tasks)
+            nb_tasks=len(case_tasks),
+            notes=case_template.notes
         )
         db.session.add(case)
         db.session.commit()

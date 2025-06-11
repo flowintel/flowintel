@@ -62,11 +62,15 @@
                     </div>
                 </div>
 
-                <div id="top"></div>
                 {# When extended, the content block contains all the html of the webpage #}
                 {% block content %}
                 {% endblock %}
-                <span id="goTop"><a href="#top" class="btn btn-outline-primary"><i class="fa-solid fa-chevron-up"></i></a></span>
+                <!-- Scroll to top -->
+                <div id="goTop">
+                    <button id="scrollToTopBtn" class="btn btn-outline-primary" title="Back to top">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
             </div>
         </main>
         <!--Main layout-->
@@ -100,6 +104,18 @@
                 $el.one('remove', () => $el.remove());
                 $xx.one('click', triggerRemove);
                 if (sec) $el.T = setTimeout(triggerRemove, sec * 1000);
+                });
+
+                const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+                window.addEventListener('scroll', () => {
+                    if (window.scrollY > 100) {
+                        scrollToTopBtn.style.display = 'block';
+                    } else {
+                        scrollToTopBtn.style.display = 'none';
+                    }
+                });
+                scrollToTopBtn.addEventListener('click', () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 });
             })
 

@@ -1,19 +1,22 @@
 import calendar
-import re
+
+from pymisp import PyMISP
 from ..db_class.db import *
 import uuid
 import json
 import datetime
-from ..utils import utils
+from ..utils import utils, jsonschema_flowintel
 from ..case.TaskCore import TaskModel
 from ..case.CaseCore import CaseModel
+from ..templating.TemplateCase import TemplateModel
+from ..templating.TaskTemplateCore import TaskModel as TaskTemplateModel
 
 
-def core_read_json_file(case, current_user):
-    if not utils.validateCaseJson(case):
+def case_creation_from_importer(case, current_user):
+    if not utils.validateImporterJson(case, jsonschema_flowintel.caseSchema):
         return {"message": f"Case '{case['title']}' format not okay"}
     for task in case["tasks"]:
-        if not utils.validateTaskJson(task):
+        if not utils.validateImporterJson(task, jsonschema_flowintel.taskSchema):
             return {"message": f"Task '{task['title']}' format not okay"}
 
 
@@ -120,18 +123,106 @@ def core_read_json_file(case, current_user):
             for urls_tools in task["urls_tools"]:
                 TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
 
+
+def case_template_creation_from_importer(template):
+    if not utils.validateImporterJson(template, jsonschema_flowintel.caseTemplateSchema):
+        return {"message": f"Case template '{template['title']}' format not okay"}
+    for task in template["tasks_template"]:
+        if not utils.validateImporterJson(task, jsonschema_flowintel.taskTemplateSchema):
+            return {"message": f"Task Template '{task['title']}' format not okay"}
+        
+    #######################
+    ## Case Verification ##
+    #######################
+
+    ## Caseformat is valid
+    # title
+    if Case_Template.query.filter_by(title=template["title"]).first():
+        return {"message": f"Case Template Title '{template['title']}' already exist"}
     
-def read_json_file(files_list, current_user):
+    # uuid
+    if Case_Template.query.filter_by(uuid=template["uuid"]).first():
+        template["uuid"] = str(uuid.uuid4())
+
+    # tags
+    for tag in template["tags"]:
+        if not utils.check_tag(tag):
+            return {"message": f"Case Template '{template['title']}': tag '{tag}' doesn't exist"}
+    
+    # Clusters
+    for i in range(0, len(template["clusters"])):
+        template["clusters"][i] = template["clusters"][i]["name"]
+
+    template["custom_tags"] = []
+        
+    
+    #######################
+    ## Task Verification ##
+    #######################
+
+    ## Task format is valid
+    for task in template["tasks_template"]:
+        if Task.query.filter_by(uuid=task["uuid"]).first():
+            task["uuid"] = str(uuid.uuid4())
+
+        for tag in task["tags"]:
+            if not utils.check_tag(tag):
+                return {"message": f"Task '{task['title']}': tag '{tag}' doesn't exist"}
+            
+        # Clusters
+        for i in range(0, len(task["clusters"])):
+            task["clusters"][i] = task["clusters"][i]["name"]
+        
+        task["custom_tags"] = []
+
+    #################
+    ## DB Creation ##
+    ################
+
+    ## Case creation
+    template["tasks"] = []
+    case_created = TemplateModel.create_case(template)
+    if template["notes"]:
+        TemplateModel.modif_note_core(case_created.id, template["notes"])
+
+    ## Task creation
+    for task in template["tasks_template"]:
+        # task_created = TaskModel.create_task(task, case_created.id, current_user)
+        task_created = TaskTemplateModel.add_task_template_core(task)
+        TemplateModel.add_task_case_template({"tasks": [task_created.id]}, case_created.id)
+        if task["notes"]:
+            for note in task["notes"]:
+                loc_note = TaskTemplateModel.create_note(task_created.id)
+                TaskTemplateModel.modif_note_core(task_created.id, note["note"], loc_note.id)
+        
+        if task["subtasks"]:
+            for subtask in task["subtasks"]:
+                TaskTemplateModel.create_subtask(task_created.id, subtask["description"])
+        
+        if task["urls_tools"]:
+            for urls_tools in task["urls_tools"]:
+                TaskTemplateModel.create_url_tool(task_created.id, urls_tools["name"])
+
+
+
+    
+def importer_core(files_list, current_user, importer_type):
     for file in files_list:
         if files_list[file].filename:
             try:
                 file_data = json.loads(files_list[file].read().decode())
                 if type(file_data) == list:
                     for case in file_data:
-                        res = core_read_json_file(case, current_user)
+                        if importer_type == 'case':
+                            res = case_creation_from_importer(case, current_user)
+                        elif importer_type == 'template':
+                            res = case_template_creation_from_importer(case, current_user)
                         if res: return res
                 else:
-                    return core_read_json_file(file_data, current_user)
+                    if importer_type == 'case':
+                        return case_creation_from_importer(file_data, current_user)
+                    elif importer_type == 'template':
+                        return case_template_creation_from_importer(file_data)
             except Exception as e:
                 print(e)
                 return {"message": "Something went wrong"}
@@ -333,3 +424,197 @@ def get_case_by_tags(current_user):
             "task_custom_tags": chart_dict_constructor(dict_task_custom_tag), 
             "task_tags": chart_dict_constructor(dict_task_tag), 
             "task_clusters": chart_dict_constructor(dict_task_cluster_tag)}
+
+
+########################
+# Case from MISP Event #
+########################
+def check_connection_misp(misp_instance_id: int, current_user: User):
+    instance = Connector_Instance.query.get(misp_instance_id)
+    if instance:
+        user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
+        if user_connector_instance:
+            # misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+            try:
+                misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+            except:
+                return "Error connecting to MISP"
+            
+            return misp
+        return "No config found for the instance"
+    return "Instance not found"
+
+def check_event(event_id: int, misp_instance_id: int, current_user: User):
+    misp = check_connection_misp(misp_instance_id, current_user)
+    if type(misp) == PyMISP:
+        event = misp.get_event(event_id, pythonify=True)
+
+        if 'errors' in event:
+            return "Event not found on this MISP instance"
+        
+        return event
+    else:
+        return misp
+    
+
+def check_case_misp_event(request_form, current_user) -> str:
+    if request_form.get("case_title"):
+        if Case.query.filter_by(title=request_form.get("case_title")).first():
+            return "Case already exist"
+    else:
+        return "Case title empty"
+    
+    if not request_form.get("misp_event_id"):
+        return "Need a misp event id"
+    
+    if not request_form.get("misp_instance_id"):
+        return "Need a misp instance"
+    
+    if not request_form.get("case_template_id"):
+        return "Need a case template"
+    
+    return check_event(request_form.get("misp_event_id"), request_form.get("misp_instance_id"), current_user)
+
+def create_case_misp_event(request_form, current_user):
+    instance = Connector_Instance.query.get(request_form.get("misp_instance_id"))
+    user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
+    misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+    
+    event = misp.get_event(request_form.get("misp_event_id"), pythonify=True)
+
+    case = TemplateModel.create_case_from_template(request_form.get("case_template_id"), request_form.get("case_title"), current_user)
+
+    case.description = event.info
+    case.ticket_id = f"MISP Event: {request_form.get("misp_event_id")}"
+    case.is_private = True
+    db.session.commit()
+
+    for misp_tags in event.tags:
+        tag = Tags.query.filter_by(name=misp_tags.name).first()
+        if tag:
+            if not Case_Tags.query.filter_by(tag_id=tag.id, case_id=case.id).first():
+                CaseModel.add_tag(tag, case.id)
+
+    for misp_galaxy in event.galaxies:
+        for misp_cluster in misp_galaxy.clusters:
+            cluster = Cluster.query.filter_by(tag=misp_cluster.tag_name).first()
+            if cluster:
+                if not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
+                    CaseModel.add_cluster(cluster, case.id)
+
+    for obje in event.objects:
+        loc_object = Case_Misp_Object(
+            case_id=case.id,
+            template_uuid=obje.template_uuid,
+            name=obje.name,
+            creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+
+        db.session.add(loc_object)
+        db.session.commit()
+
+        for object_attr in obje.attributes:
+            first_seen = None
+            last_seen = None
+
+            if object_attr.get("first_seen"):
+                if type(object_attr.get("first_seen")) == datetime.datetime:
+                    first_seen = object_attr.get("first_seen")
+                else:
+                    first_seen = datetime.datetime.strptime(object_attr.get("first_seen"), '%Y-%m-%dT%H:%M')
+            if object_attr.get("last_seen"):
+                if type(object_attr.get("last_seen")) == datetime.datetime:
+                    last_seen = object_attr.get("last_seen")
+                else:
+                    last_seen = datetime.datetime.strptime(object_attr.get("last_seen"), '%Y-%m-%dT%H:%M')
+
+            attr = Misp_Attribute(
+                case_misp_object_id=loc_object.id,
+                value=object_attr.value,
+                type=object_attr.object_relation,
+                first_seen=first_seen,
+                last_seen=last_seen,
+                comment=object_attr.get("comment"),
+                ids_flag=object_attr.to_ids,
+                creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
+                last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+            )
+            db.session.add(attr)
+            db.session.commit()
+        
+        loc_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+        db.session.commit()
+
+    case_connector_instance = Case_Connector_Instance(
+        case_id=case.id,
+        instance_id=instance.id,
+        identifier=request_form.get("misp_event_id")
+    )
+    db.session.add(case_connector_instance)
+    db.session.commit()
+
+    return case
+
+
+#################
+# Note Template #
+#################
+
+def get_note_template(note_id: int):
+    """Get a note template model"""
+    return Note_Template_Model.query.get(note_id)
+
+def get_all_note_template():
+    """Get all note template"""
+    return Note_Template_Model.query.all()
+
+def get_note_template_by_page(page: int):
+    """Get note template by page"""
+    return Note_Template_Model.query.paginate(page=page, per_page=20, max_per_page=50)
+
+import re
+
+def extract_variables(template_str: str) -> list:
+    return list(set(re.findall(r"{{\s*(\w+)\s*}}", template_str)))
+
+def create_note_template(request_json: dict, current_user: int) -> Note_Template_Model:
+    """Create a new note template model"""
+    content = request_json["content"]
+    list_params = extract_variables(content)
+    n = Note_Template_Model(
+        title=request_json["title"],
+        description=request_json["description"],
+        content = content,
+        version = 1,
+        params={"list": list_params},
+        author=current_user.id,
+        creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+        last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+    )
+    db.session.add(n)
+    db.session.commit()
+
+    return n
+
+
+def edit_content_note_template(note_id: int, request_json: dict) -> bool:
+    content = request_json["content"]
+    list_params = extract_variables(content)
+    note_template = get_note_template(note_id)
+
+    note_template.content = content
+    note_template.params = {"list": list_params}
+
+    db.session.commit()
+    return True
+
+def edit_note_template(note_id: int, request_json: dict) -> bool:
+    note_template = get_note_template(note_id)
+
+    note_template.title = request_json["title"]
+    note_template.description = request_json["description"]
+    # note_template.version = request_json["description"]
+
+    db.session.commit()
+    return True

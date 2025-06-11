@@ -1,11 +1,11 @@
 # https://github.com/flowintel/flowintel
+
 if apt -v &> /dev/null ; then
     sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget
+    # install pandoc from git 
     # pandoc dependencies
     sudo apt install -y texlive texlive-xetex texlive-fonts-extra
-    # install pandoc from git
-    sudo apt install -y texlive texlive-xetex texlive-fonts-extra
-    wget https://github.com/jgm/pandoc/releases/download/3.2/pandoc-3.2-1-$(dpkg --print-architecture).deb
+    wget https://github.com/jgm/pandoc/releases/download/3.7/pandoc-3.7-1-$(dpkg --print-architecture).deb
     sudo dpkg -i pandoc*.deb
     rm pandoc*
 elif dnf --version &> /dev/null ; then
@@ -25,10 +25,10 @@ rm -r Eisvogel.tar.gz Eisvogel-*
 
 
 # install node and mmdc command
-wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 export NVM_DIR="$HOME/.nvm"
 source $NVM_DIR/nvm.sh
-nvm install node 20
+nvm install node 20.19.2
 # needed for docx export
 npm install --prefix $HOME mermaid-filter
 # needed for PDF export

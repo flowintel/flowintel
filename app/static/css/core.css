@@ -13,7 +13,7 @@ body {
   }
 }
 
-span#goTop{
+#goTop{
   position: fixed;
   right: 1em;
   bottom: 1em;
@@ -218,7 +218,7 @@ legend.analyzer-select-case {
   border: none;
   height: 1px;
   padding: 0;
-  background-image: linear-gradient(to right, rgba(68, 109, 128, 0.75), rgba(68, 109, 128, 0.3), rgba(0, 0, 0, 0));
+  background-image: linear-gradient(to right, rgba(77, 101, 113, 0.85), rgba(68, 109, 128, 0.3), rgba(0, 0, 0, 0));
   background-repeat: no-repeat;
   background-size: 100% 1px;
   margin: 0 0 1rem 0;
