@@ -1,0 +1,115 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
+{% block content %}
+<div style="margin-bottom: 10px;">
+    <h1>Create Note Template</h1>
+</div>
+<hr class="fading-line">
+
+<button class="btn btn-primary" @click="submit">Submit</button>
+<div class="row">
+    <div class="mb-3 w-50">
+        <label for="title" class="col-form-label">Title:</label>
+        <input class="form-control" type="text" id="title-input">
+        <span id="title-error" style="color:brown"></span>
+    </div>
+    <div class="mb-3 w-50">
+        <label for="description" class="col-form-label">Description:</label>
+        <input class="form-control" type="text" id="description-input">
+        <span id="description-error" style="color:brown"></span>
+    </div>
+</div>
+
+Content:
+<div style="display: flex;">
+    <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; width: 50%" id="editor"></div>
+    <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+</div>
+
+<button class="btn btn-primary mt-3" @click="submit">Submit</button>
+{% endblock %}
+
+
+{% block script %}
+<script type="module">
+    const { createApp, onMounted, ref} = Vue
+    import {message_list, display_toast} from '/static/js/toaster.js'
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            let editor
+            const note_editor_render = ref("")
+
+            const md = window.markdownit()			// Library to Parse and display markdown
+		    md.use(mermaidMarkdown.default)			// Use mermaid library
+
+            async function submit() {
+                $("#title-error").text("")
+                $("#description-error").text("")
+
+                let title=$("#title-input").val()
+                let description=$("#description-input").val()
+                if(!title){
+                    $("#title-error").text("Need to pass a title")
+                }
+                if(!description){
+                    $("#description-error").text("Need to pass a description")
+                }
+
+                if(!title || !description){
+                    return
+                }
+
+                const res_msg = await fetch(
+                    '/tools/create_note_template',{
+                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                        method: "POST",
+                        body: JSON.stringify({"title": title, "description": description, "content": note_editor_render.value})
+                    }
+                )
+                if(await res_msg.status == 201){
+                    window.location.href="/tools/note_template_index"
+                }else{
+                    display_toast(res_msg)
+                }
+            }
+
+            onMounted(() => {
+                const targetElement = document.getElementById('editor')
+                if(targetElement && targetElement.innerHTML === ""){
+                        editor = new Editor.EditorView({
+                            doc: "\n\n",
+                            extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                                if (v.docChanged) {
+                                    note_editor_render.value = editor.state.doc.toString()
+                                }
+                            })],
+                            parent: targetElement
+                        })
+                }
+                md.mermaid.init()
+            })
+
+            return {
+                message_list,
+                md,
+                note_editor_render,
+                submit
+            }
+        }
+    }).mount('#main-container')
+
+</script>
+{% endblock %}

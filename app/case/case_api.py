@@ -613,6 +613,91 @@ class RemoveConnectors(Resource):
                 return {"message": "Error Connector removed"}, 400
             return {"message": "Permission denied"}, 403
         return {"message": "Case doesn't exist"}, 404
+    
+
+#################
+# Note Template #
+#################
+
+@api.route('/<cid>/add_note_template', methods=['GET'])
+@api.doc(description='Add a note template to a case')
+class AddNoteTemplate(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={"note_template_id": "Id of a note template.", 'required': True})
+    def get(self, cid):
+        if CommonModel.get_case(cid):
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                note_template_id = request.args.get('note_template_id', type=int)
+                if CaseModel.create_note_template(cid, {"template_id": note_template_id, "values": {}}, current_user):
+                    return {"message": "Note template added to case"}, 200
+                return {"message": "Something went wrong"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case doesn't exist"}, 404
+    
+
+@api.route('/<cid>/get_note_template', methods=['GET'])
+@api.doc(description='Get a note template to a case')
+class GetNoteTemplate(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        if CommonModel.get_case(cid):
+            c = CaseModel.get_case_note_template(cid)
+            if c:
+                return c.to_json(), 200
+            return {"message": "Case have no note template"}, 404
+        return {"message": "Case doesn't exist"}, 404
+    
+@api.route('/<cid>/modif_values_note_template', methods=['POST'])
+@api.doc(description='Modify values of note template of a case', params={'cid': 'id of a case'})
+class ModifValuesNoteTemplateCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={"values": "Dictionnary with values"})
+    def post(self, cid):
+        if CommonModel.get_case(cid):
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if "values" in request.json:
+                    if CaseModel.modif_note_template(cid, request.json, current_user):
+                        return {"message": f"Note Template for Case {cid} edited"}, 200
+                    return {"message": f"Error Note Template for Case {cid} edited"}, 400
+                return {"message": "Key 'values' not found"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
+
+
+@api.route('/<cid>/modif_content_note_template', methods=['POST'])
+@api.doc(description='Modify content of note template of a case', params={'cid': 'id of a case'})
+class ModifContentNoteTemplateCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={"content": "Content modify of the note template"})
+    def post(self, cid):
+        if CommonModel.get_case(cid):
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if "content" in request.json:
+                    if CaseModel.modif_content_note_template(cid, request.json, current_user):
+                        return {"message": f"Note Template for Case {cid} edited"}, 200
+                    return {"message": f"Error Note Template for Case {cid} edited"}, 400
+                return {"message": "Key 'content' not found"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404   
+    
+
+@api.route('/<cid>/remove_note_template', methods=['GET'])
+@api.doc(description='Remove note template from a case')
+class RemoveNoteTemplate(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={"note_template_id": "Id of a note template.", 'required': True})
+    def get(self, cid):
+        if CommonModel.get_case(cid):
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if CaseModel.remove_note_template(cid):
+                    return {"message": "Note template removed"}, 200
+                return {"message": "Something went wrong"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case doesn't exist"}, 404
 
 #########
 # Tasks #

@@ -1,0 +1,113 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div style="margin-bottom: 10px;">
+    <h1>Note Template
+        <span>
+            <a type="button" class="btn btn-primary" href="/tools/create_note_template_view"><i class="fa-solid fa-plus"></i></a>
+        </span>
+    </h1>
+</div>
+<hr class="fading-line">
+
+<!-- pagination -->
+<nav aria-label="Page navigation example" v-if="notes_list && notes_list.nb_pages > 1">
+    <ul class="pagination">
+        <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchNoteTemplate(Math.max(1, current_page-1))">Previous</button></li>
+        <template v-for="cp in notes_list.nb_pages">
+            <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchNoteTemplate(cp)">[[cp]]</button></li>
+        </template>
+        <li :class="{'page-item': true, 'disabled': current_page == notes_list.nb_pages}"><button class="page-link" @click="fetchNoteTemplate(Math.min(current_page+1, notes_list.nb_pages))">Next</button></li>
+    </ul>
+</nav>
+<!-- pagination -->
+
+<template v-if="notes_list">
+    <template v-if="!notes_list.notes.length">
+        <i>No Note Template</i>
+    </template>
+    <template v-else>
+        <template v-for="note_loc in notes_list.notes">
+            <div class="list-group" style="margin-bottom: 20px;">
+                <div style="display:flex; border-radius: 15px;">
+                    <a :href="`/tools/note_template_view/${note_loc.id}`" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1">
+                                [[ note_loc.id ]]-[[ note_loc.title ]]
+                            </h4>                            
+                            <small><i>Changed [[ (dayjs.utc(note_loc.last_modif).fromNow()) ]]</i></small>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p v-if="note_loc.description" class="card-text">[[ note_loc.description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p class="card-text"><i>Version: [[ note_loc.version ]]</i></p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </template>
+    </template>
+</template>
+<template v-else>
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</template>
+
+<nav aria-label="Page navigation example" v-if="notes_list && notes_list.nb_pages > 1">
+    <ul class="pagination">
+        <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchNoteTemplate(Math.max(1, current_page-1))">Previous</button></li>
+        <template v-for="cp in notes_list.nb_pages">
+            <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchNoteTemplate(cp)">[[cp]]</button></li>
+        </template>
+        <li :class="{'page-item': true, 'disabled': current_page == notes_list.nb_pages}"><button class="page-link" @click="fetchNoteTemplate(Math.min(current_page+1, notes_list.nb_pages))">Next</button></li>
+    </ul>
+</nav>
+{% endblock %}
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const notes_list = ref(null)
+                const current_page = ref(1)
+
+                async function fetchNoteTemplate(page) {
+                    let url = '/tools/note_template/get_by_page?page='+page
+
+                    current_page.value = page
+                    notes_list.value = null
+                    const res = await fetch(url)
+                    let loc = await res.json()
+                    notes_list.value = loc
+                }
+                
+
+                fetchNoteTemplate(1)
+
+                return {
+                    message_list, // Avoid warning
+                    dayjs,
+                    getTextColor,
+                    mapIcon,
+
+                    notes_list,
+                    current_page,
+                    fetchNoteTemplate,
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
+{% endblock %}

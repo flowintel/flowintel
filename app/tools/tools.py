@@ -109,6 +109,101 @@ def get_case_by_tags():
 
 
 
+#################
+# Note Template #
+#################
+
+@tools_blueprint.route("/note_template_index")
+@login_required
+def note_template_index():
+    return render_template("tools/note_template_index.html")
+
+@tools_blueprint.route("/create_note_template_view", methods=['GET'])
+@login_required
+@editor_required
+def create_note_template_view():
+    return render_template("tools/create_note_template.html")
+
+@tools_blueprint.route("/note_template_view/<int:nid>")
+@login_required
+def note_template_view(nid):
+    return render_template("tools/note_template_view.html", note_template=ToolsModel.get_note_template(nid).to_json())
+
+@tools_blueprint.route("/note_template")
+@login_required
+def note_template():
+    return [n.to_json() for n in ToolsModel.get_all_note_template()]
+
+@tools_blueprint.route("/note_template/<int:nid>")
+@login_required
+def note_template_id(nid):
+    return ToolsModel.get_note_template(nid).to_json()
+
+
+
+@tools_blueprint.route("/note_template/get_by_page")
+@login_required
+def note_template_by_page():
+    page = request.args.get('page', 1, type=int)
+    notes = ToolsModel.get_note_template_by_page(page)
+    if notes:
+        notes_list = list()
+        for note in notes:
+            n = note.to_json()
+            notes_list.append(n)
+        return {"notes": notes_list, "nb_pages": notes.pages}
+    return {"message": "No Notes"}, 404
+
+
+
+@tools_blueprint.route("/create_note_template", methods=['POST'])
+@login_required
+@editor_required
+def create_note_template():
+    if request.json:
+        if "title" in request.json:
+            if "description" in request.json:
+                if "content" in request.json:
+                    if ToolsModel.create_note_template(request.json, current_user):
+                        return {"message": "Note added correctly", "toast_class": "success-subtle"}, 201
+                    return {"message": "Error adding note", "toast_class": "danger-subtle"}, 400
+                return {"message": "Need to pass 'content'", "toast_class": "warning-subtle"}, 400
+            return {"message": "Need to pass 'description'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Need to pass 'title'", "toast_class": "warning-subtle"}, 400
+    return {"message": "An error occur", "toast_class": "warning-subtle"}, 400
+
+
+
+@tools_blueprint.route("/note_template/<int:nid>/edit_content", methods=['POST'])
+@login_required
+@editor_required
+def edit_content_note_template(nid):
+    if ToolsModel.get_note_template(nid):
+        if request.json:
+            if "content" in request.json:
+                if ToolsModel.edit_content_note_template(nid, request.json):
+                    return {"message": "Note edited correctly", "toast_class": "success-subtle"}, 200
+                return {"message": "Error editing note", "toast_class": "danger-subtle"}, 400
+            return {"message": "Need to pass 'content'", "toast_class": "warning-subtle"}, 400
+        return {"message": "An error occur", "toast_class": "warning-subtle"}, 400
+    return {"message": "Note template not found", "toast_class": "warning-subtle"}, 404
+
+@tools_blueprint.route("/note_template/<int:nid>/edit", methods=['POST'])
+@login_required
+@editor_required
+def edit_note_template():
+    if request.json:
+        if "title" in request.json:
+            if "description" in request.json:
+                if ToolsModel.edit_note_template(request.json, current_user):
+                    return {"message": "Note eddited correctly", "toast_class": "success-subtle"}, 200
+                return {"message": "Error editing note", "toast_class": "danger-subtle"}, 400
+            return {"message": "Need to pass 'description'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Need to pass 'title'", "toast_class": "warning-subtle"}, 400
+    return {"message": "An error occur", "toast_class": "warning-subtle"}, 400
+
+
+
 ########################
 # Case from MISP Event #
 ########################
