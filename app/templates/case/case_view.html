@@ -189,7 +189,9 @@
 
     <ul class="nav nav-tabs" style="margin-bottom: 10px;">
         <li class="nav-item">
-            <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')">Main</button>
+            <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')" style="min-width: 100px;">
+                <i class="fa-solid fa-house"></i>
+            </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-history" @click="active_tab('history')">History</button>
@@ -198,7 +200,7 @@
             <button class="nav-link" id="tab-case" @click="active_tab('case')">Case notes</button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-note-template" @click="active_tab('note_template')">Notes From Template</button>
+            <button class="nav-link" id="tab-note-template" @click="active_tab('note_template')">Notes Template</button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-all" @click="active_tab('all')">Tasks notes</button>
