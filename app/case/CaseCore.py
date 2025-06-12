@@ -1079,6 +1079,18 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 return {"message": "Attribute deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Attribute not found in this object", "toast_class": "warning-subtle"}, 404
         return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
+    
+
+    def check_correlation_attr(self, case_id: int, attribute: Misp_Attribute) -> list:
+        """Get a list of case containing the same attribute value"""
+        attributes = Misp_Attribute.query.filter_by(value=attribute.value).all()
+        loc = []
+        for loc_attr in attributes:
+            cid = Case_Misp_Object.query.get(loc_attr.case_misp_object_id).case_id
+            if not cid in loc and not cid == case_id:
+                loc.append(cid)
+
+        return loc
             
 
     def get_misp_object_connectors(self, cid) -> list:

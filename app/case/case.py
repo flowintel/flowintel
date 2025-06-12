@@ -754,7 +754,7 @@ def get_hedgedoc_notes(cid):
 ###############
 # MISP Object #
 ###############
-@case_blueprint.route("/<cid>/get_case_misp_object", methods=['GET'])
+@case_blueprint.route("/<int:cid>/get_case_misp_object", methods=['GET'])
 @login_required
 def get_case_misp_object(cid):
     """Get case list of misp object"""
@@ -766,13 +766,16 @@ def get_case_misp_object(cid):
         misp_object = CaseModel.get_misp_object_by_case(cid)
         loc_object = list()
         for object in misp_object:
-            loc_attr = list()
+            loc_attr_list = list()
             for attribute in object.attributes:
-                loc_attr.append(attribute.to_json())
+                res = CaseModel.check_correlation_attr(cid, attribute)
+                loc_attr = attribute.to_json()
+                loc_attr["correlation_list"] = res
+                loc_attr_list.append(loc_attr)
 
             loc_object.append({
                 "object_name": object.name,
-                "attributes": loc_attr,
+                "attributes": loc_attr_list,
                 "object_id": object.id,
                 "object_uuid": object.template_uuid,
                 "object_creation_date": object.creation_date.strftime('%Y-%m-%d %H:%M'),

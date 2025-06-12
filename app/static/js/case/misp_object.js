@@ -280,12 +280,13 @@ export default {
                                 <table class="table">
                                     <thead>
                                         <tr>
-                                            <th>value</th>
-                                            <th>type</th>
-                                            <th>first seen</th>
-                                            <th>last seen</th>
+                                            <th>Value</th>
+                                            <th>Type</th>
+                                            <th>First seen</th>
+                                            <th>Last seen</th>
                                             <th>IDS</th>
-                                            <th>comment</th>
+                                            <th title="Correlation"><i class="fa-solid fa-diagram-project"></i></th>
+                                            <th>Comment</th>
                                             <th></th>
                                         </tr>
                                     </thead>
@@ -301,6 +302,15 @@ export default {
                                             <td v-else><i>none</i></td>
 
                                             <td>[[attribute.ids_flag]]</td>
+
+                                            <td>
+                                                <template v-for="cid, key in attribute.correlation_list">
+                                                    <a :href="'/case/'+cid">[[cid]]</a>
+                                                    <template v-if="key != attribute.correlation_list.length-1">
+                                                    ,
+                                                    </template>
+                                                </template>
+                                            </td>
 
                                             <td v-if="attribute.comment">[[attribute.comment]]</td>
                                             <td v-else><i>none</i></td>
