@@ -1,7 +1,7 @@
 # https://github.com/flowintel/flowintel
 
 if apt -v &> /dev/null ; then
-    sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget
+    sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget screen
     # install pandoc from git 
     # pandoc dependencies
     sudo apt install -y texlive texlive-xetex texlive-fonts-extra
