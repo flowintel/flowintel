@@ -23,7 +23,7 @@ RUN apt install -y texlive texlive-xetex texlive-fonts-extra
 RUN <<EOF
 TMP=$(mktemp -d)
 cd $TMP
-wget https://github.com/jgm/pandoc/releases/download/3.2/pandoc-3.2-1-$(dpkg --print-architecture).deb
+wget https://github.com/jgm/pandoc/releases/download/3.7/pandoc-3.7-1-$(dpkg --print-architecture).deb
 dpkg -i pandoc*.deb
 rm -rf $TMP
 EOF
@@ -62,7 +62,7 @@ EOF
 
 # Install Node + Mermaid tools
 RUN <<EOF
-wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 . ~/.profile
 nvm install node 20
 npm install --prefix $HOME mermaid-filter

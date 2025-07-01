@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 from ..db_class.db import *
 import uuid
 from .. import db
@@ -222,7 +222,7 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         return True
 
 
-    def create_case_from_template(self, cid: int, case_title_fork: str, user: User) -> dict|Case:
+    def create_case_from_template(self, cid: int, case_title_fork: str, user: User):
         case_title_stored = Case.query.filter_by(title=case_title_fork.strip()).first()
         if case_title_stored:
             return {"message": "Error, title already exist"}
