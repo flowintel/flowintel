@@ -10,6 +10,8 @@ from flask_login import (
 from . import account_core as AccountModel
 from ..utils.utils import form_to_dict
 
+from wtforms.validators import Email, ValidationError
+
 account_blueprint = Blueprint(
     'account',
     __name__,
@@ -50,14 +52,19 @@ def login():
     """Log in an existing user."""
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
-        if user is not None and user.password_hash is not None and \
-                user.verify_password(form.password.data):
-            login_user(user, form.remember_me.data)
-            flash('You are now logged in. Welcome back!', 'success')
-            return redirect(request.args.get('next') or "/")
-        else:
+        try:
+            Email(form.email.data)
+        except ValidationError:
             flash('Invalid email or password.', 'error')
+        else:
+            user = User.query.filter_by(email=form.email.data).first()
+            if user is not None and user.password_hash is not None and \
+                    user.verify_password(form.password.data):
+                login_user(user, form.remember_me.data)
+                flash('You are now logged in. Welcome back!', 'success')
+                return redirect(request.args.get('next') or "/")
+            else:
+                flash('Invalid email or password.', 'error')
     return render_template('account/login.html', form=form)
 
 @account_blueprint.route('/logout')
