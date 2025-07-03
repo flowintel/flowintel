@@ -981,6 +981,7 @@ class Misp_Attribute(db.Model):
     ids_flag = db.Column(db.Boolean)
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    disable_correlation = db.Column(db.Boolean, default=True)
 
     def to_json(self):
         json_dict = {
@@ -993,7 +994,8 @@ class Misp_Attribute(db.Model):
             "comment": self.comment,
             "ids_flag": self.ids_flag,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
+            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "disable_correlation": self.disable_correlation
         }
 
         if self.first_seen:
