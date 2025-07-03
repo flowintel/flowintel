@@ -784,6 +784,13 @@ def get_case_misp_object(cid):
         return {"misp-object": loc_object}
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
+@case_blueprint.route("/<int:cid>/get_correlation_attr/<int:aid>", methods=['GET'])
+@login_required
+def get_correlation_attr(cid, aid):
+    attribute = CaseModel.get_misp_attribute(aid)
+    res = CaseModel.check_correlation_attr(cid, attribute)
+    return {"correlation_list": res}, 200
+
 @case_blueprint.route("/get_misp_object", methods=['GET'])
 @login_required
 def get_misp_object():

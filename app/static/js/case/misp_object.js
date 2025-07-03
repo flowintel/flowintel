@@ -126,6 +126,7 @@ export default {
             let first_seen = $("#attribute_"+attr_id+"_first_seen").val()
             let last_seen = $("#attribute_"+attr_id+"_last_seen").val()
             let ids = $("#attribute_"+attr_id+"_ids").is(":checked")
+            let disable_correlation = $("#attribute_"+attr_id+"_disable_correlation").is(":checked")
             let comment = $("#attribute_"+attr_id+"_comment").val()            
 
             if(value){
@@ -141,7 +142,8 @@ export default {
                         "first_seen": first_seen,
                         "last_seen": last_seen,
                         "comment": comment,
-                        "ids_flag": ids
+                        "ids_flag": ids,
+                        "disable_correlation": disable_correlation
                     })
                 });
                 if(await res.status==200){
@@ -154,7 +156,15 @@ export default {
                                     case_misp_objects.value[i].attributes[j].first_seen = first_seen.replace("T", " ");
                                     case_misp_objects.value[i].attributes[j].last_seen = last_seen.replace("T", " ");
                                     case_misp_objects.value[i].attributes[j].ids_flag = ids
+                                    case_misp_objects.value[i].attributes[j].disable_correlation = disable_correlation
                                     case_misp_objects.value[i].attributes[j].comment = comment
+                                    if(disable_correlation){
+                                        case_misp_objects.value[i].attributes[j].correlation_list = []
+                                    }else{
+                                        const res_correlation = await fetch("/case/"+props.case_id+"/get_correlation_attr/"+case_misp_objects.value[i].attributes[j].id)
+                                        let loc_cor = await res_correlation.json()
+                                        case_misp_objects.value[i].attributes[j].correlation_list = loc_cor["correlation_list"]
+                                    }
                                 }
                             }
                         }
@@ -368,6 +378,12 @@ export default {
                                                                             :checked="attribute.ids_flag"
                                                                             type="checkbox">
                                                                     <label>IDS</label>
+                                                                </div>
+                                                                <div class="col">
+                                                                    <input :id="'attribute_'+attribute.id+'_disable_correlation'" 
+                                                                            :checked="attribute.disable_correlation"
+                                                                            type="checkbox">
+                                                                    <label>Disable Corrleation</label>
                                                                 </div>
                                                                 <div class="form-floating col">
                                                                     <textarea :id="'attribute_'+attribute.id+'_comment'" 

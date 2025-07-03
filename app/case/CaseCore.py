@@ -1010,6 +1010,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 first_seen = None
                 last_seen = None
                 ids_flag = False
+                disable_correlation = False
                 if attribute["first_seen"]:
                     first_seen = datetime.datetime.strptime(attribute["first_seen"], '%Y-%m-%dT%H:%M')
                 if attribute["last_seen"]:
@@ -1017,6 +1018,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
                 if attribute["ids_flag"] and attribute["ids_flag"] == 'true':
                     ids_flag = True
+
+                if attribute["disable_correlation"] and attribute["disable_correlation"] == 'true':
+                    disable_correlation = True
 
                 attr = Misp_Attribute(
                     case_misp_object_id=misp_object.id,
@@ -1026,6 +1030,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     last_seen=last_seen,
                     comment=attribute["comment"],
                     ids_flag=ids_flag,
+                    disable_correlation=disable_correlation,
                     creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
                     last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
                 )
@@ -1045,6 +1050,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 first_seen = None
                 last_seen = None
                 ids_flag = False
+                disable_correlation = False
                 if request_json["first_seen"]:
                     first_seen = datetime.datetime.strptime(request_json["first_seen"], '%Y-%m-%dT%H:%M')
                 if request_json["last_seen"]:
@@ -1053,12 +1059,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 if request_json["ids_flag"] and (request_json["ids_flag"] == 'true' or request_json["ids_flag"] == True):
                     ids_flag = True
 
+                if request_json["disable_correlation"] and (request_json["disable_correlation"] == 'true' or request_json["disable_correlation"] == True):
+                    disable_correlation = True
+
                 attribute.value = request_json["value"]
                 attribute.type = request_json["type"]
                 attribute.first_seen=first_seen
                 attribute.last_seen=last_seen
                 attribute.comment=request_json["comment"]
                 attribute.ids_flag=ids_flag
+                attribute.disable_correlation=disable_correlation
                 attribute.last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
                 db.session.commit()
 
@@ -1083,14 +1093,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def check_correlation_attr(self, case_id: int, attribute: Misp_Attribute) -> list:
         """Get a list of case containing the same attribute value"""
-        attributes = Misp_Attribute.query.filter_by(value=attribute.value).all()
-        loc = []
-        for loc_attr in attributes:
-            cid = Case_Misp_Object.query.get(loc_attr.case_misp_object_id).case_id
-            if not cid in loc and not cid == case_id:
-                loc.append(cid)
-
-        return loc
+        if not attribute.disable_correlation:
+            attributes = Misp_Attribute.query.filter_by(value=attribute.value).all()
+            loc = []
+            for loc_attr in attributes:
+                cid = Case_Misp_Object.query.get(loc_attr.case_misp_object_id).case_id
+                if not cid in loc and not cid == case_id:
+                    loc.append(cid)
+            return loc
+        return []
             
 
     def get_misp_object_connectors(self, cid) -> list:

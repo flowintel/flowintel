@@ -20,7 +20,8 @@ export default {
             let loc = {
                 "id": attribueCount, "value": $("#input-value-"+props.key_obj).val(), "type": $("#select-type-"+props.key_obj).val(),
                 "first_seen": $("#input-first-seen-"+props.key_obj).val(), "last_seen": $("#input-last-seen-"+props.key_obj).val(),
-                "comment": $("#textarea-comment-"+props.key_obj).val(), "ids_flag": $("#input-ids-"+props.key_obj).is(":checked")
+                "comment": $("#textarea-comment-"+props.key_obj).val(), "ids_flag": $("#input-ids-"+props.key_obj).is(":checked"),
+                "disable_correlation": $("#input-disable-correlation-"+props.key_obj).is(":checked")
             }
             
             list_attr.value.push(loc)
@@ -29,6 +30,7 @@ export default {
             $("#input-first-seen-"+props.key_obj).val("")
             $("#input-last-seen-"+props.key_obj).val("")
             $("#input-ids-"+props.key_obj).prop("checked", false);
+            $("#input-disable-correlation-"+props.key_obj).prop("checked", true);
 
             emit('object-attribute-added', loc)
             
@@ -123,6 +125,10 @@ export default {
                         <label>IDS</label>
                     </div>
                     <div class="form-floating col">
+                        <input :name="'attribute_'+attribute.id+'_disable_correlation'" :value="attribute.disable_correlation" class="form-control" type="checkbox" disabled>
+                        <label>Disable Correlation</label>
+                    </div>
+                    <div class="form-floating col">
                         <textarea :name="'attribute_'+attribute.id+'_comment'" :value="attribute.comment" class="form-control" disabled></textarea>
                         <label>Comment</label>
                     </div>
@@ -160,6 +166,11 @@ export default {
                     IDS flag
                 </label>
                 <input :id="'input-ids-'+key_obj" name="input-ids" type="checkbox" value="y">
+
+                <label class="input-group-text me-1" for="input-disable-correlation">
+                    Disable Correlation
+                </label>
+                <input :id="'input-disable-correlation-'+key_obj" name="input-disable-correlation" type="checkbox" checked value="y">
             </div>
 
             <button @click="add_attribute()" class="btn btn-outline-primary">
