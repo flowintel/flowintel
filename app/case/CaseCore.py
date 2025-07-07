@@ -988,6 +988,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def get_misp_attribute(self, aid):
         """Get a misp attribute by id"""
         return Misp_Attribute.query.get(aid)
+    
+    def get_misp_attribute_by_value(self, value: str) -> list:
+        """Get a list of misp attribute by value"""
+        return Misp_Attribute.query.filter_by(value=value).all()
 
 
     def delete_object(self, cid, oid, current_user):

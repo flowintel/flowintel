@@ -618,3 +618,21 @@ def edit_note_template(note_id: int, request_json: dict) -> bool:
 
     db.session.commit()
     return True
+
+
+#####################
+# Search Attr value #
+#####################
+
+def search_attr_with_value(attr_value: str) -> list:
+    list_attr = CaseModel.get_misp_attribute_by_value(attr_value)
+    list_obj = [Case_Misp_Object.query.get(attr.case_misp_object_id) for attr in list_attr]
+
+    list_case = []
+    seen_case_ids = set()
+    for obj in list_obj:
+        case = Case.query.get(obj.case_id)
+        if case and not case.id in seen_case_ids:
+            list_case.append(case.to_json())
+            seen_case_ids.add(case.id)
+    return list_case

@@ -242,3 +242,22 @@ def check_misp_event():
     if not type(res) == str:
         return {"is_connection_okay": True, "event_info": res.info}
     return {"is_connection_okay": False}
+
+
+#####################
+# Search Attr value #
+#####################
+
+@tools_blueprint.route("/search_attr", methods=["GET"])
+@login_required
+def search_attr():
+    return render_template("tools/search_attr.html")
+
+
+@tools_blueprint.route("/search_attr_with_value", methods=["GET"])
+@login_required
+def search_attr_with_value():
+    attr_value = request.args.get('value', 1, type=str)
+    res = ToolsModel.search_attr_with_value(attr_value)
+    return res
+

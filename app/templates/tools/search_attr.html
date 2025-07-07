@@ -1,0 +1,125 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+div#searchbox {
+    display: flex;
+    margin: 0 auto 0 auto;
+}
+input#search-value {
+    font-size: 1.1em;
+    height: 2.8em;
+    border: 1px solid #ccc;
+    border-radius: 5px 0 0 5px;
+    padding-left: .75em;
+    width: 80%;
+    outline: none;
+}
+button#scan {
+    color: white;
+    background-color: #0d6efd;
+    border: 0;
+    border-radius: 0 5px 5px 0;
+    height: 2.8em;
+    font-size: 1.1em;
+    font-weight: 600;
+    flex-grow: 1;
+    outline: none;
+}
+button#scan:hover {
+    background-color: #2779bd;
+}
+</style>
+
+{{ super() }}
+{%endblock%}
+
+
+
+{% block content %}
+
+<div style="margin-bottom: 10px;">
+    <h1>Search for Attribute value</h1>
+</div>
+<hr class="fading-line">
+
+<div id="searchbox">
+    <input type="text" id="search-value" v-model="attribute_value" placeholder="Enter an attribute value" autofocus>
+    <button id="scan" @click="search_attr()">Search</button>
+</div>
+
+<template v-if="case_list.length" >
+    <table class="table mt-4" style="background-color: white;">
+        <tr>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Creation date</th>
+            <th></th>
+        </tr>
+
+        <tr v-for="case_loc in case_list">
+            <td>[[case_loc.title]]</td>
+            <td>[[case_loc.description]]</td>
+            <td v-if="case_loc.completed"><span class="badge rounded-pill text-bg-danger">finished</span></td>
+            <td v-else><span class="badge rounded-pill text-bg-success">created</span></td>
+            <td>[[case_loc.creation_date]]</td>
+            <td>
+                <a :href='"/case/"+case_loc.id'>
+                    <i class="fas fa-eye"></i>
+                </a>
+            </td>
+        </tr>
+    </table>
+</template>
+<template v-else-if="is_searching">
+    <i>Nothing found</i>
+</template>
+
+{% endblock %}
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const attribute_value = ref("")
+                const case_list = ref([])
+                const is_searching = ref(false)
+
+                async function search_attr() {
+                    const res = await fetch('/tools/search_attr_with_value?value='+attribute_value.value)
+                    let loc = await res.json()
+                    case_list.value = loc
+                    is_searching.value = true
+                }
+
+                onMounted(() => {
+                    $('#search-value').on('keypress',function(e) {                        
+                        if(e.which == 13) {
+                            search_attr();
+                        }
+                    });
+                })
+                
+
+                return {
+                    message_list, // Avoid warning
+                    attribute_value,
+                    case_list,
+                    is_searching,
+
+                    search_attr,
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
+{% endblock %}
