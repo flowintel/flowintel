@@ -27,10 +27,12 @@ class TestingConfig(Config):
         print('THIS APP IS IN TESTING MODE.  \
                 YOU SHOULD NOT SEE THIS IN PRODUCTION.')
 
+class ProductionConfig(Config):
+    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel.sqlite"
 
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
-    # 'production': ProductionConfig,
+    'production': ProductionConfig,
     'default': DevelopmentConfig
 }

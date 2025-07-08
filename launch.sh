@@ -53,7 +53,7 @@ function test {
 }
 
 function production {
-    export FLASKENV="development"
+    export FLASKENV="production"
     export HISTORY_DIR=$history_dir/history
     killscript
     db_upgrade
