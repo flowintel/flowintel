@@ -162,7 +162,6 @@ def edit_task(tid):
         else:
             form.title.data = template.title
             form.description.data = template.description
-            form.url.data = template.url
             form.time_required.data = template.time_required
 
         return render_template("templating/edit_task_template.html", form=form)
