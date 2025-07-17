@@ -216,24 +216,30 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         CommonModel.save_history(case.uuid, current_user, f"Case edited")
 
-    def build_case_query(self, page, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, filter=None):
+    def build_case_query(self, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, filter=None):
         """Build a case query depending on parameters"""
         query, conditions = self._build_sort_query(completed, tags, taxonomies, galaxies, clusters, custom_tags)
 
         if filter:
             query = query.order_by(desc(filter))
         
-        return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
+        return query.filter(and_(*conditions)).all()
     
+    def paginate_cases(self, case_list: list, page: int):
+        page_size = 25
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_cases = case_list[start:end]
+        nb_pages = (len(case_list) + page_size - 1) // page_size
+
+        return paginated_cases, nb_pages
 
     def sort_cases(self, page, completed, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", filter=None, user: User = None):
         if tags or taxonomies or galaxies or clusters or custom_tags:
-            cases = self.build_case_query(page, completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
-            nb_pages = cases.pages
+            cases = self.build_case_query(completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
             cases = self._sort(cases, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
         else:
-            cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).paginate(page=page, per_page=25, max_per_page=50)
-            nb_pages = cases.pages
+            cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).all()
 
         list_case_user_in = list()
         for case in cases:
@@ -248,7 +254,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             for case in list_case_user_in:
                 if getattr(case, filter):
                     loc.append(case)
+            loc, nb_pages = self.paginate_cases(loc, page)
             return loc, nb_pages
+        
+        list_case_user_in, nb_pages = self.paginate_cases(list_case_user_in, page)
         return list_case_user_in, nb_pages
 
 
