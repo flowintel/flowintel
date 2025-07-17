@@ -623,7 +623,7 @@ class RemoveConnectors(Resource):
 @api.doc(description='Add a note template to a case')
 class AddNoteTemplate(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"note_template_id": "Id of a note template.", 'required': True})
+    @api.doc(params={"note_template_id": "Id of a note template."})
     def get(self, cid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
@@ -688,7 +688,7 @@ class ModifContentNoteTemplateCase(Resource):
 @api.doc(description='Remove note template from a case')
 class RemoveNoteTemplate(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"note_template_id": "Id of a note template.", 'required': True})
+    @api.doc(params={"note_template_id": "Id of a note template."})
     def get(self, cid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
