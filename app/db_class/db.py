@@ -390,7 +390,7 @@ class Case_Org(db.Model):
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    message = db.Column(db.String(60), index=True)
+    message = db.Column(db.String, index=True)
     is_read = db.Column(db.Boolean, default=False)
     user_id = db.Column(db.Integer, index=True)
     case_id = db.Column(db.Integer, index=True)
@@ -909,7 +909,7 @@ class Misp_Module_Config(db.Model):
     
 class Custom_Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(25), index=True, unique=True)
+    name = db.Column(db.String, index=True, unique=True)
     color = db.Column(db.String(20), index=True)
     icon = db.Column(db.String, index=True, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
