@@ -21,3 +21,5 @@ pymisp
 matrix-nio
 matrix-nio[e2e]
 misp-modules[minimal]
+
+virtualenvwrapper
