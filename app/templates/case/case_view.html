@@ -988,7 +988,7 @@
                         fetch_sorted_tasks()
                     })
 
-                    $('#task_custom_tags_select').on('schange', function (e) {
+                    $('#task_custom_tags_select').on('change', function (e) {
                         selected_custom_tags.value = $(this).select2('data').map(item => item.id);
                         fetch_sorted_tasks()
                     })
