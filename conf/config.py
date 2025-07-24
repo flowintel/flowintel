@@ -1,3 +1,4 @@
+import os
 class Config:
     SECRET_KEY = 'SECRET_KEY_ENV_VAR_NOT_SET'
     
@@ -28,7 +29,19 @@ class TestingConfig(Config):
                 YOU SHOULD NOT SEE THIS IN PRODUCTION.')
 
 class ProductionConfig(Config):
-    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel.sqlite"
+    # environment variables
+    db_user = os.getenv('DB_USER', 'default_user')
+    db_password = os.getenv('DB_PASSWORD', 'default_password')
+    db_host = os.getenv('DB_HOST', 'localhost')
+    db_port = os.getenv('DB_PORT', '5432')
+    db_name = os.getenv('DB_NAME', 'default_db')
+
+    # Database URI
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
+    @classmethod
+    def init_app(cls, app):
+        print('THIS APP IS IN PRODUCTION MODE.')
 
 config = {
     'development': DevelopmentConfig,
