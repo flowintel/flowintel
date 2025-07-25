@@ -266,9 +266,15 @@ Value: [[misp_attr]]
                     let cp = 1
                     for(let i in misp_object.Attribute){
                         let loc = misp_object.Attribute[i]
-                        loc["first_seen"] = null
-                        loc["last_seen"] = null
-                        loc["comment"] = null
+                        if (!(loc.hasOwnProperty("first_seen"))){
+                            loc["first_seen"] = null
+                        }
+                        if (!(loc.hasOwnProperty("last_seen"))){
+                            loc["last_seen"] = null
+                        }
+                        if (!(loc.hasOwnProperty("comment"))){
+                            loc["comment"] = null
+                        }
                         loc["ids_flag"] = loc.to_ids
                         loc["id"] = cp
                         cp += 1
