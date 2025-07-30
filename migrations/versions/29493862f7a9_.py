@@ -24,7 +24,7 @@ def upgrade():
             batch_op.add_column(sa.Column('content', sa.String(), nullable=True))
             batch_op.drop_index('ix_case__note__template__model_template_version')
             batch_op.drop_column('template_version')
-    except OperationalError:
+    except (OperationalError, ValueError):
         print("table case__note__template__model already modified")
     # ### end Alembic commands ###
 
@@ -36,7 +36,7 @@ def downgrade():
             batch_op.add_column(sa.Column('template_version', sa.INTEGER(), nullable=True))
             batch_op.create_index('ix_case__note__template__model_template_version', ['template_version'], unique=False)
             batch_op.drop_column('content')
-    except OperationalError:
+    except (OperationalError, ValueError):
         print("table case__note__template__model already modified")
 
     # ### end Alembic commands ###

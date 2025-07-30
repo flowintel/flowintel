@@ -30,7 +30,7 @@ def upgrade():
 
     tasks = connection.execute(sa.text("SELECT * FROM 'task__url__tool'")).fetchall()
     for task_ in tasks:
-        if task_.url_tool == None or not task_.url_tool:
+        if not hasattr(task_, "url_tool") or task_.url_tool == None or not task_.url_tool:
             loc_url = sa.null()
         else:
             loc_url = task_.url_tool
@@ -62,7 +62,7 @@ def downgrade():
     connection = op.get_bind()
     tasks = connection.execute(sa.text("SELECT * FROM 'task__url__tool'")).fetchall()
     for task_ in tasks:
-        if task_.name == None or not task_.name:
+        if not hasattr(task_, "url_tool") or task_.name == None or not task_.name:
             loc_url = sa.null()
         else:
             loc_url = task_.name
