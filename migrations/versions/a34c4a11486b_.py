@@ -28,7 +28,7 @@ def upgrade():
     
     connection = op.get_bind()
 
-    tasks = connection.execute(sa.text("SELECT * FROM 'task__url__tool'")).fetchall()
+    tasks = connection.execute(sa.text("SELECT * FROM 'task__url__tool' WHERE name IS NULL OR name = ''")).fetchall()
     for task_ in tasks:
         if not hasattr(task_, "url_tool") or task_.url_tool == None or not task_.url_tool:
             loc_url = sa.null()
