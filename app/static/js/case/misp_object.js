@@ -287,129 +287,131 @@ export default {
                                 <button type="button" class="btn btn-danger btn-sm" @click="delete_object(misp_object.object_id)" title="Delete object">
                                     <i class="fa-solid fa-trash"></i>
                                 </button>
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Value</th>
-                                            <th>Type</th>
-                                            <th>First seen</th>
-                                            <th>Last seen</th>
-                                            <th>IDS</th>
-                                            <th title="Correlation"><i class="fa-solid fa-diagram-project"></i></th>
-                                            <th>Comment</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="attribute, key_attr in misp_object.attributes ">
-                                            <td>[[attribute.value]]</td>
-                                            <td>[[attribute.type]]</td>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Value</th>
+                                                <th>Type</th>
+                                                <th>First seen</th>
+                                                <th>Last seen</th>
+                                                <th>IDS</th>
+                                                <th title="Correlation"><i class="fa-solid fa-diagram-project"></i></th>
+                                                <th>Comment</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="attribute, key_attr in misp_object.attributes ">
+                                                <td>[[attribute.value]]</td>
+                                                <td>[[attribute.type]]</td>
 
-                                            <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
-                                            <td v-else><i>none</i></td>
+                                                <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
+                                                <td v-else><i>none</i></td>
 
-                                            <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
-                                            <td v-else><i>none</i></td>
+                                                <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
+                                                <td v-else><i>none</i></td>
 
-                                            <td>[[attribute.ids_flag]]</td>
+                                                <td>[[attribute.ids_flag]]</td>
 
-                                            <td>
-                                                <template v-for="cid, key in attribute.correlation_list">
-                                                    <a :href="'/case/'+cid">[[cid]]</a>
-                                                    <template v-if="key != attribute.correlation_list.length-1">
-                                                    ,
+                                                <td>
+                                                    <template v-for="cid, key in attribute.correlation_list">
+                                                        <a :href="'/case/'+cid">[[cid]]</a>
+                                                        <template v-if="key != attribute.correlation_list.length-1">
+                                                        ,
+                                                        </template>
                                                     </template>
-                                                </template>
-                                            </td>
+                                                </td>
 
-                                            <td v-if="attribute.comment">[[attribute.comment]]</td>
-                                            <td v-else><i>none</i></td>
-                                            <td>
-                                                <button type="button" class="btn btn-primary btn-sm" title="Edit attribute"
-                                                @click="open_modal_add_attribute(misp_object.object_uuid, 'modal-edit-attr-', attribute.id)">
-                                                    <i class="fa-solid fa-pen-to-square"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-danger btn-sm" title="Delete attribute"
-                                                @click="delete_attribute(attribute.id, misp_object.object_id)">
-                                                    <i class="fa-solid fa-trash"></i>
-                                                </button>
-                                            </td>
+                                                <td v-if="attribute.comment">[[attribute.comment]]</td>
+                                                <td v-else><i>none</i></td>
+                                                <td>
+                                                    <button type="button" class="btn btn-primary btn-sm" title="Edit attribute"
+                                                    @click="open_modal_add_attribute(misp_object.object_uuid, 'modal-edit-attr-', attribute.id)">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-danger btn-sm" title="Delete attribute"
+                                                    @click="delete_attribute(attribute.id, misp_object.object_id)">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </td>
 
 
-                                            <!-- Modal Edit attribute -->
-                                            <div class="modal fade" :id="'modal-edit-attr-'+attribute.id" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
-                                                <div class="modal-dialog modal-xl">
-                                                    <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h1 class="modal-title fs-5" id="EditObjectLabel">Edit Attribute</h1>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <div class="form-floating input-group mb-3">
-                                                            <div class="row">
-                                                                <div class="form-floating col">
-                                                                    <input :id="'attribute_value_'+attribute.id" class="form-control" :value="attribute.value">
-                                                                    <label>value</label>
-                                                                </div>
-                                                                <div class="form-floating col">
-                                                                    <select class="form-select" :id='"select-type-attr-"+attribute.id'>
-                                                                        <template v-for="attr in activeTemplateAttr.attributes">
-                                                                            <option :value="attr.name">[[attr.name]]</option>
-                                                                        </template>
-                                                                    </select>
-                                                                    <label>type</label>
-                                                                </div>
-                                                                <div class="form-floating col">
-                                                                    <input :id="'attribute_'+attribute.id+'_first_seen'" 
-                                                                            :value="attribute.first_seen" 
-                                                                            class="form-control"
-                                                                            type="datetime-local">
-                                                                    <label>first_seen</label>
-                                                                </div>
-                                                                <div class="form-floating col">
-                                                                    <input :id="'attribute_'+attribute.id+'_last_seen'" 
-                                                                            :value="attribute.last_seen" 
-                                                                            class="form-control"
-                                                                            type="datetime-local">
-                                                                    <label>last_seen</label>
-                                                                </div>
-                                                                <div class="col">
-                                                                    <input :id="'attribute_'+attribute.id+'_ids'" 
-                                                                            :checked="attribute.ids_flag"
-                                                                            type="checkbox">
-                                                                    <label>IDS</label>
-                                                                </div>
-                                                                <div class="col">
-                                                                    <input :id="'attribute_'+attribute.id+'_disable_correlation'" 
-                                                                            :checked="attribute.disable_correlation"
-                                                                            type="checkbox">
-                                                                    <label>Disable Corrleation</label>
-                                                                </div>
-                                                                <div class="form-floating col">
-                                                                    <textarea :id="'attribute_'+attribute.id+'_comment'" 
-                                                                                :value="attribute.comment" 
-                                                                                class="form-control">
-                                                                    </textarea>
-                                                                    <label>Comment</label>
+                                                <!-- Modal Edit attribute -->
+                                                <div class="modal fade" :id="'modal-edit-attr-'+attribute.id" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
+                                                    <div class="modal-dialog modal-xl">
+                                                        <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h1 class="modal-title fs-5" id="EditObjectLabel">Edit Attribute</h1>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="form-floating input-group mb-3">
+                                                                <div class="row">
+                                                                    <div class="form-floating col">
+                                                                        <input :id="'attribute_value_'+attribute.id" class="form-control" :value="attribute.value">
+                                                                        <label>value</label>
+                                                                    </div>
+                                                                    <div class="form-floating col">
+                                                                        <select class="form-select" :id='"select-type-attr-"+attribute.id'>
+                                                                            <template v-for="attr in activeTemplateAttr.attributes">
+                                                                                <option :value="attr.name">[[attr.name]]</option>
+                                                                            </template>
+                                                                        </select>
+                                                                        <label>type</label>
+                                                                    </div>
+                                                                    <div class="form-floating col">
+                                                                        <input :id="'attribute_'+attribute.id+'_first_seen'" 
+                                                                                :value="attribute.first_seen" 
+                                                                                class="form-control"
+                                                                                type="datetime-local">
+                                                                        <label>first_seen</label>
+                                                                    </div>
+                                                                    <div class="form-floating col">
+                                                                        <input :id="'attribute_'+attribute.id+'_last_seen'" 
+                                                                                :value="attribute.last_seen" 
+                                                                                class="form-control"
+                                                                                type="datetime-local">
+                                                                        <label>last_seen</label>
+                                                                    </div>
+                                                                    <div class="col">
+                                                                        <input :id="'attribute_'+attribute.id+'_ids'" 
+                                                                                :checked="attribute.ids_flag"
+                                                                                type="checkbox">
+                                                                        <label>IDS</label>
+                                                                    </div>
+                                                                    <div class="col">
+                                                                        <input :id="'attribute_'+attribute.id+'_disable_correlation'" 
+                                                                                :checked="attribute.disable_correlation"
+                                                                                type="checkbox">
+                                                                        <label>Disable Corrleation</label>
+                                                                    </div>
+                                                                    <div class="form-floating col">
+                                                                        <textarea :id="'attribute_'+attribute.id+'_comment'" 
+                                                                                    :value="attribute.comment" 
+                                                                                    class="form-control">
+                                                                        </textarea>
+                                                                        <label>Comment</label>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                        <button type="button" class="btn btn-primary" 
-                                                            @click="edit_attr(misp_object.object_id, attribute.id)">
-                                                            Save changes
-                                                        </button>
-                                                    </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                            <button type="button" class="btn btn-primary" 
+                                                                @click="edit_attr(misp_object.object_id, attribute.id)">
+                                                                Save changes
+                                                            </button>
+                                                        </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
 
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>

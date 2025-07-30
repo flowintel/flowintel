@@ -139,23 +139,36 @@ def manage_notes_selected(request_json, current_user):
     case_id = None
     if "create_case" in request_json:
         verif_dict = CaseModelApi.verif_create_case_task(request_json["create_case"], True)
-        case = CaseModel.create_case(verif_dict, current_user)
-        CaseModel.modif_note_core(case.id, current_user, request_json["notes"])
-        case_id = case.id
+        if "message" not in verif_dict:
+            case = CaseModel.create_case(verif_dict, current_user)
+            CaseModel.modif_note_core(case.id, current_user, request_json["notes"])
+            case_id = case.id
+        else:
+            return verif_dict
+
     if "create_task" in request_json:
         if "case_id" in request_json:
             case_id = request_json["case_id"]
+        else:
+            return {"message": "No case id passed"}
+        
         verif_dict = CaseModelApi.verif_create_case_task(request_json["create_task"], False)
-        task = TaskModel.create_task(verif_dict, case_id, current_user)
-        TaskModel.modif_note_core(task.id, current_user, request_json["notes"], "-1")
+        if "message" not in verif_dict:
+            task = TaskModel.create_task(verif_dict, case_id, current_user)
+            TaskModel.modif_note_core(task.id, current_user, request_json["notes"], "-1")
+        else:
+            return verif_dict
+
     elif "existing_task_note" in request_json:
         task = CommonModel.get_task(request_json["existing_task_note"]["task_id"])
         TaskModel.modif_note_core(task.id, current_user, request_json["notes"], request_json["existing_task_note"]["note_id"])
         case_id = task.case_id
+
     elif "create_note" in request_json:
         task = CommonModel.get_task(request_json["create_note"]["task_id"])
         TaskModel.modif_note_core(task.id, current_user, request_json["notes"], "-1")
         case_id = task.case_id
+
     elif "case_note" in request_json:
         case_id = request_json["case_note"]["case_id"]
         CaseModel.modif_note_core(case_id, current_user, request_json["notes"])

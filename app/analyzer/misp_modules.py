@@ -59,9 +59,12 @@ def get_misp_object_selected():
 def manage_notes_selected():
     """Manage notes selected"""
     case_id = MispModuleModel.manage_notes_selected(request.json, current_user)
-    session["note_selected"] = ""
-    session["misp_object_selected"] = ""
-    return {"case_id": case_id}, 200
+    if  isinstance(case_id, int):
+        session["note_selected"] = ""
+        session["misp_object_selected"] = ""
+        return {"case_id": case_id}, 200
+    case_id["toast_class"] = "warning-subtle"
+    return case_id, 400
 
 
 
