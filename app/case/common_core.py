@@ -313,6 +313,10 @@ def get_case_connectors(cid):
     """Return a list of all connectors present in a case"""
     return Case_Connector_Instance.query.filter_by(case_id=cid).all()
 
+def get_case_connectors_by_id(case_instance_id):
+    """Return a case connector instance"""
+    return Case_Connector_Instance.query.get(case_instance_id)
+
 def get_case_connectors_name(cid):
     """Return a list of all name connectors present in a case"""
     return [instance.name for instance in \
@@ -326,6 +330,10 @@ def get_case_connectors_both(case_id, instance_id):
 def get_task_connectors(tid):
     """Return a list of all connectors present in a task"""
     return Task_Connector_Instance.query.filter_by(task_id=tid).all()
+
+def get_task_connectors_by_id(task_instance_id):
+    """Return a task connector instance"""
+    return Task_Connector_Instance.query.get(task_instance_id)
 
 def get_task_connectors_name(task_id):
     """Return a list of all name connectors present in a task"""
@@ -644,7 +652,7 @@ def create_task_from_template(template_id, cid):
     return task
 
 
-def get_instance_with_icon(instance_id, switch_option, case_task_id):
+def get_instance_with_icon(instance_id):
     """Return an instance of a connector with its icon"""
     loc_instance = get_instance(instance_id).to_json()
     loc_instance["icon"] = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
@@ -652,22 +660,6 @@ def get_instance_with_icon(instance_id, switch_option, case_task_id):
                                     .join(Connector_Instance, Connector_Instance.connector_id==Connector.id)\
                                     .where(Connector_Instance.id==instance_id)\
                                     .first().uuid
-    if switch_option == "case":
-        identifier = Case_Connector_Instance.query\
-                .where(Case_Connector_Instance.case_id==case_task_id, Case_Connector_Instance.instance_id==instance_id)\
-                .first()
-    elif switch_option == "task":
-        identifier = Task_Connector_Instance.query\
-                .where(Task_Connector_Instance.task_id==case_task_id, Task_Connector_Instance.instance_id==instance_id)\
-                .first()
-    elif switch_option == "object":
-        identifier = Case_Misp_Object_Connector_Instance.query\
-                .where(Case_Misp_Object_Connector_Instance.case_id==case_task_id, Case_Misp_Object_Connector_Instance.instance_id==instance_id)\
-                .first()
-    
-    loc_instance["identifier"] = ""
-    if identifier:
-        loc_instance["identifier"] = identifier.identifier
     return loc_instance
 
 
