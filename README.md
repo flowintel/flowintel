@@ -44,6 +44,8 @@ run the **installation** script `./install.sh`
 ## Documentation
 A more detailed documentation can be found here: [https://flowintel.github.io/flowintel-doc](https://flowintel.github.io/flowintel-doc)
 
+There is also a recorded training [available on YouTube](https://www.youtube.com/watch?v=Dx03GqW1SN0) 
+
 ## License
 
 This software is licensed under [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.html)
