@@ -22,68 +22,89 @@
 		<div class="position-sticky">
 			<div class="list-group list-group-flush mx-3 mt-4">
 				<a href="/" class="list-group-item list-group-item-action py-2 ripple" aria-current="true">
-					<i class="fa-solid fa-house fa-fw me-3"></i><span>Home</span>
+					<i class="fa-solid fa-house fa-fw me-2"></i><span>Home</span>
 				</a>
 				<a href="/case" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-note-sticky fa-fw me-3"></i><span>Cases</span>
+					<i class="fa-solid fa-folder-open fa-fw me-2"></i><span>Cases</span>
 				</a>
 				<a href="/my_assignment" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-list-check fa-fw me-3"></i><span>Task assigned</span>
+					<i class="fa-solid fa-list-check fa-fw me-2"></i><span>Task assigned</span>
 				</a>
 				<a href="/calendar" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-calendar fa-fw me-3"></i><span>Calendar</span>
+					<i class="fa-solid fa-calendar-days fa-fw me-2"></i><span>Calendar</span>
 				</a>
-				<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-users fa-fw me-3"></i><span>Orgs</span>
-				</a>
-				<a href="/admin/users" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-user fa-fw me-3"></i><span>Users</span>
-				</a>
-				<a href="/connectors" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-link fa-fw me-3"></i><span>Connectors</span>
-				</a>
+				
 				<a href="/analyzer/misp-modules" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-magnifying-glass fa-fw me-3"></i><span>Analyzers</span>
+					<i class="fa-solid fa-magnifying-glass fa-fw me-2"></i><span>Analyzers</span>
 				</a>
 				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#template-collapse" aria-expanded="false">
 					<i class="fa-solid fa-book-bookmark fa-fw me-2"></i><span>Templates</span>
 				</button>
 				<div class="collapse" id="template-collapse">
-					<a href="/templating/cases" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Case</a>
-					<a href="/templating/tasks" class="list-group-item list-group-item-action py-2 ripple" style="display: table-cell;">Task</a>
-				</div>
-				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">
-					<i class="fa-solid fa-toolbox fa-fw me-3"></i><span>Tools</span>
-				</button>
-				<div class="collapse" id="tools-collapse">
-					<a href="/custom_tags/" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-tags fa-fw me-2"></i><span>Custom Tags</span>
+					<a href="/templating/cases" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-folder-open fa-fw me-2 ms-2"></i><span>Case</span>
 					</a>
-					<a href="/admin/taxonomies" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-tag fa-fw me-2"></i><span>Taxonomies</span>
-					</a>
-					<a href="/admin/galaxies" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-globe fa-fw me-2"></i><span>Galaxies</span>
-					</a>
-					<a href="/tools/importer_view" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-file-import fa-fw me-2"></i><span>Importer</span>
-					</a>
-					<a href="/tools/module" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-wrench fa-fw me-2"></i><span>Modules</span>
-					</a>
-					<a href="/tools/stats" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-chart-simple fa-fw me-2"></i><span>Stats</span>
-					</a>
-					<a href="/tools/case_misp_event" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-plus fa-fw me-2"></i><span>Case from MISP</span>
+					<a href="/templating/cases" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-list-check fa-fw me-2 ms-2"></i><span>Task</span>
 					</a>
 					<a href="/tools/note_template_index" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-note-sticky fa-fw me-2"></i><span>Note template</span>
-					</a>
-					<a href="/tools/search_attr" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-magnifying-glass-location fa-fw me-2"></i><span>Search Attr values</span>
+						<i class="fa-solid fa-note-sticky fa-fw me-2 ms-2"></i><span>Note</span>
 					</a>
 				</div>
+
+				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#tags-collapse" aria-expanded="false">
+					<i class="fa-solid fa-tags fa-fw me-2"></i><span>Tags</span>
+				</button>
+				<div class="collapse" id="tags-collapse">
+					<a href="/custom_tags/" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-user-tag fa-fw me-2 ms-2"></i><span>Custom Tags</span>
+					</a>
+					<a href="/admin/taxonomies" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-tag fa-fw me-2 ms-2"></i><span>Taxonomies</span>
+					</a>
+					<a href="/admin/galaxies" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-globe fa-fw me-2 ms-2"></i><span>Galaxies</span>
+					</a>
+				</div>
+
+				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">
+					<i class="fa-solid fa-toolbox fa-fw me-2"></i><span>Tools</span>
+				</button>
+				<div class="collapse" id="tools-collapse">
+					<a href="/connectors" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-link fa-fw me-2 ms-2"></i><span>Connectors</span>
+					</a>
+					<a href="/tools/importer_view" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-file-import fa-fw me-2 ms-2"></i><span>Importer</span>
+					</a>
+					<a href="/tools/module" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-wrench fa-fw me-2 ms-2"></i><span>Modules</span>
+					</a>
+					
+					<a href="/tools/case_misp_event" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-plus fa-fw me-2 ms-2"></i><span>Case from MISP</span>
+					</a>
+					
+					<a href="/tools/search_attr" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-magnifying-glass-location fa-fw me-2 ms-2"></i><span>Search Attr values</span>
+					</a>
+				</div>
+
+				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#community-collapse" aria-expanded="false">
+					<i class="fa-solid fa-earth-europe fa-fw me-2"></i><span>Community</span>
+				</button>
+				<div class="collapse" id="community-collapse">
+					<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-users fa-fw me-3 ms-2"></i><span>Orgs</span>
+					</a>
+					<a href="/admin/users" class="list-group-item list-group-item-action py-2 ripple">
+						<i class="fa-solid fa-user fa-fw me-3 ms-2"></i><span>Users</span>
+					</a>
+				</div>
+
+				<a href="/tools/stats" class="list-group-item list-group-item-action py-2 ripple">
+					<i class="fa-solid fa-chart-simple fa-fw me-2"></i><span>Stats</span>
+				</a>
 			</div>
 		</div>
   	</nav>
