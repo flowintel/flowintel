@@ -989,7 +989,7 @@ def get_case_connectors(cid):
         instance_list = list()
         for case_connector in CommonModel.get_case_connectors(cid):
             instance_list.append({
-                "case_instance_id": case_connector.id,
+                "case_task_instance_id": case_connector.id,
                 "details": CommonModel.get_instance_with_icon(case_connector.instance_id),
                 "identifier": case_connector.identifier
             })
