@@ -300,19 +300,23 @@ class Task_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
     name = db.Column(db.String, index=True)
+    uuid = db.Column(db.String(36), index=True, default=str(uuid.uuid4()))
 
     def to_json(self):
         json_dict = {
             "id": self.id,
             "name": self.name,
             "task_id": self.task_id,
+            "task_uuid": Task.query.get(self.task_id).uuid,
+            "uuid": self.uuid
         }
         return json_dict
 
     def download(self):
         json_dict = {
             "name": self.name,
-            "task_id": self.task_id,
+            "task_uuid": Task.query.get(self.task_id).uuid,
+            "uuid": self.uuid
         }
         return json_dict
 

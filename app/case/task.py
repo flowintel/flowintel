@@ -539,9 +539,9 @@ def call_module_task(cid, tid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CommonModel.get_task(tid)
             if task:
-                instances = request.get_json()["instance_id"]
+                task_instance_id = request.get_json()["case_task_instance_id"]
                 module = request.get_json()["module"]
-                res = TaskModel.call_module_task(module, instances, case, task, current_user)
+                res = TaskModel.call_module_task(module, task_instance_id, case, task, current_user)
                 if res:
                     res["toast_class"] = "danger-subtle"
                     return jsonify(res), 400
@@ -754,7 +754,11 @@ def get_task_connectors(tid):
         
         instance_list = list()
         for task_connector in CommonModel.get_task_connectors(tid):
-            instance_list.append(CommonModel.get_instance_with_icon(task_connector.instance_id, switch_option="task", case_task_id=tid))
+            instance_list.append({
+                "case_task_instance_id": task_connector.id,
+                "details": CommonModel.get_instance_with_icon(task_connector.instance_id),
+                "identifier": task_connector.identifier
+            })
         return {"task_connectors": instance_list}, 200
     return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
 
@@ -782,7 +786,7 @@ def remove_connector(tid, ciid):
     task = CommonModel.get_task(tid)
     if task:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-            if TaskModel.remove_connector(tid, ciid):
+            if TaskModel.remove_connector(ciid):
                 return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
             return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
@@ -797,7 +801,7 @@ def edit_connector(tid, ciid):
     if task:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if "identifier" in request.json:
-                if TaskModel.edit_connector(tid, ciid, request.json):
+                if TaskModel.edit_connector(ciid, request.json):
                     return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
                 return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400

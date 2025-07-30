@@ -547,7 +547,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         return []
 
 
-    def call_module_task(self, module, instance_id, case, task, user):
+    def call_module_task(self, module, task_instance_id, case, task, user):
         """Run a module"""
         org = CommonModel.get_org(case.owner_org_id)
 
@@ -560,14 +560,14 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         task["status"] = CommonModel.get_status(task["status_id"]).name
 
 
-        instance = CommonModel.get_instance(instance_id)
+        task_instance = CommonModel.get_task_connectors_by_id(task_instance_id)
+        instance = CommonModel.get_instance(task_instance.instance_id)
         user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
-        task_instance_id = CommonModel.get_task_connector_id(instance.id, task["id"])
 
         instance = instance.to_json()
         if user_instance:
             instance["api_key"] = user_instance.api_key
-        instance["identifier"] = task_instance_id.identifier
+        instance["identifier"] = task_instance.identifier
 
         #######
         # RUN #
@@ -581,7 +581,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         # RESULTS #
         ###########
 
-        if not task_instance_id:
+        if not task_instance:
             tc_instance = Task_Connector_Instance(
                 task_id=task["id"],
                 instance_id=instance["id"],
@@ -590,11 +590,11 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             db.session.add(tc_instance)
             db.session.commit()
 
-        elif not task_instance_id.identifier == event_id:
-            task_instance_id.identifier = event_id
+        elif not task_instance.identifier == event_id:
+            task_instance.identifier = event_id
             db.session.commit()
 
-        CommonModel.save_history(case.uuid, user, f"Task Module {module} used on instances: {instance['name']}")
+        CommonModel.save_history(case["uuid"], user, f"Task Module {module} used on instances: {instance['name']}")
 
 
     def call_module_task_no_instance(self, module, task, case, current_user, user_id):
@@ -626,7 +626,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def create_url_tool(self, tid, url_tool_name, current_user):
         url_tool = Task_Url_Tool(
             name=url_tool_name,
-            task_id=tid
+            task_id=tid,
+            uuid=str(uuid.uuid4())
         )
         db.session.add(url_tool)
         db.session.commit()
@@ -747,16 +748,16 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             self.update_task_time_modification(task, current_user, f"Connector {instance.name} added to task {task.title}")
         return True
 
-    def remove_connector(self, task_id, instance_id):
+    def remove_connector(self, task_instance_id):
         try:
-            Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).delete()
+            Task_Connector_Instance.query.filter_by(id=task_instance_id).delete()
             db.session.commit()
         except:
             return False
         return True
 
-    def edit_connector(self, task_id, instance_id, request_json):
-        c = Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).first()
+    def edit_connector(self, task_instance_id, request_json):
+        c = Task_Connector_Instance.query.filter_by(id=task_instance_id).first()
         if c:
             c.identifier = request_json["identifier"]
             db.session.commit()

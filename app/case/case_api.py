@@ -593,7 +593,7 @@ class EditConnectorsCase(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "identifier" in request.json:
-                    if CaseModel.edit_connector(cid, ciid, request.json):
+                    if CaseModel.edit_connector(ciid, request.json):
                         return {"message": "Connector edited"}, 200
                     return {"message": "Error Connector edited"}, 400
                 return {"message": "Please give a list of connectors"}, 400
@@ -608,7 +608,7 @@ class RemoveConnectors(Resource):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                if CaseModel.remove_connector(cid, ciid):
+                if CaseModel.remove_connector(ciid):
                     return {"message": "Connector removed"}, 200
                 return {"message": "Error Connector removed"}, 400
             return {"message": "Permission denied"}, 403

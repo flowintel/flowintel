@@ -592,9 +592,9 @@ def call_module_case(cid):
         if not check_user_private_case(case):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
-        instance_id = request.get_json()["instance_id"]
+        case_instance_id = request.get_json()["case_task_instance_id"]
         module = request.get_json()["module"]
-        res = CaseModel.call_module_case(module, instance_id, case, current_user)
+        res = CaseModel.call_module_case(module, case_instance_id, case, current_user)
         if res:
             res["toast_class"] = "danger-subtle"
             return jsonify(res), 400
@@ -882,10 +882,14 @@ def misp_object_connectors(cid):
         if not check_user_private_case(case):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
-        instances_list = list()
+        instance_list = list()
         for object_connector in CaseModel.get_misp_object_connectors(cid):
-            instances_list.append(CommonModel.get_instance_with_icon(object_connector["instance_id"], switch_option="object", case_task_id=cid))
-        return instances_list, 200
+            instance_list.append({
+                "object_instance_id": object_connector.id,
+                "details": CommonModel.get_instance_with_icon(object_connector.instance_id),
+                "identifier": object_connector.identifier
+            })
+        return instance_list, 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -932,7 +936,7 @@ def edit_misp_connector(cid, iid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "identifier" in request.json:
-                if CaseModel.edit_misp_connector(cid, iid, request.json):
+                if CaseModel.edit_misp_connector(iid, request.json):
                     return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
                 return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
@@ -984,7 +988,11 @@ def get_case_connectors(cid):
         
         instance_list = list()
         for case_connector in CommonModel.get_case_connectors(cid):
-            instance_list.append(CommonModel.get_instance_with_icon(case_connector.instance_id, switch_option="case", case_task_id=cid))
+            instance_list.append({
+                "case_instance_id": case_connector.id,
+                "details": CommonModel.get_instance_with_icon(case_connector.instance_id),
+                "identifier": case_connector.identifier
+            })
         return {"case_connectors": instance_list}, 200
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
@@ -1009,10 +1017,9 @@ def add_connector(cid):
 @editor_required
 def remove_connector(cid, ciid):
     """Remove a connector from case"""
-    case = CommonModel.get_case(cid)
-    if case:
+    if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.remove_connector(cid, ciid):
+            if CaseModel.remove_connector(ciid):
                 return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
             return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -1026,7 +1033,7 @@ def edit_connector(cid, ciid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "identifier" in request.json:
-                if CaseModel.edit_connector(cid, ciid, request.json):
+                if CaseModel.edit_connector(ciid, request.json):
                     return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
                 return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400

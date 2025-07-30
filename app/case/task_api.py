@@ -472,7 +472,7 @@ class EditConnectorTask(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "identifier" in request.json:
-                    if TaskModel.edit_connector(tid, ciid, request.json):
+                    if TaskModel.edit_connector(ciid, request.json):
                         return {"message": "Connector edited"}, 200
                     return {"message": "Error Connector edited"}, 400
                 return {"message": "Please give a list of connectors"}, 400
@@ -488,7 +488,7 @@ class RemoveConnectorTask(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-                if TaskModel.remove_connector(tid, ciid):
+                if TaskModel.remove_connector(ciid):
                     return {"message": "Connector removed"}, 200
                 return {"message": "Error Connector removed"}, 400
             return {"message": "Permission denied"}, 403

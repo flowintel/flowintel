@@ -5,7 +5,7 @@ export default {
 	setup() {
         const connectors_list = ref();
         const objects_connectors_list = ref();
-        const connectors_selected = ref()
+        const connectors_selected = ref([])
         const edit_instance = ref()
         const is_sending = ref(false)
 
@@ -34,8 +34,8 @@ export default {
         async function save_connector_object(){
             let connector_dict = []
             for(let i in connectors_selected.value){
-                let loc = $("#identifier_"+connectors_selected.value[i]).val()
-                let loc_key = connectors_selected.value[i]
+                let loc = $("#identifier_"+connectors_selected.value[i].id).val()
+                let loc_key = connectors_selected.value[i].name
                 connector_dict.push({
                     "name": loc_key,
                     "identifier": loc
@@ -64,7 +64,7 @@ export default {
             if(await res.status==200){
                 let loc
                 for(let i in objects_connectors_list.value){
-                    if(objects_connectors_list.value[i].id == instance_id){
+                    if(objects_connectors_list.value[i].object_instance_id == instance_id){
                         loc = i
                         break
                     }
@@ -76,7 +76,7 @@ export default {
 
         async function edit_connector_object(){
             let loc_indentifier = $("#input-edit-connector").val()
-            const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/misp_object_connectors/"+edit_instance.value.id+"/edit_connector", {
+            const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/misp_object_connectors/"+edit_instance.value.object_instance_id+"/edit_connector", {
                 method: "POST",
                 headers: {
                     "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
@@ -87,7 +87,7 @@ export default {
             });
             if(await res.status==200){
                 for (let i in objects_connectors_list.value){
-                    if (objects_connectors_list.value[i].id == edit_instance.value.id){
+                    if (objects_connectors_list.value[i].object_instance_id == edit_instance.value.object_instance_id){
                         objects_connectors_list.value[i].identifier = loc_indentifier
                     }
                 }
@@ -121,7 +121,20 @@ export default {
             })
 
             $('#object_connectors_select').on('change.select2', function (e) {
-                connectors_selected.value = $(this).select2('data').map(item => item.id)
+                connectors_selected.value = []
+                let loc = $(this).select2('data').map(item => item.id)
+                
+                for(let element in loc){
+                    for(let connectors in connectors_list.value){
+                            if(loc[element] == connectors_list.value[connectors].id){
+                                connectors_selected.value.push({
+                                    "id": connectors_list.value[connectors].id,
+                                    "name": connectors_list.value[connectors].name
+                                })
+                            }
+                        // }
+                    }
+                }
             })
         })
 
@@ -164,15 +177,15 @@ export default {
                                 <template v-for="instance in objects_connectors_list">
                                     <tr >
                                         <td>
-                                            <div :title="instance.description">
-                                                <img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
-                                                [[instance.name]]
+                                            <div :title="instance.details.description">
+                                                <img :src="'/static/icons/'+instance.details.icon" style="max-width: 30px;">
+                                                [[instance.details.name]]
                                             </div>
                                         </td>
                                         <td>
-                                            <a style="margin-left: 5px" :href="instance.url">[[instance.url]]</a>
+                                            <a style="margin-left: 5px" :href="instance.details.url">[[instance.details.url]]</a>
                                         </td>
-                                        <td v-if="instance.type"><span style="margin-left: 3px;" title="type of the module">[[instance.type]]</span></td>
+                                        <td v-if="instance.details.type"><span style="margin-left: 3px;" title="type of the module">[[instance.details.type]]</span></td>
                                         <td v-else><i>None</i></td>
 
                                         <td v-if="instance.identifier"><span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span></td>
@@ -180,12 +193,12 @@ export default {
 
                                         <td>
                                             <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)"> <i class="fa-solid fa-pen-to-square"></i> </button> 
-                                            <button v-if="!is_sending" class="btn btn-outline-secondary" @click="send_to_action(instance.id)"> Send to </button>
+                                            <button v-if="!is_sending" class="btn btn-outline-secondary" @click="send_to_action(instance.object_instance_id)"> Send to </button>
                                             <button v-else class="btn btn-outline-secondary" type="button" disabled>
                                                 <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                                                 <span role="status">Loading...</span>
                                             </button>
-                                            <button class="btn btn-outline-danger" @click="remove_connector(instance.id)"> <i class="fa-solid fa-trash"></i> </button>
+                                            <button class="btn btn-outline-danger" @click="remove_connector(instance.object_instance_id)"> <i class="fa-solid fa-trash"></i> </button>
                                         </td>
                                     </tr>
                                     
@@ -237,15 +250,15 @@ export default {
                             <select data-placeholder="Connectors" class="select2-select-connect form-control" multiple name="connectors_select" id="object_connectors_select" >
                                 <template v-if="connectors_list">
                                     <template v-for="instance in connectors_list">
-                                        <option v-if="instance.type == 'send_to'" :value="[[instance.name]]">[[instance.name]]</option>
+                                        <option v-if="instance.type == 'send_to'" :value="[[instance.id]]">[[instance.name]]</option>
                                     </template>
                                 </template>
                             </select>
                         </div>
                         <div class="row" v-if="connectors_selected">
                             <div class="mb-3 w-25" v-for="instance in connectors_selected" >
-                                <label :for="'identifier_' + instance">[[instance]] Complement</label>
-                                <input :id="'identifier_' + instance" class="form-control" :name="'identifier_' + instance" type="text">
+                                <label :for="'identifier_' + instance.id">[[instance.name]] Complement</label>
+                                <input :id="'identifier_' + instance.id" class="form-control" :name="'identifier_' + instance.id" type="text">
                             </div>
                         </div>
                     </div>

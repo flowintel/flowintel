@@ -37,7 +37,7 @@ def common_create(case_task, case_uuid, misp_object):
     return misp_object
 
 def create_case(case):
-    misp_object = MISPObject("flowintel-cm-case", standalone=False)
+    misp_object = MISPObject("flowintel-case", standalone=False)
     misp_object = common_create(case, case["uuid"], misp_object)
     
     misp_object.add_attribute('case-owner-org-name', value=case["org_name"])
@@ -47,19 +47,27 @@ def create_case(case):
     return misp_object
 
 def create_task(task, case_uuid):
-    misp_object = MISPObject("flowintel-cm-task", standalone=False)
+    misp_object = MISPObject("flowintel-task", standalone=False)
     misp_object = common_create(task, case_uuid, misp_object)
 
     misp_object.add_attribute('task-uuid', value=task["uuid"])
-    misp_object.add_attribute('url', value=task["url"])
     return misp_object
 
 def create_task_note(note):
-    misp_object = MISPObject("flowintel-cm-task-note", standalone=False)
+    misp_object = MISPObject("flowintel-task-note", standalone=False)
 
     misp_object.add_attribute('note', value=note["note"])
     misp_object.add_attribute('task-uuid', value=note["task_uuid"])
     misp_object.add_attribute('note-uuid', value=note["uuid"])
+    misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
+    return misp_object
+
+def create_task_resource(resource):
+    misp_object = MISPObject("flowintel-task-resource", standalone=False)
+
+    misp_object.add_attribute('resource', value=resource["name"])
+    misp_object.add_attribute('task-uuid', value=resource["task_uuid"])
+    misp_object.add_attribute('resource-uuid', value=resource["uuid"])
     misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
     return misp_object
 
@@ -104,7 +112,7 @@ def handler(instance, case, user):
         if 'errors' in event:
             flag = True
         else:
-            misp_objects = event.get_objects_by_name("flowintel-cm-case")
+            misp_objects = event.get_objects_by_name("flowintel-case")
             current_case_object = None
             for i in range(0, len(misp_objects)):
                 for attribute in misp_objects[i].attributes:
@@ -126,7 +134,7 @@ def handler(instance, case, user):
                         attribute.value = case["notes"]
                     
 
-                misp_objects = event.get_objects_by_name("flowintel-cm-task")
+                misp_objects = event.get_objects_by_name("flowintel-task")
                 for task in case["tasks"]:
                     current_object = None
                     for i in range(0, len(misp_objects)):
@@ -139,11 +147,9 @@ def handler(instance, case, user):
                     if not current_object == None:
                         for attribute in misp_objects[current_object].attributes:
                             attribute = common_edit(task, attribute)
-                            if attribute.object_relation == 'url' and not attribute.value == task["url"]:
-                                attribute.value = task["url"]
 
                         ## Task's notes
-                        misp_objects_note = event.get_objects_by_name("flowintel-cm-task-note")
+                        misp_objects_note = event.get_objects_by_name("flowintel-task-note")
                         for note in task["notes"]:
                             current_note = None
                             for i in range(0, len(misp_objects_note)):
@@ -160,16 +166,45 @@ def handler(instance, case, user):
                             ## Note doesn't exist in the event
                             else:
                                 misp_note_object = create_task_note(note)
+                                misp_note_object.add_reference(misp_objects[current_object].uuid, relationship_type="note-for")
                                 event.add_object(misp_note_object)
-                        
+
+                        ## Task's resources
+                        misp_objects_resource = event.get_objects_by_name("flowintel-task-resource")
+                        for resource in task["urls_tools"]:
+                            current_resource = None
+                            for i in range(0, len(misp_objects_resource)):
+                                for attr in misp_objects_resource[i].attributes:
+                                    if attr.object_relation == 'resource-uuid':
+                                        if attr.value == resource["uuid"]:
+                                            current_resource = i
+                                            break
+                            ## Resource exist in the event
+                            if not current_resource == None:
+                                for attr in misp_objects_resource[current_resource].attributes:
+                                    if attr.object_relation == "name" and not attribute.value == resource["name"]:
+                                        attr.value = resource["name"]
+                            ## Resource doesn't exist in the event
+                            else:
+                                misp_resource_object = create_task_resource(resource)
+                                misp_resource_object.add_reference(misp_objects[current_object].uuid, relationship_type="resource-for")
+                                event.add_object(misp_resource_object)
+
                     ## Task doesn't exist in the event
                     else:
-                        misp_object = create_task(task, case["uuid"])
-                        event.add_object(misp_object)
+                        loc_misp_task_object = create_task(task, case["uuid"])
+                        event.add_object(loc_misp_task_object)
 
                         ## Task's notes
                         for note in task["notes"]:
                             misp_object = create_task_note(note)
+                            misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="note-for")
+                            event.add_object(misp_object)
+
+                        ## Task's resources
+                        for resource in task["urls_tools"]:
+                            misp_object = create_task_resource(resource)
+                            misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
                             event.add_object(misp_object)
 
                 if event.EventReport:
@@ -218,11 +253,18 @@ def handler(instance, case, user):
                 event.add_object(misp_object)
 
                 for task in case["tasks"]:
-                    misp_object = create_task(task, case["uuid"])
-                    event.add_object(misp_object)
+                    loc_misp_task_object = create_task(task, case["uuid"])
+                    event.add_object(loc_misp_task_object)
 
                     for note in task["notes"]:
                         misp_object = create_task_note(note)
+                        misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="note-for")
+                        event.add_object(misp_object)
+
+                    ## Task's resources
+                    for resource in task["urls_tools"]:
+                        misp_object = create_task_resource(resource)
+                        misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
                         event.add_object(misp_object)
 
                 event = misp.update_event(event, pythonify=True)
@@ -247,13 +289,21 @@ def handler(instance, case, user):
         event.add_object(misp_object)
 
         # Task
+        loc_misp_task_object = None
         for task in case["tasks"]:
-            misp_object = create_task(task, case["uuid"])
-            event.add_object(misp_object)
+            loc_misp_task_object = create_task(task, case["uuid"])
+            event.add_object(loc_misp_task_object)
 
             ## Task's notes
             for note in task["notes"]:
                 misp_object = create_task_note(note)
+                misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="note-for")
+                event.add_object(misp_object)
+
+            ## Task's resources
+            for resource in task["urls_tools"]:
+                misp_object = create_task_resource(resource)
+                misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
                 event.add_object(misp_object)
 
         event = misp.add_event(event, pythonify=True)

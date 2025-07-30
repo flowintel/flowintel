@@ -13,7 +13,7 @@ export default {
     emits: ['case_connectors', 'task_connectors'],
 	setup(props, {emit}) {
         const is_sending = ref(false)
-        const connectors_selected = ref()
+        const connectors_selected = ref([])
         const edit_instance = ref()
         const send_to_instance = ref()
 
@@ -27,8 +27,9 @@ export default {
         async function save_connector(){
             let connector_dict = []
             for(let i in connectors_selected.value){
-                let loc = $("#identifier_"+connectors_selected.value[i]).val()
-                let loc_key = connectors_selected.value[i]
+                let loc = $("#identifier_"+connectors_selected.value[i].id).val()
+                
+                let loc_key = connectors_selected.value[i].name
                 connector_dict.push({
                     "name": loc_key,
                     "identifier": loc
@@ -64,19 +65,19 @@ export default {
             
         }
 
-        async function remove_connector(instance_id) {
+        async function remove_connector(element_instance_id) {
             let url
             if(props.is_case){
-                url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/connectors/"+instance_id+"/remove_connector"
+                url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/connectors/"+element_instance_id+"/remove_connector"
             }else{
-                url = "/case/task/"+props.object_id+"/remove_connector/"+instance_id
+                url = "/case/task/"+props.object_id+"/remove_connector/"+element_instance_id
             }
 
             const res = await fetch(url)
             if(await res.status==200){
                 let loc
                 for(let i in props.case_task_connectors_list){
-                    if(props.case_task_connectors_list[i].id == instance_id){
+                    if(props.case_task_connectors_list[i].case_task_instance_id == element_instance_id){
                         loc = i
                         break
                     }
@@ -88,7 +89,6 @@ export default {
 
         function edit_instance_open_modal(instance){
             edit_instance.value = instance
-
             var myModal = new bootstrap.Modal(document.getElementById("modal-edit-connectors-"+modal_indentifier), {});
             myModal.show();
         }
@@ -96,9 +96,9 @@ export default {
         async function edit_connector(){
             let url
             if(props.is_case){
-                url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/connectors/"+edit_instance.value.id+"/edit_connector"
+                url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/connectors/"+edit_instance.value.case_task_instance_id+"/edit_connector"
             }else{
-                url = "/case/task/"+props.object_id+"/edit_connector/"+instance_id
+                url = "/case/task/"+props.object_id+"/edit_connector/"+edit_instance.value.case_task_instance_id
             }
 
             let loc_indentifier = $("#input-edit-connector").val()
@@ -113,7 +113,7 @@ export default {
             });
             if(await res.status==200){
                 for (let i in props.case_task_connectors_list){
-                    if (props.case_task_connectors_list[i].id == edit_instance.value.id){
+                    if (props.case_task_connectors_list[i].case_task_instance_id == edit_instance.value.case_task_instance_id){
                         props.case_task_connectors_list[i].identifier = loc_indentifier
                     }
                 }
@@ -153,7 +153,7 @@ export default {
                 method: "POST",
                 body: JSON.stringify({
                     "module": modules_select,
-                    "instance_id": send_to_instance.value.id
+                    "case_task_instance_id": send_to_instance.value.case_task_instance_id
                 }),
                 headers: {
                     "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
@@ -170,9 +170,6 @@ export default {
 
 
 		onMounted(() => {
-            
-            
-            
             $('.select2-connect').select2({
                 theme: 'bootstrap-5',
                 dropdownParent: $("#modal-add-connectors-"+modal_indentifier)
@@ -184,7 +181,20 @@ export default {
             $('.select2-module').css("min-width", "200px")
 
             $('#connectors_select_'+modal_indentifier).on('change.select2', function (e) {
-                connectors_selected.value = $(this).select2('data').map(item => item.id)
+                connectors_selected.value = []
+                let loc = $(this).select2('data').map(item => item.id)
+                for(let element in loc){                    
+                    for(let connectors in props.all_connectors_list){
+                        for(let connector in props.all_connectors_list[connectors]){
+                            if(loc[element] == props.all_connectors_list[connectors][connector].id){
+                                connectors_selected.value.push({
+                                    "id": props.all_connectors_list[connectors][connector].id,
+                                    "name": props.all_connectors_list[connectors][connector].name
+                                })
+                            }
+                        }
+                    }
+                }                
             })
             
         })
@@ -231,17 +241,17 @@ export default {
                 <tbody>
                     <tr v-for="instance in case_task_connectors_list">
                         <td>
-                            <div :title="instance.description">
-                                <img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
-                                [[instance.name]]
+                            <div :title="instance.details.description">
+                                <img :src="'/static/icons/'+instance.details.icon" style="max-width: 30px;">
+                                [[instance.details.name]]
                             </div>
                         </td>
                         <td>
-                            <a style="margin-left: 5px" :href="instance.url">[[instance.url]]</a>
+                            <a style="margin-left: 5px" :href="instance.details.url">[[instance.details.url]]</a>
                         </td>
 
-                        <td v-if="instance.type">
-                            <span style="margin-left: 3px;" title="type of the module">[[instance.type]]</span>
+                        <td v-if="instance.details.type">
+                            <span style="margin-left: 3px;" title="type of the module">[[instance.details.type]]</span>
                         </td>
                         <td v-else><i>None</i></td>
 
@@ -257,7 +267,7 @@ export default {
                                 <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                                 <span role="status">Loading...</span>
                             </button>
-                            <button class="btn btn-outline-danger" @click="remove_connector(instance.id)"> <i class="fa-solid fa-trash"></i> </button>
+                            <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)"> <i class="fa-solid fa-trash"></i> </button>
                         </td>
                     </tr>
                 </tbody>
@@ -278,7 +288,7 @@ export default {
                                 <template v-if="all_connectors_list">
                                     <template v-for="(instances, connector) in all_connectors_list">
                                         <optgroup :label="[[connector]]">
-                                            <option :value="[[instance.name]]" v-for="instance in instances">[[instance.name]]</option>
+                                            <option :value="[[instance.id]]" v-for="instance in instances">[[instance.name]]</option>
                                         </optgroup>
                                     </template>
                                 </template>
@@ -286,8 +296,8 @@ export default {
                         </div>
                         <div class="row" v-if="connectors_selected">
                             <div class="mb-3 w-25" v-for="instance in connectors_selected" >
-                                <label :for="'identifier_' + instance">[[instance]] Complement</label>
-                                <input :id="'identifier_' + instance" class="form-control" :name="'identifier_' + instance" type="text">
+                                <label :for="'identifier_' + instance.id">[[instance.name]] Complement</label>
+                                <input :id="'identifier_' + instance.id" class="form-control" :name="'identifier_' + instance.id" type="text">
                             </div>
                         </div>
                     </div>

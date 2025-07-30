@@ -884,16 +884,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             CommonModel.update_last_modif(cid)
         return True
 
-    def remove_connector(self, case_id, instance_id):
+    def remove_connector(self, case_instance_id):
         try:
-            Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).delete()
+            Case_Connector_Instance.query.filter_by(id=case_instance_id).delete()
             db.session.commit()
         except:
             return False
         return True
 
-    def edit_connector(self, case_id, instance_id, request_json):
-        c = Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
+    def edit_connector(self, case_instance_id, request_json):
+        c = Case_Connector_Instance.query.get(case_instance_id)
         if c:
             c.identifier = request_json["identifier"]
             db.session.commit()
@@ -902,7 +902,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
 
 
-    def call_module_case(self, module, instance_id, case, user):
+    def call_module_case(self, module, case_instance_id, case, user):
         """Run a module"""
         org = CommonModel.get_org(case.owner_org_id)
 
@@ -918,15 +918,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         case["tasks"] = tasks
         case["status"] = CommonModel.get_status(case["status_id"]).name
 
-        instance = CommonModel.get_instance(instance_id)
+        case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
+        instance = CommonModel.get_instance(case_instance.instance_id)
 
         user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
-        case_instance_id = CommonModel.get_case_connector_id(instance.id, case["id"])
 
         instance = instance.to_json()
         if user_instance:
             instance["api_key"] = user_instance.api_key
-        instance["identifier"] = case_instance_id.identifier
+        instance["identifier"] = case_instance.identifier
 
         case["objects"] = self.get_misp_object_instance(case["id"], instance["id"])
 
@@ -942,7 +942,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         ###########
         # RESULTS #
         ###########
-        if not case_instance_id:
+        if not case_instance:
             cc_instance = Case_Connector_Instance(
                 case_id=case["id"],
                 instance_id=instance["id"],
@@ -950,8 +950,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             )
             db.session.add(cc_instance)
             db.session.commit()
-        elif not case_instance_id.identifier == event_id:
-            case_instance_id.identifier = event_id
+        elif not case_instance.identifier == event_id:
+            case_instance.identifier = event_id
             db.session.commit()
         
         if object_uuid_list:
@@ -1119,8 +1119,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def get_misp_object_connectors(self, cid) -> list:
         """Return all instances of connectors in json for misp object in a case"""
-        instances = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=cid)
-        return [instance.to_json() for instance in instances]
+        return Case_Misp_Object_Connector_Instance.query.filter_by(case_id=cid).all()
 
 
     def add_misp_object_connector(self, cid, request_json, current_user) -> bool:
@@ -1141,21 +1140,24 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             CommonModel.update_last_modif(cid)
         return True
 
-    def remove_misp_connector(self, case_id, instance_id, current_user):
+    def remove_misp_connector(self, case_id, object_instance_id, current_user):
         try:
-            Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).delete()
-            db.session.commit()
+            case_object_instance = Case_Misp_Object_Connector_Instance.query.filter_by(id=object_instance_id).first()
 
             case = CommonModel.get_case(case_id)
-            instance = CommonModel.get_instance(instance_id)
+            instance = CommonModel.get_instance(case_object_instance.instance_id)
+
+            db.session.delete(case_object_instance)
+            db.session.commit()
+
             CommonModel.save_history(case.uuid, current_user, f"Connector {instance.name} added")
             CommonModel.update_last_modif(case_id)
         except:
             return False
         return True
 
-    def edit_misp_connector(self, case_id, instance_id, request_json):
-        c = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
+    def edit_misp_connector(self, object_instance_id, request_json):
+        c = Case_Misp_Object_Connector_Instance.query.filter_by(id=object_instance_id).first()
         if c:
             c.identifier = request_json["identifier"]
             db.session.commit()
@@ -1238,21 +1240,19 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     db.session.add(a)
                     db.session.commit()
 
-    def call_module_misp(self, instance_id, case, user):
+    def call_module_misp(self, object_instance_id, case, user):
         """Use to send objects to MISP"""
-        instance = CommonModel.get_instance(instance_id)
+        object_instance = Case_Misp_Object_Connector_Instance.query.get(object_instance_id)
+        instance = CommonModel.get_instance(object_instance.instance_id)
         user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
 
         instance = instance.to_json()
         if user_instance:
             instance["api_key"] = user_instance.api_key
-
-        loc_instance = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case.id, instance_id=instance_id).first()
-        if loc_instance:
-            instance["identifier"] = loc_instance.identifier
+        instance["identifier"] = object_instance.identifier
 
         case = case.to_json()
-        case["objects"] = self.get_misp_object_instance(case["id"], instance_id)
+        case["objects"] = self.get_misp_object_instance(case["id"], object_instance.id)
 
         #######
         # RUN #
@@ -1267,14 +1267,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         # RESULTS #
         ###########
 
-        if not loc_instance.identifier == event_id:
-            loc_instance.identifier = event_id
+        if not object_instance.identifier == event_id:
+            object_instance.identifier = event_id
             db.session.commit()
         if object_uuid_list:
-            self.result_misp_object_module(object_uuid_list, instance_id)
+            self.result_misp_object_module(object_uuid_list, object_instance.id)
 
-        CommonModel.save_history(case.uuid, user, f"Module 'misp_object_event' called with connector '{instance['name']}'")
-        CommonModel.update_last_modif(case.id)
+        CommonModel.save_history(case["uuid"], user, f"Module 'misp_object_event' called with connector '{instance['name']}'")
+        CommonModel.update_last_modif(case["id"])
 
 
     #################

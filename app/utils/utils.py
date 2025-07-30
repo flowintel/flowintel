@@ -12,6 +12,7 @@ import requests
 from ..db_class.db import Tags, User
 from functools import lru_cache
 from conf.config import Config
+from pymisp.tools import update_objects
 
 MODULES = {}
 MODULES_CONFIG = {}
@@ -110,6 +111,9 @@ def get_modules_list():
     for elem in loc_elem:
         del MODULES_CONFIG[elem]
         del MODULES[elem]
+
+def update_pymisp_objects():
+    update_objects()
 
 
 
