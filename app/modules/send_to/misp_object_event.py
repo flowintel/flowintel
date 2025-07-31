@@ -15,7 +15,7 @@ def create_object(misp, object, event_id):
     misp_object = MISPObject(object["name"], standalone=False)
     attr_uuid_list = list()
     for attr in object["attributes"]:
-        loc_attr = misp_object.add_attribute(attr["type"], value=attr["value"],
+        loc_attr = misp_object.add_attribute(attr["object_relation"], value=attr["value"],
                                              to_ids=attr["ids_flag"], 
                                              comment=attr["comment"], 
                                              first_seen=attr["first_seen"], 
@@ -68,7 +68,7 @@ def all_object_to_misp(misp, event, objects, object_uuid_list):
                             return res, object_uuid_list
                 except InvalidMISPObjectAttribute as e:
                     # Object exist but not this attribute
-                    loc_attr = loc_object.add_attribute(attr["type"], value=attr["value"])
+                    loc_attr = loc_object.add_attribute(attr["object_relation"], value=attr["value"])
                     attr_uuid_list.append({
                         "attribute_id": attr["id"],
                         "uuid": loc_attr.uuid

@@ -16,9 +16,12 @@ export default {
 
         function add_attribute(){            
             attribueCount += 1
+
+            let loc_type = $("#select-type-"+props.key_obj).val()
             
             let loc = {
-                "id": attribueCount, "value": $("#input-value-"+props.key_obj).val(), "type": $("#select-type-"+props.key_obj).val(),
+                "id": attribueCount, "value": $("#input-value-"+props.key_obj).val(), 
+                "type": loc_type.split("::")[1], "object_relation": loc_type.split("::")[0],
                 "first_seen": $("#input-first-seen-"+props.key_obj).val(), "last_seen": $("#input-last-seen-"+props.key_obj).val(),
                 "comment": $("#textarea-comment-"+props.key_obj).val(), "ids_flag": $("#input-ids-"+props.key_obj).is(":checked"),
                 "disable_correlation": $("#input-disable-correlation-"+props.key_obj).is(":checked")
@@ -109,6 +112,10 @@ export default {
                         <label>value</label>
                     </div>
                     <div class="form-floating col">
+                        <input :name="'attribute_'+attribute.id+'_object_relation'" :value="attribute.object_relation" class="form-control" disabled>
+                        <label>Object relation</label>
+                    </div>
+                    <div class="form-floating col">
                         <input :name="'attribute_'+attribute.id+'_type'" :value="attribute.type" class="form-control" disabled>
                         <label>type</label>
                     </div>
@@ -146,7 +153,7 @@ export default {
                 <select class="select2-type form-control" :id="'select-type-'+key_obj" v-if="template">
                     <template v-for="attr in template.attributes">
                                                  // object_relation::type
-                        <option :value="attr.name">[[attr.name]]::[[attr.misp_attribute]]</option>
+                        <option :value="attr.name+'::'+attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                     </template>
                 </select>
             </div>

@@ -112,35 +112,39 @@
                         </h2>
                         <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
                             <div class="accordion-body">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>value</th>
-                                            <th>type</th>
-                                            <th>first seen</th>
-                                            <th>last seen</th>
-                                            <th>IDS</th>
-                                            <th>comment</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="attribute, key_attr in misp_object.attributes ">
-                                            <td>[[attribute.value]]</td>
-                                            <td>[[attribute.type]]</td>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Value</th>
+                                                <th>Object relation</th>
+                                                <th>Type</th>
+                                                <th>First seen</th>
+                                                <th>Last seen</th>
+                                                <th>IDS</th>
+                                                <th>Comment</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="attribute, key_attr in misp_object.attributes ">
+                                                <td>[[attribute.value]]</td>
+                                                <td>[[attribute.object_relation]]</td>
+                                                <td>[[attribute.type]]</td>
 
-                                            <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
-                                            <td v-else><i>none</i></td>
+                                                <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
+                                                <td v-else><i>none</i></td>
 
-                                            <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
-                                            <td v-else><i>none</i></td>
+                                                <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
+                                                <td v-else><i>none</i></td>
 
-                                            <td>[[attribute.ids_flag]]</td>
+                                                <td>[[attribute.ids_flag]]</td>
 
-                                            <td v-if="attribute.comment">[[attribute.comment]]</td>
-                                            <td v-else><i>none</i></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                                <td v-if="attribute.comment">[[attribute.comment]]</td>
+                                                <td v-else><i>none</i></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>

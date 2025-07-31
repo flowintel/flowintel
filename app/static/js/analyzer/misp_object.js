@@ -117,7 +117,8 @@ export default {
                         for(let j in loc_misp_objects.value[i].attributes){
                             if(attr_id == loc_misp_objects.value[i].attributes[j].id){
                                 loc_misp_objects.value[i].attributes[j].value = value
-                                loc_misp_objects.value[i].attributes[j].type = type
+                                loc_misp_objects.value[i].attributes[j].type = type.split("::")[1]
+                                loc_misp_objects.value[i].attributes[j].object_relation = type.split("::")[0]
                                 loc_misp_objects.value[i].attributes[j].first_seen = first_seen.replace("T", " ");
                                 loc_misp_objects.value[i].attributes[j].last_seen = last_seen.replace("T", " ");
                                 loc_misp_objects.value[i].attributes[j].ids_flag = ids
@@ -247,18 +248,20 @@ export default {
                                     <table class="table">
                                         <thead>
                                             <tr>
-                                                <th>value</th>
-                                                <th>type</th>
-                                                <th>first seen</th>
-                                                <th>last seen</th>
+                                                <th>Value</th>
+                                                <th>Object Relation</th>
+                                                <th>Type</th>
+                                                <th>First seen</th>
+                                                <th>Last seen</th>
                                                 <th>IDS</th>
-                                                <th>comment</th>
+                                                <th>Comment</th>
                                                 <th></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr v-for="attribute, key_attr in misp_object.attributes ">
                                                 <td>[[attribute.value]]</td>
+                                                <td>[[attribute.object_relation]]</td>
                                                 <td>[[attribute.type]]</td>
 
                                                 <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
@@ -301,7 +304,9 @@ export default {
                                                                     <div class="form-floating col">
                                                                         <select class="form-select" :id='"select-type-attr-"+attribute.id'>
                                                                             <template v-for="attr in activeTemplateAttr.attributes">
-                                                                                <option :value="attr.name">[[attr.name]]</option>
+                                                                                <option :value="attr.name+'::'+attr.misp_attribute">
+                                                                                    [[attr.name]]::[[attr.misp_attribute]]
+                                                                                </option>
                                                                             </template>
                                                                         </select>
                                                                         <label>type</label>
@@ -320,16 +325,20 @@ export default {
                                                                                 type="datetime-local">
                                                                         <label>last_seen</label>
                                                                     </div>
+                                                                </div>
+                                                                <div class="row mt-3">
                                                                     <div class="col">
                                                                         <input :id="'attribute_'+attribute.id+'_ids'" 
                                                                                 :checked="attribute.ids_flag"
                                                                                 type="checkbox">
                                                                         <label>IDS</label>
                                                                     </div>
+                                                                </div>
+                                                                <div class="row mt-3">
                                                                     <div class="form-floating col">
                                                                         <textarea :id="'attribute_'+attribute.id+'_comment'" 
                                                                                     :value="attribute.comment" 
-                                                                                    class="form-control">
+                                                                                    class="form-control" row="4" cols="70">
                                                                         </textarea>
                                                                         <label>Comment</label>
                                                                     </div>

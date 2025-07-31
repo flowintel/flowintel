@@ -138,7 +138,8 @@ export default {
                     },
                     body: JSON.stringify({
                         "value": value,
-                        "type": type,
+                        "type": type.split("::")[1],
+                        "object_relation": type.split("::")[0],
                         "first_seen": first_seen,
                         "last_seen": last_seen,
                         "comment": comment,
@@ -152,7 +153,8 @@ export default {
                             for(let j in case_misp_objects.value[i].attributes){
                                 if(attr_id == case_misp_objects.value[i].attributes[j].id){
                                     case_misp_objects.value[i].attributes[j].value = value
-                                    case_misp_objects.value[i].attributes[j].type = type
+                                    case_misp_objects.value[i].attributes[j].type = type.split("::")[1]
+                                    case_misp_objects.value[i].attributes[j].object_relation = type.split("::")[0]
                                     case_misp_objects.value[i].attributes[j].first_seen = first_seen.replace("T", " ");
                                     case_misp_objects.value[i].attributes[j].last_seen = last_seen.replace("T", " ");
                                     case_misp_objects.value[i].attributes[j].ids_flag = ids
@@ -292,6 +294,7 @@ export default {
                                         <thead>
                                             <tr>
                                                 <th>Value</th>
+                                                <th>Object Relation</th>
                                                 <th>Type</th>
                                                 <th>First seen</th>
                                                 <th>Last seen</th>
@@ -304,6 +307,7 @@ export default {
                                         <tbody>
                                             <tr v-for="attribute, key_attr in misp_object.attributes ">
                                                 <td>[[attribute.value]]</td>
+                                                <td>[[attribute.object_relation]]</td>
                                                 <td>[[attribute.type]]</td>
 
                                                 <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
@@ -355,7 +359,9 @@ export default {
                                                                     <div class="form-floating col">
                                                                         <select class="form-select" :id='"select-type-attr-"+attribute.id'>
                                                                             <template v-for="attr in activeTemplateAttr.attributes">
-                                                                                <option :value="attr.name">[[attr.name]]</option>
+                                                                                <option :value="attr.name+'::'+attr.misp_attribute">
+                                                                                    [[attr.name]]::[[attr.misp_attribute]]
+                                                                                </option>
                                                                             </template>
                                                                         </select>
                                                                         <label>type</label>
@@ -374,6 +380,8 @@ export default {
                                                                                 type="datetime-local">
                                                                         <label>last_seen</label>
                                                                     </div>
+                                                                </div>
+                                                                <div class="row mt-3">
                                                                     <div class="col">
                                                                         <input :id="'attribute_'+attribute.id+'_ids'" 
                                                                                 :checked="attribute.ids_flag"
@@ -386,10 +394,12 @@ export default {
                                                                                 type="checkbox">
                                                                         <label>Disable Corrleation</label>
                                                                     </div>
+                                                                </div>
+                                                                <div class="row mt-3">
                                                                     <div class="form-floating col">
                                                                         <textarea :id="'attribute_'+attribute.id+'_comment'" 
                                                                                     :value="attribute.comment" 
-                                                                                    class="form-control">
+                                                                                    class="form-control" row="4" cols="70">
                                                                         </textarea>
                                                                         <label>Comment</label>
                                                                     </div>

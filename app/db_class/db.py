@@ -979,6 +979,7 @@ class Misp_Attribute(db.Model):
     case_misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"))
     value = db.Column(db.String, index=True)
     type = db.Column(db.String, index=True)
+    object_relation = db.Column(db.String, index=True)
     first_seen = db.Column(db.DateTime, index=True)
     last_seen = db.Column(db.DateTime, index=True)
     comment = db.Column(db.String, nullable=True)
@@ -993,6 +994,7 @@ class Misp_Attribute(db.Model):
             "case_misp_object_id": self.case_misp_object_id,
             "value": self.value,
             "type": self.type,
+            "object_relation": self.object_relation,
             "first_seen": self.first_seen, # Added to the dict here in case of empty
             "last_seen": self.last_seen,   # Added to the dict here in case of empty
             "comment": self.comment,

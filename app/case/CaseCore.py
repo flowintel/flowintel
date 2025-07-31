@@ -1039,6 +1039,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     case_misp_object_id=misp_object.id,
                     value=attribute["value"],
                     type=attribute["type"],
+                    object_relation=attribute["object_relation"],
                     first_seen=first_seen,
                     last_seen=last_seen,
                     comment=attribute["comment"],
@@ -1077,6 +1078,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
                 attribute.value = request_json["value"]
                 attribute.type = request_json["type"]
+                attribute.object_relation = request_json["object_relation"]
                 attribute.first_seen=first_seen
                 attribute.last_seen=last_seen
                 attribute.comment=request_json["comment"]
