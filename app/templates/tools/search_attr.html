@@ -57,6 +57,7 @@ button#scan:hover {
         <tr>
             <th>Title</th>
             <th>Description</th>
+            <th>Privacy</th>
             <th>Status</th>
             <th>Creation date</th>
             <th></th>
@@ -65,6 +66,8 @@ button#scan:hover {
         <tr v-for="case_loc in case_list">
             <td>[[case_loc.title]]</td>
             <td>[[case_loc.description]]</td>
+            <td v-if="case_loc.is_private"><i>Private</i></td>
+            <td v-else><i>Public</i></td>
             <td v-if="case_loc.completed"><span class="badge rounded-pill text-bg-danger">finished</span></td>
             <td v-else><span class="badge rounded-pill text-bg-success">created</span></td>
             <td>[[case_loc.creation_date]]</td>

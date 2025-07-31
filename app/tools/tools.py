@@ -258,6 +258,6 @@ def search_attr():
 @login_required
 def search_attr_with_value():
     attr_value = request.args.get('value', 1, type=str)
-    res = ToolsModel.search_attr_with_value(attr_value)
+    res = ToolsModel.search_attr_with_value(attr_value, current_user)
     return res
 
