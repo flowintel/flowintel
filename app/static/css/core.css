@@ -231,3 +231,14 @@ legend.analyzer-select-case {
   border-radius: 5px;
   margin: 2px
 }
+
+
+#calendar {
+  background-color: white;
+  
+}
+
+#calendar a{
+  color: black;
+  text-decoration: none;
+}

@@ -4,11 +4,7 @@
 {% block head %}
 {{ super() }}
 
-<script src="{{ url_for('static',filename='js/daypilot-all.min.js') }}"></script>
-<script src="{{ url_for('static',filename='js/MonthPicker.js') }}"></script>
-
-<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/daypilot.css') }}">
-<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/MonthPicker.css') }}">
+<script src="{{ url_for('static',filename='js/fullcalendar.global.min.js') }}"></script>
 {%endblock%}
 
 {% block content %}
@@ -35,13 +31,6 @@
     </div>
 
 
-    <div style="margin-bottom: 5px;">
-        <label style="margin-right: 5px;" for="startDate">Date : </label>
-        <input id="startDate" type="text"/>
-        <button class="btn btn-secondary btn-sm" @click="change_date()" style="margin-top: -3px;">Change</button>
-    </div>
-
-
     <div class="card card-body" style="margin-bottom: 10px;">
         <div class="d-flex w-100 justify-content-evenly">
             <div>
@@ -65,12 +54,10 @@
                     <label class="form-check-label" for="radioCreation">Creation</label>
                 </div>
             </div>
-
         </div>
     </div>
 
-
-    <div id="dp"></div>
+    <div id="calendar" ></div>
 
 </div>
 {% endblock %}
@@ -78,7 +65,7 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, computed, onMounted, reactive } = Vue
+    const { createApp, ref, nextTick, onMounted } = Vue
     import {message_list} from '/static/js/toaster.js'
     createApp({
         delimiters: ['[[', ']]'],
@@ -89,6 +76,8 @@
             let flag_case_task = false
             let flag_dead_creation = true
             let modal_task = null
+
+            var calendar
 
 
             async function fetch_task_calendar(current_month, flag_dead_creation_loc=true) {
@@ -103,14 +92,16 @@
                 for (let i=0; i<tasks.value.length; i++){
                     if(flag_dead_creation_loc) loc_var = tasks.value[i]["deadline"]
                     else loc_var = tasks.value[i]["creation_date"]
-                    var e = new DayPilot.Event({
-                        start: date_parser(loc_var, true),
-                        end: date_parser(loc_var, true),
+
+                    calendar.addEvent({
                         id: tasks.value[i]["id"],
-                        text: tasks.value[i]["title"],
-                        toJson: tasks.value[i]
-                    });
-                    dp.events.add(e);
+                        start: date_parser(loc_var, true),
+                        allDay: true,
+                        title: tasks.value[i]["title"],
+                        extendedProps: {
+                            toJson: tasks.value[i]
+                        }
+                    })
                 }
             }
 
@@ -126,14 +117,16 @@
                 for (let i=0; i<cases.value.length; i++){
                     if(flag_dead_creation_loc) loc_var = cases.value[i]["deadline"]
                     else loc_var = cases.value[i]["creation_date"]
-                    var e = new DayPilot.Event({
-                        start: date_parser(loc_var, true),
-                        end: date_parser(loc_var, true),
+
+                    calendar.addEvent({
                         id: cases.value[i]["id"],
-                        text: cases.value[i]["title"],
-                        toJson: cases.value[i]
-                    });
-                    dp.events.add(e);
+                        start: date_parser(loc_var, true),
+                        allDay: true,
+                        title: cases.value[i]["title"],
+                        extendedProps: {
+                            toJson: cases.value[i]
+                        }
+                    })
                 }
             }
 
@@ -145,17 +138,12 @@
                 status_info.value = await res.json()
             }       
 
-            fetch_task_calendar(dayjs.utc().format('YYYY-MM'))
-            fetchStatus()
 
-
-            function openModal()
-            {
+            function openModal(){
                 modal_task.show()
             }
 
-            function closeModal()
-            {
+            function closeModal(){
                 modal_task.hide()
             }
 
@@ -178,93 +166,94 @@
             }
 
             function select_case_filter(){
-                dp.events.list = []
-                fetch_case_calendar(date_parser(dp.startDate), flag_dead_creation)
-                dp.update()
+                calendar.removeAllEvents();
+                fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
                 flag_case_task = true
             }
             function select_task_filter(){
-                dp.events.list = []
-                fetch_task_calendar(date_parser(dp.startDate), flag_dead_creation)
-                dp.update()
+                calendar.removeAllEvents();
+                fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
                 flag_case_task = false
             }
 
             function select_dead_filter(){
-                dp.events.list = []
+                calendar.removeAllEvents();
                 if(flag_case_task){
-                    fetch_case_calendar(date_parser(dp.startDate), true)
+                    fetch_case_calendar(date_parser(calendar.getDate()), true)
                 }else{
-                    fetch_task_calendar(date_parser(dp.startDate), true)
+                    fetch_task_calendar(date_parser(calendar.getDate()), true)
                 }
-                dp.update()
                 flag_dead_creation = true
             }
 
             function select_creation_filter(){
-                dp.events.list = []
+                calendar.removeAllEvents();
                 if(flag_case_task){
-                    fetch_case_calendar(date_parser(dp.startDate), false)
+                    fetch_case_calendar(date_parser(calendar.getDate()), false)
                 }else{
-                    fetch_task_calendar(date_parser(dp.startDate), false)
+                    fetch_task_calendar(date_parser(calendar.getDate()), false)
                 }
-                dp.update()
                 flag_dead_creation = false
             }
-
-            function change_date(){
-                dp.events.list = []
-                var month = $("#startDate").MonthPicker('GetSelectedMonth');
-                var year = $("#startDate").MonthPicker('GetSelectedYear');
-                $(this).datepicker('setDate', new Date(year, month, 1));
-                
-                if(flag_case_task)
-                    fetch_case_calendar(date_parser(new Date(year, month, 0)), flag_dead_creation)
-                else
-                    fetch_task_calendar(date_parser(new Date(year, month, 0)), flag_dead_creation)
-
-                let loc_date = date_parser(new Date(year, month, 0), true)
-                dp.startDate = loc_date
-                dp.update()
-            }
-
-            var dp = new DayPilot.Month("dp");
-
-            dp.theme = "month_white";
-            dp.startDate = dayjs.utc().format('YYYY-MM-DD');
             
-
-            dp.onEventClicked = function(args) {
-                $("#modal_task_label").text(args.e.data.toJson.title).css("margin-right", "5px")
-                $("#status_modal").empty()
-                $("#status_modal").append(
-                    $("<span>").attr({"class": "badge rounded-pill text-bg-"+status_info.value.status[args.e.data.toJson.status_id -1].bootstrap_style}).text(
-                        status_info.value.status[ args.e.data.toJson.status_id -1].name
-                    )
-                )
-                $("#modal_body").text(args.e.data.toJson.description)
-                if(args.e.data.toJson.case_id)
-                    $("#see_case").attr("href", "/case/" + args.e.data.toJson.case_id)
+            
+            function onDateChange() {
+                calendar.removeAllEvents();
+            
+                if(flag_case_task)
+                    fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
                 else
-                    $("#see_case").attr("href", "/case/" + args.e.data.toJson.id)
-                
-                openModal()
-            };
+                    fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
+            }
 
 
             onMounted(() => { 
-                $('#startDate').MonthPicker({ SelectedMonth: new Date(), Button: false});
-                $("#MonthPicker_startDate").css({"position": "absolute"})
+                fetch_task_calendar(dayjs.utc().format('YYYY-MM'))
+                fetchStatus()
 
                 modal_task = new bootstrap.Modal('#modal_task', {})
-                dp.init();
+
+                calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+                    initialView: 'dayGridMonth',
+                    height: 'auto',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,listMonth'
+                    },
+                    views: {
+                        listMonth: {
+                            buttonText: 'List'
+                        }
+                    },
+                    datesSet: function(info) {
+                        onDateChange();
+                    },
+                    eventClick: function(info) {
+                        $("#modal_task_label").text(info.event.extendedProps.toJson.title).css("margin-right", "5px")
+                        $("#status_modal").empty()
+                        $("#status_modal").append(
+                            $("<span>").attr({"class": "badge rounded-pill text-bg-"+status_info.value.status[info.event.extendedProps.toJson.status_id -1].bootstrap_style}).text(
+                                status_info.value.status[ info.event.extendedProps.toJson.status_id -1].name
+                            )
+                        )
+                        $("#modal_body").text(info.event.extendedProps.toJson.description)
+                        if(info.event.extendedProps.toJson.case_id)
+                            $("#see_case").attr("href", "/case/" + info.event.extendedProps.toJson.case_id)
+                        else
+                            $("#see_case").attr("href", "/case/" + info.event.extendedProps.toJson.id)
+                        
+                        openModal()
+                    }
+                });
+
+                calendar.render();
             })
 
 
             return {
                 message_list,
-                openModal, closeModal, select_case_filter, select_task_filter, select_dead_filter, select_creation_filter,
-                change_date
+                openModal, closeModal, select_case_filter, select_task_filter, select_dead_filter, select_creation_filter
             }
         }
     }).mount('#main-container')
