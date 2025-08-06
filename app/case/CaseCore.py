@@ -533,21 +533,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     uuid=str(uuid.uuid4()),
                     title=task.title,
                     description=task.description,
-                    nb_notes=task.nb_notes,
+                    nb_notes=0,
                     last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
                 )
                 db.session.add(task_template)
                 db.session.commit()
-
-                for t_note in task.notes:
-                    note = Note_Template(
-                        uuid=str(uuid.uuid4()),
-                        note=t_note.note,
-                        template_id=task_template.id,
-                        template_order_id=task.nb_notes+1
-                    )
-                    db.session.add(note)
-                    db.session.commit()
 
                 for t_url_tool in task.urls_tools:
                     url_tool = Task_Template_Url_Tool(

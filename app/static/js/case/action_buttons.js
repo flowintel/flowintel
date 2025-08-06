@@ -193,7 +193,7 @@ export default {
 
         <!-- Modal template case -->
         <div class="modal fade" id="template_case_modal" tabindex="-1" aria-labelledby="template_case_modal" aria-hidden="true">
-            <div class="modal-dialog modal-sm">
+            <div class="modal-dialog modal-md">
                 <div class="modal-content" v-if="cases_info">
                     <div class="modal-header">
                         <h1 class="modal-title fs-5" id="template_case_modal">Template for '[[cases_info.case.title]]'</h1>
