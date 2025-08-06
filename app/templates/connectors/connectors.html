@@ -32,7 +32,9 @@
                 <div style="display:flex">
                     <a @click="extend_collapse(connector.id)" class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1"><img style="max-width: 40px;" :src="'/static/icons/' + connector.icon_uuid"/> [[ connector.name ]]</h4>
+                            <h4 class="mb-1">
+                                <img style="max-width: 40px;" :src="'/static/icons/' + connector.icon_uuid"/> [[ connector.name ]]
+                            </h4>
                             <p>[[connector.url]]</p>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
@@ -41,10 +43,17 @@
                         </div>
                     </a>
                     {% if current_user.is_admin() %}
-                        <div style="display: grid;">
-                            <a class="btn btn-success btn-sm" :href="'/connectors/'+connector.id+'/add_instance'" type="button"><i class="fa-solid fa-plus"></i></a>
-                            <a class="btn btn-primary btn-sm" :href="`/connectors/edit_connector/${connector.id}`" type="button" title="Edit the connector"><i class="fa-solid fa-pen-to-square"></i></a>
-                            <button class="btn btn-danger btn-sm"  @click="delete_connector(connector)" title="Delete the connector"><i class="fa-solid fa-trash"></i></button>
+                        <div>
+                            <div>
+                                <button class="btn btn-primary btn-sm" :href="`/connectors/edit_connector/${connector.id}`" type="button" title="Edit the connector">
+                                    <i class="fa-solid fa-pen-to-square fa-fw"></i>
+                                </button>
+                            </div>
+                            <div>
+                                <button class="btn btn-danger btn-sm" @click="delete_connector(connector)" title="Delete the connector">
+                                    <i class="fa-solid fa-trash fa-fw"></i>
+                                </button>
+                            </div>
                         </div>
                     {% endif %}
                 </div>
@@ -52,7 +61,11 @@
 
             <div class="collapse" :id="'collapse'+connector.id" style="margin-bottom: 20px;">
                 <div class="card card-body" :id="'card-body_'+connector.id" style="background-color: whitesmoke;">
-                    <span><a class="btn btn-outline-success" :href="'/connectors/'+connector.id+'/add_instance'" type="button" style="margin-bottom: 10px;">Add an instance</a></span>
+                    <span>
+                        <a class="btn btn-outline-success" :href="'/connectors/'+connector.id+'/add_instance'" type="button" style="margin-bottom: 10px;">
+                            Add an instance
+                        </a>
+                    </span>
                     <template v-if="instances_table">
                         <template v-if="instances_table[connector.id]">
                             <table>
