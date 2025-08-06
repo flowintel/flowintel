@@ -107,7 +107,7 @@ export default {
 		
 		async function delete_note(template, note_id, key){
 			// Delete a note of the task
-			const res = await fetch('/templating/' + template.id + '/delete_note?note_id='+note_id)
+			const res = await fetch('/templating/task/' + template.id + '/delete_note?note_id='+note_id)
 
 			if( await res.status == 200){
 				props.template.notes.splice(key, 1);
