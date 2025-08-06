@@ -453,21 +453,18 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         return tasks
 
 
-    def build_task_query(self, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, filter=None):
+    def build_task_query(self, case_id, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None):
         """Build a task query depending on parameters"""
         query, conditions = self._build_sort_query(completed, tags, taxonomies, galaxies, clusters, custom_tags)
-
-        # if filter:
-        #     query = query.order_by(desc(filter))
         
-        return query.filter(and_(*conditions)).order_by(Task.case_order_id).all()
+        return query.where(Task.case_id==case_id).filter(and_(*conditions)).order_by(Task.case_order_id).all()
 
     def sort_tasks(self, case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False, filter=False):
         """Sort all tasks by completed and depending of taxonomies and galaxies"""
 
 
         if tags or taxonomies or galaxies or clusters or custom_tags:
-            tasks = self.build_task_query(completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
+            tasks = self.build_task_query(case.id, completed, tags, taxonomies, galaxies, clusters, custom_tags)
             tasks = self._sort(tasks, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
         else:
             tasks = Task.query.filter_by(case_id=case.id, completed=completed).order_by(Task.case_order_id).all()
