@@ -47,6 +47,16 @@ def edit_user():
     return render_template("account/edit_user.html", form=form)
 
 
+@account_blueprint.route("/change_api_key", methods=['GET', 'POST'])
+@login_required
+def change_api_key():
+    """Change the api key of the user"""
+    api_key = AccountModel.change_api_key(current_user)
+    if api_key:
+        return {"message": "API key changed", "toast_class": "success-subtle", "api_key": api_key}, 200
+    return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400
+
+
 @account_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     """Log in an existing user."""

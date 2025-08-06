@@ -28,7 +28,7 @@ class EditUserFrom(FlaskForm):
     matrix_id = StringField('Matrix id', render_kw={"placeholder": "@testuser:matrix.org"})
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
 
-    submit = SubmitField('Register')
+    submit = SubmitField('Save')
 
     def validate_email(self, field):
         if not field.data == current_user.email:

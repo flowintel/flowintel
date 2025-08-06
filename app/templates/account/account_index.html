@@ -6,46 +6,95 @@
 
 {% block content %}
     
-    <div>
-        <h1>
-            My Profile
-        </h1>
+<div class="container-fluid" style="width:80%;">
+    <h1 style="text-align: center;">
+        <i class="fa-solid fa-user"></i> My Profile
+    </h1>
 
-        <hr>
-
-        <a class="btn btn-outline-success" href="/account/edit" type="button" style="margin-bottom: 10px;">Edit</a>
-        
-        <div style="background-color: whitesmoke;">
-            <div>
-                <h6 style="display: inline-block;">First name:</h6> <span>{{user.first_name}}</span>
-            </div>
-            <div>
-                <h6 style="display: inline-block;">Last name:</h6> <span>{{user.last_name}}</span>
-            </div>
-            <div>
-                <h6 style="display: inline-block;">Nickname:</h6> 
-                {%if user.nickname %}
-                    <span> {{user.nickname}}</span>
-                {%else%}
-                    <span><i> Not set</i></span>
-                {%endif%}
-            </div>
-            <div>
-                <h6 style="display: inline-block;">Email:</h6> <span>{{user.email}}</span>
-            </div>
-                <div>
-                    <h6 style="display: inline-block;">Matrix id:</h6> 
-                    {%if user.matrix_id%}
-                        <span> {{user.matrix_id}}</span>
-                    {%else%}
-                        <span><i> Not set</i></span>
-                    {%endif%}
-                </div>
-            <div>
-                <h6 style="display: inline-block;">Api key:</h6> <span>{{user.api_key}}</span>
-            </div>
+    <hr>
+    
+    <div class="card card-body" style="box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 5px 0px, rgba(0, 0, 0, 0.05) 0px 2px 10px 0px;">
+        <div>
+            <a class="btn btn-outline-success" href="/account/edit" type="button" style="margin-bottom: 10px;"> <i class="fa-solid fa-pen"></i> Edit</a>
         </div>
-
+        <div class="table-responsive">
+            <table class="table">
+                <tr>
+                    <td style="color:#494950">First Name</td>
+                    <td>{{user.first_name}}</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td style="color:#494950">Last Name</td>
+                    <td>{{user.last_name}}</td>
+                </tr>
+                <tr>
+                    <td style="color:#494950">Nickname</td>
+                    {%if user.nickname %}
+                        <td> {{user.nickname}}</td>
+                    {%else%}
+                        <td><i> Not set</i></td>
+                    {%endif%}
+                </tr>
+                <tr>
+                    <td style="color:#494950">Email</td>
+                    <td>{{user.email}}</td>
+                </tr>
+                <tr>
+                    <td style="color:#494950">Matrix id</td>
+                    {%if user.matrix_id%}
+                        <td> {{user.matrix_id}}</td>
+                    {%else%}
+                        <td><i> Not set</i></td>
+                    {%endif%}
+                </tr>
+                <tr>
+                    <td style="color:#494950">API key</td>
+                    <td v-if="api_key">[[api_key]]</td>
+                    <td v-else>{{user.api_key}}</td>
+                    <td>
+                        <button class="btn btn-secondary" @click="change_api_key()" title="Change api key">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </td>
+                </tr>
+            </table>
+        </div>
     </div>
+</div>
         
+{% endblock %}
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref} = Vue
+        import {display_toast, message_list, create_message} from '/static/js/toaster.js'
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const api_key = ref()
+
+                async function change_api_key() {
+                    const res = await fetch(
+                        '/account/change_api_key'
+                    )
+                    if(await res.status == 200){
+                        let loc = await res.json()
+                        api_key.value = loc["api_key"]
+                        create_message(loc["message"], loc["toast_class"], false, false)
+                    }else{
+                        display_toast(res)
+                    }
+                }
+
+                return {
+                    message_list,
+                    api_key,
+                    change_api_key
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
 {% endblock %}

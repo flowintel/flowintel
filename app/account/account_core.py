@@ -1,5 +1,6 @@
 from .. import db
 from ..db_class.db import User, Role, Org
+from ..utils.utils import generate_api_key
 
 def get_all_roles():
     """Return all roles"""
@@ -35,3 +36,10 @@ def edit_user_core(form_dict, id):
     user.matrix_id=matrix_id
 
     db.session.commit()
+
+def change_api_key(current_user: User) -> str:
+    """Change the api key of the user"""
+    loc_api_key = generate_api_key()
+    current_user.api_key = loc_api_key
+    db.session.commit()
+    return loc_api_key
