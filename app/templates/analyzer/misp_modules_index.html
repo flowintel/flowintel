@@ -164,13 +164,10 @@
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import misp_modules from '/static/js/analyzer/misp_modules.js'
-        import misp_object from '/static/js/case/misp_object.js'
-
         createApp({
             delimiters: ['[[', ']]'],
             components: {
-                misp_modules,
-                misp_object
+                misp_modules
             },
             setup() {
                 const result_search = ref([])

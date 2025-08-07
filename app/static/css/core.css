@@ -116,6 +116,30 @@ legend.analyzer-select-case {
   box-shadow: 0px 1px 2px 1px #0000001a;
 }
 
+.note-editor {
+  background-color: white;
+  border: 1px solid #aaaaaa80;
+  border-radius: 5px;
+  width: 50%;
+  padding: 5px;
+  margin-right: 10px;
+}
+
+.markdown-render {
+  background-color: white;
+  border: 1px solid #aaaaaa80;
+  border-radius: 5px;
+  width: 50%;
+  padding: 5px;
+}
+.markdown-render-result {
+  background-color: white;
+  border: 1px solid #aaaaaa80;
+  border-radius: 5px;
+  padding: 5px;
+  margin-top: 3px;
+}
+
 /* Analyzers */
 
 .round-button {
@@ -277,14 +301,17 @@ legend.analyzer-select-case {
   border-radius: 15px;
 }
 
-.case-core-style > .nav-tabs {
+.case-core-style > .nav-tabs, 
+#collapseTasks > .nav-tabs {
   border: none;
   margin: 0px;
 }
-.case-core-style > .nav-tabs > li {
+.case-core-style > .nav-tabs > li, 
+#collapseTasks > .nav-tabs > li {
   margin-right: 2px;
 }
-.case-core-style > .nav-tabs > li > button {
+.case-core-style > .nav-tabs > li > button, 
+#collapseTasks > .nav-tabs > li > button {
   border: 0;
   border-bottom:2px solid transparent;
   margin-right: 0;
@@ -292,10 +319,12 @@ legend.analyzer-select-case {
   padding: 2px 15px;
 }
 
-.case-core-style > .nav-tabs > li > button.active {
+.case-core-style > .nav-tabs > li > button.active, 
+#collapseTasks > .nav-tabs > li > button.active {
     border-bottom:2px solid #007bff; 
     color: #007bff;
 }
-.case-core-style > .nav-tabs > li > button:hover {
+.case-core-style > .nav-tabs > li > button:hover, 
+#collapseTasks > .nav-tabs > li > button:hover {
     color: #4c8ac0;
 }
