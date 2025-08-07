@@ -73,28 +73,6 @@ export default {
 			await display_toast(res)
 		}
 
-
-		async function delete_task(task, task_array){
-			// delete the task
-			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
-
-			if( await res.status == 200){
-				if(task.completed){
-					props.open_closed["closed"] -= 1
-				}else{
-					props.open_closed["open"] -= 1
-				}
-
-				// remove the task from the list of task
-				let index = task_array.indexOf(task)
-				if(index > -1)
-					task_array.splice(index, 1)
-
-				$("#modal-delete-task-"+task.id).modal("hide")
-			}
-			await display_toast(res)
-		}
-
 		async function fetch_task_connectors(){			
 			const res = await fetch("/case/get_task_connectors/"+props.task.id)
 			if(await res.status==404 ){
@@ -369,7 +347,6 @@ export default {
 
 			take_task,
 			remove_assign_task,
-			delete_task,
 			complete_task,
 			formatNow,
 			endOf,
@@ -384,7 +361,7 @@ export default {
 	template: `
 	<div style="display: flex;">                          
 		<a :href="'#collapse'+task.id" 
-			class="list-group-item list-group-item-action" 
+			class="list-group-item list-group-item-action case-index-list" 
 			data-bs-toggle="collapse" 
 			role="button" 
 			aria-expanded="false" 
@@ -393,7 +370,7 @@ export default {
 		>
 			<div class="d-flex w-100 justify-content-between">
 				<h5 class="mb-1">[[ key_loop+1 ]]- [[task.title]]</h5>
-				<small :title="task.last_modif"><i>Changed [[ formatNow(task.last_modif) ]] </i></small>
+				<small :title="'Changed: ' + task.last_modif"><i><i class="fa-solid fa-arrows-rotate"></i> [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
 
 			<div class="d-flex w-100 justify-content-between">
@@ -444,7 +421,7 @@ export default {
                 <div v-else>
                     <i>No user assigned</i>
                 </div>
-                <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[endOf(task.deadline)]]</i></small>
+                <small v-if="task.deadline" :title="'Deadline: ' + task.deadline"><i><i class="fa-solid fa-hourglass-start"></i> [[endOf(task.deadline)]]</i></small>
                 <small v-else><i>No deadline</i></small>
             </div>
 			<div class="d-flex w-100 justify-content-between">
@@ -469,7 +446,7 @@ export default {
 					<i>[[task.urls_tools.length]] Urls/Tools</i>
 				</span>
 			</div>
-			<p class="mt-1 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
+			<p class="mt-2 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
 				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
 				<template v-for="subtask in task.subtasks">
 					<div v-if="!subtask.completed" style="display: flex;">
@@ -481,35 +458,25 @@ export default {
 		</a>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 			<div>
-				<button v-if="task.completed" class="btn btn-secondary btn-sm"  @click="complete_task(task)" title="Revive the task">
+				<button v-if="task.completed" class="btn btn-secondary"  @click="complete_task(task)" title="Revive the task">
 					<i class="fa-solid fa-backward fa-fw"></i>
 				</button>
-				<button v-else class="btn btn-success btn-sm" @click="complete_task(task)" title="Complete the task">
+				<button v-else class="btn btn-success" @click="complete_task(task)" title="Complete the task">
 					<i class="fa-solid fa-check fa-fw"></i>
 				</button>
 			</div>
 			<div>
-				<button v-if="!task.is_current_user_assigned" class="btn btn-secondary btn-sm" @click="take_task(task, cases_info.current_user)" title="Be assigned to the task">
+				<button v-if="!task.is_current_user_assigned" class="btn btn-secondary" @click="take_task(task, cases_info.current_user)" title="Be assigned to the task">
 					<i class="fa-solid fa-hand fa-fw"></i>
 				</button>
-				<button v-else class="btn btn-secondary btn-sm" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
+				<button v-else class="btn btn-secondary" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
 					<i class="fa-solid fa-handshake-slash fa-fw"></i>
 				</button>
 			</div>
 			<div>
-				<button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" :data-bs-target="'#Send_to_modal_task_'+task.id">
-					<i class="fa-solid fa-share-from-square fa-fw"></i>
-				</button>
-			</div>
-			<div>
-				<a class="btn btn-primary btn-sm" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
+				<a class="btn btn-primary" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
 					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
-			</div>
-			<div>
-				<button class="btn btn-danger btn-sm" title="Delete the task" data-bs-toggle="modal" :data-bs-target="'#modal-delete-task-'+task.id">
-                    <i class="fa-solid fa-trash fa-fw"></i>
-                </button>
 			</div>
 		</div>
 		<div v-if="(!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin) && !task.completed" style="display: grid;">
@@ -522,21 +489,6 @@ export default {
 		</div>
 	</div>
 
-	<!-- Modal delete task -->
-	<div class="modal fade" :id="'modal-delete-task-'+task.id" tabindex="-1" aria-labelledby="delete_task_modal" aria-hidden="true">
-		<div class="modal-dialog modal-sm">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h1 class="modal-title fs-5" id="delete_task_modal">Delete '[[task.title]]' ?</h1>
-					<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-					<button class="btn btn-danger btn-sm" @click="delete_task(task, cases_info.tasks)"><i class="fa-solid fa-trash"></i> Confirm</button>
-				</div>
-			</div>
-		</div>
-	</div>
 
 	<!-- Modal send to -->
 	<div class="modal fade" :id="'Send_to_modal_task_'+task.id" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
@@ -646,7 +598,7 @@ export default {
 			</template>
 
 			<template v-else-if="selected_tab == 'info'">
-				<tabInfo :task="task"></tabInfo>
+				<tabInfo :task="task" :cases_info="cases_info" :open_closed="open_closed"></tabInfo>
 			</template>
 		</div>
 	</div>

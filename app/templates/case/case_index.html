@@ -143,20 +143,26 @@
     <!-- pagination -->
     <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in case_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button>
+                </li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}">
+                <button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
     <!-- pagination -->
 
     <template v-if="case_list">
         <template v-for="case_loc in case_list.cases">
-            <div class="list-group" style="margin-bottom: 20px;">
+            <div class="list-group" style="margin-bottom: 20px; ">
                 <div style="display:flex; border-radius: 10px;">
-                    <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action">
+                    <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action case-index-list">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">
                                 [[ case_loc.id ]]-[[ case_loc.title ]]
@@ -180,7 +186,11 @@
                             <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
                             <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
 
-                            <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
+                            <small v-if="status_info">
+                                <span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">
+                                    [[ status_info.status[case_loc.status_id -1].name ]]
+                                </span>
+                            </small>
                         </div>
                         <div class="d-flex w-100">
                             <small><i>[[case_loc.open_tasks]] open/ [[case_loc.closed_tasks]] closed</i></small>
@@ -203,7 +213,9 @@
                                 </template>
                             </div>
                             <div v-else></div>
-                            <small v-if="case_loc.deadline" :title="case_loc.deadline"><i>Deadline [[dayjs.utc(case_loc.deadline).endOf().fromNow()]]</i></small>
+                            <small v-if="case_loc.deadline" :title="case_loc.deadline">
+                                <i>Deadline [[dayjs.utc(case_loc.deadline).endOf().fromNow()]]</i>
+                            </small>
                             <small v-else><i>No deadline</i></small>
                         </div>
                         <div class="d-flex w-100" v-if="case_loc.clusters">
@@ -219,37 +231,17 @@
                     </a>
                     <div v-if="(!case_loc.current_user_permission.read_only && case_loc.present_in_case) || case_loc.current_user_permission.admin">
                         <div>
-                            <button v-if="case_loc.completed" class="btn btn-secondary btn-sm"  @click="complete_case(case_loc, case_list.cases, true)" title="Revive the case">
+                            <button v-if="case_loc.completed" class="btn btn-secondary" @click="complete_case(case_loc, case_list.cases, true)" title="Revive the case">
                                 <i class="fa-solid fa-backward fa-fw"></i>
                             </button>
-                            <button v-else class="btn btn-success btn-sm"  @click="complete_case(case_loc, case_list.cases, false)" title="Complete the case">
+                            <button v-else class="btn btn-success" @click="complete_case(case_loc, case_list.cases, false)" title="Complete the case">
                                 <i class="fa-solid fa-check fa-fw"></i>
                             </button>
                         </div>
                         <div>
-                            <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button" title="Edit the case">
+                            <a class="btn btn-primary" :href="`/case/edit/${case_loc.id}`" type="button" title="Edit the case">
                                 <i class="fa-solid fa-pen-to-square fa-fw"></i>
                             </a>
-                        </div>
-                        <div>
-                            <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" :data-bs-target="'#delete_case_modal_'+case_loc.id">
-                                <i class="fa-solid fa-trash fa-fw"></i>
-                            </button>    
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Modal delete case -->
-            <div class="modal fade" :id="'delete_case_modal_'+case_loc.id" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
-                <div class="modal-dialog modal-sm">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="delete_case_modal">Delete '[[case_loc.title]]' ?</h1>
-                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button class="btn btn-danger"  @click="delete_case(case_list, case_loc)"><i class="fa-solid fa-trash"></i> Confirm</button>
                         </div>
                     </div>
                 </div>
@@ -264,11 +256,17 @@
 
     <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in case_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button>
+                </li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}">
+                <button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 {% endblock %}
@@ -362,21 +360,6 @@
                     status_info.value = await res.json()
                 }
                 fetchStatus()
-
-                async function delete_case(case_list, case_loc){
-                    const res = await fetch('/case/' + case_loc.id.toString() + '/delete')
-                    if(await res.status == 200){
-                        let index = case_list.cases.indexOf(case_loc)
-                        if(index > -1)
-                            case_list.cases.splice(index, 1)
-
-                        var myModalEl = document.getElementById('delete_case_modal_'+case_loc.id);
-                        var modal = bootstrap.Modal.getInstance(myModalEl)
-                        modal.hide();
-                    }
-                    display_toast(res)
-                    
-                }
 
                 async function complete_case(case_loc, cases_list, is_revived){
                     let url
@@ -532,7 +515,6 @@
                     current_page,
                     current_filter,
 
-                    delete_case,
                     complete_case,
                     sort_by_filter,
                     onInput,

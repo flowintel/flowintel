@@ -224,6 +224,17 @@ legend.analyzer-select-case {
   margin: 0 0 1rem 0;
 }
 
+.fading-line-2 {
+  display: block;
+  border: none;
+  height: 1px;
+  padding: 0;
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.09), rgba(68, 109, 128, 0.75), rgba(0, 0, 0, 0.09));
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  margin: 0 0 1rem 0;
+}
+
 
 .card-stats {
   background-color: white;
@@ -241,4 +252,50 @@ legend.analyzer-select-case {
 #calendar a{
   color: black;
   text-decoration: none;
+}
+
+.case-core-style {
+  background-color: white;
+  border: #80808024 solid 1px;
+  padding: 25px;
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 5px 0px, rgba(0, 0, 0, 0.05) 0px 2px 10px 0px;
+  border-radius: 15px;
+}
+
+.case-tags-style {
+  background-color: white;
+  border: #80808024 solid 1px;
+  padding: 15px;
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 5px 0px, rgba(0, 0, 0, 0.05) 0px 2px 10px 0px;
+  border-radius: 15px;
+}
+
+.case-index-list {
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 5px 0px, rgba(0, 0, 0, 0.05) 0px 2px 10px 0px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  border-radius: 15px;
+}
+
+.case-core-style > .nav-tabs {
+  border: none;
+  margin: 0px;
+}
+.case-core-style > .nav-tabs > li {
+  margin-right: 2px;
+}
+.case-core-style > .nav-tabs > li > button {
+  border: 0;
+  border-bottom:2px solid transparent;
+  margin-right: 0;
+  color: #5e5e5e;
+  padding: 2px 15px;
+}
+
+.case-core-style > .nav-tabs > li > button.active {
+    border-bottom:2px solid #007bff; 
+    color: #007bff;
+}
+.case-core-style > .nav-tabs > li > button:hover {
+    color: #4c8ac0;
 }

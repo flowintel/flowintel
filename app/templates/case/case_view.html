@@ -18,6 +18,7 @@
 {%endblock%}
 
 {% block content %}
+<div class="case-core-style" style="border-radius: 0;">
     <span>
         <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/case"><i class="fa-solid fa-arrow-left"></i></a></h1>
 
@@ -27,10 +28,8 @@
             <i v-if="cases_info.case.is_private" class="fa-solid fa-lock" title="The case is private, only org present in can see this case"></i>
             <i v-else class="fa-solid fa-unlock" title="The case is public anyone can see this case but only org present in case can modify it"></i>
         </span>
-        <!-- uuid -->
-        <span><i style="font-size: 12px; margin-left: 5px;">{{case.uuid}}</i></span>
         <!-- status -->
-        <small v-if="status_info" style="margin-left: 10px;">
+        <small v-if="status_info" style="margin-left: 50px;">
             <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
                 [[ status_info.status[ {{case.status_id}} -1].name ]]
             </span>
@@ -40,7 +39,7 @@
     <!-- Link to other case -->
     <template v-if="cases_info">
         <button type="button" title="Link to other Case" class="btn btn-outline-primary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" style="margin-left: 10px;">
-            <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary" style="z-index: -1;">[[cases_info.case.link_to.length]]</span>
+            <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[cases_info.case.link_to.length]]</span>
         </button>
         <ul class="dropdown-menu">
             <button class="btn btn-primary btn-sm" title="New link" style="margin-left: 60px;" data-bs-toggle="modal" data-bs-target="#add_new_link">
@@ -84,92 +83,6 @@
         :status_info="status_info">
     </action_buttons>
 
-    {% if case.custom_tags %}
-        <div style="display: flex; margin-bottom: 5px;">
-            {% for tag in case.custom_tags %}
-                <div class="tag" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
-                    {% if tag.icon %}
-                        <i class="{{tag.icon}}"></i>
-                    {%endif%}
-                    {{tag.name}}
-                </div>
-            {%endfor%}
-        </div>
-    {%endif%}
-
-    {% if case.tags %}
-        <div style="display: flex;">
-            {% for tag in case.tags%}
-                <div class="tag" title="{{tag.description}}" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
-                    <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                    {{tag.name}}
-                </div>
-            {%endfor%}
-        </div>
-    {%endif%}
-
-    <div style="margin-top: 5px;">
-        {% if case.clusters %}
-            {% for cluster in case.clusters %}
-                <div title="Description: &#013;{{cluster.description}}&#013;&#013; Metadata: &#013;{{cluster.meta}}">
-                    <span class="cluster">
-                        <span v-html="mapIcon('{{cluster.icon}}')"></span>
-                        {{cluster.tag}}
-                    </span>
-                </div>
-            {%endfor%}
-        {%endif%}
-    </div>
-
-    <br>
-
-    <!-- Connectors & MISP Objects -->
-    <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConnectors" aria-expanded="false" aria-controls="collapseConnectors">
-        <i class="fa-solid fa-link"></i> Connectors
-        <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_connectors_list.length]]</span>
-    </button>
-    <button class="btn btn-outline-primary ms-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMispObject" aria-expanded="false" aria-controls="collapseMispObject">
-        <i class="fa-solid fa-cubes"></i> MISP objects
-        <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
-    </button>
-
-    <template v-if="cases_info">
-        <div class="collapse" id="collapseConnectors">
-            <caseconnectors 
-                :case_task_connectors_list="case_connectors_list"
-                :all_connectors_list="all_connectors_list"
-                :modules="modules"
-                :is_case="true"
-                :object_id="cases_info.case.id"
-                :cases_info="cases_info"
-                @case_connectors="(msg) => fetch_case_connectors()"
-                @task_connectors="">
-            </caseconnectors>
-        </div>
-    </template>
-
-    <misp_object :case_id="{{case.id}}" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
-
-    <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
-        <i :title="cases_info.case.creation_date">Created: [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]</i>
-        <i :title="cases_info.case.last_modif">Changed: [[ dayjs.utc( cases_info.case.last_modif ).fromNow() ]]</i>
-        {% if case.deadline %}
-            <i :title="cases_info.case.deadline">Deadline: [[ dayjs.utc( cases_info.case.deadline ).endOf().fromNow() ]]</i>
-        {%endif%}
-    </div>
-    {%if case.recurring_type %}
-        <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
-            <i>Recurring type: {{case.recurring_type}}</i>
-            {%if case.recurring_date %}
-                <i :title="cases_info.case.last_modif">Recurring Date: {{case.recurring_date}}</i>
-            {%endif%}
-        </div>
-    {%endif%}
-
-    <!-- Component to manage orgs -->
-    <manage_orgs :cases_info="cases_info"></manage_orgs>
-
-    
     {% if case.description or case.ticket_id %}
     <div>
         <hr>
@@ -183,19 +96,40 @@
         {% if case.description %}
             <pre>{{case.description}}</pre>
         {%endif%}
+        <hr>
     </div>
     {%endif%}
     
-    <hr style="margin-bottom: 40px;">
 
+    <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
+        <i :title="'Created: ' + cases_info.case.creation_date"><i class="fa-solid fa-bicycle"></i> [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]</i>
+        <i :title="'Changed: ' + cases_info.case.last_modif"><i class="fa-solid fa-arrows-rotate"></i> [[ dayjs.utc( cases_info.case.last_modif ).fromNow() ]]</i>
+        {% if case.deadline %}
+            <i :title="'Deadline: ' + cases_info.case.deadline"><i class="fa-solid fa-hourglass-start"></i> [[ dayjs.utc( cases_info.case.deadline ).endOf().fromNow() ]]</i>
+        {%endif%}
+    </div>
+    {%if case.recurring_type %}
+        <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
+            <i>Recurring type: {{case.recurring_type}}</i>
+            {%if case.recurring_date %}
+                <i :title="cases_info.case.last_modif">Recurring Date: {{case.recurring_date}}</i>
+            {%endif%}
+        </div>
+    {%endif%}
+
+</div>
+
+<div class="case-core-style mt-4">
+    <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
+            data-bs-target="#collapseTags" aria-expanded="true" aria-controls="collapseTags"
+            style="float: right;">
+        <i class="fa-solid fa-chevron-down"></i>
+    </button>
     <ul class="nav nav-tabs" style="margin-bottom: 10px;">
         <li class="nav-item">
             <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')" style="min-width: 100px;">
                 <i class="fa-solid fa-house"></i>
             </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="tab-history" @click="active_tab('history')">History</button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-case" @click="active_tab('case')">Case notes</button>
@@ -210,163 +144,363 @@
             <button class="nav-link" id="tab-hedgedoc" @click="active_tab('hedgedoc')">Hedgedoc</button>
         </li>
         <li class="nav-item">
+            <button class="nav-link" id="tab-history" @click="active_tab('history')">History</button>
+        </li>
+        <li class="nav-item">
             <button class="nav-link" id="tab-info" @click="active_tab('info')">Info</button>
         </li>
     </ul>
 
+    <hr class="fading-line-2">
 
-    <template v-if="main_tab == 'main'">
-        <div style="display: flex;">
-            <h3>Tasks</h3>
-            {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
-                <span style="padding-left: 10px;">
-                    <a href="/case/{{case.id}}/create_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
-                </span>
-            {%endif%}
-
-            <!-- Search bar -->
-            <div class="input-group w-auto start-50 translate-middle-x">
-                <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 400px;" />
-            </div>
-            <!-- Search bar -->
-        </div>
-        <div style="margin-top: -5px; margin-bottom: 15px;">
-            <small><i>[[open_closed.open]] open/ [[open_closed.closed]] closed</i></small>
-        </div>
-
-        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
-            filter
-        </button>
-        <div class="collapse" id="collapsefiltertask">
-            <div class="card card-body">
-                <div class="d-flex w-100 justify-content-between">
-                    <div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="change_status_sort(false)" checked>
-                            <label class="form-check-label" for="radioStatusOngoing">Ongoing Tasks</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="change_status_sort(true)">
-                            <label class="form-check-label" for="radioStatusFinished">Finished Tasks</label>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')" checked>
-                            <label class="form-check-label" for="radioOtherTitle">Title</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
-                            <label class="form-check-label" for="radioOrderAsc">Last Modif</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
-                            <label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
-                            <label class="form-check-label" for="radioOtherStatus">Status</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherAssign" @click="sort_by_filter('assigned_tasks')">
-                            <label class="form-check-label" for="radioOtherAssign">Assigned tasks</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="radioOther" id="radioOtherCurrentAssign" @click="sort_by_filter('my_assignment')">
-                            <label class="form-check-label" for="radioOtherCurrentAssign">My assignment</label>
-                        </div>
-                    </div>
-
-                    <div>
-                        Change order
-                        <div class="form-check form-switch" style="margin-left: 35%;">
-                            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
-                        </div>
+    <div class="collapse show" id="collapseTags">
+        <template v-if="main_tab == 'main'">
+            <div class="row">
+                <div class="col">
+                    <div class="case-tags-style">
+                        <h4 style="text-decoration: underline; margin-bottom: 5px;">Custom Tags: </h4>
+                        {% if case.custom_tags %}
+                            <div style="display: flex; margin-bottom: 5px;">
+                                {% for tag in case.custom_tags %}
+                                    <div class="tag" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
+                                        {% if tag.icon %}
+                                            <i class="{{tag.icon}}"></i>
+                                        {%endif%}
+                                        {{tag.name}}
+                                    </div>
+                                {%endfor%}
+                            </div>
+                        {%endif%}
                     </div>
                 </div>
-                <hr>
-                <div>Taxonomies:</div>
-                <div class="d-flex w-100 justify-content-center">
-                    <div style="display:flex">
-                        <span style="margin-right: 10px">OR</span>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
-                            <label class="form-check-label" for="switchOperator">AND</label>
-                        </div>
+                <div class="col">
+                    <div class="case-tags-style">
+                        <h4 style="text-decoration: underline; margin-bottom: 5px;">Taxonomies: </h4>
+                        {% if case.tags %}
+                            <div style="display: flex;">
+                                {% for tag in case.tags%}
+                                    <div class="tag" title="{{tag.description}}" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
+                                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                                        {{tag.name}}
+                                    </div>
+                                {%endfor%}
+                            </div>
+                        {%endif%}
                     </div>
                 </div>
-                <div style="display: flex;">
-                    <template v-if="taxonomies">
-                        <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                            <template v-for="taxonomy, key in taxonomies">
-                                <option :value="[[taxonomy]]">[[taxonomy]]</option>
-                            </template>
-                        </select>
-                    </template>
-                    
-                    <template v-if="tags_list">
-                        <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                            <template v-for="(tags, taxo) in tags_list">
-                                <optgroup :label="[[taxo]]">
-                                    <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
-                                </optgroup>
-                            </template>
-                        </select>
-                    </template>
-                </div>
-                <hr>
-
-                <div>Galaxies:</div>
-                <div class="d-flex w-100 justify-content-center">
-                    <div style="display:flex">
-                        <span style="margin-right: 10px">OR</span>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
-                            <label class="form-check-label" for="switchOperator">AND</label>
-                        </div>
+                <div class="col">
+                    <div class="case-tags-style">
+                        <h4 style="text-decoration: underline; margin-bottom: 5px;">Galaxies: </h4>
+                        {% if case.clusters %}
+                            {% for cluster in case.clusters %}
+                                <div title="Description: &#013;{{cluster.description}}&#013;&#013; Metadata: &#013;{{cluster.meta}}">
+                                    <span class="cluster">
+                                        <span v-html="mapIcon('{{cluster.icon}}')"></span>
+                                        {{cluster.tag}}
+                                    </span>
+                                </div>
+                            {%endfor%}
+                        {%endif%}
                     </div>
-                </div>
-                <div style="display: flex;">
-                    <template v-if="galaxies">
-                        <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                            <template v-for="galaxy, key in galaxies">
-                                <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
-                            </template>
-                        </select>
-                    </template>
-                    
-                    <template v-if="cluster_list">
-                        <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
-                            <template v-for="(clusters, galaxy) in cluster_list">
-                                <optgroup :label="[[galaxy]]">
-                                    <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
-                                </optgroup>
-                            </template>
-                        </select>
-                    </template>
-                </div>
-                
-                <hr>
-
-                <div>Custom Tags:</div>
-                <div>
-                    <template v-if="custom_tags">
-                        <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="task_custom_tags_select" >
-                            <template v-for="custom_tag, key in custom_tags">
-                                <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
-                            </template>
-                        </select>
-                    </template>
                 </div>
             </div>
+            <hr class="mt-4 fading-line-2">
+            <div class="row mt-4">
+                <div class="col">
+                    <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConnectors" aria-expanded="false" aria-controls="collapseConnectors">
+                        <i class="fa-solid fa-link"></i> Connectors
+                        <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_connectors_list.length]]</span>
+                    </button>
+                    <button class="btn btn-outline-primary ms-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMispObject" aria-expanded="false" aria-controls="collapseMispObject">
+                        <i class="fa-solid fa-cubes"></i> MISP objects
+                        <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
+                    </button>
+
+                    <!-- Component to manage orgs -->
+                    <manage_orgs :cases_info="cases_info"></manage_orgs>
+
+                    <template v-if="cases_info">
+                        <div class="collapse" id="collapseConnectors">
+                            <caseconnectors 
+                                :case_task_connectors_list="case_connectors_list"
+                                :all_connectors_list="all_connectors_list"
+                                :modules="modules"
+                                :is_case="true"
+                                :object_id="cases_info.case.id"
+                                :cases_info="cases_info"
+                                @case_connectors="(msg) => fetch_case_connectors()"
+                                @task_connectors="">
+                            </caseconnectors>
+                        </div>
+                    </template>
+
+                    <misp_object :case_id="{{case.id}}" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>     
+                </div>
+            </div>
+        </template>
+        <template v-else-if="main_tab == 'history'">
+            <case_history :case_id="cases_info.case.id"></case_history>
+        </template>
+
+        <template v-else-if="main_tab == 'case'">
+            <div v-if="cases_info.case.notes">
+                <template v-if="edit_mode">
+                    <button class="btn btn-primary" @click="save_note_case()">Save</button>
+                    <div style="display: flex;">
+                        <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
+                        <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+                    </div>
+                </template>
+                <template v-else>
+                    <button class="btn btn-primary btn-sm" @click="edit_note()">Edit</button>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="margin-bottom: 1px;">
+                            <small><i class="fa-solid fa-download"></i></small> Export
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'pdf')" title="Export markdown as pdf">PDF</button>
+                                <button v-else class="btn btn-link" disabled>
+                                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                    <span role="status">Loading...</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'docx')" title="Export markdown as docx">DOCX</button>
+                                <button v-else class="btn btn-link" disabled>
+                                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                    <span role="status">Loading...</span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div v-html="md.render(cases_info.case.notes)" style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px;"></div>
+                </template>
+            </div>
+            <template v-else>
+                <button class="btn btn-primary" @click="save_note_case()">Save</button>
+                <div style="display: flex;">
+                    <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
+                    <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+                </div>
+            </template>
+
+        </template>
+
+        <template v-else-if="main_tab == 'note_template'">
+            <note_from_template :cases_info="cases_info"></note_from_template>
+        </template>
+
+        <template v-else-if="main_tab == 'all'">
+            <template v-for="notes in all_notes">
+                <div class="all-tasks-notes" v-html="md.render(notes)"></div>
+            </template>
+        </template>
+
+        <template v-else-if="main_tab == 'hedgedoc'">
+            <hedgedoc_template 
+                :cases_info="cases_info"
+                :status_info="status_info">
+            </hedgedoc_template>
+        </template>
+
+        <template v-else-if="main_tab == 'info'">
+            <div class="row">
+                <div class="col-auto">
+                    <fieldset class="analyzer-select-case" style="text-align: center;">
+                        <legend class="analyzer-select-case">Time required</legend>
+                        <i>[[cases_info.case.time_required]]</i>
+                    </fieldset>
+                </div>
+                <div class="col-auto">
+                    <fieldset class="analyzer-select-case" style="text-align: center;">
+                        <legend class="analyzer-select-case">Visibility</legend>
+                        <i v-if="cases_info.case.is_private">Private</i>
+                        <i v-else>Public</i>
+                    </fieldset>
+                </div>
+                <div class="col-auto">
+                    <fieldset class="analyzer-select-case" style="text-align: center;">
+                        <legend class="analyzer-select-case">UUID</legend>
+                        <i>[[cases_info.case.uuid]]</i>
+                    </fieldset>
+                </div>
+            </div>
+        </template>
+    </div> <!-- Collapse  -->
+</div> <!-- Case-core-style  -->
+
+    
+<hr class="fading-line-2 mt-5 mb-5">
+
+<div class="case-core-style" id="task-collapse" style="min-height: 60vh;">
+    <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
+            data-bs-target="#collapseTasks" aria-expanded="true" aria-controls="collapseTags"
+            style="float: right;">
+        <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div style="display: flex;">
+        <h2>Tasks</h2>
+        {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
+            <span style="padding-left: 10px;">
+                <a href="/case/{{case.id}}/create_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
+            </span>
+        {%endif%}
+
+        <!-- Search bar -->
+        <div class="input-group w-auto start-50 translate-middle-x">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFilter">
+                <i class="fa-solid fa-filter"></i>
+            </button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 400px;" />
         </div>
+        <!-- Search bar -->
+    </div>
+    <div style="margin-top: -5px; margin-bottom: 15px;">
+        <small><i>[[open_closed.open]] open/ [[open_closed.closed]] closed</i></small>
+    </div>
 
-        <hr>
+    <div class="modal fade" id="modalFilter" tabindex="-1" aria-labelledby="modalFilterLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="modalFilterLabel">Tasks Filter</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex w-100 justify-content-between">
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="change_status_sort(false)" checked>
+                                <label class="form-check-label" for="radioStatusOngoing">Ongoing Tasks</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="change_status_sort(true)">
+                                <label class="form-check-label" for="radioStatusFinished">Finished Tasks</label>
+                            </div>
+                        </div>
 
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')" checked>
+                                <label class="form-check-label" for="radioOtherTitle">Title</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
+                                <label class="form-check-label" for="radioOrderAsc">Last Modif</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
+                                <label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
+                                <label class="form-check-label" for="radioOtherStatus">Status</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherAssign" @click="sort_by_filter('assigned_tasks')">
+                                <label class="form-check-label" for="radioOtherAssign">Assigned tasks</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherCurrentAssign" @click="sort_by_filter('my_assignment')">
+                                <label class="form-check-label" for="radioOtherCurrentAssign">My assignment</label>
+                            </div>
+                        </div>
+
+                        <div>
+                            Change order
+                            <div class="form-check form-switch" style="margin-left: 35%;">
+                                <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div>Taxonomies:</div>
+                    <div class="d-flex w-100 justify-content-center">
+                        <div style="display:flex">
+                            <span style="margin-right: 10px">OR</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
+                                <label class="form-check-label" for="switchOperator">AND</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <template v-if="taxonomies">
+                            <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                                <template v-for="taxonomy, key in taxonomies">
+                                    <option :value="[[taxonomy]]">[[taxonomy]]</option>
+                                </template>
+                            </select>
+                        </template>
+                        
+                        <template v-if="tags_list">
+                            <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                                <template v-for="(tags, taxo) in tags_list">
+                                    <optgroup :label="[[taxo]]">
+                                        <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                                    </optgroup>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+                    <hr>
+
+                    <div>Galaxies:</div>
+                    <div class="d-flex w-100 justify-content-center">
+                        <div style="display:flex">
+                            <span style="margin-right: 10px">OR</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
+                                <label class="form-check-label" for="switchOperator">AND</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <template v-if="galaxies">
+                            <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                                <template v-for="galaxy, key in galaxies">
+                                    <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
+                                </template>
+                            </select>
+                        </template>
+                        
+                        <template v-if="cluster_list">
+                            <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                                <template v-for="(clusters, galaxy) in cluster_list">
+                                    <optgroup :label="[[galaxy]]">
+                                        <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
+                                    </optgroup>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+                    
+                    <hr>
+
+                    <div>Custom Tags:</div>
+                    <div>
+                        <template v-if="custom_tags">
+                            <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="task_custom_tags_select" >
+                                <template v-for="custom_tag, key in custom_tags">
+                                    <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="collapse show" id="collapseTasks">
         <template v-if="cases_info && cases_info.tasks && status_info" >
             <template v-for="task, key in cases_info.tasks" :key="task.id">
-                <div :id="`task-${task.id}`" class="list-group" style="margin-bottom: 20px;">
+                <div :id="`task-${task.id}`" class="list-group" style="margin-bottom: 40px;">
                     <case_tasks :cases_info="cases_info" 
                                 :users_in_case="users_in_case" 
                                 :status_info="status_info" 
@@ -385,100 +519,14 @@
                 <span class="visually-hidden">Loading...</span>
             </div>
         </template>
-    </template>
-
-
-
-
-    <template v-else-if="main_tab == 'history'">
-        <case_history :case_id="cases_info.case.id"></case_history>
-    </template>
-
-    <template v-else-if="main_tab == 'case'">
-        <div v-if="cases_info.case.notes">
-            <template v-if="edit_mode">
-                <button class="btn btn-primary" @click="save_note_case()">Save</button>
-                <div style="display: flex;">
-                    <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
-                    <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
-                </div>
-            </template>
-            <template v-else>
-                <button class="btn btn-primary btn-sm" @click="edit_note()">Edit</button>
-                <div class="btn-group">
-                    <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="margin-bottom: 1px;">
-                        <small><i class="fa-solid fa-download"></i></small> Export
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li>
-                            <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'pdf')" title="Export markdown as pdf">PDF</button>
-                            <button v-else class="btn btn-link" disabled>
-                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                <span role="status">Loading...</span>
-                            </button>
-                        </li>
-                        <li>
-                            <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'docx')" title="Export markdown as docx">DOCX</button>
-                            <button v-else class="btn btn-link" disabled>
-                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                <span role="status">Loading...</span>
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-                <div v-html="md.render(cases_info.case.notes)" style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px;"></div>
-            </template>
-        </div>
-        <template v-else>
-            <button class="btn btn-primary" @click="save_note_case()">Save</button>
-            <div style="display: flex;">
-                <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
-                <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
-            </div>
-        </template>
-
-    </template>
-
-    <template v-else-if="main_tab == 'note_template'">
-        <note_from_template :cases_info="cases_info"></note_from_template>
-    </template>
-
-    <template v-else-if="main_tab == 'all'">
-        <template v-for="notes in all_notes">
-            <div class="all-tasks-notes" v-html="md.render(notes)"></div>
-        </template>
-    </template>
-
-    <template v-else-if="main_tab == 'hedgedoc'">
-        <hedgedoc_template 
-            :cases_info="cases_info"
-            :status_info="status_info">
-        </hedgedoc_template>
-    </template>
-
-    <template v-else-if="main_tab == 'info'">
-        <div class="row">
-            <div class="col-auto">
-                <fieldset class="analyzer-select-case" style="text-align: center;">
-                    <legend class="analyzer-select-case">Time required</legend>
-                    <i>[[cases_info.case.time_required]]</i>
-                </fieldset>
-            </div>
-            <div class="col-auto">
-                <fieldset class="analyzer-select-case" style="text-align: center;">
-                    <legend class="analyzer-select-case">Visibility</legend>
-                    <i v-if="cases_info.case.is_private">Private</i>
-                    <i v-else>Public</i>
-                </fieldset>
-            </div>
-        </div>
-    </template>
+    </div>
 
     <span id="createTask" title="Create a new task">
         <a href="/case/{{case.id}}/create_task" class="btn btn-outline-primary" style="border-radius: 50px;">
             <i class="fa-solid fa-plus"></i>
         </a>
     </span>
+</div>
 {% endblock %}
 
 
@@ -732,7 +780,6 @@
                         cases_info.value.tasks = fetch_sorted_tasks()
                     }
                 }
-
 
                 function scrollIntoSelectedElement() {
                     const url = new URL(location.href)
@@ -1108,6 +1155,17 @@
                     $("#id-nb-connectors").removeClass("d-none")
                     $("#id-nb-misp-object").removeClass("d-none")
                     // $("#id-case-status").removeClass("d-none")
+
+                    const collapseEl = document.getElementById('collapseTasks');
+                    const parentEl = document.getElementById('task-collapse');
+
+                    collapseEl.addEventListener('shown.bs.collapse', function () {
+                        parentEl.style.minHeight = '60vh'; // light blue
+                    });
+
+                    collapseEl.addEventListener('hidden.bs.collapse', function () {
+                        parentEl.style.minHeight = '0'; // reset
+                    });
                 })
                 
     
