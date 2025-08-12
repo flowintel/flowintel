@@ -110,34 +110,6 @@ export default {
 			}
 		}
 
-		async function move_task(task, up_down){
-			// Move the task up and down
-			let cp = 0
-			up_down ? cp = -1 : cp = 1
-
-			const res = await fetch('/case/' + task.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
-			await display_toast(res)
-			for( let i in props.cases_info.tasks){
-				if(props.cases_info.tasks[i]["case_order_id"] == task.case_order_id+cp){
-					props.cases_info.tasks[i]["case_order_id"] = task.case_order_id
-					task.case_order_id += cp
-					break
-				}
-			}
-			props.cases_info.tasks.sort(order_task)
-		}
-
-		function order_task(a, b){
-			// Helper for move_task function
-			if(a.case_order_id > b.case_order_id){
-				return 1
-			}
-			if(a.case_order_id < b.case_order_id){
-				return -1
-			}
-			return 0
-		}
-
 		function present_user_in_task(task_user_list, user){
 			// Check if user is already assign
 			let index = -1
@@ -169,50 +141,6 @@ export default {
 			}
 			await display_toast(res)
 		}
-
-
-		async function submit_module(){
-			module_loader.value = true
-			$("#task_modules_errors_"+props.task.id).hide()
-			$("#task_instances_errors_"+props.task.id).hide()
-			if(!$("#task_modules_select_"+props.task.id).val() || $("#task_modules_select_"+props.task.id).val() == "None"){
-				$("#task_modules_errors_"+props.task.id).text("Select an item")
-				$("#task_modules_errors_"+props.task.id).show()
-			}
-			if(!$("#task_instances_select_"+props.task.id).val() || $("#task_instances_select_"+props.task.id).val().length<1){
-				$("#task_instances_error_"+props.task.id).text("Select an item")
-				$("#task_instances_error_"+props.task.id).show()
-			}
-
-			let i_s = $("#task_instances_select_"+props.task.id).val()
-			let int_sel = {}
-			for(let index in i_s){
-				for( let j in task_module_selected.value){
-					if (task_module_selected.value[j].name == i_s[index]){
-						let loc_val = $("#identifier_"+task_module_selected.value[j].id).val()
-						int_sel[task_module_selected.value[j].name] = loc_val
-						for(let k in task_instances_selected.value){
-							if(task_instances_selected.value[k].name == task_module_selected.value[j].name){
-								task_instances_selected.value[k].identifier = loc_val
-							}
-						}
-					}
-				}
-			}
-			const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.task.id+"/call_module_task?module=" + $("#task_modules_select_"+props.task.id).val() , {
-				method: "POST",
-				body: JSON.stringify({
-					int_sel
-				}),
-				headers: {
-					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-				}
-			});
-			module_loader.value = false
-
-			display_toast(res, true)
-		}
-
 
 		async function take_task(task, current_user){
 			// Assign the task to the current user
@@ -351,8 +279,6 @@ export default {
 			formatNow,
 			endOf,
 			present_user_in_task,
-			move_task,
-			submit_module,
 
 			select_tab_task,
 			fetch_task_connectors
@@ -367,6 +293,7 @@ export default {
 			aria-expanded="false" 
 			:aria-controls="'collapse'+task.id" 
 			style="border-top-left-radius: 15px; border-top-right-radius: 15px;"
+			:id="'collapsing-task-' + task.id"
 		>
 			<div class="d-flex w-100 justify-content-between">
 				<h5 class="mb-1">[[ key_loop+1 ]]- [[task.title]]</h5>
@@ -479,67 +406,7 @@ export default {
 				</a>
 			</div>
 		</div>
-		<div v-if="(!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin) && !task.completed" style="display: grid;">
-			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task(task, true)">
-				<i class="fa-solid fa-chevron-up"></i>
-			</button>
-			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task(task, false)">
-				<i class="fa-solid fa-chevron-down"></i>
-			</button>
-		</div>
 	</div>
-
-
-	<!-- Modal send to -->
-	<div class="modal fade" :id="'Send_to_modal_task_'+task.id" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
-		<div class="modal-dialog modal-lg">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h1 class="modal-title fs-5" id="Send_to_modalLabel">Send to modules</h1>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-body">
-					<div style="display: flex;">
-						<div>
-							<label :for="'task_modules_select_'+task.id">Modules:</label>
-							<select data-placeholder="Modules" class="select2-select form-control" :name="'task_modules_select_'+task.id" :id="'task_modules_select_'+task.id" >
-								<option value="None">--</option>
-								<template v-for="module, key in task_modules">
-									<option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
-								</template>
-							</select>
-							<div :id="'task_modules_errors_'+task.id" class="invalid-feedback"></div>
-						</div>
-						<div style="min-width: 100%;">
-							<label :for="'task_instances_select'+task.id">Instances:</label>
-							<select data-placeholder="Instances" class="select2-select form-control" multiple :name="'task_instances_select_'+task.id" :id="'task_instances_select_'+task.id" >
-								<template v-if="task_module_selected">
-									<template v-for="instance, key in task_module_selected">
-										<option :value="[[instance.name]]">[[instance.name]]</option>
-									</template>
-								</template>
-							</select>
-							<div :id="'task_instances_errors_'+task.id" class="invalid-feedback"></div>
-						</div>
-					</div>
-					<div class="row" v-if="task_instances_selected">
-						<div class="mb-3 w-50" v-for="instance, key in task_instances_selected" >
-							<label :for="'identifier_' + instance.id">Identifier for <u><i>[[instance.name]]</i></u></label>
-							<input :id="'identifier_' + instance.id" class="form-control" :value="instance.identifier" :name="'identifier_' + instance.id" type="text">
-						</div>
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button v-if="module_loader" class="btn btn-primary" type="button" disabled>
-						<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-						<span role="status">Loading...</span>
-					</button>
-					<button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
-				</div>
-			</div>
-		</div>
-	</div>
-
 	
 	<!-- Collapse Part -->
 	<div class="collapse" :id="'collapse'+task.id">

@@ -109,12 +109,21 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         case = CommonModel.get_case(task.case_id)
         CommonModel.save_history(case.uuid, current_user, message)
 
-    def reorder_tasks(self, case, task_order_id):
-        for task_in_case in case.tasks:
-            if task_in_case.case_order_id > task_order_id:
-                task_in_case.case_order_id -= 1
-                db.session.commit()
-        case.nb_tasks -= 1
+    def reorder_tasks(self, case, task_to_delete_id):
+        # Filter out the task to delete
+        remaining_tasks = [t for t in case.tasks if t.id != task_to_delete_id]
+
+        # Sort remaining tasks by case_order_id
+        remaining_tasks = sorted(remaining_tasks, key=lambda t: t.case_order_id)
+
+        # Reassign order IDs sequentially starting from 1
+        for i, task in enumerate(remaining_tasks, start=1):
+            task.case_order_id = i
+
+        # Update the case.tasks list (if mutable, or replace as needed)
+        case.tasks = remaining_tasks
+
+        # Commit changes to DB
         db.session.commit()
 
     def delete_task(self, tid, current_user):
@@ -136,7 +145,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
             ## Move all task down if possible
-            self.reorder_tasks(case, task.case_order_id)
+            self.reorder_tasks(case, task.id)
 
             Task_Tags.query.filter_by(task_id=task.id).delete()
             Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
@@ -499,20 +508,30 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
         return self.get_task_info(tasks, user)
 
-    def change_order(self, case, task, up_down):
+    def change_order(self, case, task, request_json):
         """Change the order of tasks"""
-        for task_in_case in case.tasks:
-            # A task move up, case_order_id decrease by one
-            if up_down == "true":
-                if task_in_case.case_order_id == task.case_order_id - 1:
-                    task_in_case.case_order_id += 1
-                    task.case_order_id -= 1
-                    break
-            else:
-                if task_in_case.case_order_id == task.case_order_id + 1:
-                    task_in_case.case_order_id -= 1
-                    task.case_order_id += 1
-                    break
+        # Get tasks ordered by case_order_id
+        tasks = sorted(case.tasks, key=lambda t: t.case_order_id)
+        for t in tasks:
+            if t.case_order_id == request_json["new-index"]+1:
+                target_task = t
+                break
+
+        moving_task = task
+
+        # Find index where to insert
+        target_index = tasks.index(target_task)
+
+        # Remove the moving task from the list
+        tasks.remove(moving_task)
+
+        # Insert the task before the target
+        tasks.insert(target_index, moving_task)
+
+        # Reassign order IDs
+        for i, loc_task in enumerate(tasks, start=1):
+            loc_task.case_order_id = i
+
         db.session.commit()
 
 

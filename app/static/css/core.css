@@ -328,3 +328,12 @@ legend.analyzer-select-case {
 #collapseTasks > .nav-tabs > li > button:hover {
     color: #4c8ac0;
 }
+
+
+
+
+/* The semi-transparent "ghost" element following your cursor */
+.dragging-ghost {
+  background-color: #ffeeba !important;
+  border: 2px dashed #ff9800;
+}

@@ -14,6 +14,8 @@
 <script src="{{ url_for('static',filename='js/timelinejs.js') }}"></script>
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timelinejs.css') }}">
 
+<script src="{{ url_for('static',filename='js/sortablejs.js') }}"></script>
+
 {{ super() }}
 {%endblock%}
 
@@ -368,9 +370,6 @@
         </div>
         <!-- Search bar -->
     </div>
-    <!-- <div style="margin-top: -5px; margin-bottom: 15px;">
-        <small><i>[[open_closed.open]] open/ [[open_closed.closed]] closed</i></small>
-    </div> -->
 
     <div class="modal fade" id="modalFilter" tabindex="-1" aria-labelledby="modalFilterLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
@@ -527,20 +526,22 @@
             <hr class="fading-line-2 mb-4">
 
             <template v-if="tasks_tab == 'main'">
+                <div id="list-container">
                 <template v-for="task, key in cases_info.tasks" :key="task.id">
-                    <div :id="`task-${task.id}`" class="list-group" style="margin-bottom: 40px;">
-                        <case_tasks :cases_info="cases_info" 
-                                    :users_in_case="users_in_case" 
-                                    :status_info="status_info" 
-                                    :task="task" 
-                                    :key_loop="key"
-                                    :open_closed="open_closed"
-                                    :md="md"
-                                    :all_connectors_list="all_connectors_list"
-                                    :task_modules="task_modules">
-                        </case_tasks>
-                    </div>
-                </template>
+                        <div :id="`task-${task.id}`" class="list-group" style="margin-bottom: 40px;">
+                            <case_tasks :cases_info="cases_info" 
+                                        :users_in_case="users_in_case" 
+                                        :status_info="status_info" 
+                                        :task="task" 
+                                        :key_loop="key"
+                                        :open_closed="open_closed"
+                                        :md="md"
+                                        :all_connectors_list="all_connectors_list"
+                                        :task_modules="task_modules">
+                            </case_tasks>
+                        </div>
+                    </template>
+                </div>
             </template>
             <template v-else-if="tasks_tab == 'tasks-notes'">
                 <template v-for="notes in all_notes">
@@ -578,7 +579,7 @@
         import caseconnectors from '/static/js/case/CaseConnectors.js'
         import case_history from '/static/js/case/case_history.js'
         import note_from_template from '/static/js/case/note_from_template.js'
-        import {display_toast, message_list} from '/static/js/toaster.js'
+        import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -784,7 +785,7 @@
                         })
                     }
                 }
-                fetchCase()
+                
 
                 async function fetchStatus() {
                     status_info.value = null
@@ -1163,7 +1164,8 @@
                     return (open_closed.value.closed / (open_closed.value.open + open_closed.value.closed) )*100
                 }
 
-                onMounted(() => {
+                onMounted( async () => {
+                    await fetchCase()
                     initialize_select2()
                     autosave_case_note()
                     fetch_case_connectors()
@@ -1223,7 +1225,72 @@
                     collapseEl.addEventListener('hidden.bs.collapse', function () {
                         parentEl.style.minHeight = '0'; // reset
                     });
+
+
+
+                    const options = {
+                        animation: 150,
+                        handle: '.list-group-item', // Only drag by header
+                        ghostClass: 'dragging-ghost',  // class applied to the clone while dragging
+                        onEnd: async function(evt) {
+                            let task
+                            for(let i in cases_info.value.tasks){
+                                if (cases_info.value.tasks[i].id == evt.item.id.split("-")[1]){
+                                    task = cases_info.value.tasks[i]
+                                    break
+                                }
+                            }
+                            if(!task.completed){
+                                if(evt.newIndex != evt.oldIndex){
+                                    const dataToSend = {"new-index": evt.newIndex}
+
+                                    // Send via fetch to backend
+                                    const res = await fetch('/case/'+cases_info.value.case.id+'/change_order/'+evt.item.id.split("-")[1], {
+                                        method: 'POST',
+                                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                        body: JSON.stringify(dataToSend)
+                                    })
+                                    if(await res.status == 200){
+                                        // let task = cases_info.value.tasks.find(t => t.id === evt.item.id.split("-")[1]);
+                                        
+                                        // Sort tasks by case_order_id ascending
+                                        let tasks = cases_info.value.tasks
+
+                                        // Find the task whose case_order_id matches new-index + 1
+                                        const newIndex = evt.newIndex
+                                        const target_task = tasks.find(t => t.case_order_id === newIndex + 1);
+
+                                        const moving_task = task;
+
+                                        // Find target index in the sorted array
+                                        const target_index = tasks.indexOf(target_task);
+
+                                        // Remove moving_task from array
+                                        const movingIndex = tasks.indexOf(moving_task);
+                                        if (movingIndex !== -1) {
+                                        tasks.splice(movingIndex, 1);
+                                        }
+
+                                        // Insert moving_task before target_index
+                                        tasks.splice(target_index, 0, moving_task);
+
+                                        // Reassign case_order_id starting at 1
+                                        tasks.forEach((t, i) => {
+                                            t.case_order_id = i + 1;
+                                        });
+                                    }
+                                    display_toast(res)
+                                }
+                            }else{
+                                create_message("Finished tasks cannot be moved", "warning-subtle",false)
+                            }
+                        }
+                    };
+
+                    new Sortable(document.getElementById('list-container'), options);
                 })
+
+                
                 
     
                 return {
