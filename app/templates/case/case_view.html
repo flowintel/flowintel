@@ -29,7 +29,7 @@
             <!-- lock icon -->
             <span v-if="cases_info" style="font-size: 12px; margin-left: 5px; position: absolute; margin-top: 11px;">
                 <i v-if="cases_info.case.is_private" class="fa-solid fa-lock" title="The case is private, only org present in can see this case"></i>
-                <i v-else class="fa-solid fa-unlock" title="The case is public anyone can see this case but only org present in case can modify it"></i>
+                <i v-else class="fa-solid fa-globe" title="The case is public anyone can see this case but only org present in case can modify it"></i>
             </span>
             <!-- status -->
             <small v-if="status_info" style="margin-left: 50px;">
