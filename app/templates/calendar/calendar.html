@@ -4,7 +4,12 @@
 {% block head %}
 {{ super() }}
 
-<script src="{{ url_for('static',filename='js/fullcalendar.global.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/calendar/fullcalendar.global.min.js') }}"></script>
+
+<script src="{{ url_for('static',filename='js/calendar/flatpickr.js') }}"></script>
+<script src="{{ url_for('static',filename='js/calendar/flatpickr-monthSelect.js') }}"></script>
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/flatpickr/flatpickr.css') }}">
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/flatpickr/flatpickr-monthSelect.css') }}">
 {%endblock%}
 
 {% block content %}
@@ -57,7 +62,9 @@
         </div>
     </div>
 
-    <div id="calendar" ></div>
+    <input id="monthPicker" class="start-50 translate-middle-x mb-2 mt-3" placeholder="Select month" style="text-align: center; position: relative;">
+
+    <div id="calendar"></div>
 
 </div>
 {% endblock %}
@@ -248,6 +255,23 @@
                 });
 
                 calendar.render();
+
+                flatpickr("#monthPicker", {
+                    dateFormat: "Y-m",   // year-month
+                    plugins: [
+                        new monthSelectPlugin({
+                            shorthand: true,      // Jan, Feb, ...
+                            dateFormat: "Y-m",
+                            altFormat: "F Y"
+                        })
+                    ],
+                    onChange: function(selectedDates) {
+                        if (selectedDates.length > 0) {
+                            const date = selectedDates[0];
+                            calendar.gotoDate(date); // Jump to selected month
+                        }
+                    }
+                });
             })
 
 
