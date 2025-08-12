@@ -251,47 +251,55 @@
         </template>
 
         <template v-else-if="main_tab == 'case'">
-            <div v-if="cases_info.case.notes">
+            <div class="d-flex" v-if="cases_info.case.notes">
                 <template v-if="edit_mode">
-                    <button class="btn btn-primary" @click="save_note_case()">Save</button>
-                    <div style="display: flex;">
+                    <div style="margin-right: -10px;">
+                        <button class="btn btn-primary" @click="save_note_case()">Save</button>
+                    </div>
+                    <div class="container-fluid" style="display: flex; width:90%">
                         <div class="note-editor" id="editor"></div>
                         <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
                     </div>
                 </template>
                 <template v-else>
-                    <button class="btn btn-primary btn-sm " @click="edit_note()">
-                        <small><i class="fa-solid fa-pen fa-fw"></i></small> Edit
-                    </button>
-                    <div class="btn-group">
-                        <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                            <small><i class="fa-solid fa-download fa-fw"></i></small> Export
+                    <div>
+                        <button class="btn btn-primary mb-2" @click="edit_note()">
+                            <small><i class="fa-solid fa-pen fa-fw"></i></small> Edit
                         </button>
-                        <ul class="dropdown-menu">
-                            <li>
-                                <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'pdf')" title="Export markdown as pdf">PDF</button>
-                                <button v-else class="btn btn-link" disabled>
-                                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                    <span role="status">Loading...</span>
-                                </button>
-                            </li>
-                            <li>
-                                <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'docx')" title="Export markdown as docx">DOCX</button>
-                                <button v-else class="btn btn-link" disabled>
-                                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                    <span role="status">Loading...</span>
-                                </button>
-                            </li>
-                        </ul>
+                        <div class="btn-group">
+                            <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <small><i class="fa-solid fa-download fa-fw"></i></small> Export
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'pdf')" title="Export markdown as pdf">PDF</button>
+                                    <button v-else class="btn btn-link" disabled>
+                                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                        <span role="status">Loading...</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'docx')" title="Export markdown as docx">DOCX</button>
+                                    <button v-else class="btn btn-link" disabled>
+                                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                        <span role="status">Loading...</span>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
-                    <div v-html="md.render(cases_info.case.notes)" class="markdown-render-result"></div>
+                    <div v-html="md.render(cases_info.case.notes)" class="markdown-render-result container-fluid"></div>
                 </template>
             </div>
             <template v-else>
-                <button class="btn btn-primary mb-2" @click="save_note_case()">Save</button>
-                <div style="display: flex;">
-                    <div class="note-editor" id="editor"></div>
-                    <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                <div class="d-flex">
+                    <div style="margin-right: -10px;">
+                        <button class="btn btn-primary mb-2" @click="save_note_case()">Save</button>
+                    </div>
+                    <div class="container-fluid" style="display: flex; width:90%">
+                        <div class="note-editor" id="editor"></div>
+                        <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                    </div>
                 </div>
             </template>
 
