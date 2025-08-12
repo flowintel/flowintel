@@ -93,83 +93,104 @@ export default {
     },
 	template: `
 		<template v-if="cases_info">
-            <button class="btn btn-outline-primary dropdown-toggle ms-1" data-bs-toggle="dropdown" aria-expanded="false">
-                Orgs
-                <span class="badge text-bg-secondary">[[cases_info.orgs_in_case.length]]</span>
-            </button>
-            <ul class="dropdown-menu">
+            <div class="case-tags-style mt-2">
                 <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                    <li>
-                        <div class="justify-content-center" style="display: flex;">
-                            <button class="btn btn-primary btn-sm" title="Add an org to the case" style="margin-right: 3px" data-bs-toggle="modal" data-bs-target="#add_orgs">
-                                <i class="fa-solid fa-users"></i>+
-                            </button>
-                            <button class="btn btn-primary btn-sm" title="Change owner of the case" data-bs-toggle="modal" data-bs-target="#change_owner">
-                                <i class="fa-solid fa-user-pen"></i>
-                            </button>
-                        </div>
-                    </li>
-                    <li><hr class="dropdown-divider"></li>
+                    <div class="justify-content-center" style="display: flex; float: right">
+                        <button class="btn btn-primary btn-sm" title="Add an org to the case" style="margin-right: 3px" data-bs-toggle="modal" data-bs-target="#add_orgs">
+                            <i class="fa-solid fa-users"></i>+
+                        </button>
+                        <button class="btn btn-primary btn-sm me-1" title="Change owner of the case" data-bs-toggle="modal" data-bs-target="#change_owner">
+                            <i class="fa-solid fa-user-pen"></i>
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#collapseOrgs" aria-expanded="true" aria-controls="collapseOrgs">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                    </div>
                 </template>
-                <template v-for="org in cases_info.orgs_in_case" :key="org.id">
-                    <li>
-                        <div style="display: flex;">
-                            <button class="dropdown-item">[[org.name]]</button>
-                            <template v-if="org.id != cases_info.case.owner_org_id">
-                                <button class="btn btn-danger btn-sm" style="margin-right: 5px;" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">Delete</button>
-                            </template>
-                            <template v-else>
-                                <small style="margin-right: 20px; color: green;"><i>owner</i></small>
-                            </template>
-                        </div>
-                    </li>
-                </template>
-            </ul>
-            <!-- Modal add orgs -->
-            <div class="modal fade" id="add_orgs" tabindex="-1" aria-labelledby="add_orgs_modal" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="add_orgs_modal">Add Orgs</h1>
-                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            Orgs:
-                            <select data-placeholder="Orgs" class="select2-select-add-orgs form-control" multiple name="add_orgs_select" id="add_orgs_select">
-                                <option value="None">--</option>
-                                <template v-for="org in orgs">
-                                    <option v-if="!check_org_not_in(org.id)" :value="[[org.id]]">[[org.name]]</option>
+                <div class="d-flex">
+                    <h4 style="text-decoration: underline;">Orgs:</h4>
+                    <div>
+                        <span class="badge text-bg-secondary" style="margin-top:6px; margin-left: 5px">
+                            [[cases_info.orgs_in_case.length]]
+                        </span>
+                    </div>
+                </div>
+
+                <div class="collapse show" id="collapseOrgs">
+                    <div class="table-responsive mt-2">
+                        <table class="table">
+                            <tbody>
+                                <template v-for="org in cases_info.orgs_in_case" :key="org.id">
+                                    <tr>
+                                        <td>
+                                            [[org.name]]
+                                            <small v-if="org.id == cases_info.case.owner_org_id" style="color: green;">
+                                                <i>owner</i>
+                                            </small>
+                                        </td>
+                                        <td v-if="org.id != cases_info.case.owner_org_id">
+                                            <button class="btn btn-danger btn-sm" style="background-color: #dc3545" @click="remove_org_case(cases_info, org)" 
+                                            v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin"
+                                            title="Remove org from case">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                        <td v-else></td>
+                                    </tr>
                                 </template>
-                            </select>
-                            <div style="color: brown;" id="add_orgs_error"></div>
-                        </div>
-                        <div class="modal-footer">
-                            <button @click="submit_add_orgs()" class="btn btn-primary">Submit</button>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+
+                <!-- Modal add orgs -->
+                <div class="modal fade" id="add_orgs" tabindex="-1" aria-labelledby="add_orgs_modal" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="add_orgs_modal">Add Orgs</h1>
+                                <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                Orgs:
+                                <select data-placeholder="Orgs" class="select2-select-add-orgs form-control" multiple name="add_orgs_select" id="add_orgs_select">
+                                    <option value="None">--</option>
+                                    <template v-for="org in orgs">
+                                        <option v-if="!check_org_not_in(org.id)" :value="[[org.id]]">[[org.name]]</option>
+                                    </template>
+                                </select>
+                                <div style="color: brown;" id="add_orgs_error"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button @click="submit_add_orgs()" class="btn btn-primary">Submit</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Modal change owner -->
-            <div class="modal fade" id="change_owner" tabindex="-1" aria-labelledby="change_owner_modal" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="change_owner_modal">Change Owner</h1>
-                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            Orgs:
-                            <select class="form-control" name="change_owner_select" id="change_owner_select" style="width: 50%">
-                                <option value="None">--</option>
-                                <template v-for="org in orgs">
-                                    <option v-if="org.id != cases_info.case.owner_org_id" :value="[[org.id]]">[[org.name]]</option>
-                                </template>
-                            </select>
-                            <div style="color: brown;" id="change_owner_error"></div>
-                        </div>
-                        <div class="modal-footer">
-                            <button @click="submit_change_owner()" class="btn btn-primary">Submit</button>
+                
+                <!-- Modal change owner -->
+                <div class="modal fade" id="change_owner" tabindex="-1" aria-labelledby="change_owner_modal" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="change_owner_modal">Change Owner</h1>
+                                <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                Orgs:
+                                <select class="form-control" name="change_owner_select" id="change_owner_select" style="width: 50%">
+                                    <option value="None">--</option>
+                                    <template v-for="org in orgs">
+                                        <option v-if="org.id != cases_info.case.owner_org_id" :value="[[org.id]]">[[org.name]]</option>
+                                    </template>
+                                </select>
+                                <div style="color: brown;" id="change_owner_error"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button @click="submit_change_owner()" class="btn btn-primary">Submit</button>
+                            </div>
                         </div>
                     </div>
                 </div>

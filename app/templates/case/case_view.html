@@ -23,7 +23,9 @@
 <div class="case-core-style" style="border-radius: 0;">
     <div>
         <span>
-            <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/case"><i class="fa-solid fa-arrow-left"></i></a></h1>
+            <h1 style="display: inline-block; font-size: xxx-large;">
+                <a type="button" class="btn btn-outline-dark me-2" href="/case"><i class="fa-solid fa-arrow-left"></i></a>
+            </h1>
 
             <h1 style="display: inline-block; font-size: xx-large;">{{case.id}}- {{case.title}}</h1>
             <!-- lock icon -->
@@ -38,48 +40,7 @@
                 </span>
             </small>
         </span>
-        
-        <!-- Link to other case -->
-        <template v-if="cases_info">
-            <button type="button" title="Link to other Case" class="btn btn-outline-primary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" style="margin-left: 10px;">
-                <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[cases_info.case.link_to.length]]</span>
-            </button>
-            <ul class="dropdown-menu">
-                <button class="btn btn-primary btn-sm" title="New link" style="margin-left: 60px;" data-bs-toggle="modal" data-bs-target="#add_new_link">
-                    <i class="fa-solid fa-paperclip"></i>+
-                </button>
-                <li><hr class="dropdown-divider"></li>
-                <template v-for="case_link in cases_info.case.link_to">
-                    <li>
-                        <div class="d-flex">
-                            <a class="dropdown-item" :href="'/case/'+case_link.id" style="margin-right: 5px;" :title="case_link.description">[[case_link.title]]</a>
-                            <button class="btn btn-danger btn-sm" @click="remove_case_link(cases_info, case_link)">Remove</button>
-                        </div>
-                    </li>
-                </template>
-            </ul>
-        </template>
     
-        <!-- Modal add new link -->
-        <div class="modal fade" id="add_new_link" tabindex="-1" aria-labelledby="add_new_link_modal" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="add_new_link_modal">Add New link</h1>
-                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        Link to:
-                        <select class="new-link-ajax" name="link_to" tabindex="-1" multiple data-placeholder="Link To"></select>
-                        <div style="color: brown;" id="add_new_link_error"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button @click="submit_add_new_link()" class="btn btn-primary">Submit</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Components that contains all button that provide an action on the case -->
         <action_buttons 
             :cases_info="cases_info"
@@ -136,7 +97,7 @@
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-case" @click="active_tab('case')">Case notes</button>
+            <button class="nav-link" id="tab-notes" @click="active_tab('notes')">Notes</button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-misp-objects" @click="active_tab('misp-objects')">
@@ -145,10 +106,10 @@
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-note-template" @click="active_tab('note_template')">Notes Template</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="tab-hedgedoc" @click="active_tab('hedgedoc')">Hedgedoc</button>
+            <button class="nav-link" id="tab-connectors" @click="active_tab('connectors')">
+                Connectors
+                <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_connectors_list.length]]</span>
+            </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-history" @click="active_tab('history')">History</button>
@@ -159,6 +120,26 @@
     </ul>
 
     <hr class="fading-line-2">
+
+    <!-- Modal add new link -->
+    <div class="modal fade" id="add_new_link" tabindex="-1" aria-labelledby="add_new_link_modal" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="add_new_link_modal">Add New link</h1>
+                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Link to:
+                    <select class="new-link-ajax" name="link_to" tabindex="-1" multiple data-placeholder="Link To"></select>
+                    <div style="color: brown;" id="add_new_link_error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button @click="submit_add_new_link()" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="collapse show" id="collapseTags">
         <template v-if="main_tab == 'main'">
@@ -201,14 +182,56 @@
                             {%endfor%}
                         {%endif%}
                     </div>
+
+                    <div class="case-tags-style mt-2" v-if="cases_info">
+                        <div class="justify-content-center" style="float: right">
+                            <button class="btn btn-primary btn-sm me-1" title="New link" data-bs-toggle="modal" data-bs-target="#add_new_link">
+                                <i class="fa-solid fa-paperclip"></i>+
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#collapseLinks" aria-expanded="true" aria-controls="collapseLinks">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        <div class="d-flex">
+                            <h4 style="text-decoration: underline;">Links: </h4>
+                            <div>
+                                <span class="badge text-bg-secondary" style="margin-top:6px; margin-left: 5px">
+                                    [[cases_info.case.link_to.length]]
+                                </span>
+                            </div>
+                        </div>
+                        <div class="collapse show" id="collapseLinks">
+                            <div class="table-responsive mt-2">
+                                <table class="table">
+                                    <tbody>
+                                        <template v-for="case_link in cases_info.case.link_to">
+                                            <tr>
+                                                <td>
+                                                    [[case_link.title]]
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-danger btn-sm" style="background-color: #dc3545" 
+                                                    @click="remove_case_link(cases_info, case_link)"
+                                                    title="Remove link from case">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="col">
                     <div class="case-tags-style">
                         <div class="d-flex">
-                            <h4 style="text-decoration: underline;">Tasks Progression:</h4>
+                            <h4 style="text-decoration: underline;">Completion:</h4>
                             <small class="mt-1 ms-4"><i>[[open_closed.open]] open/ [[open_closed.closed]] closed</i></small>
                         </div>
-                        <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress mt-1" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
                             <div v-if="open_closed.closed > 0"  class="progress-bar" :style="{'width': get_completion_pourcentage() +'%'}">
                                 [[get_completion_pourcentage()]]%
                             </div>
@@ -216,83 +239,72 @@
                             <span v-if="open_closed.closed <= 0" class="position-absolute" style="margin-left: 5px; margin-top:-1px">0%</span>
                         </div>
                     </div>
-                </div>
-            </div>
-            <hr class="mt-4 fading-line-2">
-            <div class="row mt-4">
-                <div class="col">
-                    <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConnectors" aria-expanded="false" aria-controls="collapseConnectors">
-                        <i class="fa-solid fa-link"></i> Connectors
-                        <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_connectors_list.length]]</span>
-                    </button>
 
-                    <!-- Component to manage orgs -->
                     <manage_orgs :cases_info="cases_info"></manage_orgs>
-
-                    <template v-if="cases_info">
-                        <div class="collapse" id="collapseConnectors">
-                            <caseconnectors 
-                                :case_task_connectors_list="case_connectors_list"
-                                :all_connectors_list="all_connectors_list"
-                                :modules="modules"
-                                :is_case="true"
-                                :object_id="cases_info.case.id"
-                                :cases_info="cases_info"
-                                @case_connectors="(msg) => fetch_case_connectors()"
-                                @task_connectors="">
-                            </caseconnectors>
-                        </div>
-                    </template>
                 </div>
             </div>
         </template>
+
         <template v-else-if="main_tab == 'history'">
             <case_history :case_id="cases_info.case.id"></case_history>
         </template>
 
-        <template v-else-if="main_tab == 'case'">
-            <div class="d-flex" v-if="cases_info.case.notes">
-                <template v-if="edit_mode">
-                    <div style="margin-right: -10px;">
-                        <button class="btn btn-primary" @click="save_note_case()">Save</button>
-                    </div>
-                    <div class="container-fluid" style="display: flex; width:90%">
-                        <div class="note-editor" id="editor"></div>
-                        <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
-                    </div>
-                </template>
-                <template v-else>
-                    <div>
-                        <button class="btn btn-primary mb-2" @click="edit_note()">
-                            <small><i class="fa-solid fa-pen fa-fw"></i></small> Edit
-                        </button>
-                        <div class="btn-group">
-                            <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                <small><i class="fa-solid fa-download fa-fw"></i></small> Export
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'pdf')" title="Export markdown as pdf">PDF</button>
-                                    <button v-else class="btn btn-link" disabled>
-                                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                        <span role="status">Loading...</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'docx')" title="Export markdown as docx">DOCX</button>
-                                    <button v-else class="btn btn-link" disabled>
-                                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                        <span role="status">Loading...</span>
-                                    </button>
-                                </li>
-                            </ul>
+        <template v-else-if="main_tab == 'notes'">
+            <ul class="nav nav-tabs" style="margin-bottom: 10px;">
+				<li class="nav-item">
+					<button class="nav-link active" id="subtab-case-note" aria-current="page" @click="active_subtab_note('case')">Case</button>
+				</li>
+				<li class="nav-item">
+					<button class="nav-link" id="subtab-template-note" @click="active_subtab_note('template')">Template</button>
+				</li>
+				<li class="nav-item">
+					<button class="nav-link" id="subtab-hedgedoc" @click="active_subtab_note('hedgedoc')">Hedgedoc</button>
+				</li>
+			</ul>
+
+
+            <template v-if="subtab_note == 'case'">
+                <div class="d-flex" v-if="cases_info.case.notes">
+                    <template v-if="edit_mode">
+                        <div style="margin-right: -10px;">
+                            <button class="btn btn-primary" @click="save_note_case()">Save</button>
                         </div>
-                    </div>
-                    <div v-html="md.render(cases_info.case.notes)" class="markdown-render-result container-fluid"></div>
-                </template>
-            </div>
-            <template v-else>
-                <div class="d-flex">
+                        <div class="container-fluid" style="display: flex; width:90%">
+                            <div class="note-editor" id="editor"></div>
+                            <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <div>
+                            <button class="btn btn-primary mb-2" @click="edit_note()">
+                                <small><i class="fa-solid fa-pen fa-fw"></i></small> Edit
+                            </button>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <small><i class="fa-solid fa-download fa-fw"></i></small> Export
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'pdf')" title="Export markdown as pdf">PDF</button>
+                                        <button v-else class="btn btn-link" disabled>
+                                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                            <span role="status">Loading...</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'docx')" title="Export markdown as docx">DOCX</button>
+                                        <button v-else class="btn btn-link" disabled>
+                                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                            <span role="status">Loading...</span>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div v-html="md.render(cases_info.case.notes)" class="markdown-render-result container-fluid"></div>
+                    </template>
+                </div>
+                <div v-else class="d-flex">
                     <div style="margin-right: -10px;">
                         <button class="btn btn-primary mb-2" @click="save_note_case()">Save</button>
                     </div>
@@ -302,6 +314,15 @@
                     </div>
                 </div>
             </template>
+            <template v-else-if="subtab_note == 'template'">
+                <note_from_template :cases_info="cases_info"></note_from_template>
+            </template>
+            <template v-else-if="subtab_note == 'hedgedoc'">
+                <hedgedoc_template 
+                    :cases_info="cases_info"
+                    :status_info="status_info">
+                </hedgedoc_template>
+            </template>
 
         </template>
 
@@ -309,15 +330,19 @@
             <misp_object :case_id="{{case.id}}" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
         </template>
 
-        <template v-else-if="main_tab == 'note_template'">
-            <note_from_template :cases_info="cases_info"></note_from_template>
-        </template>
-
-        <template v-else-if="main_tab == 'hedgedoc'">
-            <hedgedoc_template 
-                :cases_info="cases_info"
-                :status_info="status_info">
-            </hedgedoc_template>
+        <template v-else-if="main_tab == 'connectors'">
+            <div v-if="cases_info">
+                <caseconnectors 
+                    :case_task_connectors_list="case_connectors_list"
+                    :all_connectors_list="all_connectors_list"
+                    :modules="modules"
+                    :is_case="true"
+                    :object_id="cases_info.case.id"
+                    :cases_info="cases_info"
+                    @case_connectors="(msg) => fetch_case_connectors()"
+                    @task_connectors="">
+                </caseconnectors>
+            </div>
         </template>
 
         <template v-else-if="main_tab == 'info'">
@@ -356,7 +381,7 @@
 
 <div class="case-core-style" id="task-collapse" style="min-height: 60vh;">
     <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
-            data-bs-target="#collapseTasks" aria-expanded="true" aria-controls="collapseTags"
+            data-bs-target="#collapseTasks" aria-expanded="true" aria-controls="collapseTasks"
             style="float: right;">
         <i class="fa-solid fa-chevron-down"></i>
     </button>
@@ -615,6 +640,7 @@
                 let or_and_galaxies = true
 
                 const main_tab = ref('main')
+                const subtab_note = ref('case')
                 const tasks_tab = ref('main')
 
                 const taxonomies = ref([])
@@ -866,11 +892,10 @@
                         if ( !document.getElementById("tab-main").classList.contains("active") ){
                             document.getElementById("tab-main").classList.add("active")
                             document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-case").classList.remove("active")
+                            document.getElementById("tab-notes").classList.remove("active")
                             document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-hedgedoc").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-note-template").classList.remove("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
                             await nextTick()
 
                             initialize_select2()
@@ -880,23 +905,71 @@
                         if ( !document.getElementById("tab-history").classList.contains("active") ){
                             document.getElementById("tab-history").classList.add("active")
                             document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-case").classList.remove("active")
+                            document.getElementById("tab-notes").classList.remove("active")
                             document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-hedgedoc").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-note-template").classList.remove("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
                         }
-                    }else if(tab_name == 'case'){
+                    }else if(tab_name == 'notes'){
                         let loc_tab = main_tab.value 
-                        main_tab.value = 'case'
-                        if ( !document.getElementById("tab-case").classList.contains("active") ){
-                            document.getElementById("tab-case").classList.add("active")
+                        main_tab.value = 'notes'
+                        if ( !document.getElementById("tab-notes").classList.contains("active") ){
+                            document.getElementById("tab-notes").classList.add("active")
                             document.getElementById("tab-main").classList.remove("active")
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-hedgedoc").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-note-template").classList.remove("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
+                        }
+                        await nextTick()
+                        if(!cases_info.value.case.notes && loc_tab != 'notes'){
+                            prepare_editor("\n\n")
+                        }else{
+                            prepare_editor(cases_info.value.case.notes)
+                        }
+                    }else if(tab_name == 'misp-objects'){
+                        main_tab.value = 'misp-objects'
+                        if ( !document.getElementById("tab-misp-objects").classList.contains("active") ){
+                            document.getElementById("tab-misp-objects").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-notes").classList.remove("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                            document.getElementById("tab-info").classList.remove("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
+                        }
+                        await nextTick()
+                    }else if(tab_name == 'connectors'){
+                        main_tab.value = 'connectors'
+                        if ( !document.getElementById("tab-connectors").classList.contains("active") ){
+                            document.getElementById("tab-connectors").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-notes").classList.remove("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                            document.getElementById("tab-info").classList.remove("active")
+                            document.getElementById("tab-misp-objects").classList.remove("active")
+                        }
+                        await nextTick()
+                    }else if(tab_name == 'info'){
+                        main_tab.value = 'info'
+                        if ( !document.getElementById("tab-info").classList.contains("active") ){
+                            document.getElementById("tab-info").classList.add("active")
+                            document.getElementById("tab-misp-objects").classList.remove("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-notes").classList.remove("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
+                        }
+                    }
+                }
+
+                async function active_subtab_note(tab_name) {
+                    if(tab_name == 'case'){
+                        let loc_tab = subtab_note.value 
+                        subtab_note.value = tab_name
+                        if ( !document.getElementById("subtab-case-note").classList.contains("active") ){
+                            document.getElementById("subtab-case-note").classList.add("active")
+                            document.getElementById("subtab-template-note").classList.remove("active")
+                            document.getElementById("subtab-hedgedoc").classList.remove("active")
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'case'){
@@ -904,58 +977,22 @@
                         }else{
                             prepare_editor(cases_info.value.case.notes)
                         }
-                    }else if(tab_name == 'note_template'){
-                        main_tab.value = 'note_template'
-                        if ( !document.getElementById("tab-note-template").classList.contains("active") ){
-                            document.getElementById("tab-note-template").classList.add("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-case").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-hedgedoc").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
+                    }else if(tab_name == 'template'){
+                        subtab_note.value = tab_name
+                        if ( !document.getElementById("subtab-template-note").classList.contains("active") ){
+                            document.getElementById("subtab-template-note").classList.add("active")
+                            document.getElementById("subtab-case-note").classList.remove("active")
+                            document.getElementById("subtab-hedgedoc").classList.remove("active")
                         }
-                        await fetch_all_notes()
                         await nextTick()
                         md.mermaid.init()
-                    }else if(tab_name == 'misp-objects'){
-                        main_tab.value = 'misp-objects'
-                        if ( !document.getElementById("tab-misp-objects").classList.contains("active") ){
-                            document.getElementById("tab-misp-objects").classList.add("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-case").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-hedgedoc").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-note-template").classList.remove("active")
-                        }
-                        await nextTick()
                     }else if(tab_name == 'hedgedoc'){
-                        main_tab.value = 'hedgedoc'
-                        if ( !document.getElementById("tab-hedgedoc").classList.contains("active") ){
-                            document.getElementById("tab-hedgedoc").classList.add("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-case").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-note-template").classList.remove("active")
+                        subtab_note.value = tab_name
+                        if ( !document.getElementById("subtab-hedgedoc").classList.contains("active") ){
+                            document.getElementById("subtab-hedgedoc").classList.add("active")
+                            document.getElementById("subtab-case-note").classList.remove("active")
+                            document.getElementById("subtab-template-note").classList.remove("active")
                         }
-                        await fetch_all_notes()
-                        await nextTick()
-                        md.mermaid.init()
-                    }else if(tab_name == 'info'){
-                        main_tab.value = 'info'
-                        if ( !document.getElementById("tab-info").classList.contains("active") ){
-                            document.getElementById("tab-info").classList.add("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-case").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-hedgedoc").classList.remove("active")
-                            document.getElementById("tab-note-template").classList.remove("active")
-                        }
-                        await fetch_all_notes()
                         await nextTick()
                         md.mermaid.init()
                     }
@@ -1178,20 +1215,6 @@
                     autosave_case_note()
                     fetch_case_connectors()
 
-                    const list = [].slice.call(
-                        document.querySelectorAll('[data-bs-toggle="popover"]'))
-                        list.map((el) => {
-                            let opts = {
-                                animation: false,
-                            }
-                            if (el.hasAttribute('data-bs-content-id')) {
-                                opts.content = document.getElementById(el.getAttribute('data-bs-content-id')).innerHTML;
-                                opts.html = true;
-                            }
-                            new bootstrap.Popover(el, opts);
-                        }
-                    )
-
                     $('.new-link-ajax').select2({
                         ajax: {
                             url: '/case/search',
@@ -1308,12 +1331,14 @@
                     message_list,
                     dayjs,
                     main_tab,
+                    subtab_note,
                     tasks_tab,
                     is_exporting,
                     nb_misp_objects,
                     onInput,
                     sort_by_filter,
                     active_tab,
+                    active_subtab_note,
                     active_task_tab,
                     submit_add_new_link,
                     remove_case_link,

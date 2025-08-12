@@ -222,57 +222,55 @@ export default {
         }
     `,
 	template: `
-        <div class="card card-body">
-            <div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                <button class="btn btn-outline-primary" data-bs-toggle="modal" :data-bs-target="'#modal-add-connectors-'+modal_indentifier">
-                    <i class="fa-solid fa-plus"></i>
-                </button>
-            </div>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Instance name</th>
-                        <th>Instance url</th>
-                        <th>Type</th>
-                        <th>Identifier on the instance</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="instance in case_task_connectors_list">
-                        <td>
-                            <div :title="instance.details.description">
-                                <img :src="'/static/icons/'+instance.details.icon" style="max-width: 30px;">
-                                [[instance.details.name]]
-                            </div>
-                        </td>
-                        <td>
-                            <a style="margin-left: 5px" :href="instance.details.url">[[instance.details.url]]</a>
-                        </td>
-
-                        <td v-if="instance.details.type">
-                            <span style="margin-left: 3px;" title="type of the module">[[instance.details.type]]</span>
-                        </td>
-                        <td v-else><i>None</i></td>
-
-                        <td v-if="instance.identifier">
-                            <span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>
-                        </td>
-                        <td v-else><i>None</i></td>
-
-                        <td v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                            <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)"> <i class="fa-solid fa-pen-to-square"></i> </button> 
-                            <button v-if="!is_sending" class="btn btn-outline-secondary" @click="send_to_modal(instance)"> Send to </button>
-                            <button v-else class="btn btn-outline-secondary" type="button" disabled>
-                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                <span role="status">Loading...</span>
-                            </button>
-                            <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)"> <i class="fa-solid fa-trash"></i> </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+            <button class="btn btn-outline-primary" data-bs-toggle="modal" :data-bs-target="'#modal-add-connectors-'+modal_indentifier">
+                <i class="fa-solid fa-plus"></i>
+            </button>
         </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Instance name</th>
+                    <th>Instance url</th>
+                    <th>Type</th>
+                    <th>Identifier on the instance</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="instance in case_task_connectors_list">
+                    <td>
+                        <div :title="instance.details.description">
+                            <img :src="'/static/icons/'+instance.details.icon" style="max-width: 30px;">
+                            [[instance.details.name]]
+                        </div>
+                    </td>
+                    <td>
+                        <a style="margin-left: 5px" :href="instance.details.url">[[instance.details.url]]</a>
+                    </td>
+
+                    <td v-if="instance.details.type">
+                        <span style="margin-left: 3px;" title="type of the module">[[instance.details.type]]</span>
+                    </td>
+                    <td v-else><i>None</i></td>
+
+                    <td v-if="instance.identifier">
+                        <span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>
+                    </td>
+                    <td v-else><i>None</i></td>
+
+                    <td v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                        <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)"> <i class="fa-solid fa-pen-to-square"></i> </button> 
+                        <button v-if="!is_sending" class="btn btn-outline-secondary" @click="send_to_modal(instance)"> Send to </button>
+                        <button v-else class="btn btn-outline-secondary" type="button" disabled>
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            <span role="status">Loading...</span>
+                        </button>
+                        <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)"> <i class="fa-solid fa-trash"></i> </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
         <!-- Add Connectors -->
         <div class="modal fade" :id="'modal-add-connectors-'+modal_indentifier" tabindex="-1" aria-labelledby="AddConnectorsLabel" aria-hidden="true">

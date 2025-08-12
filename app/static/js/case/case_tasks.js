@@ -448,16 +448,18 @@ export default {
 			</template>
 
 			<template v-else-if="selected_tab == 'connectors'">
-				<caseconnectors 
-					:case_task_connectors_list="task_connectors_list"
-                    :all_connectors_list="all_connectors_list"
-                    :modules="task_modules"
-                    :is_case="false"
-					:object_id="task.id"
-					:cases_info="cases_info"
-					@case_connectors=""
-                	@task_connectors="(msg) => fetch_task_connectors()">
-				</caseconnectors>
+				<div class="card card-body">
+					<caseconnectors 
+						:case_task_connectors_list="task_connectors_list"
+						:all_connectors_list="all_connectors_list"
+						:modules="task_modules"
+						:is_case="false"
+						:object_id="task.id"
+						:cases_info="cases_info"
+						@case_connectors=""
+						@task_connectors="(msg) => fetch_task_connectors()">
+					</caseconnectors>
+				</div>
 			</template>
 
 			<template v-else-if="selected_tab == 'files'">
