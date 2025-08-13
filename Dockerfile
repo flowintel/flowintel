@@ -101,8 +101,9 @@ RUN script -q -c "./launch.sh --init_db" /dev/null
 RUN screen -wipe || true
 
 # Final permissions check (in case)
-RUN chmod +x ./launch.sh
+RUN chmod +x ./launch.sh ./install.sh
 
+RUN ./install.sh
 
 # Default command: interactive bash + launch
 CMD ["bash", "-i", "./launch.sh", "-l"]
