@@ -232,7 +232,7 @@ export default {
     <template v-if="main_tab == 'history-case'">
         <template v-if="history">
             <a class="btn btn-primary btn-sm mb-1" :href="'/case/'+case_id+'/download_history'">Download</a>
-            <div class="timeline">
+            <div class="timeline timeline-custom-style">
                 <template v-for="h, key in history">
                     <template v-for="month, key_month in h">
                         <div class="timeline-month">
@@ -251,7 +251,7 @@ export default {
                                         <div class="col-sm-4">
                                             <div class="timeline-box">
                                                 <div class="box-title">
-                                                    <i class="fa fa-asterisk text-success" aria-hidden="true"></i> [[history_data.user]]
+                                                    <i class="fa fa-asterisk text-info" aria-hidden="true"></i> [[history_data.user]]
                                                 </div>
                                                 <div class="box-content">
                                                     <div class="box-item"><strong>Modif</strong>: [[history_data.text]]</div>
