@@ -234,11 +234,11 @@ export default {
 		Vue.onMounted( () => {
 			fetch_task_connectors()
 			select2_change(props.task.id)
-			$('.select2-select').select2({
-				theme: 'bootstrap-5',
-				width: '50%',
-				closeOnSelect: false
-			})
+			// $('.select2-select').select2({
+			// 	theme: 'bootstrap-5',
+			// 	width: '50%',
+			// 	closeOnSelect: false
+			// })
 
 			// When openning a task, initialize mermaid library
 			// const allCollapses = document.getElementById('collapse' + props.task.id)

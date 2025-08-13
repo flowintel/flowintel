@@ -153,43 +153,7 @@
         <template v-if="main_tab == 'main'">
             <div class="row">
                 <div class="col">
-                    <div class="case-tags-style">
-                        <h4 style="text-decoration: underline; margin-bottom: 15px;">Tags: </h4>
-                        {% if case.custom_tags %}
-                            <div style="display: flex; margin-bottom: 5px;">
-                                {% for tag in case.custom_tags %}
-                                    <div class="tag" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
-                                        {% if tag.icon %}
-                                            <i class="{{tag.icon}}"></i>
-                                        {%endif%}
-                                        {{tag.name}}
-                                    </div>
-                                {%endfor%}
-                            </div>
-                        {%endif%}
-
-                        {% if case.tags %}
-                            <div style="display: flex; margin-bottom: 5px;">
-                                {% for tag in case.tags%}
-                                    <div class="tag" title="{{tag.description}}" :style="{'background-color': '{{tag.color}}', 'color': getTextColor('{{tag.color}}')}">
-                                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                                        {{tag.name}}
-                                    </div>
-                                {%endfor%}
-                            </div>
-                        {%endif%}
-
-                        {% if case.clusters %}
-                            {% for cluster in case.clusters %}
-                                <div class="mb-1" title="Description: &#013;{{cluster.description}}&#013;&#013; Metadata: &#013;{{cluster.meta}}">
-                                    <span class="cluster">
-                                        <span v-html="mapIcon('{{cluster.icon}}')"></span>
-                                        {{cluster.tag}}
-                                    </span>
-                                </div>
-                            {%endfor%}
-                        {%endif%}
-                    </div>
+                    <tags_edition :cases_info="cases_info"></tags_edition>
 
                     <div class="case-tags-style mt-2" v-if="cases_info">
                         <div class="justify-content-center" style="float: right">
@@ -380,7 +344,7 @@
 </div> <!-- Case-core-style  -->
 
     
-<hr class="fading-line-2 mt-5 mb-5">
+<hr class="fading-line-2 mt-4 mb-5">
 
 
 <!-- ----- -->
@@ -479,7 +443,7 @@
                     </div>
                     <div style="display: flex;">
                         <template v-if="taxonomies">
-                            <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                            <select data-placeholder="Taxonomies" class="select2-filter form-control" multiple name="filter_taxonomies_select" id="filter_taxonomies_select" >
                                 <template v-for="taxonomy, key in taxonomies">
                                     <option :value="[[taxonomy]]">[[taxonomy]]</option>
                                 </template>
@@ -487,7 +451,7 @@
                         </template>
                         
                         <template v-if="tags_list">
-                            <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                            <select data-placeholder="Tags" class="select2-filter form-control" multiple name="filter_tags_select" id="filter_tags_select" >
                                 <template v-for="(tags, taxo) in tags_list">
                                     <optgroup :label="[[taxo]]">
                                         <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
@@ -510,7 +474,7 @@
                     </div>
                     <div style="display: flex;">
                         <template v-if="galaxies">
-                            <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                            <select data-placeholder="Galaxies" class="select2-filter form-control" multiple name="filter_galaxies_select" id="filter_galaxies_select" >
                                 <template v-for="galaxy, key in galaxies">
                                     <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
                                 </template>
@@ -518,7 +482,7 @@
                         </template>
                         
                         <template v-if="cluster_list">
-                            <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                            <select data-placeholder="Cluster" class="select2-filter form-control" multiple name="filter_clusters_select" id="filter_clusters_select" >
                                 <template v-for="(clusters, galaxy) in cluster_list">
                                     <optgroup :label="[[galaxy]]">
                                         <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
@@ -533,7 +497,7 @@
                     <div>Custom Tags:</div>
                     <div>
                         <template v-if="custom_tags">
-                            <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="task_custom_tags_select" >
+                            <select data-placeholder="Custom Tags" class="select2-filter form-control" multiple name="task_custom_tags_select" id="task_custom_tags_select" >
                                 <template v-for="custom_tag, key in custom_tags">
                                     <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
                                 </template>
@@ -615,6 +579,7 @@
         import case_tasks from '/static/js/case/case_tasks.js'
         import hedgedoc_template from '/static/js/case/hedgedoc_template.js'
         import action_buttons from '/static/js/case/action_buttons.js'
+        import tags_edition from '/static/js/case/tags_edition.js'
         import manage_orgs from '/static/js/case/manage_orgs.js'
         import misp_object from '/static/js/case/misp_object.js'
         import caseconnectors from '/static/js/case/CaseConnectors.js'
@@ -628,6 +593,7 @@
                 case_tasks,
                 hedgedoc_template,
                 action_buttons,
+                tags_edition,
                 manage_orgs,
                 misp_object,
                 caseconnectors,
@@ -1117,27 +1083,27 @@
                 }
 
                 function initialize_select2(){
-                    $('.select2-select').select2({
+                    $('.select2-filter').select2({
                         theme: 'bootstrap-5',
                         width: '50%',
                         closeOnSelect: false
                     })
 
 
-                    $('#taxonomies_select').on('change', function (e) {
+                    $('#filter_taxonomies_select').on('change', function (e) {
                         selected_taxo.value = $(this).select2('data').map(item => item.id);
                         fetch_tags()
                     })
 
-                    $('#tags_select').on('change', function (e) {
+                    $('#filter_tags_select').on('change', function (e) {
                         selected_tags.value = $(this).select2('data').map(item => item.id);
                         fetch_sorted_tasks()
                     })
-                    $('#galaxies_select').on('change', function (e) {
+                    $('#filter_galaxies_select').on('change', function (e) {
                         selected_galaxies.value = $(this).select2('data').map(item => item.id);
                         fetch_cluster()
                     })
-                    $('#clusters_select').on('change', function (e) {
+                    $('#filter_clusters_select').on('change', function (e) {
                         selected_clusters.value = $(this).select2('data').map(item => item.id);
                         fetch_sorted_tasks()
                     })
