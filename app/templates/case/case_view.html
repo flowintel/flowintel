@@ -22,30 +22,38 @@
 {% block content %}
 <div class="case-core-style" style="border-radius: 0;">
     <div>
-        <span>
-            <h1 style="display: inline-block; font-size: xxx-large;">
+        <!-- Components that contains all button that provide an action on the case -->
+        <div style="float: right; display: flex;">
+            <action_buttons 
+                :cases_info="cases_info"
+                :status_info="status_info">
+            </action_buttons>
+        </div>
+        <div class="d-flex">
+            <h1 style="margin-top: -9px;">
                 <a type="button" class="btn btn-outline-dark me-2" href="/case"><i class="fa-solid fa-arrow-left"></i></a>
             </h1>
 
-            <h1 style="display: inline-block; font-size: xx-large;">{{case.id}}- {{case.title}}</h1>
-            <!-- lock icon -->
-            <span v-if="cases_info" style="font-size: 12px; margin-left: 5px; position: absolute; margin-top: 11px;">
-                <i v-if="cases_info.case.is_private" class="fa-solid fa-lock" title="The case is private, only org present in can see this case"></i>
-                <i v-else class="fa-solid fa-globe" title="The case is public anyone can see this case but only org present in case can modify it"></i>
-            </span>
-            <!-- status -->
-            <small v-if="status_info" style="margin-left: 50px;">
-                <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
-                    [[ status_info.status[ {{case.status_id}} -1].name ]]
+            <div class="d-flex">
+                <h1 style="font-size: xx-large;">{{case.id}}- {{case.title}}</h1>
+                <!-- lock icon -->
+                <span v-if="cases_info" style="font-size: 12px; margin-left: 5px;">
+                    <i v-if="cases_info.case.is_private" class="fa-solid fa-lock" 
+                    title="The case is private, only org present in can see this case"></i>
+                    <i v-else class="fa-solid fa-globe" 
+                    title="The case is public anyone can see this case but only org present in case can modify it"></i>
                 </span>
-            </small>
-        </span>
+                <!-- status -->
+                <small v-if="status_info" style="margin-left: 12px; margin-top:10px">
+                    <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
+                        [[ status_info.status[ {{case.status_id}} -1].name ]]
+                    </span>
+                </small>
+            </div>
+            
+        </div>
     
-        <!-- Components that contains all button that provide an action on the case -->
-        <action_buttons 
-            :cases_info="cases_info"
-            :status_info="status_info">
-        </action_buttons>
+        
     </div>
 
     {% if case.description or case.ticket_id %}
