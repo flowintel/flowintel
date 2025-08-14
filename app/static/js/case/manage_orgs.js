@@ -109,13 +109,15 @@ export default {
                     </div>
                 </template>
                 <div class="d-flex">
-                    <h4 style="text-decoration: underline;">Orgs:</h4>
+                    <h4>Orgs:</h4>
                     <div>
                         <span class="badge text-bg-secondary" style="margin-top:6px; margin-left: 5px">
                             [[cases_info.orgs_in_case.length]]
                         </span>
                     </div>
                 </div>
+
+                <hr class="fading-line-2">
 
                 <div class="collapse show" id="collapseOrgs">
                     <div class="row mt-2">

@@ -68,7 +68,8 @@ export default {
             <button type="button" class="btn btn-outline-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#ModalEditTags">
                 <i class="fa-solid fa-pen"></i>
             </button>
-            <h4 class="d-flex" style="text-decoration: underline; margin-bottom: 15px;">Tags: </h4>
+            <h4>Tags: </h4>
+            <hr class="fading-line-2">
             <div v-if="cases_info.case.custom_tags" style="display: flex; margin-bottom: 5px;">
                 <template v-for="tag in cases_info.case.custom_tags">
                     <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
