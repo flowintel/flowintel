@@ -118,29 +118,23 @@ export default {
                 </div>
 
                 <div class="collapse show" id="collapseOrgs">
-                    <div class="table-responsive mt-2">
-                        <table class="table">
-                            <tbody>
-                                <template v-for="org in cases_info.orgs_in_case" :key="org.id">
-                                    <tr>
-                                        <td>
-                                            [[org.name]]
-                                            <small v-if="org.id == cases_info.case.owner_org_id" style="color: green;">
-                                                <i>owner</i>
-                                            </small>
-                                        </td>
-                                        <td v-if="org.id != cases_info.case.owner_org_id">
-                                            <button class="btn btn-danger btn-sm" style="background-color: #dc3545" @click="remove_org_case(cases_info, org)" 
-                                            v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin"
-                                            title="Remove org from case">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </td>
-                                        <td v-else></td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
+                    <div class="row mt-2">
+                        <div class="col-6 link-style-first" v-for="org in cases_info.orgs_in_case" :key="org.id">
+                            <span style="margin-left: 8%;  padding: 5px;">
+                                [[org.name]]
+                                <small v-if="org.id == cases_info.case.owner_org_id" style="color: green;">
+                                    <i>owner</i>
+                                </small>
+                            </span>
+                            <template v-if="org.id != cases_info.case.owner_org_id">
+                                <button class="btn btn-outline-danger btn-sm ms-4"
+                                @click="remove_org_case(cases_info, org)"
+                                v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin"
+                                title="Remove org from case">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </template>
+                        </div>
                     </div>
                 </div>
 
