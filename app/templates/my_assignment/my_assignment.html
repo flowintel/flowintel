@@ -8,80 +8,104 @@
 
 <div style="margin-bottom: 10px;">
     <h1>My Assignment to Tasks</h1>
-    <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => emit_result(tasks)" @current_filter="filter => current_filter = filter" ></my_assignment_filter>
+    <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => emit_result(tasks)" @current_filter="filter => current_filter = filter">
+
+    </my_assignment_filter>
 </div>
-<hr>
+<hr class="fading-line-2 mb-4">
 
 <!-- pagination -->
 <nav aria-label="Page navigation example" v-if="tasks_list && tasks_list.nb_pages > 1">
     <ul class="pagination">
-        <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchAssignedTask(Math.max(1, current_page-1))">Previous</button></li>
+        <li :class="{'page-item': true, 'disabled': current_page == 1}">
+            <button class="page-link" @click="fetchAssignedTask(Math.max(1, current_page-1))">Previous</button>
+        </li>
         <template v-for="cp in tasks_list.nb_pages">
-            <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchAssignedTask(cp)">[[cp]]</button></li>
+            <li :class="{'page-item': true, 'active': current_page==cp}">
+                <button class="page-link" @click="fetchAssignedTask(cp)">[[cp]]</button>
+            </li>
         </template>
-        <li :class="{'page-item': true, 'disabled': current_page == tasks_list.nb_pages}"><button class="page-link" @click="fetchAssignedTask(Math.min(current_page+1, tasks_list.nb_pages))">Next</button></li>
+        <li :class="{'page-item': true, 'disabled': current_page == tasks_list.nb_pages}">
+            <button class="page-link" @click="fetchAssignedTask(Math.min(current_page+1, tasks_list.nb_pages))">Next</button>
+        </li>
     </ul>
 </nav>
 <!-- pagination -->
 
 <template v-if="tasks_list">
-    <template v-for="(task, index) in tasks_list.tasks">
-        <div style="text-align: center;" v-if="index==0"><h4><i>[[task.case_title]]</i></h4></div>
-        <div style="text-align: center;" v-if="index != 0 && tasks_list.tasks[index].case_title != tasks_list.tasks[index-1].case_title">
-            <h4><i>[[task.case_title]]</i></h4>
-        </div>
-        <div class="list-group" style="margin-bottom: 20px;">                      
-            <a :href="`/case/${task.case_id}#task-${task.id}`" class="list-group-item list-group-item-action">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">[[task.title]]</h5>
-                    <small><i>Changed [[ dayjs.utc(task.last_modif).fromNow() ]] </i></small>
-                </div>
+    <template v-for="(case_title, index) in tasks_list.tasks">
+        <div class="case-core-style mb-4">
+            <h4 style="text-align: center;"><b><i>[[index]]</i></b></h4>
+            <template v-for="task in case_title">
+                <div class="list-group" style="margin-bottom: 20px; border-radius: 15px;">                      
+                    <a :href="`/case/${task.case_id}#task-${task.id}`" class="list-group-item list-group-item-action p-3">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">[[task.title]]</h5>
+                            <small><i>Changed [[ dayjs.utc(task.last_modif).fromNow() ]] </i></small>
+                        </div>
 
-                <div class="d-flex w-100 justify-content-between">
-                    <p v-if="task.description" class="card-text">[[ task.description ]]</p>
-                    <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p v-if="task.description" class="card-text">[[ task.description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
 
-                    <small v-if="status_info">
-                        <span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">
-                            [[ status_info.status[task.status_id -1].name ]]
-                        </span>
-                    </small>
-                </div>
-                <div class="d-flex w-100 justify-content-between" style="margin-bottom: 7px;">
-                    <div style="display: flex;" v-if="task.tags">
-                        <template v-for="tag in task.tags">
-                            <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                                <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                                [[tag.name]]
+                            <small v-if="status_info">
+                                <span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">
+                                    [[ status_info.status[task.status_id -1].name ]]
+                                </span>
+                            </small>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between" style="margin-bottom: 7px;">
+                            <div style="display: flex;" v-if="task.tags">
+                                <template v-for="tag in task.tags">
+                                    <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                                        [[tag.name]]
+                                    </div>
+                                </template>
                             </div>
-                        </template>
-                    </div>
-                </div>
-                <div class="d-flex w-100 justify-content-between">
-                    <div v-if="task.users.length">
-                        <template v-for="user in task.users">
-                            <span v-if="user.nickname" class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name"><i class="fa-solid fa-user"></i> [[user.nickname]]</span>
-                            <span v-else class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name"><i class="fa-solid fa-user"></i> [[user.last_name]]</span>
-                        </template>
-                    </div>
-
-                    <div v-else>
-                        <i>No user assigned</i>
-                    </div>
-                    <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[dayjs.utc(task.deadline).endOf().fromNow()]]</i></small>
-                    <small v-else><i>No deadline</i></small>
-                </div>
-                <div class="d-flex w-100 justify-content-between" style="margin-top: 5px;">
-                    <div style="display: flex;" v-if="task.clusters">
-                        <template v-for="cluster in task.clusters">
-                            <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
-                                <span v-html="mapIcon(cluster.icon)"></span>
-                                [[cluster.tag]]
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <div v-if="task.users.length">
+                                <template v-for="user in task.users">
+                                    <span v-if="user.nickname" class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name">
+                                        <i class="fa-solid fa-user"></i> [[user.nickname]]
+                                    </span>
+                                    <span v-else class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name">
+                                        <i class="fa-solid fa-user"></i> [[user.last_name]]
+                                    </span>
+                                </template>
                             </div>
-                        </template>
-                    </div>
+
+                            <div v-else>
+                                <i>No user assigned</i>
+                            </div>
+                            <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[dayjs.utc(task.deadline).endOf().fromNow()]]</i></small>
+                            <small v-else><i>No deadline</i></small>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between" style="margin-top: 5px;">
+                            <div style="display: flex;" v-if="task.clusters">
+                                <template v-for="cluster in task.clusters">
+                                    <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
+                                        <span v-html="mapIcon(cluster.icon)"></span>
+                                        [[cluster.tag]]
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="mt-2 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" 
+                        style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
+                            <div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
+                            <template v-for="subtask in task.subtasks">
+                                <div v-if="!subtask.completed" style="display: flex;">
+                                    <div class="subtask-tree"></div>
+                                    [[subtask.description]]
+                                </div>
+                            </template>
+                        </div>
+                    </a>
                 </div>
-            </a>
+            </template>
         </div>
     </template>
 </template>
@@ -93,11 +117,17 @@
 
 <nav aria-label="Page navigation example" v-if="tasks_list && tasks_list.nb_pages > 1">
     <ul class="pagination">
-        <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchAssignedTask(Math.max(1, current_page-1))">Previous</button></li>
+        <li :class="{'page-item': true, 'disabled': current_page == 1}">
+            <button class="page-link" @click="fetchAssignedTask(Math.max(1, current_page-1))">Previous</button>
+        </li>
         <template v-for="cp in tasks_list.nb_pages">
-            <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchAssignedTask(cp)">[[cp]]</button></li>
+            <li :class="{'page-item': true, 'active': current_page==cp}">
+                <button class="page-link" @click="fetchAssignedTask(cp)">[[cp]]</button>
+            </li>
         </template>
-        <li :class="{'page-item': true, 'disabled': current_page == tasks_list.nb_pages}"><button class="page-link" @click="fetchAssignedTask(Math.min(current_page+1, tasks_list.nb_pages))">Next</button></li>
+        <li :class="{'page-item': true, 'disabled': current_page == tasks_list.nb_pages}">
+            <button class="page-link" @click="fetchAssignedTask(Math.min(current_page+1, tasks_list.nb_pages))">Next</button>
+        </li>
     </ul>
 </nav>
 {% endblock %}
@@ -122,20 +152,15 @@
                 async function fetchAssignedTask(page) {
                     let url
                     if(current_filter.value)
-                        url = `/my_assignment/tasks/ongoing?page=${page}&filter=${current_filter.value}`
+                        url = `/my_assignment/sort_tasks?status=true&page=${page}&filter=${current_filter.value}`
                     else
-                        url = '/my_assignment/sort_by_ongoing?page='+page
+                        url = '/my_assignment/sort_tasks?status=true&page='+page
 
                     current_page.value = page
                     tasks_list.value = null
                     const res = await fetch(url)
                     let loc = await res.json()
                     tasks_list.value = loc
-                    tasks_list.value.tasks.sort(function(a,b){
-                        if(a.case_title<b.case_title) return -1
-                        if(a.case_title>b.case_title) return 1
-                        return 0
-                    })
                 }
 
                 async function fetchStatus() {
@@ -150,14 +175,6 @@
                     tasks_list.value.nb_pages = tasks.nb_pages
                     tasks_list.value.tasks = tasks.tasks
                     current_page.value = 1
-                }
-
-                function list_users(task){
-                    let loc = []
-                    for(let index in task.users){
-                        loc.push(task.users[index].first_name + " " + task.users[index].last_name)
-                    }
-                    return loc.join(", ")
                 }
                 
 
@@ -174,8 +191,7 @@
                     current_filter,
                     message_list, // Avoid warning
                     getTextColor,
-                    mapIcon,
-                    list_users
+                    mapIcon
                 }
             }
         }).mount('#main-container')

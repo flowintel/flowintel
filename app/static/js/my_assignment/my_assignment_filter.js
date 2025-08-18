@@ -12,15 +12,9 @@ export default {
 		async function filter_ongoing(ongoing){
 			show_ongoing = ongoing
 
-			if(show_ongoing){
-				const res = await fetch('/my_assignment/sort_by_ongoing?page=1')
-				let loc = await res.json()
-				emit('tasks_list', loc)
-			}else{
-				const res = await fetch('/my_assignment/sort_by_finished?page=1')
-				let loc = await res.json()
-				emit('tasks_list', loc)
-			}
+			const res = await fetch(`/my_assignment/sort_tasks?status=${show_ongoing}&page=1`)
+			let loc = await res.json()
+			emit('tasks_list', loc)
 		}
 
 		function sort_by_title(){
@@ -48,18 +42,15 @@ export default {
 			if(change)
 				asc_desc = !asc_desc
 
-			let res
 			if (current_filter){
-				if(show_ongoing)
-					res = await fetch('/my_assignment/tasks/ongoing?page=1&filter=' + current_filter)
-				else
-					res = await fetch('/my_assignment/tasks/finished?page=1&filter=' + current_filter)
+				let res = await fetch(`/my_assignment/sort_tasks?status=${show_ongoing}&page=1&filter=${current_filter}`)
 				let loc = await res.json()
-				if(asc_desc)
-					emit('tasks_list', loc)
-				else
-				loc["tasks"] = loc["tasks"].reverse()
-					emit('tasks_list', loc)
+				if(!asc_desc){
+					for(let key in loc["tasks"]){
+						loc["tasks"][key] = loc["tasks"][key].reverse()
+					}
+				}
+				emit('tasks_list', loc)
 			}
 			
 		}
