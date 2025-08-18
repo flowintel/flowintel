@@ -8,6 +8,7 @@ from ..decorators import editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
 from ..utils.utils import form_to_dict
 from ..utils.formHelper import prepare_tags
+from ..case import common_core as CommonCaseModel
 
 templating_blueprint = Blueprint(
     'templating',
@@ -124,14 +125,10 @@ def edit_case(cid):
         form = CaseTemplateEditForm()
         form.template_id.data = cid
         if form.validate_on_submit():
-            res = prepare_tags(request)
-            if isinstance(res, dict):
-                form_dict = form_to_dict(form)
-                form_dict.update(res)
-                template = TemplateModel.edit(form_dict, cid)
-                flash("Template edited", "success")
-                return redirect(f"/templating/case/{cid}")
-            return render_template("templating/edit_case_template.html", form=form)
+            form_dict = form_to_dict(form)
+            template = TemplateModel.edit(form_dict, cid)
+            flash("Template edited", "success")
+            return redirect(f"/templating/case/{cid}")
         else:
             form.title.data = template.title
             form.description.data = template.description
@@ -139,6 +136,28 @@ def edit_case(cid):
 
         return render_template("templating/edit_case_template.html", form=form)
     return render_template("404.html")
+
+@templating_blueprint.route("/case/edit_tags/<cid>", methods=['GET','POST'])
+@login_required
+@editor_required
+def edit_case_tags(cid):
+    """Edit the case"""
+    if CommonModel.get_case_template(cid):
+        tag_list = request.json["tags_select"]
+        cluster_list = request.json["clusters_select"]
+        custom_tags_list = request.json["custom_select"]
+        if isinstance(CommonCaseModel.check_tag(tag_list), bool):
+            if isinstance(CommonCaseModel.check_cluster(cluster_list), bool):
+                loc_dict = {
+                    "tags": tag_list,
+                    "clusters": cluster_list,
+                    "custom_tags": custom_tags_list
+                }
+                TemplateModel.edit_tags(loc_dict, cid)
+                return {"message": "Tags edited", "toast_class": "success-subtle"}, 200
+            return {"message": "Error with Clusters", "toast_class": "warning-subtle"}, 400
+        return {"message": "Error with Tags", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
 @templating_blueprint.route("/edit_task/<tid>", methods=['GET','POST'])

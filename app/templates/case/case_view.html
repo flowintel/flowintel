@@ -153,7 +153,7 @@
         <template v-if="main_tab == 'main'">
             <div class="row">
                 <div class="col">
-                    <tags_edition :cases_info="cases_info"></tags_edition>
+                    <tags_edition v-if="cases_info" :current_case="cases_info.case" :type_object="'case'"></tags_edition>
 
                     <div class="case-tags-style mt-2" v-if="cases_info">
                         <div class="justify-content-center" style="float: right">

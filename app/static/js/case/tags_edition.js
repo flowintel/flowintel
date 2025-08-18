@@ -1,10 +1,11 @@
 import {display_toast} from '../toaster.js'
 import edition_select from './edition_select.js'
-const { ref, nextTick, onMounted } = Vue
+const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
-		cases_info: Object
+		current_case: Object,
+        type_object: String
 	},
     components: {
         edition_select
@@ -28,8 +29,16 @@ export default {
                 custom_select.push(v.name)  
             });
 
+            let url
+
+            if(props.type_object == 'case')
+                url = '/case/edit_tags/'
+            else if(props.type_object == 'case_template')
+                url = '/templating/case/edit_tags/'
+            url += props.current_case.id
+
             const res_msg = await fetch(
-                '/case/edit_tags/' + props.cases_info.case.id,{
+                url,{
                     headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                     method: "POST",
                     body: JSON.stringify({
@@ -41,9 +50,9 @@ export default {
             )
 
             if(await res_msg.status == 200){
-                props.cases_info.case.tags = selected_tags.value
-                props.cases_info.case.clusters = selected_clusters.value
-                props.cases_info.case.custom_tags = selected_custom_tags.value
+                props.current_case.tags = selected_tags.value
+                props.current_case.clusters = selected_clusters.value
+                props.current_case.custom_tags = selected_custom_tags.value
 
                 var myModalEl = document.getElementById('ModalEditTags');
                 var modal = bootstrap.Modal.getInstance(myModalEl)
@@ -63,43 +72,41 @@ export default {
 		}
     },
 	template: `
-    <template v-if="cases_info">
-        <div class="case-tags-style">
-            <button type="button" class="btn btn-outline-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#ModalEditTags">
-                <i class="fa-solid fa-pen"></i>
-            </button>
-            <h4>Tags: </h4>
-            <hr class="fading-line-2">
-            <div v-if="cases_info.case.custom_tags" style="display: flex; margin-bottom: 5px;">
-                <template v-for="tag in cases_info.case.custom_tags">
-                    <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                        <i v-if="tag.icon" :class="tag.icon"></i>
-                        [[tag.name]]
-                    </div>
-                </template>
-            </div>
-
-            <div v-if="cases_info.case.tags" style="display: flex; margin-bottom: 5px;">
-                <template v-for="tag in cases_info.case.tags">
-                    <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                        [[tag.name]]
-                    </div>
-                </template>
-            </div>
-
-            <template v-if="cases_info.case.clusters">
-                <template v-for="cluster in cases_info.case.clusters">
-                    <div class="mb-1" :title="'Description: '+cluster.description+' \\nMetadata: '+cluster.meta">
-                        <span class="cluster">
-                            <span v-html="mapIcon(cluster.icon)"></span>
-                            [[cluster.tag]]
-                        </span>
-                    </div>
-                </template>
+    <div class="case-tags-style">
+        <button type="button" class="btn btn-outline-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#ModalEditTags">
+            <i class="fa-solid fa-pen"></i>
+        </button>
+        <h4>Tags: </h4>
+        <hr class="fading-line-2">
+        <div v-if="current_case.custom_tags" style="display: flex; margin-bottom: 5px;">
+            <template v-for="tag in current_case.custom_tags">
+                <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                    <i v-if="tag.icon" :class="tag.icon"></i>
+                    [[tag.name]]
+                </div>
             </template>
         </div>
-    </template>
+
+        <div v-if="current_case.tags" style="display: flex; margin-bottom: 5px;">
+            <template v-for="tag in current_case.tags">
+                <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                    <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                    [[tag.name]]
+                </div>
+            </template>
+        </div>
+
+        <template v-if="current_case.clusters">
+            <template v-for="cluster in current_case.clusters">
+                <div class="mb-1" :title="'Description: '+cluster.description+' \\nMetadata: '+cluster.meta">
+                    <span class="cluster">
+                        <span v-html="mapIcon(cluster.icon)"></span>
+                        [[cluster.tag]]
+                    </span>
+                </div>
+            </template>
+        </template>
+    </div>
     
 
     <!-- Modal -->
@@ -112,7 +119,7 @@ export default {
                 </div>
                 <div class="modal-body">
                     <edition_select 
-                        :type_object="'case'"
+                        :type_object="type_object"
                         @st="(msg) => selected_tags=selected_tags.concat(msg)"
                         @sc="(msg) => selected_clusters=selected_clusters.concat(msg)"
                         @sct="(msg) => selected_custom_tags=selected_custom_tags.concat(msg)"

@@ -130,7 +130,7 @@ def edit_case_tags(cid):
                 return {"message": "Error with Clusters", "toast_class": "warning-subtle"}, 400
             return {"message": "Error with Tags", "toast_class": "warning-subtle"}, 400
         return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
-    return
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/add_orgs", methods=['GET', 'POST'])
 @login_required
