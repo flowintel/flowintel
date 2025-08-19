@@ -5,103 +5,114 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>
-        Organisations
+    <div class="case-core-style d-flex" style="border-radius: 0">
+        <h1>
+            Organisations
 
-        {% if current_user.is_admin() %}
-            <span>
-                <a class="btn btn-primary" href="/admin/add_org"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        {% endif %}
-    </h1>
+            {% if current_user.is_admin() %}
+                <span>
+                    <a class="btn btn-primary ms-1" href="/admin/add_org"><i class="fa-solid fa-plus"></i></a>
+                </span>
+            {% endif %}
+        </h1>
 
-    <hr>
-
-    <!-- Search bar -->
-    <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
-        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Org by name' style="min-width: 400px;" />
+        <!-- Search bar -->
+        <div class="input-group w-auto start-50 translate-middle-x" id="search_org" >
+            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Org by name' style="min-width: 350px;" />
+        </div>
+        <!-- Search bar -->
     </div>
-    <!-- Search bar -->
 
-    <hr>
+    <hr class="fading-line-2 mt-4 mb-4">
 
-    {% if current_user.is_admin() %}
-        <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New User</a>
-    {% endif %}
+    <div class="case-core-style">
+        {% if current_user.is_admin() %}
+            <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New User</a>
+        {% endif %}
 
-    <template v-if="orgs_list">
-        <template v-for="org in orgs_list.orgs">
-            <div class="list-group" style="margin-bottom: 10px;">
-                <div style="display:flex">
-                    <a @click="extend_collapse(org.id)" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">[[ org.id ]]- [[ org.name ]]</h4>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p v-if="org.description" class="card-text">[[ org.description ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
-                        </div>
-                    </a>
-                    {% if current_user.is_admin() %}
-                        <div style="display: grid;">
-                            <a class="btn btn-primary btn-sm" :href="`/admin/edit_org/${org.id}`" type="button" title="Edit the org"><i class="fa-solid fa-pen-to-square"></i></a>
-                            <button class="btn btn-danger btn-sm"  @click="delete_org(org)" title="Delete the org"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    {% endif %}
+        <template v-if="orgs_list">
+            <template v-for="org in orgs_list.orgs">
+                <div class="list-group" style="margin-bottom: 10px;">
+                    <div style="display:flex; border-top-left-radius: 15px; border-top-right-radius: 15px;">
+                        <a @click="extend_collapse(org.id)" class="list-group-item list-group-item-action case-index-list">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h4 class="mb-1">[[ org.id ]]- [[ org.name ]]</h4>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <p v-if="org.description" class="card-text">[[ org.description ]]</p>
+                                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            </div>
+                        </a>
+                        {% if current_user.is_admin() %}
+                            <div>
+                                <div>
+                                    <a class="btn btn-primary btn-sm" :href="`/admin/edit_org/${org.id}`" type="button" title="Edit the org">
+                                        <i class="fa-solid fa-pen-to-square fa-fw"></i>
+                                    </a>
+                                </div>
+                                <div>
+                                    <button class="btn btn-danger btn-sm" @click="delete_org(org)" title="Delete the org">
+                                        <i class="fa-solid fa-trash fa-fw"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
 
-            <div class="collapse" :id="'collapse'+org.id" style="margin-bottom: 20px;">
-                <div class="card card-body" :id="'card-body_'+org.id" style="background-color: whitesmoke;">
-                    <template v-if="users_table">
-                        <template v-if="users_table[org.id]">
-                            <table>
-                                <tr>
-                                    <th>Id</th>
-                                    <th>First name</th>
-                                    <th>Last name</th>
-                                    <th>Nickname</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                </tr>
-                                <template v-for="user in users_table[org.id]">
+                <div class="collapse" :id="'collapse'+org.id" style="margin-bottom: 20px;">
+                    <div class="card card-body" :id="'card-body_'+org.id" style="background-color: whitesmoke;">
+                        <template v-if="users_table">
+                            <template v-if="users_table[org.id]">
+                                <table>
                                     <tr>
-                                        <td title="Id">[[user.id]]</td>
-                                        <td title="First name">[[user.first_name]]</td>
-                                        <td title="last name">[[user.last_name]]</td>
-                                        <td title="Nickname">[[user.nickname]]</td>
-                                        <td title="Email">[[user.email]]</td>
-                                        <td title="Role">[[user.role]]</td>
-                                        {% if current_user.is_admin() %}
-                                            <td>
-                                                <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
-                                                    <i class="fa-solid fa-pen-to-square"></i>
-                                                </a>
-                                                <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
-                                                    <i class="fa-solid fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        {% endif %}
+                                        <th>Id</th>
+                                        <th>First name</th>
+                                        <th>Last name</th>
+                                        <th>Nickname</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
                                     </tr>
-                                </template>
-                            </table>
+                                    <template v-for="user in users_table[org.id]">
+                                        <tr>
+                                            <td title="Id">[[user.id]]</td>
+                                            <td title="First name">[[user.first_name]]</td>
+                                            <td title="last name">[[user.last_name]]</td>
+                                            <td title="Nickname">[[user.nickname]]</td>
+                                            <td title="Email">[[user.email]]</td>
+                                            <td title="Role">[[user.role]]</td>
+                                            {% if current_user.is_admin() %}
+                                                <td>
+                                                    <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                    </a>
+                                                    <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            {% endif %}
+                                        </tr>
+                                    </template>
+                                </table>
+                            </template>
+                            <template v-else>
+                                <i>No users</i>
+                            </template>
                         </template>
                         <template v-else>
-                            <i>No users</i>
+                            Loading...
                         </template>
-                    </template>
-                    <template v-else>
-                        Loading...
-                    </template>
+                    </div>
                 </div>
+            </template>
+        </template>
+        <template v-else>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
         </template>
-    </template>
-    <template v-else>
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </template>
+    </div>
 
     <nav aria-label="Page navigation example" v-if="orgs_list && orgs_list.nb_pages > 1">
         <ul class="pagination">

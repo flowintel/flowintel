@@ -5,33 +5,36 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>
+    <h1 class="case-core-style d-flex" style="border-radius: 0">
         Importer
     </h1>
 
-    <hr class="fading-line">
+    <hr class="fading-line mt-4 mb-4">
 
-    <ul class="nav nav-tabs" style="margin-bottom: 10px;">
-        <li class="nav-item">
-            <button class="nav-link active" id="tab-case" aria-current="page" @click="active_tab('import_case')">Case</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="tab-template" @click="active_tab('import_template')">Template</button>
-        </li>
-    </ul>
+    <div class="case-core-style">
 
-    <template v-if="main_tab == 'import_case'">
-        <div class="w-50">
-            <input class="form-control" type="file" id="importer_case" />
-            <button class="btn btn-primary" @click="read_json('importer_case')" style="margin-top: 10px;">Add</button>
-        </div>
-    </template>
-    <template v-else-if="main_tab == 'import_template'">
-        <div class="w-50">
-            <input class="form-control" type="file" id="importer_template" />
-            <button class="btn btn-primary" @click="read_json('importer_template')" style="margin-top: 10px;">Add</button>
-        </div>
-    </template>
+        <ul class="nav nav-tabs" style="margin-bottom: 10px;">
+            <li class="nav-item">
+                <button class="nav-link active" id="tab-case" aria-current="page" @click="active_tab('import_case')">Case</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="tab-template" @click="active_tab('import_template')">Template</button>
+            </li>
+        </ul>
+
+        <template v-if="main_tab == 'import_case'">
+            <div class="w-50 mt-4">
+                <input class="form-control" type="file" id="importer_case" />
+                <button class="btn btn-primary" @click="read_json('importer_case')" style="margin-top: 10px;">Add</button>
+            </div>
+        </template>
+        <template v-else-if="main_tab == 'import_template'">
+            <div class="w-50 mt-4">
+                <input class="form-control" type="file" id="importer_template" />
+                <button class="btn btn-primary" @click="read_json('importer_template')" style="margin-top: 10px;">Add</button>
+            </div>
+        </template>
+    </div>
 
 {% endblock %}
 

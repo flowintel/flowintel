@@ -5,13 +5,15 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div> 
-        <h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/analyzer/misp-modules"><i class="fa-solid fa-arrow-left"></i></a></h1>
-        <h1 style="display: inline-block; font-size: xx-large;">Modules Config</h1> 
+    <div class="case-core-style d-flex" style="border-radius: 0"> 
+        <h1 style="margin-top: -9px;">
+            <a type="button" class="btn btn-outline-dark me-2" href="/analyzer/misp-modules"><i class="fa-solid fa-arrow-left"></i></a>
+        </h1>
+        <h1 style="font-size: xx-large;">Modules Config</h1> 
     </div>
     <small>[[modules_config.length]] modules found</small>
-    <hr>
-    
+
+    <hr class="fading-line-2 mb-4 mt-4">
 
     <div style="width:50%; transform: translate(50%, 0);">
         <div>

@@ -5,91 +5,104 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>
-        Galaxies
-    </h1>
+    <div class="case-core-style d-flex" style="border-radius: 0">
+        <h1>Galaxies</h1>
 
-    <hr>
-
-    <!-- Search bar -->
-    <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
-        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search galaxies by name' style="min-width: 400px;" />
+        <!-- Search bar -->
+        <div class="input-group w-auto start-50 translate-middle-x" id="search_org">
+            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search galaxies by name' style="min-width: 350px;" />
+        </div>
+        <!-- Search bar -->
     </div>
-    <!-- Search bar -->
 
-    <hr>
+    <hr class="fading-line-2 mb-4 mt-4">
     
     <nav aria-label="Page navigation example" v-if="galaxies_list && nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchGalaxies(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetchGalaxies(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchGalaxies(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="fetchGalaxies(cp)">[[cp]]</button>
+                </li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}"><button class="page-link" @click="fetchGalaxies(Math.min(current_page+1, nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}">
+                <button class="page-link" @click="fetchGalaxies(Math.min(current_page+1, nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 
-    <template v-if="galaxies_list">
-        <template v-for="galaxy in galaxies_list.galaxies">
-            <div class="list-group" style="margin-bottom: 10px;">
-                <div class="d-flex align-items-center">
-                    <input v-if="galaxy.exclude" class="form-check-input me-2" type="checkbox" name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)">
-                    <input v-else class="form-check-input me-2" type="checkbox" checked name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)">
-                    <a @click="extend_collapse(galaxy.id)" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">[[galaxy.name]]</h4>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p class="mb-1">[[galaxy.description]]</p>
-                        </div>
-                    </a>
+    <div class="case-core-style">
+        <template v-if="galaxies_list">
+            <template v-for="galaxy in galaxies_list.galaxies">
+                <div class="list-group" style="margin-bottom: 10px;">
+                    <div class="d-flex align-items-center">
+                        <input v-if="galaxy.exclude" class="form-check-input me-2" type="checkbox" name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)">
+                        <input v-else class="form-check-input me-2" type="checkbox" checked name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)">
+                        <a @click="extend_collapse(galaxy.id)" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h4 class="mb-1">[[galaxy.name]]</h4>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <p class="mb-1">[[galaxy.description]]</p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-            </div>
 
-            <div class="collapse" :id="'collapse'+galaxy.id" style="margin-bottom: 20px;">
-                <div class="card card-body" :id="'card-body_'+galaxy.id" style="background-color: whitesmoke;">
-                    <template v-if="clusters_table">
-                        <template v-if="clusters_table[galaxy.id]">
-                            <table>
-                                <template v-for="cluster in clusters_table[galaxy.id]">
-                                    <tr>
-                                        <td title="Cluster">
-                                            [[cluster.tag]]
-                                            <ul>
-                                                <li v-if="cluster.description">Description: [[cluster.description]]</li>
-                                                <li v-if="cluster.meta">Metadata: [[JSON.parse(cluster.meta)]]</li>
-                                            </ul>
-                                            
-                                        </td>
-                                    </tr>
-                                </template>
-                            </table>
-                            
+                <div class="collapse" :id="'collapse'+galaxy.id" style="margin-bottom: 20px;">
+                    <div class="card card-body" :id="'card-body_'+galaxy.id" style="background-color: whitesmoke;">
+                        <template v-if="clusters_table">
+                            <template v-if="clusters_table[galaxy.id]">
+                                <table>
+                                    <template v-for="cluster in clusters_table[galaxy.id]">
+                                        <tr>
+                                            <td title="Cluster">
+                                                [[cluster.tag]]
+                                                <ul>
+                                                    <li v-if="cluster.description">Description: [[cluster.description]]</li>
+                                                    <li v-if="cluster.meta">Metadata: [[JSON.parse(cluster.meta)]]</li>
+                                                </ul>
+                                                
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </table>
+                                
+                            </template>
+                            <template v-else>
+                                <i>No Cluster</i>
+                            </template>
                         </template>
                         <template v-else>
-                            <i>No Cluster</i>
+                            Loading...
                         </template>
-                    </template>
-                    <template v-else>
-                        Loading...
-                    </template>
+                    </div>
                 </div>
+            </template>
+        </template>
+        <template v-else>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
         </template>
-    </template>
-    <template v-else>
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </template>
+    </div>
 
     <nav aria-label="Page navigation example" v-if="galaxies_list && nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchGalaxies(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetchGalaxies(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchGalaxies(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="fetchGalaxies(cp)">[[cp]]</button>
+                </li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}"><button class="page-link" @click="fetchGalaxies(Math.min(current_page+1, nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}">
+                <button class="page-link" @click="fetchGalaxies(Math.min(current_page+1, nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 {% endblock %}

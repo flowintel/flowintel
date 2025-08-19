@@ -5,57 +5,70 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/connectors"><i class="fa-solid fa-arrow-left"></i></a></h1>
-    <h1 style="display: inline-block;">
-        Connectors Icons
+    <div class="case-core-style d-flex" style="border-radius: 0;">
+        <h1>
+            <a type="button" class="btn btn-outline-dark me-2" href="/connectors"><i class="fa-solid fa-arrow-left"></i></a>
+        </h1>
+        <h1>
+            Connectors Icons
 
-        {% if current_user.is_admin() %}
-            <span>
-                <a class="btn btn-primary" href="/connectors/add_icons"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        {% endif %}
-    </h1>
+            {% if current_user.is_admin() %}
+                <span>
+                    <a class="btn btn-primary" href="/connectors/add_icons"><i class="fa-solid fa-plus"></i></a>
+                </span>
+            {% endif %}
+        </h1>
 
-    <hr>
-
-    <!-- Search bar -->
-    <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
-        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Icons by name' style="min-width: 400px;" />
+        <!-- Search bar -->
+        <div class="input-group w-auto translate-middle-x" id="search_org" style="left: 30% !important;">
+            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Icons by name' style="min-width: 350px;" />
+        </div>
+        <!-- Search bar -->
     </div>
-    <!-- Search bar -->
 
-    <hr>
+    <hr class="fading-line-2 mb-4 mt-4">
     
-    <template v-if="icons_list">
-        <template v-for="icon in icons_list.icons">
-            <div class="list-group" style="margin-bottom: 10px;">
-                <div style="display:flex">
-                    <a class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1"><img style="max-width: 40px;" :src="'/static/icons/' + icon.icon_uuid"/> [[ icon.name ]]</h4>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p v-if="icon.description" class="card-text">[[ icon.description ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
-                        </div>
-                    </a>
-                    <template v-if="icon.name != 'default'">
-                        {% if current_user.is_admin() %}
-                            <div style="display: grid;">
-                                <a class="btn btn-primary btn-sm" :href="`/connectors/edit_icon/${icon.id}`" type="button" title="Edit the icon"><i class="fa-solid fa-pen-to-square"></i></a>
-                                <button class="btn btn-danger btn-sm"  @click="delete_icon(icon)" title="Delete the icon"><i class="fa-solid fa-trash"></i></button>
+    <div class="case-core-style">
+        <template v-if="icons_list">
+            <template v-for="icon in icons_list.icons">
+                <div class="list-group" style="margin-bottom: 10px;">
+                    <div style="display:flex; border-radius: 10px;">
+                        <a class="list-group-item list-group-item-action case-index-list">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h4 class="mb-1"><img style="max-width: 40px;" :src="'/static/icons/' + icon.icon_uuid"/> [[ icon.name ]]</h4>
                             </div>
-                        {% endif %}
-                    </template>
+                            <div class="d-flex w-100 justify-content-between">
+                                <p v-if="icon.description" class="card-text">[[ icon.description ]]</p>
+                                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            </div>
+                        </a>
+                        <template v-if="icon.name != 'default'">
+                            {% if current_user.is_admin() %}
+                                <div>
+                                    <div>
+                                        <a class="btn btn-primary btn-sm" :href="`/connectors/edit_icon/${icon.id}`" type="button" title="Edit the icon">
+                                            <i class="fa-solid fa-pen-to-square fa-fw"></i>
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-danger btn-sm" @click="delete_icon(icon)" title="Delete the icon">
+                                            <i class="fa-solid fa-trash fa-fw"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </template>
+                    </div>
                 </div>
+            </template>
+        </template>
+        <template v-else>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
         </template>
-    </template>
-    <template v-else>
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </template>
+    </div>
 {% endblock %}
 
 

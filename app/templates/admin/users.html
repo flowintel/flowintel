@@ -5,62 +5,75 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>
-        Users
-        {% if current_user.is_admin() %}
-            <span>
-                <a type="button" class="btn btn-primary" href="/admin/add_user"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        {% endif %}
-    </h1>
+    <div class="case-core-style d-flex" style="border-radius: 0">
+        <h1>
+            Users
+            {% if current_user.is_admin() %}
+                <span>
+                    <a type="button" class="btn btn-primary" href="/admin/add_user"><i class="fa-solid fa-plus"></i></a>
+                </span>
+            {% endif %}
+        </h1>
 
-    <hr>
+        <!-- Search bar -->
+        <div class="input-group w-auto start-50 translate-middle-x" id="search_user">
+            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Users by lastname' style="min-width: 350px;" />
+        </div>
+        <!-- Search bar -->
 
-     <!-- Search bar -->
-    <div class="input-group w-auto start-50 translate-middle-x" id="search_user" style="max-width: 200px;">
-        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Users by lastname' style="min-width: 400px;" />
     </div>
-    <!-- Search bar -->
 
-    <hr>
+    <hr class="fading-line-2 mt-4 mb-4">
 
-    <template v-if="users_list">
-        <template v-for="user in users_list.users">
-            <div class="list-group" style="margin-bottom: 10px;">
-                <div style="display:flex">
-                    <a class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">[[ user.id ]]- [[ user.first_name ]] [[ user.last_name ]]</h4>
-                            <small v-if="user.nickname" title="nickname" class="btn btn-primary btn-sm person">
-                                <i class="fa-solid fa-user"></i> [[user.nickname]]
-                            </small>
-                            <small v-else><i>No nickname</i></small>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p class="card-text" title="email adress">[[ user.email ]]</p>
-                        </div>
-                        <div v-if="user.matrix_id" class="d-flex w-100 justify-content-between">
-                            <p class="card-text" title="matrix id">[[ user.matrix_id ]]</p>
-                        </div>
-                        <div class="d-flex w-100 justify-content-center">
-                            <p class="card-text" title="Role">[[ user.role ]]</p>
-                        </div>
-                    </a>
-                    {% if current_user.is_admin() %}
-                        <div style="display: grid;">
-                            <a class="btn btn-primary btn-sm" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user"><i class="fa-solid fa-pen-to-square"></i></a>
-                            <button class="btn btn-danger btn-sm"  @click="delete_user(user)" title="Delete the user"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    {% endif %}
+    <div class="case-core-style">
+        <template v-if="users_list">
+            <template v-for="user in users_list.users">
+                <div class="list-group" style="margin-bottom: 10px;">
+                    <div style="display:flex; border-top-left-radius: 15px; border-top-right-radius: 15px;">
+                        <a class="list-group-item list-group-item-action case-index-list">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h4 class="mb-1">[[ user.id ]]- [[ user.first_name ]] [[ user.last_name ]]</h4>
+                                <small v-if="user.nickname" title="nickname" class="btn btn-primary btn-sm person">
+                                    <i class="fa-solid fa-user"></i> [[user.nickname]]
+                                </small>
+                                <small v-else><i>No nickname</i></small>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <p class="card-text" title="email adress">[[ user.email ]]</p>
+                            </div>
+                            <div v-if="user.matrix_id" class="d-flex w-100 justify-content-between">
+                                <p class="card-text" title="matrix id">[[ user.matrix_id ]]</p>
+                            </div>
+                            <div class="d-flex w-100 justify-content-center">
+                                <p class="card-text" title="Role">[[ user.role ]]</p>
+                            </div>
+                        </a>
+                        {% if current_user.is_admin() %}
+                            <div>
+                                <div>
+                                    <a class="btn btn-primary btn-sm" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user">
+                                        <i class="fa-solid fa-pen-to-square fa-fw"></i>
+                                    </a>
+                                </div>
+                                <div>
+                                    <button class="btn btn-danger btn-sm" @click="delete_user(user)" title="Delete the user">
+                                        <i class="fa-solid fa-trash fa-fw"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
+            </template>
+        </template>
+        <template v-else>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
         </template>
-    </template>
-    <template v-else>
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </template>
+    </div>
+    
 
     <nav aria-label="Page navigation example" v-if="users_list && users_list.nb_pages > 1">
         <ul class="pagination">

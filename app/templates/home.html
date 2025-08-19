@@ -25,7 +25,7 @@
         <template v-for="case_loc in case_list">
             <div class="list-group" style="margin-bottom: 20px;">
                 <div style="display:flex; border-radius: 15px;">
-                    <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action">
+                    <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action case-index-list">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">
                                 [[ case_loc.id ]]-[[ case_loc.title ]]

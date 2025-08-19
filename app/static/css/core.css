@@ -301,16 +301,16 @@ legend.analyzer-select-case {
   border-radius: 15px;
 }
 
-.case-core-style > .nav-tabs, 
+#case-main-nav > .nav-tabs, 
 #collapseTasks > .nav-tabs {
   border: none;
   margin: 0px;
 }
-.case-core-style > .nav-tabs > li, 
+#case-main-nav > .nav-tabs > li, 
 #collapseTasks > .nav-tabs > li {
   margin-right: 2px;
 }
-.case-core-style > .nav-tabs > li > button, 
+#case-main-nav > .nav-tabs > li > button, 
 #collapseTasks > .nav-tabs > li > button {
   border: 0;
   border-bottom:2px solid transparent;
@@ -319,12 +319,12 @@ legend.analyzer-select-case {
   padding: 2px 15px;
 }
 
-.case-core-style > .nav-tabs > li > button.active, 
+#case-main-nav > .nav-tabs > li > button.active, 
 #collapseTasks > .nav-tabs > li > button.active {
     border-bottom:2px solid #007bff; 
     color: #007bff;
 }
-.case-core-style > .nav-tabs > li > button:hover, 
+#case-main-nav > .nav-tabs > li > button:hover, 
 #collapseTasks > .nav-tabs > li > button:hover {
     color: #4c8ac0;
 }
