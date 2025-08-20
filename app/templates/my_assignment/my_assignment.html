@@ -6,13 +6,14 @@
 
 {% block content %}
 
-<div style="margin-bottom: 10px;">
+<div class="case-core-style d-flex" style="margin-bottom: 10px; border-radius: 0;">
     <h1>My Assignment to Tasks</h1>
-    <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => emit_result(tasks)" @current_filter="filter => current_filter = filter">
-
-    </my_assignment_filter>
+    <div style="margin-top: 7px; margin-left: 10px;">
+        <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => emit_result(tasks)" @current_filter="filter => current_filter = filter">
+        </my_assignment_filter>
+    </div>
 </div>
-<hr class="fading-line-2 mb-4">
+<hr class="fading-line-2 mb-4 mt-4">
 
 <!-- pagination -->
 <nav aria-label="Page navigation example" v-if="tasks_list && tasks_list.nb_pages > 1">

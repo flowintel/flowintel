@@ -66,8 +66,8 @@ export default {
 		}
 	},
 	template: `
-	<button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
-		filter
+	<button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
+		<i class="fa-solid fa-filter"></i>
 	</button>
 	<div class="collapse" id="collapsefiltertask">
 		<div class="card card-body">

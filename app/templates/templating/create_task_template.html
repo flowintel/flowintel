@@ -5,12 +5,14 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <div>
-        <h2 style="display: inline-block; font-size: xxx-large;"><a type="button" class="btn" href="/templating/tasks"><i class="fa-solid fa-arrow-left"></i></a></h2>
-        <h2 style="display: inline-block;">Create a Task template</h2>
-        <hr>
-
-        <form action="" method="post">
+    <div class="case-core-style d-flex">
+        <h2 style="margin-top: -4px;">
+            <a type="button" class="btn btn-outline-dark" href="/templating/tasks"><i class="fa-solid fa-arrow-left"></i></a>
+        </h2>
+        <h2 class="ms-2">Create a Task template</h2>
+    </div>
+    <hr class="fading-line-2 mt-4 mb-4">
+        <form action="" method="post" class="case-core-style">
             {{ form.hidden_tag() }}
             {{ form.template_id }}
             
@@ -129,7 +131,6 @@
 
             {{form.submit(class='btn btn-primary')}}
         </form>
-    </div>
 {% endblock %}
 
 

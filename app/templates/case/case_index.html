@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="d-flex">
+    <div class="case-core-style d-flex" style="border-radius: 0;">
         <h1>
             Cases
             <span>
@@ -15,7 +15,7 @@
 
 
         <!-- Search bar -->
-        <div class="input-group w-auto translate-middle-x" style="left: 35% !important;">
+        <div class="input-group w-auto translate-middle-x" style="left: 40% !important;">
             <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
                 <i class="fa-solid fa-filter"></i>
             </button>
@@ -151,7 +151,7 @@
         </div>
     </div>
 
-    <hr class="fading-line mt-4 mb-4">
+    <hr class="fading-line-2 mt-4 mb-4">
 
     <!-- pagination -->
     <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
