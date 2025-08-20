@@ -394,6 +394,10 @@
                                 <label class="form-check-label" for="radioOtherTitle">Title</label>
                             </div>
                             <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherCreation" @click="sort_by_filter('creation_date')">
+                                <label class="form-check-label" for="radioOtherCreation">Creation</label>
+                            </div>
+                            <div class="form-check">
                                 <input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
                                 <label class="form-check-label" for="radioOrderAsc">Last Modif</label>
                             </div>
