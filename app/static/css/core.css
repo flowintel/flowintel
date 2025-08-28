@@ -1,6 +1,5 @@
 :root {
-	/* --sidebar: 205px; */
-	--sidebar: 13rem;
+	--sidebar: 6.5rem;
 }
 
 body {
@@ -8,11 +7,9 @@ body {
   margin-bottom: 100px;
 }
 
-/* @media (min-width: 991.98px) {
-  main {
-    padding-left: var(--sidebar)
-  }
-} */
+main {
+  padding-left: var(--sidebar)
+}
 
 #goTop{
   position: fixed;

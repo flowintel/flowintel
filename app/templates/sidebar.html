@@ -1,124 +1,122 @@
-<!-- <header> -->
-	<ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
-		<!-- Sidebar - Brand -->
-		<a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
-			<div class="custom-sidebar-header">
-				<img src="{{ url_for('static',filename='image/flowintel.png') }}" height="55" alt="flowintel Logo"
-				loading="lazy" />
-			</div>
-		</a>
+<ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
-
-		<!-- Divider -->
-		<hr class="sidebar-divider">
-
-		<!-- Nav Item - Pages Collapse Menu -->
-
-		<li class="nav-item">
-			<a class="nav-link" href="/case">
-				<i class="fas fa-fw fa-folder-open"></i>
-				<span>Cases</span>
-			</a>
-		</li>
-		<li class="nav-item">
-			<a class="nav-link" href="/my_assignment">
-				<i class="fas fa-fw fa-list-check"></i>
-				<span>Task assigned</span>
-			</a>
-		</li>
-		<li class="nav-item">
-			<a class="nav-link" href="/calendar">
-				<i class="fas fa-fw fa-calendar-days"></i>
-				<span>Calendar</span>
-			</a>
-		</li>
-		<li class="nav-item">
-			<a class="nav-link" href="/analyzer/misp-modules">
-				<i class="fas fa-fw fa-magnifying-glass"></i>
-				<span>Analyzer</span>
-			</a>
-		</li>
-		<li class="nav-item">
-			<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseTemplateSidebar"
-				aria-expanded="false" aria-controls="collapseTemplateSidebar">
-				<i class="fas fa-fw fa-book-bookmark"></i>
-				<span>Templates</span>
-			</a>
-			<div id="collapseTemplateSidebar" class="collapse">
-				<div class="py-2 collapse-inner rounded">
-					<a class="collapse-item" href="/templating/cases"><i class="fa-solid fa-folder-open fa-fw me-2"></i>Cases</a>
-					<a class="collapse-item" href="/templating/tasks"><i class="fa-solid fa-list-check fa-fw me-2"></i>Tasks</a>
-					<a class="collapse-item" href="/tools/note_template_index"><i class="fa-solid fa-note-sticky fa-fw me-2"></i>Notes</a>
-				</div>
-			</div>
-		</li>
-
-		<!-- Divider -->
-		<hr class="sidebar-divider">
-
-		<li class="nav-item">
-			<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseTagsSidebar"
-				aria-expanded="false" aria-controls="collapseTagsSidebar">
-				<i class="fas fa-fw fa-tags"></i>
-				<span>Tags</span>
-			</a>
-			<div id="collapseTagsSidebar" class="collapse">
-				<div class="py-2 collapse-inner rounded">
-					<a class="collapse-item" href="/custom_tags"><i class="fa-solid fa-user-tag fa-fw me-2"></i>Custom Tags</a>
-					<a class="collapse-item" href="/admin/taxonomies"><i class="fa-solid fa-tag fa-fw me-2"></i>Taxonomies</a>
-					<a class="collapse-item" href="/admin/galaxies"><i class="fa-solid fa-globe fa-fw me-2"></i>Galaxies</a>
-				</div>
-			</div>
-		</li>
-
-		<li class="nav-item">
-			<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseToolsSidebar"
-				aria-expanded="false" aria-controls="collapseToolsSidebar">
-				<i class="fas fa-fw fa-toolbox"></i>
-				<span>Tools</span>
-			</a>
-			<div id="collapseToolsSidebar" class="collapse">
-				<div class="py-2 collapse-inner rounded">
-					<a class="collapse-item" href="/connectors"><i class="fa-solid fa-link fa-fw me-2"></i>Connectors</a>
-					<a class="collapse-item" href="/tools/importer_view"><i class="fa-solid fa-file-import fa-fw me-2"></i>Importer</a>
-					<a class="collapse-item" href="/tools/module"><i class="fa-solid fa-wrench fa-fw me-2"></i>Modules</a>
-					<a class="collapse-item" href="/tools/case_misp_event"><i class="fa-solid fa-plus fa-fw me-2"></i>Case from MISP</a>
-					<a class="collapse-item" href="/tools/search_attr"><i class="fa-solid fa-magnifying-glass-location fa-fw me-2"></i>Search Attr values</a>
-				</div>
-			</div>
-		</li>
-
-		<li class="nav-item">
-			<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseCommunitySidebar"
-				aria-expanded="false" aria-controls="collapseCommunitySidebar">
-				<i class="fas fa-fw fa-earth-europe"></i>
-				<span>Community</span>
-			</a>
-			<div id="collapseCommunitySidebar" class="collapse">
-				<div class="py-2 collapse-inner rounded">
-					<a class="collapse-item" href="/admin/orgs"><i class="fa-solid fa-users fa-fw me-3"></i>Orgs</a>
-					<a class="collapse-item" href="/admin/users"><i class="fa-solid fa-user fa-fw me-3"></i>Users</a>
-				</div>
-			</div>
-		</li>
-
-		<li class="nav-item">
-			<a class="nav-link" href="/tools/stats">
-				<i class="fas fa-fw fa-chart-simple"></i>
-				<span>Stats</span>
-			</a>
-		</li>
-
-		<!-- Divider -->
-		<hr class="sidebar-divider d-none d-md-block">
-
-		<!-- Sidebar Toggler (Sidebar) -->
-		<div class="text-center d-none d-md-inline">
-			<button class="rounded-circle border-0" id="sidebarToggle"></button>
+	<!-- Sidebar - Brand -->
+	<a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
+		<div class="custom-sidebar-header">
+			<img src="{{ url_for('static',filename='image/flowintel.png') }}" height="55" alt="flowintel Logo"
+			loading="lazy" />
 		</div>
+	</a>
 
-	</ul>
+
+	<!-- Divider -->
+	<hr class="sidebar-divider">
+
+	<!-- Nav Item - Pages Collapse Menu -->
+
+	<li class="nav-item">
+		<a class="nav-link" href="/case">
+			<i class="fas fa-fw fa-folder-open"></i>
+			<span>Cases</span>
+		</a>
+	</li>
+	<li class="nav-item">
+		<a class="nav-link" href="/my_assignment">
+			<i class="fas fa-fw fa-list-check"></i>
+			<span>Task assigned</span>
+		</a>
+	</li>
+	<li class="nav-item">
+		<a class="nav-link" href="/calendar">
+			<i class="fas fa-fw fa-calendar-days"></i>
+			<span>Calendar</span>
+		</a>
+	</li>
+	<li class="nav-item">
+		<a class="nav-link" href="/analyzer/misp-modules">
+			<i class="fas fa-fw fa-magnifying-glass"></i>
+			<span>Analyzer</span>
+		</a>
+	</li>
+	<li class="nav-item">
+		<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseTemplateSidebar"
+			aria-expanded="false" aria-controls="collapseTemplateSidebar">
+			<i class="fas fa-fw fa-book-bookmark"></i>
+			<span>Templates</span>
+		</a>
+		<div id="collapseTemplateSidebar" class="collapse">
+			<div class="py-2 collapse-inner rounded">
+				<a class="collapse-item" href="/templating/cases"><i class="fa-solid fa-folder-open fa-fw me-2"></i>Cases</a>
+				<a class="collapse-item" href="/templating/tasks"><i class="fa-solid fa-list-check fa-fw me-2"></i>Tasks</a>
+				<a class="collapse-item" href="/tools/note_template_index"><i class="fa-solid fa-note-sticky fa-fw me-2"></i>Notes</a>
+			</div>
+		</div>
+	</li>
+
+	<!-- Divider -->
+	<hr class="sidebar-divider">
+
+	<li class="nav-item">
+		<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseTagsSidebar"
+			aria-expanded="false" aria-controls="collapseTagsSidebar">
+			<i class="fas fa-fw fa-tags"></i>
+			<span>Tags</span>
+		</a>
+		<div id="collapseTagsSidebar" class="collapse">
+			<div class="py-2 collapse-inner rounded">
+				<a class="collapse-item" href="/custom_tags"><i class="fa-solid fa-user-tag fa-fw me-2"></i>Custom Tags</a>
+				<a class="collapse-item" href="/admin/taxonomies"><i class="fa-solid fa-tag fa-fw me-2"></i>Taxonomies</a>
+				<a class="collapse-item" href="/admin/galaxies"><i class="fa-solid fa-globe fa-fw me-2"></i>Galaxies</a>
+			</div>
+		</div>
+	</li>
+
+	<li class="nav-item">
+		<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseToolsSidebar"
+			aria-expanded="false" aria-controls="collapseToolsSidebar">
+			<i class="fas fa-fw fa-toolbox"></i>
+			<span>Tools</span>
+		</a>
+		<div id="collapseToolsSidebar" class="collapse">
+			<div class="py-2 collapse-inner rounded">
+				<a class="collapse-item" href="/connectors"><i class="fa-solid fa-link fa-fw me-2"></i>Connectors</a>
+				<a class="collapse-item" href="/tools/importer_view"><i class="fa-solid fa-file-import fa-fw me-2"></i>Importer</a>
+				<a class="collapse-item" href="/tools/module"><i class="fa-solid fa-wrench fa-fw me-2"></i>Modules</a>
+				<a class="collapse-item" href="/tools/case_misp_event"><i class="fa-solid fa-plus fa-fw me-2"></i>Case from MISP</a>
+				<a class="collapse-item" href="/tools/search_attr"><i class="fa-solid fa-magnifying-glass-location fa-fw me-2"></i>Search Attr values</a>
+			</div>
+		</div>
+	</li>
+
+	<li class="nav-item">
+		<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseCommunitySidebar"
+			aria-expanded="false" aria-controls="collapseCommunitySidebar">
+			<i class="fas fa-fw fa-earth-europe"></i>
+			<span>Community</span>
+		</a>
+		<div id="collapseCommunitySidebar" class="collapse">
+			<div class="py-2 collapse-inner rounded">
+				<a class="collapse-item" href="/admin/orgs"><i class="fa-solid fa-users fa-fw me-3"></i>Orgs</a>
+				<a class="collapse-item" href="/admin/users"><i class="fa-solid fa-user fa-fw me-3"></i>Users</a>
+			</div>
+		</div>
+	</li>
+
+	<li class="nav-item">
+		<a class="nav-link" href="/tools/stats">
+			<i class="fas fa-fw fa-chart-simple"></i>
+			<span>Stats</span>
+		</a>
+	</li>
+
+	<!-- Divider -->
+	<hr class="sidebar-divider d-none d-md-block">
+
+	<!-- Sidebar Toggler (Sidebar) -->
+	<div class="text-center d-none d-md-inline">
+		<button class="rounded-circle border-0" id="sidebarToggle"></button>
+	</div>
+
+</ul>
   <!-- Sidebar -->
-
-<!-- </header> -->
