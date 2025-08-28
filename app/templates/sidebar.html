@@ -2,7 +2,7 @@
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
 	<!-- Sidebar - Brand -->
-	<a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
+	<a class="sidebar-brand d-flex align-items-center justify-content-center" id="home_link" href="/">
 		<div class="custom-sidebar-header">
 			<img src="{{ url_for('static',filename='image/flowintel.png') }}" height="55" alt="flowintel Logo"
 			loading="lazy" />
@@ -120,3 +120,43 @@
 
 </ul>
   <!-- Sidebar -->
+   
+
+<script>
+	$(document).ready(function() {
+		document.getElementById("home_link").addEventListener('click', function(){
+			localStorage.setItem("activePage", "");
+		})
+		document.querySelectorAll('.nav-item .nav-link, .collapse-item').forEach(link => {
+			link.addEventListener('click', function() {
+				localStorage.setItem("activePage", this.getAttribute("href"));
+			});
+		});
+
+		const activePage = localStorage.getItem("activePage");
+		if (!activePage) return;
+
+		// Find the matching link
+		const activeLink = document.querySelector(`.nav-link[href="${activePage}"], .collapse-item[href="${activePage}"]`);
+		if (!activeLink) return;
+
+		activeLink.classList.add("active");
+
+		// Add active class
+		const parentNavItem = activeLink.closest('.nav-item');
+		if (parentNavItem) {
+			parentNavItem.classList.add('active');
+		}
+
+		// If it's inside a collapsed menu, open its parent
+		const parentCollapse = activeLink.closest('.collapse');
+		if (parentCollapse) {
+			const collapseToggle = document.querySelector(`[data-bs-target="#${parentCollapse.id}"]`);
+			if (collapseToggle) {
+			parentCollapse.classList.add("show");
+			collapseToggle.classList.remove("collapsed");
+			collapseToggle.setAttribute("aria-expanded", "true");
+			}
+		}
+	})
+</script>

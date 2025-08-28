@@ -70,6 +70,12 @@
   top: 2px;
 }
 
+.sidebar .nav-item .collapsing {
+  display: none;
+  transition: none;
+  background-color: #456297;
+  border-radius: 0.35rem;
+}
 .sidebar .nav-item .collapse .collapse-inner {
   border-radius: 0.35rem;
   box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
@@ -270,6 +276,13 @@
   .sidebar.toggled .nav-item .nav-link[data-bs-toggle="collapse"]::after {
     display: none;
   }
+}
+
+.sidebar .nav-item .collapse .collapse-inner .collapse-item.active,
+.sidebar .nav-item .collapsing .collapse-inner .collapse-item.active {
+  color: #81e1e6;
+  /* color: #fff; */
+  font-weight: 700;
 }
 
 

@@ -10,8 +10,23 @@
       if ($(".sidebar").hasClass("toggled")) {
         $('.sidebar .collapse').collapse('hide');
       };
+      
+      if(localStorage.getItem("sidebar-toggle") === null){
+        localStorage.setItem("sidebar-toggle", 'false')
+      }else{
+        const current = localStorage.getItem("sidebar-toggle") === "true";
+        localStorage.setItem("sidebar-toggle", String(!current))
+      }
     });
     resize()
+
+    if(localStorage.getItem("sidebar-toggle") === 'false'){
+      $("body").toggleClass("sidebar-toggled");
+      $(".sidebar").toggleClass("toggled");
+      if ($(".sidebar").hasClass("toggled")) {
+        $('.sidebar .collapse').collapse('hide');
+      };
+    }
   })
 
   // Close any open menu accordions when window is resized below 768px
