@@ -1,238 +1,124 @@
-<!--Main Navigation-->
-<header>
-	<style>
-	.collapse-modif[data-bs-toggle].collapsed:after {
-		font-family: "Font Awesome 6 Free"; 
-		font-weight: 900; 
-		content: "\f078"; 
-		color:  #444444;
-		padding-left: 5px;
-	}
-	.collapse-modif[data-bs-toggle]:not(.collapsed):after {
-		font-family: "Font Awesome 6 Free"; 
-		font-weight: 900; 
-		content: "\f077"; 
-		color:  #444444;
-		padding-left: 5px;
-	}
-	</style>
-	
-  	<!-- Sidebar -->
-  	<nav id="sidebarMenu" class="collapse d-lg-block sidebar collapse bg-white">
-		<div class="position-sticky">
-			<div class="list-group list-group-flush mx-3 mt-4">
-				<a href="/" class="list-group-item list-group-item-action py-2 ripple" aria-current="true">
-					<i class="fa-solid fa-house fa-fw me-2"></i><span>Home</span>
-				</a>
-				<a href="/case" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-folder-open fa-fw me-2"></i><span>Cases</span>
-				</a>
-				<a href="/my_assignment" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-list-check fa-fw me-2"></i><span>Task assigned</span>
-				</a>
-				<a href="/calendar" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-calendar-days fa-fw me-2"></i><span>Calendar</span>
-				</a>
-				
-				<a href="/analyzer/misp-modules" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-magnifying-glass fa-fw me-2"></i><span>Analyzers</span>
-				</a>
-				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#template-collapse" aria-expanded="false">
-					<i class="fa-solid fa-book-bookmark fa-fw me-2"></i><span>Templates</span>
-				</button>
-				<div class="collapse" id="template-collapse">
-					<a href="/templating/cases" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-folder-open fa-fw me-2 ms-2"></i><span>Case</span>
-					</a>
-					<a href="/templating/tasks" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-list-check fa-fw me-2 ms-2"></i><span>Task</span>
-					</a>
-					<a href="/tools/note_template_index" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-note-sticky fa-fw me-2 ms-2"></i><span>Note</span>
-					</a>
-				</div>
+<!-- <header> -->
+	<ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
-				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#tags-collapse" aria-expanded="false">
-					<i class="fa-solid fa-tags fa-fw me-2"></i><span>Tags</span>
-				</button>
-				<div class="collapse" id="tags-collapse">
-					<a href="/custom_tags/" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-user-tag fa-fw me-2 ms-2"></i><span>Custom Tags</span>
-					</a>
-					<a href="/admin/taxonomies" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-tag fa-fw me-2 ms-2"></i><span>Taxonomies</span>
-					</a>
-					<a href="/admin/galaxies" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-globe fa-fw me-2 ms-2"></i><span>Galaxies</span>
-					</a>
-				</div>
-
-				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">
-					<i class="fa-solid fa-toolbox fa-fw me-2"></i><span>Tools</span>
-				</button>
-				<div class="collapse" id="tools-collapse">
-					<a href="/connectors" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-link fa-fw me-2 ms-2"></i><span>Connectors</span>
-					</a>
-					<a href="/tools/importer_view" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-file-import fa-fw me-2 ms-2"></i><span>Importer</span>
-					</a>
-					<a href="/tools/module" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-wrench fa-fw me-2 ms-2"></i><span>Modules</span>
-					</a>
-					
-					<a href="/tools/case_misp_event" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-plus fa-fw me-2 ms-2"></i><span>Case from MISP</span>
-					</a>
-					
-					<a href="/tools/search_attr" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-magnifying-glass-location fa-fw me-2 ms-2"></i><span>Search Attr values</span>
-					</a>
-				</div>
-
-				<button class="list-group-item list-group-item-action py-2 ripple collapse-modif collapsed" data-bs-toggle="collapse" data-bs-target="#community-collapse" aria-expanded="false">
-					<i class="fa-solid fa-earth-europe fa-fw me-2"></i><span>Community</span>
-				</button>
-				<div class="collapse" id="community-collapse">
-					<a href="/admin/orgs" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-users fa-fw me-3 ms-2"></i><span>Orgs</span>
-					</a>
-					<a href="/admin/users" class="list-group-item list-group-item-action py-2 ripple">
-						<i class="fa-solid fa-user fa-fw me-3 ms-2"></i><span>Users</span>
-					</a>
-				</div>
-
-				<a href="/tools/stats" class="list-group-item list-group-item-action py-2 ripple">
-					<i class="fa-solid fa-chart-simple fa-fw me-2"></i><span>Stats</span>
-				</a>
-			</div>
-		</div>
-  	</nav>
-  <!-- Sidebar -->
-
-
-	<!-- Navbar -->
-	<nav id="main-navbar" class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
-    	<!-- Container wrapper -->
-    	<div class="container-fluid">
-      		<!-- Toggle button -->
-			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu"
-				aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
-				<i class="fas fa-bars"></i>
-			</button>
-
-			<!-- Brand -->
-			<a class="navbar-brand" href="/">
+		<!-- Sidebar - Brand -->
+		<a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
+			<div class="custom-sidebar-header">
 				<img src="{{ url_for('static',filename='image/flowintel.png') }}" height="55" alt="flowintel Logo"
 				loading="lazy" />
+			</div>
+		</a>
+
+
+		<!-- Divider -->
+		<hr class="sidebar-divider">
+
+		<!-- Nav Item - Pages Collapse Menu -->
+
+		<li class="nav-item">
+			<a class="nav-link" href="/case">
+				<i class="fas fa-fw fa-folder-open"></i>
+				<span>Cases</span>
 			</a>
-			<!-- Search form -->
-			<div id="search-form" class="d-none">
-				<div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
-					<input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
-				</div>
-				<div v-if="result_search && result_search.length" class="search-result justify-content-center">
-					<div v-for="case_search in result_search" style="margin-bottom: 2px;">
-						<i class="fa-solid fa-circle fa-2xs"></i>
-						<a v-if="case_search.description" :href="'/case/'+case_search.id" :title="case_search.description">[[case_search.title]]</a>
-						<a v-else :href="'/case/'+case_search.id" title="No description">[[case_search.title]]</a>
-					</div>
+		</li>
+		<li class="nav-item">
+			<a class="nav-link" href="/my_assignment">
+				<i class="fas fa-fw fa-list-check"></i>
+				<span>Task assigned</span>
+			</a>
+		</li>
+		<li class="nav-item">
+			<a class="nav-link" href="/calendar">
+				<i class="fas fa-fw fa-calendar-days"></i>
+				<span>Calendar</span>
+			</a>
+		</li>
+		<li class="nav-item">
+			<a class="nav-link" href="/analyzer/misp-modules">
+				<i class="fas fa-fw fa-magnifying-glass"></i>
+				<span>Analyzer</span>
+			</a>
+		</li>
+		<li class="nav-item">
+			<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseTemplateSidebar"
+				aria-expanded="false" aria-controls="collapseTemplateSidebar">
+				<i class="fas fa-fw fa-book-bookmark"></i>
+				<span>Templates</span>
+			</a>
+			<div id="collapseTemplateSidebar" class="collapse">
+				<div class="py-2 collapse-inner rounded">
+					<a class="collapse-item" href="/templating/cases"><i class="fa-solid fa-folder-open fa-fw me-2"></i>Cases</a>
+					<a class="collapse-item" href="/templating/tasks"><i class="fa-solid fa-list-check fa-fw me-2"></i>Tasks</a>
+					<a class="collapse-item" href="/tools/note_template_index"><i class="fa-solid fa-note-sticky fa-fw me-2"></i>Notes</a>
 				</div>
 			</div>
+		</li>
 
-			<!-- Right links -->
-			<ul class="navbar-nav ms-auto d-flex flex-row">
-				<!-- Notification dropdown -->
-				<li class="nav-item dropdown">
-					<a class="nav-link me-3 me-lg-0" href="/notification">
-						<i class="fas fa-bell"></i>
-						<template v-if="notif_list && notif_list> 0">
-							<span v-if="notif_list < 100" class="position-absolute translate-middle badge rounded-pill bg-danger">[[notif_list]]</span>
-							<span v-else class="position-absolute translate-middle badge rounded-pill bg-danger">99+</span>
-						</template>
-					</a>
-				</li>
+		<!-- Divider -->
+		<hr class="sidebar-divider">
 
-				<!-- Avatar -->
-				<li class="nav-item dropdown">
-					<a class="nav-link dropdown-toggle hidden-arrow d-flex align-items-center" href="#"
-						id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-						{{current_user.first_name}} {{current_user.last_name}}
-					</a>
-					<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownMenuLink">
-						<li>
-							<a class="dropdown-item" href="/account">My profile</a>
-						</li>
-						{% if current_user.is_authenticated %}
-							<li>
-								<a class="dropdown-item" href="/account/logout">Logout</a>
-							</li>
-						{% endif %}
-					</ul>
-       			</li>
-      		</ul>
-    	</div>
-    <!-- Container wrapper -->
- 	 </nav>
-  	<!-- Navbar -->
-</header>
-<!--Main Navigation-->
+		<li class="nav-item">
+			<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseTagsSidebar"
+				aria-expanded="false" aria-controls="collapseTagsSidebar">
+				<i class="fas fa-fw fa-tags"></i>
+				<span>Tags</span>
+			</a>
+			<div id="collapseTagsSidebar" class="collapse">
+				<div class="py-2 collapse-inner rounded">
+					<a class="collapse-item" href="/custom_tags"><i class="fa-solid fa-user-tag fa-fw me-2"></i>Custom Tags</a>
+					<a class="collapse-item" href="/admin/taxonomies"><i class="fa-solid fa-tag fa-fw me-2"></i>Taxonomies</a>
+					<a class="collapse-item" href="/admin/galaxies"><i class="fa-solid fa-globe fa-fw me-2"></i>Galaxies</a>
+				</div>
+			</div>
+		</li>
 
-<script type="module">
-	const { createApp, ref, computed, onMounted } = Vue
-	import {display_toast, message_list} from '/static/js/toaster.js'
+		<li class="nav-item">
+			<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseToolsSidebar"
+				aria-expanded="false" aria-controls="collapseToolsSidebar">
+				<i class="fas fa-fw fa-toolbox"></i>
+				<span>Tools</span>
+			</a>
+			<div id="collapseToolsSidebar" class="collapse">
+				<div class="py-2 collapse-inner rounded">
+					<a class="collapse-item" href="/connectors"><i class="fa-solid fa-link fa-fw me-2"></i>Connectors</a>
+					<a class="collapse-item" href="/tools/importer_view"><i class="fa-solid fa-file-import fa-fw me-2"></i>Importer</a>
+					<a class="collapse-item" href="/tools/module"><i class="fa-solid fa-wrench fa-fw me-2"></i>Modules</a>
+					<a class="collapse-item" href="/tools/case_misp_event"><i class="fa-solid fa-plus fa-fw me-2"></i>Case from MISP</a>
+					<a class="collapse-item" href="/tools/search_attr"><i class="fa-solid fa-magnifying-glass-location fa-fw me-2"></i>Search Attr values</a>
+				</div>
+			</div>
+		</li>
 
-	createApp({
-		delimiters: ['[[', ']]'],
-		setup() {
-			const result_search = ref([])
-			const notif_list = ref(null)
+		<li class="nav-item">
+			<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" role="button" data-bs-target="#collapseCommunitySidebar"
+				aria-expanded="false" aria-controls="collapseCommunitySidebar">
+				<i class="fas fa-fw fa-earth-europe"></i>
+				<span>Community</span>
+			</a>
+			<div id="collapseCommunitySidebar" class="collapse">
+				<div class="py-2 collapse-inner rounded">
+					<a class="collapse-item" href="/admin/orgs"><i class="fa-solid fa-users fa-fw me-3"></i>Orgs</a>
+					<a class="collapse-item" href="/admin/users"><i class="fa-solid fa-user fa-fw me-3"></i>Users</a>
+				</div>
+			</div>
+		</li>
 
+		<li class="nav-item">
+			<a class="nav-link" href="/tools/stats">
+				<i class="fas fa-fw fa-chart-simple"></i>
+				<span>Stats</span>
+			</a>
+		</li>
 
-			async function onInput(e){
-				result_search.value = []
-				if(e.target.value){
-					const res = await fetch('/case/search?text='+e.target.value)
-					if (await res.status == 200){
-						let loc = await res.json()
-						result_search.value = loc["cases"]
-					}
-					else{
-						display_toast(res)
-					}
-				}
-			}
+		<!-- Divider -->
+		<hr class="sidebar-divider d-none d-md-block">
 
-			async function fetchNotif() {
-				notif_list.value = null
-				const res = await fetch('/notification/get_user_notifications_len')
-				let loc = await res.json()
-				notif_list.value = loc["notif"]
-			}
+		<!-- Sidebar Toggler (Sidebar) -->
+		<div class="text-center d-none d-md-inline">
+			<button class="rounded-circle border-0" id="sidebarToggle"></button>
+		</div>
 
-			fetchNotif()
+	</ul>
+  <!-- Sidebar -->
 
-			// hide search result when click out 
-			$(document).mouseup(function(e) {
-				var container = $(".search-result");
-
-				// if the target of the click isn't the container nor a descendant of the container
-				if (!container.is(e.target) && container.has(e.target).length === 0) 
-				{
-					container.hide();
-				}
-			});
-
-			onMounted(() => {
-				$('#search-form').removeClass('d-none')
-			})
-
-			return {
-				onInput,
-				result_search,
-				notif_list,
-				message_list
-			}
-		}
-	}).mount('.navbar')
-</script>
+<!-- </header> -->
