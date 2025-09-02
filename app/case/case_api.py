@@ -320,7 +320,8 @@ class SearchCase(Resource):
     })
     def post(self):
         if "search" in request.json:
-            cases = CommonModel.search(request.json["search"])
+            current_user = utils.get_user_from_api(request.headers)
+            cases = CommonModel.search(request.json["search"], current_user)
             if cases:
                 return {"cases": [case.to_json() for case in cases]}, 200
             return {"message": "No case", 'toast_class': "danger-subtle"}, 404
