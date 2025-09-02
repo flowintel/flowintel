@@ -11,8 +11,8 @@
 {%endblock%}
 
 {% block content %}
-<h1>Dashboard</h1>
-<hr class="fading-line">
+<h1 class="case-core-style d-flex" style="border-radius: 0">Dashboard</h1>
+<hr class="fading-line-2 mb-4 mt-4">
 
 <ul class="nav nav-tabs" style="margin-bottom: 10px;">
     <li class="nav-item">
@@ -31,6 +31,7 @@
         </li>
 </ul>
 
+<div class="case-core-style">
 <template v-if="main_tab == 'case'">
     <i>Cases where the org is in</i>
     <div class="card card-body p-4 m-5">
@@ -185,6 +186,7 @@
     </div>
 
 </template>
+</div>
 {% endblock %}
 
 {% block script %}

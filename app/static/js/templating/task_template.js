@@ -342,7 +342,10 @@ export default {
 	},
 	template: `
 	<div style="display: flex;"> 
-        <a :href="'#collapse'+template.id" class="list-group-item list-group-item-action" data-bs-toggle="collapse" role="button" aria-expanded="false" :aria-controls="'collapse'+template.id">        
+        <a :href="'#collapse'+template.id" 
+		class="list-group-item list-group-item-action case-index-list" data-bs-toggle="collapse" role="button" 
+		aria-expanded="false" :aria-controls="'collapse'+template.id"
+		style="border-top-left-radius: 15px; border-top-right-radius: 15px;">        
             <div class="d-flex w-100 justify-content-between">
                 <h4 class="mb-1">[[ key_loop+1 ]]- [[ template.title ]]</h4>
             </div>
@@ -409,23 +412,23 @@ export default {
         </a>
         <div v-if="!template.current_user_permission.read_only">
 			<div>
-				<a class="btn btn-primary btn-sm" :href="'/templating/edit_task/'+template.id" type="button" title="Edit the task template">
+				<a class="btn btn-primary" :href="'/templating/edit_task/'+template.id" type="button" title="Edit the task template">
 					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
 			</div>
 			<div>
-            	<button v-if="task_in_case" class="btn btn-warning btn-sm" @click="remove_task(template, templates_list)" title="Remove the task template from the case">
+            	<button v-if="task_in_case" class="btn btn-warning" @click="remove_task(template, templates_list)" title="Remove the task template from the case">
 					<i class="fa-solid fa-trash fa-fw"></i>
 				</button>
 			</div>
 			<div>
-				<button type="button" class="btn btn-danger btn-sm" title="Delete the task template" data-bs-toggle="modal" 
+				<button type="button" class="btn btn-danger" title="Delete the task template" data-bs-toggle="modal" 
 				:data-bs-target="'#delete_task_template_modal_'+template.id">
 					<i class="fa-solid fa-trash fa-fw"></i>
 				</button>
 			</div>
         </div>
-		<div v-if="!template.current_user_permission.read_only" style="display: grid;">
+		<div v-if="task_in_case && !template.current_user_permission.read_only" style="display: grid;">
 			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task_up(template, true)">
 				<i class="fa-solid fa-chevron-up"></i>
 			</button>
@@ -537,6 +540,9 @@ export default {
 					<legend class="analyzer-select-case">
 						<i class="fa-solid fa-note-sticky"></i> 
 						Notes
+						<button class="btn btn-primary btn-sm me-1" title="Add notes" @click="add_notes_task()">
+							<i class="fa-solid fa-plus fa-fw"></i>
+						</button>
 					</legend>
 					<div v-if="template.notes.length">
 						<template v-for="template_note, key in template.notes">
@@ -550,8 +556,8 @@ export default {
 										</button>
 									</div>
 									<div style="display: flex;">
-										<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor1_'+key+'_'+template.id"></div>
-										<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[key])"></div>
+										<div class="note-editor" :id="'editor1_'+key+'_'+template.id"></div>
+										<div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
 									</div>
 								</template>
 								<template v-else>
@@ -560,11 +566,11 @@ export default {
 											<div hidden>[[template.title]]</div>
 											<small><i class="fa-solid fa-pen"></i></small> Edit
 										</button>
-										<button class="btn btn-danger btn-sm" @click="delete_note(template, template_note.id, key)" style="margin-bottom: 1px;">
+										<button class="btn btn-danger btn-sm" @click="delete_note(template, template_note.id, key)">
 											<small><i class="fa-solid fa-trash"></i></small> Delete
 										</button>
 									</template>
-									<p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(template_note.note)"></p>
+									<p class="markdown-render-result" v-html="md.render(template_note.note)"></p>
 								</template>
 							</div>
 							<div v-else>
@@ -574,17 +580,16 @@ export default {
 											<div hidden>[[template.title]]</div>
 											Create
 										</button>
-										<button class="btn btn-danger btn-sm" @click="delete_note(template, template_note.id, key)" style="margin-bottom: 1px;">
+										<button class="btn btn-danger btn-sm" @click="delete_note(template, template_note.id, key)">
 											<small><i class="fa-solid fa-trash"></i></small> Delete
 										</button>
 									</div>
 									<div style="display: flex;">
-										<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_'+key+'_'+template.id"></div>
-										<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[key])"></div>
+										<div class="note-editor" :id="'editor_'+key+'_'+template.id"></div>
+										<div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
 									</div>
 								</template>
 							</div>
-							<button class="btn btn-primary btn-sm" @click="add_notes_task()">Add notes</button>
 						</template>
 					</div>
 					<div v-else>
@@ -596,8 +601,8 @@ export default {
 								</button>
 							</div>
 							<div style="display: flex;">
-								<div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_0_'+template.id"></div>
-								<div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[0])"></div>
+								<div class="note-editor" :id="'editor_0_'+template.id"></div>
+								<div  class="markdown-render" v-html="md.render(note_editor_render[0])"></div>
 							</div>
 						</template>
 					</div>

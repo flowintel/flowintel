@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div style="display:flex;">
+    <div class="case-core-style d-flex" style="border-radius: 0">
         <h1>Modules</h1>
         <i class="fa fa-question" title="List of modules usable"></i>
     </div>
@@ -13,7 +13,7 @@
 
     <button class="btn btn-primary" @click="reload()"><i class="fa-solid fa-arrow-rotate-right"></i> Reload</button>
 
-    <table class="table" style="margin-top: 10px; background-color: white;">
+    <table class="table case-core-style" style="margin-top: 10px; border-radius: 0">
         <thead>
             <tr>
                 <th>Name</th>

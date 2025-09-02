@@ -5,10 +5,10 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <h2 style="display: inline-block;">Edit a Task template</h2>
-    <hr>
+    <h2 class="case-core-style" style="border-radius: 0;">Edit a Task template</h2>
+    <hr class="fading-line-2 mt-4 mb-4">
 
-    <form action="" method="post" id="form">
+    <form action="" method="post" id="form" class="case-core-style">
         {{ form.hidden_tag() }}
         {{ form.template_id }}
         <div class="row">

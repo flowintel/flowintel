@@ -5,90 +5,103 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>
-        Taxonomies
-    </h1>
+    <div class="case-core-style d-flex" style="border-radius: 0">
+        <h1>Taxonomies</h1>
 
-    <hr>
-
-    <!-- Search bar -->
-    <div class="input-group w-auto start-50 translate-middle-x" id="search_org" style="max-width: 200px;">
-        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search taxonomies by name' style="min-width: 400px;" />
+        <!-- Search bar -->
+        <div class="input-group w-auto start-50 translate-middle-x" id="search_org">
+            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search taxonomies by name' style="min-width: 350px;" />
+        </div>
+        <!-- Search bar -->
     </div>
-    <!-- Search bar -->
 
-    <hr>
+    <hr class="fading-line-2 mb-4 mt-4">
     
     <nav aria-label="Page navigation example" v-if="taxonomies_list && nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchTaxonomies(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetchTaxonomies(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchTaxonomies(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="fetchTaxonomies(cp)">[[cp]]</button>
+                </li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}"><button class="page-link" @click="fetchTaxonomies(Math.min(current_page+1, nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}">
+                <button class="page-link" @click="fetchTaxonomies(Math.min(current_page+1, nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 
-    <template v-if="taxonomies_list">
-        <template v-for="taxonomy in taxonomies_list.taxonomies">
-            <div class="list-group" style="margin-bottom: 10px;">
-                <div class="d-flex align-items-center">
-                    <input v-if="taxonomy.exclude" class="form-check-input me-2" type="checkbox" name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)">
-                    <input v-else class="form-check-input me-2" type="checkbox" checked name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)">
-                    <a @click="extend_collapse(taxonomy.id)" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">[[taxonomy.name]]</h4>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p class="mb-1">[[taxonomy.description]]</p>
-                        </div>
-                    </a>
+    <div class="case-core-style">
+        <template v-if="taxonomies_list">
+            <template v-for="taxonomy in taxonomies_list.taxonomies">
+                <div class="list-group" style="margin-bottom: 10px;">
+                    <div class="d-flex align-items-center" style="border-radius: 10px;">
+                        <input v-if="taxonomy.exclude" class="form-check-input me-2" type="checkbox" name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)">
+                        <input v-else class="form-check-input me-2" type="checkbox" checked name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)">
+                        <a @click="extend_collapse(taxonomy.id)" class="list-group-item list-group-item-action case-index-list">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h4 class="mb-1">[[taxonomy.name]]</h4>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <p class="mb-1">[[taxonomy.description]]</p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-            </div>
 
-            <div class="collapse" :id="'collapse'+taxonomy.id" style="margin-bottom: 20px;">
-                <div class="card card-body" :id="'card-body_'+taxonomy.id" style="background-color: whitesmoke;">
-                    <template v-if="tags_table">
-                        <template v-if="tags_table[taxonomy.id]">
-                            <table>
-                                <template v-for="tag in tags_table[taxonomy.id]">
-                                    <tr>
-                                        <td title="Tag">
-                                            <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                                                <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                                                [[tag.name]]
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </table>
-                            <hr>
-                            
+                <div class="collapse" :id="'collapse'+taxonomy.id" style="margin-bottom: 20px;">
+                    <div class="card card-body" :id="'card-body_'+taxonomy.id" style="background-color: whitesmoke;">
+                        <template v-if="tags_table">
+                            <template v-if="tags_table[taxonomy.id]">
+                                <table>
+                                    <template v-for="tag in tags_table[taxonomy.id]">
+                                        <tr>
+                                            <td title="Tag">
+                                                <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                                    <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                                                    [[tag.name]]
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </table>
+                                <hr>
+                                
+                            </template>
+                            <template v-else>
+                                <i>No tags</i>
+                            </template>
                         </template>
                         <template v-else>
-                            <i>No tags</i>
+                            Loading...
                         </template>
-                    </template>
-                    <template v-else>
-                        Loading...
-                    </template>
+                    </div>
                 </div>
+            </template>
+        </template>
+        <template v-else>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
         </template>
-    </template>
-    <template v-else>
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </template>
+    </div>
 
     <nav aria-label="Page navigation example" v-if="taxonomies_list && nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchTaxonomies(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetchTaxonomies(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchTaxonomies(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="fetchTaxonomies(cp)">[[cp]]</button>
+                </li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}"><button class="page-link" @click="fetchTaxonomies(Math.min(current_page+1, nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}">
+                <button class="page-link" @click="fetchTaxonomies(Math.min(current_page+1, nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 {% endblock %}

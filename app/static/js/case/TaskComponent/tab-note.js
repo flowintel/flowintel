@@ -231,8 +231,8 @@ export default {
                                 </button>
                             </div>
                             <div style="display: flex;">
-                                <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor1_'+key+'_'+task.id"></div>
-                                <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[key])"></div>
+                                <div class="note-editor" :id="'editor1_'+key+'_'+task.id"></div>
+                                <div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
                             </div>
                         </template>
                         <!-- Render an existing note -->
@@ -268,7 +268,7 @@ export default {
                                 </button>
 
                             </template> 
-                            <p style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(task_note.note)"></p>
+                            <p class="markdown-render-result" v-html="md.render(task_note.note)"></p>
                         </template>
                     </template>
                     <!-- Note is empty -->
@@ -285,8 +285,8 @@ export default {
                                 </button>
                             </div>
                             <div style="display: flex;">
-                                <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_'+key+'_'+task.id"></div>
-                                <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[key])"></div>
+                                <div class="note-editor" :id="'editor_'+key+'_'+task.id"></div>
+                                <div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
                             </div>
                         </template>
                     </template>
@@ -303,8 +303,8 @@ export default {
                         </button>
                     </div>
                     <div style="display: flex;">
-                        <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" :id="'editor_0_'+task.id"></div>
-                        <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render[0])"></div>
+                        <div class="note-editor" :id="'editor_0_'+task.id"></div>
+                        <div class="markdown-render" v-html="md.render(note_editor_render[0])"></div>
                     </div>
                 </template>
             </div>

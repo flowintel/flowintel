@@ -92,40 +92,55 @@ export default {
 		}
     },
 	template: `
-		<div id="assign" style="float: right;" v-if="cases_info">
-            <div class="dropdown" id="dropdown_user_case">
-                <button class="btn btn-secondary dropdown-toggle" style="margin-top: -2px" data-bs-toggle="dropdown" aria-expanded="false">
-                    Orgs
-                    <span class="badge text-bg-primary">[[cases_info.orgs_in_case.length]]</span>
-                </button>
-                <ul class="dropdown-menu">
-                    <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                        <li>
-                            <div class="justify-content-center" style="display: flex;">
-                                <button class="btn btn-primary btn-sm" title="Add an org to the case" style="margin-right: 3px" data-bs-toggle="modal" data-bs-target="#add_orgs">
-                                    <i class="fa-solid fa-users"></i>+
+		<template v-if="cases_info">
+            <div class="case-tags-style mt-2">
+                <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                    <div class="justify-content-center" style="display: flex; float: right">
+                        <button class="btn btn-primary btn-sm" title="Add an org to the case" style="margin-right: 3px" data-bs-toggle="modal" data-bs-target="#add_orgs">
+                            <i class="fa-solid fa-users"></i>+
+                        </button>
+                        <button class="btn btn-primary btn-sm me-1" title="Change owner of the case" data-bs-toggle="modal" data-bs-target="#change_owner">
+                            <i class="fa-solid fa-user-pen"></i>
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#collapseOrgs" aria-expanded="true" aria-controls="collapseOrgs">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                    </div>
+                </template>
+                <div class="d-flex">
+                    <h4>Orgs:</h4>
+                    <div>
+                        <span class="badge text-bg-secondary" style="margin-top:6px; margin-left: 5px">
+                            [[cases_info.orgs_in_case.length]]
+                        </span>
+                    </div>
+                </div>
+
+                <hr class="fading-line-2">
+
+                <div class="collapse show" id="collapseOrgs">
+                    <div class="row mt-2">
+                        <div class="col-6 link-style-first" v-for="org in cases_info.orgs_in_case" :key="org.id">
+                            <span style="margin-left: 8%;  padding: 5px;">
+                                [[org.name]]
+                                <small v-if="org.id == cases_info.case.owner_org_id" style="color: green;">
+                                    <i>owner</i>
+                                </small>
+                            </span>
+                            <template v-if="org.id != cases_info.case.owner_org_id">
+                                <button class="btn btn-outline-danger btn-sm ms-4"
+                                @click="remove_org_case(cases_info, org)"
+                                v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin"
+                                title="Remove org from case">
+                                    <i class="fa-solid fa-trash"></i>
                                 </button>
-                                <button class="btn btn-primary btn-sm" title="Change owner of the case" data-bs-toggle="modal" data-bs-target="#change_owner">
-                                    <i class="fa-solid fa-user-pen"></i>
-                                </button>
-                            </div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                    </template>
-                    <template v-for="org in cases_info.orgs_in_case" :key="org.id">
-                        <li>
-                            <div style="display: flex;">
-                                <button class="dropdown-item">[[org.name]]</button>
-                                <template v-if="org.id != cases_info.case.owner_org_id">
-                                    <button class="btn btn-danger btn-sm" style="margin-right: 5px;" @click="remove_org_case(cases_info, org)" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">Delete</button>
-                                </template>
-                                <template v-else>
-                                    <small style="margin-right: 20px; color: green;"><i>owner</i></small>
-                                </template>
-                            </div>
-                        </li>
-                    </template>
-                </ul>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+
                 <!-- Modal add orgs -->
                 <div class="modal fade" id="add_orgs" tabindex="-1" aria-labelledby="add_orgs_modal" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
@@ -176,6 +191,6 @@ export default {
                     </div>
                 </div>
             </div>
-        </div>
+        </template>
     `
 }

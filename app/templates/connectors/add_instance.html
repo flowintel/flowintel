@@ -6,12 +6,14 @@
 
 {% block content %}
     {% if edit_mode %}
-        <h2 class="ui dividing header">Edit an Instance</h2>
+        <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit an Instance</h2>
     {%else%}
-        <h2 class="ui dividing header">Add an Instance</h2>
+        <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Add an Instance</h2>
     {%endif%}
 
-    <form action="" method="post">
+    <hr class="fading-line-2 mb-4 mt-4">
+
+    <form action="" method="post" class="case-core-style">
         {{ form.hidden_tag() }}
         <div class="modal-body">
             <div class="row">

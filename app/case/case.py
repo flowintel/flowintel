@@ -86,15 +86,11 @@ def edit_case(cid):
             form = CaseEditForm()
 
             if form.validate_on_submit():
-                res = prepare_tags(request)
-                if isinstance(res, dict):
-                    form_dict = form_to_dict(form)
-                    form_dict.update(res)
-                    form_dict["link_to"] = request.form.getlist("link_to")
-                    CaseModel.edit(form_dict, cid, current_user)
-                    flash("Case edited", "success")
-                    return redirect(f"/case/{cid}")
-                return render_template("case/edit_case.html", form=form)
+                form_dict = form_to_dict(form)
+                form_dict["link_to"] = request.form.getlist("link_to")
+                CaseModel.edit(form_dict, cid, current_user)
+                flash("Case edited", "success")
+                return redirect(f"/case/{cid}")
             else:
                 case_modif = CommonModel.get_case(cid)
                 form.description.data = case_modif.description
@@ -112,6 +108,29 @@ def edit_case(cid):
         return render_template("404.html")
     return redirect(f"/case/{cid}")
 
+@case_blueprint.route("/edit_tags/<cid>", methods=['GET','POST'])
+@login_required
+@editor_required
+def edit_case_tags(cid):
+    """Edit the case"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            tag_list = request.json["tags_select"]
+            cluster_list = request.json["clusters_select"]
+            custom_tags_list = request.json["custom_select"]
+            if isinstance(CommonModel.check_tag(tag_list), bool):
+                if isinstance(CommonModel.check_cluster(cluster_list), bool):
+                    loc_dict = {
+                        "tags": tag_list,
+                        "clusters": cluster_list,
+                        "custom_tags": custom_tags_list
+                    }
+                    CaseModel.edit_tags(loc_dict, cid, current_user)
+                    return {"message": "Tags edited", "toast_class": "success-subtle"}, 200
+                return {"message": "Error with Clusters", "toast_class": "warning-subtle"}, 400
+            return {"message": "Error with Tags", "toast_class": "warning-subtle"}, 400
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/add_orgs", methods=['GET', 'POST'])
 @login_required

@@ -49,40 +49,46 @@
   
   
 
-<div style="margin-bottom: 10px;">
-    <h1 style="display: inline-block; font-size: xxx-large;">
-        <a type="button" class="btn" href="/tools/note_template_index"><i class="fa-solid fa-arrow-left"></i></a>
-    </h1>
-    <h1 style="display: inline-block; font-size: xx-large;">{{note_template.id}}- {{note_template.title}}</h1>
-    <span><i style="font-size: 12px; margin-left: 5px;">{{note_template.uuid}}</i></span>
+<div class="case-core-style" style="border-radius: 0;">
+    <div style="margin-bottom: 10px; display: flex;">
+        <h1 style="margin-top: -9px;">
+            <a type="button" class="btn btn-outline-dark" href="/tools/note_template_index"><i class="fa-solid fa-arrow-left"></i></a>
+        </h1>
+        <h1 style="font-size: xx-large; margin-left: 8px;">{{note_template.id}}- {{note_template.title}}</h1>
+        <span><i style="font-size: 12px; margin-left: 5px;">{{note_template.uuid}}</i></span>
+    </div>
+    
+
+
+
+    {% if note_template.description %}
+        <hr>
+        <pre>{{note_template.description}}</pre>
+        <hr>
+    {%endif%}
 </div>
-<hr class="fading-line">
 
-
-
-{% if note_template.description %}
-    <pre>{{note_template.description}}</pre>
-{%endif%}
-
-<hr class="fading-line">
+<hr class="fading-line mt-4 mb-4">
 
 <template v-if="note_template">
-    <div>
-        version: [[note_template.version]]
-    </div>
-    <template v-if="!is_editing">
-        <button class="btn btn-primary" @click="edit()">Edit</button>
-        <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px;" v-html="md.render(note_editor_render)"></div>
-    </template>
-    <template v-else>
-        <button class="btn btn-primary" @click="save()">Save</button>
-
-        <div style="display: flex;">
-            <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; width: 50%" id="editor"></div>
-            <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+    <div class="case-core-style">
+        <div>
+            version: [[note_template.version]]
         </div>
+        <template v-if="!is_editing">
+            <button class="btn btn-primary" @click="edit()">Edit</button>
+            <div class="markdown-render-result" v-html="md.render(note_editor_render)"></div>
+        </template>
+        <template v-else>
+            <button class="btn btn-primary" @click="save()">Save</button>
 
-    </template>
+            <div style="display: flex;">
+                <div class="note-editor" id="editor"></div>
+                <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+            </div>
+
+        </template>
+    </div>
 </template>
 <template v-else>
     <div class="spinner-border" role="status">

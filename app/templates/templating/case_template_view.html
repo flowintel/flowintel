@@ -13,43 +13,51 @@
 
 {% block content %}
 <template v-if="case_template">
-    <div>
-        <h1 style="display: inline-block; font-size: xxx-large;">
-            <a type="button" class="btn" href="/templating/cases">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-        </h1>
-        <h1 style="display: inline-block; font-size: xxx-large;">Template</h1>
-    </div>
-    <h2 style="display: inline-block;">[[case_template.id]] - [[case_template.title]]</h2>
+    <div class="case-core-style" style="border-radius: 0;">
+        <div class="dropdown" style="float:right;">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Actions
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="/templating/case/{{case_id}}/download" type="button" title="Download the case in json">
+                        <span class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i></span> Download
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="/templating/edit_case/{{case_id}}" type="button" title="Edit the case template">
+                        <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-pen-to-square"></i></span> Edit
+                    </a>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item" title="Create a case from this template" data-bs-toggle="modal" data-bs-target="#fork_case_modal">
+                        <span class="btn btn-primary btn-sm"><i class="fa-solid fa-file"></i></span> Create case
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
+                        <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
+                    </button>
+                </li>
+            </ul>
+        </div>
 
-    <div class="dropdown" style="float:right;">
-        <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Actions
-        </button>
-        <ul class="dropdown-menu">
-            <li>
-                <a class="dropdown-item" href="/templating/case/{{case_id}}/download" type="button" title="Download the case in json">
-                    <span class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i></span> Download
+        <div class="d-flex">
+            <h1 style="margin-top: -9px;">
+                <a type="button" class="btn btn-outline-dark" href="/templating/cases">
+                    <i class="fa-solid fa-arrow-left"></i>
                 </a>
-            </li>
-            <li>
-                <a class="dropdown-item" href="/templating/edit_case/{{case_id}}" type="button" title="Edit the case template">
-                    <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-pen-to-square"></i></span> Edit
-                </a>
-            </li>
-            <li>
-                <button type="button" class="dropdown-item" title="Create a case from this template" data-bs-toggle="modal" data-bs-target="#fork_case_modal">
-                    <span class="btn btn-primary btn-sm"><i class="fa-solid fa-file"></i></span> Create case
-                </button>
-            </li>
-            <li>
-                <button type="button" class="dropdown-item" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
-                    <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
-                </button>
-            </li>
-        </ul>
+            </h1>
+            <h1 style="font-size: xx-large; margin-left: 8px">[[case_template.id]] - [[case_template.title]]</h1>
+        </div>
+
+        <div v-if="case_template.description">
+            <hr>
+            <pre>[[case_template.description]]</pre>
+            <hr>
+        </div>
     </div>
+    
 
     <!-- Modal delete case -->
     <div class="modal fade" id="delete_case_modal" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
@@ -86,60 +94,75 @@
         </div>
     </div>
 
+    <div class="case-core-style mt-4">
+        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
+                data-bs-target="#collapseTags" aria-expanded="true" aria-controls="collapseTags"
+                style="float: right;">
+            <i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <ul class="nav nav-tabs" style="margin-bottom: 10px;">
+            <li class="nav-item">
+                <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')" style="min-width: 100px;">
+                    <i class="fa-solid fa-house"></i>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="tab-note" @click="active_tab('note')">Notes</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="tab-info" @click="active_tab('info')">Info</button>
+            </li>
+        </ul>
 
-    <template v-if="case_template.custom_tags">
-        <div style="display: flex; margin-bottom: 5px;">
-            <template v-for="tag in case_template.custom_tags">
-                <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                    <i v-if="tag.icon" :class="tag.icon"></i>
-                    [[tag.name]]
+        <hr class="fading-line-2">
+
+        <div class="collapse show" id="collapseTags">
+            <template v-if="selected_tab == 'main'">
+                <div class="row">
+                    <div class="col-6">
+                        <tags_edition :current_case="case_template" :type_object="'case_template'"></tags_edition>
+                    </div>
+                </div>
+            </template>
+            <template v-else-if="selected_tab == 'note'">
+                <div v-if="case_template.notes">
+                    <template v-if="edit_mode">
+                        <button class="btn btn-primary" @click="save_note_case()">Save</button>
+                        <div style="display: flex;">
+                            <div class="note-editor" id="editor"></div>
+                            <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <button class="btn btn-primary btn-sm" @click="edit_note()">Edit</button>
+                        <div v-html="md.render(case_template.notes)" class="markdown-render-result container-fluid"></div>
+                    </template>
+                </div>
+                <template v-else>
+                    <button class="btn btn-primary" @click="save_note_case()">Save</button>
+                    <div style="display: flex;">
+                        <div class="note-editor" id="editor"></div>
+                        <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                    </div>
+                </template>
+            </template>
+
+            <template v-else-if="selected_tab == 'info'">
+                <div class="row">
+                    <div class="col-auto">
+                        <fieldset class="analyzer-select-case" style="text-align: center;">
+                            <legend class="analyzer-select-case">Time required</legend>
+                            <i>[[case_template.time_required]]</i>
+                        </fieldset>
+                    </div>
                 </div>
             </template>
         </div>
-    </template>
-
-    <template v-if="case_template.tags">
-        <div style="display: flex;">
-            <template v-for="tag in case_template.tags">
-                <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                    <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                    [[tag.name]]
-                </div>
-            </template>
-        </div>
-    </template>
-
-    <div style="margin-top: 5px;" v-if="case_template.clusters">
-        <div v-for="cluster in case_template.clusters" :title="'Description: '+cluster.description+'\n\nMetadata: '+cluster.meta">
-            <span class="cluster">
-                <span v-html="mapIcon(cluster.icon)"></span>
-                [[cluster.tag]]
-            </span>
-        </div>
     </div>
 
-    <hr>
+    <hr class="fading-line-2 mt-4 mb-5">
 
-    <div v-if="case_template.description">
-        <p>[[case_template.description]]</p>
-        <hr>
-    </div>
-
-
-    <ul class="nav nav-tabs" style="margin-bottom: 10px;">
-        <li class="nav-item">
-            <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')">Main</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="tab-note" @click="active_tab('note')">Notes</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="tab-info" @click="active_tab('info')">Info</button>
-        </li>
-    </ul>
-
-    
-    <template v-if="selected_tab == 'main'">
+    <div class="case-core-style">
         <div style="display: flex;">
             <h3>Tasks</h3>
             <span style="padding-left: 10px;">
@@ -161,41 +184,7 @@
                 <span class="visually-hidden">Loading...</span>
             </div>
         </template>
-    </template>
-
-    <template v-else-if="selected_tab == 'note'">
-        <div v-if="case_template.notes">
-            <template v-if="edit_mode">
-                <button class="btn btn-primary" @click="save_note_case()">Save</button>
-                <div style="display: flex;">
-                    <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
-                    <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
-                </div>
-            </template>
-            <template v-else>
-                <button class="btn btn-primary btn-sm" @click="edit_note()">Edit</button>
-                <div v-html="md.render(case_template.notes)" style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px;"></div>
-            </template>
-        </div>
-        <template v-else>
-            <button class="btn btn-primary" @click="save_note_case()">Save</button>
-            <div style="display: flex;">
-                <div style="background-color: white; border-width: 1px; border-style: solid; width: 50%" id="editor"></div>
-                <div style="background-color: white; border: 1px #515151 solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
-            </div>
-        </template>
-    </template>
-
-    <template v-else-if="selected_tab == 'info'">
-        <div class="row">
-            <div class="col-auto">
-                <fieldset class="analyzer-select-case" style="text-align: center;">
-                    <legend class="analyzer-select-case">Time required</legend>
-                    <i>[[case_template.time_required]]</i>
-                </fieldset>
-            </div>
-        </div>
-    </template>
+    </div>
 </template>
 {% endblock %}
 
@@ -204,12 +193,14 @@
     <script type="module">
         const { createApp, ref, computed, onMounted, nextTick } = Vue
         import task_template from '/static/js/templating/task_template.js'
+        import tags_edition from '/static/js/case/tags_edition.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
-                task_template
+                task_template,
+                tags_edition
             },
             setup() {
                 const case_template = ref()

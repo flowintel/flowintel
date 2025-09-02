@@ -6,96 +6,102 @@
 {% import 'macros/check_password.html' as check %}
 
 {% block content %}
-        {% if not edit_mode %}
-            <h2 class="ui dividing header">Create an account</h2>
-        {%else%}
-            <h2 class="ui dividing header">Edit an account</h2>
-        {%endif%}
+    {% if not edit_mode %}
+        <h2 class="ui dividing header case-core-style" style="border-radius: 0;">
+            Create an account
+        </h2>
+    {%else%}
+        <h2 class="ui dividing header case-core-style" style="border-radius: 0;">
+            Edit an account
+        </h2>
+    {%endif%}
 
-        <form action="" method="post">
-            {{ form.hidden_tag() }}
-            {% if not edit_mode %}
-                {{form.user_id}}
-            {%endif%}
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col">
-                        {{form.first_name.label(class_="col-form-label")}}:
-                        {{form.first_name(class_="form-control")}}
-                        {% if form.first_name.errors %}
-                            <div style="color: red;">{{form.first_name.errors[0] | safe}}</div>
-                        {%endif%}
-                    </div>
-                    <div class="col">
-                        {{form.last_name.label(class_="col-form-label")}}:
-                        {{form.last_name(class_="form-control")}}
-                        {% if form.last_name.errors %}
-                            <div style="color: red;">{{form.last_name.errors[0] | safe}}</div>
-                        {%endif%}
-                    </div>
+    <hr class="fading-line-2 mb-4 mt-4">
+
+    <form action="" method="post" class="case-core-style">
+        {{ form.hidden_tag() }}
+        {% if not edit_mode %}
+            {{form.user_id}}
+        {%endif%}
+        <div class="modal-body">
+            <div class="row">
+                <div class="col">
+                    {{form.first_name.label(class_="col-form-label")}}:
+                    {{form.first_name(class_="form-control")}}
+                    {% if form.first_name.errors %}
+                        <div style="color: red;">{{form.first_name.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
-                <div class="row">
-                    <div class="col">
-                        {{form.nickname.label(class_="col-form-label")}}:
-                        {{form.nickname(class_="form-control")}}
-                        {% if form.nickname.errors %}
-                            <div style="color: red;">{{form.nickname.errors[0] | safe}}</div>
-                        {%endif%}
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col">
-                        {{form.email.label(class_="col-form-label")}}:
-                        {{form.email(class_="form-control")}}
-                        {% if form.email.errors %}
-                            <div style="color: red;">{{form.email.errors[0] | safe}}</div>
-                        {%endif%}
-                    </div>
-                    <div class="col">
-                        {{form.matrix_id.label(class_="col-form-label")}}:
-                        {{form.matrix_id(class_="form-control")}}
-                        {% if form.matrix_id.errors %}
-                            <div style="color: red;">{{form.matrix_id.errors[0] | safe}}</div>
-                        {%endif%}
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col">
-                        {{form.password.label(class_="col-form-label")}}:
-                        {{form.password(class_="form-control")}}
-                        {% if form.password.errors %}
-                            <div style="color: red;">{{form.password.errors[0] | safe}}</div>
-                        {%endif%}
-                    </div>
-                    <div class="col">
-                        {{form.password2.label(class_="col-form-label")}}:
-                        {{form.password2(class_="form-control")}}
-                        {% if form.password2.errors %}
-                            <div style="color: red;">{{form.password2.errors[0] | safe}}</div>
-                        {%endif%}
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col">
-                        {{form.role.label(class_="col-form-label")}}:
-                        {{form.role(class_="form-control")}}
-                        {% if form.role.errors %}
-                            <div style="color: red;">{{form.role.errors[0] | safe}}</div>
-                        {%endif%}
-                    </div>
-                    <div class="col">
-                        {{form.org.label(class_="col-form-label")}}:
-                        {{form.org(class_="form-control")}}
-                        {% if form.org.errors %}
-                            <div style="color: red;">{{form.org.errors[0] | safe}}</div>
-                        {%endif%}
-                    </div>
-                </div>
-                <div class="modal-footer" style="margin-top: 10px;">
-                    {{form.submit(class='btn btn-primary')}}
+                <div class="col">
+                    {{form.last_name.label(class_="col-form-label")}}:
+                    {{form.last_name(class_="form-control")}}
+                    {% if form.last_name.errors %}
+                        <div style="color: red;">{{form.last_name.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
             </div>
-        </form>
+            <div class="row">
+                <div class="col">
+                    {{form.nickname.label(class_="col-form-label")}}:
+                    {{form.nickname(class_="form-control")}}
+                    {% if form.nickname.errors %}
+                        <div style="color: red;">{{form.nickname.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    {{form.email.label(class_="col-form-label")}}:
+                    {{form.email(class_="form-control")}}
+                    {% if form.email.errors %}
+                        <div style="color: red;">{{form.email.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="col">
+                    {{form.matrix_id.label(class_="col-form-label")}}:
+                    {{form.matrix_id(class_="form-control")}}
+                    {% if form.matrix_id.errors %}
+                        <div style="color: red;">{{form.matrix_id.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    {{form.password.label(class_="col-form-label")}}:
+                    {{form.password(class_="form-control")}}
+                    {% if form.password.errors %}
+                        <div style="color: red;">{{form.password.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="col">
+                    {{form.password2.label(class_="col-form-label")}}:
+                    {{form.password2(class_="form-control")}}
+                    {% if form.password2.errors %}
+                        <div style="color: red;">{{form.password2.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    {{form.role.label(class_="col-form-label")}}:
+                    {{form.role(class_="form-control")}}
+                    {% if form.role.errors %}
+                        <div style="color: red;">{{form.role.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="col">
+                    {{form.org.label(class_="col-form-label")}}:
+                    {{form.org(class_="form-control")}}
+                    {% if form.org.errors %}
+                        <div style="color: red;">{{form.org.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 10px;">
+                {{form.submit(class='btn btn-primary')}}
+            </div>
+        </div>
+    </form>
 {% endblock %}
 
 {% block script %}

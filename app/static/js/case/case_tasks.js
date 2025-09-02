@@ -73,28 +73,6 @@ export default {
 			await display_toast(res)
 		}
 
-
-		async function delete_task(task, task_array){
-			// delete the task
-			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
-
-			if( await res.status == 200){
-				if(task.completed){
-					props.open_closed["closed"] -= 1
-				}else{
-					props.open_closed["open"] -= 1
-				}
-
-				// remove the task from the list of task
-				let index = task_array.indexOf(task)
-				if(index > -1)
-					task_array.splice(index, 1)
-
-				$("#modal-delete-task-"+task.id).modal("hide")
-			}
-			await display_toast(res)
-		}
-
 		async function fetch_task_connectors(){			
 			const res = await fetch("/case/get_task_connectors/"+props.task.id)
 			if(await res.status==404 ){
@@ -132,34 +110,6 @@ export default {
 			}
 		}
 
-		async function move_task(task, up_down){
-			// Move the task up and down
-			let cp = 0
-			up_down ? cp = -1 : cp = 1
-
-			const res = await fetch('/case/' + task.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
-			await display_toast(res)
-			for( let i in props.cases_info.tasks){
-				if(props.cases_info.tasks[i]["case_order_id"] == task.case_order_id+cp){
-					props.cases_info.tasks[i]["case_order_id"] = task.case_order_id
-					task.case_order_id += cp
-					break
-				}
-			}
-			props.cases_info.tasks.sort(order_task)
-		}
-
-		function order_task(a, b){
-			// Helper for move_task function
-			if(a.case_order_id > b.case_order_id){
-				return 1
-			}
-			if(a.case_order_id < b.case_order_id){
-				return -1
-			}
-			return 0
-		}
-
 		function present_user_in_task(task_user_list, user){
 			// Check if user is already assign
 			let index = -1
@@ -191,50 +141,6 @@ export default {
 			}
 			await display_toast(res)
 		}
-
-
-		async function submit_module(){
-			module_loader.value = true
-			$("#task_modules_errors_"+props.task.id).hide()
-			$("#task_instances_errors_"+props.task.id).hide()
-			if(!$("#task_modules_select_"+props.task.id).val() || $("#task_modules_select_"+props.task.id).val() == "None"){
-				$("#task_modules_errors_"+props.task.id).text("Select an item")
-				$("#task_modules_errors_"+props.task.id).show()
-			}
-			if(!$("#task_instances_select_"+props.task.id).val() || $("#task_instances_select_"+props.task.id).val().length<1){
-				$("#task_instances_error_"+props.task.id).text("Select an item")
-				$("#task_instances_error_"+props.task.id).show()
-			}
-
-			let i_s = $("#task_instances_select_"+props.task.id).val()
-			let int_sel = {}
-			for(let index in i_s){
-				for( let j in task_module_selected.value){
-					if (task_module_selected.value[j].name == i_s[index]){
-						let loc_val = $("#identifier_"+task_module_selected.value[j].id).val()
-						int_sel[task_module_selected.value[j].name] = loc_val
-						for(let k in task_instances_selected.value){
-							if(task_instances_selected.value[k].name == task_module_selected.value[j].name){
-								task_instances_selected.value[k].identifier = loc_val
-							}
-						}
-					}
-				}
-			}
-			const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.task.id+"/call_module_task?module=" + $("#task_modules_select_"+props.task.id).val() , {
-				method: "POST",
-				body: JSON.stringify({
-					int_sel
-				}),
-				headers: {
-					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-				}
-			});
-			module_loader.value = false
-
-			display_toast(res, true)
-		}
-
 
 		async function take_task(task, current_user){
 			// Assign the task to the current user
@@ -328,11 +234,11 @@ export default {
 		Vue.onMounted( () => {
 			fetch_task_connectors()
 			select2_change(props.task.id)
-			$('.select2-select').select2({
-				theme: 'bootstrap-5',
-				width: '50%',
-				closeOnSelect: false
-			})
+			// $('.select2-select').select2({
+			// 	theme: 'bootstrap-5',
+			// 	width: '50%',
+			// 	closeOnSelect: false
+			// })
 
 			// When openning a task, initialize mermaid library
 			// const allCollapses = document.getElementById('collapse' + props.task.id)
@@ -369,13 +275,10 @@ export default {
 
 			take_task,
 			remove_assign_task,
-			delete_task,
 			complete_task,
 			formatNow,
 			endOf,
 			present_user_in_task,
-			move_task,
-			submit_module,
 
 			select_tab_task,
 			fetch_task_connectors
@@ -384,20 +287,21 @@ export default {
 	template: `
 	<div style="display: flex;">                          
 		<a :href="'#collapse'+task.id" 
-			class="list-group-item list-group-item-action" 
+			class="list-group-item list-group-item-action case-index-list" 
 			data-bs-toggle="collapse" 
 			role="button" 
 			aria-expanded="false" 
 			:aria-controls="'collapse'+task.id" 
 			style="border-top-left-radius: 15px; border-top-right-radius: 15px;"
+			:id="'collapsing-task-' + task.id"
 		>
 			<div class="d-flex w-100 justify-content-between">
 				<h5 class="mb-1">[[ key_loop+1 ]]- [[task.title]]</h5>
-				<small :title="task.last_modif"><i>Changed [[ formatNow(task.last_modif) ]] </i></small>
+				<small :title="'Changed: ' + task.last_modif"><i><i class="fa-solid fa-arrows-rotate"></i> [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
 
-			<div class="d-flex w-100 justify-content-between">
-				<p v-if="task.description" class="card-text">[[ task.description ]]</p>
+			<div class="d-flex w-100 justify-content-between mt-1">
+				<pre v-if="task.description" class="description">[[ task.description ]]</pre>
 				<p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
 
 				<small v-if="status_info">
@@ -444,7 +348,7 @@ export default {
                 <div v-else>
                     <i>No user assigned</i>
                 </div>
-                <small v-if="task.deadline" :title="task.deadline"><i>Deadline [[endOf(task.deadline)]]</i></small>
+                <small v-if="task.deadline" :title="'Deadline: ' + task.deadline"><i><i class="fa-solid fa-hourglass-start"></i> [[endOf(task.deadline)]]</i></small>
                 <small v-else><i>No deadline</i></small>
             </div>
 			<div class="d-flex w-100 justify-content-between">
@@ -469,7 +373,7 @@ export default {
 					<i>[[task.urls_tools.length]] Urls/Tools</i>
 				</span>
 			</div>
-			<p class="mt-1 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
+			<p class="mt-2 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
 				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
 				<template v-for="subtask in task.subtasks">
 					<div v-if="!subtask.completed" style="display: flex;">
@@ -481,113 +385,28 @@ export default {
 		</a>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 			<div>
-				<button v-if="task.completed" class="btn btn-secondary btn-sm"  @click="complete_task(task)" title="Revive the task">
+				<button v-if="task.completed" class="btn btn-secondary"  @click="complete_task(task)" title="Revive the task">
 					<i class="fa-solid fa-backward fa-fw"></i>
 				</button>
-				<button v-else class="btn btn-success btn-sm" @click="complete_task(task)" title="Complete the task">
+				<button v-else class="btn btn-success" @click="complete_task(task)" title="Complete the task">
 					<i class="fa-solid fa-check fa-fw"></i>
 				</button>
 			</div>
 			<div>
-				<button v-if="!task.is_current_user_assigned" class="btn btn-secondary btn-sm" @click="take_task(task, cases_info.current_user)" title="Be assigned to the task">
+				<button v-if="!task.is_current_user_assigned" class="btn btn-secondary" @click="take_task(task, cases_info.current_user)" title="Be assigned to the task">
 					<i class="fa-solid fa-hand fa-fw"></i>
 				</button>
-				<button v-else class="btn btn-secondary btn-sm" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
+				<button v-else class="btn btn-secondary" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
 					<i class="fa-solid fa-handshake-slash fa-fw"></i>
 				</button>
 			</div>
 			<div>
-				<button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" :data-bs-target="'#Send_to_modal_task_'+task.id">
-					<i class="fa-solid fa-share-from-square fa-fw"></i>
-				</button>
-			</div>
-			<div>
-				<a class="btn btn-primary btn-sm" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
+				<a class="btn btn-primary" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
 					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
 			</div>
-			<div>
-				<button class="btn btn-danger btn-sm" title="Delete the task" data-bs-toggle="modal" :data-bs-target="'#modal-delete-task-'+task.id">
-                    <i class="fa-solid fa-trash fa-fw"></i>
-                </button>
-			</div>
-		</div>
-		<div v-if="(!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin) && !task.completed" style="display: grid;">
-			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task(task, true)">
-				<i class="fa-solid fa-chevron-up"></i>
-			</button>
-			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task(task, false)">
-				<i class="fa-solid fa-chevron-down"></i>
-			</button>
 		</div>
 	</div>
-
-	<!-- Modal delete task -->
-	<div class="modal fade" :id="'modal-delete-task-'+task.id" tabindex="-1" aria-labelledby="delete_task_modal" aria-hidden="true">
-		<div class="modal-dialog modal-sm">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h1 class="modal-title fs-5" id="delete_task_modal">Delete '[[task.title]]' ?</h1>
-					<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-					<button class="btn btn-danger btn-sm" @click="delete_task(task, cases_info.tasks)"><i class="fa-solid fa-trash"></i> Confirm</button>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<!-- Modal send to -->
-	<div class="modal fade" :id="'Send_to_modal_task_'+task.id" tabindex="-1" aria-labelledby="Send_to_modalLabel" aria-hidden="true">
-		<div class="modal-dialog modal-lg">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h1 class="modal-title fs-5" id="Send_to_modalLabel">Send to modules</h1>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-body">
-					<div style="display: flex;">
-						<div>
-							<label :for="'task_modules_select_'+task.id">Modules:</label>
-							<select data-placeholder="Modules" class="select2-select form-control" :name="'task_modules_select_'+task.id" :id="'task_modules_select_'+task.id" >
-								<option value="None">--</option>
-								<template v-for="module, key in task_modules">
-									<option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
-								</template>
-							</select>
-							<div :id="'task_modules_errors_'+task.id" class="invalid-feedback"></div>
-						</div>
-						<div style="min-width: 100%;">
-							<label :for="'task_instances_select'+task.id">Instances:</label>
-							<select data-placeholder="Instances" class="select2-select form-control" multiple :name="'task_instances_select_'+task.id" :id="'task_instances_select_'+task.id" >
-								<template v-if="task_module_selected">
-									<template v-for="instance, key in task_module_selected">
-										<option :value="[[instance.name]]">[[instance.name]]</option>
-									</template>
-								</template>
-							</select>
-							<div :id="'task_instances_errors_'+task.id" class="invalid-feedback"></div>
-						</div>
-					</div>
-					<div class="row" v-if="task_instances_selected">
-						<div class="mb-3 w-50" v-for="instance, key in task_instances_selected" >
-							<label :for="'identifier_' + instance.id">Identifier for <u><i>[[instance.name]]</i></u></label>
-							<input :id="'identifier_' + instance.id" class="form-control" :value="instance.identifier" :name="'identifier_' + instance.id" type="text">
-						</div>
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button v-if="module_loader" class="btn btn-primary" type="button" disabled>
-						<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-						<span role="status">Loading...</span>
-					</button>
-					<button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
-				</div>
-			</div>
-		</div>
-	</div>
-
 	
 	<!-- Collapse Part -->
 	<div class="collapse" :id="'collapse'+task.id">
@@ -629,16 +448,18 @@ export default {
 			</template>
 
 			<template v-else-if="selected_tab == 'connectors'">
-				<caseconnectors 
-					:case_task_connectors_list="task_connectors_list"
-                    :all_connectors_list="all_connectors_list"
-                    :modules="task_modules"
-                    :is_case="false"
-					:object_id="task.id"
-					:cases_info="cases_info"
-					@case_connectors=""
-                	@task_connectors="(msg) => fetch_task_connectors()">
-				</caseconnectors>
+				<div class="card card-body">
+					<caseconnectors 
+						:case_task_connectors_list="task_connectors_list"
+						:all_connectors_list="all_connectors_list"
+						:modules="task_modules"
+						:is_case="false"
+						:object_id="task.id"
+						:cases_info="cases_info"
+						@case_connectors=""
+						@task_connectors="(msg) => fetch_task_connectors()">
+					</caseconnectors>
+				</div>
 			</template>
 
 			<template v-else-if="selected_tab == 'files'">
@@ -646,7 +467,7 @@ export default {
 			</template>
 
 			<template v-else-if="selected_tab == 'info'">
-				<tabInfo :task="task"></tabInfo>
+				<tabInfo :task="task" :cases_info="cases_info" :open_closed="open_closed"></tabInfo>
 			</template>
 		</div>
 	</div>

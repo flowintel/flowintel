@@ -5,118 +5,129 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>
-        Case Templates
-        <span>
-            <a class="btn btn-primary btn-small" href="/templating/create_case" title="Add a Template"><i class="fa-solid fa-plus"></i></a>
-        </span>
-    </h1>
+    <div class="case-core-style d-flex" style="border-radius: 0;">
+        <h1>
+            Case Templates
+            <span>
+                <a class="btn btn-primary btn-small" href="/templating/create_case" title="Add a Template"><i class="fa-solid fa-plus"></i></a>
+            </span>
+        </h1>
 
-    <hr>
+        <!-- Search bar -->
+        <div class="input-group w-auto translate-middle-x" style="left: 35% !important;">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
+                <i class="fa-solid fa-filter"></i>
+            </button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
+        </div>
+        <!-- Search bar -->
 
-    <!-- Search bar -->
-    <div class="input-group justify-content-center start-50 translate-middle-x top-0" id="search_template" style="max-width: 200px;">
-        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case template by title' style="min-width: 350px;"/>
     </div>
-    <br>
-    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltercase" aria-expanded="false" aria-controls="collapsefiltercase">
-        filter
-    </button>
-	<div class="collapse" id="collapsefiltercase">
-		<div class="card card-body">
-			<div class="d-flex w-100 justify-content-evenly">
-				<div>
-					<div class="form-check">
-						<input class="form-check-input" type="checkbox" name="radioOther" id="radioOtherTitle" @click="sort_by_title()">
-						<label class="form-check-label" for="radioOtherTitle">Title</label>
-					</div>
-				</div>
 
-				<div style="display:flex">
-				<span style="margin-right: 10px">Asc</span>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
-						<label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
-					</div>
-				</div>
-			</div>
-            <hr>
-            <div>Taxonomies:</div>
-            <div class="d-flex w-100 justify-content-center">
-                <div style="display:flex">
-				    <span style="margin-right: 10px">OR</span>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
-						<label class="form-check-label" for="switchOperator">AND</label>
+
+    <div class="modal fade" id="modalCaseFilter" tabindex="-1" aria-labelledby="modalCaseFilterLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="modalCaseFilterLabel">Cases Filter</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex w-100 justify-content-evenly">
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="radioOther" id="radioOtherTitle" @click="sort_by_title()">
+                                <label class="form-check-label" for="radioOtherTitle">Title</label>
+                            </div>
+                        </div>
+
+                        <div style="display:flex">
+                        <span style="margin-right: 10px">Asc</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
+                                <label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
+                            </div>
+                        </div>
                     </div>
-				</div>
-            </div>
-            <div style="display: flex;">
-                <template v-if="taxonomies">
-                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                        <template v-for="taxonomy, key in taxonomies">
-                            <option :value="[[taxonomy]]">[[taxonomy]]</option>
+                    <hr>
+                    <div>Taxonomies:</div>
+                    <div class="d-flex w-100 justify-content-center">
+                        <div style="display:flex">
+                            <span style="margin-right: 10px">OR</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
+                                <label class="form-check-label" for="switchOperator">AND</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <template v-if="taxonomies">
+                            <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                                <template v-for="taxonomy, key in taxonomies">
+                                    <option :value="[[taxonomy]]">[[taxonomy]]</option>
+                                </template>
+                            </select>
                         </template>
-                    </select>
-                </template>
-                
-                <template v-if="tags_list">
-                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                        <template v-for="(tags, taxo) in tags_list">
-                            <optgroup :label="[[taxo]]">
-                                <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
-                            </optgroup>
+                        
+                        <template v-if="tags_list">
+                            <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                                <template v-for="(tags, taxo) in tags_list">
+                                    <optgroup :label="[[taxo]]">
+                                        <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                                    </optgroup>
+                                </template>
+                            </select>
                         </template>
-                    </select>
-                </template>
-            </div>
-            <hr>
+                    </div>
+                    <hr>
 
-            <div>Galaxies:</div>
-            <div class="d-flex w-100 justify-content-center">
-                <div style="display:flex">
-                    <span style="margin-right: 10px">OR</span>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
-                        <label class="form-check-label" for="switchOperator">AND</label>
+                    <div>Galaxies:</div>
+                    <div class="d-flex w-100 justify-content-center">
+                        <div style="display:flex">
+                            <span style="margin-right: 10px">OR</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
+                                <label class="form-check-label" for="switchOperator">AND</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <template v-if="galaxies">
+                            <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                                <template v-for="galaxy, key in galaxies">
+                                    <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
+                                </template>
+                            </select>
+                        </template>
+                        
+                        <template v-if="cluster_list">
+                            <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                                <template v-for="(clusters, galaxy) in cluster_list">
+                                    <optgroup :label="[[galaxy]]">
+                                        <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
+                                    </optgroup>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+
+                    <hr>
+
+                    <div>Custom Tags:</div>
+                    <div>
+                        <template v-if="custom_tags">
+                            <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
+                                <template v-for="custom_tag, key in custom_tags">
+                                    <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
+                                </template>
+                            </select>
+                        </template>
                     </div>
                 </div>
             </div>
-            <div style="display: flex;">
-                <template v-if="galaxies">
-                    <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                        <template v-for="galaxy, key in galaxies">
-                            <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
-                        </template>
-                    </select>
-                </template>
-                
-                <template v-if="cluster_list">
-                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
-                        <template v-for="(clusters, galaxy) in cluster_list">
-                            <optgroup :label="[[galaxy]]">
-                                <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
-                            </optgroup>
-                        </template>
-                    </select>
-                </template>
-            </div>
-
-            <hr>
-
-            <div>Custom Tags:</div>
-            <div>
-                <template v-if="custom_tags">
-                    <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
-                        <template v-for="custom_tag, key in custom_tags">
-                            <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
-                        </template>
-                    </select>
-                </template>
-            </div>
 		</div>
 	</div>
-    <hr>
+    <hr class="fading-line mt-4 mb-4">
     <!-- Search bar -->
 
     <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
@@ -136,8 +147,8 @@
     <template v-if="templates_list">
         <template v-for="template in templates_list.templates">
             <div class="list-group" style="margin-bottom: 20px;">
-                <div style="display:flex">
-                    <a :href="`/templating/case/${template.id}`" class="list-group-item list-group-item-action">
+                <div style="display: flex; border-radius: 10px;">
+                    <a :href="`/templating/case/${template.id}`" class="list-group-item list-group-item-action case-index-list">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">[[ template.id ]]- [[ template.title ]]</h4>
                         </div>
@@ -179,30 +190,9 @@
                     </a>
                     <div v-if="!template.current_user_permission.read_only">
                         <div>
-                            <a class="btn btn-primary btn-sm" :href="`/templating/edit_case/${template.id}`" type="button" title="Edit the case">
+                            <a class="btn btn-primary" :href="`/templating/edit_case/${template.id}`" type="button" title="Edit the case">
                                 <i class="fa-solid fa-pen-to-square fa-fw"></i>
                             </a>
-                        </div>
-                        <div>
-                            <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" :data-bs-target="'#delete_template_modal_'+template.id">
-                                <i class="fa-solid fa-trash fa-fw"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal delete case template -->
-            <div class="modal fade" :id="'delete_template_modal_'+template.id" tabindex="-1" aria-labelledby="delete_template_modal" aria-hidden="true">
-                <div class="modal-dialog modal-sm">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="delete_template_modal">Delete '[[template.title]]' ?</h1>
-                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button class="btn btn-danger btn-sm"  @click="delete_case(template)"><i class="fa-solid fa-trash"></i> Confirm</button>
                         </div>
                     </div>
                 </div>

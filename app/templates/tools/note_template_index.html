@@ -35,7 +35,7 @@
         <template v-for="note_loc in notes_list.notes">
             <div class="list-group" style="margin-bottom: 20px;">
                 <div style="display:flex; border-radius: 15px;">
-                    <a :href="`/tools/note_template_view/${note_loc.id}`" class="list-group-item list-group-item-action">
+                    <a :href="`/tools/note_template_view/${note_loc.id}`" class="list-group-item list-group-item-action case-index-list">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">
                                 [[ note_loc.id ]]-[[ note_loc.title ]]

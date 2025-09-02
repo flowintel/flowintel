@@ -4,27 +4,68 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<style>
+.color-scheme-segment-control {
+  display: inline-flex;
+  justify-content: center;
+  align-content: center;
+  border: solid 1px #e6eaef;
+  border-radius: 10px;
+  background-color: #e6eaef;
+}
+
+.color-scheme-segment-control input {
+  display: none;
+}
+
+.color-scheme-segment-control label {
+  padding: 3px 8px;
+  color: black;
+  font-size: 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+[name~="color-scheme-segment-input"]:checked+label {
+  color: black;
+  background-color: #ffffff;
+}
+</style>
+
+{{ super() }}
+{%endblock%}
+
+
 {% block content %}
     
-    <div>
+    <div class="case-core-style" style="border-radius: 0;">
         <h1>
             Notifications
         </h1>
-    
-        <hr>
+    </div>
 
-        <div style="background-color: white; border: 1px rgb(195, 196, 197) solid; padding: 5px; margin-bottom: 5px;">
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="radioNotif" id="radioUnread" @click="select_unread_read(true)" checked>
-                <label class="form-check-label" for="radioStatusOngoing">Unread</label>
+    <hr class="fading-line-2 mt-4 mb-4">
+    
+    <div class="case-core-style">
+        <div class="d-flex">
+            <div style="margin-right: 20px;">
+                <button v-if="!flag_is_read" class="btn btn-outline-primary mb-2" @click="mark_all_read()" title="Mark all messages as read">
+                    <i class="fa-solid fa-check"></i>
+                </button>
             </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="radioNotif" id="radioRead" @click="select_unread_read(false)">
-                <label class="form-check-label" for="radioStatusFinished">Read</label>
+
+            <div>
+                <div class="color-scheme-segment-control">
+                    <input id="light-color-scheme-segment" name="color-scheme-segment-input" @click="select_unread_read(true)" type="radio" checked>
+                    <label for="light-color-scheme-segment">Unread</label>
+    
+                    <input id="dark-color-scheme-segment" name="color-scheme-segment-input" @click="select_unread_read(false)" type="radio">
+                    <label for="dark-color-scheme-segment">Read</label>
+                </div>
             </div>
         </div>
-
-        <button v-if="!flag_is_read" class="btn btn-primary" @click="mark_all_read()">Mark all read</button>
+        
         
         <template v-if="notif_list">
             <template v-for="notif in notif_list">
@@ -54,7 +95,9 @@
                             </div>
                         </a>
                         <div style="display: grid;">
-                            <button class="btn btn-danger btn-sm" @click="delete_notif(notif)" type="button" title="Delete the notification"><i class="fa-solid fa-trash"></i></button>
+                            <button class="btn btn-danger btn-sm" @click="delete_notif(notif)" type="button" title="Delete the notification">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -72,8 +115,8 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, onMounted } = Vue
-        import {display_toast, message_list} from '../../static/js/toaster.js'
+        const { createApp, ref, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -136,9 +179,7 @@
                     display_toast(res)
                 }
 
-
                 fetchNotif(true)
-                // fetchNotif(false)
     
                 return {
                     message_list,

@@ -154,8 +154,11 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         template.description=form_dict["description"]
         template.time_required = form_dict["time_required"]
 
-        self._edit(form_dict, cid)
+        self.update_case_time_modification(template)
 
+    def edit_tags(self, form_dict, cid):
+        template = CommonModel.get_case_template(cid)
+        self._edit(form_dict, cid)
         self.update_case_time_modification(template)
         
 

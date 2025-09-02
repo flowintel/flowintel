@@ -5,15 +5,17 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<form action="" method="post">
+<h2 class="case-core-style" style="border-radius: 0;">
+    Create task 
+    <button class="btn btn-outline-primary mt-1 mx-3" @click="hide_task_creation()" style="float: right" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
+        Create from template
+    </button> 
+</h2>
+
+<hr class="fading-line-2 mb-4 mt-4">
+
+<form action="" method="post" class="case-core-style">
     {{ form.hidden_tag() }}
-    <h2>
-        Create task 
-        <button class="btn btn-outline-primary mt-1 mx-3" @click="hide_task_creation()" style="float: right" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
-            Create from template
-        </button> 
-    </h2>
-    <hr>
             
     <div class="collapse mb-4" id="collapseTemplate">
         <div class="mb-3 w-50">

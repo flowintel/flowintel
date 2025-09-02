@@ -28,8 +28,8 @@
     <div v-if="history">
         <template v-for="h in history.history">
             <div class="list-group">
-                <div class="mb-3 d-flex" style="margin-bottom: 20px;">
-                    <a :href="'/analyzer/misp-modules/result/'+h.uuid" class="list-group-item list-group-item-action">
+                <div class="mb-3 d-flex" style="margin-bottom: 20px; border-radius: 10px;">
+                    <a :href="'/analyzer/misp-modules/result/'+h.uuid" class="list-group-item list-group-item-action case-index-list">
                         <div class="d-flex w-100 justify-content-between">
                             <h5 class="mb-1">[[h.query.join(", ")]]</h5>
                             <small><i>[[h.uuid]]</i></small>

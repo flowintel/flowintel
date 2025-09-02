@@ -482,7 +482,7 @@ def get_galaxies_task(tid):
     return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
 
 
-@task_blueprint.route("/<cid>/change_order/<tid>", methods=['GET'])
+@task_blueprint.route("/<cid>/change_order/<tid>", methods=["GET",'POST'])
 @login_required
 @editor_required
 def change_order(cid, tid):
@@ -492,12 +492,10 @@ def change_order(cid, tid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             task = CommonModel.get_task(tid)
             if task:
-                up_down = None
-                if "up_down" in request.args:
-                    up_down = request.args.get("up_down")
-                    TaskModel.change_order(case, task, up_down)
+                if task.case_id == case.id:
+                    TaskModel.change_order(case, task, request.json)
                     return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
-                return {"message": "Need to pass up_down", 'toast_class': "danger-subtle"}, 400
+                return {"message": "Task not in this case", 'toast_class': "danger-subtle"}, 400
             return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404

@@ -109,12 +109,18 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         case = CommonModel.get_case(task.case_id)
         CommonModel.save_history(case.uuid, current_user, message)
 
-    def reorder_tasks(self, case, task_order_id):
-        for task_in_case in case.tasks:
-            if task_in_case.case_order_id > task_order_id:
-                task_in_case.case_order_id -= 1
-                db.session.commit()
-        case.nb_tasks -= 1
+    def reorder_tasks(self, case, task_to_delete_id):
+        # Filter out the task to delete
+        remaining_tasks = [t for t in case.tasks if t.id != task_to_delete_id]
+
+        # Sort remaining tasks by case_order_id
+        remaining_tasks = sorted(remaining_tasks, key=lambda t: t.case_order_id)
+
+        # Reassign order IDs sequentially starting from 1
+        for i, task in enumerate(remaining_tasks, start=1):
+            task.case_order_id = i
+            
+        # Commit changes to DB
         db.session.commit()
 
     def delete_task(self, tid, current_user):
@@ -136,7 +142,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
             ## Move all task down if possible
-            self.reorder_tasks(case, task.case_order_id)
+            self.reorder_tasks(case, task.id)
 
             Task_Tags.query.filter_by(task_id=task.id).delete()
             Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
@@ -152,6 +158,12 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             return True
         return False
 
+    def get_nb_open_tasks(self, case):
+        loc_open = 0
+        for task in case.tasks:
+            if not task.completed:
+                loc_open += 1
+        return loc_open
 
     def complete_task(self, tid, current_user):
         """Complete task by is id"""
@@ -165,22 +177,20 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 task.status_id = Status.query.filter_by(name="Finished").first().id
                 task.finish_date = datetime.datetime.now(tz=datetime.timezone.utc)
                 task.case_order_id = -1
-                self.reorder_tasks(case, task.case_order_id)
+                self.reorder_tasks(case, task.id)
                 message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
             else:
                 task.status_id = Status.query.filter_by(name="Created").first().id
                 task.finish_date = None
-                case.nb_tasks += 1
-                task.case_order_id = case.nb_tasks
+                task.case_order_id = self.get_nb_open_tasks(case)
                 message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived"
             for task_user in task_users:
-                user = User.query.get(task_user.user_id)
                 if task.completed:
                     message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
-                    NotifModel.create_notification_user(message, task.case_id, user_id=user.id, html_icon="fa-solid fa-check")
+                    NotifModel.create_notification_user(message, task.case_id, user_id=task_user.user_id, html_icon="fa-solid fa-check")
                 else:
                     message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived"
-                    NotifModel.create_notification_user(message, task.case_id, user_id=user.id, html_icon="fa-solid fa-heart-circle-bolt")
+                    NotifModel.create_notification_user(message, task.case_id, user_id=task_user.user_id, html_icon="fa-solid fa-heart-circle-bolt")
 
             self.update_task_time_modification(task, current_user, f"Task '{task.title}' completed")
             return True
@@ -195,10 +205,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
             case = CommonModel.get_case(cid)
-            nb_tasks = 1
-            if case.nb_tasks:
-                nb_tasks = case.nb_tasks+1
-            else:
+            if not case.nb_tasks:
                 case.nb_tasks = 0
 
             if "completed" in form_dict:
@@ -215,7 +222,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 deadline=deadline,
                 case_id=cid,
                 status_id=1,
-                case_order_id=nb_tasks,
+                case_order_id=self.get_nb_open_tasks(case)+1,
                 completed=completed,
                 nb_notes=0,
                 time_required=form_dict["time_required"]
@@ -499,20 +506,31 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
         return self.get_task_info(tasks, user)
 
-    def change_order(self, case, task, up_down):
+    def change_order(self, case, task, request_json):
         """Change the order of tasks"""
-        for task_in_case in case.tasks:
-            # A task move up, case_order_id decrease by one
-            if up_down == "true":
-                if task_in_case.case_order_id == task.case_order_id - 1:
-                    task_in_case.case_order_id += 1
-                    task.case_order_id -= 1
-                    break
-            else:
-                if task_in_case.case_order_id == task.case_order_id + 1:
-                    task_in_case.case_order_id -= 1
-                    task.case_order_id += 1
-                    break
+        # Get tasks ordered by case_order_id
+        tasks_list = [t for t in case.tasks if not t.completed]
+        tasks = sorted(tasks_list, key=lambda t: t.case_order_id)
+        for t in tasks:
+            if t.case_order_id == request_json["new-index"]+1:
+                target_task = t
+                break
+
+        moving_task = task
+
+        # Find index where to insert
+        target_index = tasks.index(target_task)
+
+        # Remove the moving task from the list
+        tasks.remove(moving_task)
+
+        # Insert the task before the target
+        tasks.insert(target_index, moving_task)
+
+        # Reassign order IDs
+        for i, loc_task in enumerate(tasks, start=1):
+            loc_task.case_order_id = i
+
         db.session.commit()
 
 

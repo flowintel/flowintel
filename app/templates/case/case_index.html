@@ -5,164 +5,187 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>
-        Cases
-        <span>
-            <a type="button" class="btn btn-primary" href="/case/create_case"><i class="fa-solid fa-plus"></i></a>
-        </span>
-    </h1>
+    <div class="case-core-style d-flex" style="border-radius: 0;">
+        <h1>
+            Cases
+            <span>
+                <a type="button" class="btn btn-primary" href="/case/create_case"><i class="fa-solid fa-plus"></i></a>
+            </span>
+        </h1>
 
 
-    <!-- Search bar -->
-    <div class="input-group w-auto start-50 translate-middle-x" id="search_case" style="max-width: 200px;">
-        <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 400px;" />
+        <!-- Search bar -->
+        <div class="input-group w-auto translate-middle-x" style="left: 40% !important;">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
+                <i class="fa-solid fa-filter"></i>
+            </button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title'  />
+        </div>
+        <!-- Search bar -->
     </div>
-    <!-- Search bar -->
 
-    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltercase" aria-expanded="false" aria-controls="collapsefiltercase">
-		filter
-	</button>
-	<div class="collapse" id="collapsefiltercase">
-		<div class="card card-body">
-			<div class="d-flex w-100 justify-content-between">
-				<div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="change_status_sort(false)" checked>
-						<label class="form-check-label" for="radioStatusOngoing">Ongoing Cases</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="change_status_sort(true)">
-						<label class="form-check-label" for="radioStatusFinished">Finished Cases</label>
-					</div>
-				</div>
+    <div class="modal fade" id="modalCaseFilter" tabindex="-1" aria-labelledby="modalCaseFilterLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="modalCaseFilterLabel">Cases Filter</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex w-100 justify-content-between">
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="change_status_sort(false)" checked>
+                                <label class="form-check-label" for="radioStatusOngoing">Ongoing Cases</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="change_status_sort(true)">
+                                <label class="form-check-label" for="radioStatusFinished">Finished Cases</label>
+                            </div>
+                        </div>
 
-				<div>
-                    <div class="form-check">
-						<input class="form-check-input" checked type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
-						<label class="form-check-label" for="radioOrderAsc">Last modification</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')">
-						<label class="form-check-label" for="radioOtherTitle">Title</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
-						<label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
-					</div>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
-						<label class="form-check-label" for="radioOtherStatus">Status</label>
-					</div>
-				</div>
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" checked type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
+                                <label class="form-check-label" for="radioOrderAsc">Last modification</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherCreation" @click="sort_by_filter('creation_date')">
+                                <label class="form-check-label" for="radioOtherCreation">Creation date</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')">
+                                <label class="form-check-label" for="radioOtherTitle">Title</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
+                                <label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
+                                <label class="form-check-label" for="radioOtherStatus">Status</label>
+                            </div>
+                        </div>
 
-                <div>
-                    Change order
-                    <div class="form-check form-switch" style="margin-left: 35%;">
-						<input class="form-check-input" type="checkbox" checked role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
+                        <div>
+                            Change order
+                            <div class="form-check form-switch" style="margin-left: 35%;">
+                                <input class="form-check-input" type="checkbox" checked role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div>Taxonomies:</div>
+                    <div class="d-flex w-100 justify-content-center">
+                        <div style="display:flex">
+                            <span style="margin-right: 10px">OR</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
+                                <label class="form-check-label" for="switchOperator">AND</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <template v-if="taxonomies">
+                            <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                                <template v-for="taxonomy, key in taxonomies">
+                                    <option :value="[[taxonomy]]">[[taxonomy]]</option>
+                                </template>
+                            </select>
+                        </template>
+                        
+                        <template v-if="tags_list">
+                            <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                                <template v-for="(tags, taxo) in tags_list">
+                                    <optgroup :label="[[taxo]]">
+                                        <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                                    </optgroup>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+                    <hr>
+
+                    <div>Galaxies:</div>
+                    <div class="d-flex w-100 justify-content-center">
+                        <div style="display:flex">
+                            <span style="margin-right: 10px">OR</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
+                                <label class="form-check-label" for="switchOperator">AND</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <template v-if="galaxies">
+                            <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                                <template v-for="galaxy, key in galaxies">
+                                    <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
+                                </template>
+                            </select>
+                        </template>
+                        
+                        <template v-if="cluster_list">
+                            <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                                <template v-for="(clusters, galaxy) in cluster_list">
+                                    <optgroup :label="[[galaxy]]">
+                                        <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
+                                    </optgroup>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+                    <hr>
+
+                    <div>Custom Tags:</div>
+                    <div>
+                        <template v-if="custom_tags">
+                            <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
+                                <template v-for="custom_tag, key in custom_tags">
+                                    <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
+                                </template>
+                            </select>
+                        </template>
                     </div>
                 </div>
-			</div>
-            <hr>
-            <div>Taxonomies:</div>
-            <div class="d-flex w-100 justify-content-center">
-                <div style="display:flex">
-				    <span style="margin-right: 10px">OR</span>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
-						<label class="form-check-label" for="switchOperator">AND</label>
-                    </div>
-				</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
-            <div style="display: flex;">
-                <template v-if="taxonomies">
-                    <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                        <template v-for="taxonomy, key in taxonomies">
-                            <option :value="[[taxonomy]]">[[taxonomy]]</option>
-                        </template>
-                    </select>
-                </template>
-                
-                <template v-if="tags_list">
-                    <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                        <template v-for="(tags, taxo) in tags_list">
-                            <optgroup :label="[[taxo]]">
-                                <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
-                            </optgroup>
-                        </template>
-                    </select>
-                </template>
-            </div>
-            <hr>
+        </div>
+    </div>
 
-            <div>Galaxies:</div>
-            <div class="d-flex w-100 justify-content-center">
-                <div style="display:flex">
-				    <span style="margin-right: 10px">OR</span>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
-						<label class="form-check-label" for="switchOperator">AND</label>
-                    </div>
-				</div>
-            </div>
-            <div style="display: flex;">
-                <template v-if="galaxies">
-                    <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                        <template v-for="galaxy, key in galaxies">
-                            <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
-                        </template>
-                    </select>
-                </template>
-                
-                <template v-if="cluster_list">
-                    <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
-                        <template v-for="(clusters, galaxy) in cluster_list">
-                            <optgroup :label="[[galaxy]]">
-                                <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
-                            </optgroup>
-                        </template>
-                    </select>
-                </template>
-            </div>
-            <hr>
-
-            <div>Custom Tags:</div>
-            <div>
-                <template v-if="custom_tags">
-                    <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
-                        <template v-for="custom_tag, key in custom_tags">
-                            <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
-                        </template>
-                    </select>
-                </template>
-            </div>
-		</div>
-	</div>
-
-    <hr>
+    <hr class="fading-line-2 mt-4 mb-4">
 
     <!-- pagination -->
     <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in case_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button>
+                </li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}">
+                <button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
     <!-- pagination -->
 
     <template v-if="case_list">
         <template v-for="case_loc in case_list.cases">
-            <div class="list-group" style="margin-bottom: 20px;">
+            <div class="list-group" style="margin-bottom: 20px; ">
                 <div style="display:flex; border-radius: 10px;">
-                    <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action">
+                    <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action case-index-list">
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">
                                 [[ case_loc.id ]]-[[ case_loc.title ]]
                                 <span style="font-size: 12px; vertical-align: middle;">
                                     <i v-if="case_loc.is_private" class="fa-solid fa-lock" title="The case is private, only org present in can see this case"></i>
-                                    <i v-else class="fa-solid fa-unlock" title="The case is public anyone can see this case but only org present in case can modify it"></i>
+                                    <i v-else class="fa-solid fa-globe" title="The case is public anyone can see this case but only org present in case can modify it"></i>
                                 </span>
                                 <button v-if="case_loc.link_to.length" disabled class="btn btn-outline-primary btn-sm" style="margin-left: 20px;">
                                     <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[case_loc.link_to.length]]</span>
@@ -177,10 +200,14 @@
                             </div>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
-                            <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
+                            <pre v-if="case_loc.description" class="description">[[ case_loc.description ]]</pre>
                             <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
 
-                            <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
+                            <small v-if="status_info">
+                                <span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">
+                                    [[ status_info.status[case_loc.status_id -1].name ]]
+                                </span>
+                            </small>
                         </div>
                         <div class="d-flex w-100">
                             <small><i>[[case_loc.open_tasks]] open/ [[case_loc.closed_tasks]] closed</i></small>
@@ -203,7 +230,9 @@
                                 </template>
                             </div>
                             <div v-else></div>
-                            <small v-if="case_loc.deadline" :title="case_loc.deadline"><i>Deadline [[dayjs.utc(case_loc.deadline).endOf().fromNow()]]</i></small>
+                            <small v-if="case_loc.deadline" :title="case_loc.deadline">
+                                <i>Deadline [[dayjs.utc(case_loc.deadline).endOf().fromNow()]]</i>
+                            </small>
                             <small v-else><i>No deadline</i></small>
                         </div>
                         <div class="d-flex w-100" v-if="case_loc.clusters">
@@ -219,37 +248,17 @@
                     </a>
                     <div v-if="(!case_loc.current_user_permission.read_only && case_loc.present_in_case) || case_loc.current_user_permission.admin">
                         <div>
-                            <button v-if="case_loc.completed" class="btn btn-secondary btn-sm"  @click="complete_case(case_loc, case_list.cases, true)" title="Revive the case">
+                            <button v-if="case_loc.completed" class="btn btn-secondary" @click="complete_case(case_loc, case_list.cases, true)" title="Revive the case">
                                 <i class="fa-solid fa-backward fa-fw"></i>
                             </button>
-                            <button v-else class="btn btn-success btn-sm"  @click="complete_case(case_loc, case_list.cases, false)" title="Complete the case">
+                            <button v-else class="btn btn-success" @click="complete_case(case_loc, case_list.cases, false)" title="Complete the case">
                                 <i class="fa-solid fa-check fa-fw"></i>
                             </button>
                         </div>
                         <div>
-                            <a class="btn btn-primary btn-sm" :href="`/case/edit/${case_loc.id}`" type="button" title="Edit the case">
+                            <a class="btn btn-primary" :href="`/case/edit/${case_loc.id}`" type="button" title="Edit the case">
                                 <i class="fa-solid fa-pen-to-square fa-fw"></i>
                             </a>
-                        </div>
-                        <div>
-                            <button type="button" class="btn btn-danger btn-sm" title="Delete the case" data-bs-toggle="modal" :data-bs-target="'#delete_case_modal_'+case_loc.id">
-                                <i class="fa-solid fa-trash fa-fw"></i>
-                            </button>    
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Modal delete case -->
-            <div class="modal fade" :id="'delete_case_modal_'+case_loc.id" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
-                <div class="modal-dialog modal-sm">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="delete_case_modal">Delete '[[case_loc.title]]' ?</h1>
-                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button class="btn btn-danger"  @click="delete_case(case_list, case_loc)"><i class="fa-solid fa-trash"></i> Confirm</button>
                         </div>
                     </div>
                 </div>
@@ -264,11 +273,17 @@
 
     <nav aria-label="Page navigation example" v-if="case_list && case_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in case_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="fetch_sorted_cases(cp)">[[cp]]</button>
+                </li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}"><button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}">
+                <button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 {% endblock %}
@@ -362,21 +377,6 @@
                     status_info.value = await res.json()
                 }
                 fetchStatus()
-
-                async function delete_case(case_list, case_loc){
-                    const res = await fetch('/case/' + case_loc.id.toString() + '/delete')
-                    if(await res.status == 200){
-                        let index = case_list.cases.indexOf(case_loc)
-                        if(index > -1)
-                            case_list.cases.splice(index, 1)
-
-                        var myModalEl = document.getElementById('delete_case_modal_'+case_loc.id);
-                        var modal = bootstrap.Modal.getInstance(myModalEl)
-                        modal.hide();
-                    }
-                    display_toast(res)
-                    
-                }
 
                 async function complete_case(case_loc, cases_list, is_revived){
                     let url
@@ -532,7 +532,6 @@
                     current_page,
                     current_filter,
 
-                    delete_case,
                     complete_case,
                     sort_by_filter,
                     onInput,

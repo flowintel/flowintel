@@ -5,10 +5,12 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<form action="" method="post">
+<h2 class="case-core-style" style="border-radius: 0">Add Custom Tags</h2>
+
+<hr class="fading-line-2 mb-4 mt-4">
+
+<form action="" method="post" class="case-core-style">
     {{ form.hidden_tag() }}
-    <h2>Add External tool</h2>
-    <hr>
     
     <div class="mb-3 w-50">
         {{form.name.label(class_="col-form-label")}}:

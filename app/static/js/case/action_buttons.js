@@ -105,8 +105,19 @@ export default {
 		}
     },
 	template: `
-    
-        <div class="dropdown" style="float:right;">
+        <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="margin-right:10px;">
+            <button v-if="cases_info.case.completed" class="btn btn-secondary" @click="complete_case(cases_info.case)" title="Complete the case" style="margin-right:10px">
+                <i class="fa-solid fa-backward"></i>
+            </button>
+            <button v-else class="btn btn-success" @click="complete_case(cases_info.case)" title="Complete the case" style="margin-right:10px">
+                <i class="fa-solid fa-check"></i>
+            </button>
+
+            <a class="btn btn-primary" :href="'/case/edit/'+cases_info.case.id" type="button" title="Edit the case">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </a>
+        </div>
+        <div class="dropdown">
             <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 Actions
             </button>
@@ -140,21 +151,7 @@ export default {
                 </template>
             </ul>
         </div>
-
-        <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="float:right; margin-right:10px;">
-            <button v-if="cases_info.case.completed" class="btn btn-secondary" @click="complete_case(cases_info.case)" title="Complete the case" style="margin-right:10px">
-                <i class="fa-solid fa-backward"></i>
-            </button>
-            <button v-else class="btn btn-success" @click="complete_case(cases_info.case)" title="Complete the case" style="margin-right:10px">
-                <i class="fa-solid fa-check"></i>
-            </button>
-
-            <a class="btn btn-primary" :href="'/case/edit/'+cases_info.case.id" type="button" title="Edit the case">
-                <i class="fa-solid fa-pen-to-square"></i>
-            </a>
-        </div>
-        <br>
-
+        
         <!-- Modal delete case -->
         <div class="modal fade" id="delete_case_modal" tabindex="-1" aria-labelledby="delete_case_modal" aria-hidden="true">
             <div class="modal-dialog modal-sm">

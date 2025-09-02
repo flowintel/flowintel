@@ -208,7 +208,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         case.time_required=form_dict["time_required"]
         case.is_private = form_dict["is_private"]
         case.ticket_id = form_dict["ticket_id"]
+        
+        CommonModel.update_last_modif(case.id)
+        db.session.commit()
 
+        CommonModel.save_history(case.uuid, current_user, f"Case edited")
+
+    def edit_tags(self, form_dict, cid, current_user):
+        case = CommonModel.get_case(cid)
         self._edit(form_dict, cid)
 
         CommonModel.update_last_modif(case.id)

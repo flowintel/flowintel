@@ -5,100 +5,41 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <h2 class="ui dividing header">Edit a Case Template</h2>
-    <hr>
+    <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit a Case Template</h2>
+    <hr class="fading-line-2 mt-4 mb-4">
     <form action="" method="post" id="form">
         {{ form.hidden_tag() }}
         {{ form.template_id }}
-        <div class="row">
-            <div class="mb-3 w-50">
-                {{form.title.label(class_="col-form-label")}}:
-                {{form.title(class_="form-control")}}
-                {% if form.title.errors %}
-                    <div style="color: red;">{{form.title.errors[0] | safe}}</div>
-                {%endif%}
+        <div class="case-core-style" style="min-height: 70px;">
+            <div class="row">
+                <div class="mb-3 w-50">
+                    {{form.title.label(class_="col-form-label")}}:
+                    {{form.title(class_="form-control")}}
+                    {% if form.title.errors %}
+                        <div style="color: red;">{{form.title.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+                <div class="mb-3 w-50">
+                    <label for="description" class="col-form-label">Description:</label>
+                    {{form.description(class_="form-control")}}
+                    {% if form.description.errors %}
+                        <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
             </div>
-            <div class="mb-3 w-50">
-                <label for="description" class="col-form-label">Description:</label>
-                {{form.description(class_="form-control")}}
-                {% if form.description.errors %}
-                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                {%endif%}
+            <div class="row">
+                <div class="mb-3 w-50">
+                    {{form.time_required.label(class_="col-form-label")}}:
+                    {{form.time_required(class_="form-control")}}
+                    {% if form.time_required.errors %}
+                        <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
             </div>
-        </div>
-        <div class="row">
-            <div class="mb-3 w-50">
-                {{form.time_required.label(class_="col-form-label")}}:
-                {{form.time_required(class_="form-control")}}
-                {% if form.time_required.errors %}
-                    <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
-                {%endif%}
-            </div>
-        </div>
-        <hr>
 
-        <edition_select 
-            :type_object="'case_template'"
-            @st="(msg) => selected_tags=selected_tags.concat(msg)"
-            @sc="(msg) => selected_clusters=selected_clusters.concat(msg)"
-            @sct="(msg) => selected_custom_tags=selected_custom_tags.concat(msg)"
-            @delete_st="(msg) => selected_tags.splice(msg, 1)"
-            @delete_sc="(msg) => selected_clusters.splice(msg, 1)"
-            @delete_sct="(msg) => selected_custom_tags.splice(msg, 1)"
-        >
-        </edition_select>
-
-        <div style="margin-top: 10px;">
-            <button class="btn btn-primary" @click="submit_form()">Save</button>
+            <div style="margin-top: 10px;">
+                <button class="btn btn-primary">Save</button>
+            </div>
         </div>
     </form>
-{% endblock %}
-
-
-{% block script %}
-<script type="module">
-    const { createApp, onMounted, nextTick, ref} = Vue
-    import {message_list} from '/static/js/toaster.js'
-    import edition_select from '/static/js/case/edition_select.js'
-    createApp({
-        delimiters: ['[[', ']]'],
-        components: {
-            edition_select
-        },
-        setup() {
-            const selected_tags = ref([])
-            const selected_clusters = ref([])
-            const selected_custom_tags = ref([])
-
-            function submit_form(){
-                $("#form").submit( function(eventObj) {
-                    $.each(selected_clusters.value, function(i, v){
-                        var input = $("<input>").attr({"type":"hidden","name":"clusters_select"}).val(v.uuid);
-                        $('#form').append(input);    
-                    });
-                    $.each(selected_tags.value, function(i, v){
-                        var input = $("<input>").attr({"type":"hidden","name":"tags_select"}).val(v.name);
-                        $('#form').append(input);    
-                    });
-                    $.each(selected_custom_tags.value, function(i, v){
-                        var input = $("<input>").attr({"type":"hidden","name":"custom_select"}).val(v.name);
-                        $('#form').append(input);    
-                    });
-                    return true;
-                });
-            }
-
-            return {
-                message_list,
-
-                selected_tags,
-                selected_clusters,
-                selected_custom_tags,
-
-                submit_form,
-            }
-        }
-    }).mount('#main-container')
-
-</script>
 {% endblock %}
