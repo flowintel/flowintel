@@ -67,7 +67,7 @@
         {%endif%}
     
         {% if case.description %}
-            <pre class="description">{{case.description}}</pre>
+            <pre class="description mt-2">{{case.description}}</pre>
         {%endif%}
         <hr>
     </div>
@@ -363,7 +363,7 @@
             <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFilter">
                 <i class="fa-solid fa-filter"></i>
             </button>
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' style="min-width: 400px;" />
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' />
         </div>
         <!-- Search bar -->
     </div>

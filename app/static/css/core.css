@@ -9,6 +9,7 @@ body {
 main {
   padding-left: var(--sidebar);
   height: 100%;
+  min-height: 90vh;
 }
 
 pre.description {
