@@ -300,8 +300,8 @@ export default {
 				<small :title="'Changed: ' + task.last_modif"><i><i class="fa-solid fa-arrows-rotate"></i> [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
 
-			<div class="d-flex w-100 justify-content-between">
-				<p v-if="task.description" class="card-text">[[ task.description ]]</p>
+			<div class="d-flex w-100 justify-content-between mt-1">
+				<pre v-if="task.description" class="description">[[ task.description ]]</pre>
 				<p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
 
 				<small v-if="status_info">

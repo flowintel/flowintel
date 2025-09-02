@@ -200,7 +200,7 @@
                             </div>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
-                            <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
+                            <pre v-if="case_loc.description" class="description">[[ case_loc.description ]]</pre>
                             <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
 
                             <small v-if="status_info">
