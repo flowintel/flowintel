@@ -1,0 +1,48 @@
+<footer class="sticky-footer bg-white case-index-list">
+    <div class="container my-auto">
+        <div class="row">
+            <div class="col">
+                <div class="d-flex justify-content-end mt-1">
+                    Flowintel v[[version]]
+                </div>
+            </div>
+            <div class="col">
+                <div class="d-flex justify-content-end">
+                    <a href="https://flowintel.github.io/flowintel-doc/" style="color: black; margin-right: 9px; margin-top: 3px">
+                        Documentation
+                    </a>
+                    <a href="https://github.com/flowintel/flowintel" style="color: black;">
+                        <i class="fa-brands fa-github fa-2x"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- <div class="text-center my-auto">
+            Flowintel version <a href="https://github.com/flowintel/flowintel"><i>[[version]]</i></a>
+        </div> -->
+    </div>
+</footer>
+
+<script type="module">
+	const { createApp, ref, onMounted } = Vue
+	import {display_toast, message_list} from '/static/js/toaster.js'
+
+	createApp({
+		delimiters: ['[[', ']]'],
+		setup() {
+			const version = ref(null)
+
+			async function fetchVersion() {
+                const res = await fetch("/version")
+                let loc = await res.json()
+                version.value = loc["version"]
+                
+            }
+            fetchVersion()
+
+			return {
+				version
+			}
+		}
+	}).mount('.sticky-footer')
+</script>

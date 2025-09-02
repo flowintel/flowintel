@@ -334,10 +334,21 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
-/* body.sidebar-toggled footer.sticky-footer {
+body.sidebar-toggled footer.sticky-footer {
   width: 100%;
-} */
+}
 
+footer.sticky-footer {
+  padding: 1.2rem 0;
+  flex-shrink: 0;
+  margin-top: 25px;
+  border-radius: 0;
+}
+
+footer.sticky-footer .copyright {
+  line-height: 1;
+  font-size: 0.8rem;
+}
 
 @media (max-width: 767px) {
   body.sidebar-toggled main {
