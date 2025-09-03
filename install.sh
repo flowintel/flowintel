@@ -1,10 +1,10 @@
 # https://github.com/flowintel/flowintel
 
 if apt -v &> /dev/null ; then
-    sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget
+    sudo apt install -y python3-venv git screen librsvg2-bin wget screen
     # install pandoc from git 
     # pandoc dependencies
-    sudo apt install -y texlive texlive-xetex texlive-fonts-extra
+    sudo apt install -y libolm-dev texlive texlive-xetex texlive-fonts-extra || echo -e "\nlibolm-dev and TeX Live suite cannot be installed unless you activate Universe channel for Ubuntu package repositories. Matrix bot integration and part of the documentation system will fail though overall install of Flowintel may proceed.\n"
     wget https://github.com/jgm/pandoc/releases/download/3.7/pandoc-3.7-1-$(dpkg --print-architecture).deb
     sudo dpkg -i pandoc*.deb
     rm pandoc*
