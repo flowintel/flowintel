@@ -533,7 +533,8 @@ def create_case_misp_event(request_form, current_user):
             attr = Misp_Attribute(
                 case_misp_object_id=loc_object.id,
                 value=object_attr.value,
-                type=object_attr.object_relation,
+                type=object_attr.type,
+                object_relation=object_attr.object_relation,
                 first_seen=first_seen,
                 last_seen=last_seen,
                 comment=object_attr.get("comment"),

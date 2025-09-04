@@ -178,7 +178,6 @@ export default {
                 theme: 'bootstrap-5',
                 dropdownParent: $("#modal-send-to-"+modal_indentifier)
             })
-            $('.select2-module').css("min-width", "200px")
 
             $('#connectors_select_'+modal_indentifier).on('change.select2', function (e) {
                 connectors_selected.value = []
@@ -344,7 +343,7 @@ export default {
                         <div style="display: flex;">
                             <div>
                                 <label for="modules_select">Modules:</label>
-                                <select data-placeholder="Modules" class="select2-module form-control" name="modules_select" :id="'modules_select_'+modal_indentifier" style="min-width: 100px" >
+                                <select data-placeholder="Modules" class="select2-module form-control" name="modules_select" :id="'modules_select_'+modal_indentifier">
                                     <option value="None">--</option>
                                     <template v-for="module, key in modules">
                                         <option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>

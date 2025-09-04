@@ -69,7 +69,8 @@ span#createTask{
 
 
 .select2-container {
-	padding: 5px
+	padding: 5px;
+  min-width: 250px;
 }
 
 .select2-selection__choice{
