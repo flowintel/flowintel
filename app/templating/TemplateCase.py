@@ -217,8 +217,25 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         else:
             return "No info"
         
+
+    def reorder_tasks(self, case_id, template):
+        case_task_template = Case_Task_Template.query.filter_by(case_id=case_id).all()
+        # Filter out the task to delete
+        remaining_tasks = [t for t in case_task_template if t.task_id != template]
+
+        # Sort remaining tasks by case_order_id
+        remaining_tasks = sorted(remaining_tasks, key=lambda t: t.case_order_id)
+
+        # Reassign order IDs sequentially starting from 1
+        for i, task in enumerate(remaining_tasks, start=1):
+            task.case_order_id = i
+            
+        # Commit changes to DB
+        db.session.commit()
+        
     def remove_task_case(self, cid, tid):
         template = Case_Task_Template.query.filter_by(case_id=cid, task_id=tid).first()
+        self.reorder_tasks(cid, template)
         db.session.delete(template)
         db.session.commit()
         CommonModel.update_last_modif(cid)

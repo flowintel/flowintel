@@ -214,41 +214,6 @@ export default {
 			return dayjs.utc(dt).endOf().from(dayjs.utc())
 		}
 
-		async function move_task_up(task, up_down){
-			const res = await fetch('/templating/case/' + props.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
-			await display_toast(res)
-			for( let i in props.templates_list){
-				if(props.templates_list[i]["case_order_id"] == task.case_order_id-1){
-					props.templates_list[i]["case_order_id"] = task.case_order_id
-					task.case_order_id -= 1
-					break
-				}
-			}
-			props.templates_list.sort(order_task)
-		}
-		async function move_task_down(task, up_down){
-			const res = await fetch('/templating/case/' + props.case_id + '/change_order/' + task.id + "?up_down=" + up_down)
-			await display_toast(res)
-			for( let i in props.templates_list){
-				if(props.templates_list[i]["case_order_id"] == task.case_order_id+1){
-					props.templates_list[i]["case_order_id"] = task.case_order_id
-					task.case_order_id += 1
-					break
-				}
-			}
-			props.templates_list.sort(order_task)
-		}
-
-		function order_task(a, b){
-			if(a.case_order_id > b.case_order_id){
-				return 1
-			}
-			if(a.case_order_id < b.case_order_id){
-				return -1
-			}
-			return 0
-		}
-
 		async function create_subtask(task){
 			$("#create-subtask-error-"+task.id).text("")
 			let description = $("#create-subtask-"+task.id).val()
@@ -330,8 +295,6 @@ export default {
 			modif_note,
 			formatNow,
 			endOf,
-			move_task_up,
-			move_task_down,
 			remove_task,
 			add_notes_task,
 
@@ -428,14 +391,6 @@ export default {
 				</button>
 			</div>
         </div>
-		<div v-if="task_in_case && !template.current_user_permission.read_only" style="display: grid;">
-			<button class="btn btn-light btn-sm" title="Move the task up" @click="move_task_up(template, true)">
-				<i class="fa-solid fa-chevron-up"></i>
-			</button>
-			<button class="btn btn-light btn-sm" title="Move the task down" @click="move_task_down(template, false)">
-				<i class="fa-solid fa-chevron-down"></i>
-			</button>
-		</div>
 	</div>
 
 	<!-- Modal delete task template -->

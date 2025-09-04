@@ -7,6 +7,7 @@
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
 <script src="{{ url_for('static',filename='js/editor.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+<script src="{{ url_for('static',filename='js/sortablejs.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -173,11 +174,13 @@
         </div>
 
         <template v-if="tasks_list">
-            <template v-for="template, key in tasks_list" :key="template.id">
-                <div class="list-group" style="margin-bottom: 20px;">
-                    <task_template :template="template" :key_loop="key" :templates_list="tasks_list" :task_in_case="true" :case_id="case_template.id"></task_template>
-                </div>
-            </template>
+            <div id="list-container">
+                <template v-for="template, key in tasks_list" :key="template.id">
+                    <div :id="`template-${template.id}`" class="list-group" style="margin-bottom: 20px;">
+                        <task_template :template="template" :key_loop="key" :templates_list="tasks_list" :task_in_case="true" :case_id="case_template.id"></task_template>
+                    </div>
+                </template>
+            </div>
         </template>
         <template v-else>
             <div class="spinner-border" role="status">
@@ -191,7 +194,7 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, onMounted, nextTick } = Vue
+        const { createApp, ref, onMounted, nextTick } = Vue
         import task_template from '/static/js/templating/task_template.js'
         import tags_edition from '/static/js/case/tags_edition.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
@@ -231,7 +234,6 @@
                     let loc = await res.json()
                     tasks_list.value = loc["tasks"]
                 }
-                fetchTasks()
 
                 async function delete_case(case_template_id){
                     const res = await fetch("/templating/delete_case/"+case_template_id)
@@ -375,6 +377,66 @@
                     }
                     await display_toast(res_msg)
                 }
+
+                onMounted( async () => {
+                    await fetchTasks()
+                    const options = {
+                        animation: 150,
+                        handle: '.list-group-item', // Only drag by header
+                        ghostClass: 'dragging-ghost',  // class applied to the clone while dragging
+                        onEnd: async function(evt) {
+                            let task
+                            for(let i in tasks_list.value){
+                                if (tasks_list.value[i].id == evt.item.id.split("-")[1]){
+                                    task = tasks_list.value[i]
+                                    break
+                                }
+                            }
+                            if(evt.newIndex != evt.oldIndex){
+                                const dataToSend = {"new-index": evt.newIndex}
+
+                                // Send via fetch to backend
+                                const res = await fetch('/templating/case/'+case_template.value.id+'/change_order/'+evt.item.id.split("-")[1], {
+                                    method: 'POST',
+                                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                    body: JSON.stringify(dataToSend)
+                                })
+                                if(await res.status == 200){
+                                    // let task = tasks_list.value.tasks.find(t => t.id === evt.item.id.split("-")[1]);
+                                    
+                                    // Sort tasks by case_order_id ascending
+                                    let tasks = tasks_list.value
+
+                                    // Find the task whose case_order_id matches new-index + 1
+                                    const newIndex = evt.newIndex
+                                    const target_task = tasks.find(t => t.case_order_id === newIndex + 1);
+
+                                    const moving_task = task;
+
+                                    // Find target index in the sorted array
+                                    const target_index = tasks.indexOf(target_task);
+
+                                    // Remove moving_task from array
+                                    const movingIndex = tasks.indexOf(moving_task);
+                                    if (movingIndex !== -1) {
+                                    tasks.splice(movingIndex, 1);
+                                    }
+
+                                    // Insert moving_task before target_index
+                                    tasks.splice(target_index, 0, moving_task);
+
+                                    // Reassign case_order_id starting at 1
+                                    tasks.forEach((t, i) => {
+                                        t.case_order_id = i + 1;
+                                    });
+                                }
+                                display_toast(res)
+                            }
+                        }
+                    };
+
+                    new Sortable(document.getElementById('list-container'), options);
+                })
                 
 
                 return {

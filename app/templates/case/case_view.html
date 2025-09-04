@@ -52,8 +52,6 @@
             </div>
             
         </div>
-    
-        
     </div>
 
     {% if case.description or case.ticket_id %}
@@ -75,10 +73,16 @@
     
 
     <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
-        <i :title="'Created: ' + cases_info.case.creation_date"><i class="fa-solid fa-bicycle"></i> [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]</i>
-        <i :title="'Changed: ' + cases_info.case.last_modif"><i class="fa-solid fa-arrows-rotate"></i> [[ dayjs.utc( cases_info.case.last_modif ).fromNow() ]]</i>
+        <i :title="'Created: ' + cases_info.case.creation_date">
+            <i class="fa-solid fa-bicycle"></i> [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]
+        </i>
+        <i :title="'Changed: ' + cases_info.case.last_modif">
+            <i class="fa-solid fa-arrows-rotate"></i> [[ dayjs.utc( cases_info.case.last_modif ).fromNow() ]]
+        </i>
         {% if case.deadline %}
-            <i :title="'Deadline: ' + cases_info.case.deadline"><i class="fa-solid fa-hourglass-start"></i> [[ dayjs.utc( cases_info.case.deadline ).endOf().fromNow() ]]</i>
+            <i :title="'Deadline: ' + cases_info.case.deadline">
+                <i class="fa-solid fa-hourglass-start"></i> [[ dayjs.utc( cases_info.case.deadline ).endOf().fromNow() ]]
+            </i>
         {%endif%}
     </div>
     {%if case.recurring_type %}
@@ -528,7 +532,7 @@
 
             <template v-if="tasks_tab == 'main'">
                 <div id="list-container">
-                <template v-for="task, key in cases_info.tasks" :key="task.id">
+                    <template v-for="task, key in cases_info.tasks" :key="task.id">
                         <div :id="`task-${task.id}`" class="list-group" style="margin-bottom: 40px;">
                             <case_tasks :cases_info="cases_info" 
                                         :users_in_case="users_in_case" 

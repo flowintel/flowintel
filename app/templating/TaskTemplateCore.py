@@ -237,21 +237,28 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
                 return True
         return False
 
-    def change_order(self, case, task, up_down):
+    def change_order(self, case, task, request_json):
         case_task_template = Case_Task_Template.query.filter_by(case_id=case.id).all()
         task_template = Case_Task_Template.query.filter_by(case_id=case.id, task_id=task.id).first()
-        for task_db in case_task_template:
-            # A task move up, case_order_id decrease by one
-            if up_down == "true":
-                if task_db.case_order_id == task_template.case_order_id - 1:
-                    task_db.case_order_id += 1
-                    task_template.case_order_id -= 1
-                    break
-            else:
-                if task_db.case_order_id == task_template.case_order_id + 1:
-                    task_db.case_order_id -= 1
-                    task_template.case_order_id += 1
-                    break
+
+        tasks = sorted(case_task_template, key=lambda t: t.case_order_id)
+        for task_db in tasks:
+            if task_db.case_order_id == request_json["new-index"]+1:
+                target_task = task_db
+                break
+
+        # Find index where to insert
+        target_index = tasks.index(target_task)
+
+        # Remove the moving task from the list
+        tasks.remove(task_template)
+
+        # Insert the task before the target
+        tasks.insert(target_index, task_template)
+        
+        # Reassign order IDs
+        for i, loc_task in enumerate(tasks, start=1):
+            loc_task.case_order_id = i
 
         db.session.commit()
 
