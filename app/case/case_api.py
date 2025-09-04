@@ -820,7 +820,7 @@ class GetAllNotes(Resource):
         return {"message": "Case not found"}, 404
 
 
-@api.route('/<cid>/modif_case_note', methods=['POST'])
+@api.route('/<cid>/modify_case_note', methods=['POST'])
 @api.doc(description='Edit note of a case', params={'cid': 'id of a case'})
 class ModifNoteCase(Resource):
     method_decorators = [editor_required, api_required]
@@ -831,10 +831,28 @@ class ModifNoteCase(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "note" in request.json:
-                    if CaseModel.modif_note_core(cid, current_user, request.json["note"]):
+                    if CaseModel.modify_note_core(cid, current_user, request.json["note"]):
                         return {"message": f"Note for Case {cid} edited"}, 200
                     return {"message": f"Error Note for Case {cid} edited"}, 400
                 return {"message": "Key 'note' not found"}, 400
             return {"message": "Permission denied"}, 403
         return {"message": "Case not found"}, 404
     
+
+@api.route('/<cid>/append_case_note', methods=['POST'])
+@api.doc(description='Append notes to a case', params={'cid': 'id of a case'})
+class AppendNoteCase(Resource):
+    method_decorators = [editor_required, api_required]
+    @api.doc(params={"note": "note to create or modify"})
+    def post(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if "note" in request.json:
+                    if CaseModel.append_note_core(cid, current_user, request.json["note"]):
+                        return {"message": f"Note for Case {cid} edited"}, 200
+                    return {"message": f"Error Note for Case {cid} edited"}, 400
+                return {"message": "Key 'note' not found"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404

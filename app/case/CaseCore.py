@@ -732,11 +732,22 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return loc_notes
 
 
-    def modif_note_core(self, cid, current_user, notes):
+    def modify_note_core(self, cid, current_user, notes):
         """Modify notes of a case"""
         case = CommonModel.get_case(cid)
         if case:
             case.notes = notes
+            CommonModel.update_last_modif(cid)
+            db.session.commit()
+            CommonModel.save_history(case.uuid, current_user, f"Case's Notes modified")
+            return True
+        return False
+    
+    def append_note_core(self, cid, current_user, notes):
+        """Modify notes of a case"""
+        case = CommonModel.get_case(cid)
+        if case:
+            case.notes += notes
             CommonModel.update_last_modif(cid)
             db.session.commit()
             CommonModel.save_history(case.uuid, current_user, f"Case's Notes modified")
