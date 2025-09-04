@@ -26,7 +26,7 @@
         <ul class="navbar-nav ms-auto d-flex flex-row">
             <!-- Notification dropdown -->
             <li class="nav-item dropdown">
-                <a class="nav-link me-3 me-lg-0" href="/notification">
+                <a class="nav-link me-3 me-lg-0" href="/notification" id="notification_id">
                     <i class="fas fa-bell"></i>
                     <template v-if="notif_list && notif_list> 0">
                         <span v-if="notif_list < 100" class="position-absolute translate-middle badge rounded-pill bg-danger">[[notif_list]]</span>
@@ -43,11 +43,11 @@
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownMenuLink">
                     <li>
-                        <a class="dropdown-item" href="/account">My profile</a>
+                        <a class="dropdown-item" href="/account" id="account_id">My profile</a>
                     </li>
                     {% if current_user.is_authenticated %}
                         <li>
-                            <a class="dropdown-item" href="/account/logout">Logout</a>
+                            <a class="dropdown-item" href="/account/logout" id="logout_id">Logout</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -105,6 +105,16 @@
 			
 			onMounted(() => {
 				$('#search-form').removeClass('d-none')
+
+                document.getElementById("notification_id").addEventListener('click', function(){
+                    localStorage.setItem("activePage", "");
+                })
+                document.getElementById("account_id").addEventListener('click', function(){
+                    localStorage.setItem("activePage", "");
+                })
+                document.getElementById("logout_id").addEventListener('click', function(){
+                    localStorage.setItem("activePage", "");
+                })
 			})
 
 			return {
