@@ -340,7 +340,7 @@ def handler(instance, case, user):
     
     if "errors" in event:
         return event, object_uuid_list
-    return event.get("id"), object_uuid_list
+    return event.get("uuid"), object_uuid_list
 
 def introspection():
     return module_config
