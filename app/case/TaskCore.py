@@ -587,8 +587,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         #######
         # RUN #
         #######
-        event_id = MODULES[module].handler(instance, case, task, user)
-        res = CommonModel.module_error_check(event_id)
+        event_uuid = MODULES[module].handler(instance, case, task, user)
+        res = CommonModel.module_error_check(event_uuid)
         if res:
             return res
         
@@ -600,13 +600,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             tc_instance = Task_Connector_Instance(
                 task_id=task["id"],
                 instance_id=instance["id"],
-                identifier=event_id
+                identifier=event_uuid
             )
             db.session.add(tc_instance)
             db.session.commit()
 
-        elif not task_instance.identifier == event_id:
-            task_instance.identifier = event_id
+        elif not task_instance.identifier == event_uuid:
+            task_instance.identifier = event_uuid
             db.session.commit()
 
         CommonModel.save_history(case["uuid"], user, f"Task Module {module} used on instances: {instance['name']}")
