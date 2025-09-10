@@ -466,7 +466,7 @@ class Case_Template(db.Model):
                                                     .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Case_Template_Custom_Tags.case_template_id==self.id).all()]
-
+        json_dict["connector_instances"] = [connector_instance.to_json() for connector_instance in Case_Template_Connector_Instance.query.filter(Case_Template_Connector_Instance.case_template_id==self.id).all()]
 
         return json_dict
     
@@ -779,6 +779,7 @@ class Connector_Instance(db.Model):
     uuid = db.Column(db.String(36), index=True)
     type = db.Column(db.String(36), index=True)
     connector_id = db.Column(db.Integer, db.ForeignKey('connector.id', ondelete="CASCADE"))
+    global_api_key = db.Column(db.String(100), index=True)
 
     def to_json(self):
         json_dict = {
@@ -788,7 +789,8 @@ class Connector_Instance(db.Model):
             "description": self.description,
             "uuid": self.uuid,
             "connector_id": self.connector_id,
-            "type": self.type
+            "type": self.type,
+            "global_api_key": self.global_api_key
         }
         return json_dict
 
@@ -827,6 +829,22 @@ class Case_Connector_Instance(db.Model):
     case_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
     identifier = db.Column(db.String)
+
+
+class Case_Template_Connector_Instance(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_template_id = db.Column(db.Integer, index=True)
+    connector_instance_id = db.Column(db.Integer, index=True)
+    identifier = db.Column(db.String)
+
+    def to_json(self):
+        return {
+            "id": self.id, 
+            "case_template_id": self.case_template_id,
+            "instance": Connector_Instance.query.filter_by(id=self.connector_instance_id).first().to_json(),
+            "identifier": self.identifier
+        }
+
 
 class Task_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

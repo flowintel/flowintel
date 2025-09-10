@@ -81,7 +81,8 @@ def add_connector_instance_core(cid, form_dict, user_id):
         url=form_dict["url"],
         uuid=str(uuid.uuid4()),
         connector_id=cid,
-        type=type_select
+        type=type_select,
+        global_api_key=form_dict["api_key"] if form_dict["is_global_connector"] else None
     )
     db.session.add(connector)
     db.session.commit()
