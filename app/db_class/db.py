@@ -973,6 +973,14 @@ class Case_Misp_Object(db.Model):
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
         }
         return json_dict
+    
+    def download(self):
+        json_dict = {
+            "template_uuid": self.template_uuid,
+            "name": self.name
+        }
+        json_dict["attributes"] = [attr.download() for attr in self.attributes]
+        return json_dict
 
 class Misp_Attribute(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -1001,6 +1009,25 @@ class Misp_Attribute(db.Model):
             "ids_flag": self.ids_flag,
             "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
             "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "disable_correlation": self.disable_correlation
+        }
+
+        if self.first_seen:
+            json_dict["first_seen"] = self.first_seen.strftime('%Y-%m-%d %H:%M')
+        if self.last_seen:
+            json_dict["last_seen"] = self.last_seen.strftime('%Y-%m-%d %H:%M')
+
+        return json_dict
+    
+    def download(self):
+        json_dict = {
+            "value": self.value,
+            "type": self.type,
+            "object_relation": self.object_relation,
+            "first_seen": self.first_seen, # Added to the dict here in case of empty
+            "last_seen": self.last_seen,   # Added to the dict here in case of empty
+            "comment": self.comment,
+            "ids_flag": self.ids_flag,
             "disable_correlation": self.disable_correlation
         }
 

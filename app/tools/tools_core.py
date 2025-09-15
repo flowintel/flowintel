@@ -19,6 +19,14 @@ def case_creation_from_importer(case, current_user):
     for task in case["tasks"]:
         if not utils.validateImporterJson(task, jsonschema_flowintel.taskSchema):
             return {"message": f"Task '{task['title']}' format not okay"}
+        
+    for misp_obj in case["misp-objects"]:
+        if not utils.validateImporterJson(misp_obj, jsonschema_flowintel.mispObjectSchema):
+            return {"message": f"MISP-OBject '{misp_obj['name']}' format not okay"}
+
+        for attr in misp_obj["attributes"]:
+            if not utils.validateImporterJson(misp_obj, jsonschema_flowintel.mispAttrSchema):
+                return {"message": f"MISP-Attribute '{attr['value']}' format not okay"}
 
 
     #######################
@@ -123,6 +131,10 @@ def case_creation_from_importer(case, current_user):
         if task["urls_tools"]:
             for urls_tools in task["urls_tools"]:
                 TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
+
+    for misp_object in case["misp-objects"]:
+        misp_object["object-template"] = {"name": misp_object["name"], "uuid": misp_object["template_uuid"]}
+        CaseModel.create_misp_object(case_created.id, misp_object, current_user)
 
 
 def case_template_creation_from_importer(template):

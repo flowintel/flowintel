@@ -22,6 +22,10 @@ caseSchema = {
             "type": "array",
             "items": {"type": "object"},
         },
+        "misp-objects:": {
+            "type": "array",
+            "items": {"type": "object"}
+        }
     },
     "required": ['title']
 }
@@ -56,6 +60,37 @@ taskSchema = {
         }
     },
     "required": ['title']
+}
+
+
+mispObjectSchema = {
+    "type": "object",
+    "properties": {
+        "template_uuid": {"type": "string"},
+        "name": {"type": "string"},
+        "creation_date": {"type": "string"},
+        "last_modif": {"type": "string"},
+        "attributes": {
+            "type": "array",
+            "items": {"type": "object"}
+        }
+    }
+}
+
+mispAttrSchema = {
+    "type": "object",
+    "properties": {
+        "value": {"type": "string"},
+        "type": {"type": "string"},
+        "object_relation": {"type": "string"},
+        "first_seen": {"type": "string"},
+        "last_seen": {"type": "string"},
+        "comment": {"type": "string"},
+        "ids_flag": {"type": "boolean"},
+        "creation_date": {"type": "string"},
+        "last_modif": {"type": "string"},
+        "disable_correlation": {"type": "boolean"}
+    }
 }
 
 caseTemplateSchema = {
