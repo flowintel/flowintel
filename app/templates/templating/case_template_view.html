@@ -111,6 +111,12 @@
                 <button class="nav-link" id="tab-note" @click="active_tab('note')">Notes</button>
             </li>
             <li class="nav-item">
+                <button class="nav-link" id="tab-connectors" @click="active_tab('connectors')">
+                    Connectors
+                    <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_template_connectors_list.length]]</span>
+                </button>
+            </li>
+            <li class="nav-item">
                 <button class="nav-link" id="tab-info" @click="active_tab('info')">Info</button>
             </li>
         </ul>
@@ -146,6 +152,18 @@
                         <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
                     </div>
                 </template>
+            </template>
+
+            <template v-else-if="selected_tab == 'connectors'">
+                <templateconnectors v-if="case_template"
+                    :template_connectors_list="case_template_connectors_list"
+                    :all_connectors_list="all_connectors_list"
+                    :is_case="true"
+                    :object_id="case_template.id"
+                    :cases_info="case_template"
+                    @case_connectors="(msg) => fetch_case_template_connectors()"
+                    @task_connectors="">
+                </templateconnectors>
             </template>
 
             <template v-else-if="selected_tab == 'info'">
@@ -198,12 +216,15 @@
         import task_template from '/static/js/templating/task_template.js'
         import tags_edition from '/static/js/case/tags_edition.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
-        
+        import templateconnectors from '/static/js/templating/TemplateConnectors.js'
+
+
         createApp({
             delimiters: ['[[', ']]'],
             components: {
                 task_template,
-                tags_edition
+                tags_edition,
+                templateconnectors
             },
             setup() {
                 const case_template = ref()
@@ -217,6 +238,9 @@
                 const md = window.markdownit()			// Library to Parse and display markdown
 		        md.use(mermaidMarkdown.default)			// Use mermaid library
 
+                const case_template_connectors_list = ref([])
+                const all_connectors_list = ref([])
+
                 async function fetch_case_template() {
                     const res = await fetch(
                         '/templating/get_case_template/{{case_id}}'
@@ -224,7 +248,6 @@
                     let loc = await res.json()
                     case_template.value = loc["template"]
                 }
-                fetch_case_template()
 
                 async function fetchTasks() {
                     tasks_list.value = null
@@ -238,6 +261,26 @@
                 async function delete_case(case_template_id){
                     const res = await fetch("/templating/delete_case/"+case_template_id)
                     return window.location.href = "/templating/cases"
+                }
+
+                async function fetch_case_template_connectors(){
+                    const res = await fetch("/templating/"+ window.location.pathname.split("/").slice(-1) +"/get_case_template_connector_instances")
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        case_template_connectors_list.value = loc["connector_instances"]
+                    }
+                }
+                
+                async function fetch_connectors(){
+                    const res = await fetch("/case/get_connectors")
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        all_connectors_list.value = loc["connectors"]
+                    }
                 }
 
                 async function fork_case(case_id){
@@ -293,6 +336,7 @@
                         selected_tab.value = 'note'
                         if ( !document.getElementById("tab-note").classList.contains("active") ){
                             document.getElementById("tab-note").classList.add("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
                             document.getElementById("tab-main").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
                         }
@@ -311,12 +355,22 @@
                         }else{
                             prepare_editor()
                         }
+                    }else if(tab_name == 'connectors'){
+                        selected_tab.value = 'connectors'
+                        if ( !document.getElementById("tab-connectors").classList.contains("active") ){
+                            document.getElementById("tab-connectors").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-note").classList.remove("active")
+                            document.getElementById("tab-info").classList.remove("active")
+                        }
+                        await nextTick()
                     }else if(tab_name == 'info'){
                         selected_tab.value = 'info'
                         if ( !document.getElementById("tab-info").classList.contains("active") ){
                             document.getElementById("tab-info").classList.add("active")
                             document.getElementById("tab-main").classList.remove("active")
                             document.getElementById("tab-note").classList.remove("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
                         }
                     }
                 }
@@ -379,7 +433,11 @@
                 }
 
                 onMounted( async () => {
+                    await fetch_case_template()
+                    fetch_case_template_connectors()
+                    fetch_connectors()
                     await fetchTasks()
+
                     const options = {
                         animation: 150,
                         handle: '.list-group-item', // Only drag by header
@@ -436,6 +494,8 @@
                     };
 
                     new Sortable(document.getElementById('list-container'), options);
+
+                    $("#id-nb-connectors").removeClass("d-none")
                 })
                 
 
@@ -443,6 +503,8 @@
                     message_list,
                     case_template,
                     tasks_list,
+                    case_template_connectors_list,
+                    all_connectors_list,
                     selected_tab,
                     note_editor_render,
                     edit_mode,
@@ -454,6 +516,7 @@
 
                     edit_note,
                     save_note_case,
+                    fetch_case_template_connectors,
 
 
                     getTextColor,

@@ -59,6 +59,13 @@
                     {%endif%}
                 </div>
             </div>
+            <div>
+                <label for="is_global_connector" class="col-form-label">Global connector:</label>
+                {{form.is_global_connector(class_="mx-2")}}
+                {% if form.is_global_connector.errors %}
+                    <div style="color: red;">{{form.is_global_connector.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
             <div class="modal-footer">
                 {{form.submit(class='btn btn-primary')}}
             </div>

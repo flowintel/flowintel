@@ -9,6 +9,7 @@ from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, Case
 from ..utils.utils import form_to_dict
 from ..utils.formHelper import prepare_tags
 from ..case import common_core as CommonCaseModel
+from ..case.common_core import get_instance_with_icon
 
 templating_blueprint = Blueprint(
     'templating',
@@ -258,6 +259,63 @@ def get_template(cid):
     if template:
         return {"template": template.to_json()}
     return {"message": "Template not found"}
+
+@templating_blueprint.route("/<tid>/get_case_template_connector_instances", methods=['GET'])
+@login_required
+@editor_required
+def get_case_template_connector_instances(tid):
+    connector_instances = CommonModel.get_case_template_connector_instances(tid)
+    if connector_instances:
+        c_i_formated = list()
+        for c_i in connector_instances:
+            c_i_formated.append({
+                **c_i.to_json(),
+                "details": get_instance_with_icon(c_i.connector_instance_id),
+                "template_instance_id": c_i.id,
+                })
+        return {"connector_instances": c_i_formated}, 200
+    return {"connector_instances": connector_instances}, 200
+
+
+@templating_blueprint.route("/<tid>/add_connector", methods=['POST'])
+@login_required
+@editor_required
+def add_connector(tid):
+    """Add connector instance to template"""
+    if CommonModel.get_case_template(tid):
+        if current_user.is_admin():
+            if "connector_instances" in request.json:
+                if CommonModel.add_connector_instances_to_case_template(tid, request.json['connector_instances']):
+                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@templating_blueprint.route("/connectors/<ctid>/remove_connector", methods=['GET'])
+@login_required
+@editor_required
+def remove_connector(ctid):
+    """Remove connector instance from template"""
+    if current_user.is_admin():
+        if CommonModel.remove_connector_instance_from_case_template(ctid):
+            return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
+        return {"message": "Connector not found", 'toast_class': "danger-subtle"}, 404
+    return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+
+@templating_blueprint.route("/connectors/<ctid>/edit_connector", methods=['POST'])
+@login_required
+@editor_required
+def edit_connector(ctid):
+    """Edit connector instance of template"""
+    if current_user.is_admin():
+        if "identifier" in request.json:
+            if CommonModel.edit_connector_instances_to_case_template(ctid, request.json["identifier"]):
+                return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
+            return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
+        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+    return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
 
 
 @templating_blueprint.route("/get_task_template/<tid>", methods=['GET'])
