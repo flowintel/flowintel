@@ -55,12 +55,14 @@ export default {
             if(props.only_attr){
                 $('.select2-type').select2({
                     theme: 'bootstrap-5',
-                    dropdownParent: $("#modal-add-attribute-"+props.key_obj)
+                    dropdownParent: $("#modal-add-attribute-"+props.key_obj),
+                    closeOnSelect: false
                 })
             }else{
                 $('.select2-type').select2({
                     theme: 'bootstrap-5',
-                    dropdownParent: $("#modal-add-object")
+                    dropdownParent: $("#modal-add-object"),
+                    closeOnSelect: false
                 })
             }
         })
@@ -68,12 +70,14 @@ export default {
             if(props.only_attr){
                 $('.select2-type').select2({
                     theme: 'bootstrap-5',
-                    dropdownParent: $("#modal-add-attribute-"+props.key_obj)
+                    dropdownParent: $("#modal-add-attribute-"+props.key_obj),
+                    closeOnSelect: false
                 })
             }else{
                 $('.select2-type').select2({
                     theme: 'bootstrap-5',
-                    dropdownParent: $("#modal-add-object")
+                    dropdownParent: $("#modal-add-object"),
+                    closeOnSelect: false
                 })
             }
             
