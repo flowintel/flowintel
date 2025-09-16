@@ -123,7 +123,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         # Commit changes to DB
         db.session.commit()
 
-    def delete_task(self, tid, current_user):
+    def delete_task(self, tid, current_user, case_deleted=False):
         """Delete a task by is id"""
         task = CommonModel.get_task(tid)
         if task is not None:
@@ -136,13 +136,14 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 db.session.commit()
 
             case = CommonModel.get_case(task.case_id)
-            task_users = Task_User.query.where(Task_User.task_id==task.id).all()
-            for task_user in task_users:
-                user = User.query.get(task_user.user_id)
-                NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
+            if not case_deleted:
+                task_users = Task_User.query.where(Task_User.task_id==task.id).all()
+                for task_user in task_users:
+                    user = User.query.get(task_user.user_id)
+                    NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
-            ## Move all task down if possible
-            self.reorder_tasks(case, task.id)
+                ## Move all task down if possible
+                self.reorder_tasks(case, task.id)
 
             Task_Tags.query.filter_by(task_id=task.id).delete()
             Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()

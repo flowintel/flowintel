@@ -52,7 +52,7 @@ def create_notification_org(message, case_id, org_id, html_icon, current_user):
     return True
 
 def create_notification_all_orgs(message, case_id, html_icon, current_user):
-    case_org = Case_Org.query.where(case_id==case_id).all()
+    case_org = Case_Org.query.where(Case_Org.case_id==case_id)
     for c_o in case_org:
         org = Org.query.get(c_o.org_id)
         for user in org.users:

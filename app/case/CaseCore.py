@@ -106,7 +106,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if case:
             # Delete all tasks in the case
             for task in case.tasks:
-                TaskModel.delete_task(task.id, current_user)
+                TaskModel.delete_task(task.id, current_user, case_deleted=True)
 
             history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
             if os.path.isfile(history_path):
