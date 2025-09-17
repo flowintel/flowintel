@@ -4,8 +4,7 @@ class Config:
     
     FLASK_URL = '127.0.0.1'
     FLASK_PORT = 7006
-    SESSION_TYPE = "sqlalchemy"
-    SESSION_SQLALCHEMY_TABLE = "flask_sessions"
+    SESSION_TYPE = "redis"
     MISP_MODULE = '127.0.0.1:6666'
 
 

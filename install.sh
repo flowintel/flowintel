@@ -1,7 +1,7 @@
 # https://github.com/flowintel/flowintel
 
 if apt -v &> /dev/null ; then
-    sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget
+    sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget valkey
     # install pandoc from git 
     # pandoc dependencies
     sudo apt install -y texlive texlive-xetex texlive-fonts-extra
@@ -12,7 +12,7 @@ elif dnf --version &> /dev/null ; then
     #RockyLinux
     sudo dnf install -y epel-release
     sudo crb enable
-    sudo dnf in -y pandoc python3 git screen libolm librsvg2 wget
+    sudo dnf in -y pandoc python3 git screen libolm librsvg2 wget valkey
 fi
 
 # Install a template for the export of notes in pdf

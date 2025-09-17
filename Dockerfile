@@ -7,7 +7,7 @@ RUN ln -fs /usr/share/zoneinfo/Europe/Luxembourg /etc/localtime
 # Add support for Python 3.9 (deadsnakes PPA)
 RUN apt update && apt install -y \
     sudo moreutils software-properties-common \
-    git screen libolm-dev librsvg2-bin wget vim curl gnupg \
+    git screen libolm-dev librsvg2-bin wget vim curl gnupg valkey \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt update && apt install -y python3.9 python3.9-venv python3.9-distutils
 
