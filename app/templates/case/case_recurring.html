@@ -5,12 +5,13 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <h2 class="ui dividing header">Recurring case</h2>
+    <h2 class="case-core-style mb-4" style="border-radius: 0;">Recurring case</h2>
 
-    <form action="" method="post">
+    <form action="" method="post" class="case-core-style">
         {{ form.hidden_tag() }}
         <div class="modal-body">
             <div class="mb-3 w-50">
+                <label class="col-form-label" for="recurring">Type of Recurring: </label>
                 <select data-placeholder="recurring option" class="form-control" name="recurring" id="recurring">
                     <option @click="recurring_mode=0" value="0"></option>
                     <option @click="recurring_mode=1" value="1">One day</option>
