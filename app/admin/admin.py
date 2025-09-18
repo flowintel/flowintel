@@ -102,6 +102,7 @@ def get_users_page():
             u = user.to_json()
             r = AdminModel.get_role(user.role_id)
             u["role"] = r.name
+            u["org_name"] = AdminModel.get_org(user.org_id).name
             users_list.append(u)
         return {"users": users_list, "nb_pages": users.pages}
     return {"message": "No Users"}, 404

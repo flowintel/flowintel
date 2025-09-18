@@ -82,6 +82,12 @@ span#createTask{
 	border-radius: 50px;
 }
 
+.orgs {
+  border-radius: 50px;
+  --bs-btn-bg: #1f3763 !important;
+  --bs-btn-border-color: #1f3763 !important;
+}
+
 .analyse-editor-container {
 	position: fixed;
 	width: calc((100vw - var(--sidebar))/2 );

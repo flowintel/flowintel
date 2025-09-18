@@ -45,6 +45,11 @@
                             <div v-if="user.matrix_id" class="d-flex w-100 justify-content-between">
                                 <p class="card-text" title="matrix id">[[ user.matrix_id ]]</p>
                             </div>
+                            <div class="d-flex w-100 justify-content-between mt-2">
+                                <small title="Organisation" class="btn btn-primary btn-sm orgs">
+                                    <i class="fa-solid fa-users"></i> [[ user.org_name ]]
+                                </small>
+                            </div>
                             <div class="d-flex w-100 justify-content-center">
                                 <p class="card-text" title="Role">[[ user.role ]]</p>
                             </div>
@@ -52,12 +57,12 @@
                         {% if current_user.is_admin() %}
                             <div>
                                 <div>
-                                    <a class="btn btn-primary btn-sm" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user">
+                                    <a class="btn btn-primary" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user">
                                         <i class="fa-solid fa-pen-to-square fa-fw"></i>
                                     </a>
                                 </div>
                                 <div>
-                                    <button class="btn btn-danger btn-sm" @click="delete_user(user)" title="Delete the user">
+                                    <button class="btn btn-danger" @click="delete_user(user)" title="Delete the user">
                                         <i class="fa-solid fa-trash fa-fw"></i>
                                     </button>
                                 </div>
