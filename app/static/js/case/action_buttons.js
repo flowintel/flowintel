@@ -1,4 +1,5 @@
 import {display_toast} from '../toaster.js'
+const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
@@ -6,6 +7,7 @@ export default {
 		status_info: Object
 	},
 	setup(props) {
+        const selected_merge = ref({})
 
         async function delete_case(case_id){
             const res = await fetch('/case/' + case_id.toString() + '/delete')
@@ -64,6 +66,55 @@ export default {
             }
         }
 
+        async function merge_case() {
+            const res = await fetch('/case/' + props.cases_info.case.id + '/merge/' + selected_merge.value.id)
+            if(await res.status == 200)
+                return window.location.href = "/case/" + selected_merge.value.id
+            display_toast(res)
+        }
+
+        function merge_case_modal() {
+            var myModal = new bootstrap.Modal(document.getElementById("merge_case_modal"), {});
+            myModal.show();
+            $('.merge-case-ajax').select2({
+                ajax: {
+                    url: '/case/search',
+                    data: function (params) {
+                        var query = {
+                            text: params.term
+                        }
+                        // Query parameters will be ?text=[term]
+                        return query;
+                    },
+                    processResults: function (data) {
+                        let case_for_merge = []
+                        for(let i in data.cases){
+                            case_for_merge.push({id: data.cases[i].id, text: data.cases[i].title, description: data.cases[i].description})
+                        }
+                        
+                        return {
+                            results: case_for_merge
+                        };
+                    }
+                },
+                minimumInputLength: 1,
+                width: "50%",
+                dropdownParent: $('#merge_case_modal')
+            });
+
+            $('.merge-case-ajax').on('change.select2', function (e) {
+                // selected_taxo.value = $(this).select2('data').map(item => item.id);
+                selected_merge.value = $(this).select2('data')[0]
+            })
+
+            $('.merge-case-ajax').on('select2:open', function () {
+                // Timeout is needed to ensure the input is rendered
+                setTimeout(() => {
+                    document.querySelector('.select2-container--open .select2-search__field').focus();
+                }, 0);
+            });
+        }
+
         async function fetch_case_title(case_title_fork){
             const res = await fetch("/case/check_case_title_exist?title="+case_title_fork)
             let loc = await res.json()
@@ -98,10 +149,13 @@ export default {
         }
 
 		return {
+            selected_merge,
             delete_case,
 			complete_case,
             fork_case,
             create_template,
+            merge_case_modal,
+            merge_case
 		}
     },
 	template: `
@@ -134,8 +188,13 @@ export default {
                         </a>
                     </li>
                     <li>
+                        <button type="button" class="dropdown-item" title="Merge this case into an other one" @click="merge_case_modal()">
+                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-merge"></i></span> Merge
+                        </button>
+                    </li>
+                    <li>
                         <button type="button" class="dropdown-item" title="Fork this case" data-bs-toggle="modal" data-bs-target="#fork_case_modal">
-                            <span class="btn btn-primary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
+                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
                         </button>
                     </li>
                     <li>
@@ -183,6 +242,32 @@ export default {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         <button class="btn btn-primary" @click="fork_case(cases_info.case.id)"><i class="fa-solid fa-check"></i> Confirm</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal merge case -->
+        <div class="modal fade" id="merge_case_modal" tabindex="-1" aria-labelledby="merge_case_modal" aria-hidden="true">
+            <div class="modal-dialog modal-md">
+                <div class="modal-content" v-if="cases_info">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" >Merge '[[cases_info.case.title]]'</h1>
+                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fa-solid fa-triangle-exclamation"></i> This will delete this Case !
+                        </div>
+                        <select class="merge-case-ajax" name="merge_into" data-placeholder="Merge into"></select>
+                        <div class="case-core-style mt-3" v-if="Object.keys(selected_merge).length">
+                            <b>Case Description:</b><br>
+                            <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[selected_merge.description]]</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button class="btn btn-primary" @click="merge_case()"><i class="fa-solid fa-check"></i> Confirm</button>
                     </div>
                 </div>
             </div>

@@ -490,6 +490,89 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.save_history(case.uuid, user, f"Case forked, {new_case.id} - {new_case.title}")
         return new_case
     
+    def merge_case_core(self, current_case: Case, merging_case: Case, current_user: User) -> bool:
+        """Merge Current case into merging case"""
+        models = [
+            Case_Tags,
+            Case_Galaxy_Tags,
+            Case_Custom_Tags,
+            Case_Connector_Instance,
+            Case_Org,
+            Case_Misp_Object,
+            Case_Misp_Object_Connector_Instance,
+        ]
+
+        for model in models:
+            items = model.query.filter_by(case_id=current_case.id).all()
+            for item in items:
+                # Build a uniqueness check depending on model constraints
+                filters = {col.name: getattr(item, col.name)
+                        for col in model.__table__.columns
+                        if col.name != "id" and col.name != "case_id"}
+
+                exists = model.query.filter_by(case_id=merging_case.id, **filters).first()
+
+                if not exists:
+                    item.case_id = merging_case.id
+                else:
+                    # optional: delete the duplicate from current_case
+                    db.session.delete(item)
+
+        # Reorder tasks
+        max_order = db.session.query(db.func.max(Task.case_order_id))\
+                          .filter(Task.case_id == merging_case.id)\
+                          .scalar() or 0
+
+        for i, task in enumerate(current_case.tasks.order_by(Task.case_order_id).all(), start=1):
+            task.case_id = merging_case.id
+            task.case_order_id = max_order + i  # append after existing tasks
+
+
+        # Add links
+        links = Case_Link_Case.query.filter(
+            (Case_Link_Case.case_id_1 == current_case.id) |
+            (Case_Link_Case.case_id_2 == current_case.id)
+        ).all()
+
+        for link in links:
+            # Normalize link (case_id_1 < case_id_2 if that's your convention)
+            other_case_id = link.case_id_2 if link.case_id_1 == current_case.id else link.case_id_1
+
+            # Skip if linking to self
+            if other_case_id == merging_case.id:
+                db.session.delete(link)
+                continue
+
+            # Check if this link already exists with target_case
+            exists = Case_Link_Case.query.filter(
+                ((Case_Link_Case.case_id_1 == merging_case.id) & (Case_Link_Case.case_id_2 == other_case_id)) |
+                ((Case_Link_Case.case_id_2 == merging_case.id) & (Case_Link_Case.case_id_1 == other_case_id))
+            ).first()
+
+            if exists:
+                db.session.delete(link)
+            else:
+                if link.case_id_1 == current_case.id:
+                    link.case_id_1 = merging_case.id
+                else:
+                    link.case_id_2 = merging_case.id
+
+
+        # Append description and notes
+        if current_case.description:
+            merging_case.description += "\n\n" + current_case.description
+        if current_case.notes:
+            merging_case.notes += "\n\n" + current_case.notes
+
+        merging_case.nb_tasks = (merging_case.nb_tasks or 0) + (current_case.nb_tasks or 0)
+
+        db.session.commit()
+
+        CommonModel.save_history(merging_case.uuid, current_user, f"Merge {current_case.id} - {current_case.title}")
+        CommonModel.append_history_file(current_case, merging_case)
+
+        return True
+    
     def create_template_from_case(self, cid, case_title_template, current_user):
         """Create a case template from a case"""
         if Case_Template.query.filter_by(title=case_title_template).first():

@@ -145,6 +145,28 @@ class ForkCase(Resource):
                 return {"message": "Need to pass 'case_title_fork'"}, 400
             return {"message": "Please give data"}, 400
         return {"message": "Case not found"}, 404
+    
+@api.route('/<cid>/merge/<ocid>', methods=['GET'])
+@api.doc(description='Merge a case', params={'cid': 'id of the case to merge', 'ocid': 'id of the case to merge in'})
+class MergeCase(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid, ocid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, current_user):
+                return {"message": "Permission denied"}, 403
+            
+            merging_case = CommonModel.get_case(ocid)
+            if merging_case:
+                if not check_user_private_case(merging_case, request.headers, current_user):
+                    return {"message": "Permission denied"}, 403
+            
+            if CaseModel.merge_case_core(case, merging_case, current_user):
+                CaseModel.delete_case(cid, current_user)
+                return {"message": "Case is merged"}, 200
+            return {"message": "Error Merging"}, 400
+        return {"message": "Case not found"}, 404
 
 @api.route('/not_completed')
 @api.doc(description='Get all not completed cases')

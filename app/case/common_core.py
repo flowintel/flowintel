@@ -415,6 +415,15 @@ def save_history(case_uuid, current_user, message):
         now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
         write_history.write(f"[{now}]({current_user.first_name} {current_user.last_name}): {message.rstrip()}\n")
 
+def append_history_file(case, merging):
+    """Append case history to the merging case history"""
+    create_specific_dir(HISTORY_DIR)
+    path_case_history = os.path.join(HISTORY_DIR, str(case.uuid))
+    path_merging_history = os.path.join(HISTORY_DIR, str(merging.uuid))
+    with open(path_case_history, "r") as src, open(path_merging_history, "a") as dst:
+        for line in src:
+            dst.write(f"{line} (merge from {case.id} - {case.title})")
+
 
 def update_last_modif(case_id):
     """Update 'last_modif' of a case"""

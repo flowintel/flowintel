@@ -445,6 +445,29 @@ def fork_case(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<cid>/merge/<ocid>", methods=['GET'])
+@login_required
+@editor_required
+def merge_case(cid, ocid):
+    """Merge a case to an other"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
+        merging_case = CommonModel.get_case(ocid)
+        if merging_case:
+            if not check_user_private_case(merging_case):
+                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+            
+        if CaseModel.merge_case_core(case, merging_case, current_user):
+            CaseModel.delete_case(cid, current_user)
+            flash("Merged successfully", "success")
+            return {"message": "Case is merged", 'toast_class': "success-subtle"}, 200
+        return {"message": "Error Merging", 'toast_class': "danger-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
 @case_blueprint.route("/check_case_title_exist", methods=['GET'])
 @login_required
 def check_case_title_exist():
