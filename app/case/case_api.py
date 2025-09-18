@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import request
 
 from app.db_class.db import Case, User
 from .CaseCore import CaseModel
@@ -7,19 +7,10 @@ from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..utils import utils
 
-from flask_restx import Api, Resource
+from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
 
-api_case_blueprint = Blueprint('api_case', __name__)
-api = Api(api_case_blueprint,
-        title='flowintel API', 
-        description='API to manage a case management instance.', 
-        version='0.1', 
-        default='GenericAPI', 
-        default_label='Generic flowintel API', 
-        doc='/doc/'
-    )
-
+case_ns = Namespace("case", description="Endpoints to manage cases")
 
 
 def check_user_private_case(case: Case, request_headers, current_user: User = None):
@@ -29,8 +20,8 @@ def check_user_private_case(case: Case, request_headers, current_user: User = No
         return False
     return True
 
-@api.route('/all')
-@api.doc(description='Get all cases')
+@case_ns.route('/all')
+@case_ns.doc(description='Get all cases')
 class GetCases(Resource):
     method_decorators = [api_required]
     def get(self):
@@ -38,8 +29,8 @@ class GetCases(Resource):
         cases = CommonModel.get_all_cases(user)
         return {"cases": [case.to_json() for case in cases]}, 200
 
-@api.route('/<cid>')
-@api.doc(description='Get a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>')
+@case_ns.doc(description='Get a case', params={'cid': 'id of a case'})
 class GetCase(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -56,11 +47,11 @@ class GetCase(Resource):
             return case_json, 200
         return {"message": "Case not found"}, 404
 
-@api.route('/create', methods=['POST'])
-@api.doc(description='Create a case')
+@case_ns.route('/create', methods=['POST'])
+@case_ns.doc(description='Create a case')
 class CreateCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         "title": "Required. Title for a case", 
         "description": "Description of a case", 
         "deadline_date": "Date(%Y-%m-%d)", 
@@ -87,11 +78,11 @@ class CreateCase(Resource):
         return {"message": "Please give data"}, 400
     
 
-@api.route('/<cid>/edit', methods=['POST'])
-@api.doc(description='Edit a case', params={'id': 'id of a case'})
+@case_ns.route('/<cid>/edit', methods=['POST'])
+@case_ns.doc(description='Edit a case', params={'id': 'id of a case'})
 class EditCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"title": "Title for a case", 
+    @case_ns.doc(params={"title": "Title for a case", 
                      "description": "Description of a case", 
                      "deadline_date": "Date(%Y-%m-%d)", 
                      "deadline_time": "Time(%H-%M)",
@@ -122,11 +113,11 @@ class EditCase(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Case not found"}, 404
     
-@api.route('/<cid>/fork', methods=['POST'])
-@api.doc(description='Fork a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/fork', methods=['POST'])
+@case_ns.doc(description='Fork a case', params={'cid': 'id of a case'})
 class ForkCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         "case_title_fork": "Required. Title for the case"
     })
     def post(self, cid):
@@ -146,8 +137,8 @@ class ForkCase(Resource):
             return {"message": "Please give data"}, 400
         return {"message": "Case not found"}, 404
     
-@api.route('/<cid>/merge/<ocid>', methods=['GET'])
-@api.doc(description='Merge a case', params={'cid': 'id of the case to merge', 'ocid': 'id of the case to merge in'})
+@case_ns.route('/<cid>/merge/<ocid>', methods=['GET'])
+@case_ns.doc(description='Merge a case', params={'cid': 'id of the case to merge', 'ocid': 'id of the case to merge in'})
 class MergeCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, ocid):
@@ -168,8 +159,8 @@ class MergeCase(Resource):
             return {"message": "Error Merging"}, 400
         return {"message": "Case not found"}, 404
 
-@api.route('/not_completed')
-@api.doc(description='Get all not completed cases')
+@case_ns.route('/not_completed')
+@case_ns.doc(description='Get all not completed cases')
 class GetCases_not_completed(Resource):
     method_decorators = [api_required]
     def get(self):
@@ -177,8 +168,8 @@ class GetCases_not_completed(Resource):
         cases = CommonModel.get_case_by_completed(False, current_user)
         return {"cases": [case.to_json() for case in cases]}, 200
     
-@api.route('/completed')
-@api.doc(description='Get all completed cases')
+@case_ns.route('/completed')
+@case_ns.doc(description='Get all completed cases')
 class GetCases_not_completed(Resource):
     method_decorators = [api_required]
     def get(self):
@@ -186,11 +177,11 @@ class GetCases_not_completed(Resource):
         cases = CommonModel.get_case_by_completed(True, current_user)
         return {"cases": [case.to_json() for case in cases]}, 200    
     
-@api.route('/title', methods=["POST"])
-@api.doc(description='Get a case by title')
+@case_ns.route('/title', methods=["POST"])
+@case_ns.doc(description='Get a case by title')
 class GetCaseTitle(Resource):
     method_decorators = [api_required]
-    @api.doc(params={"title": "Title of a case"})
+    @case_ns.doc(params={"title": "Title of a case"})
     def post(self):
         if "title" in request.json:
             current_user = utils.get_user_from_api(request.headers)
@@ -203,8 +194,8 @@ class GetCaseTitle(Resource):
             return {"message": "Case not found"}, 404
         return {"message": "Need to pass a title"}, 404
     
-@api.route('/<cid>/complete')
-@api.doc(description='Complete a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/complete')
+@case_ns.doc(description='Complete a case', params={'cid': 'id of a case'})
 class CompleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
@@ -218,8 +209,8 @@ class CompleteCase(Resource):
             return {"message": "Case not found"}, 404
         return {"message": "Permission denied"}, 403
 
-@api.route('/<cid>/delete')
-@api.doc(description='Delete a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/delete')
+@case_ns.doc(description='Delete a case', params={'cid': 'id of a case'})
 class DeleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
@@ -230,11 +221,11 @@ class DeleteCase(Resource):
             return {"message": "Error case deleted"}, 400
         return {"message": "Permission denied"}, 403
     
-@api.route('/<cid>/add_org', methods=['POST'])
-@api.doc(description='Add an org to the case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/add_org', methods=['POST'])
+@case_ns.doc(description='Add an org to the case', params={'cid': 'id of a case'})
 class AddOrgCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
+    @case_ns.doc(params={"name": "Name of the organisation", "oid": "id of the organisation"})
     def post(self, cid):
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
@@ -255,8 +246,8 @@ class AddOrgCase(Resource):
         return {"message": "Permission denied"}, 403
 
 
-@api.route('/<cid>/remove_org/<oid>', methods=['GET'])
-@api.doc(description='Add an org to the case', params={'cid': 'id of a case', "oid": "id of an org"})
+@case_ns.route('/<cid>/remove_org/<oid>', methods=['GET'])
+@case_ns.doc(description='Add an org to the case', params={'cid': 'id of a case', "oid": "id of an org"})
 class RemoveOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, oid):
@@ -273,8 +264,8 @@ class RemoveOrgCase(Resource):
             return {"message": "Org not found"}, 404
         return {"message": "Permission denied"}, 403
     
-@api.route('/<cid>/history', methods=['GET'])
-@api.doc(description='Get history of a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/history', methods=['GET'])
+@case_ns.doc(description='Get history of a case', params={'cid': 'id of a case'})
 class History(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -288,11 +279,11 @@ class History(Resource):
             return {"history": None}, 200
         return {"message": "Case Not found"}, 404
 
-@api.route('/<cid>/create_template', methods=["POST"])
-@api.doc(description='Create a template form case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/create_template', methods=["POST"])
+@case_ns.doc(description='Create a template form case', params={'cid': 'id of a case'})
 class CreateTemplate(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"title_template": "Title for the template that will be create"})
+    @case_ns.doc(params={"title_template": "Title for the template that will be create"})
     def post(self, cid):
         if "title_template" in request.json:
             case = CommonModel.get_case(cid)
@@ -308,11 +299,11 @@ class CreateTemplate(Resource):
         return {"message": "'title_template' is missing"}, 400
 
 
-@api.route('/<cid>/recurring', methods=['POST'])
-@api.doc(description='Set a case recurring')
+@case_ns.route('/<cid>/recurring', methods=['POST'])
+@case_ns.doc(description='Set a case recurring')
 class RecurringCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         "once": "Date(%Y-%m-%d)", 
         "daily": "Boolean", 
         "weekly": "Date(%Y-%m-%d). Start date.", 
@@ -333,11 +324,11 @@ class RecurringCase(Resource):
         return {"message": "Permission denied"}, 403
 
 
-@api.route('/search', methods=['POST'])
-@api.doc(description='Get cases matching search terms')
+@case_ns.route('/search', methods=['POST'])
+@case_ns.doc(description='Get cases matching search terms')
 class SearchCase(Resource):
     method_decorators = [api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         "search": "Required. Search terms"
     })
     def post(self):
@@ -349,11 +340,11 @@ class SearchCase(Resource):
             return {"message": "No case", 'toast_class': "danger-subtle"}, 404
         return {"message": "Please enter terms"}, 400
     
-@api.route('/<cid>/change_status', methods=['POST'])
-@api.doc(description='Change the status of the case')
+@case_ns.route('/<cid>/change_status', methods=['POST'])
+@case_ns.doc(description='Change the status of the case')
 class ChangeStatusCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         "status_id": "Required. Status id"
     })
     def post(self, cid):
@@ -369,11 +360,11 @@ class ChangeStatusCase(Resource):
         return {"message": "Please enter a status id"}, 400
     
 
-@api.route('/check_case_title_exist', methods=['POST'])
-@api.doc(description='Check if a case with the title exist', params={'title': 'title of a case'})
+@case_ns.route('/check_case_title_exist', methods=['POST'])
+@case_ns.doc(description='Check if a case with the title exist', params={'title': 'title of a case'})
 class CheckTitle(Resource):
     method_decorators = [api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         'title': 'Required. Title of a case'
     })
     def post(self):
@@ -384,18 +375,18 @@ class CheckTitle(Resource):
         return {"message": "Please give 'title'"}, 400
     
 
-@api.route('/get_taxonomies', methods=['GET'])
-@api.doc(description='Get all taxonomies')
+@case_ns.route('/get_taxonomies', methods=['GET'])
+@case_ns.doc(description='Get all taxonomies')
 class GetTaxonomies(Resource):
     method_decorators = [api_required]
     def get(self):
         return {"taxonomies": CommonModel.get_taxonomies()}, 200
     
-@api.route('/get_tags', methods=['POST'])
-@api.doc(description='Get all tags by given taxonomies')
+@case_ns.route('/get_tags', methods=['POST'])
+@case_ns.doc(description='Get all tags by given taxonomies')
 class GetTags(Resource):
     method_decorators = [api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         'taxonomies': 'Required. List of taxonomies'
     })
     def post(self):
@@ -404,8 +395,8 @@ class GetTags(Resource):
             return {"tags": CommonModel.get_tags(taxos)}, 200
         return {"message": "Please give 'taxonomies'"}, 400
     
-@api.route('/get_taxonomies_case/<cid>', methods=['GET'])
-@api.doc(description='Get all tags and taxonomies in a case')
+@case_ns.route('/get_taxonomies_case/<cid>', methods=['GET'])
+@case_ns.doc(description='Get all tags and taxonomies in a case')
 class GetTaxonomiesCase(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -421,15 +412,15 @@ class GetTaxonomiesCase(Resource):
             return {"tags": tags, "taxonomies": taxonomies}, 200
         return {"message": "Case Not found"}, 404
 
-@api.route('/get_galaxies', methods=['GET'])
-@api.doc(description='Get all galaxies')
+@case_ns.route('/get_galaxies', methods=['GET'])
+@case_ns.doc(description='Get all galaxies')
 class GetGalaxies(Resource):
     method_decorators = [api_required]
     def get(self):
         return {"galaxies": CommonModel.get_galaxies()}, 200
 
-@api.route('/get_galaxies_case/<cid>', methods=['GET'])
-@api.doc(description='Get all tags and galaxies in a case', params={'galaxies': 'List of galaxies'})
+@case_ns.route('/get_galaxies_case/<cid>', methods=['GET'])
+@case_ns.doc(description='Get all tags and galaxies in a case', params={'galaxies': 'List of galaxies'})
 class GetGalaxiesCase(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -452,15 +443,15 @@ class GetGalaxiesCase(Resource):
     
 
 
-@api.route('/get_modules', methods=['GET'])
-@api.doc(description='Get all modules')
+@case_ns.route('/get_modules', methods=['GET'])
+@case_ns.doc(description='Get all modules')
 class GetModules(Resource):
     method_decorators = [api_required]
     def get(self):
         return {"modules": CaseModel.get_modules()}, 200
 
-@api.route('/<cid>/get_instance_module', methods=['GET'])
-@api.doc(description='Get all instances for a module', params={'module': 'Name of the module to use', "type": "type of the module"})
+@case_ns.route('/<cid>/get_instance_module', methods=['GET'])
+@case_ns.doc(description='Get all instances for a module', params={'module': 'Name of the module to use', "type": "type of the module"})
 class GetInstanceModules(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -480,11 +471,11 @@ class GetInstanceModules(Resource):
         return {"message": "Case Not found"}, 404
     
 
-@api.route('/<cid>/call_module_case', methods=['POST'])
-@api.doc(description='Call a module on a case')
+@case_ns.route('/<cid>/call_module_case', methods=['POST'])
+@case_ns.doc(description='Call a module on a case')
 class CallModuleCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         "module": "Required. Name of the module to call",
         "instance_id": "Required. List of name or id of instances to use for the module"
     })
@@ -505,8 +496,8 @@ class CallModuleCase(Resource):
         return {"message": "Case doesn't exist"}, 404
     
 
-@api.route('/<cid>/get_note')
-@api.doc(description='Get note of a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/get_note')
+@case_ns.doc(description='Get note of a case', params={'cid': 'id of a case'})
 class GetNote(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -518,8 +509,8 @@ class GetNote(Resource):
         return {"message": "Case not found"}, 404
 
 
-@api.route('/<cid>/get_all_users', methods=['GET'])
-@api.doc(description='Get list of user that can be assign', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/get_all_users', methods=['GET'])
+@case_ns.doc(description='Get list of user that can be assign', params={'cid': 'id of a case'})
 class GetAllUsers(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -536,8 +527,8 @@ class GetAllUsers(Resource):
             return {"users": users_list}, 200
         return {"message": "Case not found"}, 404
 
-@api.route('/list_status', methods=['GET'])
-@api.doc(description='List all status')
+@case_ns.route('/list_status', methods=['GET'])
+@case_ns.doc(description='List all status')
 class ListStatus(Resource):
     method_decorators = [api_required]
     def get(self):
@@ -548,8 +539,8 @@ class ListStatus(Resource):
 # Connectors #
 ##############
 
-@api.route('/get_connectors', methods=['GET'])
-@api.doc(description='Get all connectors and instances')
+@case_ns.route('/get_connectors', methods=['GET'])
+@case_ns.doc(description='Get all connectors and instances')
 class GetConnectors(Resource):
     method_decorators = [api_required]
     def get(self):
@@ -565,8 +556,8 @@ class GetConnectors(Resource):
                 connectors_dict[connector.name] = loc
         return {"connectors": connectors_dict}, 200
     
-@api.route('/get_case_connectors/<cid>', methods=['GET'])
-@api.doc(description='Get all connectors instance for a case')
+@case_ns.route('/get_case_connectors/<cid>', methods=['GET'])
+@case_ns.doc(description='Get all connectors instance for a case')
 class GetConnectorsCase(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -585,11 +576,11 @@ class GetConnectorsCase(Resource):
             return {"connectors": instance_list}, 200
         return {"message": "Case Not found"}, 404
     
-@api.route('/<cid>/add_connectors', methods=['POST'])
-@api.doc(description='Add connectors to a case')
+@case_ns.route('/<cid>/add_connectors', methods=['POST'])
+@case_ns.doc(description='Add connectors to a case')
 class AddConnectorsCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         "connectors": "Required. List of connectors instance. Dict with 'name' and 'identifier' as keys."
     })
     def post(self, cid):
@@ -604,11 +595,11 @@ class AddConnectorsCase(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Case doesn't exist"}, 404
     
-@api.route('/<cid>/edit_connector/<ciid>', methods=['POST'])
-@api.doc(description='Edit connector')
+@case_ns.route('/<cid>/edit_connector/<ciid>', methods=['POST'])
+@case_ns.doc(description='Edit connector')
 class EditConnectorsCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         "identifier": "Required. Identifier used by modules to identify where to send data."
     })
     def post(self, cid, ciid):
@@ -623,8 +614,8 @@ class EditConnectorsCase(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Case doesn't exist"}, 404
     
-@api.route('/<cid>/remove_connector/<ciid>', methods=['GET'])
-@api.doc(description='Remove a connector')
+@case_ns.route('/<cid>/remove_connector/<ciid>', methods=['GET'])
+@case_ns.doc(description='Remove a connector')
 class RemoveConnectors(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, ciid):
@@ -642,11 +633,11 @@ class RemoveConnectors(Resource):
 # Note Template #
 #################
 
-@api.route('/<cid>/add_note_template', methods=['GET'])
-@api.doc(description='Add a note template to a case')
+@case_ns.route('/<cid>/add_note_template', methods=['GET'])
+@case_ns.doc(description='Add a note template to a case')
 class AddNoteTemplate(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"note_template_id": "Id of a note template."})
+    @case_ns.doc(params={"note_template_id": "Id of a note template."})
     def get(self, cid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
@@ -659,8 +650,8 @@ class AddNoteTemplate(Resource):
         return {"message": "Case doesn't exist"}, 404
     
 
-@api.route('/<cid>/get_note_template', methods=['GET'])
-@api.doc(description='Get a note template to a case')
+@case_ns.route('/<cid>/get_note_template', methods=['GET'])
+@case_ns.doc(description='Get a note template to a case')
 class GetNoteTemplate(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -671,11 +662,11 @@ class GetNoteTemplate(Resource):
             return {"message": "Case have no note template"}, 404
         return {"message": "Case doesn't exist"}, 404
     
-@api.route('/<cid>/modif_values_note_template', methods=['POST'])
-@api.doc(description='Modify values of note template of a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/modif_values_note_template', methods=['POST'])
+@case_ns.doc(description='Modify values of note template of a case', params={'cid': 'id of a case'})
 class ModifValuesNoteTemplateCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"values": "Dictionnary with values"})
+    @case_ns.doc(params={"values": "Dictionnary with values"})
     def post(self, cid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
@@ -689,11 +680,11 @@ class ModifValuesNoteTemplateCase(Resource):
         return {"message": "Case not found"}, 404
 
 
-@api.route('/<cid>/modif_content_note_template', methods=['POST'])
-@api.doc(description='Modify content of note template of a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/modif_content_note_template', methods=['POST'])
+@case_ns.doc(description='Modify content of note template of a case', params={'cid': 'id of a case'})
 class ModifContentNoteTemplateCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"content": "Content modify of the note template"})
+    @case_ns.doc(params={"content": "Content modify of the note template"})
     def post(self, cid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
@@ -707,11 +698,11 @@ class ModifContentNoteTemplateCase(Resource):
         return {"message": "Case not found"}, 404   
     
 
-@api.route('/<cid>/remove_note_template', methods=['GET'])
-@api.doc(description='Remove note template from a case')
+@case_ns.route('/<cid>/remove_note_template', methods=['GET'])
+@case_ns.doc(description='Remove note template from a case')
 class RemoveNoteTemplate(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"note_template_id": "Id of a note template."})
+    @case_ns.doc(params={"note_template_id": "Id of a note template."})
     def get(self, cid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
@@ -726,8 +717,8 @@ class RemoveNoteTemplate(Resource):
 # Tasks #
 #########
 
-@api.route('/<cid>/tasks')
-@api.doc(description='Get all tasks for a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/tasks')
+@case_ns.doc(description='Get all tasks for a case', params={'cid': 'id of a case'})
 class GetTasks(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -745,8 +736,8 @@ class GetTasks(Resource):
         return {"message": "Case not found"}, 404
     
 
-@api.route('/<cid>/tasks_finished')
-@api.doc(description='Get all tasks for a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/tasks_finished')
+@case_ns.doc(description='Get all tasks for a case', params={'cid': 'id of a case'})
 class GetTasksFinished(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -764,11 +755,11 @@ class GetTasksFinished(Resource):
         return {"message": "Case not found"}, 404
     
 
-@api.route('/<cid>/create_task', methods=['POST'])
-@api.doc(description='Create a new task to a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/create_task', methods=['POST'])
+@case_ns.doc(description='Create a new task to a case', params={'cid': 'id of a case'})
 class CreateTask(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @case_ns.doc(params={
         "title": "Required. Title for a task", 
         "description": "Description of a task",
         "deadline_date": "Date(%Y-%m-%d)", 
@@ -793,8 +784,8 @@ class CreateTask(Resource):
         return {"message": "Permission denied"}, 403
     
 
-@api.route('/<cid>/move_task_up/<tid>', methods=['GET'])
-@api.doc(description='Move the task up', params={"cid": "id of a case", "tid": "id of a task"})
+@case_ns.route('/<cid>/move_task_up/<tid>', methods=['GET'])
+@case_ns.doc(description='Move the task up', params={"cid": "id of a case", "tid": "id of a task"})
 class MoveTaskUp(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, tid):
@@ -810,8 +801,8 @@ class MoveTaskUp(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Case Not found"}, 404
 
-@api.route('/<cid>/move_task_down/<tid>', methods=['GET'])
-@api.doc(description='Move the task down', params={"cid": "id of a case", "tid": "id of a task"})
+@case_ns.route('/<cid>/move_task_down/<tid>', methods=['GET'])
+@case_ns.doc(description='Move the task down', params={"cid": "id of a case", "tid": "id of a task"})
 class MoveTaskDown(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, tid):
@@ -828,8 +819,8 @@ class MoveTaskDown(Resource):
         return {"message": "Case Not found"}, 404
 
 
-@api.route('/<cid>/all_notes')
-@api.doc(description='Get all notes of a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/all_notes')
+@case_ns.doc(description='Get all notes of a case', params={'cid': 'id of a case'})
 class GetAllNotes(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -842,11 +833,11 @@ class GetAllNotes(Resource):
         return {"message": "Case not found"}, 404
 
 
-@api.route('/<cid>/modify_case_note', methods=['POST'])
-@api.doc(description='Edit note of a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/modify_case_note', methods=['POST'])
+@case_ns.doc(description='Edit note of a case', params={'cid': 'id of a case'})
 class ModifNoteCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"note": "note to create or modify"})
+    @case_ns.doc(params={"note": "note to create or modify"})
     def post(self, cid):
         case = CommonModel.get_case(cid)
         if case:
@@ -861,11 +852,11 @@ class ModifNoteCase(Resource):
         return {"message": "Case not found"}, 404
     
 
-@api.route('/<cid>/append_case_note', methods=['POST'])
-@api.doc(description='Append notes to a case', params={'cid': 'id of a case'})
+@case_ns.route('/<cid>/append_case_note', methods=['POST'])
+@case_ns.doc(description='Append notes to a case', params={'cid': 'id of a case'})
 class AppendNoteCase(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"note": "note to create or modify"})
+    @case_ns.doc(params={"note": "note to create or modify"})
     def post(self, cid):
         case = CommonModel.get_case(cid)
         if case:

@@ -1,25 +1,17 @@
-from flask import Blueprint, request
+from flask import request
 
-from flask_restx import Api, Resource
+from flask_restx import Namespace, Resource
 from ..decorators import api_required, admin_required
 from . import connectors_core as ConnectorModel
 from . import connectors_core_api as ConnectorModelApi
 from ..utils import utils
 
-api_connectors_blueprint = Blueprint('api_connectors', __name__)
-api = Api(api_connectors_blueprint,
-        title='flowintel API', 
-        description='API to manage a case management instance.', 
-        version='0.1', 
-        default='GenericAPI', 
-        default_label='Generic flowintel API', 
-        doc='/doc/'
-    )
+connectors_ns = Namespace("case", description="Endpoints to manage connectors")
 
 
 
-@api.route('/all')
-@api.doc(description='Get all Connectors')
+@connectors_ns.route('/all')
+@connectors_ns.doc(description='Get all Connectors')
 class GetConnectors(Resource):
     method_decorators = [api_required]
     def get(self):
@@ -33,8 +25,8 @@ class GetConnectors(Resource):
             connectors_list.append(connector_loc)
         return {"connectors": connectors_list}, 200
     
-@api.route('/<cid>/instances')
-@api.doc(description='Get instances of a connector')
+@connectors_ns.route('/<cid>/instances')
+@connectors_ns.doc(description='Get instances of a connector')
 class Getinstances(Resource):
     method_decorators = [api_required]
     def get(self, cid):
@@ -49,11 +41,11 @@ class Getinstances(Resource):
         return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
 
 
-@api.route('/add_connector', methods=['POST'])
-@api.doc(description='Add a new connector')
+@connectors_ns.route('/add_connector', methods=['POST'])
+@connectors_ns.doc(description='Add a new connector')
 class AddConnector(Resource):
     method_decorators = [admin_required, api_required]
-    @api.doc(params={
+    @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
         "icon_select": "Id of an icon"
@@ -67,11 +59,11 @@ class AddConnector(Resource):
             return verif_dict, 400
         return {"message": "Please give data"}, 400
     
-@api.route('/<cid>/edit_connector', methods=['POST'])
-@api.doc(description='Edit a connector')
+@connectors_ns.route('/<cid>/edit_connector', methods=['POST'])
+@connectors_ns.doc(description='Edit a connector')
 class EditConnector(Resource):
     method_decorators = [admin_required, api_required]
-    @api.doc(params={
+    @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
         "icon_select": "Id of an icon"
@@ -85,11 +77,11 @@ class EditConnector(Resource):
             return verif_dict, 400
         return {"message": "Please give data"}, 400
     
-@api.route('/<cid>/add_instance', methods=['POST'])
-@api.doc(description='Add a new instance of a connector')
+@connectors_ns.route('/<cid>/add_instance', methods=['POST'])
+@connectors_ns.doc(description='Add a new instance of a connector')
 class AddInstance(Resource):
     method_decorators = [api_required]
-    @api.doc(params={
+    @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
         "type_select": "Name of the type. See '/api/connectors/type_select' for more info",
@@ -107,11 +99,11 @@ class AddInstance(Resource):
             return {"message": "Please give data"}, 400
         return {"message": "Connector not found"}, 404
     
-@api.route('/<cid>/edit_instance/<iid>', methods=['POST'])
-@api.doc(description='Edit an instance of a connector')
+@connectors_ns.route('/<cid>/edit_instance/<iid>', methods=['POST'])
+@connectors_ns.doc(description='Edit an instance of a connector')
 class EditInstance(Resource):
     method_decorators = [api_required]
-    @api.doc(params={
+    @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
         "type_select": "Name of the type. See '/api/connectors/type_select' for more info",
@@ -129,16 +121,16 @@ class EditInstance(Resource):
             return {"message": "Please give data"}, 400
         return {"message": "Connector not found"}, 404
     
-@api.route('/type_select')
-@api.doc(description='Get type select for instance')
+@connectors_ns.route('/type_select')
+@connectors_ns.doc(description='Get type select for instance')
 class GetTypeSelect(Resource):
     method_decorators = [api_required]
     def get(self):
         return {"type_select": utils.get_module_type()}, 200
     
 
-@api.route('/<cid>/delete')
-@api.doc(description='Delete Connector')
+@connectors_ns.route('/<cid>/delete')
+@connectors_ns.doc(description='Delete Connector')
 class DeleteConnector(Resource):
     method_decorators = [admin_required, api_required]
     def get(self, cid):
@@ -148,8 +140,8 @@ class DeleteConnector(Resource):
             return {"message":"Error connector deleted"}, 400
         return {"message":"Connector not found"}, 404
     
-@api.route('/<cid>/instance/<iid>/delete')
-@api.doc(description='Delete an instance of connector')
+@connectors_ns.route('/<cid>/instance/<iid>/delete')
+@connectors_ns.doc(description='Delete an instance of connector')
 class DeleteInstanceConnector(Resource):
     method_decorators = [api_required]
     def get(self, cid, iid):

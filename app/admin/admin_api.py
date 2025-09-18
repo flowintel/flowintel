@@ -1,36 +1,28 @@
-from flask import Blueprint, request
+from flask import request
 from . import admin_core as AdminModel
 from . import admin_core_api as AdminModelApi
 
-from flask_restx import Api, Resource
+from flask_restx import Namespace, Resource
 from ..decorators import api_required, admin_required
 
 
-api_admin_blueprint = Blueprint('api_admin', __name__)
-api = Api(api_admin_blueprint,
-        title='flowintel API', 
-        description='API to manage a case management instance.', 
-        version='0.1', 
-        default='GenericAPI', 
-        default_label='Generic flowintel API', 
-        doc='/doc'
-    )
+admin_ns = Namespace("admin", description="Endpoints to manage admin actions")
 
 
 #########
 # Users #
 #########
 
-@api.route('/users')
-@api.doc(description='Get all users')
+@admin_ns.route('/users')
+@admin_ns.doc(description='Get all users')
 class GetUsers(Resource):
     method_decorators = [api_required]
     def get(self):
         users = AdminModel.get_all_users()
         return {"users": [user.to_json() for user in users]}, 200
     
-@api.route('/user/<uid>')
-@api.doc(description='Get a users', params={'uid': 'id of a user'})
+@admin_ns.route('/user/<uid>')
+@admin_ns.doc(description='Get a users', params={'uid': 'id of a user'})
 class GetUsers(Resource):
     method_decorators = [api_required]
     def get(self, uid):
@@ -39,8 +31,8 @@ class GetUsers(Resource):
             return user.to_json(), 200
         return {"message": "User not found"}, 404
 
-@api.route('/user')
-@api.doc(description='Get a user by name', params={"lastname": "last name of a user"})
+@admin_ns.route('/user')
+@admin_ns.doc(description='Get a user by name', params={"lastname": "last name of a user"})
 class GetUserName(Resource):
     method_decorators = [api_required]
     def get(self):
@@ -49,8 +41,8 @@ class GetUserName(Resource):
             return {"users": [user.to_json() for user in users]}, 200
         return {"message": "Need to pass a last name"}, 400
 
-@api.route('/user_matrix_id')
-@api.doc(description='Get a user by matrix id', params={"matrix_id": "matrix id of a user"})
+@admin_ns.route('/user_matrix_id')
+@admin_ns.doc(description='Get a user by matrix id', params={"matrix_id": "matrix id of a user"})
 class GetUserMatrix(Resource):
     method_decorators = [api_required]
     def get(self):
@@ -61,11 +53,11 @@ class GetUserMatrix(Resource):
             return {"message": "No user found for this matrix id"}
         return {"message": "Need to pass a last name"}, 400
 
-@api.route('/add_user')
-@api.doc(description='Add new user')
+@admin_ns.route('/add_user')
+@admin_ns.doc(description='Add new user')
 class AddUser(Resource):
     method_decorators = [admin_required, api_required]
-    @api.doc(params={
+    @admin_ns.doc(params={
         "first_name": "Required. First name for the user",
         "last_name": "Required. Last name for the user",
         "email": "Required. Email for the user",
@@ -84,11 +76,11 @@ class AddUser(Resource):
         return {"message": "Please give data"}, 400
 
                 
-@api.route('/edit_user/<id>')
-@api.doc(description='Edit user', params={'id': 'id of a user'})
+@admin_ns.route('/edit_user/<id>')
+@admin_ns.doc(description='Edit user', params={'id': 'id of a user'})
 class EditUser(Resource):
     method_decorators = [admin_required, api_required]
-    @api.doc(params={
+    @admin_ns.doc(params={
         "first_name": "First name for the user",
         "last_name": "Last name for the user",
         "role": "Role/Permission for the user",
@@ -105,8 +97,8 @@ class EditUser(Resource):
         return {"message": "Please give data"}, 400
 
 
-@api.route('/delete_user/<id>')
-@api.doc(description='Delete user' , params={'id': 'id of a user'})
+@admin_ns.route('/delete_user/<id>')
+@admin_ns.doc(description='Delete user' , params={'id': 'id of a user'})
 class DeleteUser(Resource):
     method_decorators = [admin_required, api_required]
     def get(self, id):
@@ -121,8 +113,8 @@ class DeleteUser(Resource):
 # Orgs #
 ########
 
-@api.route('/orgs')
-@api.doc(description='Get all orgs')
+@admin_ns.route('/orgs')
+@admin_ns.doc(description='Get all orgs')
 class GetOrgs(Resource):
     method_decorators = [api_required]
     def get(self):
@@ -130,8 +122,8 @@ class GetOrgs(Resource):
         return {"orgs": [org.to_json() for org in orgs]}, 200
 
 
-@api.route('/org/<oid>')
-@api.doc(description='Get an org', params={'oid': 'id of an org'})
+@admin_ns.route('/org/<oid>')
+@admin_ns.doc(description='Get an org', params={'oid': 'id of an org'})
 class GetOrgs(Resource):
     method_decorators = [api_required]
     def get(self, oid):
@@ -141,11 +133,11 @@ class GetOrgs(Resource):
         return {"message", "Org not found"}, 404
 
 
-@api.route('/add_org')
-@api.doc(description='Add new organisation')
+@admin_ns.route('/add_org')
+@admin_ns.doc(description='Add new organisation')
 class AddOrg(Resource):
     method_decorators = [admin_required, api_required]
-    @api.doc(params={
+    @admin_ns.doc(params={
         "name": "Required. Name for the org",
         "description": "Description of the org",
         "uuid": "uuid of the org"
@@ -161,11 +153,11 @@ class AddOrg(Resource):
         return {"message": "Please give data"}, 400
 
 
-@api.route('/edit_org/<id>')
-@api.doc(description='Edit org', params={'oid': "id of an org"})
+@admin_ns.route('/edit_org/<id>')
+@admin_ns.doc(description='Edit org', params={'oid': "id of an org"})
 class EditOrg(Resource):
     method_decorators = [admin_required, api_required]
-    @api.doc(params={
+    @admin_ns.doc(params={
         "name": "Name for the org",
         "description": "Description of the org",
         "uuid": "uuid of the org"
@@ -180,8 +172,8 @@ class EditOrg(Resource):
             return verif_dict, 400
         return {"message": "Please give data"}, 400
 
-@api.route('/delete_org/<oid>')
-@api.doc(description='Delete Org', params={'oid': "id of an org"})
+@admin_ns.route('/delete_org/<oid>')
+@admin_ns.doc(description='Delete Org', params={'oid': "id of an org"})
 class DeleteOrg(Resource):
     method_decorators = [admin_required, api_required]
     def get(self, oid):
@@ -196,8 +188,8 @@ class DeleteOrg(Resource):
 # Roles #
 #########
 
-@api.route('/roles')
-@api.doc(description='Get all roles')
+@admin_ns.route('/roles')
+@admin_ns.doc(description='Get all roles')
 class GetRoles(Resource):
     method_decorators = [api_required]
     def get(self):

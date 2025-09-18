@@ -1,7 +1,7 @@
-from flask import Blueprint, request
+from flask import request
 from . import tools_core as ToolModel
 
-from flask_restx import Api, Resource
+from flask_restx import Namespace, Resource
 from ..decorators import api_required
 
 from ..utils import utils
@@ -9,19 +9,11 @@ from ..utils import utils
 from . import validate_api as ValidateApi
 
 
-api_importer_blueprint = Blueprint('api_importer', __name__)
-api = Api(api_importer_blueprint,
-        title='flowintel API', 
-        description='API to manage a case management instance.', 
-        version='0.1', 
-        default='GenericAPI', 
-        default_label='Generic flowintel API', 
-        doc='/doc'
-    )
+importer_ns = Namespace("importer", description="Endpoints to manage importer")
 
     
-@api.route('/case')
-@api.doc(description='Import a case. JSON is required')
+@importer_ns.route('/case')
+@importer_ns.doc(description='Import a case. JSON is required')
 class ImportCase(Resource):
     method_decorators = [api_required]
     def post(self):
@@ -39,8 +31,8 @@ class ImportCase(Resource):
             return {"message": "All created"}
         
     
-@api.route('/template')
-@api.doc(description='Import a case template. JSON is required')
+@importer_ns.route('/template')
+@importer_ns.doc(description='Import a case template. JSON is required')
 class ImportCaseTemplate(Resource):
     method_decorators = [api_required]
     def post(self):
@@ -59,22 +51,14 @@ class ImportCaseTemplate(Resource):
         
 
 
-api_case_misp_blueprint = Blueprint('api_case_misp', __name__)
-api_misp = Api(api_case_misp_blueprint,
-        title='flowintel API', 
-        description='API to manage a case management instance.', 
-        version='0.1', 
-        default='GenericAPI', 
-        default_label='Generic flowintel API', 
-        doc='/doc'
-    )
+case_misp_ns = Namespace("case_misp", description="Endpoints to manage case creation from misp")
 
 
-@api_misp.route('/')
-@api_misp.doc(description='Create a Case from a MISP Event')
+@case_misp_ns.route('/')
+@case_misp_ns.doc(description='Create a Case from a MISP Event')
 class CaseMispEvent(Resource):
     method_decorators = [api_required]
-    @api.doc(params={
+    @case_misp_ns.doc(params={
         "case_title": "Required. Title for the new case",
         "case_template_id": "Required. Id of a case template",
         "misp_instance_id": "Required. Id of a misp instance",

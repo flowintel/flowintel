@@ -1,24 +1,15 @@
-from flask import Blueprint, request
+from flask import request
 
 from app.db_class.db import Case, User
-from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..utils import utils
 
-from flask_restx import Api, Resource
+from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
 
-api_task_blueprint = Blueprint('api_task', __name__)
-api = Api(api_task_blueprint,
-        title='flowintel API', 
-        description='API to manage a case management instance.', 
-        version='0.1', 
-        default='GenericAPI', 
-        default_label='Generic flowintel API', 
-        doc='/doc/'
-    )
+task_ns = Namespace("task", description="Endpoints to manage tasks")
 
 
 def check_user_private_case(case: Case, request_headers = None, current_user: User = None):
@@ -28,8 +19,8 @@ def check_user_private_case(case: Case, request_headers = None, current_user: Us
         return False
     return True
 
-@api.route('/<tid>')
-@api.doc(description='Get a task by id', params={"tid": "id of a task"})
+@task_ns.route('/<tid>')
+@task_ns.doc(description='Get a task by id', params={"tid": "id of a task"})
 class GetTask(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -46,11 +37,11 @@ class GetTask(Resource):
         return {"message": "Task not found"}, 404
     
 
-@api.route('/title', methods=["POST"])
-@api.doc(description='Get a task by title')
+@task_ns.route('/title', methods=["POST"])
+@task_ns.doc(description='Get a task by title')
 class GetTaskTitle(Resource):
     method_decorators = [api_required]
-    @api.doc(params={"title": "Title of a task"})
+    @task_ns.doc(params={"title": "Title of a task"})
     def post(self):
         if "title" in request.json:
             current_user = utils.get_user_from_api(request.headers)
@@ -61,11 +52,11 @@ class GetTaskTitle(Resource):
         return {"message": "Need to pass a title"}, 404
     
     
-@api.route('/<tid>/edit', methods=['POST'])
-@api.doc(description='Edit a task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/edit', methods=['POST'])
+@task_ns.doc(description='Edit a task', params={"tid": "id of a task"})
 class EditTake(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"title": "Title for a task", 
+    @task_ns.doc(params={"title": "Title for a task", 
                      "description": "Description of a task", 
                      "deadline_date": "Date(%Y-%m-%d)", 
                      "deadline_time": "Time(%H-%M)",
@@ -93,8 +84,8 @@ class EditTake(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task not found"}, 404
 
-@api.route('/<tid>/delete')
-@api.doc(description='Delete a task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/delete')
+@task_ns.doc(description='Delete a task', params={"tid": "id of a task"})
 class DeleteTask(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid):
@@ -109,8 +100,8 @@ class DeleteTask(Resource):
         return {"message": "Task not found"}, 404
 
 
-@api.route('/<tid>/complete')
-@api.doc(description='Complete a task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/complete')
+@task_ns.doc(description='Complete a task', params={"tid": "id of a task"})
 class CompleteTask(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid):
@@ -125,8 +116,8 @@ class CompleteTask(Resource):
         return {"message": "Task not found"}, 404
 
     
-@api.route('/<tid>/get_all_notes')
-@api.doc(description='Get all notes of a task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/get_all_notes')
+@task_ns.doc(description='Get all notes of a task', params={"tid": "id of a task"})
 class GetAllNotesTask(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -138,8 +129,8 @@ class GetAllNotesTask(Resource):
             return {"notes": [note.to_json() for note in task.notes]}, 200
         return {"message": "Task not found"}, 404
     
-@api.route('/<tid>/get_note')
-@api.doc(description='Get note of a task', params={"note_id": "id of a note in task"})
+@task_ns.route('/<tid>/get_note')
+@task_ns.doc(description='Get note of a task', params={"note_id": "id of a note in task"})
 class GetNoteTask(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -157,11 +148,11 @@ class GetNoteTask(Resource):
         return {"message": "Task not found"}, 404
 
 
-@api.route('/<tid>/modif_note', methods=['POST'])
-@api.doc(description='Edit note of a task in a case', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/modif_note', methods=['POST'])
+@task_ns.doc(description='Edit note of a task in a case', params={"tid": "id of a task"})
 class ModifNoteTask(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"note": "note to create or modify", "note_id": "id of the note"})
+    @task_ns.doc(params={"note": "note to create or modify", "note_id": "id of the note"})
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
@@ -178,11 +169,11 @@ class ModifNoteTask(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task not found"}, 404
     
-@api.route('/<tid>/create_note', methods=['POST'])
-@api.doc(description='Create a new note for a task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/create_note', methods=['POST'])
+@task_ns.doc(description='Create a new note for a task', params={"tid": "id of a task"})
 class CreateNoteTask(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"note": "note to create"})
+    @task_ns.doc(params={"note": "note to create"})
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
@@ -198,8 +189,8 @@ class CreateNoteTask(Resource):
         return {"message": "Task not found"}, 404
     
 
-@api.route('/<tid>/delete_note')
-@api.doc(description='Delete a note of a task', params={"note_id": "id of a note in task"})
+@task_ns.route('/<tid>/delete_note')
+@task_ns.doc(description='Delete a note of a task', params={"note_id": "id of a note in task"})
 class GetNoteTask(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -215,8 +206,8 @@ class GetNoteTask(Resource):
         return {"message": "Task not found"}, 404
 
 
-@api.route('/<tid>/take_task', methods=['GET'])
-@api.doc(description='Assign current user to the task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/take_task', methods=['GET'])
+@task_ns.doc(description='Assign current user to the task', params={"tid": "id of a task"})
 class AssignTask(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid):
@@ -231,8 +222,8 @@ class AssignTask(Resource):
         return {"message": "Task not found"}, 404
 
 
-@api.route('/<tid>/remove_assignment', methods=['GET'])
-@api.doc(description='Remove assigment of current user to the task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/remove_assignment', methods=['GET'])
+@task_ns.doc(description='Remove assigment of current user to the task', params={"tid": "id of a task"})
 class RemoveOrgCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid):
@@ -247,11 +238,11 @@ class RemoveOrgCase(Resource):
         return {"message": "Task not found"}, 404
 
 
-@api.route('/<tid>/assign_users', methods=['POST'])
-@api.doc(description='Assign users to a task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/assign_users', methods=['POST'])
+@task_ns.doc(description='Assign users to a task', params={"tid": "id of a task"})
 class AssignUsers(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"users_id": "List of user id"})
+    @task_ns.doc(params={"users_id": "List of user id"})
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
@@ -265,11 +256,11 @@ class AssignUsers(Resource):
         return {"message": "Task not found"}, 404
 
 
-@api.route('/<tid>/remove_assign_user', methods=['POST'])
-@api.doc(description='Remove an assign user to a task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/remove_assign_user', methods=['POST'])
+@task_ns.doc(description='Remove an assign user to a task', params={"tid": "id of a task"})
 class RemoveAssignUser(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"user_id": "Id of a user"})
+    @task_ns.doc(params={"user_id": "Id of a user"})
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
@@ -283,18 +274,18 @@ class RemoveAssignUser(Resource):
         return {"message": "Task not found"}, 404
     
 
-@api.route('/list_status', methods=['GET'])
-@api.doc(description='List all status')
+@task_ns.route('/list_status', methods=['GET'])
+@task_ns.doc(description='List all status')
 class ListStatus(Resource):
     method_decorators = [api_required]
     def get(self):
         return [status.to_json() for status in CommonModel.get_all_status()], 200
 
-@api.route('/<tid>/change_status', methods=['POST'])
-@api.doc(description='Change status of a task', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/change_status', methods=['POST'])
+@task_ns.doc(description='Change status of a task', params={"tid": "id of a task"})
 class ChangeStatus(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={"status_id": "Id of the new status"})
+    @task_ns.doc(params={"status_id": "Id of the new status"})
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
@@ -307,8 +298,8 @@ class ChangeStatus(Resource):
         return {"message": "Task not found"}, 404
 
 
-@api.route('/<tid>/files')
-@api.doc(description='Get list of files', params={"tid": "id of a task"})
+@task_ns.route('/<tid>/files')
+@task_ns.doc(description='Get list of files', params={"tid": "id of a task"})
 class DownloadFile(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -322,11 +313,11 @@ class DownloadFile(Resource):
         return {"message": "Task Not found"}, 404
 
 
-@api.route('/<tid>/upload_file')
-@api.doc(description='Upload a file')
+@task_ns.route('/<tid>/upload_file')
+@task_ns.doc(description='Upload a file')
 class UploadFile(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={})
+    @task_ns.doc(params={})
     def post(self, tid):
         task = CommonModel.get_task(tid)
         if task:
@@ -339,8 +330,8 @@ class UploadFile(Resource):
         return {"message": "Task Not found"}, 404
     
 
-@api.route('/<tid>/download_file/<fid>')
-@api.doc(description='Download a file', params={"tid": "id of a task", "fid": "id of a file"})
+@task_ns.route('/<tid>/download_file/<fid>')
+@task_ns.doc(description='Download a file', params={"tid": "id of a task", "fid": "id of a file"})
 class DownloadFile(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid, fid):
@@ -354,8 +345,8 @@ class DownloadFile(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task Not found"}, 404
     
-@api.route('/<tid>/delete_file/<fid>')
-@api.doc(description='Delete a file', params={"tid": "id of a task", "fid": "id of a file"})
+@task_ns.route('/<tid>/delete_file/<fid>')
+@task_ns.doc(description='Delete a file', params={"tid": "id of a task", "fid": "id of a file"})
 class DeleteFile(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid, fid):
@@ -372,8 +363,8 @@ class DeleteFile(Resource):
         return {"message": "Task Not found"}, 404
 
 
-@api.route('/<tid>/get_taxonomies_task', methods=['GET'])
-@api.doc(description='Get all tags and taxonomies in a task')
+@task_ns.route('/<tid>/get_taxonomies_task', methods=['GET'])
+@task_ns.doc(description='Get all tags and taxonomies in a task')
 class GetTaxonomiesTask(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -390,8 +381,8 @@ class GetTaxonomiesTask(Resource):
         return {"message": "Task Not found"}, 404
 
 
-@api.route('/<tid>/get_galaxies_task', methods=['GET'])
-@api.doc(description='Get all tags and taxonomies in a task')
+@task_ns.route('/<tid>/get_galaxies_task', methods=['GET'])
+@task_ns.doc(description='Get all tags and taxonomies in a task')
 class GetGalaxiesTask(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -417,8 +408,8 @@ class GetGalaxiesTask(Resource):
 # Connectors #
 ##############
 
-@api.route('/<tid>/get_connectors', methods=['GET'])
-@api.doc(description='Get all connectors for a task')
+@task_ns.route('/<tid>/get_connectors', methods=['GET'])
+@task_ns.doc(description='Get all connectors for a task')
 class GetConnectors(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -439,11 +430,11 @@ class GetConnectors(Resource):
         return {"message": "Task Not found"}, 404
 
 
-@api.route('/<tid>/add_connectors', methods=['POST'])
-@api.doc(description='Add connectors to a task')
+@task_ns.route('/<tid>/add_connectors', methods=['POST'])
+@task_ns.doc(description='Add connectors to a task')
 class AddConnectorsTask(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @task_ns.doc(params={
         "connectors": "Required. List of connectors instance. Dict with 'name' and 'identifier' as keys."
     })
     def post(self, tid):
@@ -459,11 +450,11 @@ class AddConnectorsTask(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task doesn't exist"}, 404
     
-@api.route('/<tid>/edit_connector/<ciid>', methods=['POST'])
-@api.doc(description='Edit connector')
+@task_ns.route('/<tid>/edit_connector/<ciid>', methods=['POST'])
+@task_ns.doc(description='Edit connector')
 class EditConnectorTask(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @task_ns.doc(params={
         "identifier": "Required. Identifier used by modules to identify where to send data."
     })
     def post(self, tid, ciid):
@@ -479,8 +470,8 @@ class EditConnectorTask(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task doesn't exist"}, 404
     
-@api.route('/<tid>/remove_connector/<ciid>', methods=['GET'])
-@api.doc(description='Remove a connector')
+@task_ns.route('/<tid>/remove_connector/<ciid>', methods=['GET'])
+@task_ns.doc(description='Remove a connector')
 class RemoveConnectorTask(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid, ciid):
@@ -498,11 +489,11 @@ class RemoveConnectorTask(Resource):
 # Subtask #
 ###########
 
-@api.route('/<tid>/create_subtask', methods=['POST'])
-@api.doc(description='Create a subtask')
+@task_ns.route('/<tid>/create_subtask', methods=['POST'])
+@task_ns.doc(description='Create a subtask')
 class CreateSubtask(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @task_ns.doc(params={
         'description': 'Required. Description of the subtask'
     })
     def post(self, tid):
@@ -518,11 +509,11 @@ class CreateSubtask(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task Not found"}, 404
     
-@api.route('/<tid>/edit_subtask/<sid>', methods=['POST'])
-@api.doc(description='Edit a subtask')
+@task_ns.route('/<tid>/edit_subtask/<sid>', methods=['POST'])
+@task_ns.doc(description='Edit a subtask')
 class EditSubtask(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @task_ns.doc(params={
         'description': 'Required. Description of the subtask'
     })
     def post(self, tid, sid):
@@ -538,8 +529,8 @@ class EditSubtask(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task Not found"}, 404
     
-@api.route('/<tid>/list_subtasks', methods=['GET'])
-@api.doc(description='List subtasks of a task')
+@task_ns.route('/<tid>/list_subtasks', methods=['GET'])
+@task_ns.doc(description='List subtasks of a task')
 class ListSubtask(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -551,8 +542,8 @@ class ListSubtask(Resource):
             return {"subtasks": [subtask.to_json() for subtask in task.subtasks]}, 200
         return {"message": "task Not found"}, 404
     
-@api.route('/<tid>/subtask/<sid>', methods=['GET'])
-@api.doc(description='Get a subtask of a task')
+@task_ns.route('/<tid>/subtask/<sid>', methods=['GET'])
+@task_ns.doc(description='Get a subtask of a task')
 class GetSubtask(Resource):
     method_decorators = [api_required]
     def get(self, tid, sid):
@@ -566,8 +557,8 @@ class GetSubtask(Resource):
                 return subtask.to_json()
         return {"message": "task Not found"}, 404
     
-@api.route('/<tid>/complete_subtask/<sid>', methods=['GET'])
-@api.doc(description='Complete a subtask')
+@task_ns.route('/<tid>/complete_subtask/<sid>', methods=['GET'])
+@task_ns.doc(description='Complete a subtask')
 class CompleteSubtask(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid, sid):
@@ -581,8 +572,8 @@ class CompleteSubtask(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "task Not found"}, 404
     
-@api.route('/<tid>/delete_subtask/<sid>', methods=['GET'])
-@api.doc(description='Delete a subtask')
+@task_ns.route('/<tid>/delete_subtask/<sid>', methods=['GET'])
+@task_ns.doc(description='Delete a subtask')
 class DeleteSubtask(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid, sid):
@@ -601,11 +592,11 @@ class DeleteSubtask(Resource):
 # Urls/Tools #
 ##############
 
-@api.route('/<tid>/create_url_tool', methods=['POST'])
-@api.doc(description='Create a Url/Tool')
+@task_ns.route('/<tid>/create_url_tool', methods=['POST'])
+@task_ns.doc(description='Create a Url/Tool')
 class CreateUrlTool(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @task_ns.doc(params={
         'name': 'Required. name of the url or tool'
     })
     def post(self, tid):
@@ -621,11 +612,11 @@ class CreateUrlTool(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task Not found"}, 404
     
-@api.route('/<tid>/edit_url_tool/<sid>', methods=['POST'])
-@api.doc(description='Edit a Url/Tool')
+@task_ns.route('/<tid>/edit_url_tool/<sid>', methods=['POST'])
+@task_ns.doc(description='Edit a Url/Tool')
 class EditUrlTool(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @task_ns.doc(params={
         'name': 'Required. name of the url or tool'
     })
     def post(self, tid, sid):
@@ -641,8 +632,8 @@ class EditUrlTool(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task Not found"}, 404
     
-@api.route('/<tid>/list_urls_tools', methods=['GET'])
-@api.doc(description='List Urls/Tools of a task')
+@task_ns.route('/<tid>/list_urls_tools', methods=['GET'])
+@task_ns.doc(description='List Urls/Tools of a task')
 class ListUrlsTools(Resource):
     method_decorators = [api_required]
     def get(self, tid):
@@ -654,8 +645,8 @@ class ListUrlsTools(Resource):
             return {"urls_tools": [url_tool.to_json() for url_tool in task.urls_tools]}, 200
         return {"message": "task Not found"}, 404
     
-@api.route('/<tid>/url_tool/<utid>', methods=['GET'])
-@api.doc(description='Get a Url/Tool of a task')
+@task_ns.route('/<tid>/url_tool/<utid>', methods=['GET'])
+@task_ns.doc(description='Get a Url/Tool of a task')
 class GetUrlTool(Resource):
     method_decorators = [api_required]
     def get(self, tid, utid):
@@ -669,8 +660,8 @@ class GetUrlTool(Resource):
                 return url_tool.to_json()
         return {"message": "task Not found"}, 404
     
-@api.route('/<tid>/delete_url_tool/<utid>', methods=['GET'])
-@api.doc(description='Delete a Url/Tool')
+@task_ns.route('/<tid>/delete_url_tool/<utid>', methods=['GET'])
+@task_ns.doc(description='Delete a Url/Tool')
 class DeleteUrlTool(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid, utid):

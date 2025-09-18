@@ -1,27 +1,17 @@
-import json
-from flask import Blueprint, request
+from flask import request
 from . import custom_tags_core as CustomModel
 from . import custom_tags_core_api as CustomModelApi
 
-from flask_restx import Api, Resource
+from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
 
-api_custom_tags_blueprint = Blueprint('api_custom_tags', __name__)
-api = Api(api_custom_tags_blueprint,
-        title='flowintel API', 
-        description='API to manage a case management instance.', 
-        version='0.1', 
-        default='GenericAPI', 
-        default_label='Generic flowintel API', 
-        doc='/doc/'
-    )
+custom_tags_ns = Namespace("custom_tags", description="Endpoints to manage custom tags")
 
-
-@api.route('/add', methods=['POST'])
-@api.doc(description='Add a new custom tag')
+@custom_tags_ns.route('/add', methods=['POST'])
+@custom_tags_ns.doc(description='Add a new custom tag')
 class AddCustomTags(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @custom_tags_ns.doc(params={
         "name": "Required. Name of the tag",
         "color": "Required. Color that will represent the tag. (#ffffff)",
         "icon": "Optional. Fontawesome icon (fa-solid fa-bicycle)"
@@ -35,8 +25,8 @@ class AddCustomTags(Resource):
             return verif_dict, 400
         return {"message": "Please give data"}, 400
     
-@api.route('/<ctid>/delete')
-@api.doc(description='Delete a custom tag', params={'ctid': 'id of a custom tag'})
+@custom_tags_ns.route('/<ctid>/delete')
+@custom_tags_ns.doc(description='Delete a custom tag', params={'ctid': 'id of a custom tag'})
 class DeleteCustomTag(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, ctid):
@@ -46,18 +36,18 @@ class DeleteCustomTag(Resource):
             return {"message": "Error deleting custom tag"}, 400
         return {"message": "This custom tag doesn't exist"}, 404
     
-@api.route('/all')
-@api.doc(description='all custom tags')
+@custom_tags_ns.route('/all')
+@custom_tags_ns.doc(description='all custom tags')
 class AllCustomTags(Resource):
     method_decorators = [api_required]
     def get(self):
         return [c_t.to_json() for c_t in CustomModel.get_custom_tags()], 200
     
-@api.route('/<ctid>/edit', methods=['POST'])
-@api.doc(description='Edit a custom tag')
+@custom_tags_ns.route('/<ctid>/edit', methods=['POST'])
+@custom_tags_ns.doc(description='Edit a custom tag')
 class EditCustomTags(Resource):
     method_decorators = [editor_required, api_required]
-    @api.doc(params={
+    @custom_tags_ns.doc(params={
         "name": "Required. Name of the tag",
         "color": "Required. Color that will represent the tag. (#ffffff)",
         "icon": "Optional. Fontawesome icon (fa-solid fa-bicycle)"
@@ -72,8 +62,8 @@ class EditCustomTags(Resource):
             return verif_dict, 400
         return {"message": "Please give data"}, 400
     
-@api.route('/<ctid>')
-@api.doc(description='Get a custom tag', params={'ctid': 'id of a custom tag'})
+@custom_tags_ns.route('/<ctid>')
+@custom_tags_ns.doc(description='Get a custom tag', params={'ctid': 'id of a custom tag'})
 class GetCustomTag(Resource):
     method_decorators = [api_required]
     def get(self, ctid):

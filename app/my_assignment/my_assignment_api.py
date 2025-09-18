@@ -1,23 +1,15 @@
-from flask import Blueprint, request
+from flask import request
 from . import my_assignment_core as AssignModel
 from ..case.TaskCore import TaskModel
 
-from flask_restx import Api, Resource
+from flask_restx import Namespace, Resource
 from ..decorators import api_required
 
-api_assignment_blueprint = Blueprint('api_assignment', __name__)
-api = Api(api_assignment_blueprint,
-        title='flowintel API', 
-        description='API to manage a case management instance.', 
-        version='0.1', 
-        default='GenericAPI', 
-        default_label='Generic flowintel API', 
-        doc='/doc'
-    )
+my_assignment_ns = Namespace("my_assignment", description="Endpoints to manage assignments")
 
     
-@api.route('/user')
-@api.doc(description='Get all cases')
+@my_assignment_ns.route('/user')
+@my_assignment_ns.doc(description='Get all cases')
 class MyAssignment(Resource):
     method_decorators = [api_required]
     def get(self):
