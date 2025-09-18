@@ -4,7 +4,8 @@ import conf.config_module as Config
 
 module_config = {
     "connector": "misp",
-    "case_task": "task"
+    "case_task": "task",
+    "description": "Create or modify an event using the current task. The event will include:\n\t- task's info as misp-object\n\t- An event report with notes of the task"
 }
 
 def task_edit(task, attribute):

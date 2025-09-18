@@ -5,7 +5,8 @@ from .misp_object_event import all_object_to_misp, manage_object_creation
 
 module_config = {
     "connector": "misp",
-    "case_task": "case"
+    "case_task": "case",
+    "description": "Create or modify an event using the current case. The event will include:\n\t- case's info as misp-object\n\t- tasks' info as misp-object \n\t- misp-object\n\t- tasks\n\t- case and tasks notes as event report"
 }
 
 def common_edit(case_task, attribute):

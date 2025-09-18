@@ -16,6 +16,7 @@ export default {
         const connectors_selected = ref([])
         const edit_instance = ref()
         const send_to_instance = ref()
+        const module_selected = ref({})
 
         let modal_indentifier = ""
         if(props.is_case){
@@ -179,6 +180,18 @@ export default {
                 dropdownParent: $("#modal-send-to-"+modal_indentifier)
             })
 
+            $("#modules_select_" +modal_indentifier).on('change.select2', function (e) {
+                let loc = $(this).select2('data').map(item => item.id)
+                
+                for(let i in props.modules){
+                    if(loc == i){
+                        module_selected.value = props.modules[i].config
+                        break
+                    }
+                }
+                
+            })
+
             $('#connectors_select_'+modal_indentifier).on('change.select2', function (e) {
                 connectors_selected.value = []
                 let loc = $(this).select2('data').map(item => item.id)
@@ -203,6 +216,7 @@ export default {
             connectors_selected,
             edit_instance,
             modal_indentifier,
+            module_selected,
             
             save_connector,
             remove_connector,
@@ -333,7 +347,7 @@ export default {
 
         <!-- Modal send to -->
         <div class="modal fade" :id="'modal-send-to-'+modal_indentifier" tabindex="-1" aria-labelledby="modal-send-toLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h1 class="modal-title fs-5" id="modal-send-toLabel">Send to modules</h1>
@@ -350,6 +364,10 @@ export default {
                                     </template>
                                 </select>
                                 <div id="modules_errors" class="invalid-feedback"></div>
+                                <div class="case-core-style mt-3" v-if="Object.keys(module_selected).length">
+                                    <b>Module Description:</b><br>
+                                    <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[module_selected.description]]</p>
+                                </div>
                             </div>
                         </div>
                     </div>

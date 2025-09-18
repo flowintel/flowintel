@@ -7,7 +7,8 @@ urllib3.disable_warnings()
 
 module_config = {
     "connector": "misp",
-    "case_task": "case"
+    "case_task": "case",
+    "description": "Create or modify an event using misp-object present in the current case"
 }
 
 

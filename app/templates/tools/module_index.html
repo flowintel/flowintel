@@ -17,6 +17,7 @@
         <thead>
             <tr>
                 <th>Name</th>
+                <th>Description</th>
                 <th>Apply to</th>
                 <th>Type</th>
             </tr>
@@ -24,6 +25,7 @@
         <tbody>
             <tr v-for="module, key in modules_list">
                 <td>[[key]]</td>
+                <td><pre class="description">[[ module.config.description ]]</pre></td>
                 <td>[[ module.config.case_task ]]</td>
                 <td>[[ module.type ]]</td>
             </tr>
