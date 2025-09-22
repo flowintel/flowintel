@@ -23,7 +23,7 @@ def verif_set_recurring(data_dict):
     return data_dict
 
 
-def verif_create_case_task(data_dict, isCase):
+def verif_create_case_task(data_dict):
     if "title" not in data_dict or not data_dict["title"]:
         return {"message": "Please give a title"}
     elif Case.query.filter_by(title=data_dict["title"]).first():
@@ -53,21 +53,13 @@ def verif_create_case_task(data_dict, isCase):
     if "time_required" not in data_dict or not data_dict["time_required"]:
         data_dict["time_required"] = ""
 
-    if not isCase:
-        if "connectors" in data_dict:
-            loc = CommonModel.check_connector(data_dict["connectors"])
-            if not isinstance(loc, bool):
-                return {"message": f"Connector '{loc}' doesn't exist"}
-        else:
-            data_dict["connectors"] = []
-    else:
-        if "is_private" not in data_dict or not data_dict["is_private"]:
-            data_dict["is_private"] = False
-        elif not isinstance(data_dict["is_private"], bool):
-            return {"message": "'is_private' need a bool"}
-        
-        if "ticket_id" not in data_dict or not data_dict["ticket_id"]:
-            data_dict["ticket_id"] = ""
+    if "is_private" not in data_dict or not data_dict["is_private"]:
+        data_dict["is_private"] = False
+    elif not isinstance(data_dict["is_private"], bool):
+        return {"message": "'is_private' need a bool"}
+    
+    if "ticket_id" not in data_dict or not data_dict["ticket_id"]:
+        data_dict["ticket_id"] = ""
 
 
     return data_dict

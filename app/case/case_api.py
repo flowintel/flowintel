@@ -58,7 +58,6 @@ class CreateCase(Resource):
         "deadline_time": "Time(%H-%M)",
         "tags": "list of tags from taxonomies",
         "clusters": "list of tags from galaxies",
-        "identifier": "Dictionnary with connector as key and identifier as value",
         "custom_tags" : "List of custom tags created on the instance",
         "time_required": "Time required to realize the case",
         "is_private": "Specify if a case is private or not. By default a case is public",
@@ -68,7 +67,7 @@ class CreateCase(Resource):
         user = utils.get_user_from_api(request.headers)
 
         if request.json:
-            verif_dict = CaseModelApi.verif_create_case_task(request.json, True)
+            verif_dict = CaseModelApi.verif_create_case_task(request.json)
 
             if "message" not in verif_dict:
                 case = CaseModel.create_case(verif_dict, user)
@@ -88,7 +87,6 @@ class EditCase(Resource):
                      "deadline_time": "Time(%H-%M)",
                      "tags": "list of tags from taxonomies",
                      "clusters": "list of tags from galaxies",
-                     "identifier": "Dictionnary with connector as key and identifier as value",
                      "custom_tags" : "List of custom tags created on the instance",
                      "is_private": "Specify if a case is private or not. By default a case is public",
                      "ticket_id": "Id of a ticket related to the case"
@@ -774,7 +772,7 @@ class CreateTask(Resource):
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
-                verif_dict = CaseModelApi.verif_create_case_task(request.json, False)
+                verif_dict = CaseModelApi.verif_create_case_task(request.json)
 
                 if "message" not in verif_dict:
                     task = TaskModel.create_task(verif_dict, cid, current_user)
