@@ -90,12 +90,31 @@
                                 <template v-for="instance in instances_table[connector.id]">
                                     <tr>
                                         <td title="Name of the instance">[[instance.name]]</td>
+                                        <td v-if="instance.global_api_key">
+                                            <small title="This instance is globally set and can be modify only by the creator">
+                                                <span class="badge rounded-pill text-bg-success">Global</span>
+                                            </small>
+                                        </td>
+                                        <td v-else></td>
+
                                         <td v-if="instance.description" title="Description of the instance">[[instance.description]]</td>
                                         <td v-else><i>No description</i></td>
+
                                         <td title="Url">[[instance.url]]</td>
                                         <td title="Type">[[instance.type]]</td>
                                         <td><i>api key set</i></td>
-                                        <td>
+                                        
+                                        <td v-if="instance.global_api_key">
+                                            <template v-if="instance.is_user_global_api">
+                                                <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                </a>
+                                                <button class="btn btn-danger btn-sm" @click="delete_instance(instance, connector.id)" title="Delete the instance">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </template>
+                                        </td>
+                                        <td v-else>
                                             <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>

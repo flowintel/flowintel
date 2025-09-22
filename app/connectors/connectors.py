@@ -67,7 +67,12 @@ def get_instances(cid):
     if connector:
         instance_list = list()
         for instance in connector.instances:
-            if ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+            if instance.global_api_key:
+                loc_instance = instance.to_json()
+                if ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+                    loc_instance["is_user_global_api"] = True
+                instance_list.append(loc_instance)
+            elif ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
                 instance_list.append(instance.to_json())
         return {"instances": instance_list}, 200
     return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
