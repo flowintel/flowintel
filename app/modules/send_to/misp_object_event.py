@@ -50,15 +50,30 @@ def all_object_to_misp(misp, event, objects, object_uuid_list):
                     if not attr["value"] == attribute.value:
                         attribute.value = attr["value"]
                         flag_modif = True
-                    if not attr["comment"] == attribute.comment:
-                        attribute.comment = attr["comment"]
-                        flag_modif = True
-                    if not attr["first_seen"] == attribute.first_seen:
-                        attribute.first_seen = attr["first_seen"]
-                        flag_modif = True
-                    if not attr["last_seen"] == attribute.last_seen:
-                        attribute.last_seen = attr["last_seen"]
-                        flag_modif = True
+                    if attribute.get("comment"):
+                        if not attr["comment"] == attribute.comment:
+                            attribute.comment = attr["comment"]
+                            flag_modif = True
+                    else:
+                        if attr.get("comment"):
+                            attribute.comment = attr["comment"]
+                            flag_modif = True
+                    if attribute.get("first_seen"):
+                        if not attr["first_seen"] == attribute.first_seen:
+                            attribute.first_seen = attr["first_seen"]
+                            flag_modif = True
+                    else:
+                        if attr.get("first_seen"):
+                            attribute.first_seen = attr["first_seen"]
+                            flag_modif = True
+                    if attribute.get("last_seen"):
+                        if not attr["last_seen"] == attribute.last_seen:
+                            attribute.last_seen = attr["last_seen"]
+                            flag_modif = True
+                    else:
+                        if attr.get("last_seen"):
+                            attribute.last_seen = attr["last_seen"]
+                            flag_modif = True
                     if not attr["ids_flag"] == attribute.to_ids:
                         attribute.to_ids = attr["ids_flag"]
                         flag_modif = True
