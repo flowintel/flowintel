@@ -407,88 +407,102 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def fork_case_core(self, cid, case_title_fork, user):
         """Fork a case into an other with nearly all informations"""
-        case_title_stored = CommonModel.get_case_by_title(case_title_fork, user)
-        if case_title_stored:
-            return {"message": "Error, title already exist"}
-        case = CommonModel.get_case(cid)
+        try:
+            case_title_stored = CommonModel.get_case_by_title(case_title_fork, user)
+            if case_title_stored:
+                return {"message": "Error, title already exist"}
+            case = CommonModel.get_case(cid)
 
-        case_json = case.to_json()
-        case_json["title"] = case_title_fork
+            case_json = case.to_json()
+            case_json["title"] = case_title_fork
 
-        if case.deadline:
-            case_json["deadline_date"] = datetime.datetime.strptime(case_json["deadline"].split(" ")[0], "%Y-%m-%d").date()
-            case_json["deadline_time"] = datetime.datetime.strptime(case_json["deadline"].split(" ")[1], "%H:%M").time()
-        else:
-            case_json["deadline_date"] = None
-            case_json["deadline_time"] = None
-
-        loc_tags = list()
-        for tag in case_json["tags"]:
-            loc_tags.append(tag["name"])
-        case_json["tags"] = loc_tags
-
-        loc_clusters = list()
-        for cluster in case_json["clusters"]:
-            loc_clusters.append(cluster["name"])
-        case_json["clusters"] = loc_clusters
-
-        loc_connectors = list()
-        loc_connectors_keep = list()
-        for connector in case_json["connectors"]:
-            loc_connectors_keep.append(connector)
-            loc_connectors.append(connector["name"])
-        case_json["connectors"] = loc_connectors
-
-        loc_identifiers_dict = dict()
-        for connector in loc_connectors_keep:
-            loc_identifier = CommonModel.get_case_connector_id(connector["id"], cid)
-            loc_identifiers_dict[connector["name"]] = None
-            if loc_identifier:
-                loc_identifiers_dict[connector["name"]] = loc_identifier.identifier
-        case_json["identifier"] = loc_identifiers_dict
-
-        new_case = self.create_case(case_json, user)
-
-        for task in case.tasks:
-            task_json = task.to_json()
-            if task.deadline:
-                task_json["deadline_date"] = datetime.datetime.strptime(task_json["deadline"].split(" ")[0], "%Y-%m-%d").date()
-                task_json["deadline_time"] = datetime.datetime.strptime(task_json["deadline"].split(" ")[1], "%H:%M").time()
+            if case.deadline:
+                case_json["deadline_date"] = datetime.datetime.strptime(case_json["deadline"].split(" ")[0], "%Y-%m-%d").date()
+                case_json["deadline_time"] = datetime.datetime.strptime(case_json["deadline"].split(" ")[1], "%H:%M").time()
             else:
-                task_json["deadline_date"] = None
-                task_json["deadline_time"] = None
+                case_json["deadline_date"] = None
+                case_json["deadline_time"] = None
 
+
+            loc_custom_tags = list()
+            for tag in case_json["custom_tags"]:
+                loc_custom_tags.append(tag["name"])
+            case_json["custom_tags"] = loc_custom_tags
 
             loc_tags = list()
-            for tag in task_json["tags"]:
+            for tag in case_json["tags"]:
                 loc_tags.append(tag["name"])
-            task_json["tags"] = loc_tags
+            case_json["tags"] = loc_tags
 
             loc_clusters = list()
-            for cluster in task_json["clusters"]:
+            for cluster in case_json["clusters"]:
                 loc_clusters.append(cluster["name"])
-            task_json["clusters"] = loc_clusters
-            
+            case_json["clusters"] = loc_clusters
 
-            loc_connectors = list()
-            loc_connectors_keep = list()
-            for connector in task_json["connectors"]:
-                loc_connectors_keep.append(connector)
-                loc_connectors.append(connector["name"])
-            task_json["connectors"] = loc_connectors
+            new_case = self.create_case(case_json, user)
+            new_case.notes = case.notes
+            self.add_new_link({"case_id": [new_case.id]}, case.id, user)
 
-            loc_identifiers_dict = dict()
-            for connector in loc_connectors_keep:
-                loc_identifier = CommonModel.get_task_connector_id(connector["id"], task.id)
-                loc_identifiers_dict[connector["name"]] = None
-                if loc_identifier:
-                    loc_identifiers_dict[connector["name"]] = loc_identifier.identifier
-            task_json["identifier"] = loc_identifiers_dict
+            for connector in case_json["connectors"]:
+                c = Case_Connector_Instance(
+                    case_id=new_case.id,
+                    instance_id=connector["id"],
+                    identifier=""
+                )
+                db.session.add(c)
+                db.session.commit()
 
-            TaskModel.create_task(task_json, new_case.id, user)
+            loc_misp_objects_list = self.get_misp_object_by_case(case.id)
+            for misp_object in loc_misp_objects_list:
+                misp_object_json = misp_object.to_json()
+                misp_object_json["object-template"] = {"uuid": misp_object.template_uuid, "name": misp_object.name}
+                misp_object_json["attributes"] = [attr.to_json() for attr in misp_object.attributes]
+                self.create_misp_object(new_case.id, misp_object_json, user)
 
-        CommonModel.save_history(case.uuid, user, f"Case forked, {new_case.id} - {new_case.title}")
-        return new_case
+            for task in case.tasks:
+                task_json = task.to_json()
+                if task.deadline:
+                    task_json["deadline_date"] = datetime.datetime.strptime(task_json["deadline"].split(" ")[0], "%Y-%m-%d").date()
+                    task_json["deadline_time"] = datetime.datetime.strptime(task_json["deadline"].split(" ")[1], "%H:%M").time()
+                else:
+                    task_json["deadline_date"] = None
+                    task_json["deadline_time"] = None
+
+                loc_custom_tags = list()
+                for custom_tag in task_json["custom_tags"]:
+                    loc_custom_tags.append(custom_tag["name"])
+                task_json["custom_tags"] = loc_custom_tags
+
+                loc_tags = list()
+                for tag in task_json["tags"]:
+                    loc_tags.append(tag["name"])
+                task_json["tags"] = loc_tags
+
+                loc_clusters = list()
+                for cluster in task_json["clusters"]:
+                    loc_clusters.append(cluster["name"])
+                task_json["clusters"] = loc_clusters
+
+                new_task = TaskModel.create_task(task_json, new_case.id, user)
+
+                for note in task_json["notes"]:
+                    TaskModel.modif_note_core(new_task.id, user, note["note"], '-1')
+
+                for connector in task_json["connectors"]:
+                    c = Task_Connector_Instance(
+                        task_id=new_task.id,
+                        instance_id=connector["id"],
+                        identifier=""
+                    )
+                    db.session.add(c)
+                    db.session.commit()
+
+            CommonModel.save_history(case.uuid, user, f"Case forked, {new_case.id} - {new_case.title}")
+            return new_case
+        except Exception as e:
+            print(e)
+            db.session.rollback()
+            return {"message": "error when creating the fork"}, 400
     
     def merge_case_core(self, current_case: Case, merging_case: Case, current_user: User) -> bool:
         """Merge Current case into merging case"""
