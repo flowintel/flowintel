@@ -231,7 +231,7 @@ def handler(instance, case, task, user):
     
     if "errors" in event:
         return event
-    return event.get("id")
+    return event.get("uuid")
 
 def introspection():
     return module_config

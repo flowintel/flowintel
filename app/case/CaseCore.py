@@ -1040,9 +1040,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         #######
         # RUN #
         #######
-        event_id, object_uuid_list = MODULES[module].handler(instance, case, user)
+        event_uuid, object_uuid_list = MODULES[module].handler(instance, case, user)
 
-        res = CommonModel.module_error_check(event_id)
+        res = CommonModel.module_error_check(event_uuid)
         if res:
             return res
 
@@ -1053,20 +1053,20 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             cc_instance = Case_Connector_Instance(
                 case_id=case["id"],
                 instance_id=instance["id"],
-                identifier=event_id
+                identifier=event_uuid
             )
             db.session.add(cc_instance)
             db.session.commit()
-        elif not case_instance.identifier == event_id:
-            case_instance.identifier = event_id
+        elif not case_instance.identifier == event_uuid:
+            case_instance.identifier = event_uuid
             db.session.commit()
         
         if object_uuid_list:
             self.result_misp_object_module(object_uuid_list, instance["id"])
             loc_instance = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case["id"], instance_id=instance["id"]).first()
             if loc_instance:
-                if not loc_instance.identifier == event_id:
-                    loc_instance.identifier = event_id
+                if not loc_instance.identifier == event_uuid:
+                    loc_instance.identifier = event_uuid
                     db.session.commit()                
         
         CommonModel.save_history(case["uuid"], user, f"Case Module {module} used on instance: {instance['name']}")
@@ -1366,9 +1366,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         #######
         # RUN #
         #######
-        event_id, object_uuid_list = MODULES["misp_object_event"].handler(instance, case, user)
+        event_uuid, object_uuid_list = MODULES["misp_object_event"].handler(instance, case, user)
 
-        res = CommonModel.module_error_check(event_id)
+        res = CommonModel.module_error_check(event_uuid)
         if res:
             return res
 
@@ -1376,8 +1376,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         # RESULTS #
         ###########
 
-        if not object_instance.identifier == event_id:
-            object_instance.identifier = event_id
+        if not object_instance.identifier == event_uuid:
+            object_instance.identifier = event_uuid
             db.session.commit()
         if object_uuid_list:
             self.result_misp_object_module(object_uuid_list, object_instance.id)
