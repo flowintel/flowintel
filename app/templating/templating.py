@@ -311,7 +311,7 @@ def edit_connector(ctid):
     """Edit connector instance of template"""
     if current_user.is_admin():
         if "identifier" in request.json:
-            if CommonModel.edit_connector_instances_to_case_template(ctid, request.json["identifier"]):
+            if CommonModel.edit_connector_instances_of_case_template(ctid, request.json["identifier"]):
                 return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400

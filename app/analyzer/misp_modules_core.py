@@ -138,10 +138,10 @@ def delete_history(huuid, current_user):
 def manage_notes_selected(request_json, current_user):
     case_id = None
     if "create_case" in request_json:
-        verif_dict = CaseModelApi.verif_create_case_task(request_json["create_case"], True)
+        verif_dict = CaseModelApi.verif_create_case_task(request_json["create_case"])
         if "message" not in verif_dict:
             case = CaseModel.create_case(verif_dict, current_user)
-            CaseModel.modif_note_core(case.id, current_user, request_json["notes"])
+            CaseModel.modify_note_core(case.id, current_user, request_json["notes"])
             case_id = case.id
         else:
             return verif_dict
@@ -152,7 +152,7 @@ def manage_notes_selected(request_json, current_user):
         else:
             return {"message": "No case id passed"}
         
-        verif_dict = CaseModelApi.verif_create_case_task(request_json["create_task"], False)
+        verif_dict = CaseModelApi.verif_create_case_task(request_json["create_task"])
         if "message" not in verif_dict:
             task = TaskModel.create_task(verif_dict, case_id, current_user)
             TaskModel.modif_note_core(task.id, current_user, request_json["notes"], "-1")
@@ -171,7 +171,7 @@ def manage_notes_selected(request_json, current_user):
 
     elif "case_note" in request_json:
         case_id = request_json["case_note"]["case_id"]
-        CaseModel.modif_note_core(case_id, current_user, request_json["notes"])
+        CaseModel.modify_note_core(case_id, current_user, request_json["notes"])
 
     if "misp-objects" in request_json:
         for misp_obj in request_json["misp-objects"]:

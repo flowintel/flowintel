@@ -327,6 +327,7 @@
                         selected_tab.value = 'main'
                         if ( !document.getElementById("tab-main").classList.contains("active") ){
                             document.getElementById("tab-main").classList.add("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
                             document.getElementById("tab-note").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
                         }

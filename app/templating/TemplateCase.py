@@ -58,10 +58,6 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
             custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
             if custom_tag:
                 self.add_custom_tag(custom_tag, case_template.id)
-        
-        db.session.query(Case_Template_Connector_Instance).filter_by(case_template_id=case_template.id).delete()
-        if 'connector_instances' in form_dict:
-            CommonModel.add_connector_instances_to_case_template(case_template.id, form_dict['connector_instances'])
 
         cp = 1
         for tid in form_dict["tasks"]:
@@ -83,6 +79,7 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         Case_Template_Tags.query.filter_by(case_id=case_id).delete() 
         Case_Template_Galaxy_Tags.query.filter_by(template_id=case_id).delete()
         Case_Template_Custom_Tags.query.filter_by(case_template_id=case_id).delete()
+        Case_Template_Connector_Instance.query.filter_by(case_template_id=case_id).delete()
         template = CommonModel.get_case_template(case_id)
         db.session.delete(template)
         db.session.commit()
@@ -157,10 +154,6 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         template.title=form_dict["title"]
         template.description=form_dict["description"]
         template.time_required = form_dict["time_required"]
-
-        db.session.query(Case_Template_Connector_Instance).filter_by(case_template_id=cid).delete()
-        if 'connector_instances' in form_dict:
-            CommonModel.add_connector_instances_to_case_template(cid, form_dict['connector_instances'])
 
         self.update_case_time_modification(template)
 

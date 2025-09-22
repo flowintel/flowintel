@@ -734,7 +734,9 @@ def get_connectors():
     for connector in connectors_list:
         loc = list()
         for instance in connector.instances:
-            if CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+            if instance.global_api_key:
+                loc.append(instance.to_json())
+            elif CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
                 loc.append(instance.to_json())
         if loc:
             connectors_dict[connector.name] = loc
