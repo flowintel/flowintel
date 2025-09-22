@@ -58,6 +58,10 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
             custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
             if custom_tag:
                 self.add_custom_tag(custom_tag, case_template.id)
+        
+        db.session.query(Case_Template_Connector_Instance).filter_by(case_template_id=case_template.id).delete()
+        if 'connector_instances' in form_dict:
+            CommonModel.add_connector_instances_to_case_template(case_template.id, form_dict['connector_instances'])
 
         cp = 1
         for tid in form_dict["tasks"]:
@@ -153,6 +157,10 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         template.title=form_dict["title"]
         template.description=form_dict["description"]
         template.time_required = form_dict["time_required"]
+
+        db.session.query(Case_Template_Connector_Instance).filter_by(case_template_id=cid).delete()
+        if 'connector_instances' in form_dict:
+            CommonModel.add_connector_instances_to_case_template(cid, form_dict['connector_instances'])
 
         self.update_case_time_modification(template)
 
@@ -290,6 +298,16 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
             )
             db.session.add(case_custom_tags)
             db.session.commit()
+            
+        ## Case Connector Instance
+        for connector_instances in case_template.to_json()['connector_instances']:
+            c_c_i = Case_Connector_Instance(
+                case_id=case.id,
+                instance_id=connector_instances['instance']['id'],
+                identifier=connector_instances['identifier']
+            )
+            db.session.add(c_c_i)
+        db.session.commit()
 
         # Add the current user's org to the case
         case_org = Case_Org(

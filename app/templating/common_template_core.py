@@ -2,6 +2,7 @@ import datetime
 from typing import Optional
 from ..db_class.db import *
 from sqlalchemy import func
+from ..case.common_core import get_instance_by_name
 
 def get_all_case_templates():
     return Case_Template.query.all()
@@ -177,3 +178,41 @@ def get_taxonomies_from_tags(tags):
             if not tag["name"].split(":")[0] in taxonomies:
                 taxonomies.append(tag["name"].split(":")[0])
     return taxonomies
+
+
+##############
+# Connectors #
+##############
+def get_case_template_connector_instances(ctid):
+    """Return a list of all connectors present in a case template"""
+    return Case_Template_Connector_Instance.query.filter_by(case_template_id=ctid).all()
+
+def add_connector_instances_to_case_template(ctid, connector_instances) -> bool:
+    """Add connector instance to case template"""
+    for connector_instance in connector_instances:
+        c = Case_Template_Connector_Instance(
+            case_template_id=ctid,
+            connector_instance_id=connector_instance["id"],
+            identifier=connector_instance['identifier']
+        )
+        db.session.add(c)
+    db.session.commit()
+    return True
+
+def edit_connector_instances_of_case_template(ctid, identifier) -> bool:
+    """Edit identifier of connector instance"""
+    c = Case_Template_Connector_Instance.query.get(ctid)
+    if c:
+        c.identifier = identifier
+        db.session.commit()
+        return True
+    return False
+
+def remove_connector_instance_from_case_template(ctid):
+    """Remove connector instance from a case template"""
+    c = Case_Template_Connector_Instance.query.get(ctid)
+    if c:
+        db.session.delete(c)
+        db.session.commit()
+        return True
+    return False

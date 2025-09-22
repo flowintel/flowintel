@@ -1029,7 +1029,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
 
         instance = instance.to_json()
-        if user_instance:
+        if "global_api_key" in instance and instance["global_api_key"]:
+            instance["api_key"] = instance["global_api_key"]
+        elif user_instance:
             instance["api_key"] = user_instance.api_key
         instance["identifier"] = case_instance.identifier
 
