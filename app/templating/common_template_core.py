@@ -183,6 +183,10 @@ def get_taxonomies_from_tags(tags):
 ##############
 # Connectors #
 ##############
+def get_case_template_connector_instance(ctid, ciid):
+    """Return the connector present in a case template"""
+    return Case_Template_Connector_Instance.query.filter_by(case_template_id=ctid, connector_instance_id=ciid).first()
+
 def get_case_template_connector_instances(ctid):
     """Return a list of all connectors present in a case template"""
     return Case_Template_Connector_Instance.query.filter_by(case_template_id=ctid).all()

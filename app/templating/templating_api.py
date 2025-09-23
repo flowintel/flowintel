@@ -4,9 +4,10 @@ from .TaskTemplateCore import TaskModel
 from . import validation_api as ApiTemplateModel
 from . import common_template_core as CommonModel
 from ..utils import utils
+from ..case.common_core import get_instance_with_icon
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required
+from ..decorators import api_required, editor_required
 
 
 templating_ns = Namespace("templating", description="Endpoints to manage templates")
@@ -192,6 +193,76 @@ class GetGalaxiesCase(Resource):
                     clusters[index] = cluster.tag
             return {"clusters": clusters, "galaxies": galaxies}
         return {"message": "Case Not found"}, 404
+    
+##############
+# Connectors #
+##############
+
+@templating_ns.route("/get_case_template_connector_instances/<int:cid>")
+@templating_ns.doc(description='Get connectors instances of a case', params={'cid': 'id of a case template'})
+class GetCaseTemplateConnectorInstance(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        connector_instances = CommonModel.get_case_template_connector_instances(cid)
+        c_i_formated = list()
+        if connector_instances:
+            for c_i in connector_instances:
+                c_i_formated.append({
+                    **c_i.to_json(),
+                    "details": get_instance_with_icon(c_i.connector_instance_id),
+                    "template_instance_id": c_i.id,
+                    })
+        return {"connector_instances": c_i_formated}, 200
+    
+@templating_ns.route("/add_connector/<int:cid>")
+@templating_ns.doc(description='Add connector instances to a case', params={'cid': 'id of a case template'})
+class AddConnector(Resource):
+    method_decorators = [editor_required, api_required]
+    @templating_ns.doc(params={
+        "connectors": "Required. List of connectors instance. Dict with 'id' and 'identifier' as keys."
+    })
+    def post(self, cid):
+        if CommonModel.get_case_template(cid):
+            if "connectors" in request.json:
+                if CommonModel.add_connector_instances_to_case_template(cid, request.json['connectors']):
+                    return {"message": "Connector added successfully"}, 200
+            return {"message": "Need to pass 'connectors'"}, 400
+        return {"message": "Case template not found"}, 404
+    
+
+@templating_ns.route("/<int:cid>/edit_connector/<int:ciid>")
+@templating_ns.doc(description='Edit connector instance', params={'cid': 'id of a case template', 'ciid': 'id of an instance'})
+class EditConnector(Resource):
+    method_decorators = [editor_required, api_required]
+    @templating_ns.doc(params={
+        "identifier": "Required. Identifier used by modules to identify where to send data."
+    })
+    def post(self, cid, ciid):
+        if CommonModel.get_case_template(cid):
+            if "identifier" in request.json:
+                loc = CommonModel.get_case_template_connector_instance(cid, ciid)
+                if loc:
+                    if CommonModel.edit_connector_instances_of_case_template(loc.id, request.json['identifier']):
+                        return {"message": "Connector edited successfully"}, 200
+                return {"message": "Connector instance not found"}, 404
+            return {"message": "Need to pass 'identifier'"}, 400
+        return {"message": "Case template not found"}, 404
+    
+    
+@templating_ns.route("<int:cid>/remove_connector/<int:ciid>")
+@templating_ns.doc(description='Add connector instances to a case', params={'cid': 'id of a case template', 'ciid': 'id of an instance'})
+class RemoveConnector(Resource):
+    method_decorators = [editor_required, api_required]
+    def delete(self, cid, ciid):
+        if CommonModel.get_case_template(cid):
+            loc = CommonModel.get_case_template_connector_instance(cid, ciid)
+            if loc:
+                if CommonModel.remove_connector_instance_from_case_template(loc.id):
+                    return {"message": "Connector removed"}, 200
+                return {"message": "Error Connector removed"}, 400
+            return {"message": "Connector instance not found"}, 404
+        return {"message": "Case template not found"}, 404
+
 
 ##########
 ## Task ##
