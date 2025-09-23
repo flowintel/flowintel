@@ -790,7 +790,7 @@ class Connector_Instance(db.Model):
             "uuid": self.uuid,
             "connector_id": self.connector_id,
             "type": self.type,
-            "global_api_key": self.global_api_key
+            "global_api_key": True if self.global_api_key else False
         }
         return json_dict
 
