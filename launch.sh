@@ -56,7 +56,6 @@ function production {
     export FLASKENV="production"
     export HISTORY_DIR=$history_dir/history
     killscript
-    db_upgrade
 
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"

@@ -681,7 +681,7 @@ def modif_note(cid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             notes = request.json["notes"]
-            if CaseModel.modif_note_core(cid, current_user, notes):
+            if CaseModel.modify_note_core(cid, current_user, notes):
                 return {"message": "Note modified", "toast_class": "success-subtle"}, 200
             return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403

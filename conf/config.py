@@ -6,6 +6,7 @@ class Config:
     FLASK_PORT = 7006
     SESSION_TYPE = "redis"
     MISP_MODULE = '127.0.0.1:6666'
+    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
 
 
 class DevelopmentConfig(Config):

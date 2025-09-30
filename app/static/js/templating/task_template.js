@@ -348,7 +348,7 @@ export default {
             <div class="d-flex w-100 justify-content-between">
                 <div v-if="template.clusters">
                     <template v-for="cluster in template.clusters">
-                        <div class="cluster" :title="'Description:' + cluster.description + 'Metadata:' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
+                        <div class="cluster" :title="'Description:' + cluster.description + 'Metadata:' + cluster.meta">
                             <span v-html="mapIcon(cluster.icon)"></span>
                             [[cluster.tag]]
                         </div>

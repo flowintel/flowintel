@@ -564,6 +564,9 @@ def check_cluster_tags_db(cluster):
     """Check if a cluster exist in db"""
     return Cluster.query.filter_by(tag=cluster).first()
 
+def check_cluster_name_db(cluster):
+    return Cluster.query.filter_by(name=cluster).first()
+
 def check_tag(tag_list):
     """Check if a list of tags exist"""
     for tag in tag_list:
@@ -574,7 +577,7 @@ def check_tag(tag_list):
 def check_cluster(cluster_list):
     """Check if a list of clusters exist by uuid"""
     for cluster in cluster_list:
-        if not check_cluster_uuid_db(cluster):
+        if not check_cluster_name_db(cluster):
             return cluster
     return True
 
