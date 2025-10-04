@@ -169,6 +169,15 @@ export default {
             display_toast(res, true)
         }
 
+        async function update_case(){
+            let url = '/case/'+props.cases_info.case.id+'/update_case'
+            const res = await fetch(url)
+            if(await res.status==200){
+                window.location.href='/case/'+props.cases_info.case.id
+            }
+            display_toast(res)
+        }
+
 
 		onMounted(() => {
             $('.select2-connect').select2({
@@ -223,7 +232,8 @@ export default {
             edit_instance_open_modal,
             edit_connector,
             send_to_modal,
-            submit_module
+            submit_module,
+            update_case
 		}
     },
     css: `
@@ -247,6 +257,7 @@ export default {
                     <th>Instance url</th>
                     <th>Type</th>
                     <th>Identifier on the instance</th>
+                    <th></th>
                     <th></th>
                 </tr>
             </thead>
@@ -281,6 +292,13 @@ export default {
                         </button>
                         <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)"> <i class="fa-solid fa-trash"></i> </button>
                     </td>
+
+                    <td v-if="cases_info.case.is_created_from_misp && cases_info.case.is_created_from_misp == instance.identifier">
+                        <button class="btn btn-outline-secondary" @click="update_case()" title="Update case with the event misp">
+                            <i class="fa-solid fa-recycle"></i>
+                        </button>
+                    </td>
+                    <td v-else></td>
                 </tr>
             </tbody>
         </table>

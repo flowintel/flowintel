@@ -85,6 +85,7 @@ class Case(db.Model):
     time_required = db.Column(db.String)
     is_private = db.Column(db.Boolean, default=False)
     ticket_id = db.Column(db.String)
+    is_created_from_misp = db.Column(db.String(36))
 
     def to_json(self):
         json_dict = {
@@ -104,7 +105,8 @@ class Case(db.Model):
             "hedgedoc_url": self.hedgedoc_url,
             "time_required": self.time_required,
             "is_private": self.is_private,
-            "ticket_id": self.ticket_id
+            "ticket_id": self.ticket_id,
+            "is_created_from_misp": self.is_created_from_misp
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
@@ -144,7 +146,8 @@ class Case(db.Model):
             "notes": self.notes,
             "time_required": self.time_required,
             "is_private": self.is_private,
-            "ticket_id": self.ticket_id
+            "ticket_id": self.ticket_id,
+            "is_created_from_misp": self.is_created_from_misp
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')

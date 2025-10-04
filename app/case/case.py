@@ -257,7 +257,10 @@ def get_case_info(cid):
         permission = CommonModel.get_role(current_user).to_json()
         present_in_case = CommonModel.get_present_in_case(cid, current_user)
 
-        return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 200
+        case_json = case.to_json()
+        case_json["misp_icon"] = "fe377a79-1950-407a-a02f-c5e1d990ca60"
+
+        return jsonify({"case": case_json, "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -1084,6 +1087,18 @@ def edit_connector(cid, ciid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<cid>/update_case", methods=['GET'])
+@login_required
+@editor_required
+def update_case(cid):
+    """Remove a connector from case"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CaseModel.receive_from_misp(cid):
+                return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
+            return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 #################
 # Note Template #

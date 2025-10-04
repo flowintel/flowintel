@@ -330,11 +330,11 @@ export default {
                                         <td>
                                             <button type="button" class="btn btn-primary btn-sm" title="Edit attribute"
                                             @click="open_modal_add_attribute(misp_object.object_uuid, 'modal-edit-attr-', attribute.id)">
-                                                <i class="fa-solid fa-pen-to-square"></i>
+                                                <i class="fa-solid fa-fw fa-pen-to-square"></i>
                                             </button>
                                             <button type="button" class="btn btn-danger btn-sm" title="Delete attribute"
                                             @click="delete_attribute(attribute.id, misp_object.object_id)">
-                                                <i class="fa-solid fa-trash"></i>
+                                                <i class="fa-solid fa-fw fa-trash"></i>
                                             </button>
                                         </td>
 
