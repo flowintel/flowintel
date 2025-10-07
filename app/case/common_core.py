@@ -577,8 +577,12 @@ def check_tag(tag_list):
 def check_cluster(cluster_list):
     """Check if a list of clusters exist by uuid"""
     for cluster in cluster_list:
-        if not check_cluster_name_db(cluster):
-            return cluster
+        if isUUID(cluster):
+            if not check_cluster_uuid_db(cluster):
+                return cluster
+        else:
+            if not check_cluster_name_db(cluster):
+                return cluster
     return True
 
 def check_cluster_tags(cluster_list):
