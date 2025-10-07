@@ -85,9 +85,12 @@ def get_module_type():
         type_list.append(dir)
     return type_list
 
+@lru_cache
 def get_modules_list():
     """Get modules available"""
     modulename_list = list()
+    module_list = dict()
+    module_config = dict()
     sys.path.append(MODULE_PATH)
     for root, dirnames, filenames in os.walk(MODULE_PATH):
         if os.path.basename(root) == '__pycache__':
@@ -99,18 +102,19 @@ def get_modules_list():
                 continue
             modulename = filename.split(".")[0]
             root_dir = os.path.basename(root)
-            MODULES[modulename] = importlib.import_module(root_dir + '.' + modulename)
-            MODULES_CONFIG[modulename] = {"type": root_dir, "config": MODULES[modulename].module_config}
+            module_list[modulename] = importlib.import_module(root_dir + '.' + modulename)
+            module_config[modulename] = {"type": root_dir, "config": module_list[modulename].module_config}
             modulename_list.append(modulename)
 
     loc_elem = []
-    for elem in MODULES_CONFIG:
+    for elem in module_config:
         if elem not in modulename_list:
             loc_elem.append(elem)
     
     for elem in loc_elem:
-        del MODULES_CONFIG[elem]
-        del MODULES[elem]
+        del module_config[elem]
+        del module_list[elem]
+    return module_list, module_config
 
 def update_pymisp_objects():
     update_objects()

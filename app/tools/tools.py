@@ -53,7 +53,8 @@ def module():
 @tools_blueprint.route("/get_modules")
 @login_required
 def get_modules():
-    return {"modules": MODULES_CONFIG}, 200
+    _, res = get_modules_list()
+    return {"modules": res}, 200
 
 @tools_blueprint.route("/reload_module")
 @login_required

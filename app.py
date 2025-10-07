@@ -99,5 +99,5 @@ elif args.pymisp:
     with app.app_context():
         update_pymisp_objects()
 else:
-    get_modules_list()
+    # get_modules_list()
     app.run(host=app.config.get("FLASK_URL"), port=app.config.get("FLASK_PORT"))

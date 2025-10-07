@@ -15,7 +15,7 @@ from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
 from . import common_core as CommonModel
 from . TaskCore import TaskModel
-from ..utils.utils import MODULES, MODULES_CONFIG
+from ..utils.utils import MODULES, MODULES_CONFIG, get_modules_list
 from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 
@@ -942,20 +942,23 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def get_modules(self):
         """Return all modules"""
-        return MODULES_CONFIG
+        _, res = get_modules_list()
+        return res
 
     def get_case_modules(self):
         """Return modules for case only"""
         loc_list = {}
-        for module in MODULES_CONFIG:
-            if MODULES_CONFIG[module]["config"]["case_task"] == 'case':
-                loc_list[module] = MODULES_CONFIG[module]
+        _, res = get_modules_list()
+        for module in res:
+            if res[module]["config"]["case_task"] == 'case':
+                loc_list[module] = res[module]
         return loc_list
 
     def get_instance_module_core(self, module, type_module, case_id, user_id):
         """Return a list of connectors instances for a module"""
-        if "connector" in MODULES_CONFIG[module]["config"]:
-            connector = CommonModel.get_connector_by_name(MODULES_CONFIG[module]["config"]["connector"])
+        _, res = get_modules_list()
+        if "connector" in res[module]["config"]:
+            connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
             instance_list = list()
             for instance in connector.instances:
                 if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
@@ -1040,7 +1043,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         #######
         # RUN #
         #######
-        event_uuid, object_uuid_list = MODULES[module].handler(instance, case, user)
+        modules, _ = get_modules_list()
+        event_uuid, object_uuid_list = modules[module].handler(instance, case, user)
 
         res = CommonModel.module_error_check(event_uuid)
         if res:
@@ -1366,7 +1370,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         #######
         # RUN #
         #######
-        event_uuid, object_uuid_list = MODULES["misp_object_event"].handler(instance, case, user)
+        modules, _ = get_modules_list()
+        event_uuid, object_uuid_list = modules["misp_object_event"].handler(instance, case, user)
 
         res = CommonModel.module_error_check(event_uuid)
         if res:

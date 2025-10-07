@@ -8,7 +8,7 @@ import uuid
 from flask import send_file
 from .. import db
 from ..db_class.db import *
-from ..utils.utils import isUUID, create_specific_dir
+from ..utils.utils import get_modules_list, isUUID, create_specific_dir
 from sqlalchemy import desc, func
 from ..utils import utils
 from app.utils.utils import MODULES_CONFIG
@@ -681,10 +681,11 @@ def get_instance_with_icon(instance_id):
 
 def get_modules_by_case_task(case_task):
     """Return modules for task only"""
+    _, res = get_modules_list()
     loc_list = {}
-    for module in MODULES_CONFIG:
-        if MODULES_CONFIG[module]["config"]["case_task"] == case_task:
-            loc_list[module] = MODULES_CONFIG[module]
+    for module in res:
+        if res[module]["config"]["case_task"] == case_task:
+            loc_list[module] = res[module]
     return loc_list
 
 

@@ -14,7 +14,7 @@ from ..notification import notification_core as NotifModel
 from . import common_core as CommonModel
 from ..custom_tags import custom_tags_core as CustomModel
 
-from app.utils.utils import MODULES, MODULES_CONFIG
+from app.utils.utils import MODULES, MODULES_CONFIG, get_modules_list
 
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
@@ -538,15 +538,17 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def get_task_modules(self):
         """Return modules for task only"""
         loc_list = {}
-        for module in MODULES_CONFIG:
-            if MODULES_CONFIG[module]["config"]["case_task"] == 'task':
-                loc_list[module] = MODULES_CONFIG[module]
+        _, res = get_modules_list()
+        for module in res:
+            if res[module]["config"]["case_task"] == 'task':
+                loc_list[module] = res[module]
         return loc_list
 
     def get_instance_module_core(self, module, type_module, task_id, user_id):
         """Return a list of connectors instances for a module"""
-        if "connector" in MODULES_CONFIG[module]["config"]:
-            connector = CommonModel.get_connector_by_name(MODULES_CONFIG[module]["config"]["connector"])
+        _, res = get_modules_list()
+        if "connector" in res[module]["config"]:
+            connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
             instance_list = list()
             for instance in connector.instances:
                 if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
@@ -588,7 +590,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         #######
         # RUN #
         #######
-        event_uuid = MODULES[module].handler(instance, case, task, user)
+        modules, _ = get_modules_list()
+        event_uuid = modules[module].handler(instance, case, task, user)
         res = CommonModel.module_error_check(event_uuid)
         if res:
             return res
@@ -615,7 +618,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def call_module_task_no_instance(self, module, task, case, current_user, user_id):
         user = User.query.get(user_id)
-        res = MODULES[module].handler(task, case, current_user, user)
+        modules, _ = get_modules_list()
+        res = modules[module].handler(task, case, current_user, user)
         if isinstance(res, dict):
             return res
         
