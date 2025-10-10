@@ -71,4 +71,4 @@ pip install -r requirements.txt
 # init submodules
 git submodule init && git submodule update
 # make launch script executable
-./launch.sh -i
+#./launch.sh -i
