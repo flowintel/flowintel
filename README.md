@@ -57,5 +57,6 @@ Copyright (C) 2022-2023 David Cruciani
 
 ## Funding
 
-![CIRCL.lu](https://www.circl.lu/assets/images/logo.png)
-![CEF Telecom funding (D4 Project](https://www.misp-project.org/assets/images/en_cef.png)
+Flowintel is co-funded by [CIRCL](https://www.circl.lu/) and by the European Union under [FETTA](https://www.circl.lu/pub/press/20240131/) (Federated European Team for Threat Analysis) project.
+
+![EU logo](https://www.vulnerability-lookup.org/images/eu-funded.jpg)
