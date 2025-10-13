@@ -9,6 +9,8 @@ from flask import send_file
 from sqlalchemy import desc, and_
 from dateutil import relativedelta
 
+from app.utils import misp_object_helper
+
 from .. import db
 from ..db_class.db import *
 from .CommonAbstract import CommonAbstract
@@ -1004,10 +1006,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         c = Case_Connector_Instance.query.get(case_instance_id)
         if c:
             c.identifier = request_json["identifier"]
+            case = CommonModel.get_case(c.case_id)
+            if "update_from_misp" in request_json and request_json["update_from_misp"]:
+                c.is_updating_case = True
+                case.is_updated_from_misp = True
+            else:
+                c.is_updating_case = False
+                case.is_updated_from_misp = False
+            
             db.session.commit()
             return True
         return False
-
 
 
     def call_module_case(self, module, case_instance_id, case, user):
@@ -1066,7 +1075,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             db.session.commit()
         
         if object_uuid_list:
-            self.result_misp_object_module(object_uuid_list, instance["id"])
+            self.result_misp_object_module(object_uuid_list, instance["id"], case["id"])
             loc_instance = Case_Misp_Object_Connector_Instance.query.filter_by(case_id=case["id"], instance_id=instance["id"]).first()
             if loc_instance:
                 if not loc_instance.identifier == event_uuid:
@@ -1078,7 +1087,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     ###############
     # MISP Object #
     ###############
-
+ 
     def create_misp_object(self, cid, request_json, current_user):
         """Create a new misp object"""
         case_misp_object = Case_Misp_Object(
@@ -1280,11 +1289,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def get_case_misp_object_by_case_id(self, case_id):
         return Case_Misp_Object.query.filter_by(case_id=case_id).all()
 
-    def get_misp_object_instance_uuid(self, object_id, instance_id):
-        return Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=object_id, instance_id=instance_id).first()
+    def get_misp_object_instance_uuid(self, object_id, instance_id, case_id):
+        return Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=object_id, instance_id=instance_id, case_id=case_id).first()
 
-    def get_misp_attribute_instance_uuid(self, attr_id, instance_id):
-        return Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr_id, instance_id=instance_id).first()
+    def get_misp_attribute_instance_uuid(self, attr_id, instance_id, case_id):
+        return Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr_id, instance_id=instance_id, case_id=case_id).first()
+    
+    def get_misp_object_instance_by_instance_uuid(self, object_uuid, instance_id, case_id):
+        return Misp_Object_Instance_Uuid.query.filter_by(object_instance_uuid=object_uuid, instance_id=instance_id, case_id=case_id).first()
+    
+    def get_misp_attribute_instance_by_instance_uuid(self, attribute_uuid, instance_id, case_id):
+        return Misp_Attribute_Instance_Uuid.query.filter_by(attribute_instance_uuid=attribute_uuid, instance_id=instance_id, case_id=case_id).first()
 
 
     def get_misp_connector_by_user(self, user_id):
@@ -1305,7 +1320,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             loc_object = object.to_json()
             # Get the uuid for the object for this specific instance
             loc_object["uuid"] = ""
-            loc_object_uuid = self.get_misp_object_instance_uuid(object.id, instance_id)
+            loc_object_uuid = self.get_misp_object_instance_uuid(object.id, instance_id, case_id)
             if loc_object_uuid:
                 loc_object["uuid"] = loc_object_uuid.object_instance_uuid
 
@@ -1314,7 +1329,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 loc_attr = attribute.to_json()
                 # Get the uuid for the attribute for this specific instance
                 loc_attr["uuid"] = ""
-                loc_attr_uuid = self.get_misp_attribute_instance_uuid(attribute.id, instance_id)
+                loc_attr_uuid = self.get_misp_attribute_instance_uuid(attribute.id, instance_id, case_id)
                 if loc_attr_uuid:
                     loc_attr["uuid"] = loc_attr_uuid.attribute_instance_uuid
 
@@ -1323,10 +1338,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return object_list
 
 
-    def result_misp_object_module(self, object_uuid_list, instance_id):
+    def result_misp_object_module(self, object_uuid_list, instance_id, case_id):
         """Save uuid of objects and attributes for a instance of MISP"""
         for object_id in object_uuid_list:
-            loc_object_uuid = self.get_misp_object_instance_uuid(object_id, instance_id)
+            loc_object_uuid = self.get_misp_object_instance_uuid(object_id, instance_id, case_id)
             if loc_object_uuid:
                 loc_object_uuid.object_instance_uuid = object_uuid_list[object_id]["uuid"]
                 db.session.commit()
@@ -1334,13 +1349,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 o = Misp_Object_Instance_Uuid(
                     instance_id=instance_id,
                     misp_object_id=object_id,
-                    object_instance_uuid=object_uuid_list[object_id]["uuid"]
+                    object_instance_uuid=object_uuid_list[object_id]["uuid"],
+                    case_id=case_id
                 )
                 db.session.add(o)
                 db.session.commit()
 
             for attr in object_uuid_list[object_id]["attributes"]:
-                loc_attr_uuid = self.get_misp_attribute_instance_uuid(attr["attribute_id"], instance_id)
+                loc_attr_uuid = self.get_misp_attribute_instance_uuid(attr["attribute_id"], instance_id, case_id)
                 if loc_attr_uuid:
                     loc_attr_uuid.attribute_instance_uuid = attr["uuid"]
                     db.session.commit()
@@ -1348,13 +1364,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     a = Misp_Attribute_Instance_Uuid(
                         instance_id=instance_id,
                         misp_attribute_id=attr["attribute_id"],
-                        attribute_instance_uuid=attr["uuid"]
+                        attribute_instance_uuid=attr["uuid"],
+                        case_id=case_id
                     )
                     db.session.add(a)
                     db.session.commit()
 
-    def call_module_misp(self, object_instance_id, case, user):
-        """Use to send objects to MISP"""
+
+    def prepare_for_modules_misp(self, object_instance_id, case: Case, user: User):
+        """Prepare case, instance and object for module misp"""
         object_instance = Case_Misp_Object_Connector_Instance.query.get(object_instance_id)
         instance = CommonModel.get_instance(object_instance.instance_id)
         user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
@@ -1366,6 +1384,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         case = case.to_json()
         case["objects"] = self.get_misp_object_instance(case["id"], object_instance.id)
+
+        return object_instance, instance, case
+
+
+    def call_module_misp(self, object_instance_id, case, user):
+        """Use to send objects to MISP"""
+        object_instance, instance, case = self.prepare_for_modules_misp(object_instance_id, case, user)
 
         #######
         # RUN #
@@ -1385,11 +1410,104 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             object_instance.identifier = event_uuid
             db.session.commit()
         if object_uuid_list:
-            self.result_misp_object_module(object_uuid_list, object_instance.id)
+            self.result_misp_object_module(object_uuid_list, object_instance.id, case["id"])
 
         CommonModel.save_history(case["uuid"], user, f"Module 'misp_object_event' called with connector '{instance['name']}'")
         CommonModel.update_last_modif(case["id"])
 
+
+    def receive_from_misp(self, connector_instance_id, case_id, user):
+        object_instance = Case_Connector_Instance.query.get(connector_instance_id)
+        instance = CommonModel.get_instance(object_instance.instance_id)
+        user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
+
+        instance = instance.to_json()
+        if user_instance:
+            instance["api_key"] = user_instance.api_key
+        instance["identifier"] = object_instance.identifier
+
+        case = CommonModel.get_case(case_id)
+        case = case.to_json()
+        case["objects"] = self.get_misp_object_instance(case["id"], object_instance.id)
+
+        if not instance["identifier"]:
+            return {"message": "Need to give an identifer for this instance"}
+        #######
+        # RUN #
+        #######
+        modules, _ = get_modules_list()
+        event = modules["receive_misp_object"].handler(instance, case, user)
+
+        if isinstance(event, dict):
+            return event
+        
+        object_uuid_list = {}
+        for obje in event.objects:
+            # List objects in event
+            object_exist = self.get_misp_object_instance_by_instance_uuid(obje.uuid, instance["id"], case["id"])
+            if object_exist:
+                db_misp_object = self.get_misp_object(object_exist.misp_object_id)
+                if not db_misp_object.name == obje.name:
+                    db_misp_object.name = obje.name
+                    db_misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+                    db.session.commit()
+
+                for attr in obje.attributes:
+                    attr_exist = self.get_misp_attribute_instance_by_instance_uuid(attr.uuid, instance["id"], case["id"])
+                    if attr_exist:
+                        db_misp_attr = self.get_misp_attribute(attr_exist.misp_attribute_id)
+                        flag = False
+                        if not db_misp_attr.value == attr.value:
+                            db_misp_attr.value = attr.value
+                            flag = True
+                        if not db_misp_attr.type == attr.type:
+                            db_misp_attr.type = attr.type
+                            flag = True
+                        if not db_misp_attr.object_relation == attr.object_relation:
+                            db_misp_attr.object_relation = attr.object_relation
+                            flag = True
+                        if not db_misp_attr.first_seen == attr.get("first_seen"):
+                            if type(attr.first_seen) == datetime.datetime:
+                                db_misp_attr.first_seen = attr.first_seen
+                            else:
+                                db_misp_attr.first_seen = datetime.datetime.strptime(attr.get("first_seen"), '%Y-%m-%dT%H:%M')
+                            flag = True
+                        if not db_misp_attr.last_seen == attr.get("last_seen"):
+                            if type(attr.last_seen) == datetime.datetime:
+                                db_misp_attr.last_seen = attr.last_seen
+                            else:
+                                db_misp_attr.last_seen = datetime.datetime.strptime(attr.get("last_seen"), '%Y-%m-%dT%H:%M')
+                            flag = True
+                        if not db_misp_attr.comment == attr.comment:
+                            db_misp_attr.comment = attr.comment
+                            flag = True
+                        if not db_misp_attr.ids_flag == attr.to_ids:
+                            db_misp_attr.ids_flag = attr.to_ids
+                            flag = True
+
+                        if flag:
+                            db_misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+                            db.session.commit()
+
+            else:
+                def append_dict(base, new):
+                    for key, value in new.items():
+                        if key in base:
+                            # merge attributes
+                            base[key]['attributes'].extend(value.get('attributes', []))
+                        else:
+                            # add new entry
+                            base[key] = value
+                    return base
+                loc = misp_object_helper.create_misp_object(case["id"], obje)
+                # print(loc)
+                # for d in loc: object_uuid_list.update(d)
+                object_uuid_list = append_dict(object_uuid_list, loc)
+
+        self.result_misp_object_module(object_uuid_list, instance_id=instance["id"], case_id=case["id"])
+
+        CommonModel.save_history(case["uuid"], user, f"Module 'misp_object_event' called with connector '{instance['name']}'")
+        CommonModel.update_last_modif(case["id"])
 
     #################
     # Note Template #

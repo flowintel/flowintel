@@ -257,7 +257,10 @@ def get_case_info(cid):
         permission = CommonModel.get_role(current_user).to_json()
         present_in_case = CommonModel.get_present_in_case(cid, current_user)
 
-        return jsonify({"case": case.to_json(), "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 200
+        case_json = case.to_json()
+        case_json["misp_icon"] = "fe377a79-1950-407a-a02f-c5e1d990ca60"
+
+        return jsonify({"case": case_json, "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -1031,10 +1034,17 @@ def get_case_connectors(cid):
         
         instance_list = list()
         for case_connector in CommonModel.get_case_connectors(cid):
+            connect = CommonModel.get_connector_by_name("MISP")
+            connect_instance = CommonModel.get_instance(case_connector.instance_id)
+            is_misp_connector = False
+            if connect.id == connect_instance.connector_id:
+                is_misp_connector = True
             instance_list.append({
                 "case_task_instance_id": case_connector.id,
                 "details": CommonModel.get_instance_with_icon(case_connector.instance_id),
-                "identifier": case_connector.identifier
+                "identifier": case_connector.identifier,
+                "is_updating_case": case_connector.is_updating_case,
+                "is_misp_connector": is_misp_connector
             })
         return {"case_connectors": instance_list}, 200
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -1084,6 +1094,22 @@ def edit_connector(cid, ciid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<cid>/update_case/<iid>", methods=['GET'])
+@login_required
+@editor_required
+def update_case(cid, iid):
+    """Remove a connector from case"""
+    if CommonModel.get_case(cid):
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            res = CaseModel.receive_from_misp(iid, cid, current_user)
+            if not isinstance(res, dict):
+                flash("Objects updated successfully", "success")
+                return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
+            else:
+                res["toast_class"] = "danger-subtle"
+                return res, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 #################
 # Note Template #

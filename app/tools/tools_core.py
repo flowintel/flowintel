@@ -11,6 +11,7 @@ from ..case.CaseCore import CaseModel
 from ..templating.TemplateCase import TemplateModel
 from ..templating.TaskTemplateCore import TaskModel as TaskTemplateModel
 from sqlalchemy import or_
+from ..utils import misp_object_helper
 
 
 def case_creation_from_importer(case, current_user):
@@ -489,6 +490,7 @@ def check_case_misp_event(request_form, current_user) -> str:
     return check_event(request_form.get("misp_event_id"), request_form.get("misp_instance_id"), current_user)
 
 def create_case_misp_event(request_form, current_user):
+    """Create a case from a MISP Event"""
     instance = Connector_Instance.query.get(request_form.get("misp_instance_id"))
     user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
     misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
@@ -497,9 +499,12 @@ def create_case_misp_event(request_form, current_user):
 
     case = TemplateModel.create_case_from_template(request_form.get("case_template_id"), request_form.get("case_title"), current_user)
 
+    misp_event_id = request_form.get('misp_event_id')
+
     case.description = event.info
-    case.ticket_id = f"MISP Event: {request_form.get('misp_event_id')}"
+    case.ticket_id = f"MISP Event: {misp_event_id}"
     case.is_private = True
+    case.is_updated_from_misp = misp_event_id
     db.session.commit()
 
     for misp_tags in event.tags:
@@ -515,55 +520,17 @@ def create_case_misp_event(request_form, current_user):
                 if not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
                     CaseModel.add_cluster(cluster, case.id)
 
+    object_uuid_list = {}
     for obje in event.objects:
-        loc_object = Case_Misp_Object(
-            case_id=case.id,
-            template_uuid=obje.template_uuid,
-            name=obje.name,
-            creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
-            last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
-        )
+        loc = misp_object_helper.create_misp_object(case.id, obje)
+        for d in loc: object_uuid_list.update(d)
 
-        db.session.add(loc_object)
-        db.session.commit()
-
-        for object_attr in obje.attributes:
-            first_seen = None
-            last_seen = None
-
-            if object_attr.get("first_seen"):
-                if type(object_attr.get("first_seen")) == datetime.datetime:
-                    first_seen = object_attr.get("first_seen")
-                else:
-                    first_seen = datetime.datetime.strptime(object_attr.get("first_seen"), '%Y-%m-%dT%H:%M')
-            if object_attr.get("last_seen"):
-                if type(object_attr.get("last_seen")) == datetime.datetime:
-                    last_seen = object_attr.get("last_seen")
-                else:
-                    last_seen = datetime.datetime.strptime(object_attr.get("last_seen"), '%Y-%m-%dT%H:%M')
-
-            attr = Misp_Attribute(
-                case_misp_object_id=loc_object.id,
-                value=object_attr.value,
-                type=object_attr.type,
-                object_relation=object_attr.object_relation,
-                first_seen=first_seen,
-                last_seen=last_seen,
-                comment=object_attr.get("comment"),
-                ids_flag=object_attr.to_ids,
-                creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
-                last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
-            )
-            db.session.add(attr)
-            db.session.commit()
-        
-        loc_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
-        db.session.commit()
+    CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
 
     case_connector_instance = Case_Connector_Instance(
         case_id=case.id,
         instance_id=instance.id,
-        identifier=request_form.get("misp_event_id")
+        identifier=misp_event_id
     )
     db.session.add(case_connector_instance)
     db.session.commit()

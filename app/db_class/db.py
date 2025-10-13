@@ -85,6 +85,7 @@ class Case(db.Model):
     time_required = db.Column(db.String)
     is_private = db.Column(db.Boolean, default=False)
     ticket_id = db.Column(db.String)
+    is_updated_from_misp = db.Column(db.Boolean, default=False)
 
     def to_json(self):
         json_dict = {
@@ -104,7 +105,8 @@ class Case(db.Model):
             "hedgedoc_url": self.hedgedoc_url,
             "time_required": self.time_required,
             "is_private": self.is_private,
-            "ticket_id": self.ticket_id
+            "ticket_id": self.ticket_id,
+            "is_updated_from_misp": self.is_updated_from_misp
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
@@ -144,7 +146,8 @@ class Case(db.Model):
             "notes": self.notes,
             "time_required": self.time_required,
             "is_private": self.is_private,
-            "ticket_id": self.ticket_id
+            "ticket_id": self.ticket_id,
+            "is_updated_from_misp": self.is_updated_from_misp
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
@@ -829,6 +832,7 @@ class Case_Connector_Instance(db.Model):
     case_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
     identifier = db.Column(db.String)
+    is_updating_case = db.Column(db.Boolean, default=False)
 
 
 class Case_Template_Connector_Instance(db.Model):
@@ -1078,13 +1082,15 @@ class Misp_Object_Instance_Uuid(db.Model):
     instance_id = db.Column(db.Integer, index=True)
     misp_object_id = db.Column(db.Integer, index=True)
     object_instance_uuid = db.Column(db.String(36), index=True)
+    case_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
         json_dict = {
             "id": self.id,
             "misp_object_id": self.misp_object_id,
             "instance_id": self.instance_id,
-            "object_instance_uuid": self.object_instance_uuid
+            "object_instance_uuid": self.object_instance_uuid,
+            "case_id": self.case_id
         }
 
         return json_dict
@@ -1095,13 +1101,15 @@ class Misp_Attribute_Instance_Uuid(db.Model):
     instance_id = db.Column(db.Integer, index=True)
     misp_attribute_id = db.Column(db.Integer, index=True)
     attribute_instance_uuid = db.Column(db.String(36), index=True)
+    case_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
         json_dict = {
             "id": self.id,
             "misp_attribute_id": self.misp_attribute_id,
             "instance_id": self.instance_id,
-            "attribute_instance_uuid": self.attribute_instance_uuid
+            "attribute_instance_uuid": self.attribute_instance_uuid,
+            "case_id": self.case_id
         }
 
         return json_dict

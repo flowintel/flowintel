@@ -17,12 +17,13 @@ export default {
         const edit_instance = ref()
         const send_to_instance = ref()
         const module_selected = ref({})
+        const is_loading_update = ref(false)
 
-        let modal_indentifier = ""
+        let modal_identifier = ""
         if(props.is_case){
-            modal_indentifier = "case-" + props.object_id
+            modal_identifier = "case-" + props.object_id
         }else{
-            modal_indentifier = "task-" + props.object_id
+            modal_identifier = "task-" + props.object_id
         }
 
         async function save_connector(){
@@ -60,7 +61,7 @@ export default {
                 }else{
                     emit("task_connectors", true)
                 }
-                $("#modal-add-connectors-"+modal_indentifier).modal("hide");
+                $("#modal-add-connectors-"+modal_identifier).modal("hide");
             }
             display_toast(res)
             
@@ -90,36 +91,52 @@ export default {
 
         function edit_instance_open_modal(instance){
             edit_instance.value = instance
-            var myModal = new bootstrap.Modal(document.getElementById("modal-edit-connectors-"+modal_indentifier), {});
+            var myModal = new bootstrap.Modal(document.getElementById("modal-edit-connectors-"+modal_identifier), {});
             myModal.show();
         }
 
-        async function edit_connector(){
+        async function edit_connector(){            
             let url
+            let loc_update_from_misp = false
             if(props.is_case){
                 url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/connectors/"+edit_instance.value.case_task_instance_id+"/edit_connector"
+                loc_update_from_misp = $("#checkbox-update-misp-" + modal_identifier).is(":checked")
             }else{
                 url = "/case/task/"+props.object_id+"/edit_connector/"+edit_instance.value.case_task_instance_id
             }
 
-            let loc_indentifier = $("#input-edit-connector").val()
+            let loc_identifier = $("#input-edit-connector-" + modal_identifier).val()
             const res = await fetch(url, {
                 method: "POST",
                 headers: {
                     "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    "identifier": loc_indentifier
+                    "identifier": loc_identifier,
+                    "update_from_misp": loc_update_from_misp
                 })
             });
             if(await res.status==200){
                 for (let i in props.case_task_connectors_list){
                     if (props.case_task_connectors_list[i].case_task_instance_id == edit_instance.value.case_task_instance_id){
-                        props.case_task_connectors_list[i].identifier = loc_indentifier
+                        props.case_task_connectors_list[i].identifier = loc_identifier
+                        if(loc_update_from_misp){
+                            props.case_task_connectors_list[i].is_updating_case = true
+                        }else{
+                            props.case_task_connectors_list[i].is_updating_case = false
+                        }
+                    }
+                }
+                if(props.is_case){
+                    if(loc_update_from_misp){
+                        props.cases_info.case.is_updated_from_misp = true
+                    }else{
+                        props.cases_info.case.is_updated_from_misp = false
                     }
                 }
                 edit_instance.value = {}
-                $("#modal-edit-connectors-"+modal_indentifier).modal("hide");
+                $("#modal-edit-connectors-"+modal_identifier).modal("hide");
+                
             }
             display_toast(res)
             
@@ -127,14 +144,14 @@ export default {
 
         function send_to_modal(instance){
             send_to_instance.value=instance
-            var myModal = new bootstrap.Modal(document.getElementById("modal-send-to-"+modal_indentifier), {});
+            var myModal = new bootstrap.Modal(document.getElementById("modal-send-to-"+modal_identifier), {});
             myModal.show();
         }
 
         async function submit_module(){
             is_sending.value = true
             $("#modules_errors").hide()
-            let modules_select = $("#modules_select_"+modal_indentifier).val()
+            let modules_select = $("#modules_select_"+modal_identifier).val()
             
 
             if(!modules_select || modules_select == "None"){
@@ -169,18 +186,29 @@ export default {
             display_toast(res, true)
         }
 
+        async function update_case(instance_id){
+            is_loading_update.value = true
+            let url = '/case/'+props.cases_info.case.id+'/update_case/'+instance_id
+            const res = await fetch(url)
+            if(await res.status==200){
+                window.location.href='/case/'+props.cases_info.case.id
+            }
+            display_toast(res)
+            is_loading_update.value = false
+        }
+
 
 		onMounted(() => {
             $('.select2-connect').select2({
                 theme: 'bootstrap-5',
-                dropdownParent: $("#modal-add-connectors-"+modal_indentifier)
+                dropdownParent: $("#modal-add-connectors-"+modal_identifier)
             })
             $('.select2-module').select2({
                 theme: 'bootstrap-5',
-                dropdownParent: $("#modal-send-to-"+modal_indentifier)
+                dropdownParent: $("#modal-send-to-"+modal_identifier)
             })
 
-            $("#modules_select_" +modal_indentifier).on('change.select2', function (e) {
+            $("#modules_select_" +modal_identifier).on('change.select2', function (e) {
                 let loc = $(this).select2('data').map(item => item.id)
                 
                 for(let i in props.modules){
@@ -192,7 +220,7 @@ export default {
                 
             })
 
-            $('#connectors_select_'+modal_indentifier).on('change.select2', function (e) {
+            $('#connectors_select_'+modal_identifier).on('change.select2', function (e) {
                 connectors_selected.value = []
                 let loc = $(this).select2('data').map(item => item.id)
                 for(let element in loc){                    
@@ -215,15 +243,17 @@ export default {
             is_sending,
             connectors_selected,
             edit_instance,
-            modal_indentifier,
+            modal_identifier,
             module_selected,
+            is_loading_update,
             
             save_connector,
             remove_connector,
             edit_instance_open_modal,
             edit_connector,
             send_to_modal,
-            submit_module
+            submit_module,
+            update_case
 		}
     },
     css: `
@@ -236,7 +266,7 @@ export default {
     `,
 	template: `
         <div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-            <button class="btn btn-outline-primary" data-bs-toggle="modal" :data-bs-target="'#modal-add-connectors-'+modal_indentifier">
+            <button class="btn btn-outline-primary" data-bs-toggle="modal" :data-bs-target="'#modal-add-connectors-'+modal_identifier">
                 <i class="fa-solid fa-plus"></i>
             </button>
         </div>
@@ -247,6 +277,7 @@ export default {
                     <th>Instance url</th>
                     <th>Type</th>
                     <th>Identifier on the instance</th>
+                    <th></th>
                     <th></th>
                 </tr>
             </thead>
@@ -281,12 +312,28 @@ export default {
                         </button>
                         <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)"> <i class="fa-solid fa-trash"></i> </button>
                     </td>
+
+                    <td>
+                        <template v-if="instance.is_updating_case">
+                            <template v-if="is_loading_update">
+                                <button class="btn btn-outline-secondary" type="button" disabled>
+                                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                    <span class="visually-hidden" role="status">Loading...</span>
+                                </button>
+                            </template>
+                            <template v-else>
+                                <button class="btn btn-outline-secondary" @click="update_case(instance.case_task_instance_id)" title="Update case with the event misp">
+                                    <i class="fa-solid fa-recycle"></i>
+                                </button>
+                            </template>
+                        </template>
+                    </td>
                 </tr>
             </tbody>
         </table>
 
         <!-- Add Connectors -->
-        <div class="modal fade" :id="'modal-add-connectors-'+modal_indentifier" tabindex="-1" aria-labelledby="AddConnectorsLabel" aria-hidden="true">
+        <div class="modal fade" :id="'modal-add-connectors-'+modal_identifier" tabindex="-1" aria-labelledby="AddConnectorsLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -295,7 +342,7 @@ export default {
                     </div>
                     <div class="modal-body">
                         <div class="w-50">
-                            <select data-placeholder="Connectors" class="select2-connect form-control" multiple name="connectors_select" :id="'connectors_select_'+modal_indentifier" >
+                            <select data-placeholder="Connectors" class="select2-connect form-control" multiple name="connectors_select" :id="'connectors_select_'+modal_identifier" >
                                 <template v-if="all_connectors_list">
                                     <template v-for="(instances, connector) in all_connectors_list">
                                         <optgroup :label="[[connector]]">
@@ -324,16 +371,26 @@ export default {
 
 
         <!-- Edit Connectors -->
-        <div class="modal fade" :id="'modal-edit-connectors-'+modal_indentifier" tabindex="-1" aria-labelledby="EditConnectorsLabel" aria-hidden="true">
-            <div class="modal-dialog">
+        <div class="modal fade" :id="'modal-edit-connectors-'+modal_identifier" tabindex="-1" aria-labelledby="EditConnectorsLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h1 class="modal-title fs-5" id="EditConnectorsLabel">Edit Connectors</h1>
                         <button type="button" class="btn-close" aria-label="Cancel"></button>
                     </div>
-                    <div class="modal-body">
-                        <b>Identifier</b>
-                        <input type="text" v-if="edit_instance" :value="edit_instance.identifier" id="input-edit-connector">
+                    <div class="modal-body" v-if="edit_instance">
+                        <div class="form-floating col">
+                            <input :id="'input-edit-connector-'+modal_identifier" class="form-control" :value="edit_instance.identifier">
+                            <label>Identifier</label>
+                        </div>
+
+                         <div v-if="is_case" class="form-check mt-4">
+                            <template v-if="!cases_info.case.is_updated_from_misp || edit_instance.is_updating_case">
+                                <input class="form-check-input" :checked="edit_instance.is_updating_case" type="checkbox" :id="'checkbox-update-misp-'+modal_identifier" name="option1" value="">
+                                <label class="form-check-label">Use to update the case ?</label>
+                            </template>
+                        </div> 
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -346,7 +403,7 @@ export default {
         </div>
 
         <!-- Modal send to -->
-        <div class="modal fade" :id="'modal-send-to-'+modal_indentifier" tabindex="-1" aria-labelledby="modal-send-toLabel" aria-hidden="true">
+        <div class="modal fade" :id="'modal-send-to-'+modal_identifier" tabindex="-1" aria-labelledby="modal-send-toLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -357,7 +414,7 @@ export default {
                         <div style="display: flex;">
                             <div>
                                 <label for="modules_select">Modules:</label>
-                                <select data-placeholder="Modules" class="select2-module form-control" name="modules_select" :id="'modules_select_'+modal_indentifier">
+                                <select data-placeholder="Modules" class="select2-module form-control" name="modules_select" :id="'modules_select_'+modal_identifier">
                                     <option value="None">--</option>
                                     <template v-for="module, key in modules">
                                         <option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>

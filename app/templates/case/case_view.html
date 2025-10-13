@@ -34,10 +34,10 @@
                 <a type="button" class="btn btn-outline-dark me-2" href="/case"><i class="fa-solid fa-arrow-left"></i></a>
             </h1>
 
-            <div class="d-flex">
+            <div class="d-flex" v-if="cases_info">
                 <h1 style="font-size: xx-large;">{{case.id}}- {{case.title}}</h1>
                 <!-- lock icon -->
-                <span v-if="cases_info" style="font-size: 12px; margin-left: 5px;">
+                <span style="font-size: 12px; margin-left: 5px;">
                     <i v-if="cases_info.case.is_private" class="fa-solid fa-lock" 
                     title="The case is private, only org present in can see this case"></i>
                     <i v-else class="fa-solid fa-globe" 
@@ -49,6 +49,9 @@
                         [[ status_info.status[ {{case.status_id}} -1].name ]]
                     </span>
                 </small>
+                <span v-if="cases_info.case.is_updated_from_misp" title="This case was created from a misp event" style="margin-left: 15px; margin-top: 6px">
+                    <img :src="'/static/icons/'+cases_info.case.misp_icon" style="max-width: 30px;">
+                </span>
             </div>
             
         </div>
