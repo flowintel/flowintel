@@ -40,8 +40,9 @@ def upgrade():
         sa.Column('case_id', sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint('id')
         )
-        op.create_index('ix_case__galaxy__tags_case_id', 'case__galaxy__tags', ['case_id'], unique=False)
-        op.create_index('ix_case__galaxy__tags_tag_id', 'case__galaxy__tags', ['tag_id'], unique=False)
+        with op.batch_alter_table('case__galaxy__tags', schema=None) as batch_op:
+            batch_op.create_index('ix_case__galaxy__tags_case_id', ['case_id'], unique=False)
+            batch_op.create_index('ix_case__galaxy__tags_tag_id', ['tag_id'], unique=False)
 
     # Create case__template__galaxy__tags table
     if 'case__template__galaxy__tags' not in existing_tables:
@@ -51,8 +52,9 @@ def upgrade():
         sa.Column('template_id', sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint('id')
         )
-        op.create_index('ix_case__template__galaxy__tags_tag_id', 'case__template__galaxy__tags', ['tag_id'], unique=False)
-        op.create_index('ix_case__template__galaxy__tags_template_id', 'case__template__galaxy__tags', ['template_id'], unique=False)
+        with op.batch_alter_table('case__template__galaxy__tags', schema=None) as batch_op:
+            batch_op.create_index('ix_case__template__galaxy__tags_tag_id', ['tag_id'], unique=False)
+            batch_op.create_index('ix_case__template__galaxy__tags_template_id', ['template_id'], unique=False)
 
     # Create galaxy table
     if 'galaxy' not in existing_tables:
@@ -65,8 +67,9 @@ def upgrade():
         sa.Column('icon', sa.String(), nullable=True),
         sa.PrimaryKeyConstraint('id')
         )
-        op.create_index('ix_galaxy_uuid', 'galaxy', ['uuid'], unique=False)
-        op.create_index('ix_galaxy_version', 'galaxy', ['version'], unique=False)
+        with op.batch_alter_table('galaxy', schema=None) as batch_op:
+            batch_op.create_index('ix_galaxy_uuid', ['uuid'], unique=False)
+            batch_op.create_index('ix_galaxy_version', ['version'], unique=False)
 
     # Create task__galaxy__tags table
     if 'task__galaxy__tags' not in existing_tables:
@@ -76,8 +79,9 @@ def upgrade():
         sa.Column('task_id', sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint('id')
         )
-        op.create_index('ix_task__galaxy__tags_tag_id', 'task__galaxy__tags', ['tag_id'], unique=False)
-        op.create_index('ix_task__galaxy__tags_task_id', 'task__galaxy__tags', ['task_id'], unique=False)
+        with op.batch_alter_table('task__galaxy__tags', schema=None) as batch_op:
+            batch_op.create_index('ix_task__galaxy__tags_tag_id', ['tag_id'], unique=False)
+            batch_op.create_index('ix_task__galaxy__tags_task_id', ['task_id'], unique=False)
 
     # Create task__template__galaxy__tags table
     if 'task__template__galaxy__tags' not in existing_tables:
@@ -87,8 +91,9 @@ def upgrade():
         sa.Column('template_id', sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint('id')
         )
-        op.create_index('ix_task__template__galaxy__tags_tag_id', 'task__template__galaxy__tags', ['tag_id'], unique=False)
-        op.create_index('ix_task__template__galaxy__tags_template_id', 'task__template__galaxy__tags', ['template_id'], unique=False)
+        with op.batch_alter_table('task__template__galaxy__tags', schema=None) as batch_op:
+            batch_op.create_index('ix_task__template__galaxy__tags_tag_id', ['tag_id'], unique=False)
+            batch_op.create_index('ix_task__template__galaxy__tags_template_id', ['template_id'], unique=False)
 
     # Create cluster table (depends on galaxy)
     if 'cluster' not in existing_tables:
@@ -103,14 +108,16 @@ def upgrade():
         sa.ForeignKeyConstraint(['galaxy_id'], ['galaxy.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
         )
-        op.create_index('ix_cluster_uuid', 'cluster', ['uuid'], unique=False)
-        op.create_index('ix_cluster_version', 'cluster', ['version'], unique=False)
+        with op.batch_alter_table('cluster', schema=None) as batch_op:
+            batch_op.create_index('ix_cluster_uuid', ['uuid'], unique=False)
+            batch_op.create_index('ix_cluster_version', ['version'], unique=False)
 
     # Add cluster_id column to tags table
     tags_columns = [col['name'] for col in inspector.get_columns('tags')]
     if 'cluster_id' not in tags_columns:
-        op.add_column('tags', sa.Column('cluster_id', sa.Integer(), nullable=True))
-        op.create_foreign_key('fk_tags_cluster_id_cluster', 'tags', 'cluster', ['cluster_id'], ['id'], ondelete='CASCADE')
+        with op.batch_alter_table('tags', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('cluster_id', sa.Integer(), nullable=True))
+            batch_op.create_foreign_key('fk_tags_cluster_id_cluster', 'cluster', ['cluster_id'], ['id'], ondelete='CASCADE')
 
     # ### end Alembic commands ###
 

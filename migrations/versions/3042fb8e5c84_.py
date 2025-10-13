@@ -25,49 +25,51 @@ def upgrade():
     
     # Check case table
     case_columns = [col['name'] for col in inspector.get_columns('case')]
-    if 'notes' not in case_columns:
-        op.add_column('case', sa.Column('notes', sa.String(), nullable=True))
+    with op.batch_alter_table('case', schema=None) as batch_op:
+        if 'notes' not in case_columns:
+            op.add_column('case', sa.Column('notes', sa.String(), nullable=True))
+        
+        # Alter case table columns with inspection
+        case_columns_info = {col['name']: col for col in inspector.get_columns('case')}
     
-    # Alter case table columns with inspection
-    case_columns_info = {col['name']: col for col in inspector.get_columns('case')}
-    
-    # Only alter columns if they need to be changed
-    if 'id' in case_columns_info and (case_columns_info['id']['nullable'] or not case_columns_info['id'].get('autoincrement', False)):
-        op.alter_column('case', 'id', existing_type=sa.INTEGER(), nullable=False, autoincrement=True)
-    
-    if 'uuid' in case_columns_info and str(case_columns_info['uuid']['type']) == 'TEXT':
-        op.alter_column('case', 'uuid', existing_type=sa.TEXT(), type_=sa.String(length=36), existing_nullable=True)
-    
-    if 'title' in case_columns_info and str(case_columns_info['title']['type']) == 'TEXT':
-        op.alter_column('case', 'title', existing_type=sa.TEXT(), type_=sa.String(length=64), existing_nullable=True)
-    
-    if 'description' in case_columns_info and str(case_columns_info['description']['type']) == 'TEXT':
-        op.alter_column('case', 'description', existing_type=sa.TEXT(), type_=sa.String(), existing_nullable=True)
-    
-    if 'recurring_type' in case_columns_info and str(case_columns_info['recurring_type']['type']) == 'TEXT':
-        op.alter_column('case', 'recurring_type', existing_type=sa.TEXT(), type_=sa.String(length=30), existing_nullable=True)
+        # Only alter columns if they need to be changed
+        if 'id' in case_columns_info and (case_columns_info['id']['nullable'] or not case_columns_info['id'].get('autoincrement', False)):
+            batch_op.alter_column('id', existing_type=sa.INTEGER(), nullable=False, autoincrement=True)
+        
+        if 'uuid' in case_columns_info and str(case_columns_info['uuid']['type']) == 'TEXT':
+            batch_op.alter_column('uuid', existing_type=sa.TEXT(), type_=sa.String(length=36), existing_nullable=True)
+        
+        if 'title' in case_columns_info and str(case_columns_info['title']['type']) == 'TEXT':
+            batch_op.alter_column('title', existing_type=sa.TEXT(), type_=sa.String(length=64), existing_nullable=True)
+        
+        if 'description' in case_columns_info and str(case_columns_info['description']['type']) == 'TEXT':
+            batch_op.alter_column('description', existing_type=sa.TEXT(), type_=sa.String(), existing_nullable=True)
+        
+        if 'recurring_type' in case_columns_info and str(case_columns_info['recurring_type']['type']) == 'TEXT':
+            batch_op.alter_column('recurring_type', existing_type=sa.TEXT(), type_=sa.String(length=30), existing_nullable=True)
 
     # Alter task table columns with inspection
     task_columns_info = {col['name']: col for col in inspector.get_columns('task')}
     
-    # Only alter columns if they need to be changed
-    if 'id' in task_columns_info and (task_columns_info['id']['nullable'] or not task_columns_info['id'].get('autoincrement', False)):
-        op.alter_column('task', 'id', existing_type=sa.INTEGER(), nullable=False, autoincrement=True)
-    
-    if 'uuid' in task_columns_info and str(task_columns_info['uuid']['type']) == 'TEXT':
-        op.alter_column('task', 'uuid', existing_type=sa.TEXT(), type_=sa.String(length=36), existing_nullable=True)
-    
-    if 'title' in task_columns_info and str(task_columns_info['title']['type']) == 'TEXT':
-        op.alter_column('task', 'title', existing_type=sa.TEXT(), type_=sa.String(length=64), existing_nullable=True)
-    
-    if 'description' in task_columns_info and str(task_columns_info['description']['type']) == 'TEXT':
-        op.alter_column('task', 'description', existing_type=sa.TEXT(), type_=sa.String(), existing_nullable=True)
-    
-    if 'url' in task_columns_info and str(task_columns_info['url']['type']) == 'TEXT':
-        op.alter_column('task', 'url', existing_type=sa.TEXT(), type_=sa.String(length=64), existing_nullable=True)
-    
-    if 'notes' in task_columns_info and str(task_columns_info['notes']['type']) == 'TEXT':
-        op.alter_column('task', 'notes', existing_type=sa.TEXT(), type_=sa.String(), existing_nullable=True)
+    with op.batch_alter_table('task', schema=None) as batch_op:
+        # Only alter columns if they need to be changed
+        if 'id' in task_columns_info and (task_columns_info['id']['nullable'] or not task_columns_info['id'].get('autoincrement', False)):
+            batch_op.alter_column('id', existing_type=sa.INTEGER(), nullable=False, autoincrement=True)
+        
+        if 'uuid' in task_columns_info and str(task_columns_info['uuid']['type']) == 'TEXT':
+            batch_op.alter_column('uuid', existing_type=sa.TEXT(), type_=sa.String(length=36), existing_nullable=True)
+        
+        if 'title' in task_columns_info and str(task_columns_info['title']['type']) == 'TEXT':
+            batch_op.alter_column('title', existing_type=sa.TEXT(), type_=sa.String(length=64), existing_nullable=True)
+        
+        if 'description' in task_columns_info and str(task_columns_info['description']['type']) == 'TEXT':
+            batch_op.alter_column('description', existing_type=sa.TEXT(), type_=sa.String(), existing_nullable=True)
+        
+        if 'url' in task_columns_info and str(task_columns_info['url']['type']) == 'TEXT':
+            batch_op.alter_column('url', existing_type=sa.TEXT(), type_=sa.String(length=64), existing_nullable=True)
+        
+        if 'notes' in task_columns_info and str(task_columns_info['notes']['type']) == 'TEXT':
+            batch_op.alter_column('notes', existing_type=sa.TEXT(), type_=sa.String(), existing_nullable=True)
 
     # ### end Alembic commands ###
 
@@ -79,44 +81,45 @@ def downgrade():
     
     # Revert task table columns with inspection
     task_columns_info = {col['name']: col for col in inspector.get_columns('task')}
-    
-    if 'notes' in task_columns_info and str(task_columns_info['notes']['type']) != 'TEXT':
-        op.alter_column('task', 'notes', existing_type=sa.String(), type_=sa.TEXT(), existing_nullable=True)
-    
-    if 'url' in task_columns_info and str(task_columns_info['url']['type']) != 'TEXT':
-        op.alter_column('task', 'url', existing_type=sa.String(length=64), type_=sa.TEXT(), existing_nullable=True)
-    
-    if 'description' in task_columns_info and str(task_columns_info['description']['type']) != 'TEXT':
-        op.alter_column('task', 'description', existing_type=sa.String(), type_=sa.TEXT(), existing_nullable=True)
-    
-    if 'title' in task_columns_info and str(task_columns_info['title']['type']) != 'TEXT':
-        op.alter_column('task', 'title', existing_type=sa.String(length=64), type_=sa.TEXT(), existing_nullable=True)
-    
-    if 'uuid' in task_columns_info and str(task_columns_info['uuid']['type']) != 'TEXT':
-        op.alter_column('task', 'uuid', existing_type=sa.String(length=36), type_=sa.TEXT(), existing_nullable=True)
-    
-    if 'id' in task_columns_info and not task_columns_info['id']['nullable']:
-        op.alter_column('task', 'id', existing_type=sa.INTEGER(), nullable=True, autoincrement=True)
+
+    with op.batch_alter_table('task', schema=None) as batch_op:
+        if 'notes' in task_columns_info and str(task_columns_info['notes']['type']) != 'TEXT':
+            batch_op.alter_column('notes', existing_type=sa.String(), type_=sa.TEXT(), existing_nullable=True)
+        
+        if 'url' in task_columns_info and str(task_columns_info['url']['type']) != 'TEXT':
+            batch_op.alter_column('url', existing_type=sa.String(length=64), type_=sa.TEXT(), existing_nullable=True)
+        
+        if 'description' in task_columns_info and str(task_columns_info['description']['type']) != 'TEXT':
+            batch_op.alter_column('description', existing_type=sa.String(), type_=sa.TEXT(), existing_nullable=True)
+        
+        if 'title' in task_columns_info and str(task_columns_info['title']['type']) != 'TEXT':
+            batch_op.alter_column('title', existing_type=sa.String(length=64), type_=sa.TEXT(), existing_nullable=True)
+        
+        if 'uuid' in task_columns_info and str(task_columns_info['uuid']['type']) != 'TEXT':
+            batch_op.alter_column('uuid', existing_type=sa.String(length=36), type_=sa.TEXT(), existing_nullable=True)
+        
+        if 'id' in task_columns_info and not task_columns_info['id']['nullable']:
+            batch_op.alter_column('id', existing_type=sa.INTEGER(), nullable=True, autoincrement=True)
 
     # Revert case table columns with inspection
     case_columns_info = {col['name']: col for col in inspector.get_columns('case')}
-    
-    if 'recurring_type' in case_columns_info and str(case_columns_info['recurring_type']['type']) != 'TEXT':
-        op.alter_column('case', 'recurring_type', existing_type=sa.String(length=30), type_=sa.TEXT(), existing_nullable=True)
-    
-    if 'description' in case_columns_info and str(case_columns_info['description']['type']) != 'TEXT':
-        op.alter_column('case', 'description', existing_type=sa.String(), type_=sa.TEXT(), existing_nullable=True)
-    
-    if 'title' in case_columns_info and str(case_columns_info['title']['type']) != 'TEXT':
-        op.alter_column('case', 'title', existing_type=sa.String(length=64), type_=sa.TEXT(), existing_nullable=True)
-    
-    if 'uuid' in case_columns_info and str(case_columns_info['uuid']['type']) != 'TEXT':
-        op.alter_column('case', 'uuid', existing_type=sa.String(length=36), type_=sa.TEXT(), existing_nullable=True)
-    
-    if 'id' in case_columns_info and not case_columns_info['id']['nullable']:
-        op.alter_column('case', 'id', existing_type=sa.INTEGER(), nullable=True, autoincrement=True)
-    
-    if 'notes' in case_columns_info:
-        op.drop_column('case', 'notes')
+    with op.batch_alter_table('case', schema=None) as batch_op:
+        if 'recurring_type' in case_columns_info and str(case_columns_info['recurring_type']['type']) != 'TEXT':
+            op.alter_column('case', 'recurring_type', existing_type=sa.String(length=30), type_=sa.TEXT(), existing_nullable=True)
+        
+        if 'description' in case_columns_info and str(case_columns_info['description']['type']) != 'TEXT':
+            op.alter_column('case', 'description', existing_type=sa.String(), type_=sa.TEXT(), existing_nullable=True)
+        
+        if 'title' in case_columns_info and str(case_columns_info['title']['type']) != 'TEXT':
+            op.alter_column('case', 'title', existing_type=sa.String(length=64), type_=sa.TEXT(), existing_nullable=True)
+        
+        if 'uuid' in case_columns_info and str(case_columns_info['uuid']['type']) != 'TEXT':
+            op.alter_column('case', 'uuid', existing_type=sa.String(length=36), type_=sa.TEXT(), existing_nullable=True)
+        
+        if 'id' in case_columns_info and not case_columns_info['id']['nullable']:
+            op.alter_column('case', 'id', existing_type=sa.INTEGER(), nullable=True, autoincrement=True)
+        
+        if 'notes' in case_columns_info:
+            op.drop_column('case', 'notes')
 
     # ### end Alembic commands ###
