@@ -8,7 +8,6 @@ Create Date: 2024-09-25 11:39:24.206964
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
-from sqlalchemy.exc import OperationalError
 
 
 # revision identifiers, used by Alembic.
@@ -23,18 +22,15 @@ def upgrade():
     bind = op.get_bind()
     inspector = inspect(bind)
     existing_tables = inspector.get_table_names()
+    indexes = [ix['name'] for ix in inspector.get_indexes('case__template__connector__instance')]
     
     # Drop case__template__connector__instance table if it exists
     if 'case__template__connector__instance' in existing_tables:
-        try:
+        if "ix_case__template__connector__instance_instance_id" in indexes:
             op.drop_index('ix_case__template__connector__instance_instance_id', 'case__template__connector__instance')
-        except:
-            pass
-        try:
+        if "ix_case__template__connector__instance_template_id" in indexes:
             op.drop_index('ix_case__template__connector__instance_template_id', 'case__template__connector__instance')
-        except:
-            pass
-        op.drop_table('case__template__connector__instance')
+        op.drop_table('case__template__connector__instance', if_exists=True)
 
     # Drop _alembic_tmp_case__misp__object table if it exists
     if '_alembic_tmp_case__misp__object' in existing_tables:
