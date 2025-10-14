@@ -1038,7 +1038,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
         loc_instance = CommonModel.get_instance(case_instance.instance_id)
 
-        user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
+        user_instance = CommonModel.get_user_instance_both(user.id, loc_instance.id)
 
         instance = loc_instance.to_json()
         if loc_instance.global_api_key:
@@ -1375,7 +1375,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Prepare case, instance and object for module misp"""
         object_instance = Case_Misp_Object_Connector_Instance.query.get(object_instance_id)
         loc_instance = CommonModel.get_instance(object_instance.instance_id)
-        user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
+        user_instance = CommonModel.get_user_instance_both(user.id, loc_instance.id)
 
         instance = loc_instance.to_json()
         if loc_instance.global_api_key:
