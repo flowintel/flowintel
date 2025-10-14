@@ -3,10 +3,14 @@ set -e
 
 isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1`
 isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1`
-source env/bin/activate
+
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-mkdir -p logs  # pour les fichiers de log
+function prepare_app_run {
+    # This function is to avoid having problem with the env for test
+    source env/bin/activate
+    mkdir -p logs  # pour les fichiers de log
+}
 
 function killscript {
     if  [ $isscripted_fcm ]; then
@@ -18,11 +22,13 @@ function killscript {
 }
 
 function taxo_galaxy_update {
+    prepare_app_run
     export FLASKENV="development"
     python3 app.py -tg
 }
 
 function misp_module_update {
+    prepare_app_run
     export FLASKENV="development"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
     sleep 3
@@ -31,6 +37,7 @@ function misp_module_update {
 }
 
 function launch {
+    prepare_app_run
     export FLASKENV="development"
     export HISTORY_DIR=$history_dir/history
     killscript
@@ -54,6 +61,7 @@ function test {
 }
 
 function production {
+    prepare_app_run
     export FLASKENV="production"
     export HISTORY_DIR=$history_dir/history
     killscript
@@ -67,6 +75,7 @@ function production {
 }
 
 function init_db {
+    prepare_app_run
     export FLASKENV="development"
     export HISTORY_DIR=$history_dir/history
 
@@ -80,6 +89,7 @@ function init_db {
 }
 
 function reload_db {
+    prepare_app_run
     export HISTORY_DIR=$history_dir/history
     python3 app.py -r
 }
