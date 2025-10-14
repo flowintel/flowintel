@@ -421,6 +421,23 @@ class MoveTaskDown(Resource):
                 return {"message": "Order changed"}, 200
             return {"message": "Task Not found"}, 404
         return {"message": "Case Not found"}, 404
+    
+@templating_ns.route('/case/<cid>/change_order/<tid>', methods=["POST"])
+@templating_ns.doc(description='Change the order of the task', params={"cid": "id of a case", "tid": "id of a task"})
+class ChangeOrder(Resource):
+    method_decorators = [editor_required, api_required]
+    def post(self, cid, tid):
+        case = CommonModel.get_case_template(cid)
+        if case:
+            task = CommonModel.get_task_template(tid)
+            if task:
+                if 'new-index' in request.json:
+                    if TaskModel.change_order(case, task, request.json):
+                        return {"message": "Order changed"}, 200
+                    return {"message": "New index is not one of an other task"}, 400
+                return {"message": "'new-index' need to be passed"}, 400
+            return {"message": "Task Not found"}, 404
+        return {"message": "Case Not found"}, 404
 
 
 ###########

@@ -584,8 +584,9 @@ def change_order(cid, tid):
     if case:
         task = CommonModel.get_task_template(tid)
         if task:
-            TaskModel.change_order(case, task, request.json)
-            return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
+            if TaskModel.change_order(case, task, request.json):
+                return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
+            return {"message": "New index is not one of an other task", 'toast_class': "success-subtle"}, 200
         return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 

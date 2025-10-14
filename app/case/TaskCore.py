@@ -512,27 +512,32 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         # Get tasks ordered by case_order_id
         tasks_list = [t for t in case.tasks if not t.completed]
         tasks = sorted(tasks_list, key=lambda t: t.case_order_id)
+        target_task = None
         for t in tasks:
-            if t.case_order_id == request_json["new-index"]+1:
+            if t.case_order_id == int(request_json["new-index"])+1:
                 target_task = t
                 break
 
-        moving_task = task
+        if target_task:
 
-        # Find index where to insert
-        target_index = tasks.index(target_task)
+            moving_task = task
 
-        # Remove the moving task from the list
-        tasks.remove(moving_task)
+            # Find index where to insert
+            target_index = tasks.index(target_task)
 
-        # Insert the task before the target
-        tasks.insert(target_index, moving_task)
+            # Remove the moving task from the list
+            tasks.remove(moving_task)
 
-        # Reassign order IDs
-        for i, loc_task in enumerate(tasks, start=1):
-            loc_task.case_order_id = i
+            # Insert the task before the target
+            tasks.insert(target_index, moving_task)
 
-        db.session.commit()
+            # Reassign order IDs
+            for i, loc_task in enumerate(tasks, start=1):
+                loc_task.case_order_id = i
+
+            db.session.commit()
+            return True
+        return False
 
 
     def get_task_modules(self):

@@ -779,43 +779,29 @@ class CreateTask(Resource):
                     return {"message": f"Task {task.id} created for case id: {cid}", "task_id": task.id}, 201
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
-        return {"message": "Permission denied"}, 403
+        return {"message": "Permission denied"}, 403    
+
+@case_ns.route('/<cid>/change_order/<tid>', methods=['POST'])
+@case_ns.doc(description='Change the order of the task', params={"cid": "id of a case", "tid": "id of a task"})
+class ChangeOrder(Resource):
+    method_decorators = [editor_required, api_required]
+    def post(self, cid, tid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                task = CommonModel.get_task(tid)
+                if task:
+                    if 'new-index' in request.json:
+                        request.json['new-index'] = request.json['new-index']-1
+                        if TaskModel.change_order(case, task, request.json):
+                            return {"message": "Order changed"}, 200
+                        return {"message": "New index is not one of an other task"}, 400
+                    return {"message": "'new-index' need to be passed"}, 400
+                return {"message": "Task Not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case Not found"}, 404
     
-
-@case_ns.route('/<cid>/move_task_up/<tid>', methods=['GET'])
-@case_ns.doc(description='Move the task up', params={"cid": "id of a case", "tid": "id of a task"})
-class MoveTaskUp(Resource):
-    method_decorators = [editor_required, api_required]
-    def get(self, cid, tid):
-        case = CommonModel.get_case(cid)
-        if case:
-            current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                task = CommonModel.get_task(tid)
-                if task:
-                    TaskModel.change_order(case, task, "true")
-                    return {"message": "Order changed"}, 200
-                return {"message": "Task Not found"}, 404
-            return {"message": "Permission denied"}, 403
-        return {"message": "Case Not found"}, 404
-
-@case_ns.route('/<cid>/move_task_down/<tid>', methods=['GET'])
-@case_ns.doc(description='Move the task down', params={"cid": "id of a case", "tid": "id of a task"})
-class MoveTaskDown(Resource):
-    method_decorators = [editor_required, api_required]
-    def get(self, cid, tid):
-        case = CommonModel.get_case(cid)
-        if case:
-            current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                task = CommonModel.get_task(tid)
-                if task:
-                    TaskModel.change_order(case, task, "false")
-                    return {"message": "Order changed"}, 200
-                return {"message": "Task Not found"}, 404
-            return {"message": "Permission denied"}, 403
-        return {"message": "Case Not found"}, 404
-
 
 @case_ns.route('/<cid>/all_notes')
 @case_ns.doc(description='Get all notes of a case', params={'cid': 'id of a case'})

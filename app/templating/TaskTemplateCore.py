@@ -242,25 +242,30 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         task_template = Case_Task_Template.query.filter_by(case_id=case.id, task_id=task.id).first()
 
         tasks = sorted(case_task_template, key=lambda t: t.case_order_id)
+        target_task = None
         for task_db in tasks:
             if task_db.case_order_id == request_json["new-index"]+1:
                 target_task = task_db
                 break
-
-        # Find index where to insert
-        target_index = tasks.index(target_task)
-
-        # Remove the moving task from the list
-        tasks.remove(task_template)
-
-        # Insert the task before the target
-        tasks.insert(target_index, task_template)
         
-        # Reassign order IDs
-        for i, loc_task in enumerate(tasks, start=1):
-            loc_task.case_order_id = i
+        if target_task:
+            # Find index where to insert
+            target_index = tasks.index(target_task)
 
-        db.session.commit()
+            # Remove the moving task from the list
+            tasks.remove(task_template)
+
+            # Insert the task before the target
+            tasks.insert(target_index, task_template)
+            
+            # Reassign order IDs
+            for i, loc_task in enumerate(tasks, start=1):
+                loc_task.case_order_id = i
+
+            db.session.commit() 
+
+            return True
+        return False
 
     ############
     # Subtasks #
