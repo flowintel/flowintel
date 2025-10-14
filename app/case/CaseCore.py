@@ -1036,13 +1036,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         case["status"] = CommonModel.get_status(case["status_id"]).name
 
         case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
-        instance = CommonModel.get_instance(case_instance.instance_id)
+        loc_instance = CommonModel.get_instance(case_instance.instance_id)
 
         user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
 
-        instance = instance.to_json()
-        if "global_api_key" in instance and instance["global_api_key"]:
-            instance["api_key"] = instance["global_api_key"]
+        instance = loc_instance.to_json()
+        if loc_instance.global_api_key:
+            instance["api_key"] = loc_instance.global_api_key
         elif user_instance:
             instance["api_key"] = user_instance.api_key
         instance["identifier"] = case_instance.identifier
