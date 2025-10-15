@@ -290,6 +290,10 @@ legend.analyzer-select-case {
   text-decoration: none;
 }
 
+.fc-event{
+  cursor: pointer;
+}
+
 .case-core-style {
   background-color: white;
   border: #80808024 solid 1px;

@@ -39,6 +39,7 @@ rootLogger.addHandler(my_handler)
 
 consoleHandler = logging.StreamHandler()
 rootLogger.addHandler(consoleHandler)
+rootLogger.setLevel(logging.DEBUG)
 
 
 ############

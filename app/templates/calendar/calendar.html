@@ -40,12 +40,16 @@
         <div class="d-flex w-100 justify-content-evenly">
             <div>
                 <div class="form-check">
-                    <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="select_task_filter()" checked>
-                    <label class="form-check-label" for="radioStatusOngoing">Tasks</label>
+                    <input class="form-check-input" checked type="checkbox" value="" id="checkbox-case" @click="selection_case_task(true, false)">
+                    <label class="form-check-label" for="checkbox-case">
+                        Case
+                    </label>
                 </div>
                 <div class="form-check">
-                    <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="select_case_filter()">
-                    <label class="form-check-label" for="radioStatusFinished">Case</label>
+                    <input class="form-check-input" checked type="checkbox" value="" id="checkbox-task" @click="selection_case_task(false, true)">
+                    <label class="form-check-label" for="checkbox-task">
+                        Task
+                    </label>
                 </div>
             </div>
 
@@ -80,7 +84,8 @@
             const tasks = ref(null)
             const cases = ref(null)
             const status_info = ref(null)
-            let flag_case_task = false
+            let is_case_selected = true
+            let is_task_selected = true
             let flag_dead_creation = true
             let modal_task = null
 
@@ -104,6 +109,7 @@
                         id: tasks.value[i]["id"],
                         start: date_parser(loc_var, true),
                         allDay: true,
+                        color: "rgb(32, 181, 32)",
                         title: tasks.value[i]["title"],
                         extendedProps: {
                             toJson: tasks.value[i]
@@ -129,6 +135,7 @@
                         id: cases.value[i]["id"],
                         start: date_parser(loc_var, true),
                         allDay: true,
+                        color: "#3788d8",
                         title: cases.value[i]["title"],
                         extendedProps: {
                             toJson: cases.value[i]
@@ -137,22 +144,14 @@
                 }
             }
 
-            async function fetchStatus() {
+            async function fetchStatus(){
                 status_info.value = null
-                const res = await fetch(
-                    '/case/get_status'
-                )
+                const res = await fetch('/case/get_status')
                 status_info.value = await res.json()
             }       
 
-
-            function openModal(){
-                modal_task.show()
-            }
-
-            function closeModal(){
-                modal_task.hide()
-            }
+            function openModal(){ modal_task.show() }
+            function closeModal(){ modal_task.hide() }
 
             function date_parser(date, flag_day=false){
                 var d = new Date(date),
@@ -172,34 +171,28 @@
                 return [year, month].join('-');
             }
 
-            function select_case_filter(){
+            function selection_case_task(is_case, is_task){
                 calendar.removeAllEvents();
-                fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
-                flag_case_task = true
-            }
-            function select_task_filter(){
-                calendar.removeAllEvents();
-                fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
-                flag_case_task = false
+                if (is_case) is_case_selected = !is_case_selected
+                if (is_task) is_task_selected = !is_task_selected
+
+                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
+                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
             }
 
             function select_dead_filter(){
                 calendar.removeAllEvents();
-                if(flag_case_task){
-                    fetch_case_calendar(date_parser(calendar.getDate()), true)
-                }else{
-                    fetch_task_calendar(date_parser(calendar.getDate()), true)
-                }
+
+                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), true)
+                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), true)
                 flag_dead_creation = true
             }
 
             function select_creation_filter(){
                 calendar.removeAllEvents();
-                if(flag_case_task){
-                    fetch_case_calendar(date_parser(calendar.getDate()), false)
-                }else{
-                    fetch_task_calendar(date_parser(calendar.getDate()), false)
-                }
+
+                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), false)
+                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), false)
                 flag_dead_creation = false
             }
             
@@ -207,15 +200,12 @@
             function onDateChange() {
                 calendar.removeAllEvents();
             
-                if(flag_case_task)
-                    fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
-                else
-                    fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
+                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
+                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
             }
 
 
-            onMounted(() => { 
-                fetch_task_calendar(dayjs.utc().format('YYYY-MM'))
+            onMounted(() => {
                 fetchStatus()
 
                 modal_task = new bootstrap.Modal('#modal_task', {})
@@ -240,11 +230,17 @@
                         $("#modal_task_label").text(info.event.extendedProps.toJson.title).css("margin-right", "5px")
                         $("#status_modal").empty()
                         $("#status_modal").append(
-                            $("<span>").attr({"class": "badge rounded-pill text-bg-"+status_info.value.status[info.event.extendedProps.toJson.status_id -1].bootstrap_style}).text(
-                                status_info.value.status[ info.event.extendedProps.toJson.status_id -1].name
+                            $("<span>").attr({"class": 
+                                "badge rounded-pill text-bg-"+status_info.value.status[info.event.extendedProps.toJson.status_id -1].bootstrap_style})
+                                .text(status_info.value.status[ info.event.extendedProps.toJson.status_id -1].name)
+                        )
+                        $("#modal_body").text("")
+                        $("#modal_body").append(
+                            $("<div>").append(
+                                $("<pre>").attr({"class": "description"})
+                                .text(info.event.extendedProps.toJson.description)
                             )
                         )
-                        $("#modal_body").text(info.event.extendedProps.toJson.description)
                         if(info.event.extendedProps.toJson.case_id)
                             $("#see_case").attr("href", "/case/" + info.event.extendedProps.toJson.case_id)
                         else
@@ -277,7 +273,7 @@
 
             return {
                 message_list,
-                openModal, closeModal, select_case_filter, select_task_filter, select_dead_filter, select_creation_filter
+                openModal, closeModal, select_dead_filter, select_creation_filter, selection_case_task
             }
         }
     }).mount('#main-container')
