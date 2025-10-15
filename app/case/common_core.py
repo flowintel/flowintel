@@ -24,10 +24,11 @@ def get_present_in_case(case_id: int, current_user: User) -> bool:
     orgs_in_case = get_orgs_in_case(case_id)
 
     present_in_case = False
-    for org in orgs_in_case:
-        if org.id == current_user.org_id:
-            present_in_case = True
-            break
+    if len(orgs_in_case) > 0:
+        for org in orgs_in_case:
+            if org.id == current_user.org_id:
+                present_in_case = True
+                break
 
     return present_in_case
 

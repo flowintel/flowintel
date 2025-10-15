@@ -108,8 +108,7 @@ def delete_default_org(user_org_id):
     for user in org.users:
         cp += 1
     if org.default_org and not cp > 0:
-        db.session.delete(org)
-        db.session.commit()
+        delete_org_core(org)
         return True
     return False
 
