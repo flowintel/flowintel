@@ -119,6 +119,7 @@ def add_user_core(form_dict):
     matrix_id = form_dict["matrix_id"]
     if not matrix_id:
         matrix_id = None
+
     user = User(
         first_name=form_dict["first_name"],
         last_name=form_dict["last_name"],
@@ -126,7 +127,6 @@ def add_user_core(form_dict):
         email=form_dict["email"],
         password=form_dict["password"],
         role_id = form_dict["role"],
-        org_id = form_dict["org"],
         matrix_id=matrix_id,
         api_key = generate_api_key(),
         creation_date = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -136,9 +136,11 @@ def add_user_core(form_dict):
 
     if not form_dict["org"] or form_dict["org"] == "None":
         org = create_default_org(user)
-
         user.org_id = org.id
-        db.session.commit()
+    else:
+        user.org_id = form_dict["org"]
+    
+    db.session.commit()
 
     return user
 
