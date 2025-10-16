@@ -52,9 +52,25 @@
                                     </a>
                                 </div>
                                 <div>
-                                    <button class="btn btn-danger btn-sm" @click="delete_org(org)" title="Delete the org">
+                                    <button class="btn btn-danger btn-sm" type="button" title="Delete the org" data-bs-toggle="modal" :data-bs-target="'#delete_org_modal_'+org.id">
                                         <i class="fa-solid fa-trash fa-fw"></i>
                                     </button>
+                                </div>
+                            </div>
+                            <div class="modal fade" :id="'delete_org_modal_'+org.id" tabindex="-1" aria-labelledby="delete_org_modal" aria-hidden="true">
+                                <div class="modal-dialog ">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h1 class="modal-title fs-5" id="delete_org_modal">Delete org '[[org.name]]' ?</h1>
+                                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            <button class="btn btn-danger" @click="delete_org(org)">
+                                                <i class="fa-solid fa-trash"></i> Confirm
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         {% endif %}
@@ -87,12 +103,30 @@
                                                     <a class="btn btn-primary btn-sm" :href='"/admin/edit_user/"+user.id' type="button" title="Edit the user">
                                                         <i class="fa-solid fa-pen-to-square"></i>
                                                     </a>
-                                                    <button class="btn btn-danger btn-sm" @click="delete_user(user, org.id)" title="Delete the user">
+                                                    
+                                                    <button class="btn btn-danger btn-sm" type="button" title="Delete the user" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'+user.id">
                                                         <i class="fa-solid fa-trash"></i>
                                                     </button>
                                                 </td>
                                             {% endif %}
                                         </tr>
+                                        <!-- Modal delete user -->
+                                        <div class="modal fade" :id="'delete_user_modal_'+user.id" tabindex="-1" aria-labelledby="delete_user_modal" aria-hidden="true">
+                                            <div class="modal-dialog ">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h1 class="modal-title fs-5" id="delete_user_modal">Delete '[[user.first_name]] [[user.last_name]]' ?</h1>
+                                                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                        <button class="btn btn-danger" @click="delete_user(user, org.id)">
+                                                            <i class="fa-solid fa-trash"></i> Confirm
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </template>
                                 </table>
                             </template>
@@ -164,16 +198,18 @@
                         let index = orgs_list.value.orgs.indexOf(org)
                         if(index > -1)
                             orgs_list.value.orgs.splice(index, 1)
+                        $("#delete_org_modal_"+org.id).modal("hide")
                     }
                     display_toast(res)
                 }
 
-                async function delete_user(user,org_id){
+                async function delete_user(user, org_id){
                     const res = await fetch('/admin/delete_user/'+user.id)
                     if(await res.status == 200){
                         let index = users_table.value[org_id].indexOf(user)
                         if(index > -1)
                             users_table.value[org_id].splice(index, 1)
+                        $("#delete_user_modal_"+user.id).modal("hide")
                     }
                     display_toast(res)
                 }

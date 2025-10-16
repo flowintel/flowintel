@@ -104,25 +104,33 @@
                                         <td title="Type">[[instance.type]]</td>
                                         <td><i>api key set</i></td>
                                         
-                                        <td v-if="instance.global_api_key">
-                                            <template v-if="instance.is_user_global_api">
-                                                <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
-                                                    <i class="fa-solid fa-pen-to-square"></i>
-                                                </a>
-                                                <button class="btn btn-danger btn-sm" @click="delete_instance(instance, connector.id)" title="Delete the instance">
-                                                    <i class="fa-solid fa-trash"></i>
-                                                </button>
-                                            </template>
-                                        </td>
-                                        <td v-else>
+                                        <td>
                                             <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
-                                            <button class="btn btn-danger btn-sm" @click="delete_instance(instance, connector.id)" title="Delete the instance">
+                                            <button class="btn btn-danger btn-sm" type="button" title="Delete the instance" data-bs-toggle="modal" :data-bs-target="'#delete_instance_modal_'+instance.id">
                                                 <i class="fa-solid fa-trash"></i>
                                             </button>
                                         </td>
                                     </tr>
+
+                                    <!-- modal delete instance -->
+                                    <div class="modal fade" :id="'delete_instance_modal_'+instance.id" tabindex="-1" aria-labelledby="delete_instance_modal" aria-hidden="true">
+                                        <div class="modal-dialog ">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h1 class="modal-title fs-5" id="delete_instance_modal">Delete '[[instance.name]]' ?</h1>
+                                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                    <button class="btn btn-danger" @click="delete_instance(instance, connector.id)">
+                                                        <i class="fa-solid fa-trash"></i> Confirm
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </template>
                             </table>
                         </template>
@@ -190,12 +198,13 @@
                     display_toast(res)
                 }
 
-                async function delete_instance(instance,connector_id){
+                async function delete_instance(instance, connector_id){
                     const res = await fetch('/connectors/'+connector_id+'/delete_instance/'+instance.id)
                     if(await res.status == 200){
                         let index = instances_table.value[connector_id].indexOf(instance)
                         if(index > -1)
                             instances_table.value[connector_id].splice(index, 1)
+                        $("#delete_instance_modal_"+instance.id).modal("hide")
                     }
                     display_toast(res)
                 }

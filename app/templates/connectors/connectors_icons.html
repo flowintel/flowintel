@@ -52,9 +52,26 @@
                                         </a>
                                     </div>
                                     <div>
-                                        <button class="btn btn-danger btn-sm" @click="delete_icon(icon)" title="Delete the icon">
+                                        <button class="btn btn-danger btn-sm" type="button" title="Delete the icon" data-bs-toggle="modal" :data-bs-target="'#delete_icon_modal_'+icon.id">
                                             <i class="fa-solid fa-trash fa-fw"></i>
                                         </button>
+                                    </div>
+                                </div>
+                                <!-- Modal delete icon -->
+                                <div class="modal fade" :id="'delete_icon_modal_'+icon.id" tabindex="-1" aria-labelledby="delete_icon_modal" aria-hidden="true">
+                                    <div class="modal-dialog ">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h1 class="modal-title fs-5" id="delete_icon_modal">Delete '[[icon.name]]' ?</h1>
+                                                <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                <button class="btn btn-danger" @click="delete_icon(icon)">
+                                                    <i class="fa-solid fa-trash"></i> Confirm
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             {% endif %}
@@ -99,6 +116,7 @@
                         let index = icons_list.value.icons.indexOf(icon)
                         if(index > -1)
                             icons_list.value.icons.splice(index, 1)
+                        $("#delete_icon_modal_"+icon.id).modal("hide")
                     }
                     display_toast(res)
                 }

@@ -62,9 +62,26 @@
                                     </a>
                                 </div>
                                 <div>
-                                    <button class="btn btn-danger" @click="delete_user(user)" title="Delete the user">
+                                    <button class="btn btn-danger" type="button" title="Delete the user" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'+user.id">
                                         <i class="fa-solid fa-trash fa-fw"></i>
                                     </button>
+                                </div>
+                            </div>
+                            <!-- Modal delete user -->
+                            <div class="modal fade" :id="'delete_user_modal_'+user.id" tabindex="-1" aria-labelledby="delete_user_modal" aria-hidden="true">
+                                <div class="modal-dialog ">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h1 class="modal-title fs-5" id="delete_user_modal">Delete '[[user.first_name]] [[user.last_name]]' ?</h1>
+                                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            <button class="btn btn-danger" @click="delete_user(user)">
+                                                <i class="fa-solid fa-trash"></i> Confirm
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         {% endif %}
@@ -82,11 +99,17 @@
 
     <nav aria-label="Page navigation example" v-if="users_list && users_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchUsers(Math.max(1, current_page-1))">Previous</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetchUsers(Math.max(1, current_page-1))">Previous</button>
+            </li>
             <template v-for="cp in users_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchUsers(cp)">[[cp]]</button></li>
+                <li :class="{'page-item': true, 'active': current_page==cp}">
+                    <button class="page-link" @click="fetchUsers(cp)">[[cp]]</button>
+                </li>
             </template>
-            <li :class="{'page-item': true, 'disabled': current_page == users_list.nb_pages}"><button class="page-link" @click="fetchUsers(Math.min(current_page+1, users_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == users_list.nb_pages}">
+                <button class="page-link" @click="fetchUsers(Math.min(current_page+1, users_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 {% endblock %}
@@ -120,6 +143,8 @@
                         let index = users_list.value.users.indexOf(user)
                         if(index > -1)
                             users_list.value.users.splice(index, 1)
+                        $("#delete_user_modal_"+user.id).modal("hide")
+                        fetchUsers(current_page.value)
                     }
                     display_toast(res)
                 }
