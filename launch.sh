@@ -94,10 +94,43 @@ function reload_db {
     python3 app.py -r
 }
 
+function launch_docker {
+    mkdir -p logs
+    export FLASKENV="docker"
+    export HISTORY_DIR=$history_dir/history
+    killscript
+
+    # Sessions screen avec logs
+    screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
+    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+
+    # Afficher les logs à l'écran
+    tail -n 0 -F logs/fcm.log logs/misp.log &
+
+    # Lancer le serveur principal (en avant-plan pour Docker)
+    python3 app.py
+}
+
+function init_db_docker {
+    mkdir -p logs
+    export FLASKENV="docker"
+    export HISTORY_DIR=$history_dir/history
+
+    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+
+    python3 app.py -i
+    python3 app.py -tg
+    python3 app.py -mm
+
+    killscript
+}
+
 if [ "$1" ]; then
     case $1 in
         -l | --launch )             launch;;
+        -ld | --launch_docker )     launch_docker;;
         -i | --init_db )            init_db;;
+        -id | --init_db_docker )    init_db_docker;;
         -r | --reload_db )          reload_db;;
         -p | --production )         production;;
         -t | --test )               test;;

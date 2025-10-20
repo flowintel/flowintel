@@ -7,7 +7,7 @@ RUN ln -fs /usr/share/zoneinfo/Europe/Luxembourg /etc/localtime
 # Add support for Python 3.9 (deadsnakes PPA)
 RUN apt update && apt install -y \
     sudo moreutils software-properties-common \
-    git screen libolm-dev librsvg2-bin wget vim curl gnupg valkey \
+    git screen libolm-dev librsvg2-bin wget vim curl gnupg \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt update && apt install -y python3.9 python3.9-venv python3.9-distutils
 
@@ -95,7 +95,7 @@ RUN python3 --version && pip3 --version && pip3 install -r requirements.txt --ti
 ENV PATH="/home/flowintel/.local/bin:${PATH}"
 # Init git submodules & app
 RUN git submodule init && git submodule update && chmod +x launch.sh
-RUN script -q -c "./launch.sh --init_db" /dev/null
+RUN script -q -c "./launch.sh --init_db_docker" /dev/null
 
 # Cleanup dead screens (optional)
 RUN screen -wipe || true
@@ -105,4 +105,4 @@ RUN chmod +x ./launch.sh
 
 
 # Default command: interactive bash + launch
-CMD ["bash", "-i", "./launch.sh", "-l"]
+CMD ["bash", "-i", "./launch.sh", "-ld"]

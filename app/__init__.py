@@ -29,7 +29,10 @@ def create_app():
     csrf.init_app(app)
     migrate.init_app(app, db, render_as_batch=True)
     if not config_name == 'testing':
-        app.config["SESSION_REDIS"] = redis.from_url('redis://127.0.0.1:6379')
+        if config_name == 'docker':
+            app.config["SESSION_SQLALCHEMY"] = db
+        else:
+            app.config["SESSION_REDIS"] = redis.from_url('redis://127.0.0.1:6379')
         session.init_app(app)
     login_manager.login_view = "account.login"
     login_manager.init_app(app)

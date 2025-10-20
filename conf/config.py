@@ -4,7 +4,6 @@ class Config:
     
     FLASK_URL = '127.0.0.1'
     FLASK_PORT = 7006
-    SESSION_TYPE = "redis"
     MISP_MODULE = '127.0.0.1:6666'
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
 
@@ -12,6 +11,7 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel.sqlite"
+    SESSION_TYPE = "redis"
 
     @classmethod
     def init_app(cls, app):
@@ -22,6 +22,7 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel-test.sqlite"
     WTF_CSRF_ENABLED = False
+    SESSION_TYPE = "redis"
 
     @classmethod
     def init_app(cls, app):
@@ -30,6 +31,7 @@ class TestingConfig(Config):
 
 class ProductionConfig(Config):
     # environment variables
+    SESSION_TYPE = "redis"
     db_user = os.getenv('DB_USER', 'default_user')
     db_password = os.getenv('DB_PASSWORD', 'default_password')
     db_host = os.getenv('DB_HOST', 'localhost')
@@ -43,9 +45,20 @@ class ProductionConfig(Config):
     def init_app(cls, app):
         print('THIS APP IS IN PRODUCTION MODE.')
 
+class DockerConfig(Config):
+    DEBUG = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel.sqlite"
+    SESSION_TYPE = "sqlalchemy"
+    SESSION_SQLALCHEMY_TABLE = "flask_sessions"
+
+    @classmethod
+    def init_app(cls, app):
+        print('THIS APP IS IN DOcKER MODE.')
+
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
     'production': ProductionConfig,
+    'docker': DockerConfig,
     'default': DevelopmentConfig
 }
