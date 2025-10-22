@@ -504,7 +504,7 @@ def create_case_misp_event(request_form, current_user):
     case.description = event.info
     case.ticket_id = f"MISP Event: {misp_event_id}"
     case.is_private = True
-    case.is_updated_from_misp = misp_event_id
+    case.is_updated_from_misp = True
     db.session.commit()
 
     for misp_tags in event.tags:
@@ -522,15 +522,25 @@ def create_case_misp_event(request_form, current_user):
 
     object_uuid_list = {}
     for obje in event.objects:
+        def append_dict(base, new):
+            for key, value in new.items():
+                if key in base:
+                    # merge attributes
+                    base[key]['attributes'].extend(value.get('attributes', []))
+                else:
+                    # add new entry
+                    base[key] = value
+            return base
         loc = misp_object_helper.create_misp_object(case.id, obje)
-        for d in loc: object_uuid_list.update(d)
+        object_uuid_list = append_dict(object_uuid_list, loc)
 
     CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
 
     case_connector_instance = Case_Connector_Instance(
         case_id=case.id,
         instance_id=instance.id,
-        identifier=misp_event_id
+        identifier=misp_event_id,
+        is_updating_case=True
     )
     db.session.add(case_connector_instance)
     db.session.commit()
