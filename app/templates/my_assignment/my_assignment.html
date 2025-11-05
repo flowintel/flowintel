@@ -4,6 +4,12 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
 
 <div class="case-core-style d-flex" style="margin-bottom: 10px; border-radius: 0;">
@@ -39,15 +45,38 @@
             <h4 style="text-align: center;"><b><i>[[index]]</i></b></h4>
             <template v-for="task in case_title">
                 <div class="list-group" style="margin-bottom: 20px; border-radius: 15px;">                      
-                    <a :href="`/case/${task.case_id}#task-${task.id}`" class="list-group-item list-group-item-action p-3">
+                    <a :href="`/case/${task.case_id}#task-${task.id}`" class="list-group-item list-group-item-action p-3 case-index-list">
                         <div class="d-flex w-100 justify-content-between">
                             <h5 class="mb-1">[[task.title]]</h5>
                             <small><i>Changed [[ dayjs.utc(task.last_modif).fromNow() ]] </i></small>
                         </div>
 
                         <div class="d-flex w-100 justify-content-between">
-                            <p v-if="task.description" class="card-text">[[ task.description ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            <template v-if="task.description">
+                                <template v-if="task.description.length > 300">
+                                    <div class="position-relative">
+                                        <button
+                                            type="button"
+                                            class="btn btn-outline-primary btn-sm float-end me-2"
+                                            @click.stop.prevent="expandedTasks[task.id] = !expandedTasks[task.id];"
+                                            title="See the full description"
+                                        >
+                                            <i :class="['fa-solid', expandedTasks[task.id] ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                                        </button>
+
+                                        <!-- Show either truncated or full text -->
+                                        <div>
+                                            <pre class="description" v-html="md.render(expandedTasks[task.id] ? task.description : truncateText(task.description))"></pre>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template v-else>
+                                    <pre v-html="md.render(task.description)" class="description"></pre>
+                                </template>
+                            </template>
+                            <template v-else>
+                                <p class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            </template>
 
                             <small v-if="status_info">
                                 <span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">
@@ -151,6 +180,9 @@
                 const current_page = ref(1)
                 const current_filter = ref("")
 
+                const expandedTasks = ref({});
+                const md = window.markdownit()
+
                 async function fetchAssignedTask(page) {
                     let url
                     if(current_filter.value)
@@ -194,7 +226,9 @@
                     message_list, // Avoid warning
                     getTextColor,
                     truncateText,
-                    mapIcon
+                    mapIcon,
+                    expandedTasks,
+                    md
                 }
             }
         }).mount('#main-container')
