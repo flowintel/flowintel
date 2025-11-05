@@ -254,7 +254,7 @@ export default {
                                                     <i class="fa fa-asterisk text-info" aria-hidden="true"></i> [[history_data.user]]
                                                 </div>
                                                 <div class="box-content">
-                                                    <div class="box-item"><strong>Modif</strong>: [[history_data.text]]</div>
+                                                    <div class="box-item"> [[history_data.text]]</div>
                                                 </div>
                                                 <div class="box-footer">[[history_data.date]]</div>
                                             </div>
