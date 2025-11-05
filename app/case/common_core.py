@@ -9,7 +9,7 @@ from flask import send_file
 from .. import db
 from ..db_class.db import *
 from ..utils.utils import get_modules_list, isUUID, create_specific_dir
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, or_
 from ..utils import utils
 from app.utils.utils import MODULES_CONFIG
 from ..custom_tags import custom_tags_core as CustomModel
@@ -310,9 +310,15 @@ def get_instance_by_name(name):
     """Return an instance by its name"""
     return Connector_Instance.query.filter_by(name=name).first()
 
-def get_case_connectors(cid):
+def get_case_connectors(cid, current_user: User):
     """Return a list of all connectors present in a case"""
-    return Case_Connector_Instance.query.filter_by(case_id=cid).all()
+    return Case_Connector_Instance.query\
+            .join(User_Connector_Instance, User_Connector_Instance.instance_id==Case_Connector_Instance.instance_id)\
+            .join(Connector_Instance, Connector_Instance.id==Case_Connector_Instance.instance_id)\
+            .where(
+                or_(User_Connector_Instance.user_id==current_user.id, Connector_Instance.global_api_key.isnot(None)), 
+                Case_Connector_Instance.case_id==cid)\
+            .all()
 
 def get_case_connectors_by_id(case_instance_id):
     """Return a case connector instance"""

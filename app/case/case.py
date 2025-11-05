@@ -1033,7 +1033,7 @@ def get_case_connectors(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         instance_list = list()
-        for case_connector in CommonModel.get_case_connectors(cid):
+        for case_connector in CommonModel.get_case_connectors(cid, current_user):
             connect = CommonModel.get_connector_by_name("MISP")
             connect_instance = CommonModel.get_instance(case_connector.instance_id)
             is_misp_connector = False

@@ -564,7 +564,7 @@ class GetConnectorsCase(Resource):
             if not check_user_private_case(case, request.headers):
                 return {"message": "Permission denied"}, 403
             instance_list = []
-            for case_instance in CommonModel.get_case_connectors(case.id):
+            for case_instance in CommonModel.get_case_connectors(case.id, utils.get_user_from_api(request.headers)):
                 loc_instance = CommonModel.get_instance(case_instance.instance_id)
                 instance_list.append({
                     "id": loc_instance.id,
