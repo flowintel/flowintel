@@ -180,9 +180,10 @@ def delete_user_core(id):
     """Delete the user to the DB"""
     user = get_user(id)
     if user:
+        Task_User.query.filter_by(user_id=user.id).delete()
         if not delete_default_org(user.org_id):
             db.session.delete(user)
-            db.session.commit()
+        db.session.commit()
         return True
     else:
         return False
