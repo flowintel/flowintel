@@ -2,7 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..decorators import editor_required
-from ..utils.utils import MODULES_CONFIG, get_modules_list
+from ..utils.utils import get_modules_list
 
 tools_blueprint = Blueprint(
     'tools',

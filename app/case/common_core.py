@@ -11,7 +11,6 @@ from ..db_class.db import *
 from ..utils.utils import get_modules_list, isUUID, create_specific_dir
 from sqlalchemy import desc, func, or_
 from ..utils import utils
-from app.utils.utils import MODULES_CONFIG
 from ..custom_tags import custom_tags_core as CustomModel
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")

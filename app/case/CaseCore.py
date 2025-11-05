@@ -17,7 +17,7 @@ from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
 from . import common_core as CommonModel
 from . TaskCore import TaskModel
-from ..utils.utils import MODULES, MODULES_CONFIG, get_modules_list
+from ..utils.utils import get_modules_list
 from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 

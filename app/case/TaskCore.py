@@ -14,7 +14,7 @@ from ..notification import notification_core as NotifModel
 from . import common_core as CommonModel
 from ..custom_tags import custom_tags_core as CustomModel
 
-from app.utils.utils import MODULES, MODULES_CONFIG, get_modules_list
+from app.utils.utils import get_modules_list
 
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
