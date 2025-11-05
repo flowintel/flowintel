@@ -1,5 +1,6 @@
 import {display_toast} from '../toaster.js'
 import edition_select from './edition_select.js'
+import {getTextColor, mapIcon} from '/static/js/utils.js'
 const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],

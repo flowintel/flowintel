@@ -16,6 +16,7 @@ pre.description {
   white-space: pre-wrap;   /* wrap but preserve whitespace */
   word-wrap: break-word;   /* break long words if needed */
   overflow-x: auto;        /* optional: scroll only if really needed */
+  margin-bottom: 0;
 }
 
 #goTop{

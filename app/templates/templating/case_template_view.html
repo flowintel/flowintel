@@ -53,9 +53,19 @@
         </div>
 
         <div v-if="case_template.description">
-            <hr>
-            <pre>[[case_template.description]]</pre>
-            <hr>
+            <button class="btn btn-outline-primary btn-sm float-end" type="button" data-bs-toggle="collapse" 
+                data-bs-target="#collapseDescription" aria-expanded="true" aria-controls="collapseDescription"
+                title="See the full description">
+            <i class="fa-solid fa-chevron-up"></i>
+            </button>
+        </div>
+        <hr>
+        <div v-if="case_template.description">
+            
+            <div class="collapse show" id="collapseDescription">
+                <pre class="description mt-2" v-html="md.render(case_template.description)"></pre>
+                <hr>
+            </div>
         </div>
     </div>
     
@@ -99,7 +109,7 @@
         <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
                 data-bs-target="#collapseTags" aria-expanded="true" aria-controls="collapseTags"
                 style="float: right;">
-            <i class="fa-solid fa-chevron-down"></i>
+            <i class="fa-solid fa-chevron-up"></i>
         </button>
         <ul class="nav nav-tabs" style="margin-bottom: 10px;">
             <li class="nav-item">
@@ -217,7 +227,7 @@
         import tags_edition from '/static/js/case/tags_edition.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         import templateconnectors from '/static/js/templating/TemplateConnectors.js'
-
+        import {getTextColor, mapIcon} from '/static/js/utils.js'
 
         createApp({
             delimiters: ['[[', ']]'],

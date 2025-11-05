@@ -57,21 +57,26 @@
         </div>
     </div>
 
+    <hr>
     {% if case.description or case.ticket_id %}
-    <div>
-        <hr>
-        {% if case.ticket_id %}
-            <div title="Ticket id" class="ticket-id">
-                <i class="fa-solid fa-ticket"></i>
-                {{case.ticket_id}}
-            </div>
-        {%endif%}
-    
-        {% if case.description %}
-            <pre class="description mt-2">{{case.description}}</pre>
-        {%endif%}
-        <hr>
-    </div>
+        <button class="btn btn-outline-primary btn-sm float-end" type="button" data-bs-toggle="collapse" 
+                data-bs-target="#collapseDescription" aria-expanded="true" aria-controls="collapseDescription"
+                title="See the full description">
+            <i class="fa-solid fa-chevron-up"></i>
+        </button>
+        <div class="collapse show" id="collapseDescription">
+            {% if case.ticket_id %}
+                <div title="Ticket id" class="ticket-id">
+                    <i class="fa-solid fa-ticket"></i>
+                    {{case.ticket_id}}
+                </div>
+            {%endif%}
+        
+            {% if case.description %}
+                <pre class="description mt-2" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
+            {%endif%}
+            <hr>
+        </div>
     {%endif%}
     
 
@@ -103,7 +108,7 @@
     <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
             data-bs-target="#collapseTags" aria-expanded="true" aria-controls="collapseTags"
             style="float: right;">
-        <i class="fa-solid fa-chevron-down"></i>
+        <i class="fa-solid fa-chevron-up"></i>
     </button>
     <ul class="nav nav-tabs" style="margin-bottom: 10px;">
         <li class="nav-item">
@@ -169,7 +174,7 @@
                             </button>
                             <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
                                 data-bs-target="#collapseLinks" aria-expanded="true" aria-controls="collapseLinks">
-                                <i class="fa-solid fa-chevron-down"></i>
+                                <i class="fa-solid fa-chevron-up"></i>
                             </button>
                         </div>
                         <div class="d-flex">
@@ -354,7 +359,7 @@
     <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
             data-bs-target="#collapseTasks" aria-expanded="true" aria-controls="collapseTasks"
             style="float: right;">
-        <i class="fa-solid fa-chevron-down"></i>
+        <i class="fa-solid fa-chevron-up"></i>
     </button>
 
     <div style="display: flex;">
@@ -589,6 +594,7 @@
         import case_history from '/static/js/case/case_history.js'
         import note_from_template from '/static/js/case/note_from_template.js'
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
+        import {getTextColor, mapIcon} from '/static/js/utils.js'
         
         createApp({
             delimiters: ['[[', ']]'],

@@ -4,6 +4,12 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <div style="text-align: center;">
         <a href="https://github.com/flowintel/flowintel" style="text-decoration: none;">
@@ -42,8 +48,29 @@
                             <small><i>Changed [[ (dayjs.utc(case_loc.last_modif).fromNow()) ]]</i></small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
-                            <p v-if="case_loc.description" class="card-text">[[ case_loc.description ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                           <template v-if="case_loc.description">
+                                <template v-if="case_loc.description.length > 300">
+                                    <div class="position-relative">
+                                        <button
+                                            class="btn btn-outline-primary btn-sm float-end me-2"
+                                            type="button"
+                                            @click.stop.prevent="expandedCases[case_loc.id] = !expandedCases[case_loc.id]"
+                                            title="See the full description"
+                                        >
+                                            <i :class="['fa-solid', expandedCases[case_loc.id] ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                                        </button>
+
+                                        <!-- Show either truncated or full text -->
+                                        <pre class="description" v-html="md.render(expandedCases[case_loc.id] ? case_loc.description : truncateText(case_loc.description))"></pre>
+                                    </div>
+                                </template>
+                                <template v-else>
+                                    <pre v-html="md.render(case_loc.description)" class="description"></pre>
+                                </template>
+                            </template>
+                            <template v-else>
+                                <p class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            </template>
 
                             <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
                         </div>
@@ -92,12 +119,15 @@
 <script type="module">
     const { createApp, ref} = Vue
     import {message_list} from '/static/js/toaster.js'
+    import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
             const case_list = ref(null)
             const status_info = ref(null)
             const version = ref(null)
+            const md = window.markdownit()
+            const expandedCases = ref({})
 
             async function fetchCase() {
                 case_list.value = null
@@ -130,10 +160,13 @@
                 dayjs,
                 getTextColor,
                 mapIcon,
+                truncateText,
+                md,
 
                 case_list,
                 status_info,
-                version
+                version,
+                expandedCases
             }
         }
     }).mount('#main-container')

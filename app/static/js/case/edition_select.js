@@ -1,5 +1,6 @@
 import {display_toast} from '../toaster.js'
 import {message_list} from '/static/js/toaster.js'
+import {getTextColor, mapIcon} from '/static/js/utils.js'
 const { ref, nextTick, onMounted } = Vue
 export default {
     delimiters: ['[[', ']]'],

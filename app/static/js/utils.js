@@ -85,3 +85,11 @@ function mapIcon(iconName) {
             return '<i class="fas fa-wheelchair"></i>';
     }
 }
+
+function truncateText(text, maxLength = 300) {
+    if (!text) return ''
+    return text.length > maxLength ? text.substring(0, maxLength) + '…' : text
+}
+
+
+export { truncateText, getTextColor, mapIcon };

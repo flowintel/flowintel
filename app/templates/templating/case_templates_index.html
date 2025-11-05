@@ -4,6 +4,12 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <div class="case-core-style d-flex" style="border-radius: 0;">
         <h1>
@@ -153,8 +159,29 @@
                             <h4 class="mb-1">[[ template.id ]]- [[ template.title ]]</h4>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
-                            <p v-if="template.description" class="card-text">[[ template.description ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            <template v-if="template.description">
+                                <template v-if="template.description.length > 300">
+                                    <div class="position-relative">
+                                        <button
+                                            class="btn btn-outline-primary btn-sm float-end me-2"
+                                            type="button"
+                                            @click.stop.prevent="expandedCases[template.id] = !expandedCases[template.id]"
+                                            title="See the full description"
+                                        >
+                                            <i :class="['fa-solid', expandedCases[template.id] ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                                        </button>
+
+                                        <!-- Show either truncated or full text -->
+                                        <pre class="description" v-html="md.render(expandedCases[template.id] ? template.description : truncateText(template.description))"></pre>
+                                    </div>
+                                </template>
+                                <template v-else>
+                                    <pre v-html="md.render(template.description)" class="description"></pre>
+                                </template>
+                            </template>
+                            <template v-else>
+                                <p class="card-text"><i style="font-size: 12px;">No description</i></p>
+                            </template>
                         </div>
                         <div class="d-flex w-100 justify-content-between" style="margin-top: 5px;">
                             <div style="display: flex;" v-if="template.custom_tags">
@@ -225,6 +252,7 @@
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -249,6 +277,9 @@
 
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
+                const md = window.markdownit()
+
+                const expandedCases = ref({})
 
                 async function fetch_templates(page){
                     let loc_page = `page=${page}`
@@ -377,7 +408,7 @@
                         custom_tags.value = loc
                     }                    
                 }
-                fetch_custom_tags()      
+                fetch_custom_tags()
 
 
                 onMounted(() => {
@@ -413,6 +444,9 @@
                     message_list,
                     getTextColor,
                     mapIcon,
+                    truncateText,
+                    md,
+                    expandedCases,
 
                     templates_list,
                     current_page,

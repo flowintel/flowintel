@@ -186,6 +186,7 @@
         const { createApp, ref, computed, onMounted } = Vue
         import task_template from '/static/js/templating/task_template.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -380,6 +381,7 @@
                     onInput,
                     getTextColor,
                     mapIcon,
+                    truncateText,
                     taxonomies,
                     tags_list,
                     galaxies,

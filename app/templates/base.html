@@ -18,10 +18,7 @@
             <script src="{{ url_for('static',filename='js/dayjs-relativeTime.js') }}"></script>
             <script>dayjs.extend(window.dayjs_plugin_utc)</script>
             <script>dayjs.extend(window.dayjs_plugin_relativeTime)</script>
-            
-            <script src="{{ url_for('static',filename='js/utils.js') }}"></script>
-            
-            
+                        
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/select2.min.css') }}">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/select2-bootstrap-5-theme.min.css') }}">
 
@@ -141,6 +138,38 @@
                     };
                 })(window.fetch);
             });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(initCollapseIcons, 500); // wait 0.5s for Vue to render
+            });
+
+            function initCollapseIcons() {
+            document.querySelectorAll('.collapse').forEach(collapseEl => {
+                const targetId = collapseEl.id;
+                const toggles = document.querySelectorAll(
+                `[data-bs-target="#${targetId}"], [href="#${targetId}"]`
+                );
+
+                collapseEl.addEventListener('show.bs.collapse', () => {
+                toggles.forEach(btn => {
+                    const icon = btn.querySelector('i');
+                    if (icon) {
+                    icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                    }
+                });
+                });
+
+                collapseEl.addEventListener('hide.bs.collapse', () => {
+                toggles.forEach(btn => {
+                    const icon = btn.querySelector('i');
+                    if (icon) {
+                    icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+                    }
+                });
+                });
+            });
+}
+
         </script>
     </body>
 </html>

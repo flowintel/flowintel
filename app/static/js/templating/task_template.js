@@ -1,5 +1,6 @@
 import {display_toast, create_message} from '../toaster.js'
 import TaskUrlTool from '../case/TaskComponent/TaskUrlTool.js'
+import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
 const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -19,6 +20,8 @@ export default {
 			"permission": {"read_only": false},
 			"present_in_case": true
 		}
+
+		const expandedTasks = ref({});
 
 		Vue.onMounted(async () => {
 			if(props.template.notes.length){
@@ -287,6 +290,9 @@ export default {
 			md,
 			getTextColor,
 			mapIcon,
+			truncateText,
+			expandedTasks,
+
             edit_mode,
 			cases_info,
 			delete_note,
@@ -313,8 +319,29 @@ export default {
                 <h4 class="mb-1">[[ key_loop+1 ]]- [[ template.title ]]</h4>
             </div>
             <div class="d-flex w-100 justify-content-between">
-                <p v-if="template.description" class="card-text">[[ template.description ]]</p>
-                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                <template v-if="template.description">
+					<template v-if="template.description.length > 300">
+						<div class="position-relative">
+							<button
+								type="button"
+								class="btn btn-outline-primary btn-sm float-end me-2"
+								@click.stop.prevent="expandedTasks[template.id] = !expandedTasks[template.id];"
+								title="See the full description"
+							>
+								<i :class="['fa-solid', expandedTasks[template.id] ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+							</button>
+
+							<!-- Show either truncated or full text -->
+							<pre class="description" v-html="md.render(expandedTasks[template.id] ? template.description : truncateText(template.description))"></pre>
+						</div>
+					</template>
+					<template v-else>
+						<pre v-html="md.render(template.description)" class="description"></pre>
+					</template>
+				</template>
+				<template v-else>
+					<p class="card-text"><i style="font-size: 12px;">No description</i></p>
+				</template>
             </div>
             <div class="d-flex w-100 justify-content-between">
                 <p v-if="template.url" class="card-text">[[ template.url ]]</p>

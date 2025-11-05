@@ -138,6 +138,7 @@
         const { createApp, ref } = Vue
         import my_assignment_filter from '/static/js/my_assignment/my_assignment_filter.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -192,6 +193,7 @@
                     current_filter,
                     message_list, // Avoid warning
                     getTextColor,
+                    truncateText,
                     mapIcon
                 }
             }

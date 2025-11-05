@@ -4,6 +4,7 @@ import tabNote from './TaskComponent/tab-note.js'
 import tabFile from './TaskComponent/tab-file.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
+import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
 const { ref, nextTick} = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -34,6 +35,9 @@ export default {
 		const task_instances_selected = ref([])
 		const task_module_selected = ref()
 		const task_connectors_list = ref()
+
+		const expandedTasks = ref({});
+
 		
 
 		async function complete_task(task){
@@ -229,7 +233,6 @@ export default {
 			
 		}
 
-
 		// Vue function
 		Vue.onMounted( () => {
 			fetch_task_connectors()
@@ -272,6 +275,7 @@ export default {
 			task_module_selected,
 			selected_tab,
 			task_connectors_list,
+			expandedTasks,
 
 			take_task,
 			remove_assign_task,
@@ -281,7 +285,8 @@ export default {
 			present_user_in_task,
 
 			select_tab_task,
-			fetch_task_connectors
+			fetch_task_connectors,
+			truncateText
 		}
 	},
 	template: `
@@ -301,8 +306,29 @@ export default {
 			</div>
 
 			<div class="d-flex w-100 justify-content-between mt-1">
-				<pre v-if="task.description" class="description">[[ task.description ]]</pre>
-				<p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+				<template v-if="task.description">
+					<template v-if="task.description.length > 300">
+						<div class="position-relative">
+							<button
+								type="button"
+								class="btn btn-outline-primary btn-sm float-end me-2"
+								@click.stop.prevent="expandedTasks[task.id] = !expandedTasks[task.id];"
+								title="See the full description"
+							>
+								<i :class="['fa-solid', expandedTasks[task.id] ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+							</button>
+
+							<!-- Show either truncated or full text -->
+							<pre class="description" v-html="md.render(expandedTasks[task.id] ? task.description : truncateText(task.description))"></pre>
+						</div>
+					</template>
+					<template v-else>
+						<pre v-html="md.render(task.description)" class="description"></pre>
+					</template>
+				</template>
+				<template v-else>
+					<p class="card-text"><i style="font-size: 12px;">No description</i></p>
+				</template>
 
 				<small v-if="status_info">
 					<span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">

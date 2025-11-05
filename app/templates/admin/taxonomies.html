@@ -110,7 +110,8 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
-        import {display_toast, message_list} from '../../static/js/toaster.js'
+        import {display_toast, message_list} from '/static/js/toaster.js'
+        import {getTextColor, mapIcon} from '/static/js/utils.js'
 
         createApp({
             delimiters: ['[[', ']]'],
