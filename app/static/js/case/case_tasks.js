@@ -233,6 +233,13 @@ export default {
 			
 		}
 
+		function toggleCollapse(id) {
+			const collapseEl = document.getElementById('collapse' + id);
+			const collapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
+			collapse.toggle();
+		}
+
+
 		// Vue function
 		Vue.onMounted( () => {
 			fetch_task_connectors()
@@ -286,19 +293,16 @@ export default {
 
 			select_tab_task,
 			fetch_task_connectors,
-			truncateText
+			truncateText,
+			toggleCollapse
 		}
 	},
 	template: `
 	<div style="display: flex;">                          
-		<a :href="'#collapse'+task.id" 
-			class="list-group-item list-group-item-action case-index-list" 
-			data-bs-toggle="collapse" 
-			role="button" 
-			aria-expanded="false" 
-			:aria-controls="'collapse'+task.id" 
+		<a href="javascript:void(0)" 
+			class="list-group-item list-group-item-action case-index-list"
 			style="border-top-left-radius: 15px; border-top-right-radius: 15px;"
-			:id="'collapsing-task-' + task.id"
+			@click="toggleCollapse(task.id)"
 		>
 			<div class="d-flex w-100 justify-content-between">
 				<h5 class="mb-1">[[ key_loop+1 ]]- [[task.title]]</h5>

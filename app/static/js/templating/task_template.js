@@ -285,6 +285,12 @@ export default {
 			await display_toast(res)
 		}
 
+		function toggleCollapse(id) {
+			const collapseEl = document.getElementById('collapse' + id);
+			const collapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
+			collapse.toggle();
+		}
+
 		return {
 			note_editor_render,
 			md,
@@ -306,15 +312,17 @@ export default {
 
 			create_subtask,
 			edit_subtask,
-			delete_subtask
+			delete_subtask,
+			toggleCollapse
 		}
 	},
 	template: `
 	<div style="display: flex;"> 
-        <a :href="'#collapse'+template.id" 
-		class="list-group-item list-group-item-action case-index-list" data-bs-toggle="collapse" role="button" 
-		aria-expanded="false" :aria-controls="'collapse'+template.id"
-		style="border-top-left-radius: 15px; border-top-right-radius: 15px;">        
+        <a href="javascript:void(0)"
+		class="list-group-item list-group-item-action case-index-list"
+		style="border-top-left-radius: 15px; border-top-right-radius: 15px;"
+		@click="toggleCollapse(template.id)"
+		>        
             <div class="d-flex w-100 justify-content-between">
                 <h4 class="mb-1">[[ key_loop+1 ]]- [[ template.title ]]</h4>
             </div>
