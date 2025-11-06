@@ -9,7 +9,7 @@ from wtforms.fields import (
     TextAreaField,
     HiddenField
 )
-from wtforms.validators import Email, EqualTo, InputRequired, Length, Optional
+from wtforms.validators import Email, EqualTo, InputRequired, Length, Optional, Regexp
 from ..db_class.db import User, Org
 from ..utils.utils import isUUID
 
@@ -21,7 +21,11 @@ class RegistrationForm(FlaskForm):
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
     password = PasswordField('Password', validators=[
             InputRequired(),
-            EqualTo('password2', 'Passwords must match')
+            EqualTo('password2', 'Passwords must match'),
+            Length(min=8, max=64, message="Password must be between 8 and 64 characters."),
+            Regexp(r'.*[A-Z].*', message="Password must contain at least one uppercase letter."),
+            Regexp(r'.*[a-z].*', message="Password must contain at least one lowercase letter."),
+            Regexp(r'.*\d.*', message="Password must contain at least one digit.")
         ])
     password2 = PasswordField('Confirm password', validators=[InputRequired()])
     matrix_id = StringField('Matrix id', render_kw={"placeholder": "@testuser:matrix.org"})
@@ -42,14 +46,21 @@ class AdminEditUserFrom(FlaskForm):
     last_name = StringField('Last name', validators=[InputRequired(), Length(1, 64)])
     nickname = StringField('Nickname', validators=[Optional(), Length(1, 64)])
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
-    password = PasswordField('Password', validators=[Optional(), EqualTo('password2', 'Passwords must match')])
+    password = PasswordField('Password', validators=[
+            Optional(), 
+            EqualTo('password2', 'Passwords must match'),
+            Length(min=8, max=64, message="Password must be between 8 and 64 characters."),
+            Regexp(r'.*[A-Z].*', message="Password must contain at least one uppercase letter."),
+            Regexp(r'.*[a-z].*', message="Password must contain at least one lowercase letter."),
+            Regexp(r'.*\d.*', message="Password must contain at least one digit.")
+        ])
     password2 = PasswordField('Confirm password')
     matrix_id = StringField('Matrix id', render_kw={"placeholder": "@testuser:matrix.org"})
 
     role = SelectField(u'Role', coerce=str, validators=[InputRequired()])
     org = SelectField(u'Organisation', coerce=str, validators=[InputRequired()])
 
-    submit = SubmitField('Register')
+    submit = SubmitField('Edit')
 
     def validate_email(self, field):
         user = User.query.get(self.user_id.data)

@@ -34,6 +34,8 @@ def edit_user_core(form_dict, id):
     user.nickname=form_dict["nickname"]
     user.email=form_dict["email"]
     user.matrix_id=matrix_id
+    if "password" in form_dict and form_dict["password"]:
+        user.password=form_dict["password"]
 
     db.session.commit()
 

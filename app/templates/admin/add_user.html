@@ -23,89 +23,174 @@
         {% if not edit_mode %}
             {{form.user_id}}
         {%endif%}
-        <div class="modal-body">
-            <div class="row">
-                <div class="col">
-                    {{form.first_name.label(class_="col-form-label")}}:
-                    {{form.first_name(class_="form-control")}}
-                    {% if form.first_name.errors %}
-                        <div style="color: red;">{{form.first_name.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                <div class="col">
-                    {{form.last_name.label(class_="col-form-label")}}:
-                    {{form.last_name(class_="form-control")}}
-                    {% if form.last_name.errors %}
-                        <div style="color: red;">{{form.last_name.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
+        <div class="row">
+            <div class="col">
+                {{form.first_name.label(class_="col-form-label")}}
+                <span style="color:red">*</span>
+                {{form.first_name(class_="form-control")}}
+                {% if form.first_name.errors %}
+                    <div style="color: red;">{{form.first_name.errors[0] | safe}}</div>
+                {%endif%}
             </div>
-            <div class="row">
-                <div class="col">
-                    {{form.nickname.label(class_="col-form-label")}}:
-                    {{form.nickname(class_="form-control")}}
-                    {% if form.nickname.errors %}
-                        <div style="color: red;">{{form.nickname.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
+            <div class="col">
+                {{form.last_name.label(class_="col-form-label")}}
+                <span style="color:red">*</span>
+                {{form.last_name(class_="form-control")}}
+                {% if form.last_name.errors %}
+                    <div style="color: red;">{{form.last_name.errors[0] | safe}}</div>
+                {%endif%}
             </div>
-            <div class="row">
-                <div class="col">
-                    {{form.email.label(class_="col-form-label")}}:
-                    {{form.email(class_="form-control")}}
-                    {% if form.email.errors %}
-                        <div style="color: red;">{{form.email.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                <div class="col">
-                    {{form.matrix_id.label(class_="col-form-label")}}:
-                    {{form.matrix_id(class_="form-control")}}
-                    {% if form.matrix_id.errors %}
-                        <div style="color: red;">{{form.matrix_id.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                {{form.nickname.label(class_="col-form-label")}}
+                {{form.nickname(class_="form-control")}}
+                {% if form.nickname.errors %}
+                    <div style="color: red;">{{form.nickname.errors[0] | safe}}</div>
+                {%endif%}
             </div>
-            <div class="row">
-                <div class="col">
-                    {{form.password.label(class_="col-form-label")}}:
-                    {{form.password(class_="form-control")}}
-                    {% if form.password.errors %}
-                        <div style="color: red;">{{form.password.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                <div class="col">
-                    {{form.password2.label(class_="col-form-label")}}:
-                    {{form.password2(class_="form-control")}}
-                    {% if form.password2.errors %}
-                        <div style="color: red;">{{form.password2.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                {{form.email.label(class_="col-form-label")}}
+                <span style="color:red">*</span>
+                {{form.email(class_="form-control")}}
+                {% if form.email.errors %}
+                    <div style="color: red;">{{form.email.errors[0] | safe}}</div>
+                {%endif%}
             </div>
-            <div class="row">
-                <div class="col">
-                    {{form.role.label(class_="col-form-label")}}:
-                    {{form.role(class_="form-control")}}
-                    {% if form.role.errors %}
-                        <div style="color: red;">{{form.role.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-                <div class="col">
-                    {{form.org.label(class_="col-form-label")}}:
-                    {{form.org(class_="form-control")}}
-                    {% if form.org.errors %}
-                        <div style="color: red;">{{form.org.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
+            <div class="col">
+                {{form.matrix_id.label(class_="col-form-label")}}:
+                {{form.matrix_id(class_="form-control")}}
+                {% if form.matrix_id.errors %}
+                    <div style="color: red;">{{form.matrix_id.errors[0] | safe}}</div>
+                {%endif%}
             </div>
-            <div class="modal-footer" style="margin-top: 10px;">
-                {{form.submit(class='btn btn-primary')}}
+        </div>
+        <div class="row">
+            <div class="col" id="password-container">
+                <label for="password" class="col-form-label">{{ form.password.label }}</label>  
+                {% if not edit_mode %}
+                    <span style="color:red">*</span>
+                {%endif%}
+                <div class="position-relative">
+                    <div class="position-relative">
+                        {{ form.password(class_="form-control pe-5", id="password") }}
+                        <script>
+                            document.getElementById("password").setAttribute("v-model", "password");
+                        </script>
+                        <i class="fa fa-eye position-absolute top-50 end-0 translate-middle-y me-3"
+                        style="cursor: pointer"
+                        id="togglePasswordIcon"
+                        @click="togglePassword"></i>
+                    </div>
+
+                </div>
+                {% if form.password.errors %}
+                    <div style="color: red;">{{ form.password.errors[0] | safe }}</div>
+                {% endif %}
+
+                <!-- Password rules -->
+                <ul style="margin-top: 10px; padding-left: 20px; list-style: none;" v-if="password">
+                    <li :class="password.length >= 8 ? 'text-success' : 'text-danger'">
+                        <span v-if="password.length >= 8">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <span v-else>
+                            <i class="fa-solid fa-xmark"></i>
+                        </span> At least 8 characters
+                    </li>
+                    <li :class="/[A-Z]/.test(password) ? 'text-success' : 'text-danger'">
+                        <span v-if="/[A-Z]/.test(password)">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <span v-else>
+                            <i class="fa-solid fa-xmark"></i>
+                        </span> At least one uppercase letter
+                    </li>
+                    <li :class="/[a-z]/.test(password) ? 'text-success' : 'text-danger'">
+                        <span v-if="/[a-z]/.test(password)">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <span v-else>
+                            <i class="fa-solid fa-xmark"></i>
+                        </span> At least one lowercase letter
+                    </li>
+                    <li :class="/[0-9]/.test(password) ? 'text-success' : 'text-danger'">
+                        <span v-if="/[0-9]/.test(password)">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <span v-else>
+                            <i class="fa-solid fa-xmark"></i>
+                        </span> At least one digit
+                    </li>
+                </ul>
             </div>
+            <div class="col">
+                {{form.password2.label(class_="col-form-label")}}
+                {{form.password2(class_="form-control")}}
+                {% if form.password2.errors %}
+                    <div style="color: red;">{{form.password2.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                {{form.role.label(class_="col-form-label")}}
+                <span style="color:red">*</span>
+                {{form.role(class_="form-control")}}
+                {% if form.role.errors %}
+                    <div style="color: red;">{{form.role.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+            <div class="col">
+                {{form.org.label(class_="col-form-label")}}
+                <span style="color:red">*</span>
+                {{form.org(class_="form-control")}}
+                {% if form.org.errors %}
+                    <div style="color: red;">{{form.org.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+        </div>
+        <div class="modal-footer" style="margin-top: 10px;">
+            {{form.submit(class='btn btn-primary', id='submitBtn')}}
         </div>
     </form>
 {% endblock %}
 
 {% block script %}
-    {% if not edit_mode %}
-        {{ check.password_check('password', 0) }}
-    {%endif%}
+<script type="module">
+    const { createApp, ref, computed, onMounted, watch } = Vue;
+
+    createApp({
+        setup() {
+            const password = ref('');
+
+            const passwordValid = computed(() => {
+                return password.value.length >= 8 &&
+                    /[A-Z]/.test(password.value) &&
+                    /[a-z]/.test(password.value) &&
+                    /[0-9]/.test(password.value);
+            });
+
+            const togglePassword = () => {
+                const input = document.getElementById("password");
+                const icon = document.getElementById("togglePasswordIcon");
+                input.type = input.type === "password" ? "text" : "password";
+                icon.classList.toggle("fa-eye");
+                icon.classList.toggle("fa-eye-slash");
+            };
+
+            onMounted(() => {
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = true;
+                watch(passwordValid, (val) => {
+                    submitBtn.disabled = !val;
+                });
+            });
+
+            return { password, togglePassword };
+        }
+    }).mount('#password-container');
+</script>
 {% endblock %}
