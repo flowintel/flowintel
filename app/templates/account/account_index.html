@@ -50,8 +50,17 @@
                 </tr>
                 <tr>
                     <td style="color:#494950">API key</td>
-                    <td v-if="api_key">[[api_key]]</td>
-                    <td v-else>{{user.api_key}}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <span id="api-key" class="api-key blurred me-2">
+                                <b v-if="api_key">[[api_key]]</b>
+                                <b v-else>{{ user.api_key }}</b>
+                            </span>
+                            <button id="toggle-api-key" type="button" class="btn btn-sm btn-outline-secondary blur-btn" aria-pressed="false" aria-label="Show API key" title="Show API key" data-visible="false">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </td>
                     <td>
                         <button class="btn btn-secondary" @click="change_api_key()" title="Change api key">
                             <i class="fa-solid fa-arrows-rotate"></i>
@@ -67,7 +76,7 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref} = Vue
+        const { createApp, ref, onMounted} = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         
         createApp({
@@ -87,6 +96,32 @@
                         display_toast(res)
                     }
                 }
+                onMounted(() => {
+                    var $btn = $('#toggle-api-key');
+                    var $key = $('#api-key');
+                    if (!$btn.length || !$key.length) return;
+
+                    $btn.on('click', function() {
+                        var visible = $btn.attr('data-visible') === 'true';
+                        if (visible) {
+                            // hide
+                            $key.addClass('blurred');
+                            $btn.attr('data-visible', 'false');
+                            $btn.attr('aria-pressed', 'false');
+                            $btn.attr('aria-label', 'Show API key');
+                            $btn.attr('title', 'Show API key');
+                            $btn.find('i').removeClass('fa-eye-slash').addClass('fa-eye');
+                        } else {
+                            // show
+                            $key.removeClass('blurred');
+                            $btn.attr('data-visible', 'true');
+                            $btn.attr('aria-pressed', 'true');
+                            $btn.attr('aria-label', 'Hide API key');
+                            $btn.attr('title', 'Hide API key');
+                            $btn.find('i').removeClass('fa-eye').addClass('fa-eye-slash');
+                        }
+                    });
+                })
 
                 return {
                     message_list,
