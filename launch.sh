@@ -6,10 +6,19 @@ isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f
 
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
+# Directory of the python virtualenv to use; can be overridden by env var
+VENV_DIR="${VENV_DIR:-.venv}"
+
 function prepare_app_run {
     # This function is to avoid having problem with the env for test
-    source env/bin/activate
-    mkdir -p logs  # pour les fichiers de log
+    # Activate the configured virtualenv if present
+    if [ -f "$VENV_DIR/bin/activate" ]; then
+        # shellcheck source=/dev/null
+        source "$VENV_DIR/bin/activate"
+    else
+        echo "[WARN] Virtualenv '$VENV_DIR' not found; continuing without activation" >&2
+    fi
+    mkdir -p logs  # Directory for log files
 }
 
 function killscript {
