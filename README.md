@@ -33,8 +33,8 @@ Copy the **default configuration**:
 
 ```
 cd flowintel
-cp conf/config.py.default
-cp conf/config_module.py.default conf/config_module.py.
+cp conf/config.py.default conf/config.py
+cp conf/config_module.py.default conf/config_module.py
 ```
 
 Change the **configuration** in  `conf/config.py`
