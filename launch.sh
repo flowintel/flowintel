@@ -7,7 +7,7 @@ isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Directory of the python virtualenv to use; can be overridden by env var
-VENV_DIR="${VENV_DIR:-.venv}"
+VENV_DIR="${VENV_DIR:-env}"
 
 function prepare_app_run {
     # This function is to avoid having problem with the env for test

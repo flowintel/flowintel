@@ -10,6 +10,7 @@ err(){ printf '\033[1;31m[ERROR]\033[0m %s\n' "$*"; exit 1; }
 VENV_DIR="env"
 NODE_VERSION="${NODE_VERSION:-20.19.2}"
 NVM_VERSION="v0.40.3"
+PANDOC_RELEASE="3.7"
 PANDOC_VERSION="3.7-1"
 # Get arch safely
 if command -v dpkg >/dev/null 2>&1; then
@@ -17,7 +18,7 @@ if command -v dpkg >/dev/null 2>&1; then
 else
   ARCH="$(uname -m)"
 fi
-PANDOC_DEB_URL="https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-${ARCH}.deb"
+PANDOC_DEB_URL="https://github.com/jgm/pandoc/releases/download/${PANDOC_RELEASE}/pandoc-${PANDOC_VERSION}-${ARCH}.deb"
 
 # require_cmd: check command exists
 require_cmd(){ command -v "$1" >/dev/null 2>&1 || err "Required command '$1' not found. Please install it and re-run."; }
