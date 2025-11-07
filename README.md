@@ -29,9 +29,17 @@ Flowintel is an open-source platform designed to assist analysts in organizing t
 
 ## Quick start
 
-Change the **configuration** `/conf/config.py`
+Copy the **default configuration**:
 
-run the **installation** script `./install.sh`
+```
+cd flowintel
+cp conf/config.py.default
+cp conf/config_module.py.default conf/config_module.py.
+```
+
+Change the **configuration** in  `conf/config.py`
+
+Run the **installation** script `./install.sh`
 
 **Start** the application with `./launch.sh -l`
 
