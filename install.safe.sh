@@ -43,7 +43,7 @@ fi
 if [ "$PKG_MGR" = "apt" ]; then
   info "Updating apt cache and installing system packages..."
   sudo apt-get update -y
-  sudo apt-get install -y python3-venv git screen libolm-dev librsvg2-bin wget valkey texlive texlive-xetex texlive-fonts-extra
+  sudo apt-get install -y python3-venv git screen libolm-dev librsvg2-bin wget texlive texlive-xetex texlive-fonts-extra
 elif [ "$PKG_MGR" = "dnf" ]; then
   info "Installing system packages via dnf..."
   sudo dnf install -y epel-release || warn "epel-release may already be installed"

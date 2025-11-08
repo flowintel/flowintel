@@ -1,12 +1,10 @@
 import {display_toast} from '/static/js/toaster.js'
 const { ref } = Vue
 import subtask from './subtask.js'
-import TaskUrlTool from './TaskUrlTool.js'
 export default {
     delimiters: ['[[', ']]'],
     components: {
-        subtask,
-		TaskUrlTool
+        subtask
     },
 	props: {
 		cases_info: Object,
@@ -217,8 +215,6 @@ export default {
                 </div>
             </fieldset>
         </div>
-
-		<TaskUrlTool :task="task" :cases_info="cases_info" :is_template="false"></TaskUrlTool>
 
         <div class="col" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
             <fieldset class="analyzer-select-case">

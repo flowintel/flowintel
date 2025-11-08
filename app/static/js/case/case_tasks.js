@@ -3,6 +3,7 @@ import tabMain from './TaskComponent/tab-main.js'
 import tabNote from './TaskComponent/tab-note.js'
 import tabFile from './TaskComponent/tab-file.js'
 import tabInfo from './TaskComponent/tab-info.js'
+import TaskUrlTool from './TaskComponent/TaskUrlTool.js'
 import caseconnectors from './CaseConnectors.js'
 import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
 const { ref, nextTick} = Vue
@@ -24,6 +25,7 @@ export default {
 		tabNote,
 		tabFile,
 		tabInfo,
+		TaskUrlTool,
 		caseconnectors
     },
 	setup(props) {
@@ -183,6 +185,7 @@ export default {
 					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-urls-tools-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
 				}
 			}else if(tab_name == 'notes'){
@@ -192,6 +195,7 @@ export default {
 					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-urls-tools-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
 				}
 				await nextTick()
@@ -205,6 +209,7 @@ export default {
 					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-urls-tools-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
 				}
 			}else if(tab_name == 'connectors'){
@@ -216,6 +221,18 @@ export default {
 					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-urls-tools-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
+				}
+			}
+			else if(tab_name == 'urls_tools'){
+				selected_tab.value = 'urls_tools'
+				if ( !document.getElementById("tab-task-urls-tools-"+props.task.id).classList.contains("active") ){
+					document.getElementById("tab-task-urls-tools-"+props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
 				}
 			}
@@ -227,7 +244,7 @@ export default {
 					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
-
+					document.getElementById("tab-task-urls-tools-"+props.task.id).classList.remove("active")
 				}
 			}
 			
@@ -456,6 +473,9 @@ export default {
 					<button class="nav-link" :id="'tab-task-files-'+task.id" @click="select_tab_task('files')">Files</button>
 				</li>
 				<li class="nav-item">
+					<button class="nav-link" :id="'tab-task-urls-tools-'+task.id" @click="select_tab_task('urls_tools')">Urls/Tools</button>
+				</li>
+				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-info-'+task.id" @click="select_tab_task('info')">Info</button>
 				</li>
 			</ul>
@@ -494,6 +514,10 @@ export default {
 
 			<template v-else-if="selected_tab == 'files'">
 				<tabFile :cases_info="cases_info" :task="task"></tabFile>
+			</template>
+
+			<template v-else-if="selected_tab == 'urls_tools'">
+				<TaskUrlTool :task="task" :cases_info="cases_info" :is_template="false"></TaskUrlTool>
 			</template>
 
 			<template v-else-if="selected_tab == 'info'">
