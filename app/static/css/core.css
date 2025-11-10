@@ -12,6 +12,10 @@ main {
   min-height: 90vh;
 }
 
+[v-cloak] {
+  display: none;
+}
+
 pre.description {
   white-space: pre-wrap;   /* wrap but preserve whitespace */
   word-wrap: break-word;   /* break long words if needed */

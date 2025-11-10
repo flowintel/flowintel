@@ -204,7 +204,10 @@
                     <div class="case-tags-style">
                         <div class="d-flex">
                             <h4>Completion:</h4>
-                            <small class="mt-1 ms-4"><i>[[open_closed.open]] open/ [[open_closed.closed]] closed</i></small>
+                            <small class="mt-1 ms-4">
+                                <a href="javascript:void(0)" @click="change_status_sort(true)"><i>[[open_closed.open]] open</i></a> / 
+                                <a href="javascript:void(0)" @click="change_status_sort(false)"><i>[[open_closed.closed]] closed</a></i>
+                            </small>
                         </div>
                         <hr class="fading-line-2">
                         <div class="progress mt-1" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
@@ -362,16 +365,27 @@
         <i class="fa-solid fa-chevron-up"></i>
     </button>
 
-    <div style="display: flex;">
-        <h2>Tasks</h2>
-        {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
-            <span style="padding-left: 10px;">
-                <a href="/case/{{case.id}}/create_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        {%endif%}
+    <div class="row">
+        <div class="col d-flex">
+            <h2>Tasks</h2>
+            {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
+                <span style="padding-left: 10px;">
+                    <a href="/case/{{case.id}}/create_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
+                </span>
+            {%endif%}
+        </div>
+        
+        <div class="col" v-cloak>
+            <button v-if="is_open_cases" class="btn btn-outline-primary" @click="change_status_sort(false)" title="See Finished tasks">
+                <i class="fa-solid fa-folder-open"></i> <span class="badge text-bg-secondary">[[open_closed.closed]]</span>
+            </button>
+            <button v-else class="btn btn-outline-primary" @click="change_status_sort(true)" title="See Opened tasks">
+                <i class="fa-solid fa-folder-closed"></i> <span class="badge text-bg-secondary">[[open_closed.open]]</span>
+            </button>
+        </div>
 
         <!-- Search bar -->
-        <div class="input-group w-auto start-50 translate-middle-x">
+        <div class="col input-group w-auto me-5">
             <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFilter">
                 <i class="fa-solid fa-filter"></i>
             </button>
@@ -389,17 +403,6 @@
                 </div>
                 <div class="modal-body">
                     <div class="d-flex w-100 justify-content-between">
-                        <div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="change_status_sort(false)" checked>
-                                <label class="form-check-label" for="radioStatusOngoing">Ongoing Tasks</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="change_status_sort(true)">
-                                <label class="form-check-label" for="radioStatusFinished">Finished Tasks</label>
-                            </div>
-                        </div>
-
                         <div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')" checked>
@@ -616,11 +619,12 @@
                 const is_exporting = ref(false)
                 let loc_tasks_list = []
 
-                let completed = false
                 let current_filter = ""
                 let asc_desc = true
                 let or_and_taxo = true
                 let or_and_galaxies = true
+
+                const is_open_cases = ref(true)
 
                 const main_tab = ref('main')
                 const subtab_note = ref('case')
@@ -732,7 +736,7 @@
                 }
 
                 async function change_status_sort(status){
-                    completed = status
+                    is_open_cases.value = status
                     await fetch_sorted_tasks()
                 }
 
@@ -745,7 +749,7 @@
                 }
 
                 async function fetch_sorted_tasks() {
-                    let loc_status = `status=${completed}`
+                    let loc_status = `status=${!is_open_cases.value}`
                     let loc_filter = `&filter=${current_filter}`
                     let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
                     let loc_or_and_galaxies = `&or_and_galaxies=${or_and_galaxies}`
@@ -1352,7 +1356,8 @@
 
                     fetch_nb_misp_objects,
 
-                    get_completion_pourcentage
+                    get_completion_pourcentage,
+                    is_open_cases
                 }
             }
         }).mount('#main-container')
