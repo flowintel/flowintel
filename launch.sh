@@ -21,6 +21,23 @@ function prepare_app_run {
     mkdir -p logs  # Directory for log files
 }
 
+function manage_config_file {
+    CONF_DIR="$(dirname "$0")/conf"
+    CONFIG_FILE="$CONF_DIR/config.py"
+    DEFAULT_FILE="$CONF_DIR/config.py.default"
+
+    # Check if config.py exists
+    if [ ! -f "$CONFIG_FILE" ]; then
+        if [ -f "$DEFAULT_FILE" ]; then
+            echo "config.py not found. Creating one from config.py.default..."
+            cp "$DEFAULT_FILE" "$CONFIG_FILE"
+        else
+            echo "No default config file found in $CONF_DIR"
+            exit 1
+        fi
+    fi
+}
+
 function killscript {
     if  [ $isscripted_fcm ]; then
         screen -X -S fcm quit
@@ -65,6 +82,7 @@ function launch {
 function test {
     export FLASKENV="testing"
     export HISTORY_DIR=$history_dir/history_test
+    manage_config_file
     pytest
     rm -r $HISTORY_DIR
 }
