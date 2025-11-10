@@ -42,3 +42,7 @@ __pycache__/
 .env.local
 tmp/
 /logs
+
+# Ignore config files
+conf/config.py
+conf/config_modules.py
