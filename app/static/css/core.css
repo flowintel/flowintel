@@ -361,10 +361,6 @@ legend.analyzer-select-case {
   border: 2px dashed #ff9800;
 }
 
-.collapse .row .link-style-first:first-child {
-  margin-top: 5px;
-}
-
 .collapse .row .link-style-first:nth-child(2n+2){
   border-left: 1px solid #80808042;
 }

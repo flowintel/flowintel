@@ -12,23 +12,36 @@
 
 
 {% block content %}
-    <div class="case-core-style d-flex" style="border-radius: 0;">
-        <h1>
-            Cases
-            <span>
-                <a type="button" class="btn btn-primary" href="/case/create_case"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        </h1>
+    <div class="case-core-style" style="border-radius: 0;">
+        <div class="row">
+            <div class="col">
+                <h1 class="d-flex">
+                    Cases
+                    <span>
+                        <a type="button" class="btn btn-primary ms-2" href="/case/create_case"><i class="fa-solid fa-plus"></i></a>
+                    </span>
+                </h1>
+            </div>
+
+            <div class="col">
+                <button v-if="is_open_cases" class="btn btn-outline-secondary mt-2" @click="change_status_sort(false)" title="See Finished cases">
+                    <i class="fa-solid fa-folder-closed me-1"></i> Finished cases
+                </button>
+                <button v-else class="btn btn-outline-secondary mt-2" @click="change_status_sort(true)" title="See Opened cases">
+                    <i class="fa-solid fa-folder-open me-1"></i> Opened cases
+                </button>
+            </div>
 
 
-        <!-- Search bar -->
-        <div class="input-group w-auto translate-middle-x" style="left: 40% !important;">
-            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
-                <i class="fa-solid fa-filter"></i>
-            </button>
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title'  />
+            <!-- Search bar -->
+            <div class="input-group w-auto col me-5">
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
+                    <i class="fa-solid fa-filter"></i>
+                </button>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title'  />
+            </div>
+            <!-- Search bar -->
         </div>
-        <!-- Search bar -->
     </div>
 
     <div class="modal fade" id="modalCaseFilter" tabindex="-1" aria-labelledby="modalCaseFilterLabel" aria-hidden="true">
@@ -40,17 +53,6 @@
                 </div>
                 <div class="modal-body">
                     <div class="d-flex w-100 justify-content-between">
-                        <div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="change_status_sort(false)" checked>
-                                <label class="form-check-label" for="radioStatusOngoing">Ongoing Cases</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="change_status_sort(true)">
-                                <label class="form-check-label" for="radioStatusFinished">Finished Cases</label>
-                            </div>
-                        </div>
-
                         <div>
                             <div class="form-check">
                                 <input class="form-check-input" checked type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
@@ -71,6 +73,10 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
                                 <label class="form-check-label" for="radioOtherStatus">Status</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherMyOrg" @click="sort_by_filter('my_org')">
+                                <label class="form-check-label" for="radioOtherMyOrg">My Org</label>
                             </div>
                         </div>
 
@@ -331,11 +337,12 @@
                 const current_page = ref(1)
                 const current_filter = ref("last_modif")
 
-                let completed = false
                 let asc_desc = true
                 let temp_case_list = []
                 let or_and_taxo = true
                 let or_and_galaxies = true
+
+                const is_open_cases = ref(true)
 
                 const taxonomies = ref([])
                 const tags_list = ref([])
@@ -354,7 +361,7 @@
                 const expandedCases = ref({})
 
                 async function change_status_sort(status){
-                    completed = status
+                    is_open_cases.value = status
                     await fetch_sorted_cases(1)
                 }
                 function change_switch_check(change=false, changeOperator=false, changeOperatorGalaxies=false){
@@ -368,7 +375,7 @@
                 async function fetch_sorted_cases(page){
                     let loc_page = `page=${page}`
                     let loc_filter = `&filter=${current_filter.value}`
-                    let loc_status = `&status=${completed}`
+                    let loc_status = `&status=${!is_open_cases.value}`
                     let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
                     let loc_or_and_galaxies = `&or_and_galaxies=${or_and_galaxies}`
 
@@ -553,6 +560,8 @@
                     getTextColor,
                     mapIcon,
 
+                    is_open_cases,
+
                     md,
                     case_list,
                     status_info,
@@ -562,7 +571,6 @@
                     cluster_list,
                     custom_tags,
                     current_page,
-                    current_filter,
                     expandedCases,
 
                     complete_case,

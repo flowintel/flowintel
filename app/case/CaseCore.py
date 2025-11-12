@@ -2,6 +2,7 @@ import os
 from typing import List
 import uuid
 import datetime
+from flask_login import current_user
 import requests
 
 from flask import send_file
@@ -230,7 +231,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         query, conditions = self._build_sort_query(completed, tags, taxonomies, galaxies, clusters, custom_tags)
 
         if filter:
-            query = query.order_by(desc(filter))
+            if filter == "my_org":
+                query = query.join(Case_Org, Case_Org.case_id==Case.id).filter(Case_Org.org_id==current_user.org_id)
+            else:
+                query = query.order_by(desc(filter))
         
         return query.filter(and_(*conditions)).all()
     
@@ -248,7 +252,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             cases = self.build_case_query(completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
             cases = self._sort(cases, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
         else:
-            cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).all()
+            if filter == "my_org":
+                cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
+                    .filter(and_(Case.completed==completed, Case_Org.org_id==user.org_id))\
+                    .order_by(desc(Case.last_modif)).all()
+            else:
+                cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).all()
 
         list_case_user_in = list()
         for case in cases:
@@ -259,12 +268,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 list_case_user_in.append(case)
 
         if filter:
-            loc = list()
-            for case in list_case_user_in:
-                if getattr(case, filter):
-                    loc.append(case)
-            loc, nb_pages = self.paginate_cases(loc, page)
-            return loc, nb_pages
+            if not filter == "my_org":
+                loc = list()
+                for case in list_case_user_in:
+                    if getattr(case, filter):
+                        loc.append(case)
+                loc, nb_pages = self.paginate_cases(loc, page)
+                return loc, nb_pages
         
         list_case_user_in, nb_pages = self.paginate_cases(list_case_user_in, page)
         return list_case_user_in, nb_pages

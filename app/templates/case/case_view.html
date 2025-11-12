@@ -189,7 +189,9 @@
                         <div class="collapse show" id="collapseLinks">
                             <div class="row mt-2">
                                 <div class="col-6 link-style-first" v-for="case_link in cases_info.case.link_to">
-                                    <span style="margin-left: 8%;  padding: 5px;">[[case_link.title]]</span>
+                                    <a :href="`/case/${case_link.id}`" class="ms-4 text-decoration-none text-reset p-1">
+                                        [[case_link.title]]
+                                    </a>
                                     <button class="btn btn-outline-danger btn-sm ms-4"
                                     @click="remove_case_link(cases_info, case_link)"
                                     title="Remove link from case">
@@ -376,11 +378,11 @@
         </div>
         
         <div class="col" v-cloak>
-            <button v-if="is_open_cases" class="btn btn-outline-primary" @click="change_status_sort(false)" title="See Finished tasks">
-                <i class="fa-solid fa-folder-open"></i> <span class="badge text-bg-secondary">[[open_closed.closed]]</span>
+            <button v-if="is_open_cases" class="btn btn-outline-secondary" @click="change_status_sort(false)" title="See Finished tasks">
+                <i class="fa-solid fa-folder-closed me-1"></i> <span class="badge text-bg-secondary">[[open_closed.closed]]</span>
             </button>
-            <button v-else class="btn btn-outline-primary" @click="change_status_sort(true)" title="See Opened tasks">
-                <i class="fa-solid fa-folder-closed"></i> <span class="badge text-bg-secondary">[[open_closed.open]]</span>
+            <button v-else class="btn btn-outline-secondary" @click="change_status_sort(true)" title="See Opened tasks">
+                <i class="fa-solid fa-folder-open me-1"></i> <span class="badge text-bg-secondary">[[open_closed.open]]</span>
             </button>
         </div>
 
