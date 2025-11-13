@@ -238,7 +238,7 @@ def check_connection():
 @editor_required
 def check_misp_event():
     misp_instance_id = request.args.get('misp_instance_id', 1, type=int)
-    misp_event_id = request.args.get('misp_event_id', 1, type=int)
+    misp_event_id = request.args.get('misp_event_id', 1, type=str)
     res = ToolsModel.check_event(misp_event_id, misp_instance_id, current_user)
     if not type(res) == str:
         return {"is_connection_okay": True, "event_info": res.info}

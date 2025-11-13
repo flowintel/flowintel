@@ -151,6 +151,7 @@
                 async function check_event() {
                     $("#misp_event_message").text("")
                     $("#misp_connectors_message").text("")
+                    event_info.value = ""
                     is_loading_misp_event.value = true
                     if($("#misp_connectors_select").val()){
                         if($("#misp_event_id").val()){

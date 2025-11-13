@@ -157,10 +157,13 @@ def edit_connector_instance_core(iid, form_dict):
         instance_db.description = form_dict["description"]
         instance_db.type = type_select
         if form_dict["api_key"]:
-            user_instance = get_user_instance_by_instance(iid)
-            user_instance.api_key = form_dict["api_key"]
-            db.session.add(user_instance)
-            db.session.commit()
+            if "is_global_connector" in form_dict and form_dict["is_global_connector"]:
+                instance_db.global_api_key = form_dict["api_key"]
+            else:
+                user_instance = get_user_instance_by_instance(iid)
+                user_instance.api_key = form_dict["api_key"]
+                db.session.add(user_instance)
+                db.session.commit()
 
         db.session.add(instance_db)
         db.session.commit()

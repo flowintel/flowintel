@@ -446,11 +446,17 @@ def get_case_by_tags(current_user):
 def check_connection_misp(misp_instance_id: int, current_user: User):
     instance = Connector_Instance.query.get(misp_instance_id)
     if instance:
-        user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
-        if user_connector_instance:
-            # misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+        loc_api_key = ""
+        if instance.global_api_key:
+            loc_api_key = instance.global_api_key
+        else:
+            user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
+            if user_connector_instance:
+                loc_api_key = user_connector_instance.api_key
+
+        if loc_api_key:
             try:
-                misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
+                misp = PyMISP(instance.url, loc_api_key, ssl=False, timeout=20)
             except:
                 return "Error connecting to MISP"
             
@@ -458,7 +464,7 @@ def check_connection_misp(misp_instance_id: int, current_user: User):
         return "No config found for the instance"
     return "Instance not found"
 
-def check_event(event_id: int, misp_instance_id: int, current_user: User):
+def check_event(event_id: str, misp_instance_id: int, current_user: User):
     misp = check_connection_misp(misp_instance_id, current_user)
     if type(misp) == PyMISP:
         event = misp.get_event(event_id, pythonify=True)

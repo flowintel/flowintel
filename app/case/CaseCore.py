@@ -23,6 +23,7 @@ from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 
 from ..templating.TemplateCase import TemplateModel as CaseTemplateModel
+from  ..connectors import connectors_core as ConnectorModel
 
 
 class CaseCore(CommonAbstract, FilteringAbstract):
@@ -1317,7 +1318,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         instances_list = []
         if connector:
             for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id, instance.id):
+                if instance.global_api_key:
+                    loc_instance = instance.to_json()
+                    if ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                        loc_instance["is_user_global_api"] = True
+                    instances_list.append(loc_instance)
+                elif ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
                     instances_list.append(instance.to_json())
         return instances_list
 
