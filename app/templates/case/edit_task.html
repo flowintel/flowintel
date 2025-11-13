@@ -4,6 +4,14 @@
 {% extends 'base.html' %}
 {% import 'macros/form_macros.html' as f %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
+
 {% block content %}
 
     <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit a task</h2>
@@ -20,10 +28,10 @@
                 {%endif%}
             </div>
             <div class="mb-3 w-50">
-                <label for="description" class="col-form-label">Description:</label>
-                {{form.description(class_="form-control")}}
-                {% if form.description.errors %}
-                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                {{form.time_required.label(class_="col-form-label")}}:
+                {{form.time_required(class_="form-control")}}
+                {% if form.time_required.errors %}
+                    <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
                 {%endif%}
             </div>
         </div>
@@ -44,15 +52,15 @@
             </div>
         </div>
         <div class="row">
-            <div class="mb-3 w-50">
-                {{form.time_required.label(class_="col-form-label")}}:
-                {{form.time_required(class_="form-control")}}
-                {% if form.time_required.errors %}
-                    <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
-                {%endif%}
+            <span class="mb-2">Description:</span>
+            <div style="display: flex">
+                <div class="note-editor" id="editor"></div>
+                <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
             </div>
         </div>
-        <hr>
+
+        <hr style="margin-top: 40px; margin-bottom: 40px;">
 
         <edition_select 
             :type_object="'task'"
@@ -82,10 +90,14 @@
             edition_select
         },
         setup() {
-
             const selected_tags = ref([])
             const selected_clusters = ref([])
             const selected_custom_tags = ref([])
+
+            let editor
+            const md = window.markdownit()
+            const description_content = `{{description | safe}}`
+            const note_editor_render = ref(description_content)
             
             function submit_form(){
                 
@@ -111,6 +123,19 @@
                     theme: 'bootstrap-5',
                     closeOnSelect: false
                 })
+
+                const targetElement = document.getElementById('editor')
+                if(targetElement && targetElement.innerHTML === ""){
+                    editor = new Editor.EditorView({
+                        doc: description_content,
+                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            if (v.docChanged) {
+                                note_editor_render.value = editor.state.doc.toString()
+                            }
+                        })],
+                        parent: targetElement
+                    })
+                }
             })
 
             return {
@@ -119,6 +144,9 @@
                 selected_tags,
                 selected_clusters,
                 selected_custom_tags,
+
+                note_editor_render,
+                md,
 
                 submit_form
             }

@@ -17,7 +17,6 @@ from ..db_class.db import Case, Case_Org
 
 class CaseForm(FlaskForm):
     title = StringField('Title', validators=[Optional()])
-    description = TextAreaField('Description', validators=[Optional()])
     deadline_date = DateField('Deadline date', validators=[Optional()])
     deadline_time = TimeField("Deadline time", validators=[Optional()])
     template_select = SelectMultipleField(u'Templates', coerce=int)
@@ -52,7 +51,6 @@ class CaseForm(FlaskForm):
 
 class CaseEditForm(FlaskForm):
     title = StringField('Title', validators=[InputRequired()])
-    description = TextAreaField('Description', validators=[Optional()])
     deadline_date = DateField('Deadline date', validators=[Optional()])
     deadline_time = TimeField("Deadline time", validators=[Optional()])
     time_required = StringField('Time required', validators=[Optional()])
@@ -67,7 +65,6 @@ class CaseEditForm(FlaskForm):
 
 class TaskForm(FlaskForm):
     title = StringField('Title', validators=[Optional()])
-    description = TextAreaField('Description', validators=[Optional()])
     time_required = StringField('Time required', validators=[Optional()])
     deadline_date = DateField('Deadline date', validators=[Optional()])
     deadline_time = TimeField("Deadline time", validators=[Optional()])
@@ -90,7 +87,6 @@ class TaskForm(FlaskForm):
 
 class TaskEditForm(FlaskForm):
     title = StringField('Title', validators=[InputRequired()])
-    description = TextAreaField('Description', validators=[Optional()])
     time_required = StringField('Time required', validators=[Optional()])
     deadline_date = DateField('Deadline date', validators=[Optional()])
     deadline_time = TimeField("Deadline time", validators=[Optional()])

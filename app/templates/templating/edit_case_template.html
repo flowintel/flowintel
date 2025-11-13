@@ -4,6 +4,13 @@
 {% extends 'base.html' %}
 {% import 'macros/form_macros.html' as f %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit a Case Template</h2>
     <hr class="fading-line-2 mt-4 mb-4">
@@ -20,20 +27,19 @@
                     {%endif%}
                 </div>
                 <div class="mb-3 w-50">
-                    <label for="description" class="col-form-label">Description:</label>
-                    {{form.description(class_="form-control")}}
-                    {% if form.description.errors %}
-                        <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-            </div>
-            <div class="row">
-                <div class="mb-3 w-50">
                     {{form.time_required.label(class_="col-form-label")}}:
                     {{form.time_required(class_="form-control")}}
                     {% if form.time_required.errors %}
                         <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
                     {%endif%}
+                </div>
+            </div>
+            <div class="row">
+                <span class="mb-2">Description:</span>
+                <div style="display: flex">
+                    <div class="note-editor" id="editor"></div>
+                    <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                    <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
                 </div>
             </div>
 
@@ -42,4 +48,42 @@
             </div>
         </div>
     </form>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, ref, onMounted} = Vue
+    import {message_list} from '/static/js/toaster.js'
+    
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            let editor
+            const md = window.markdownit()
+            const description_content = `{{description | safe}}`
+            const note_editor_render = ref(description_content)
+            
+            onMounted(() => {
+                const targetElement = document.getElementById('editor')
+                if(targetElement && targetElement.innerHTML === ""){
+                    editor = new Editor.EditorView({
+                        doc: description_content,
+                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            if (v.docChanged) {
+                                note_editor_render.value = editor.state.doc.toString()
+                            }
+                        })],
+                        parent: targetElement
+                    })
+                }
+            })
+
+            return {
+                message_list,
+                note_editor_render,
+                md
+            }
+        }
+    }).mount('#main-container')
+</script>
 {% endblock %}

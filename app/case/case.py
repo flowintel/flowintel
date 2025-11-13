@@ -56,7 +56,7 @@ def create_case():
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
-            form_dict["link_to"] = request.form.getlist("link_to")
+            form_dict["description"] = request.form.get("description")
             case = CaseModel.create_case(form_dict, current_user)
             flash("Case created", "success")
             return redirect(f"/case/{case.id}")
@@ -87,13 +87,12 @@ def edit_case(cid):
 
             if form.validate_on_submit():
                 form_dict = form_to_dict(form)
-                form_dict["link_to"] = request.form.getlist("link_to")
+                form_dict["description"] = request.form.get("description")
                 CaseModel.edit(form_dict, cid, current_user)
                 flash("Case edited", "success")
                 return redirect(f"/case/{cid}")
             else:
                 case_modif = CommonModel.get_case(cid)
-                form.description.data = case_modif.description
                 form.title.data = case_modif.title
                 form.deadline_date.data = case_modif.deadline
                 form.deadline_time.data = case_modif.deadline
@@ -101,7 +100,7 @@ def edit_case(cid):
                 form.is_private.data = case_modif.is_private
                 form.ticket_id.data = case_modif.ticket_id
 
-            return render_template("case/edit_case.html", form=form)
+            return render_template("case/edit_case.html", form=form, description=case_modif.description)
         else:
             flash("Access denied", "error")
     else:

@@ -14,7 +14,6 @@ from ..db_class.db import Case_Template, Task_Template
 
 class TaskTemplateForm(FlaskForm):
     title = StringField('Title', validators=[Optional()])
-    description = TextAreaField('Description', validators=[Optional()])
     time_required = StringField('Time required', validators=[Optional()])
     tasks = SelectMultipleField(u'Task Template', coerce=int, validators=[Optional()])
 
@@ -34,7 +33,6 @@ class TaskTemplateForm(FlaskForm):
 class TaskTemplateEditForm(FlaskForm):
     template_id = HiddenField("")
     title = StringField('Title', validators=[InputRequired()])
-    description = TextAreaField('Description', validators=[Optional()])
     time_required = StringField('Time required', validators=[Optional()])
 
     submit = SubmitField('Save')
@@ -48,7 +46,6 @@ class TaskTemplateEditForm(FlaskForm):
 
 class CaseTemplateForm(FlaskForm):
     title = StringField('Title', validators=[InputRequired()])
-    description = TextAreaField('Description', validators=[Optional()])
     tasks = SelectMultipleField(u'Task Template', coerce=int, validators=[Optional()])
     time_required = StringField('Time required', validators=[Optional()])
     
@@ -63,7 +60,6 @@ class CaseTemplateForm(FlaskForm):
 class CaseTemplateEditForm(FlaskForm):
     template_id = HiddenField("")
     title = StringField('Title', validators=[InputRequired()])
-    description = TextAreaField('Description', validators=[Optional()])
     time_required = StringField('Time required', validators=[Optional()])
     
     submit = SubmitField('Save')

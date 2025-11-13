@@ -148,6 +148,9 @@ legend.analyzer-select-case {
   border-radius: 5px;
   width: 50%;
   padding: 5px;
+  white-space: pre-wrap;   /* wrap but preserve whitespace */
+  word-wrap: break-word;   /* break long words if needed */
+  overflow-x: auto;        /* optional: scroll only if really needed */
 }
 .markdown-render-result {
   background-color: white;
@@ -155,6 +158,9 @@ legend.analyzer-select-case {
   border-radius: 5px;
   padding: 5px;
   margin-top: 3px;
+  white-space: pre-wrap;   /* wrap but preserve whitespace */
+  word-wrap: break-word;   /* break long words if needed */
+  overflow-x: auto;        /* optional: scroll only if really needed */
 }
 
 /* Analyzers */

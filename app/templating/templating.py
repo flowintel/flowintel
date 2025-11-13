@@ -51,6 +51,7 @@ def create_case_template():
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
+            form_dict["description"] = request.form.get("description")
             template = TemplateModel.create_case(form_dict)
             flash("Template created", "success")
             return redirect(f"/templating/case/{template.id}")
@@ -70,6 +71,7 @@ def create_task_template():
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
+            form_dict["description"] = request.form.get("description")
             template = TaskModel.add_task_template_core(form_dict)
             flash("Template created", "success")
             return redirect(f"/templating/tasks")
@@ -127,15 +129,15 @@ def edit_case(cid):
         form.template_id.data = cid
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
+            form_dict["description"] = request.form.get("description")
             template = TemplateModel.edit(form_dict, cid)
             flash("Template edited", "success")
             return redirect(f"/templating/case/{cid}")
         else:
             form.title.data = template.title
-            form.description.data = template.description
             form.time_required.data = template.time_required
 
-        return render_template("templating/edit_case_template.html", form=form)
+        return render_template("templating/edit_case_template.html", form=form, description=template.description)
     return render_template("404.html")
 
 @templating_blueprint.route("/case/edit_tags/<cid>", methods=['GET','POST'])
@@ -175,16 +177,16 @@ def edit_task(tid):
             if isinstance(res, dict):
                 form_dict = form_to_dict(form)
                 form_dict.update(res)
+                form_dict["description"] = request.form.get("description")
                 template = TaskModel.edit_task_template(form_dict, tid)
                 flash("Template edited", "success")
                 return redirect(f"/templating/tasks")
-            return render_template("templating/edit_task_template.html", form=form)
+            return render_template("templating/edit_task_template.html", form=form, description=template.description)
         else:
             form.title.data = template.title
-            form.description.data = template.description
             form.time_required.data = template.time_required
 
-        return render_template("templating/edit_task_template.html", form=form)
+        return render_template("templating/edit_task_template.html", form=form, description=template.description)
     return render_template("404.html")
 
 

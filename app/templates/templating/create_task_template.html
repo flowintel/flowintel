@@ -4,6 +4,13 @@
 {% extends 'base.html' %}
 {% import 'macros/form_macros.html' as f %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <div class="case-core-style d-flex">
         <h2 style="margin-top: -4px;">
@@ -25,15 +32,6 @@
                     {%endif%}
                 </div>
                 <div class="mb-3 w-50">
-                    <label for="description" class="col-form-label">Description:</label>
-                    {{form.description(class_="form-control")}}
-                    {% if form.description.errors %}
-                        <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                    {%endif%}
-                </div>
-            </div>
-            <div class="row">
-                <div class="mb-3 w-50">
                     {{form.time_required.label(class_="col-form-label")}}:
                     {{form.time_required(class_="form-control")}}
                     {% if form.time_required.errors %}
@@ -42,7 +40,16 @@
                 </div>
             </div>
 
-            <hr>
+            <div class="row">
+                <span class="mb-2">Description:</span>
+                <div style="display: flex">
+                    <div class="note-editor" id="editor"></div>
+                    <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                    <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
+                </div>
+            </div>
+            
+            <hr style="margin-top: 40px; margin-bottom: 40px;">
             <div class="accordion mt-4">
                 <div class="accordion-item">
                     <h2 class="accordion-header">
@@ -151,6 +158,9 @@
 
             const custom_tags = ref([])
 
+            const md = window.markdownit()
+            const note_editor_render = ref("")
+
             async function fetch_taxonomies(){
                 const res = await fetch("/case/get_taxonomies")
                 if(await res.status==400 ){
@@ -223,6 +233,19 @@
                     selected_galaxies.value = $(this).select2('data').map(item => item.id);
                     fetch_cluster()
                 })
+
+                const targetElement = document.getElementById('editor')
+                if(targetElement && targetElement.innerHTML === ""){
+                    editor = new Editor.EditorView({
+                        doc: "\n\n",
+                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            if (v.docChanged) {
+                                note_editor_render.value = editor.state.doc.toString()
+                            }
+                        })],
+                        parent: targetElement
+                    })
+                }
             })
 
             return {
@@ -232,7 +255,9 @@
                 galaxies,
                 tags_list,
                 cluster_list,
-                custom_tags
+                custom_tags,
+                md,
+                note_editor_render,
             }
         }
     }).mount('#main-container')

@@ -43,6 +43,7 @@ def create_task(cid):
                 if isinstance(res, dict):
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
+                    form_dict["description"] = request.form.get("description")
                     if TaskModel.create_task(form_dict, cid, current_user):
                         flash("Task created", "success")
                     else:
@@ -61,25 +62,26 @@ def edit_task(cid, tid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             form = TaskEditForm()
+            task_modif = CommonModel.get_task(tid)
 
             if form.validate_on_submit():
                 res = prepare_tags(request)
                 if isinstance(res, dict):
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
+                    form_dict["description"] = request.form.get("description")
                     TaskModel.edit_task_core(form_dict, tid, current_user)
                     flash("Task edited", "success")
                     return redirect(f"/case/{cid}")
-                return render_template("case/edit_task.html", form=form)
+                return render_template("case/edit_task.html", form=form, description=task_modif.description)
             else:
-                task_modif = CommonModel.get_task(tid)
-                form.description.data = task_modif.description
+                # form.description.data = task_modif.description
                 form.title.data = task_modif.title
                 form.time_required.data = task_modif.time_required
                 form.deadline_date.data = task_modif.deadline
                 form.deadline_time.data = task_modif.deadline
             
-            return render_template("case/edit_task.html", form=form)
+            return render_template("case/edit_task.html", form=form, description=task_modif.description)
         else:
             flash("Access denied", "error")
         return redirect(f"/case/{cid}")
