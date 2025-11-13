@@ -9,6 +9,9 @@ history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Directory of the python virtualenv to use; can be overridden by env var
 VENV_DIR="${VENV_DIR:-env}"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
+
 function prepare_app_run {
     # This function is to avoid having problem with the env for test
     # Activate the configured virtualenv if present
@@ -39,6 +42,7 @@ function manage_config_file {
 }
 
 function killscript {
+    echo "Stopping existing sessions..."
     if  [ $isscripted_fcm ]; then
         screen -X -S fcm quit
     fi
@@ -74,6 +78,9 @@ function launch {
 
     # Afficher les logs à l'écran
     tail -n 0 -F logs/fcm.log logs/misp.log &
+    TAIL_PID=$!
+
+    trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
     # Lancer le serveur principal (en avant-plan pour Docker)
     python3 app.py
@@ -97,6 +104,9 @@ function production {
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
     tail -n 0 -F logs/fcm.log logs/misp.log &
+    TAIL_PID=$!
+
+    trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
     gunicorn -w 4 'app:create_app()' -b 127.0.0.1:7006 --access-logfile -
 }
@@ -133,6 +143,9 @@ function launch_docker {
 
     # Afficher les logs à l'écran
     tail -n 0 -F logs/fcm.log logs/misp.log &
+    TAIL_PID=$!
+
+    trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
     # Lancer le serveur principal (en avant-plan pour Docker)
     python3 app.py

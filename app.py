@@ -7,20 +7,9 @@ from app.utils.init_misp_modules import create_modules_db
 from flask import jsonify, render_template, request, Response, send_from_directory
 import json
 
-import signal
-import sys
-import subprocess
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-
-def signal_handler(sig, frame):
-    path = os.path.join(os.getcwd(), "launch.sh")
-    req = [path, "-ks"]
-    subprocess.call(req)
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, signal_handler)
 
 #######
 # Log #
