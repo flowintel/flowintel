@@ -3,6 +3,7 @@ from typing import List
 import uuid
 import datetime
 from flask_login import current_user
+import pymisp
 import requests
 
 from flask import send_file
@@ -24,7 +25,6 @@ from ..notification import notification_core as NotifModel
 
 from ..templating.TemplateCase import TemplateModel as CaseTemplateModel
 from  ..connectors import connectors_core as ConnectorModel
-
 
 class CaseCore(CommonAbstract, FilteringAbstract):
     def get_class(self) -> Case:
@@ -103,6 +103,60 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.save_history(case.uuid, user, "Case Created")
 
         return case
+
+    
+    def create_case_with_event(self, form_dict, user):
+        case = self.create_case(form_dict, user)
+        event_loc = form_dict["event"]
+
+        event = pymisp.MISPEvent()
+        event.from_dict(**event_loc["Event"])
+        
+        for misp_tags in event.tags:
+            tag = Tags.query.filter_by(name=misp_tags.name).first()
+            if tag:
+                if not Case_Tags.query.filter_by(tag_id=tag.id, case_id=case.id).first():
+                    CaseModel.add_tag(tag, case.id)
+
+        for misp_galaxy in event.galaxies:
+            for misp_cluster in misp_galaxy.clusters:
+                cluster = Cluster.query.filter_by(tag=misp_cluster.tag_name).first()
+                if cluster:
+                    if not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
+                        CaseModel.add_cluster(cluster, case.id)
+
+        object_uuid_list = {}
+        for obje in event.objects:
+            def append_dict(base, new):
+                for key, value in new.items():
+                    if key in base:
+                        # merge attributes
+                        base[key]['attributes'].extend(value.get('attributes', []))
+                    else:
+                        # add new entry
+                        base[key] = value
+                return base
+            loc = misp_object_helper.create_misp_object(case.id, obje)
+            object_uuid_list = append_dict(object_uuid_list, loc)
+
+        if "origin_url" in form_dict and form_dict["origin_url"]:
+            loc_instance_id = ""
+            r = Connector_Instance.query.filter_by(url=form_dict["origin_url"]).all()
+            for instance in r:
+                if instance.type=='send_to':
+                    u = User_Connector_Instance.query.filter_by(instance_id=instance.id, user_id=user.id)
+                    if u:
+                        loc_instance_id=instance.id
+                        cci = Case_Connector_Instance(case_id=case.id, instance_id=instance.id, identifier=event.uuid, is_updating_case=True)
+                        case.is_updated_from_misp = True
+                        db.session.add(cci)
+                        db.session.commit()
+                        break
+            if loc_instance_id:
+                CaseModel.result_misp_object_module(object_uuid_list, instance_id=loc_instance_id, case_id=case.id)
+
+        return case
+
 
     def delete_case(self, case_id, current_user):
         """Delete a case by is id"""

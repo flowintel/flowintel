@@ -77,6 +77,37 @@ class CreateCase(Resource):
         return {"message": "Please give data"}, 400
     
 
+@case_ns.route('/create_with_event', methods=['POST'])
+@case_ns.doc(description='Create a case')
+class CreateCaseEvent(Resource):
+    method_decorators = [editor_required, api_required]
+    @case_ns.doc(params={
+        "title": "Required. Title for a case", 
+        "event": "Required, Json of a misp event",
+        "description": "Description of a case", 
+        "deadline_date": "Date(%Y-%m-%d)", 
+        "deadline_time": "Time(%H-%M)",
+        "tags": "list of tags from taxonomies",
+        "clusters": "list of tags from galaxies",
+        "custom_tags" : "List of custom tags created on the instance",
+        "time_required": "Time required to realize the case",
+        "is_private": "Specify if a case is private or not. By default a case is public",
+        "ticket_id": "Id of a ticket related to the case",
+    })
+    def post(self):
+        user = utils.get_user_from_api(request.headers)
+
+        if request.json:
+            verif_dict = CaseModelApi.verif_create_case_task(request.json)
+
+            if "message" not in verif_dict:
+                case = CaseModel.create_case_with_event(verif_dict, user)
+                return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
+
+            return verif_dict, 400
+        return {"message": "Please give data"}, 400
+    
+
 @case_ns.route('/<cid>/edit', methods=['POST'])
 @case_ns.doc(description='Edit a case', params={'id': 'id of a case'})
 class EditCase(Resource):

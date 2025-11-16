@@ -115,7 +115,7 @@ def case_creation_from_importer(case, current_user):
     ## Case creation
     case_created = CaseModel.create_case(case, current_user)
     if case["notes"]:
-        CaseModel.modif_note_core(case_created.id, current_user, case["notes"])
+        CaseModel.modify_note_core(case_created.id, current_user, case["notes"])
 
     ## Task creation
     for task in case["tasks"]:

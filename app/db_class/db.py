@@ -1054,9 +1054,9 @@ class Misp_Attribute(db.Model):
         }
 
         if self.first_seen:
-            json_dict["first_seen"] = self.first_seen.strftime('%Y-%m-%d %H:%M')
+            json_dict["first_seen"] = self.first_seen.strftime('%Y-%m-%dT%H:%M')
         if self.last_seen:
-            json_dict["last_seen"] = self.last_seen.strftime('%Y-%m-%d %H:%M')
+            json_dict["last_seen"] = self.last_seen.strftime('%Y-%m-%dT%H:%M')
 
         return json_dict
 
