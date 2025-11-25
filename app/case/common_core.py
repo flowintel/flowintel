@@ -527,11 +527,15 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
 
     return export_notes_core(case_task_id, type_req, note)
 
-def export_notes_core(case_task_id: int, type_req: str, note: str):
+def export_notes_core(case_task_id: int, type_req: str, note: str, download_filename: str = None):
     if not os.path.isdir(TEMP_FOLDER):
         os.mkdir(TEMP_FOLDER)
 
-    download_filename = f"export_note_{case_task_id}.{type_req}"
+    if not download_filename:
+        download_filename = f"export_note_{case_task_id}.{type_req}"
+    else:
+        if not download_filename.endswith(f".{type_req}"):
+            download_filename = f"{download_filename}.{type_req}"
     temp_md = os.path.join(TEMP_FOLDER, "index.md")
     temp_export = os.path.join(TEMP_FOLDER, f"output.{type_req}")
 
@@ -558,6 +562,9 @@ def export_notes_core(case_task_id: int, type_req: str, note: str):
         shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
     except:
         pass
+
+    if not os.path.isfile(temp_export):
+        return {"message": "Error during export process", "toast_class": "danger-subtle"}
     
     return send_file(temp_export, as_attachment=True, download_name=download_filename)
 

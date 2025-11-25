@@ -86,6 +86,7 @@ class Case(db.Model):
     is_private = db.Column(db.Boolean, default=False)
     ticket_id = db.Column(db.String)
     is_updated_from_misp = db.Column(db.Boolean, default=False)
+    computer_assistate_report = db.Column(db.String)
 
     def to_json(self):
         json_dict = {
@@ -106,7 +107,8 @@ class Case(db.Model):
             "time_required": self.time_required,
             "is_private": self.is_private,
             "ticket_id": self.ticket_id,
-            "is_updated_from_misp": self.is_updated_from_misp
+            "is_updated_from_misp": self.is_updated_from_misp,
+            "computer_assistate_report": self.computer_assistate_report
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
@@ -147,7 +149,8 @@ class Case(db.Model):
             "time_required": self.time_required,
             "is_private": self.is_private,
             "ticket_id": self.ticket_id,
-            "is_updated_from_misp": self.is_updated_from_misp
+            "is_updated_from_misp": self.is_updated_from_misp,
+            "computer_assistate_report": self.computer_assistate_report
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')

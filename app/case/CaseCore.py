@@ -1,4 +1,5 @@
 import os
+from threading import Thread
 from typing import List
 import uuid
 import datetime
@@ -26,7 +27,15 @@ from ..notification import notification_core as NotifModel
 from ..templating.TemplateCase import TemplateModel as CaseTemplateModel
 from  ..connectors import connectors_core as ConnectorModel
 
+from flask import current_app
+
+import conf.config_module as ConfigModule
+
 class CaseCore(CommonAbstract, FilteringAbstract):
+    def __init__(self):
+        super().__init__()
+        self.TasksAI = {}
+
     def get_class(self) -> Case:
         return Case
     
@@ -917,6 +926,77 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             CommonModel.save_history(case.uuid, current_user, f"Case's Notes modified")
             return True
         return False
+    
+
+    def run_chat(self, loc_app, case, message):
+        print("Starting Ollama chat...")
+        url = f"{ConfigModule.OLLAMA_URL}/api/generate"
+
+        headers = {"Content-Type": "application/json"}  # Find token in browser (Network tab)
+
+        if ConfigModule.OLLAMA_KEY:
+            headers["Authorization"] = f"Bearer {ConfigModule.OLLAMA_KEY}"
+
+        payload = {
+            "model": ConfigModule.OLLAMA_MODEL,
+            "prompt": message,
+            "stream": False
+        }
+
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=600)
+        except requests.exceptions.ConnectionError:
+            return {"message": "Error connecting to Ollama server. Try again...", "toast_class": "danger-subtle"}, 400
+        except Exception as e:
+            print(e)
+            return {"message": "Error during request to Ollama server. Try again...", "toast_class": "danger-subtle"}, 400
+
+        with loc_app.app_context():
+            case = db.session.merge(case)
+            case.computer_assistate_report = response.json()["response"]
+            db.session.commit()
+
+            del self.TasksAI[case.uuid]
+        
+        return True
+    
+    def generate_computer_assistate_report(self, case: Case, current_user: User):
+        """Generate a report from all informations find in the case"""
+
+        history = CommonModel.get_history(case.uuid)
+
+        task_list = [task.download() for task in case.tasks]
+
+        misp_object_list = [obj.download() for obj in CaseModel.get_misp_object_by_case(case.id)]
+        loc_case = case.download()
+        del loc_case["computer_assistate_report"]
+        return_dict = loc_case
+        return_dict["tasks"] = task_list
+        return_dict["misp-objects"] = misp_object_list
+        return_dict["history"] = history
+
+        if not ConfigModule.OLLAMA_URL or not ConfigModule.OLLAMA_MODEL:
+            return {"message": "Ollama configuration is missing", "toast_class": "warning-subtle"}, 400
+        
+        asking_input = "Give me a report using:"
+
+        worker = Thread(target=self.run_chat, args=[current_app._get_current_object(), case, f'{asking_input} {json.dumps(return_dict)}'])
+        self.TasksAI[case.uuid] = worker
+
+        worker.daemon = True
+        worker.start()
+
+        CommonModel.update_last_modif(case.id)
+        CommonModel.save_history(case.uuid, current_user, f"AI report generated and added to notes")
+        return {"message": "AI report generation started", "toast_class": "success-subtle"}, 200
+    
+    def check_exist_task(self, case_uuid):
+        if case_uuid in self.TasksAI:
+            return True
+        return False
+    def get_status_computer_assistate_report(self, case_uuid):
+        task = self.TasksAI.get(case_uuid)
+        return task.is_alive()
 
     def download_history(self, case):
         """Download a history"""

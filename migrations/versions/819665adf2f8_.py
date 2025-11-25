@@ -24,7 +24,8 @@ def upgrade():
     existing_columns = [col['name'] for col in inspector.get_columns('task__template')]
     
     if 'notes' not in existing_columns:
-        op.add_column('task__template', sa.Column('notes', sa.String(), nullable=True))
+        with op.batch_alter_table('task__template', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('notes', sa.String(), nullable=True))
 
     # ### end Alembic commands ###
 

@@ -11,3 +11,8 @@ MATRIX_SERVER = ""
 MATRIX_USER = ""
 MATRIX_PASSWORD = ""
 MATRIX_ROOM_ID = ""
+
+# Computer assistate Parameters
+OLLAMA_URL = "http://localhost:11434"
+OLLAMA_KEY = ""
+OLLAMA_MODEL = ""

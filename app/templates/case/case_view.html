@@ -241,6 +241,9 @@
 				<li class="nav-item">
 					<button class="nav-link" id="subtab-hedgedoc" @click="active_subtab_note('hedgedoc')">Hedgedoc</button>
 				</li>
+                <li class="nav-item">
+					<button class="nav-link" id="subtab-computer-assistate" @click="active_subtab_note('computer-assistate')">Computer Assistate</button>
+				</li>
 			</ul>
 
 
@@ -303,6 +306,9 @@
                     :cases_info="cases_info"
                     :status_info="status_info">
                 </hedgedoc_template>
+            </template>
+            <template v-else-if="subtab_note == 'computer-assistate'">
+                <computer_assistate_template :cases_info="cases_info"></computer_assistate_template>
             </template>
 
         </template>
@@ -598,6 +604,7 @@
         import caseconnectors from '/static/js/case/CaseConnectors.js'
         import case_history from '/static/js/case/case_history.js'
         import note_from_template from '/static/js/case/note_from_template.js'
+        import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
         
@@ -612,7 +619,8 @@
                 misp_object,
                 caseconnectors,
                 case_history,
-                note_from_template
+                note_from_template,
+                computer_assistate_template
             },
             setup() {
                 const cases_info = ref(null)
@@ -959,6 +967,7 @@
                             document.getElementById("subtab-case-note").classList.add("active")
                             document.getElementById("subtab-template-note").classList.remove("active")
                             document.getElementById("subtab-hedgedoc").classList.remove("active")
+                            document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'case'){
@@ -972,6 +981,7 @@
                             document.getElementById("subtab-template-note").classList.add("active")
                             document.getElementById("subtab-case-note").classList.remove("active")
                             document.getElementById("subtab-hedgedoc").classList.remove("active")
+                            document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
                         md.mermaid.init()
@@ -981,6 +991,17 @@
                             document.getElementById("subtab-hedgedoc").classList.add("active")
                             document.getElementById("subtab-case-note").classList.remove("active")
                             document.getElementById("subtab-template-note").classList.remove("active")
+                            document.getElementById("subtab-computer-assistate").classList.remove("active")
+                        }
+                        await nextTick()
+                        md.mermaid.init()
+                    }else if(tab_name == 'computer-assistate'){
+                        subtab_note.value = tab_name
+                        if ( !document.getElementById("subtab-computer-assistate").classList.contains("active") ){
+                            document.getElementById("subtab-computer-assistate").classList.add("active")
+                            document.getElementById("subtab-case-note").classList.remove("active")
+                            document.getElementById("subtab-template-note").classList.remove("active")
+                            document.getElementById("subtab-hedgedoc").classList.remove("active")
                         }
                         await nextTick()
                         md.mermaid.init()

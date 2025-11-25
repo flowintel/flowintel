@@ -709,6 +709,71 @@ def export_notes(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<cid>/run_computer_assistate_report", methods=['GET'])
+@login_required
+@editor_required
+def run_computer_assistate_report(cid):
+    """Create a report from all case informations"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        if not CaseModel.check_exist_task(case.uuid):
+            return CaseModel.generate_computer_assistate_report(case, current_user)
+        return {"message": "There's already a generation going for this case", "toast_class": "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/status_computer_assistate_report", methods=['GET'])
+@login_required
+def status_computer_assistate_report(cid):
+    """Create a report from all case informations"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        if not CaseModel.check_exist_task(case.uuid):
+            return {"message": "There's no generation going for this case", "toast_class": "warning-subtle"}, 400
+        if CaseModel.get_status_computer_assistate_report(case.uuid):
+            return {"report_status": "running"}, 200
+        return {"report_status": "done"}, 200
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/get_computer_assistate_report", methods=['GET'])
+@login_required
+def get_computer_assistate_report(cid):
+    """Create a report from all case informations"""
+    case = CommonModel.get_case(cid)
+    if case:
+        return {"report": case.computer_assistate_report}
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/export_computer_assistate_report", methods=['GET'])
+@login_required
+def export_computer_assistate_report(cid):
+    """Export note of a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        if "type" in request.args:
+            res = CommonModel.export_notes_core(case_task_id=None, 
+                                                type_req=request.args.get("type"), 
+                                                note=case.computer_assistate_report, 
+                                                download_filename=f"case_{case.uuid}_computer_assistate_report")
+            try:
+                CommonModel.delete_temp_folder()
+            except:
+                pass
+            if isinstance(res, dict):
+                return res, 400
+            return res
+        return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
 @case_blueprint.route("/get_orgs", methods=['GET'])
 @login_required
 def get_orgs():
