@@ -7,7 +7,7 @@ def test_create_user(client):
                            headers={"X-API-KEY": API_KEY},
                            json={"first_name": "test", "last_name": "test", "email": "test@test.test", "password": "test", "role": "2"}
                         )
-    assert response.status_code == 201 and b"User created, id: 4" in response.data
+    assert response.status_code == 201 and response.json["message"] == "User created 4" and response.json["id"] == 4
 
 def test_create_user_wrong_role(client):
     response = client.post("/api/admin/add_user", 

@@ -71,7 +71,7 @@ class AddUser(Resource):
             verif_dict = AdminModelApi.verif_add_user(request.json)
             if "message" not in verif_dict:
                 user = AdminModel.add_user_core(verif_dict)
-                return {"message": f"User created {user.id}", "id": {user.id}}, 201
+                return {"message": f"User created {user.id}", "id": user.id}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400
 
@@ -104,6 +104,7 @@ class DeleteUser(Resource):
     def get(self, id):
         if AdminModel.get_user(id):
             if AdminModel.delete_user_core(id):
+                print("*"*100)
                 return {"message": "User deleted"}, 200
             return {"message": "Error User deleted"}, 400
         return {"message", "User not found"}, 404
@@ -148,7 +149,7 @@ class AddOrg(Resource):
             verif_dict = AdminModelApi.verif_add_org(request.json)
             if "message" not in verif_dict:
                 org = AdminModel.add_org_core(verif_dict)
-                return {"message": f"Org created: {org.id}", "org_id": {org.id}}, 201
+                return {"message": f"Org created: {org.id}", "org_id": org.id}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400
 
