@@ -137,7 +137,12 @@ def add_user_core(form_dict):
         org = create_default_org(user)
         user.org_id = org.id
     else:
-        user.org_id = form_dict["org"]
+        loc_org = get_org(int(form_dict["org"]))
+        if loc_org:
+            user.org_id = loc_org.id
+        else:
+            org = create_default_org(user)
+            user.org_id = org.id
     
     db.session.commit()
 
