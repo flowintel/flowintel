@@ -803,6 +803,18 @@ def download_file(cid):
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
+
+@case_blueprint.route("/<cid>/download_history_md", methods=['GET'])
+@login_required
+def download_history_md(cid):
+    """Download the file"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            return CaseModel.download_history_md(case)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
 @case_blueprint.route("/<cid>/add_new_link", methods=['GET', 'POST'])
 @login_required
 @editor_required

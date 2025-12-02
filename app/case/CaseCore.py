@@ -1,4 +1,5 @@
 import os
+import re
 from threading import Thread
 from typing import List
 import uuid
@@ -1002,7 +1003,36 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Download a history"""
         history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
         if os.path.isfile(history_path):
-            return send_file(history_path, as_attachment=True, download_name=f"{case.title}_history")
+            return send_file(history_path, as_attachment=True, download_name=f"{case.title}_history.txt")
+        else:
+            return {"message": "History file not found", "toast_class": "danger-subtle"}, 404
+        
+    def download_history_md(self, case):
+        """Download a history"""
+        history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
+        if os.path.isfile(history_path):
+            loc_file = CommonModel.get_history(case.uuid)
+
+            # Using array for the table to be nicely formatted
+            loc_list = ["**Case ID:** " + str(case.id)]
+            loc_list.append("**Case Title:** " + case.title)
+            loc_list.append("**Case Description:** \n" + case.description)
+            loc_list.append("**Generated on:** " + str(datetime.datetime.now(tz=datetime.timezone.utc)) + "\n\n")
+            loc_list.append("---")
+            loc_list.append("# History")
+            loc_list.append("| Timestamp | User | Action |")
+            loc_list.append("|-------|-------|-------|")
+            for line in loc_file:
+                if line.strip() == "":
+                    continue
+                parts = re.match(r"\[(.*?)\]\((.*?)\)(.*)", line).groups()
+                if len(parts) == 3:
+                    date_str, user_str, action_str = parts
+                    loc_list.append(f"| {date_str.strip()} | {user_str.strip()} | {action_str.strip()[2:]} |")
+
+            loc_rep = "\n".join(loc_list) + "\n"
+
+            return loc_rep, 200, {'Content-Disposition': f'attachment; filename={case.title}_history.md'}
         else:
             return {"message": "History file not found", "toast_class": "danger-subtle"}, 404
         

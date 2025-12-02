@@ -231,7 +231,20 @@ export default {
 
     <template v-if="main_tab == 'history-case'">
         <template v-if="history">
-            <a class="btn btn-primary btn-sm mb-1" :href="'/case/'+case_id+'/download_history'">Download</a>
+            <div class="btn-group">
+                <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <small><i class="fa-solid fa-download fa-fw"></i></small> Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li class="mb-1 text-center">
+                        <a :href="'/case/'+case_id+'/download_history'">Text</a>
+                    </li>
+                    <li class="text-center">
+                        <a :href="'/case/'+case_id+'/download_history_md'">Markdown</a>
+                    </li>
+                </ul>
+            </div>
+            
             <div class="timeline timeline-custom-style">
                 <template v-for="h, key in history">
                     <template v-for="month, key_month in h">
