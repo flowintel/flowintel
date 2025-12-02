@@ -4,8 +4,16 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
+
 {% block content %}
-<form action="" method="post">
+<form action="" method="post" class="case-core-style">
     {{ form.hidden_tag() }}
     <div class="modal-body">
         <button class="btn btn-primary" @click="hide_task_creation()" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
@@ -35,12 +43,13 @@
                     <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div class="mb-3">
-                <label for="description" class="col-form-label">Description:</label>
-                {{form.description(class_="form-control")}}
-                {% if form.description.errors %}
-                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                {%endif%}
+            <div class="row">
+                <span class="mb-2">Description:</span>
+                <div style="display: flex">
+                    <div class="note-editor" id="editor"></div>
+                    <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                    <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
+                </div>
             </div>
             <hr>
             
@@ -120,6 +129,9 @@
             const selected_galaxies = ref([])
 
             const custom_tags = ref([])
+
+            const md = window.markdownit()
+            const note_editor_render = ref("")
             
             let to_hide = true
             function hide_task_creation(){
@@ -200,6 +212,19 @@
                     selected_galaxies.value = $(this).select2('data').map(item => item.id);
                     fetch_cluster()
                 })
+
+                const targetElement = document.getElementById('editor')
+                if(targetElement && targetElement.innerHTML === ""){
+                    editor = new Editor.EditorView({
+                        doc: "\n\n",
+                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            if (v.docChanged) {
+                                note_editor_render.value = editor.state.doc.toString()
+                            }
+                        })],
+                        parent: targetElement
+                    })
+                }
             })
 
             return {
@@ -210,6 +235,8 @@
                 tags_list,
                 cluster_list,
                 custom_tags,
+                md,
+                note_editor_render,
                 hide_task_creation
             }
         }
