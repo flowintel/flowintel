@@ -111,6 +111,7 @@ def add_task_case(cid):
         if isinstance(res, dict):
             form_dict = form_to_dict(form)
             form_dict.update(res)
+            form_dict["description"] = request.form.get("description")
             TemplateModel.add_task_case_template(form_dict, cid)
             flash("Template added", "success")
             return redirect(f"/templating/case/{cid}")
