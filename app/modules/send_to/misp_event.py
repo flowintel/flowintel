@@ -1,4 +1,5 @@
-from pymisp import MISPEvent, MISPObject, PyMISP
+import json
+from pymisp import MISPEvent, MISPGalaxy, MISPGalaxyCluster, MISPObject, PyMISP
 import uuid
 import conf.config_module as Config
 from .misp_object_event import all_object_to_misp, manage_object_creation
@@ -89,6 +90,95 @@ def event_report_note_task(case):
                 loc_notes += f"#### #{cp}\n{note['note']}\n ---\n\n"
     return loc_notes
 
+def create_galaxy_cluster(misp: PyMISP, event, clusters):
+    for cluster in clusters:
+        res = misp.get_galaxy(cluster["galaxy"]["uuid"])
+        if "errors" in res:
+            # Galaxy doesn't exist on this MISP instance
+            galax_dict = {
+                "description": cluster["galaxy"]["description"],
+                "icon": cluster["icon"],
+                "name": cluster["galaxy"]["name"],
+                "namespace": "misp",
+                "type": cluster["galaxy"]["type"],
+                "uuid": cluster["galaxy"]["uuid"],
+                "version": cluster["galaxy"]["version"]
+            }
+            m = MISPGalaxy()
+            m.from_dict(**galax_dict)
+
+            res_gal = misp._prepare_request(request_type='POST', url='galaxies/add', data=galax_dict)
+            if "errors" in res_gal:
+                # Galaxy creation failed
+                return event
+            else:
+                clust_dict = {
+                    "description": cluster["description"],
+                    "uuid": cluster["uuid"],
+                    "value": cluster["name"],
+                    "type": cluster["galaxy"]["type"],
+                    "meta": cluster["meta"],
+                    "version": cluster["version"],
+                    "collection_uuid":"",
+                    "Galaxy": {
+                        "uuid": cluster["galaxy"]["uuid"]
+                    },
+                    "published": True
+                }
+
+                cluster = MISPGalaxyCluster()
+                cluster.from_dict(**clust_dict)
+                cluster.parse_meta_as_elements()
+
+                m.add_galaxy_cluster(**cluster.to_dict())
+
+                loc_cluster = [{"GalaxyCluster": json.loads(cluster.to_json())}]
+                res = misp._prepare_request(request_type='POST', url='galaxies/import', data=loc_cluster)
+                event.add_galaxy(m)
+        else:
+            res_cluster = misp.get_galaxy_cluster(cluster["uuid"])
+            if "errors" in res_cluster:
+                # Cluster doesn't exist on this MISP instance
+                galax_dict = {
+                    "description": cluster["galaxy"]["description"],
+                    "icon": cluster["icon"],
+                    "name": cluster["galaxy"]["name"],
+                    "namespace": "misp",
+                    "type": cluster["galaxy"]["type"],
+                    "uuid": cluster["galaxy"]["uuid"],
+                    "version": cluster["galaxy"]["version"]
+                }
+                m = MISPGalaxy()
+                m.from_dict(**galax_dict)
+                
+                clust_dict = {
+                    "description": cluster["description"],
+                    "uuid": cluster["uuid"],
+                    "value": cluster["name"],
+                    "type": cluster["galaxy"]["type"],
+                    "meta": cluster["meta"],
+                    "version": cluster["version"],
+                    "collection_uuid":"",
+                    "Galaxy": {
+                        "uuid": cluster["galaxy"]["uuid"]
+                    },
+                    "published": True
+                }
+
+                cluster = MISPGalaxyCluster()
+                cluster.from_dict(**clust_dict)
+                cluster.parse_meta_as_elements()
+
+                m.add_galaxy_cluster(**cluster.to_dict())
+                loc_cluster = [{"GalaxyCluster": json.loads(cluster.to_json())}]
+                res = misp._prepare_request(request_type='POST', url='galaxies/import', data=loc_cluster)
+                event.add_galaxy(m)
+                
+            else:
+                # Cluster and Galaxy exist on this MISP instance
+                event.add_tag(cluster["tag"])
+
+    return event
 
 def handler(instance, case, user):
     """
@@ -123,6 +213,8 @@ def handler(instance, case, user):
                             break
             ## Case exist in the event
             if not current_case_object == None:
+                event = create_galaxy_cluster(misp, event, case["clusters"])
+                
                 for attribute in misp_objects[current_case_object].attributes:
                     attribute = common_edit(case, attribute)
                     if attribute.object_relation == 'case-owner-org-name' and not attribute.value == case["org_name"]:
@@ -253,6 +345,11 @@ def handler(instance, case, user):
                 misp_object = create_case(case)
                 event.add_object(misp_object)
 
+                for tag in case["tags"]:
+                    event.add_tag({'name': tag["name"], 'colour': tag["color"]})
+
+                event = create_galaxy_cluster(misp, event, case["clusters"])
+
                 for task in case["tasks"]:
                     loc_misp_task_object = create_task(task, case["uuid"])
                     event.add_object(loc_misp_task_object)
@@ -288,6 +385,11 @@ def handler(instance, case, user):
 
         misp_object = create_case(case)
         event.add_object(misp_object)
+
+        for tag in case["tags"]:
+            event.add_tag({'name': tag["name"], 'colour': tag["color"]})
+
+        event = create_galaxy_cluster(misp, event, case["clusters"])
 
         # Task
         loc_misp_task_object = None

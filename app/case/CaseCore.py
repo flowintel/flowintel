@@ -1164,21 +1164,25 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return False
 
 
-    def call_module_case(self, module, case_instance_id, case, user):
+    def call_module_case(self, module, case_instance_id, loc_case, user):
         """Run a module"""
-        org = CommonModel.get_org(case.owner_org_id)
+        org = CommonModel.get_org(loc_case.owner_org_id)
 
         tasks = list()
-        for task in case.tasks:
+        for task in loc_case.tasks:
             loc_task = task.to_json()
             loc_task["status"] = CommonModel.get_status(task.status_id).name
             tasks.append(loc_task)
 
-        case = case.to_json()
+        case = loc_case.to_json()
         case["org_name"] = org.name
         case["org_uuid"] = org.uuid
         case["tasks"] = tasks
         case["status"] = CommonModel.get_status(case["status_id"]).name
+
+        for cluster in case["clusters"]:
+            cluster["galaxy"] = Galaxy.query.get(cluster["galaxy_id"]).to_json()
+
 
         case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
         loc_instance = CommonModel.get_instance(case_instance.instance_id)
