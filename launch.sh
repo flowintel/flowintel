@@ -12,6 +12,9 @@ VENV_DIR="${VENV_DIR:-env}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 
+APP_URL=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_URL)")
+APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_PORT)")
+
 function prepare_app_run {
     # This function is to avoid having problem with the env for test
     # Activate the configured virtualenv if present
@@ -108,7 +111,7 @@ function production {
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
-    gunicorn -w 4 'app:create_app()' -b 127.0.0.1:7006 --access-logfile -
+    gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
 }
 
 function init_db {
@@ -125,6 +128,18 @@ function init_db {
     killscript
 }
 
+function init_db_prod {
+    prepare_app_run
+    export FLASKENV="production"
+    export HISTORY_DIR=$history_dir/history
+
+    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+
+    python3 app.py -i
+    python3 app.py -tg
+    python3 app.py -mm
+}
+
 function reload_db {
     prepare_app_run
     export HISTORY_DIR=$history_dir/history
@@ -135,20 +150,18 @@ function launch_docker {
     mkdir -p logs
     export FLASKENV="docker"
     export HISTORY_DIR=$history_dir/history
-    killscript
 
-    # Sessions screen avec logs
+    # Sessions screen with logs
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
-    # Afficher les logs à l'écran
+    # Display logs
     tail -n 0 -F logs/fcm.log logs/misp.log &
     TAIL_PID=$!
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
-    # Lancer le serveur principal (en avant-plan pour Docker)
-    python3 app.py
+    gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
 }
 
 function init_db_docker {
@@ -161,8 +174,6 @@ function init_db_docker {
     python3 app.py -i
     python3 app.py -tg
     python3 app.py -mm
-
-    killscript
 }
 
 if [ "$1" ]; then
@@ -171,6 +182,7 @@ if [ "$1" ]; then
         -ld | --launch_docker )     launch_docker;;
         -i | --init_db )            init_db;;
         -id | --init_db_docker )    init_db_docker;;
+        -ip | --init_db_prod )      init_db_prod;;
         -r | --reload_db )          reload_db;;
         -p | --production )         production;;
         -t | --test )               test;;

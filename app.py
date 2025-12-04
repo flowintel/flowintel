@@ -43,8 +43,6 @@ parser.add_argument("-mm", "--misp_modules", help="Add or update misp-modules", 
 parser.add_argument("-py", "--pymisp", help="Update pymisp misp objects", action="store_true")
 args = parser.parse_args()
 
-os.environ.setdefault('FLASKENV', 'development')
-
 app = create_app()
 
 @app.errorhandler(404)

@@ -41,8 +41,14 @@ COPY . /home/flowintel/app
 WORKDIR /home/flowintel/app
 
 # Replace secret and update config
+
+COPY conf/config.py.default conf/config.py
+COPY template.env .env
+
 RUN RAND=$(tr -cd "[:alnum:]" < /dev/urandom | head -c 20) && sed "s/SECRET_KEY_ENV_VAR_NOT_SET/$RAND/" conf/config.py | sponge conf/config.py
-RUN sed "s/127.0.0.1/0.0.0.0/" conf/config.py | sponge conf/config.py
+RUN sed "s/FLASK_URL *= *'.*'/FLASK_URL = '0.0.0.0'/" conf/config.py | sponge conf/config.py
+RUN sed "s/VALKEY_IP *= *'.*'/VALKEY_IP = 'valkey'/" conf/config.py | sponge conf/config.py
+
 
 # Set proper ownership
 RUN chown -R flowintel:flowintel /home/flowintel/app
@@ -93,16 +99,19 @@ EOF
 # Install Python dependencies (Python 3.9 + pip)
 RUN python3 --version && pip3 --version && pip3 install -r requirements.txt --timeout 240
 ENV PATH="/home/flowintel/.local/bin:${PATH}"
-# Init git submodules & app
+# Init git submodules & 
 RUN git submodule init && git submodule update && chmod +x launch.sh
-RUN script -q -c "./launch.sh --init_db_docker" /dev/null
 
 # Cleanup dead screens (optional)
 RUN screen -wipe || true
 
 # Final permissions check (in case)
-RUN chmod +x ./launch.sh
+RUN chmod +x ./launch.sh wait-for-it.sh
 
+
+# COPY entrypoint.sh /home/flowintel/app/entrypoint.sh
+RUN chmod +x /home/flowintel/app/entrypoint.sh
+ENTRYPOINT ["/home/flowintel/app/entrypoint.sh"]
 
 # Default command: interactive bash + launch
-CMD ["bash", "-i", "./launch.sh", "-ld"]
+CMD ["bash", "-i", "./launch.sh", "-p"]

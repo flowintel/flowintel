@@ -19,7 +19,7 @@ login_manager = LoginManager()
 
 def create_app():
     app = Flask(__name__)
-    config_name = os.environ.get("FLASKENV")
+    config_name = os.environ.get("FLASKENV", "development")
 
     app.config.from_object(Config[config_name])
 
@@ -29,10 +29,7 @@ def create_app():
     csrf.init_app(app)
     migrate.init_app(app, db, render_as_batch=True)
     if not config_name == 'testing':
-        if config_name == 'docker':
-            app.config["SESSION_SQLALCHEMY"] = db
-        else:
-            app.config["SESSION_REDIS"] = redis.from_url('redis://127.0.0.1:6379')
+        app.config["SESSION_REDIS"] = redis.from_url(f'redis://{app.config.get("VALKEY_IP")}:{app.config.get("VALKEY_PORT")}')
         session.init_app(app)
     login_manager.login_view = "account.login"
     login_manager.init_app(app)
