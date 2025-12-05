@@ -84,7 +84,7 @@ The platform enables, but does not itself operate:
 * Segregated development vs production environments.
 * No data ever leaves the Controller’s environment unless configured by them.
 
-**Developer note:**: Implementation, lawful basis, data minimisation, and retention enforcement remain under the responsibility of the deploying Controller.
+**Developer note**: Implementation, lawful basis, data minimisation, and retention enforcement remain under the responsibility of the deploying Controller.
 
 ## Next steps (Controller obligations)
 

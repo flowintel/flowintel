@@ -43,7 +43,6 @@ To be completed by the Controller based on their usage:
 * Digital identifiers (IP addresses, domains, user handles, device IDs)
 * Evidence attachments (images, logs, documents, forensic output)
 * Access logs and audit trails
-* Attachments (images, logs, documents, forensic outputs)
 * Intelligence objects (MISP or equivalent structured objects)
 
 ## DPIA trigger questions

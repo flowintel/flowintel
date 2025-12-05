@@ -87,7 +87,7 @@ _Detail legal instruments or MoUs if external transfers occur._
 * None / EU only / Cross-border (document mechanism)
 * Transfer safeguard: _________
 
-## Security seasures
+## Security measures
 
 Describe technical and organisational measures to protect personal data.
 
