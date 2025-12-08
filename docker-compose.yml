@@ -20,7 +20,7 @@ services:
     ports:
       - '${VALKEY_PORT:-6379}:6379'
     volumes:
-      - ./data:/data
+      - valkey-data:/data
     networks:
       - net
 
@@ -49,6 +49,7 @@ services:
 volumes:
   db:
   flowintel-data:
+  valkey-data:
 
 networks:
   net:
