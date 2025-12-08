@@ -7,11 +7,6 @@ else
     echo "[WARN] Virtualenv '$VENV_DIR' not found; continuing without activation" >&2
 fi
 
-#!/bin/bash
-
-# Default environment
-FLASKENV="development"
-
 # Function definitions
 function migrate {
     flask db migrate
