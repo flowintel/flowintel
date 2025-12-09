@@ -6,8 +6,8 @@ class Config:
     FLASK_PORT = 7006
     MISP_MODULE = '127.0.0.1:6666'
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
-    VALKEY_IP = '127.0.0.1'
-    VALKEY_PORT = '6379'
+    VALKEY_IP = os.getenv('VALKEY_IP', '127.0.0.1')
+    VALKEY_PORT = os.getenv('VALKEY_PORT', '6379')
 
 
 class DevelopmentConfig(Config):

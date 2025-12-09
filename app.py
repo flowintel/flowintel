@@ -78,8 +78,8 @@ elif args.delete_db:
         db.drop_all()
 elif args.taxo_galaxies:
     with app.app_context():
-        create_taxonomies()
-        create_galaxies()
+        create_taxonomies(True)
+        create_galaxies(True)
 elif args.misp_modules:
     with app.app_context():
         create_modules_db()

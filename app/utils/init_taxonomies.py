@@ -82,7 +82,7 @@ def create_tag(taxonomy: Taxonomy, taxo_id: int, taxonomies: Taxonomies):
             create_tag_db(p, loc_tag, taxonomy, taxonomies, taxo_id)
 
 
-def create_taxonomies():
+def create_taxonomies(install=False):
     print("[+] Create/Update Taxonomies...")
     taxonomies = get_taxonomies()
     for taxonomy in list(taxonomies.keys()):
@@ -99,29 +99,30 @@ def create_taxonomies():
 
             create_tag(taxonomy, taxo.id, taxonomies)
         else:
-            if not t.version:
+            if not install:
+                if not t.version:
+                    create_tag(taxonomy, t.id, taxonomies)
+
+                    t.version = taxonomies.get(taxonomy).version
+                    db.session.commit()
+                if not t.uuid:
+                    create_tag(taxonomy, t.id, taxonomies)
+
+                    t.uuid = taxonomies.get(taxonomy).taxonomy["uuid"]
+                    db.session.commit()
+
+                if not int(t.version) == taxonomies.get(taxonomy).version:
+                    create_tag(taxonomy, t.id, taxonomies)
+
+                    t.version = taxonomies.get(taxonomy).version
+                    db.session.commit()
+
                 create_tag(taxonomy, t.id, taxonomies)
-
-                t.version = taxonomies.get(taxonomy).version
-                db.session.commit()
-            if not t.uuid:
-                create_tag(taxonomy, t.id, taxonomies)
-
-                t.uuid = taxonomies.get(taxonomy).taxonomy["uuid"]
-                db.session.commit()
-
-            if not int(t.version) == taxonomies.get(taxonomy).version:
-                create_tag(taxonomy, t.id, taxonomies)
-
-                t.version = taxonomies.get(taxonomy).version
-                db.session.commit()
-
-            create_tag(taxonomy, t.id, taxonomies)
-            for tag in taxonomies.get(taxonomy).machinetags():
-                delete_double_tag(tag)
+                for tag in taxonomies.get(taxonomy).machinetags():
+                    delete_double_tag(tag)
 
 
-def create_galaxies():
+def create_galaxies(install=False):
     print("[+] Create/Update Galaxies...")
     galaxies, clusters = get_galaxies()
     for galaxy in list(galaxies.keys()):
@@ -138,7 +139,7 @@ def create_galaxies():
             )
             db.session.add(galax)
             db.session.commit()
-        elif galaxy_db.version < current_galaxy.version:
+        elif galaxy_db.version < current_galaxy.version and not install:
             galaxy_db.name = current_galaxy.name
             galaxy_db.version = current_galaxy.version
             galaxy_db.description = current_galaxy.description
@@ -170,7 +171,7 @@ def create_galaxies():
                 db.session.add(cluster_created)
                 db.session.commit()
 
-            elif cluster_db.version < current_cluster_info.version:
+            elif cluster_db.version < current_cluster_info.version and not install:
                 if current_cluster.meta:
                     meta = json.dumps(current_cluster.meta.to_json())
                 else:

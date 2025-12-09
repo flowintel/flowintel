@@ -9,9 +9,6 @@ fi
 
 #!/bin/bash
 
-# Default environment
-FLASKENV="development"
-
 # Function definitions
 function migrate {
     flask db migrate

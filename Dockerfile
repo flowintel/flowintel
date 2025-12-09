@@ -1,20 +1,12 @@
-# Use the official Ubuntu Focal (20.04) as a parent image
-FROM ubuntu:focal
+# Use the official Ubuntu noble (24.04) as a parent image
+FROM ubuntu:noble
 
 # Needed to prevent tzdata to be interactive
 RUN ln -fs /usr/share/zoneinfo/Europe/Luxembourg /etc/localtime
 
-# Add support for Python 3.9 (deadsnakes PPA)
 RUN apt update && apt install -y \
     sudo moreutils software-properties-common \
-    git screen libolm-dev librsvg2-bin wget vim curl gnupg \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt update && apt install -y python3.9 python3.9-venv python3.9-distutils
-
-# Symlink python3 and pip3 to Python 3.9
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1 && \
-    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.9 && \
-    ln -s /usr/local/bin/pip /usr/bin/pip3
+    git screen libolm-dev librsvg2-bin wget vim curl gnupg python3-venv python3-pip
 
 # Pandoc dependencies
 RUN apt install -y texlive texlive-xetex texlive-fonts-extra
@@ -28,9 +20,6 @@ dpkg -i pandoc*.deb
 rm -rf $TMP
 EOF
 
-# Dependencies for mermaid-cli / puppeteer
-RUN apt install -y libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 libnss3 libgbm1
-
 # Create a dedicated user and group
 RUN groupadd -r flowintel && useradd -m -g flowintel flowintel
 
@@ -41,13 +30,11 @@ COPY . /home/flowintel/app
 WORKDIR /home/flowintel/app
 
 # Replace secret and update config
-
 COPY conf/config.py.default conf/config.py
 COPY template.env .env
 
 RUN RAND=$(tr -cd "[:alnum:]" < /dev/urandom | head -c 20) && sed "s/SECRET_KEY_ENV_VAR_NOT_SET/$RAND/" conf/config.py | sponge conf/config.py
 RUN sed "s/FLASK_URL *= *'.*'/FLASK_URL = '0.0.0.0'/" conf/config.py | sponge conf/config.py
-RUN sed "s/VALKEY_IP *= *'.*'/VALKEY_IP = 'valkey'/" conf/config.py | sponge conf/config.py
 
 
 # Set proper ownership
@@ -96,22 +83,22 @@ eof
 chmod +x mmdc
 EOF
 
-# Install Python dependencies (Python 3.9 + pip)
-RUN python3 --version && pip3 --version && pip3 install -r requirements.txt --timeout 240
-ENV PATH="/home/flowintel/.local/bin:${PATH}"
-# Init git submodules & 
-RUN git submodule init && git submodule update && chmod +x launch.sh
+# Install Python dependencies in a virtualenv
+RUN python3 -m venv /home/flowintel/venv
+ENV PATH="/home/flowintel/venv/bin:${PATH}"
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt --timeout 240
+# Init git submodules & update
+RUN git submodule init && git submodule update
 
 # Cleanup dead screens (optional)
 RUN screen -wipe || true
 
 # Final permissions check (in case)
-RUN chmod +x ./launch.sh wait-for-it.sh
-
+RUN chmod +x launch.sh wait-for-it.sh entrypoint.sh /home/flowintel/venv/bin/activate
 
 # COPY entrypoint.sh /home/flowintel/app/entrypoint.sh
-RUN chmod +x /home/flowintel/app/entrypoint.sh
 ENTRYPOINT ["/home/flowintel/app/entrypoint.sh"]
 
 # Default command: interactive bash + launch
-CMD ["bash", "-i", "./launch.sh", "-p"]
+CMD ["bash", "-i", "./launch.sh", "-ld"]

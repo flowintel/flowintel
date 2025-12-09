@@ -20,7 +20,7 @@ services:
     ports:
       - '${VALKEY_PORT:-6379}:6379'
     volumes:
-      - ./data:/data
+      - valkey-data:/data
     networks:
       - net
 
@@ -37,6 +37,7 @@ services:
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
       - DB_NAME=${POSTGRES_DB}
+      - VALKEY_IP=valkey
     networks:
       - net
     depends_on:
@@ -49,6 +50,7 @@ services:
 volumes:
   db:
   flowintel-data:
+  valkey-data:
 
 networks:
   net:
