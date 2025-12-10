@@ -12,6 +12,25 @@ VENV_DIR="${VENV_DIR:-env}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 
+
+# Configuration files
+CONF_DIR="$(dirname "$0")/conf"
+CONFIG_FILE="$CONF_DIR/config.py"
+DEFAULT_FILE="$CONF_DIR/config.py.default"
+echo $CONFIG_FILE
+
+# Check if config.py exists
+if [ ! -f "$CONFIG_FILE" ]; then
+    if [ -f "$DEFAULT_FILE" ]; then
+        echo "config.py not found. Creating one from config.py.default..."
+        cp "$DEFAULT_FILE" "$CONFIG_FILE"
+    else
+        echo "No default config file found in $CONF_DIR"
+        exit 1
+    fi
+fi
+
+# Get app URL and port from config
 APP_URL=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_URL)")
 APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_PORT)")
 
@@ -27,22 +46,6 @@ function prepare_app_run {
     mkdir -p logs  # Directory for log files
 }
 
-function manage_config_file {
-    CONF_DIR="$(dirname "$0")/conf"
-    CONFIG_FILE="$CONF_DIR/config.py"
-    DEFAULT_FILE="$CONF_DIR/config.py.default"
-
-    # Check if config.py exists
-    if [ ! -f "$CONFIG_FILE" ]; then
-        if [ -f "$DEFAULT_FILE" ]; then
-            echo "config.py not found. Creating one from config.py.default..."
-            cp "$DEFAULT_FILE" "$CONFIG_FILE"
-        else
-            echo "No default config file found in $CONF_DIR"
-            exit 1
-        fi
-    fi
-}
 
 function killscript {
     echo "Stopping existing sessions..."
@@ -92,7 +95,6 @@ function launch {
 function test {
     export FLASKENV="testing"
     export HISTORY_DIR=$history_dir/history_test
-    manage_config_file
     pytest
     rm -r $HISTORY_DIR
 }
