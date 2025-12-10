@@ -43,8 +43,6 @@ parser.add_argument("-mm", "--misp_modules", help="Add or update misp-modules", 
 parser.add_argument("-py", "--pymisp", help="Update pymisp misp objects", action="store_true")
 args = parser.parse_args()
 
-os.environ.setdefault('FLASKENV', 'development')
-
 app = create_app()
 
 @app.errorhandler(404)
@@ -80,8 +78,8 @@ elif args.delete_db:
         db.drop_all()
 elif args.taxo_galaxies:
     with app.app_context():
-        create_taxonomies()
-        create_galaxies()
+        create_taxonomies(True)
+        create_galaxies(True)
 elif args.misp_modules:
     with app.app_context():
         create_modules_db()

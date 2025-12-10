@@ -47,3 +47,4 @@ tmp/
 conf/config.py
 conf/config_modules.py
 conf/config_module.py
+/data
