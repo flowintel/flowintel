@@ -36,6 +36,7 @@ def common_create(case_task, case_uuid, misp_object):
     misp_object.add_attribute('finish-date', value=case_task["finish_date"])
     misp_object.add_attribute('status', value=case_task["status"])
     misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
+    misp_object.add_attribute('flowintel-url', value=Config.ORIGIN_URL)
     return misp_object
 
 def create_case(case):
@@ -62,6 +63,7 @@ def create_task_note(note):
     misp_object.add_attribute('task-uuid', value=note["task_uuid"])
     misp_object.add_attribute('note-uuid', value=note["uuid"])
     misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
+    misp_object.add_attribute('flowintel-url', value=Config.ORIGIN_URL)
     return misp_object
 
 def create_task_resource(resource):
@@ -71,6 +73,7 @@ def create_task_resource(resource):
     misp_object.add_attribute('task-uuid', value=resource["task_uuid"])
     misp_object.add_attribute('resource-uuid', value=resource["uuid"])
     misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
+    misp_object.add_attribute('flowintel-url', value=Config.ORIGIN_URL)
     return misp_object
 
 def event_report_note(case):

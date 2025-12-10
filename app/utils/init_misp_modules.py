@@ -5,6 +5,7 @@ from .utils import query_get_module
 
 
 def create_modules_db():
+    print("[+] Create/Update MISP-Modules...")
     modules = query_get_module()
     if not "message" in modules:
         for module in modules:
