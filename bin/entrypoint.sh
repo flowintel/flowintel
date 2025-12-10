@@ -3,7 +3,7 @@ set -e
 
 echo "Checking if PostgreSQL server is up..."
 
-/home/flowintel/app/wait-for-it.sh postgresql:5432 --timeout=30 --strict -- echo "Postgres is up"
+/home/flowintel/app/bin/wait-for-it.sh postgresql:5432 --timeout=30 --strict -- echo "Postgres is up"
 
 sleep 2
 

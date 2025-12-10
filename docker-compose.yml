@@ -34,10 +34,10 @@ services:
     environment:
       - DB_HOST=postgresql
       - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_NAME=${POSTGRES_DB}
-      - VALKEY_IP=valkey
+      - DB_USER=${POSTGRES_USER:-flowintel}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-flowintel}
+      - DB_NAME=${POSTGRES_DB:-flowintel}
+      - VALKEY_IP=${VALKEY_IP:-valkey}
     networks:
       - net
     depends_on:

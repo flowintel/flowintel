@@ -95,10 +95,9 @@ RUN git submodule init && git submodule update
 RUN screen -wipe || true
 
 # Final permissions check (in case)
-RUN chmod +x launch.sh wait-for-it.sh entrypoint.sh /home/flowintel/venv/bin/activate
+RUN chmod +x launch.sh bin/wait-for-it.sh bin/entrypoint.sh /home/flowintel/venv/bin/activate
 
-# COPY entrypoint.sh /home/flowintel/app/entrypoint.sh
-ENTRYPOINT ["/home/flowintel/app/entrypoint.sh"]
+ENTRYPOINT ["/home/flowintel/app/bin/entrypoint.sh"]
 
 # Default command: interactive bash + launch
 CMD ["bash", "-i", "./launch.sh", "-ld"]
