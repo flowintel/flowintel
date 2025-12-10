@@ -138,14 +138,16 @@
     <hr class="fading-line mt-4 mb-4">
     <!-- Search bar -->
 
-    <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
+    <nav aria-label="Page navigation" class="nav-pagination" v-if="templates_list && templates_list.nb_pages > 1">
         <ul class="pagination">
             <li :class="{'page-item': true, 'disabled': current_page == 1}">
                 <button class="page-link" @click="fetch_template(Math.max(1, current_page-1))">Previous</button>
             </li>
-            <template v-for="cp in templates_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_template(cp)">[[cp]]</button></li>
-            </template>
+            <li v-for="page in visiblePages"
+                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
+                <button class="page-link" v-if="page !== '...'" @click="fetch_template(page)">[[ page ]]</button>
+                <span class="page-link" v-else>...</span>
+            </li>
             <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
                 <button class="page-link" @click="fetch_template(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
             </li>
@@ -165,14 +167,16 @@
         </div>
     </template>
 
-    <nav aria-label="Page navigation example" v-if="templates_list && templates_list.nb_pages > 1">
+    <nav aria-label="Page navigation" class="mt-3 nav-pagination" v-if="templates_list && templates_list.nb_pages > 1">
         <ul class="pagination">
             <li :class="{'page-item': true, 'disabled': current_page == 1}">
                 <button class="page-link" @click="fetch_template(Math.max(1, current_page-1))">Previous</button>
             </li>
-            <template v-for="cp in templates_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetch_template(cp)">[[cp]]</button></li>
-            </template>
+            <li v-for="page in visiblePages"
+                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
+                <button class="page-link" v-if="page !== '...'" @click="fetch_template(page)">[[ page ]]</button>
+                <span class="page-link" v-else>...</span>
+            </li>
             <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
                 <button class="page-link" @click="fetch_template(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
             </li>
@@ -341,6 +345,25 @@
                 }
                 fetch_custom_tags()
 
+                const visiblePages = computed(() => {
+                    const pages = []
+                    const total = templates_list.value.nb_pages
+                    const current = current_page.value
+                    if (total <= 7) {
+                        for (let i = 1; i <= total; i++) pages.push(i)
+                    } else {
+                        if (current <= 4) {
+                            pages.push(1, 2, 3, 4, 5, '...', total-1, total)
+                        } else if (current >= total - 3) {
+                            console.log("Over total-3");
+                            pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
+                        } else {
+                            pages.push(1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total)
+                        }
+                    }
+                    return pages
+                })
+
 
                 onMounted(() => {
                     $('.select2-select').select2({
@@ -386,7 +409,8 @@
                     tags_list,
                     galaxies,
                     cluster_list,
-                    custom_tags
+                    custom_tags,
+                    visiblePages
                 }
             }
         }).mount('#main-container')

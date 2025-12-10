@@ -12,6 +12,11 @@ main {
   min-height: 90vh;
 }
 
+.nav-pagination {
+  position: relative;
+  left: calc(40% - var(--sidebar));
+}
+
 [v-cloak] {
   display: none;
 }

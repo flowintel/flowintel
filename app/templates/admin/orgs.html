@@ -26,6 +26,22 @@
 
     <hr class="fading-line-2 mt-4 mb-4">
 
+    <nav aria-label="Page navigation" class="mt-3 nav-pagination" v-if="orgs_list && orgs_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetchOrgs(Math.max(1, current_page-1))">Previous</button>
+            </li>
+            <li v-for="page in visiblePages"
+                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
+                <button class="page-link" v-if="page !== '...'" @click="fetchOrgs(page)">[[ page ]]</button>
+                <span class="page-link" v-else>...</span>
+            </li>
+            <li :class="{'page-item': true, 'disabled': current_page == orgs_list.nb_pages}">
+                <button class="page-link" @click="fetchOrgs(Math.min(current_page+1, orgs_list.nb_pages))">Next</button>
+            </li>
+        </ul>
+    </nav>
+
     <div class="case-core-style">
         {% if current_user.is_admin() %}
             <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New User</a>
@@ -148,13 +164,19 @@
         </template>
     </div>
 
-    <nav aria-label="Page navigation example" v-if="orgs_list && orgs_list.nb_pages > 1">
+    <nav aria-label="Page navigation" class="mt-3 nav-pagination" v-if="orgs_list && orgs_list.nb_pages > 1">
         <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}"><button class="page-link" @click="fetchOrgs(Math.max(1, current_page-1))">Previous</button></li>
-            <template v-for="cp in orgs_list.nb_pages">
-                <li :class="{'page-item': true, 'active': current_page==cp}"><button class="page-link" @click="fetchOrgs(cp)">[[cp]]</button></li>
-            </template>
-            <li :class="{'page-item': true, 'disabled': current_page == orgs_list.nb_pages}"><button class="page-link" @click="fetchOrgs(Math.min(current_page+1, orgs_list.nb_pages))">Next</button></li>
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetchOrgs(Math.max(1, current_page-1))">Previous</button>
+            </li>
+            <li v-for="page in visiblePages"
+                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
+                <button class="page-link" v-if="page !== '...'" @click="fetchOrgs(page)">[[ page ]]</button>
+                <span class="page-link" v-else>...</span>
+            </li>
+            <li :class="{'page-item': true, 'disabled': current_page == orgs_list.nb_pages}">
+                <button class="page-link" @click="fetchOrgs(Math.min(current_page+1, orgs_list.nb_pages))">Next</button>
+            </li>
         </ul>
     </nav>
 {% endblock %}
@@ -225,6 +247,25 @@
                     }
                 }
 
+                const visiblePages = computed(() => {
+                    const pages = []
+                    const total = orgs_list.value.nb_pages
+                    const current = current_page.value
+                    if (total <= 7) {
+                        for (let i = 1; i <= total; i++) pages.push(i)
+                    } else {
+                        if (current <= 4) {
+                            pages.push(1, 2, 3, 4, 5, '...', total-1, total)
+                        } else if (current >= total - 3) {
+                            console.log("Over total-3");
+                            pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
+                        } else {
+                            pages.push(1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total)
+                        }
+                    }
+                    return pages
+                })
+
 
                 fetchOrgs(1)
 
@@ -238,7 +279,8 @@
                     delete_user,
                     current_page,
                     fetchOrgs,
-                    onInput
+                    onInput,
+                    visiblePages
                 }
             }
         }).mount('#main-container')
