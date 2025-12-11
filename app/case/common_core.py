@@ -15,7 +15,7 @@ from ..custom_tags import custom_tags_core as CustomModel
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
-HISTORY_DIR = os.environ.get("HISTORY_DIR")
+HISTORY_DIR = os.environ.get("HISTORY_DIR", "history")
 
 
 def get_present_in_case(case_id: int, current_user: User) -> bool:
@@ -633,7 +633,6 @@ def create_task_from_template(template_id, cid):
         uuid=str(uuid.uuid4()),
         title=template.title,
         description=template.description,
-        url=template.url,
         creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
         last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
         case_id=cid,
@@ -643,6 +642,24 @@ def create_task_from_template(template_id, cid):
     )
     db.session.add(task)
     db.session.commit()
+
+    for t_note in template.notes:
+        note = Note(
+            uuid=str(uuid.uuid4()),
+            note=t_note.note,
+            task_id=task.id,
+            task_order_id=task.nb_notes + 1,
+        )
+        db.session.add(note)
+        db.session.commit()
+
+    for t_url_tool in template.urls_tools:
+        url_tool = Task_Url_Tool(
+            task_id=task.id,
+            name=t_url_tool.name,
+        )
+        db.session.add(url_tool)
+        db.session.commit()
 
     for t_t in Task_Template_Tags.query.filter_by(task_id=template.id).all():
         task_tag = Task_Tags(
