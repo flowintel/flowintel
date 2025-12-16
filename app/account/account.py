@@ -9,9 +9,9 @@ from flask_login import (
 )
 from . import account_core as AccountModel
 from ..utils.utils import form_to_dict
+from ..utils.logger import flowintel_log
 
 from wtforms.validators import Email, ValidationError
-import logging
 
 account_blueprint = Blueprint(
     'account',
@@ -63,32 +63,29 @@ def login():
     """Log in an existing user."""
     form = LoginForm()
     if form.validate_on_submit():
-        audit_prefix = current_app.config.get('AUDIT_LOG_PREFIX', 'AUDIT')
-
         try:
             Email(form.email.data)
         except ValidationError:
             flash('Invalid email or password.', 'error')
-            logging.warning(f'{request.remote_addr} - - "{audit_prefix}: 401 - Failed login attempt - Invalid email format. Email: {form.email.data}')
+            flowintel_log("audit", 401, "Failed login attempt - Invalid email format", Email=form.email.data)
         else:
             user = User.query.filter_by(email=form.email.data).first()
             if user is not None and user.password_hash is not None and \
                     user.verify_password(form.password.data):
                 login_user(user, form.remember_me.data)
-                logging.info(f'{request.remote_addr} - - "{audit_prefix}: 200 - Successful login. Email: {form.email.data}')
+                flowintel_log("audit", 200, "Successful login", Email=form.email.data)
                 flash('You are now logged in. Welcome back!', 'success')
                 return redirect(request.args.get('next') or "/")
             else:
                 flash('Invalid email or password.', 'error')
-                logging.warning(f'{request.remote_addr} - - "{audit_prefix}: 401 - Failed login attempt - Invalid credentials. Email: {form.email.data}')
+                flowintel_log("audit", 401, "Failed login attempt - Invalid credentials", Email=form.email.data)
     return render_template('account/login.html', form=form)
 
 @account_blueprint.route('/logout')
 @login_required
 def logout():
     user_email = current_user.email
-    audit_prefix = current_app.config.get('AUDIT_LOG_PREFIX', 'AUDIT')
-    logging.info(f'{request.remote_addr} - - "{audit_prefix}: 200 - User logout. Email: {user_email}')
+    flowintel_log("audit", 200, "User logout", Email=user_email)
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('account.login'))
