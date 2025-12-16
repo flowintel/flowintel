@@ -56,8 +56,16 @@
                         <div style="color: red;">{{form.matrix_id.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
-            </div>
-            <div class="row">
+            </div>            
+            <div class="row mt-3">
+                <div class="col">
+                    <div class="form-check">
+                        {{form.change_password(class_="form-check-input", id="changePasswordCheckbox")}}
+                        {{form.change_password.label(class_="form-check-label", for="changePasswordCheckbox")}}
+                    </div>
+                </div>
+            </div>            
+            <div class="row" id="password-fields" style="display: none;">
                 <div class="col" id="password-container">
                     <label for="password" class="col-form-label">{{ form.password.label }}</label>
                     <div class="position-relative">
@@ -152,5 +160,22 @@
             return { password, togglePassword };
         }
     }).mount('#password-container');
+
+    // Toggle password fields visibility based on checkbox
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkbox = document.getElementById('changePasswordCheckbox');
+        const passwordFields = document.getElementById('password-fields');
+        
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                passwordFields.style.display = '';
+            } else {
+                passwordFields.style.display = 'none';
+                // Clear password fields when hiding
+                document.getElementById('password').value = '';
+                document.getElementById('password2').value = '';
+            }
+        });
+    });
 </script>
 {% endblock %}

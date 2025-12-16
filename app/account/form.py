@@ -27,15 +27,9 @@ class EditUserFrom(FlaskForm):
     nickname = StringField('Nickname', validators=[Optional(),Length(1, 64)])
     matrix_id = StringField('Matrix id', render_kw={"placeholder": "@testuser:matrix.org"})
     email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
-    password = PasswordField('Password', validators=[
-            Optional(), 
-            EqualTo('password2', 'Passwords must match'),
-            Length(min=8, max=64, message="Password must be between 8 and 64 characters."),
-            Regexp(r'.*[A-Z].*', message="Password must contain at least one uppercase letter."),
-            Regexp(r'.*[a-z].*', message="Password must contain at least one lowercase letter."),
-            Regexp(r'.*\d.*', message="Password must contain at least one digit.")
-        ])
-    password2 = PasswordField('Confirm password')
+    change_password = BooleanField('Change password')
+    password = PasswordField('Password', validators=[Optional()])
+    password2 = PasswordField('Confirm password', validators=[Optional()])
 
     submit = SubmitField('Save')
 
@@ -45,3 +39,25 @@ class EditUserFrom(FlaskForm):
                 raise ValidationError('Email already registered. (Did you mean to '
                                     '<a href="{}">log in</a> instead?)'.format(
                                         url_for('account.index')))
+    
+    def validate_password(self, field):
+        """Validate password only if change_password is checked"""
+        if self.change_password.data:
+            if not field.data:
+                raise ValidationError('Password is required when changing password.')
+            if len(field.data) < 8 or len(field.data) > 64:
+                raise ValidationError('Password must be between 8 and 64 characters.')
+            if not any(c.isupper() for c in field.data):
+                raise ValidationError('Password must contain at least one uppercase letter.')
+            if not any(c.islower() for c in field.data):
+                raise ValidationError('Password must contain at least one lowercase letter.')
+            if not any(c.isdigit() for c in field.data):
+                raise ValidationError('Password must contain at least one digit.')
+    
+    def validate_password2(self, field):
+        """Validate password confirmation only if change_password is checked"""
+        if self.change_password.data:
+            if not field.data:
+                raise ValidationError('Password confirmation is required.')
+            if field.data != self.password.data:
+                raise ValidationError('Passwords must match.')
