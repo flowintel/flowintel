@@ -1,5 +1,5 @@
 from .. import db
-from ..db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_User
+from ..db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_User, Role
 from sqlalchemy import desc
 import datetime
 
@@ -32,6 +32,35 @@ def delete_notification_core(nid):
         db.session.commit()
         return True
     return False
+
+
+def create_notification_for_admins(message, html_icon, case_id=None, user_id_for_redirect=None):
+    # Create a notification for all administrators in the system.
+    admin_role = Role.query.filter_by(admin=True).first()
+    if not admin_role:
+        return False
+    admin_users = User.query.filter_by(role_id=admin_role.id).all()
+
+    # If user_id_for_redirect is provided, store it as negative to distinguish from real case IDs
+    stored_case_id = None
+    if user_id_for_redirect:
+        stored_case_id = -abs(user_id_for_redirect)
+    elif case_id:
+        stored_case_id = case_id
+    
+    for admin_user in admin_users:
+        notif = Notification(
+            message=message,
+            is_read=False,
+            user_id=admin_user.id,
+            case_id=stored_case_id,
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            html_icon=html_icon
+        )
+        db.session.add(notif)
+    
+    db.session.commit()
+    return True
 
 
 def create_notification_org(message, case_id, org_id, html_icon, current_user):
