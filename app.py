@@ -10,6 +10,7 @@ import json
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+from conf.config import Config
 
 #######
 # Log #
@@ -19,7 +20,8 @@ if not os.path.isdir(logs_folder):
     os.mkdir(logs_folder)
 rootLogger = logging.getLogger()
 
-my_handler = RotatingFileHandler(f"{logs_folder}/record.log", mode='a', maxBytes=10*1024*1024, 
+log_file = Config.LOG_FILE if hasattr(Config, 'LOG_FILE') else 'record.log'
+my_handler = RotatingFileHandler(f"{logs_folder}/{log_file}", mode='a', maxBytes=10*1024*1024, 
                                  backupCount=5, encoding=None, delay=0)
 
 rootLogger.addHandler(my_handler)
