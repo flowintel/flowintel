@@ -20,15 +20,20 @@ if not os.path.isdir(logs_folder):
     os.mkdir(logs_folder)
 rootLogger = logging.getLogger()
 
+# Log formatter, timestamp in Flask format
+log_formatter = logging.Formatter('%(asctime)s - %(message)s', datefmt='%d/%b/%Y %H:%M:%S')
+
 log_file = Config.LOG_FILE if hasattr(Config, 'LOG_FILE') else 'record.log'
 my_handler = RotatingFileHandler(f"{logs_folder}/{log_file}", mode='a', maxBytes=10*1024*1024, 
                                  backupCount=5, encoding=None, delay=0)
+my_handler.setFormatter(log_formatter)
 
 rootLogger.addHandler(my_handler)
 # fileHandler = logging.FileHandler('logs/record.log')
 # rootLogger.addHandler(fileHandler)
 
 consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(log_formatter)
 rootLogger.addHandler(consoleHandler)
 rootLogger.setLevel(logging.DEBUG)
 

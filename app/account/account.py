@@ -1,5 +1,6 @@
 from ..db_class.db import User, Role
-from flask import Blueprint, render_template, redirect, url_for, request, flash, session, abort
+from .form import LoginForm, EditUserFrom
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, session, abort
 from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
 from flask_login import (
     current_user,
@@ -9,6 +10,7 @@ from flask_login import (
 )
 from . import account_core as AccountModel
 from ..utils.utils import form_to_dict
+from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel
 import logging
 import time
@@ -141,6 +143,7 @@ def login():
             Email(form.email.data)
         except ValidationError:
             flash('Invalid email or password.', 'error')
+            flowintel_log("audit", 401, "Failed login attempt - Invalid email format", Email=form.email.data)
             token = create_password_reset_token()
             session['password_reset_token'] = token
             session['password_reset_token_time'] = time.time()
@@ -151,6 +154,7 @@ def login():
             if user is not None and user.password_hash is not None and \
                     user.verify_password(form.password.data):
                 login_user(user, form.remember_me.data)
+                flowintel_log("audit", 200, "Successful login", Email=form.email.data)
                 # Clear rate limit on successful login
                 client_ip = get_client_ip()
                 session.pop(f'login_attempts_{client_ip}', None)
@@ -161,6 +165,8 @@ def login():
                 return redirect(request.args.get('next') or "/")
             else:
                 flash('Invalid email or password.', 'error')
+                flowintel_log("audit", 401, "Failed login attempt - Invalid credentials", Email=form.email.data)
+    return render_template('account/login.html', form=form)
                 # Generate token for password reset access
                 token = create_password_reset_token()
                 session['password_reset_token'] = token
@@ -222,6 +228,8 @@ def request_password_reset():
 @account_blueprint.route('/logout')
 @login_required
 def logout():
+    user_email = current_user.email
+    flowintel_log("audit", 200, "User logout", Email=user_email)
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('account.login'))
