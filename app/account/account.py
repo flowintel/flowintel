@@ -102,6 +102,10 @@ def edit_user():
 
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
+        # Only include password if change_password is checked
+        if not form.change_password.data:
+            form_dict.pop('password', None)
+            form_dict.pop('password2', None)
         AccountModel.edit_user_core(form_dict, current_user.id)
         return redirect("/account")
     else:

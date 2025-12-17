@@ -66,8 +66,19 @@
                     <div style="color: red;">{{form.matrix_id.errors[0] | safe}}</div>
                 {%endif%}
             </div>
+        </div>        
+        {% if edit_mode %}
+        <div class="row mt-3">
+            <div class="col">
+                <div class="form-check">
+                    {{form.change_password(class_="form-check-input", id="changePasswordCheckbox")}}
+                    {{form.change_password.label(class_="form-check-label", for="changePasswordCheckbox")}}
+                </div>
+            </div>
         </div>
-        <div class="row">
+        {% endif %}
+        
+        <div class="row" id="password-fields" {% if edit_mode %}style="display: none;"{% endif %}>
             <div class="col" id="password-container">
                 <label for="password" class="col-form-label">{{ form.password.label }}</label>  
                 {% if not edit_mode %}
@@ -128,7 +139,7 @@
             </div>
             <div class="col">
                 {{form.password2.label(class_="col-form-label")}}
-                {{form.password2(class_="form-control")}}
+                {{form.password2(class_="form-control", id="password2")}}
                 {% if form.password2.errors %}
                     <div style="color: red;">{{form.password2.errors[0] | safe}}</div>
                 {%endif%}
@@ -183,14 +194,37 @@
 
             onMounted(() => {
                 const submitBtn = document.getElementById('submitBtn');
-                submitBtn.disabled = true;
-                watch(passwordValid, (val) => {
-                    submitBtn.disabled = !val;
-                });
+                const editMode = {{ 'true' if edit_mode else 'false' }};                
+                if (!editMode) {
+                    submitBtn.disabled = true;
+                    watch(passwordValid, (val) => {
+                        submitBtn.disabled = !val;
+                    });
+                }
             });
 
             return { password, togglePassword };
         }
     }).mount('#password-container');
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkbox = document.getElementById('changePasswordCheckbox');
+        if (checkbox) {
+            const passwordFields = document.getElementById('password-fields');
+            
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    passwordFields.style.display = '';
+                } else {
+                    passwordFields.style.display = 'none';
+                    // Clear password fields when hiding
+                    const passwordInput = document.getElementById('password');
+                    const password2Input = document.getElementById('password2');
+                    if (passwordInput) passwordInput.value = '';
+                    if (password2Input) password2Input.value = '';
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}
