@@ -170,7 +170,6 @@ def login():
             else:
                 flash('Invalid email or password.', 'error')
                 flowintel_log("audit", 401, "Failed login attempt - Invalid credentials", Email=form.email.data)
-    return render_template('account/login.html', form=form)
                 # Generate token for password reset access
                 token = create_password_reset_token()
                 session['password_reset_token'] = token
