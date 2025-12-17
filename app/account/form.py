@@ -45,3 +45,8 @@ class EditUserFrom(FlaskForm):
                 raise ValidationError('Email already registered. (Did you mean to '
                                     '<a href="{}">log in</a> instead?)'.format(
                                         url_for('account.index')))
+
+
+class RequestPasswordResetForm(FlaskForm):
+    email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
+    submit = SubmitField('Request password reset')

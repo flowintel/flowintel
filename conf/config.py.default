@@ -9,6 +9,7 @@ class Config:
     VALKEY_IP = os.getenv('VALKEY_IP', '127.0.0.1')
     VALKEY_PORT = os.getenv('VALKEY_PORT', '6379')
     AUDIT_LOG_PREFIX = os.getenv('AUDIT_LOG_PREFIX', 'AUDIT')
+    LOG_FILE = os.getenv('LOG_FILE', 'record.log')
 
 
 class DevelopmentConfig(Config):
