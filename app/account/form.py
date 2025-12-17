@@ -61,3 +61,8 @@ class EditUserFrom(FlaskForm):
                 raise ValidationError('Password confirmation is required.')
             if field.data != self.password.data:
                 raise ValidationError('Passwords must match.')
+
+
+class RequestPasswordResetForm(FlaskForm):
+    email = EmailField('Email', validators=[InputRequired(), Length(1, 64), Email()])
+    submit = SubmitField('Request password reset')
