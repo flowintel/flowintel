@@ -1,0 +1,135 @@
+from flask_wtf import FlaskForm
+from wtforms import ValidationError
+from wtforms.fields import (
+    StringField,
+    SubmitField,
+    SelectMultipleField,
+    TextAreaField,
+    DateField,
+    TimeField, 
+    HiddenField,
+    BooleanField
+)
+from wtforms.validators import InputRequired, Length
+
+from ..db_class.db import Case, Case_Org
+
+
+class CaseForm(FlaskForm):
+    title = StringField('Title')
+    deadline_date = DateField('Deadline date')
+    deadline_time = TimeField("Deadline time")
+    template_select = SelectMultipleField(u'Templates', coerce=int)
+    title_template = StringField('New Title')
+    tasks_templates = SelectMultipleField(u'Tasks Templates', coerce=int)
+    time_required = StringField('Time required')
+    is_private = BooleanField("Private Case")
+    ticket_id = StringField('Ticket id')
+    submit = SubmitField('Create')
+
+    def validate_title(self, field):
+        # Check if neither title nor template is provided
+        # field.data could be None or empty string, so check for both
+        has_title = field.data and field.data.strip()
+        
+        # Check template_select - it could be None, empty list, or contain only 0
+        template_data = self.template_select.data if self.template_select.data else []
+        has_template = len([t for t in template_data if t and t != 0]) > 0
+        
+        if not has_title and not has_template:
+            raise ValidationError("Title is required (or select a template)")
+        if has_title and Case.query.filter_by(title=field.data.strip()).first():
+            raise ValidationError("The title already exist")
+        
+    def validate_template_select(self, field):
+        # If template is selected (not 0), require a title_template with content
+        template_data = field.data if field.data else []
+        has_template = len([t for t in template_data if t and t != 0]) > 0
+        has_title_template = self.title_template.data and self.title_template.data.strip()
+        
+        if has_template and not has_title_template:
+            raise ValidationError("Title is required when creating from template")
+    
+    def validate_deadline_time(self, field):
+        if field.data and not self.deadline_date.data:
+            raise ValidationError("Choose a date")
+        
+    def validate_title_template(self, field):
+        # If title_template is provided, ensure it's not empty and a template is selected
+        has_title_template = field.data and field.data.strip()
+        template_data = self.template_select.data if self.template_select.data else []
+        has_template = len([t for t in template_data if t and t != 0]) > 0
+        
+        if has_title_template and not has_template:
+            raise ValidationError("A template needs to be selected")
+        if has_title_template and Case.query.filter_by(title=field.data.strip()).first():
+            raise ValidationError("The title already exist")
+
+class CaseEditForm(FlaskForm):
+    title = StringField('Title', validators=[InputRequired(message="Title is required")])
+    deadline_date = DateField('Deadline date')
+    deadline_time = TimeField("Deadline time")
+    time_required = StringField('Time required')
+    ticket_id = StringField('Ticket id')
+    is_private = BooleanField("Private Case")
+    submit = SubmitField('Save')
+
+    def validate_deadline_time(self, field):
+        if field.data and not self.deadline_date.data:
+            raise ValidationError("Choose a date")
+
+
+class TaskForm(FlaskForm):
+    title = StringField('Title')
+    time_required = StringField('Time required')
+    deadline_date = DateField('Deadline date')
+    deadline_time = TimeField("Deadline time")
+    template_select = SelectMultipleField(u'Templates', coerce=int)
+    submit = SubmitField('Create')
+
+    def validate_title(self, field):
+        # Check if neither title nor template is provided
+        # field.data could be None or empty string, so check for both
+        has_title = field.data and field.data.strip()
+        has_template = self.template_select.data and len([t for t in self.template_select.data if t != 0]) > 0
+        
+        if not has_title and not has_template:
+            raise ValidationError("Title is required (or select a template)")
+
+    def validate_deadline_time(self, field):
+        if field.data and not self.deadline_date.data:
+            raise ValidationError("Choose a date")
+
+
+
+class TaskEditForm(FlaskForm):
+    title = StringField('Title', validators=[InputRequired(message="Title is required")])
+    time_required = StringField('Time required')
+    deadline_date = DateField('Deadline date')
+    deadline_time = TimeField("Deadline time")
+    submit = SubmitField('Save')
+
+    def validate_deadline_time(self, field):
+        if field.data and not self.deadline_date.data:
+            raise ValidationError("Choose a date")
+
+
+class AddOrgsCase(FlaskForm):
+    org_id = SelectMultipleField(u'Orgs', coerce=int)
+    case_id = HiddenField("")
+    submit = SubmitField('Add')
+
+    def validate_org_id(self, field):
+        for org in field.data:
+            if Case_Org.query.filter_by(case_id = self.case_id.data, org_id=org).first():
+                raise ValidationError(f"Org {org} already in case")
+
+
+class RecurringForm(FlaskForm):
+    case_id = HiddenField("")
+    once = DateField('One day')
+    daily = BooleanField('Daily')
+    weekly = DateField("Start date")
+    monthly = DateField("Start date")
+    remove = BooleanField('Remove')
+    submit = SubmitField('Save')

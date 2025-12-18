@@ -20,88 +20,90 @@
 {%endblock%}
 
 {% block content %}
-<div class="case-core-style" style="border-radius: 0;">
-    <div>
-        <!-- Components that contains all button that provide an action on the case -->
-        <div style="float: right; display: flex;">
+<!-- Case Header Card -->
+<div class="case-header-card">
+    <div class="case-header-top">
+        <a type="button" class="btn btn-outline-secondary btn-sm" href="/case" title="Back to cases">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="case-header-actions" v-if="cases_info">
             <action_buttons 
                 :cases_info="cases_info"
                 :status_info="status_info">
             </action_buttons>
         </div>
-        <div class="d-flex">
-            <h1 style="margin-top: -9px;">
-                <a type="button" class="btn btn-outline-dark me-2" href="/case"><i class="fa-solid fa-arrow-left"></i></a>
+    </div>
+    
+    <div class="case-header-main">
+        <div class="case-title-row">
+            <h1 class="case-title">
+                <span class="case-id">{{case.id}}</span>
+                {{case.title}}
             </h1>
-
-            <div class="d-flex" v-if="cases_info">
-                <h1 style="font-size: xx-large;">{{case.id}}- {{case.title}}</h1>
-                <!-- lock icon -->
-                <span style="font-size: 12px; margin-left: 5px;">
-                    <i v-if="cases_info.case.is_private" class="fa-solid fa-lock" 
-                    title="The case is private, only org present in can see this case"></i>
-                    <i v-else class="fa-solid fa-globe" 
-                    title="The case is public anyone can see this case but only org present in case can modify it"></i>
+            <div class="case-badges">
+                <span v-if="cases_info" class="case-visibility-badge" :title="cases_info.case.is_private ? 'Private case - only org members can see' : 'Public case - anyone can view'">
+                    <i v-if="cases_info.case.is_private" class="fa-solid fa-lock"></i>
+                    <i v-else class="fa-solid fa-globe"></i>
                 </span>
-                <!-- status -->
-                <small v-if="status_info" style="margin-left: 12px; margin-top:10px">
-                    <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
-                        [[ status_info.status[ {{case.status_id}} -1].name ]]
-                    </span>
-                </small>
-                <span v-if="cases_info.case.is_updated_from_misp" title="This case was created from a misp event" style="margin-left: 15px; margin-top: 6px">
-                    <img :src="'/static/icons/'+cases_info.case.misp_icon" style="max-width: 30px;">
+                <span v-if="status_info" :class="'badge rounded-pill text-bg-' + status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
+                    [[ status_info.status[{{case.status_id}} -1].name ]]
+                </span>
+                <span v-if="cases_info && cases_info.case.is_updated_from_misp" title="Created from MISP event">
+                    <img :src="'/static/icons/' + cases_info.case.misp_icon" style="max-width: 24px; vertical-align: middle;">
                 </span>
             </div>
-            
         </div>
+        
+        {% if case.ticket_id %}
+        <div class="case-ticket-row">
+            <span class="ticket-badge" title="Ticket ID">
+                <i class="fa-solid fa-ticket"></i> {{case.ticket_id}}
+            </span>
+        </div>
+        {% endif %}
     </div>
 
-    <hr>
-    {% if case.description or case.ticket_id %}
-        <button class="btn btn-outline-primary btn-sm float-end" type="button" data-bs-toggle="collapse" 
-                data-bs-target="#collapseDescription" aria-expanded="true" aria-controls="collapseDescription"
-                title="See the full description">
-            <i class="fa-solid fa-chevron-up"></i>
+    <!-- Case Meta Information -->
+    <div class="case-meta-grid" v-if="cases_info">
+        <div class="case-meta-item" :title="'Created: ' + cases_info.case.creation_date">
+            <i class="fa-solid fa-calendar-plus fa-fw"></i>
+            <span class="meta-label">Created</span>
+            <span class="meta-value">[[ dayjs.utc(cases_info.case.creation_date).fromNow() ]]</span>
+        </div>
+        <div class="case-meta-item" :title="'Modified: ' + cases_info.case.last_modif">
+            <i class="fa-solid fa-clock-rotate-left fa-fw"></i>
+            <span class="meta-label">Modified</span>
+            <span class="meta-value">[[ dayjs.utc(cases_info.case.last_modif).fromNow() ]]</span>
+        </div>
+        {% if case.deadline %}
+        <div class="case-meta-item case-meta-deadline" :title="'Deadline: ' + cases_info.case.deadline">
+            <i class="fa-solid fa-hourglass-half fa-fw"></i>
+            <span class="meta-label">Deadline</span>
+            <span class="meta-value">[[ dayjs.utc(cases_info.case.deadline).endOf().fromNow() ]]</span>
+        </div>
+        {% endif %}
+        {% if case.recurring_type %}
+        <div class="case-meta-item" title="Recurring schedule">
+            <i class="fa-solid fa-repeat fa-fw"></i>
+            <span class="meta-label">Recurring</span>
+            <span class="meta-value">{{case.recurring_type}}{% if case.recurring_date %} ({{case.recurring_date}}){% endif %}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Description (collapsible) -->
+    {% if case.description %}
+    <div class="case-description-section">
+        <button class="btn btn-link btn-sm case-description-toggle" type="button" 
+                data-bs-toggle="collapse" data-bs-target="#collapseDescription" 
+                aria-expanded="true" aria-controls="collapseDescription">
+            <i class="fa-solid fa-chevron-down"></i> Description
         </button>
         <div class="collapse show" id="collapseDescription">
-            {% if case.ticket_id %}
-                <div title="Ticket id" class="ticket-id">
-                    <i class="fa-solid fa-ticket"></i>
-                    {{case.ticket_id}}
-                </div>
-            {%endif%}
-        
-            {% if case.description %}
-                <pre class="description mt-2" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
-            {%endif%}
-            <hr>
+            <pre class="case-description" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
         </div>
-    {%endif%}
-    
-
-    <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
-        <i :title="'Created: ' + cases_info.case.creation_date">
-            <i class="fa-solid fa-bicycle"></i> [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]
-        </i>
-        <i :title="'Changed: ' + cases_info.case.last_modif">
-            <i class="fa-solid fa-arrows-rotate"></i> [[ dayjs.utc( cases_info.case.last_modif ).fromNow() ]]
-        </i>
-        {% if case.deadline %}
-            <i :title="'Deadline: ' + cases_info.case.deadline">
-                <i class="fa-solid fa-hourglass-start"></i> [[ dayjs.utc( cases_info.case.deadline ).endOf().fromNow() ]]
-            </i>
-        {%endif%}
     </div>
-    {%if case.recurring_type %}
-        <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
-            <i>Recurring type: {{case.recurring_type}}</i>
-            {%if case.recurring_date %}
-                <i :title="cases_info.case.last_modif">Recurring Date: {{case.recurring_date}}</i>
-            {%endif%}
-        </div>
-    {%endif%}
-
+    {% endif %}
 </div>
 
 <div class="case-core-style mt-4" id="case-main-nav">
@@ -178,7 +180,7 @@
                             </button>
                         </div>
                         <div class="d-flex">
-                            <h4>Links: </h4>
+                            <h4>Linked cases: </h4>
                             <div>
                                 <span class="badge text-bg-secondary" style="margin-top:6px; margin-left: 5px">
                                     [[cases_info.case.link_to.length]]

@@ -418,6 +418,10 @@
                 fetchStatus()
 
                 async function complete_case(case_loc, cases_list, is_revived){
+                    const action = is_revived ? 'revive' : 'complete';
+                    if (!confirm(`Are you sure you want to ${action} this case?`)) {
+                        return;
+                    }
                     let url
                     if (is_revived)
                         url = '/case/' + case_loc.id + '/complete_case?revived=true'

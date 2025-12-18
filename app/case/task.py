@@ -49,8 +49,8 @@ def create_task(cid):
                     else:
                         flash("Error Task Created", "error")
                     return redirect(f"/case/{cid}")
-                return render_template("case/create_task.html", form=form)
-            return render_template("case/create_task.html", form=form)
+                return render_template("case/create_task.html", form=form, case_id=cid)
+            return render_template("case/create_task.html", form=form, case_id=cid)
         return redirect(f"/case/{cid}")
     return render_template("404.html")
 
@@ -73,7 +73,7 @@ def edit_task(cid, tid):
                     TaskModel.edit_task_core(form_dict, tid, current_user)
                     flash("Task edited", "success")
                     return redirect(f"/case/{cid}")
-                return render_template("case/edit_task.html", form=form, description=task_modif.description)
+                return render_template("case/edit_task.html", form=form, description=task_modif.description, case_id=cid, task_id=tid)
             else:
                 # form.description.data = task_modif.description
                 form.title.data = task_modif.title
@@ -81,7 +81,7 @@ def edit_task(cid, tid):
                 form.deadline_date.data = task_modif.deadline
                 form.deadline_time.data = task_modif.deadline
             
-            return render_template("case/edit_task.html", form=form, description=task_modif.description)
+            return render_template("case/edit_task.html", form=form, description=task_modif.description, case_id=cid, task_id=tid)
         else:
             flash("Access denied", "error")
         return redirect(f"/case/{cid}")

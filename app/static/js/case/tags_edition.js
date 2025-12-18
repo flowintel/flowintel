@@ -1,17 +1,17 @@
-import {display_toast} from '../toaster.js'
+import { display_toast } from '../toaster.js'
 import edition_select from './edition_select.js'
-import {getTextColor, mapIcon} from '/static/js/utils.js'
+import { getTextColor, mapIcon } from '/static/js/utils.js'
 const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
-	props: {
-		current_case: Object,
+    props: {
+        current_case: Object,
         type_object: String
-	},
+    },
     components: {
         edition_select
     },
-	setup(props) {
+    setup(props) {
         const selected_tags = ref([])
         const selected_clusters = ref([])
         const selected_custom_tags = ref([])
@@ -20,37 +20,37 @@ export default {
             let tags_select = []
             let clusters_select = []
             let custom_select = []
-            $.each(selected_clusters.value, function(i, v){
-                clusters_select.push(v.uuid) 
+            $.each(selected_clusters.value, function (i, v) {
+                clusters_select.push(v.uuid)
             });
-            $.each(selected_tags.value, function(i, v){
+            $.each(selected_tags.value, function (i, v) {
                 tags_select.push(v.name)
             });
-            $.each(selected_custom_tags.value, function(i, v){
-                custom_select.push(v.name)  
+            $.each(selected_custom_tags.value, function (i, v) {
+                custom_select.push(v.name)
             });
 
             let url
 
-            if(props.type_object == 'case')
+            if (props.type_object == 'case')
                 url = '/case/edit_tags/'
-            else if(props.type_object == 'case_template')
+            else if (props.type_object == 'case_template')
                 url = '/templating/case/edit_tags/'
             url += props.current_case.id
 
             const res_msg = await fetch(
-                url,{
-                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                    method: "POST",
-                    body: JSON.stringify({
-                        "tags_select": tags_select, 
-                        "clusters_select": clusters_select, 
-                        "custom_select": custom_select
-                    })
-                }
+                url, {
+                headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                method: "POST",
+                body: JSON.stringify({
+                    "tags_select": tags_select,
+                    "clusters_select": clusters_select,
+                    "custom_select": custom_select
+                })
+            }
             )
 
-            if(await res_msg.status == 200){
+            if (await res_msg.status == 200) {
                 props.current_case.tags = selected_tags.value
                 props.current_case.clusters = selected_clusters.value
                 props.current_case.custom_tags = selected_custom_tags.value
@@ -61,18 +61,18 @@ export default {
             }
             await display_toast(res_msg)
         }
-        
 
-		return {
+
+        return {
             getTextColor,
             mapIcon,
             selected_tags,
             selected_clusters,
             selected_custom_tags,
             change_tags
-		}
+        }
     },
-	template: `
+    template: `
     <div class="case-tags-style">
         <button type="button" class="btn btn-outline-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#ModalEditTags">
             <i class="fa-solid fa-pen"></i>
@@ -115,7 +115,7 @@ export default {
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="exampleModalLabel">Modal title</h1>
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">Select the tags</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
