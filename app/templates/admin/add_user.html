@@ -7,13 +7,13 @@
 
 {% block content %}
     {% if not edit_mode %}
-        <h2 class="ui dividing header case-core-style" style="border-radius: 0;">
-            Create an account
-        </h2>
+        <div class="case-core-style" style="border-radius: 0;">
+            <h5 class="mb-0"><i class="fa-solid fa-user-plus me-2"></i>Create an account</h5>
+        </div>
     {%else%}
-        <h2 class="ui dividing header case-core-style" style="border-radius: 0;">
-            Edit an account
-        </h2>
+        <div class="case-core-style" style="border-radius: 0;">
+            <h5 class="mb-0"><i class="fa-solid fa-user-pen me-2"></i>Edit an account</h5>
+        </div>
     {%endif%}
 
     <hr class="fading-line-2 mb-4 mt-4">

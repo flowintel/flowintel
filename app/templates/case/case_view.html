@@ -16,126 +16,130 @@
 
 <script src="{{ url_for('static',filename='js/sortablejs.js') }}"></script>
 
+<title>View case #{{ case.id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
 {%endblock%}
 
 {% block content %}
-<div class="case-core-style" style="border-radius: 0;">
-    <div>
-        <!-- Components that contains all button that provide an action on the case -->
-        <div style="float: right; display: flex;">
+<!-- Case Header Card -->
+<div class="case-header-card">
+    <div class="case-header-top">
+        <div class="case-title-row">
+            <h1 class="case-title">
+                <span class="case-id">{{case.id}}</span>
+                {{case.title}}
+            </h1>
+            <div class="case-badges">
+                <span v-if="cases_info" class="case-visibility-badge" :title="cases_info.case.is_private ? 'Private case - only org members can see' : 'Public case - anyone can view'">
+                    <i v-if="cases_info.case.is_private" class="fa-solid fa-lock"></i>
+                    <i v-else class="fa-solid fa-globe"></i>
+                </span>
+                <span v-if="status_info" :class="'badge rounded-pill text-bg-' + status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
+                    [[ status_info.status[{{case.status_id}} -1].name ]]
+                </span>
+                <span v-if="cases_info && cases_info.case.is_updated_from_misp" title="Created from MISP event">
+                    <img :src="'/static/icons/' + cases_info.case.misp_icon" style="max-width: 24px; vertical-align: middle;">
+                </span>
+            </div>
+        </div>
+        <div class="case-header-actions" v-if="cases_info">
             <action_buttons 
                 :cases_info="cases_info"
                 :status_info="status_info">
             </action_buttons>
         </div>
-        <div class="d-flex">
-            <h1 style="margin-top: -9px;">
-                <a type="button" class="btn btn-outline-dark me-2" href="/case"><i class="fa-solid fa-arrow-left"></i></a>
-            </h1>
-
-            <div class="d-flex" v-if="cases_info">
-                <h1 style="font-size: xx-large;">{{case.id}}- {{case.title}}</h1>
-                <!-- lock icon -->
-                <span style="font-size: 12px; margin-left: 5px;">
-                    <i v-if="cases_info.case.is_private" class="fa-solid fa-lock" 
-                    title="The case is private, only org present in can see this case"></i>
-                    <i v-else class="fa-solid fa-globe" 
-                    title="The case is public anyone can see this case but only org present in case can modify it"></i>
-                </span>
-                <!-- status -->
-                <small v-if="status_info" style="margin-left: 12px; margin-top:10px">
-                    <span :class="'badge rounded-pill text-bg-'+status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
-                        [[ status_info.status[ {{case.status_id}} -1].name ]]
-                    </span>
-                </small>
-                <span v-if="cases_info.case.is_updated_from_misp" title="This case was created from a misp event" style="margin-left: 15px; margin-top: 6px">
-                    <img :src="'/static/icons/'+cases_info.case.misp_icon" style="max-width: 30px;">
-                </span>
-            </div>
-            
+    </div>
+    
+    <div class="case-header-main">
+        {% if case.ticket_id %}
+        <div class="case-ticket-row">
+            <span class="ticket-badge" title="Ticket ID">
+                <i class="fa-solid fa-ticket"></i> {{case.ticket_id}}
+            </span>
         </div>
+        {% endif %}
     </div>
 
-    <hr>
-    {% if case.description or case.ticket_id %}
-        <button class="btn btn-outline-primary btn-sm float-end" type="button" data-bs-toggle="collapse" 
-                data-bs-target="#collapseDescription" aria-expanded="true" aria-controls="collapseDescription"
-                title="See the full description">
-            <i class="fa-solid fa-chevron-up"></i>
+    <!-- Case Meta Information -->
+    <div class="case-meta-grid" v-if="cases_info">
+        <div class="case-meta-item" :title="'Created: ' + cases_info.case.creation_date">
+            <i class="fa-solid fa-calendar-plus fa-fw"></i>
+            <span class="meta-label">Created</span>
+            <span class="meta-value">[[ dayjs.utc(cases_info.case.creation_date).fromNow() ]]</span>
+        </div>
+        <div class="case-meta-item" :title="'Modified: ' + cases_info.case.last_modif">
+            <i class="fa-solid fa-clock-rotate-left fa-fw"></i>
+            <span class="meta-label">Modified</span>
+            <span class="meta-value">[[ dayjs.utc(cases_info.case.last_modif).fromNow() ]]</span>
+        </div>
+        <div class="case-meta-item">
+            <i class="fa-solid fa-list-check fa-fw"></i>
+            <span class="meta-label">Tasks</span>
+            <span class="meta-value">[[open_closed.open]] open / [[open_closed.closed]] closed</span>
+        </div>
+        {% if case.deadline %}
+        <div class="case-meta-item case-meta-deadline" :title="'Deadline: ' + cases_info.case.deadline">
+            <i class="fa-solid fa-hourglass-half fa-fw"></i>
+            <span class="meta-label">Deadline</span>
+            <span class="meta-value">[[ dayjs.utc(cases_info.case.deadline).endOf().fromNow() ]]</span>
+        </div>
+        {% endif %}
+        {% if case.recurring_type %}
+        <div class="case-meta-item" title="Recurring schedule">
+            <i class="fa-solid fa-repeat fa-fw"></i>
+            <span class="meta-label">Recurring</span>
+            <span class="meta-value">{{case.recurring_type}}{% if case.recurring_date %} ({{case.recurring_date}}){% endif %}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Description (collapsible) -->
+    {% if case.description %}
+    <div class="case-description-section">
+        <button class="btn btn-link btn-sm case-description-toggle" type="button" 
+                data-bs-toggle="collapse" data-bs-target="#collapseDescription" 
+                aria-expanded="true" aria-controls="collapseDescription">
+            <i class="fa-solid fa-chevron-down"></i> Description
         </button>
         <div class="collapse show" id="collapseDescription">
-            {% if case.ticket_id %}
-                <div title="Ticket id" class="ticket-id">
-                    <i class="fa-solid fa-ticket"></i>
-                    {{case.ticket_id}}
-                </div>
-            {%endif%}
-        
-            {% if case.description %}
-                <pre class="description mt-2" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
-            {%endif%}
-            <hr>
+            <pre class="case-description" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
         </div>
-    {%endif%}
-    
-
-    <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
-        <i :title="'Created: ' + cases_info.case.creation_date">
-            <i class="fa-solid fa-bicycle"></i> [[ dayjs.utc( cases_info.case.creation_date ).fromNow() ]]
-        </i>
-        <i :title="'Changed: ' + cases_info.case.last_modif">
-            <i class="fa-solid fa-arrows-rotate"></i> [[ dayjs.utc( cases_info.case.last_modif ).fromNow() ]]
-        </i>
-        {% if case.deadline %}
-            <i :title="'Deadline: ' + cases_info.case.deadline">
-                <i class="fa-solid fa-hourglass-start"></i> [[ dayjs.utc( cases_info.case.deadline ).endOf().fromNow() ]]
-            </i>
-        {%endif%}
     </div>
-    {%if case.recurring_type %}
-        <div class="d-flex w-100 justify-content-between" v-if="cases_info" style="margin-top: 10px;">
-            <i>Recurring type: {{case.recurring_type}}</i>
-            {%if case.recurring_date %}
-                <i :title="cases_info.case.last_modif">Recurring Date: {{case.recurring_date}}</i>
-            {%endif%}
-        </div>
-    {%endif%}
-
+    {% endif %}
 </div>
 
 <div class="case-core-style mt-4" id="case-main-nav">
     <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
             data-bs-target="#collapseTags" aria-expanded="true" aria-controls="collapseTags"
             style="float: right;">
-        <i class="fa-solid fa-chevron-up"></i>
+        <i class="fa-solid fa-chevron-up fa-sm"></i>
     </button>
     <ul class="nav nav-tabs" style="margin-bottom: 10px;">
         <li class="nav-item">
             <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')" style="min-width: 100px;">
-                <i class="fa-solid fa-house"></i>
+                <i class="fa-solid fa-house fa-sm"></i>
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-notes" @click="active_tab('notes')">Notes</button>
+            <button class="nav-link" id="tab-notes" @click="active_tab('notes')"><i class="fa-solid fa-note-sticky fa-sm me-1"></i>Notes</button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-misp-objects" @click="active_tab('misp-objects')">
-                MISP-objects 
+                <i class="fa-solid fa-cubes fa-sm me-1"></i>MISP-objects 
                 <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
             </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-connectors" @click="active_tab('connectors')">
-                Connectors
+                <i class="fa-solid fa-plug fa-sm me-1"></i>Connectors
                 <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_connectors_list.length]]</span>
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-history" @click="active_tab('history')">History</button>
+            <button class="nav-link" id="tab-history" @click="active_tab('history')"><i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i>History</button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-info" @click="active_tab('info')">Info</button>
+            <button class="nav-link" id="tab-info" @click="active_tab('info')"><i class="fa-solid fa-circle-info fa-sm me-1"></i>Info</button>
         </li>
     </ul>
 
@@ -170,22 +174,18 @@
                     <div class="case-tags-style mt-2" v-if="cases_info">
                         <div class="justify-content-center" style="float: right">
                             <button class="btn btn-primary btn-sm me-1" title="New link" data-bs-toggle="modal" data-bs-target="#add_new_link">
-                                <i class="fa-solid fa-paperclip"></i>+
+                                <i class="fa-solid fa-paperclip fa-sm"></i>+
                             </button>
                             <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
                                 data-bs-target="#collapseLinks" aria-expanded="true" aria-controls="collapseLinks">
-                                <i class="fa-solid fa-chevron-up"></i>
+                                <i class="fa-solid fa-chevron-up fa-sm"></i>
                             </button>
                         </div>
-                        <div class="d-flex">
-                            <h4>Links: </h4>
-                            <div>
-                                <span class="badge text-bg-secondary" style="margin-top:6px; margin-left: 5px">
-                                    [[cases_info.case.link_to.length]]
-                                </span>
-                            </div>
+                        <div class="d-flex align-items-center">
+                            <h6 class="section-title mb-0"><i class="fa-solid fa-link fa-sm me-2"></i>Linked Cases</h6>
+                            <span class="badge text-bg-secondary ms-2">[[cases_info.case.link_to.length]]</span>
                         </div>
-                        <hr class="fading-line-2">
+                        <hr class="fading-line-2 mt-2 mb-2">
                         <div class="collapse show" id="collapseLinks">
                             <div class="row mt-2">
                                 <div class="col-6 link-style-first" v-for="case_link in cases_info.case.link_to">
@@ -195,7 +195,7 @@
                                     <button class="btn btn-outline-danger btn-sm ms-4"
                                     @click="remove_case_link(cases_info, case_link)"
                                     title="Remove link from case">
-                                        <i class="fa-solid fa-trash"></i>
+                                        <i class="fa-solid fa-trash fa-sm"></i>
                                     </button>
                                 </div>
                             </div>
@@ -204,14 +204,14 @@
                 </div>
                 <div class="col">
                     <div class="case-tags-style">
-                        <div class="d-flex">
-                            <h4>Completion:</h4>
-                            <small class="mt-1 ms-4">
-                                <a href="javascript:void(0)" @click="change_status_sort(true)"><i>[[open_closed.open]] open</i></a> / 
-                                <a href="javascript:void(0)" @click="change_status_sort(false)"><i>[[open_closed.closed]] closed</a></i>
+                        <div class="d-flex align-items-center">
+                            <h6 class="section-title mb-0"><i class="fa-solid fa-chart-pie fa-sm me-2"></i>Completion</h6>
+                            <small class="ms-3 text-muted">
+                                <a href="javascript:void(0)" @click="change_status_sort(true)" class="text-decoration-none">[[open_closed.open]] open</a> / 
+                                <a href="javascript:void(0)" @click="change_status_sort(false)" class="text-decoration-none">[[open_closed.closed]] closed</a>
                             </small>
                         </div>
-                        <hr class="fading-line-2">
+                        <hr class="fading-line-2 mt-2 mb-2">
                         <div class="progress mt-1" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
                             <div v-if="open_closed.closed > 0"  class="progress-bar" :style="{'width': get_completion_pourcentage() +'%'}">
                                 [[get_completion_pourcentage()]]%
@@ -233,16 +233,24 @@
         <template v-else-if="main_tab == 'notes'">
             <ul class="nav nav-tabs" style="margin-bottom: 10px;">
 				<li class="nav-item">
-					<button class="nav-link active" id="subtab-case-note" aria-current="page" @click="active_subtab_note('case')">Case</button>
+					<button class="nav-link active" id="subtab-case-note" aria-current="page" @click="active_subtab_note('case')">
+						<i class="fa-solid fa-briefcase fa-sm me-1"></i><span class="section-title">Case</span>
+					</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" id="subtab-template-note" @click="active_subtab_note('template')">Template</button>
+					<button class="nav-link" id="subtab-template-note" @click="active_subtab_note('template')">
+						<i class="fa-solid fa-file-lines fa-sm me-1"></i><span class="section-title">Template</span>
+					</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" id="subtab-hedgedoc" @click="active_subtab_note('hedgedoc')">Hedgedoc</button>
+					<button class="nav-link" id="subtab-hedgedoc" @click="active_subtab_note('hedgedoc')">
+						<i class="fa-solid fa-file-code fa-sm me-1"></i><span class="section-title">Hedgedoc</span>
+					</button>
 				</li>
                 <li class="nav-item">
-					<button class="nav-link" id="subtab-computer-assistate" @click="active_subtab_note('computer-assistate')">Computer Assisted</button>
+					<button class="nav-link" id="subtab-computer-assistate" @click="active_subtab_note('computer-assistate')">
+						<i class="fa-solid fa-robot fa-sm me-1"></i><span class="section-title">Computer Assisted</span>
+					</button>
 				</li>
 			</ul>
 
@@ -370,34 +378,34 @@
     <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
             data-bs-target="#collapseTasks" aria-expanded="true" aria-controls="collapseTasks"
             style="float: right;">
-        <i class="fa-solid fa-chevron-up"></i>
+        <i class="fa-solid fa-chevron-up fa-sm"></i>
     </button>
 
-    <div class="row">
-        <div class="col d-flex">
-            <h2>Tasks</h2>
+    <div class="row align-items-center">
+        <div class="col-auto d-flex align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-list-check me-2"></i>Tasks</h5>
             {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
-                <span style="padding-left: 10px;">
-                    <a href="/case/{{case.id}}/create_task" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
-                </span>
+                <a href="/case/{{case.id}}/create_task" class="btn btn-primary btn-sm ms-3" title="Add new task">
+                    <i class="fa-solid fa-plus fa-sm"></i>
+                </a>
             {%endif%}
         </div>
         
-        <div class="col" v-cloak>
-            <button v-if="is_open_cases" class="btn btn-outline-secondary" @click="change_status_sort(false)" title="See Finished tasks">
-                <i class="fa-solid fa-folder-closed me-1"></i> <span class="badge text-bg-secondary">[[open_closed.closed]]</span>
+        <div class="col-auto" v-cloak>
+            <button v-if="is_open_cases" class="btn btn-outline-secondary btn-sm" @click="change_status_sort(false)" title="See Finished tasks">
+                <i class="fa-solid fa-folder-closed fa-sm me-1"></i> <span class="badge text-bg-secondary">[[open_closed.closed]]</span> closed
             </button>
-            <button v-else class="btn btn-outline-secondary" @click="change_status_sort(true)" title="See Opened tasks">
-                <i class="fa-solid fa-folder-open me-1"></i> <span class="badge text-bg-secondary">[[open_closed.open]]</span>
+            <button v-else class="btn btn-outline-secondary btn-sm" @click="change_status_sort(true)" title="See Opened tasks">
+                <i class="fa-solid fa-folder-open fa-sm me-1"></i> <span class="badge text-bg-secondary">[[open_closed.open]]</span> open
             </button>
         </div>
 
         <!-- Search bar -->
-        <div class="col input-group w-auto me-5">
-            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalFilter">
-                <i class="fa-solid fa-filter"></i>
+        <div class="col input-group w-auto">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFilter">
+                <i class="fa-solid fa-filter fa-sm"></i>
             </button>
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search task by title' />
+            <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search task by title' />
         </div>
         <!-- Search bar -->
     </div>

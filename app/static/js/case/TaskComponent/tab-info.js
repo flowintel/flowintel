@@ -1,7 +1,7 @@
-import {display_toast} from '/static/js/toaster.js'
+import { display_toast } from '/static/js/toaster.js'
 const { ref } = Vue
 export default {
-    delimiters: ['[[', ']]'],
+	delimiters: ['[[', ']]'],
 	props: {
 		cases_info: Object,
 		task: Object,
@@ -9,49 +9,49 @@ export default {
 	},
 	setup(props) {
 
-		async function delete_task(task, task_array){
+		async function delete_task(task, task_array) {
 			// delete the task
 			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
 
-			if( await res.status == 200){
-				if(task.completed){
+			if (await res.status == 200) {
+				if (task.completed) {
 					props.open_closed["closed"] -= 1
-				}else{
+				} else {
 					props.open_closed["open"] -= 1
 				}
 
 				// remove the task from the list of task
 				let index = task_array.indexOf(task)
-				if(index > -1)
+				if (index > -1)
 					task_array.splice(index, 1)
 
-				$("#modal-delete-task-"+task.id).modal("hide")
+				$("#modal-delete-task-" + task.id).modal("hide")
 			}
 			await display_toast(res)
 		}
 
 
 		return {
-            delete_task
+			delete_task
 		}
-    },
+	},
 	template: `
 	<div class="row">
 		<div class="col-auto">
 			<fieldset class="analyzer-select-case">
-				<legend class="analyzer-select-case">Creation date</legend>
+				<legend class="analyzer-select-case"><i class="fa-solid fa-calendar-plus fa-sm me-1"></i><span class="section-title">Creation date</span></legend>
 				<i>[[task.creation_date]]</i>
 			</fieldset>
 		</div>
 		<div class="col-auto">
 			<fieldset class="analyzer-select-case">
-				<legend class="analyzer-select-case">Deadline</legend>
+				<legend class="analyzer-select-case"><i class="fa-solid fa-calendar-check fa-sm me-1"></i><span class="section-title">Deadline</span></legend>
 				<i>[[task.deadline]]</i>
 			</fieldset>
 		</div>
 		<div class="col-auto">
 			<fieldset class="analyzer-select-case" style="text-align: center;">
-				<legend class="analyzer-select-case">Time required</legend>
+				<legend class="analyzer-select-case"><i class="fa-solid fa-clock fa-sm me-1"></i><span class="section-title">Time required</span></legend>
 				<i>[[task.time_required]]</i>
 			</fieldset>
 		</div>

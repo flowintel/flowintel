@@ -1,4 +1,4 @@
-import {display_toast, message_list, create_message} from '/static/js/toaster.js'
+import { display_toast, message_list, create_message } from '/static/js/toaster.js'
 const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -9,15 +9,15 @@ export default {
 		const config_query = ref([])
 		const attr_selected = ref([])
 
-		function add_entry(){
+		function add_entry() {
 			cp_entries.value += 1
 		}
-		function delete_entry(){
-			if(cp_entries.value > 1)
+		function delete_entry() {
+			if (cp_entries.value > 1)
 				cp_entries.value -= 1
 		}
 
-		async function query_misp_attributes(){
+		async function query_misp_attributes() {
 			let res = await fetch("/analyzer/misp-modules/get_list_misp_attributes")
 			let loc = await res.json()
 			misp_attributes_list.value = loc
@@ -32,7 +32,7 @@ export default {
 
 			$('#input_select').on('change.select2', async function (e) {
 				attr_selected.value = $(this).select2('data').map(item => item.id)[0]
-				if(attr_selected.value == 'None' ){
+				if (attr_selected.value == 'None') {
 					attr_selected.value = []
 				}
 
@@ -46,10 +46,10 @@ export default {
 					$('#modules_select').on('change.select2', async function (e) {
 						let loc_list = $(this).select2('data').map(item => item.id)
 						config_query.value = []
-						for(let el in loc_list){
-							for(let index in modules_list.value){
-								if(modules_list.value[index].name == loc_list[el]){
-									if(modules_list.value[index].request_on_query){
+						for (let el in loc_list) {
+							for (let index in modules_list.value) {
+								if (modules_list.value[index].name == loc_list[el]) {
+									if (modules_list.value[index].request_on_query) {
 										config_query.value.push(modules_list.value[index])
 									}
 									break
@@ -65,70 +65,70 @@ export default {
 			})
 		}
 
-		async function query_modules(){
+		async function query_modules() {
 			let res = await fetch("/analyzer/misp-modules/get_modules")
-			if(await res.status == 200){
+			if (await res.status == 200) {
 				let loc = await res.json()
 				modules_list.value = loc
 
 				await query_misp_attributes()
-			}else{
+			} else {
 				display_toast(res, true)
 			}
 		}
 		query_modules()
 
-		function checked_attr(arr1){
+		function checked_attr(arr1) {
 			let loc = arr1.includes(attr_selected.value)
-			if(!loc && attr_selected.value == 'ip'){
+			if (!loc && attr_selected.value == 'ip') {
 				loc = arr1.includes('ip-dst')
-				if(!loc && attr_selected.value == 'ip'){
+				if (!loc && attr_selected.value == 'ip') {
 					loc = arr1.includes('ip-src')
 				}
 			}
 			return loc
 		}
 
-		async function submit(){
+		async function submit() {
 			let current_query = []
-			for(let i=1;i<=cp_entries.value;i++){
-				let loc_query_res = $("#process-query-"+i).val()
-				if(loc_query_res)
+			for (let i = 1; i <= cp_entries.value; i++) {
+				let loc_query_res = $("#process-query-" + i).val()
+				if (loc_query_res)
 					current_query.push(loc_query_res)
 			}
 
 			let loc = undefined
-			if($("#input_select").val() != "None"){
+			if ($("#input_select").val() != "None") {
 				loc = $("#input_select").val()
 			}
 
 			let loc_modules = undefined
-			if($("#modules_select").val().length){
+			if ($("#modules_select").val().length) {
 				loc_modules = $("#modules_select").val()
 			}
 
 
 			let result_dict = {
-				"modules": loc_modules, 
+				"modules": loc_modules,
 				"input": loc,
 				"query": current_query,
 			}
 
-			const res = await fetch('/analyzer/misp-modules/run',{
+			const res = await fetch('/analyzer/misp-modules/run', {
 				headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
 				method: "POST",
 				body: JSON.stringify(result_dict)
 			})
-			if(await res.status == 201){
+			if (await res.status == 201) {
 				let loc = await res.json()
 				await nextTick()
-				window.location.href="/analyzer/misp-modules/loading/" + loc['id']
-			}else{
+				window.location.href = "/analyzer/misp-modules/loading/" + loc['id']
+			} else {
 				display_toast(res, true)
 			}
 		}
-		
-		
+
+
 		return {
 			cp_entries,
 			misp_attributes_list,
@@ -148,7 +148,7 @@ export default {
 			<div class="row">
 				<div class="col-6" v-if="misp_attributes_list.length">
 					<div>
-						<h4>Input Attributes</h4>
+						<h4><i class="fa-solid fa-keyboard fa-sm me-1"></i><span class="section-title">Input Attributes</span></h4>
 					</div>
 					<div>
 						<select data-placeholder="Input" class="select2-input form-control" name="input_select" id="input_select">
@@ -161,7 +161,7 @@ export default {
 				</div>
 				<template v-if="modules_list.length">
 					<div v-if="attr_selected.length" class="col-6">
-						<h4>Modules</h4>
+						<h4><i class="fa-solid fa-puzzle-piece fa-sm me-1"></i><span class="section-title">Modules</span></h4>
 						<select data-placeholder="Modules" class="select2-modules form-control" multiple name="modules_select" id="modules_select">
 							<template v-for="key in modules_list">
 								<option v-if="checked_attr(key.mispattributes.input)" :value="key.name" :title="key.meta.description">[[key.name]]</option>

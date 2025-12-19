@@ -5,23 +5,22 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="case-core-style d-flex" style="border-radius: 0">
-        <h1>
-            Connectors
+    <div class="case-core-style" style="border-radius: 0">
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-plug me-2"></i>Connectors</h5>
+                {% if current_user.is_admin() %}
+                    <a class="btn btn-primary btn-sm ms-3" href="/connectors/add_connector" title="Add connector"><i class="fa-solid fa-plus fa-sm"></i></a>
+                {% endif %}
+            </div>
 
-            {% if current_user.is_admin() %}
-                <span>
-                    <a class="btn btn-primary" href="/connectors/add_connector"><i class="fa-solid fa-plus"></i></a>
-                </span>
-            {% endif %}
-        </h1>
-
-        <!-- Search bar -->
-        <div class="input-group w-auto start-50 translate-middle-x" id="search_org">
-            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Connector by name' style="min-width: 400px;" />
+            <!-- Search bar -->
+            <div class="col input-group w-auto">
+                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Connector by name' />
+            </div>
+            <!-- Search bar -->
         </div>
-        <!-- Search bar -->
     </div>
 
     <hr class="fading-line-2 mt-4 mb-4">

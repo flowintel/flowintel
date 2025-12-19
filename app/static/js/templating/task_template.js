@@ -1,35 +1,35 @@
-import {display_toast, create_message} from '../toaster.js'
+import { display_toast, create_message } from '../toaster.js'
 import TaskUrlTool from '../case/TaskComponent/TaskUrlTool.js'
-import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
+import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
 const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	components: {
 		TaskUrlTool
-    },
+	},
 	props: {
-        templates_list: Object,
+		templates_list: Object,
 		template: Object,
-        key_loop: Number,
-        task_in_case: Boolean,
+		key_loop: Number,
+		task_in_case: Boolean,
 		case_id: Number
 	},
 	setup(props) {
 		// Needed for TaskUrlTool component
 		const cases_info = {
-			"permission": {"read_only": false},
+			"permission": { "read_only": false },
 			"present_in_case": true
 		}
 
 		const expandedTasks = ref({});
 
 		Vue.onMounted(async () => {
-			if(props.template.notes.length){
-				for(let i in props.template.notes){
-					const targetElement = document.getElementById('editor_' +i +'_' + props.template.id)
-					let editor=new Editor.EditorView({
+			if (props.template.notes.length) {
+				for (let i in props.template.notes) {
+					const targetElement = document.getElementById('editor_' + i + '_' + props.template.id)
+					let editor = new Editor.EditorView({
 						doc: "\n\n",
-						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+						extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
 								note_editor_render.value[i] = editor.state.doc.toString()
 							}
@@ -38,18 +38,18 @@ export default {
 					})
 					editor_list[i] = editor
 				}
-			}else{
+			} else {
 				const targetElement = document.getElementById('editor_0_' + props.template.id)
-					let editor=new Editor.EditorView({
-						doc: "\n\n",
-						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
-							if (v.docChanged) {
-								note_editor_render.value[0] = editor.state.doc.toString()
-							}
-						})],
-						parent: targetElement
-					})
-					editor_list[0] = editor
+				let editor = new Editor.EditorView({
+					doc: "\n\n",
+					extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
+						if (v.docChanged) {
+							note_editor_render.value[0] = editor.state.doc.toString()
+						}
+					})],
+					parent: targetElement
+				})
+				editor_list[0] = editor
 			}
 
 			const allCollapses = document.getElementById('collapse' + props.template.id)
@@ -60,43 +60,43 @@ export default {
 		})
 		Vue.onUpdated(async () => {
 			// do not initialize mermaid before the page is mounted
-			if(is_mounted)
+			if (is_mounted)
 				md.mermaid.init()
 		})
 
 		const is_mounted = ref(false)
-        const edit_mode = ref(-1)
+		const edit_mode = ref(-1)
 
 		const note_editor_render = ref([])
 		let editor_list = []
 		const md = window.markdownit()
 		md.use(mermaidMarkdown.default)
 
-		if(props.template.notes.length){
-			for(let i in props.template.notes){
+		if (props.template.notes.length) {
+			for (let i in props.template.notes) {
 				note_editor_render.value[i] = props.template.notes[i].note		// If this template has notes
 			}
-		}else{
+		} else {
 			note_editor_render.value[0] = ""
 		}
 
 
-		async function add_notes_task(){
+		async function add_notes_task() {
 			// Create a new empty note in the task
-			const res = await fetch('/templating/task/'+props.template.id+'/create_note')
+			const res = await fetch('/templating/task/' + props.template.id + '/create_note')
 
-			if(await res.status == 200){
+			if (await res.status == 200) {
 				let loc = await res.json()
 				props.template.notes.push(loc["note"])
-				let key = props.template.notes.length-1
+				let key = props.template.notes.length - 1
 				note_editor_render.value[key] = ""
 				await nextTick()
 				const targetElement = document.getElementById('editor_' + key + "_" + props.template.id)
-				
-				if(targetElement.innerHTML === ""){
+
+				if (targetElement.innerHTML === "") {
 					let editor = new Editor.EditorView({
 						doc: "\n\n",
-						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+						extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
 								note_editor_render.value[key] = editor.state.doc.toString()
 							}
@@ -107,53 +107,53 @@ export default {
 				}
 			}
 		}
-		
-		async function delete_note(template, note_id, key){
-			// Delete a note of the task
-			const res = await fetch('/templating/task/' + template.id + '/delete_note?note_id='+note_id)
 
-			if( await res.status == 200){
+		async function delete_note(template, note_id, key) {
+			// Delete a note of the task
+			const res = await fetch('/templating/task/' + template.id + '/delete_note?note_id=' + note_id)
+
+			if (await res.status == 200) {
 				props.template.notes.splice(key, 1);
 			}
 			display_toast(res)
 		}
 
-        async function delete_task(template, template_array){
-            const res = await fetch("/templating/delete_task/" + template.id)
-            if( await res.status == 200){
+		async function delete_task(template, template_array) {
+			const res = await fetch("/templating/delete_task/" + template.id)
+			if (await res.status == 200) {
 				let index = template_array.indexOf(template)
-				if(index > -1)
+				if (index > -1)
 					template_array.splice(index, 1)
 
-				var myModalEl = document.getElementById('delete_task_template_modal_'+template.id);
+				var myModalEl = document.getElementById('delete_task_template_modal_' + template.id);
 				var modal = bootstrap.Modal.getInstance(myModalEl)
 				modal.hide();
 			}
-            display_toast(res)
-        }
+			display_toast(res)
+		}
 
-        async function remove_task(template, template_array){
-            const res = await fetch("/templating/case/" + props.case_id + "/remove_task/" + template.id)
-            if(await res.status == 200){
-                let index = template_array.indexOf(template)
-                if(index > -1)
-                    template_array.splice(index, 1)
-            }
-            display_toast(res)
-        }
-        
+		async function remove_task(template, template_array) {
+			const res = await fetch("/templating/case/" + props.case_id + "/remove_task/" + template.id)
+			if (await res.status == 200) {
+				let index = template_array.indexOf(template)
+				if (index > -1)
+					template_array.splice(index, 1)
+			}
+			display_toast(res)
+		}
 
-		async function edit_note(template, note_id, key){
-            edit_mode.value = note_id
 
-			const res = await fetch('/templating/task/'+template.id+'/get_note?note_id=' + note_id)
+		async function edit_note(template, note_id, key) {
+			edit_mode.value = note_id
+
+			const res = await fetch('/templating/task/' + template.id + '/get_note?note_id=' + note_id)
 			let loc = await res.json()
 			template.notes[key].note = loc["notes"]
 
-			const targetElement = document.getElementById('editor1_'+key+"_" + props.template.id)
+			const targetElement = document.getElementById('editor1_' + key + "_" + props.template.id)
 			let editor = new Editor.EditorView({
 				doc: template.notes[key].note,
-				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+				extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
 					if (v.docChanged) {
 						note_editor_render.value[key] = editor.state.doc.toString()
 					}
@@ -163,37 +163,37 @@ export default {
 			editor_list[key] = editor
 		}
 
-		async function modif_note(template, note_id, key){
+		async function modif_note(template, note_id, key) {
 			let notes_loc = editor_list[key].state.doc.toString()
-			if(notes_loc.trim().length == 0){
+			if (notes_loc.trim().length == 0) {
 				notes_loc = notes_loc.trim()
 			}
 			const res_msg = await fetch(
-				'/templating/task/' + template.id + '/modif_note?note_id=' + note_id,{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-					method: "POST",
-					body: JSON.stringify({"notes": notes_loc})
-				}
+				'/templating/task/' + template.id + '/modif_note?note_id=' + note_id, {
+				headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+				method: "POST",
+				body: JSON.stringify({ "notes": notes_loc })
+			}
 			)
 
-			if(await res_msg.status == 200){
+			if (await res_msg.status == 200) {
 				let loc = await res_msg.json()
-                edit_mode.value = -1
+				edit_mode.value = -1
 				template.last_modif = Date.now()
-				if(note_id == -1){
+				if (note_id == -1) {
 					note_id = loc["note"]["id"]
 					template.notes.push(loc["note"])
-				}else{
+				} else {
 					template.notes[key].note = notes_loc
 				}
 				await nextTick()
-				
-				if(!notes_loc){
+
+				if (!notes_loc) {
 					const targetElement = document.getElementById('editor_' + props.template.id)
-					if(targetElement.innerHTML === ""){
+					if (targetElement.innerHTML === "") {
 						editor = new Editor.EditorView({
 							doc: "\n\n",
-							extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+							extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
 								if (v.docChanged) {
 									note_editor_render.value = editor.state.doc.toString()
 								}
@@ -203,7 +203,7 @@ export default {
 						editor_list[key] = editor
 					}
 				}
-			}else{
+			} else {
 				display_toast(res_msg)
 			}
 		}
@@ -213,70 +213,70 @@ export default {
 			return dayjs.utc(dt).from(dayjs.utc())
 		}
 
-		function endOf(dt){
+		function endOf(dt) {
 			return dayjs.utc(dt).endOf().from(dayjs.utc())
 		}
 
-		async function create_subtask(task){
-			$("#create-subtask-error-"+task.id).text("")
-			let description = $("#create-subtask-"+task.id).val()
-			if(!description){
-				$("#create-subtask-error-"+task.id).text("Cannot be empty...").css("color", "brown")
+		async function create_subtask(task) {
+			$("#create-subtask-error-" + task.id).text("")
+			let description = $("#create-subtask-" + task.id).val()
+			if (!description) {
+				$("#create-subtask-error-" + task.id).text("Cannot be empty...").css("color", "brown")
 			}
-			
-			const res = await fetch("/templating/task/"+task.id+"/create_subtask", {
+
+			const res = await fetch("/templating/task/" + task.id + "/create_subtask", {
 				method: "POST",
 				headers: {
 					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
 				},
 				body: JSON.stringify({
 					"description": description
-				})				
+				})
 			});
-			if( await res.status == 200){
-				let loc= res.json()["id"]
-				task.subtasks.push({"id": loc, "description": description, "task_id": task.id, "completed": false})
+			if (await res.status == 200) {
+				let loc = res.json()["id"]
+				task.subtasks.push({ "id": loc, "description": description, "task_id": task.id, "completed": false })
 				create_message("Subtask created", "success-subtle")
-			}else{
+			} else {
 				await display_toast(res)
 			}
 		}
 
-		async function edit_subtask(task, subtask_id){
-			$("#edit-subtask-error-"+subtask_id).text("")
-			let description = $("#edit-subtask-"+subtask_id).val()
-			if(!description){
-				$("#edit-subtask-error-"+subtask_id).text("Cannot be empty...").css("color", "brown")
+		async function edit_subtask(task, subtask_id) {
+			$("#edit-subtask-error-" + subtask_id).text("")
+			let description = $("#edit-subtask-" + subtask_id).val()
+			if (!description) {
+				$("#edit-subtask-error-" + subtask_id).text("Cannot be empty...").css("color", "brown")
 			}
-			const res = await fetch("/templating/task/"+task.id+"/edit_subtask/"+subtask_id, {
+			const res = await fetch("/templating/task/" + task.id + "/edit_subtask/" + subtask_id, {
 				method: "POST",
 				headers: {
 					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
 				},
 				body: JSON.stringify({
 					"description": description
-				})				
+				})
 			});
-			if( await res.status == 200){
-				for(let i in task.subtasks){
-					if (task.subtasks[i].id == subtask_id){
+			if (await res.status == 200) {
+				for (let i in task.subtasks) {
+					if (task.subtasks[i].id == subtask_id) {
 						task.subtasks[i].description = description
 						break
 					}
 				}
-				$("#edit_subtask_"+subtask_id).modal("hide")
+				$("#edit_subtask_" + subtask_id).modal("hide")
 			}
 			await display_toast(res)
 		}
 
-		async function delete_subtask(task, subtask_id){			
-			const res = await fetch('/templating/task/' + task.id+"/delete_subtask/"+subtask_id)
+		async function delete_subtask(task, subtask_id) {
+			const res = await fetch('/templating/task/' + task.id + "/delete_subtask/" + subtask_id)
 
-			if( await res.status == 200){
+			if (await res.status == 200) {
 				let loc_i
-				for(let i in task.subtasks){
-					if (task.subtasks[i].id == subtask_id){
-						loc_i=i
+				for (let i in task.subtasks) {
+					if (task.subtasks[i].id == subtask_id) {
+						loc_i = i
 						break
 					}
 				}
@@ -299,7 +299,7 @@ export default {
 			truncateText,
 			expandedTasks,
 
-            edit_mode,
+			edit_mode,
 			cases_info,
 			delete_note,
 			delete_task,
@@ -324,7 +324,7 @@ export default {
 		@click="toggleCollapse(template.id)"
 		>        
             <div class="d-flex w-100 justify-content-between">
-                <h4 class="mb-1">[[ key_loop+1 ]]- [[ template.title ]]</h4>
+                <h5 class="mb-1"><i class="fa-solid fa-clipboard-list fa-sm me-2"></i>[[ key_loop+1 ]]-[[ template.title ]]</h5>
             </div>
             <div class="d-flex w-100 justify-content-between">
                 <template v-if="template.description">
@@ -453,7 +453,7 @@ export default {
 					<div class="col-auto">
 						<fieldset class="analyzer-select-case" style="text-align: center;">
 							<legend class="analyzer-select-case">
-								Time Required
+								<i class="fa-solid fa-clock fa-sm me-1"></i><span class="section-title">Time Required</span>
 							</legend>
 							[[template.time_required]]
 						</fieldset>
@@ -467,8 +467,7 @@ export default {
 			<div>
 				<fieldset class="analyzer-select-case">
 					<legend class="analyzer-select-case">
-						<i class="fa-solid fa-list"></i> 
-						Subtasks
+						<i class="fa-solid fa-list fa-sm me-1"></i><span class="section-title">Subtasks</span>
 						<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" :data-bs-target="'#create_subtask_'+template.id" style="float: right; margin-left:3px;">
 							<i class="fa-solid fa-plus"></i>
 						</button>
@@ -528,8 +527,7 @@ export default {
 			<div>
 				<fieldset class="analyzer-select-case">
 					<legend class="analyzer-select-case">
-						<i class="fa-solid fa-note-sticky"></i> 
-						Notes
+						<i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes</span>
 						<button class="btn btn-primary btn-sm me-1" title="Add notes" @click="add_notes_task()">
 							<i class="fa-solid fa-plus fa-fw"></i>
 						</button>

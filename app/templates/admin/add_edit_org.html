@@ -5,7 +5,15 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Add an organisation</h2>
+    {% if not edit_mode %}
+        <div class="case-core-style" style="border-radius: 0;">
+            <h5 class="mb-0"><i class="fa-solid fa-building-circle-arrow-right me-2"></i>Create an organisation</h5>
+        </div>
+    {% else %}
+        <div class="case-core-style" style="border-radius: 0;">
+            <h5 class="mb-0"><i class="fa-solid fa-building-circle-check me-2"></i>Edit an organisation</h5>
+        </div>
+    {% endif %}
 
     <hr class="fading-line-2 mb-4 mt-4">
 
@@ -14,7 +22,7 @@
         <div class="modal-body">
             <div class="row">
                 <div class="mb-3 w-50">
-                    {{form.name.label(class_="col-form-label")}}:
+                    {{form.name.label(class_="col-form-label")}}<span class="text-danger">*</span>:
                     {{form.name(class_="form-control")}}
                     {% if form.name.errors %}
                         <div style="color: red;">{{form.name.errors[0] | safe}}</div>

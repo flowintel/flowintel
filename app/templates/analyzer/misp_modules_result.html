@@ -25,13 +25,19 @@
         <div class="col-6">
             <ul class="nav nav-tabs" style="margin-bottom: 10px;">
                 <li class="nav-item">
-                    <button class="nav-link active" id="tab-visual" @click="active_tab('visual')">Visual</button>
+                    <button class="nav-link active" id="tab-visual" @click="active_tab('visual')">
+                        <i class="fa-solid fa-eye fa-sm me-1"></i><span class="section-title">Visual</span>
+                    </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link" id="tab-json" @click="active_tab('json')">Json</button>
+                    <button class="nav-link" id="tab-json" @click="active_tab('json')">
+                        <i class="fa-solid fa-code fa-sm me-1"></i><span class="section-title">Json</span>
+                    </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link" id="tab-task-markdown" @click="active_tab('markdown')">Markdown</button>
+                    <button class="nav-link" id="tab-task-markdown" @click="active_tab('markdown')">
+                        <i class="fa-solid fa-file-lines fa-sm me-1"></i><span class="section-title">Markdown</span>
+                    </button>
                 </li>
             </ul>
             

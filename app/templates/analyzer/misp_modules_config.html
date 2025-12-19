@@ -5,57 +5,73 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="case-core-style d-flex" style="border-radius: 0"> 
-        <h1 style="margin-top: -9px;">
+    <div class="case-core-style d-flex" style="border-radius: 0;"> 
+        <h1>
             <a type="button" class="btn btn-outline-dark me-2" href="/analyzer/misp-modules"><i class="fa-solid fa-arrow-left"></i></a>
         </h1>
-        <h1 style="font-size: xx-large;">Modules Config</h1> 
+        <h1>
+            <i class="fa-solid fa-gears me-2"></i>Modules Config
+            <span class="badge bg-secondary" style="font-size: 0.5em;">[[modules_config.length]]</span>
+        </h1>
+
+        <!-- Search bar -->
+        <div class="input-group w-auto translate-middle-x" style="left: 30% !important;">
+            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <input type="search" @input="onInput" id="search_modules" placeholder="Search modules" autofocus class="form-control rounded" style="min-width: 350px;" />
+        </div>
     </div>
-    <small>[[modules_config.length]] modules found</small>
 
     <hr class="fading-line-2 mb-4 mt-4">
 
-    <div style="width:50%; transform: translate(50%, 0);">
-        <div>
-            <input type="search" @input="onInput" id="search_modules" placeholder="Search modules" autofocus class="form-control" style="border-radius: 5px;" />
-        </div>
-    </div>
-    <br>
-
     <div class="row" style="margin-bottom: 100px;">
         <div class="col" style="flex: 0 0 50%">
-            <div class="list-group">
-                <div v-for="module in modules_config" style="display:flex; ">
-                    <input v-if="module.is_active || module.is_active == null" type="checkbox" style="margin-right: 5px;" checked @click="change_status(module)">
-                    <input v-else type="checkbox" style="margin-right: 5px;" @click="change_status(module)">
-                    <a class="list-group-item list-group-item-action" style="border-radius: 10px;" :title="module.description" @click="display_config(module)">
-                        [[module.name]]
-                        <i v-if="!module.config.length" style="color: brown;">No config</i>
-                    </a>
+            <div class="case-core-style">
+                <div v-for="module in modules_config" class="list-group" style="margin-bottom: 10px;">
+                    <div style="display:flex; border-radius: 10px;">
+                        <a class="list-group-item list-group-item-action case-index-list" style="cursor: pointer;" @click="display_config(module)">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">
+                                    <input v-if="module.is_active || module.is_active == null" type="checkbox" class="form-check-input me-2" checked @click.stop="change_status(module)">
+                                    <input v-else type="checkbox" class="form-check-input me-2" @click.stop="change_status(module)">
+                                    [[module.name]]
+                                </h5>
+                                <span v-if="!module.config.length" class="badge bg-warning text-dark">No config</span>
+                                <span v-else class="badge bg-success">[[module.config.length]] settings</span>
+                            </div>
+                            <p v-if="module.description" class="card-text mb-0"><small class="text-muted">[[module.description.substring(0, 100)]]<span v-if="module.description.length > 100">...</span></small></p>
+                            <p v-else class="card-text mb-0"><small class="text-muted"><i>No description</i></small></p>
+                        </a>
+                    </div>
+                </div>
+                <div v-if="modules_config.length === 0" class="text-center text-muted py-4">
+                    <i class="fa-solid fa-puzzle-piece fa-2x mb-2"></i>
+                    <p class="mb-0">No modules found</p>
                 </div>
             </div>
         </div>
         <!-- Right panel -->
-        <div v-if="Object.keys(current_config).length" class="side-panel-config">
-            <div class="round-button" title="close" style="margin-top: 3px;">
-                <div class="round-button-circle">
-                    <a @click="close_panel()" class="round-button">x</a>
+        <div v-if="Object.keys(current_config).length" class="col">
+            <div class="case-core-style">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="fa-solid fa-sliders me-2"></i>[[ current_config['module_name'] ]]</h5>
+                    <button class="btn btn-outline-secondary btn-sm" @click="close_panel()" title="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
+                <small class="text-muted">
+                    <i class="fa-solid fa-tag me-1"></i>Attributes: [[current_config['input_attr'].join(", ")]]
+                </small>
+                <hr>
+                <template v-for="conf, key in current_config">
+                    <div class="mb-3" v-if="key != 'module_name' && !current_config['request_on_query'] && key != 'request_on_query' && key != 'input_attr'">
+                        <label :for="'form-'+key" class="form-label">[[key]]</label>
+                        <input type="text" class="form-control" :id="'form-'+key+'-'+current_config['module_name']" :value="conf">
+                    </div>
+                </template>
+                <button v-if="Object.keys(current_config).length > 3" class="btn btn-primary" @click="change_config()">
+                    <i class="fa-solid fa-save me-1"></i>Save
+                </button>
             </div>
-            <br>
-            <h4>[[ current_config['module_name'] ]]</h4>
-            <i>
-                <small>
-                    Attributes: [[current_config['input_attr'].join(", ")]]
-                </small> 
-            </i>
-            <template v-for="conf, key in current_config">
-                <div class="mb-3" v-if="key != 'module_name' && !current_config['request_on_query'] && key != 'request_on_query' && key != 'input_attr'">
-                    <label :for="'form-'+key" class="form-label">[[key]]</label>
-                    <input type="text" class="form-control" :id="'form-'+key+'-'+current_config['module_name']" :value="conf">
-                </div>
-            </template>
-            <button v-if="Object.keys(current_config).length > 3" class="btn btn-primary" @click="change_config()">Save</button>
         </div>
     </div>
 {% endblock %}
@@ -67,9 +83,9 @@
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            const modules_config = ref({})
+            const modules_config = ref([])
             const current_config = ref({})
-            let loc_modules = {}
+            let loc_modules = []
 
             async function query_modules(){
                 let res = await fetch("/analyzer/misp-modules/modules_config_data")
@@ -147,6 +163,21 @@
                 }
 			}
 
+            async function change_status(module){
+                const res = await fetch('/analyzer/misp-modules/change_status', {
+                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                    method: "POST",
+                    body: JSON.stringify({
+                        module_name: module.name,
+                        is_active: !(module.is_active || module.is_active == null)
+                    })
+                })
+                if(res.status == 200){
+                    module.is_active = !(module.is_active || module.is_active == null)
+                }
+                display_toast(res)
+            }
+
 
             return {
                 message_list,
@@ -155,7 +186,8 @@
                 display_config,
                 close_panel,
                 change_config,
-                onInput
+                onInput,
+                change_status
             }
         }
     }).mount('#main-container')

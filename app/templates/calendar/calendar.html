@@ -2,6 +2,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
+<title>Calendar - {{ config.APP_NAME }}</title>
 {{ super() }}
 
 <script src="{{ url_for('static',filename='js/calendar/fullcalendar.global.min.js') }}"></script>

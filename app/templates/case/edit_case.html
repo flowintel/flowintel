@@ -8,28 +8,30 @@
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
 <script src="{{ url_for('static',filename='js/editor.js') }}"></script>
 
+<title>Edit case #{{ case_id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
 {%endblock%}
 
 {% block content %}
-    <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit Case</h2>
+    <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit case #{{ case_id }}</h2>
 
     <hr class="fading-line-2 mb-4 mt-4">
 
-    <form action="" method="post" id="form">
+    <form action="" method="post" id="form" novalidate>
         {{ form.hidden_tag() }}
         <div class="case-core-style">
             <div class="row">
                 <div class="mb-3 w-50">
-                    {{form.title.label(class_="col-form-label")}}:
-                    {{form.title(class_="form-control")}}
+                    <i class="fa-solid fa-heading"></i> <strong>{{form.title.label(class_="col-form-label")}}:</strong> <span style="color: red;">*</span>
+                    {{form.title(class_="form-control", placeholder="Quick case description or tracking info", id="case_title")}}
+                    <div id="title_error" style="color: red; display: none;">Title is required</div>
                     {% if form.title.errors %}
                         <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
                 <div class="mb-3 w-50">
                     <br>
-                    {{form.is_private.label(class_="col-form-label")}}:
+                    <i class="fa-solid fa-lock"></i> <strong>{{form.is_private.label(class_="col-form-label")}}:</strong>
                     {{form.is_private(class_="ms-2")}}
                     {% if form.is_private.errors %}
                         <div style="color: red;">{{form.is_private.errors[0] | safe}}</div>
@@ -38,15 +40,15 @@
             </div>
             <div class="row">
                 <div class="col">
-                    {{form.deadline_date.label(class_="col-form-label")}}:
-                    {{form.deadline_date(class_="form-control")}}
+                    <i class="fa-solid fa-calendar"></i> <strong>{{form.deadline_date.label(class_="col-form-label")}}:</strong>
+                    {{form.deadline_date(class_="form-control", placeholder="When does the case need to be solved")}}
                     {% if form.deadline_date.errors %}
                         <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
                 <div class="col">
-                    {{form.deadline_time.label(class_="col-form-label")}}:
-                    {{form.deadline_time(class_="form-control")}}
+                    <i class="fa-solid fa-clock"></i> <strong>{{form.deadline_time.label(class_="col-form-label")}}:</strong>
+                    {{form.deadline_time(class_="form-control", placeholder="Specific time for the deadline")}}
                     {% if form.deadline_time.errors %}
                         <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
                     {%endif%}
@@ -54,22 +56,22 @@
             </div>
             <div class="row">
                 <div class="mb-3 w-50">
-                    {{form.time_required.label(class_="col-form-label")}}:
-                    {{form.time_required(class_="form-control")}}
+                    <i class="fa-solid fa-hourglass-half"></i> <strong>{{form.time_required.label(class_="col-form-label")}}:</strong>
+                    {{form.time_required(class_="form-control", placeholder="How much time is required by this case?")}}
                     {% if form.time_required.errors %}
                         <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
                 <div class="mb-3 w-50">
-                    {{form.ticket_id.label(class_="col-form-label")}}:
-                    {{form.ticket_id(class_="form-control")}}
+                    <i class="fa-solid fa-ticket"></i> <strong>{{form.ticket_id.label(class_="col-form-label")}}:</strong>
+                    {{form.ticket_id(class_="form-control", placeholder="External ticket or reference ID")}}
                     {% if form.ticket_id.errors %}
                         <div style="color: red;">{{form.ticket_id.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
             </div>
             <div class="row">
-                <span class="mb-2">Description:</span>
+                <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
                 <div style="display: flex">
                     <div class="note-editor" id="editor"></div>
                     <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
@@ -77,7 +79,7 @@
                 </div>
             </div>
             <div style="margin-top: 10px;">
-                <button class="btn btn-primary">Save</button>
+                <button class="btn btn-primary" type="submit">Save</button>
             </div>
         </div>
     </form>
@@ -119,5 +121,22 @@
             }
         }
     }).mount('#main-container')
+
+    // Client-side validation for edit case
+    window.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('form').addEventListener('submit', function(e) {
+            const titleInput = document.getElementById('case_title');
+            const titleError = document.getElementById('title_error');
+            const titleValue = titleInput ? titleInput.value.trim() : '';
+            
+            if (!titleValue) {
+                e.preventDefault();
+                titleError.style.display = 'block';
+                titleInput.focus();
+                return false;
+            }
+            titleError.style.display = 'none';
+        });
+    });
 </script>
 {% endblock %}

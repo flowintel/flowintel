@@ -7,40 +7,55 @@
 {% block head %}
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
 
+<title>Cases - {{ config.APP_NAME }}</title>
 {{ super() }}
 {%endblock%}
 
 
 {% block content %}
     <div class="case-core-style" style="border-radius: 0;">
-        <div class="row">
-            <div class="col">
-                <h1 class="d-flex">
-                    Cases
-                    <span>
-                        <a type="button" class="btn btn-primary ms-2" href="/case/create_case"><i class="fa-solid fa-plus"></i></a>
-                    </span>
-                </h1>
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-folder-open me-2"></i>Cases</h5>
+                <a type="button" class="btn btn-primary btn-sm ms-3" href="/case/create_case" title="Create new case">
+                    <i class="fa-solid fa-plus fa-sm"></i>
+                </a>
             </div>
 
-            <div class="col">
-                <button v-if="is_open_cases" class="btn btn-outline-secondary mt-2" @click="change_status_sort(false)" title="See Finished cases">
-                    <i class="fa-solid fa-folder-closed me-1"></i> Finished cases
+            <div class="col-auto">
+                <button v-if="is_open_cases" class="btn btn-outline-secondary btn-sm" @click="change_status_sort(false)" title="See Finished cases">
+                    <i class="fa-solid fa-folder-closed fa-sm me-1"></i> Finished cases
                 </button>
-                <button v-else class="btn btn-outline-secondary mt-2" @click="change_status_sort(true)" title="See Opened cases">
-                    <i class="fa-solid fa-folder-open me-1"></i> Opened cases
+                <button v-else class="btn btn-outline-secondary btn-sm" @click="change_status_sort(true)" title="See Opened cases">
+                    <i class="fa-solid fa-folder-open fa-sm me-1"></i> Opened cases
                 </button>
             </div>
 
 
             <!-- Search bar -->
-            <div class="input-group w-auto col me-5">
-                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
-                    <i class="fa-solid fa-filter"></i>
+            <div class="col input-group w-auto">
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
+                    <i class="fa-solid fa-filter fa-sm"></i>
                 </button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title'  />
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search case by title' />
             </div>
             <!-- Search bar -->
+
+            <!-- Sort buttons -->
+            <div class="col-auto">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Sort options">
+                    <button type="button" class="btn btn-sm" :class="current_filter === 'last_modif' ? 'btn-primary' : 'btn-outline-secondary'" @click="sort_by_filter('last_modif')" title="Sort by date">
+                        <i class="fa-solid fa-calendar fa-sm me-1"></i>Date
+                    </button>
+                    <button type="button" class="btn btn-sm" :class="current_filter === 'title' ? 'btn-primary' : 'btn-outline-secondary'" @click="sort_by_filter('title')" title="Sort by title">
+                        <i class="fa-solid fa-font fa-sm me-1"></i>Title
+                    </button>
+                    <button type="button" class="btn btn-sm" :class="current_filter === 'id' ? 'btn-primary' : 'btn-outline-secondary'" @click="sort_by_filter('id')" title="Sort by ID">
+                        <i class="fa-solid fa-hashtag fa-sm me-1"></i>ID
+                    </button>
+                </div>
+            </div>
+            <!-- Sort buttons -->
         </div>
     </div>
 
@@ -194,8 +209,8 @@
                 <div style="display:flex; border-radius: 10px;">
                     <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action case-index-list">
                         <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">
-                                [[ case_loc.id ]]-[[ case_loc.title ]]
+                            <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
+                                <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ case_loc.id ]]-[[ case_loc.title ]]
                                 <span style="font-size: 12px; vertical-align: middle;">
                                     <i v-if="case_loc.is_private" class="fa-solid fa-lock" title="The case is private, only org present in can see this case"></i>
                                     <i v-else class="fa-solid fa-globe" title="The case is public anyone can see this case but only org present in case can modify it"></i>
@@ -203,7 +218,7 @@
                                 <button v-if="case_loc.link_to.length" disabled class="btn btn-outline-primary btn-sm" style="margin-left: 20px;">
                                     <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[case_loc.link_to.length]]</span>
                                 </button>
-                            </h4>                            
+                            </h5>                            
                             <small :title="case_loc.last_modif"><i>Changed [[ (dayjs.utc(case_loc.last_modif).fromNow()) ]]</i></small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
@@ -418,6 +433,10 @@
                 fetchStatus()
 
                 async function complete_case(case_loc, cases_list, is_revived){
+                    const action = is_revived ? 'revive' : 'complete';
+                    if (!confirm(`Are you sure you want to ${action} this case?`)) {
+                        return;
+                    }
                     let url
                     if (is_revived)
                         url = '/case/' + case_loc.id + '/complete_case?revived=true'
@@ -580,6 +599,7 @@
                     mapIcon,
 
                     is_open_cases,
+                    current_filter,
 
                     md,
                     case_list,

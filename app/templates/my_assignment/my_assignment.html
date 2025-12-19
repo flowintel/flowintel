@@ -7,16 +7,21 @@
 {% block head %}
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
 
+<title>My tasks assignments - {{ config.APP_NAME }}</title>
 {{ super() }}
 {%endblock%}
 
 {% block content %}
 
-<div class="case-core-style d-flex" style="margin-bottom: 10px; border-radius: 0;">
-    <h1>My Assignment to Tasks</h1>
-    <div style="margin-top: 7px; margin-left: 10px;">
-        <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => emit_result(tasks)" @current_filter="filter => current_filter = filter">
-        </my_assignment_filter>
+<div class="case-core-style" style="margin-bottom: 10px; border-radius: 0;">
+    <div class="row align-items-center">
+        <div class="col-auto d-flex align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-clipboard-check me-2"></i>My tasks assignments</h5>
+        </div>
+        <div class="col-auto">
+            <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => emit_result(tasks)" @current_filter="filter => current_filter = filter">
+            </my_assignment_filter>
+        </div>
     </div>
 </div>
 <hr class="fading-line-2 mb-4 mt-4">
@@ -42,12 +47,12 @@
 <template v-if="tasks_list">
     <template v-for="(case_title, index) in tasks_list.tasks">
         <div class="case-core-style mb-4">
-            <h4 style="text-align: center;"><b><i>[[index]]</i></b></h4>
+            <h4 style="text-align: center;"><b><i class="fa-solid fa-briefcase fa-sm me-2"></i>[[case_title[0]?.case_id]]-[[index]]</b></h4>
             <template v-for="task in case_title">
                 <div class="list-group" style="margin-bottom: 20px; border-radius: 15px;">                      
                     <a :href="`/case/${task.case_id}#task-${task.id}`" class="list-group-item list-group-item-action p-3 case-index-list">
                         <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">[[task.title]]</h5>
+                            <h5 class="mb-1"><i class="fa-solid fa-clipboard-list fa-sm me-2"></i>[[task.title]]</h5>
                             <small><i>Changed [[ dayjs.utc(task.last_modif).fromNow() ]] </i></small>
                         </div>
 
