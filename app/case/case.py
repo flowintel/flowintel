@@ -11,6 +11,7 @@ from ..db_class.db import Case, Task_Template, Case_Template
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
+from ..utils.logger import flowintel_log
 
 case_blueprint = Blueprint(
     'case',
@@ -58,6 +59,7 @@ def create_case():
             form_dict.update(res)
             form_dict["description"] = request.form.get("description")
             case = CaseModel.create_case(form_dict, current_user)
+            flowintel_log("audit", 200, "Case created", User=current_user.email, CaseId=case.id, CaseTitle=case.title)
             flash("Case created", "success")
             return redirect(f"/case/{case.id}")
         return render_template("case/create_case.html", form=form)
@@ -89,6 +91,7 @@ def edit_case(cid):
                 form_dict = form_to_dict(form)
                 form_dict["description"] = request.form.get("description")
                 CaseModel.edit(form_dict, cid, current_user)
+                flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid)
                 flash("Case edited", "success")
                 return redirect(f"/case/{cid}")
             else:
@@ -125,6 +128,7 @@ def edit_case_tags(cid):
                         "custom_tags": custom_tags_list
                     }
                     CaseModel.edit_tags(loc_dict, cid, current_user)
+                    flowintel_log("audit", 200, "Case tags/galaxies edited", User=current_user.email, CaseId=cid, Tags=str(tag_list), Galaxies=str(cluster_list), CustomTags=str(custom_tags_list))
                     return {"message": "Tags edited", "toast_class": "success-subtle"}, 200
                 return {"message": "Error with Clusters", "toast_class": "warning-subtle"}, 400
             return {"message": "Error with Tags", "toast_class": "warning-subtle"}, 400
@@ -273,7 +277,9 @@ def complete_case(cid):
             if CaseModel.complete_case(cid, current_user):
                 flash("Case Completed")
                 if request.args.get('revived', 1) == "true":
+                    flowintel_log("audit", 200, "Case revived", User=current_user.email, CaseId=cid)
                     return {"message": "Case Revived", "toast_class": "success-subtle"}, 200
+                flowintel_log("audit", 200, "Case completed", User=current_user.email, CaseId=cid)
                 return {"message": "Case completed", "toast_class": "success-subtle"}, 200
             else:
                 if request.args.get('revived', 1) == "true":
