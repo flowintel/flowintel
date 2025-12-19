@@ -1,9 +1,9 @@
 import os
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import desc
 
-from ..db_class.db import Case
+from ..db_class.db import Case, Task_User, Task, Notification
 
 from ..case import common_core as CommonModel
 
@@ -19,6 +19,40 @@ home_blueprint = Blueprint(
 @login_required
 def home():    
     return render_template("home.html")
+
+@home_blueprint.route("/home_stats")
+@login_required
+def home_stats():
+    """Get stats for home page welcome header"""
+    try:
+        # Count open cases (status_id = 1 typically means open)
+        open_cases = Case.query.filter_by(completed=False).count()
+        
+        # Count tasks assigned to current user (not completed)
+        # Get task IDs assigned to current user
+        user_task_ids = [tu.task_id for tu in Task_User.query.filter_by(user_id=current_user.id).all()]
+        assigned_tasks = Task.query.filter(
+            Task.id.in_(user_task_ids),
+            Task.completed == False
+        ).count() if user_task_ids else 0
+        
+        # Count unread notifications
+        notifications = Notification.query.filter_by(
+            user_id=current_user.id,
+            is_read=False
+        ).count()
+        
+        return jsonify({
+            "open_cases": open_cases,
+            "assigned_tasks": assigned_tasks,
+            "notifications": notifications,
+            "user": {
+                "first_name": current_user.first_name,
+                "last_name": current_user.last_name
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @home_blueprint.route("/last_case")
 @login_required
