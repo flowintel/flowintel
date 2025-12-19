@@ -10,6 +10,7 @@ from .TaskCore import TaskModel
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
 from ..utils.formHelper import prepare_tags
+from ..utils.logger import flowintel_log
 
 task_blueprint = Blueprint(
     'task',
@@ -44,7 +45,9 @@ def create_task(cid):
                     form_dict = form_to_dict(form)
                     form_dict.update(res)
                     form_dict["description"] = request.form.get("description")
-                    if TaskModel.create_task(form_dict, cid, current_user):
+                    task = TaskModel.create_task(form_dict, cid, current_user)
+                    if task:
+                        flowintel_log("audit", 200, "Task created", User=current_user.email, CaseId=cid, TaskId=task.id, TaskTitle=task.title)
                         flash("Task created", "success")
                     else:
                         flash("Error Task Created", "error")
@@ -71,6 +74,7 @@ def edit_task(cid, tid):
                     form_dict.update(res)
                     form_dict["description"] = request.form.get("description")
                     TaskModel.edit_task_core(form_dict, tid, current_user)
+                    flowintel_log("audit", 200, "Task edited", User=current_user.email, CaseId=cid, TaskId=tid)
                     flash("Task edited", "success")
                     return redirect(f"/case/{cid}")
                 return render_template("case/edit_task.html", form=form, description=task_modif.description)
@@ -97,6 +101,7 @@ def complete_task(tid):
     if task:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if TaskModel.complete_task(tid, current_user):
+                flowintel_log("audit", 200, "Task completed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                 return {"message": "Task completed", "toast_class": "success-subtle"}, 200
             return {"message": "Error task completed", "toast_class": "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -201,6 +206,7 @@ def take_task(cid, tid):
         if CommonModel.get_task(tid):
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if TaskModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
+                    flowintel_log("audit", 200, "User assigned to task", User=current_user.email, CaseId=cid, TaskId=tid, AssignedUser=current_user.email)
                     return {"message": "User Assigned", "toast_class": "success-subtle"}, 200
                 return {"message": "Error assignment", "toast_class": "danger-subtle"}, 400
             return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -221,6 +227,7 @@ def assign_user(cid, tid):
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     for user in users_list:
                         TaskModel.assign_task(tid, user=user, current_user=current_user, flag_current_user=False)
+                    flowintel_log("audit", 200, "Users assigned to task", User=current_user.email, CaseId=cid, TaskId=tid, AssignedUsers=str(users_list))
                     return {"message": "Users Assigned", "toast_class": "success-subtle"}, 200
                 return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
             return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
@@ -237,6 +244,7 @@ def remove_assign_task(cid, tid):
         if CommonModel.get_task(tid):
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if TaskModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
+                    flowintel_log("audit", 200, "User removed from task assignment", User=current_user.email, CaseId=cid, TaskId=tid, RemovedUser=current_user.email)
                     return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
                 return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
             return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -255,6 +263,7 @@ def remove_assigned_user(cid, tid):
             if CommonModel.get_task(tid):
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if TaskModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
+                        flowintel_log("audit", 200, "User removed from task assignment", User=current_user.email, CaseId=cid, TaskId=tid, RemovedUserId=user_id)
                         return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
                     return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
                 return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403

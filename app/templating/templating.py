@@ -10,6 +10,7 @@ from ..utils.utils import form_to_dict
 from ..utils.formHelper import prepare_tags
 from ..case import common_core as CommonCaseModel
 from ..case.common_core import get_instance_with_icon
+from ..utils.logger import flowintel_log
 
 templating_blueprint = Blueprint(
     'templating',
@@ -460,6 +461,7 @@ def create_case_from_template(cid):
         new_case = TemplateModel.create_case_from_template(cid, case_title_fork, current_user)
         if type(new_case) == dict:
             return new_case
+        flowintel_log("audit", 200, "Case created from template", User=current_user.email, TemplateId=cid, CaseId=new_case.id, CaseTitle=new_case.title)
         return {"new_case_id": new_case.id}, 201
     return {"message": "Template not found"}
 
