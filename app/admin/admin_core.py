@@ -167,9 +167,9 @@ def admin_edit_user_core(form_dict, id):
 
     user.first_name=form_dict["first_name"]
     user.last_name=form_dict["last_name"]
-    user.nickname=form_dict["nickname"]
+    user.nickname=form_dict["nickname"] or None
     user.email=form_dict["email"]
-    user.matrix_id = form_dict["matrix_id"]
+    user.matrix_id = form_dict["matrix_id"] or None  # Convert empty string to None to avoid UNIQUE constraint issues
     if "password" in form_dict and form_dict["password"]:
         user.password=form_dict["password"]
     user.role_id = form_dict["role"]
