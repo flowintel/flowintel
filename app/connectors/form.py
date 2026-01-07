@@ -87,10 +87,10 @@ class EditIconForm(FlaskForm):
     submit = SubmitField('Modify')
 
     def validate_name(self, field):
-        if Connector_Icon.query.filter_by(name=field.data).first() and not Connector_Icon.query.get(self.icon_id.data).name == field.data:
+        if Connector_Icon.query.filter_by(name=field.data).first() and Connector_Icon.query.get(self.icon_id.data).name != field.data:
             raise ValidationError("Name Already Exist")
         
     def validate_icon_upload(self, field):
         if field.data.filename:
-            if not re.search(u'\\.jpg|\\.jpeg|\\.png$', field.data.filename):
+            if field.data.filename and not re.search(u'\\.jpg|\\.jpeg|\\.png$', field.data.filename):
                 raise ValidationError("Extenstion not supported")

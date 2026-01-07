@@ -4,7 +4,6 @@ from .TaskTemplateCore import TaskModel
 from . import validation_api as ApiTemplateModel
 from . import common_template_core as CommonModel
 from ..utils import utils
-from ..utils.utils import error_no_data
 from ..case.common_core import get_instance_with_icon
 
 from flask_restx import Namespace, Resource
@@ -71,7 +70,7 @@ class CreateCaseTemaplte(Resource):
                 template = TemplateModel.create_case(verif_dict)
                 return {"message": f"Template created, id: {template.id}"}, 201
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
     
 @templating_ns.route('/edit_case/<cid>')
 @templating_ns.doc(description='Edit a case template', params={'cid': 'id of a case template'})
@@ -91,7 +90,7 @@ class EditCaseTemaplte(Resource):
                 TemplateModel.edit(verif_dict, cid)
                 return {"message": f"Template case edited"}, 200
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
     
 
 @templating_ns.route('/case/<cid>/add_tasks')
@@ -110,7 +109,7 @@ class AddTaskCase(Resource):
                     TemplateModel.add_task_case_template(form_dict, cid)
                     return {"message": "Tasks added"}, 200
                 return {"message": "The list 'tasks' is missing"}, 400
-            return error_no_data()
+            return {"message": "Please give data"}, 400
         return {"message": "Case template not found"}, 404
     
 
@@ -157,7 +156,7 @@ class CreateCaseFromTemplate(Resource):
                         return new_case
                     return {"message": f"New case created, id: {new_case.id}"}, 201
                 return {"message": "The field 'title' is missing"}, 400
-            return error_no_data()
+            return {"message": "Please give data"}, 400
         return {"message": "Case template not found"}, 404
     
 
@@ -325,7 +324,7 @@ class CreateTaskTemaplte(Resource):
                 template = TaskModel.add_task_template_core(verif_dict)
                 return {"message": f"Template created, id: {template.id}"}, 201
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
     
 
 @templating_ns.route('/edit_task/<tid>')
@@ -347,7 +346,7 @@ class EditCaseTemaplte(Resource):
                 TaskModel.edit_task_template(verif_dict, tid)
                 return {"message": f"Template edited"}, 200
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
     
 
 @templating_ns.route('/delete_task/<tid>')

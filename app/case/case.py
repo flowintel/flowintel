@@ -335,7 +335,7 @@ def get_status():
 def sort_cases():
     """Sort Cases"""
     page = request.args.get('page', 1, type=int)
-    filter = request.args.get('filter')
+    filter_by = request.args.get('filter')
     status = request.args.get('status')
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
@@ -374,7 +374,7 @@ def sort_cases():
                                       custom_tags=custom_tags,
                                       or_and_taxo=or_and_taxo, 
                                       or_and_galaxies=or_and_galaxies,
-                                      filter=filter, 
+                                      filter=filter_by, 
                                       user=current_user)
     
     return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
@@ -464,9 +464,8 @@ def merge_case(cid, ocid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         merging_case = CommonModel.get_case(ocid)
-        if merging_case:
-            if not check_user_private_case(merging_case):
-                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        if merging_case and not check_user_private_case(merging_case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
             
         if CaseModel.merge_case_core(case, merging_case, current_user):
             CaseModel.delete_case(cid, current_user)
@@ -708,7 +707,7 @@ def export_notes(cid):
             res = CommonModel.export_notes(case_task=True, case_task_id=cid, type_req=request.args.get("type"))
             try:
                 CommonModel.delete_temp_folder()
-            except:
+            except OSError:
                 pass
             return res
         return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
@@ -771,7 +770,7 @@ def export_computer_assistate_report(cid):
                                                 download_filename=f"case_{case.uuid}_computer_assistate_report")
             try:
                 CommonModel.delete_temp_folder()
-            except:
+            except OSError:
                 pass
             if isinstance(res, dict):
                 return res, 400
@@ -1035,9 +1034,8 @@ def add_misp_object_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "connectors" in request.json:
-                if CaseModel.add_misp_object_connector(cid, request.json, current_user):
-                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            if "connectors" in request.json and CaseModel.add_misp_object_connector(cid, request.json, current_user):
+                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -1139,9 +1137,8 @@ def add_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "connectors" in request.json:
-                if CaseModel.add_connector(cid, request.json, current_user):
-                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            if "connectors" in request.json and CaseModel.add_connector(cid, request.json, current_user):
+                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -1270,7 +1267,7 @@ def export_notes_template(cid):
                 res = CommonModel.export_notes_core(case_task_id=cid, type_req=request.args.get("type"), note=request.json["content"])
                 try:
                     CommonModel.delete_temp_folder()
-                except:
+                except OSError:
                     pass
                 return res
             return {"message": "No content passed", "toast_class": "warning-subtle"}, 400

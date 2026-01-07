@@ -79,7 +79,6 @@ def edit_task(cid, tid):
                     return redirect(f"/case/{cid}")
                 return render_template("case/edit_task.html", form=form, description=task_modif.description)
             else:
-                # form.description.data = task_modif.description
                 form.title.data = task_modif.title
                 form.time_required.data = task_modif.time_required
                 form.deadline_date.data = task_modif.deadline
@@ -368,7 +367,7 @@ def sort_tasks(cid):
     if not check_user_private_case(case):
         return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
     
-    filter = request.args.get('filter')
+    filter_by = request.args.get('filter')
     status = request.args.get('status')
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
@@ -407,7 +406,7 @@ def sort_tasks(cid):
                                 custom_tags,
                                 or_and_taxo, or_and_galaxies, 
                                 completed=status,
-                                filter=filter)
+                                filter=filter_by)
 
 
 @task_blueprint.route("/<cid>/task/<tid>/notify_user", methods=['POST'])
@@ -746,9 +745,7 @@ def get_connectors():
     for connector in connectors_list:
         loc = list()
         for instance in connector.instances:
-            if instance.global_api_key:
-                loc.append(instance.to_json())
-            elif CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+            if instance.global_api_key or CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
                 loc.append(instance.to_json())
         if loc:
             connectors_dict[connector.name] = loc
@@ -781,14 +778,14 @@ def get_task_connectors(tid):
 def add_connector(tid):
     """Add Connector"""
     task = CommonModel.get_task(tid)
-    if task:
-        if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-            if "connectors" in request.json:
-                if TaskModel.add_connector(tid, request.json, current_user):
-                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
-            return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
-        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
-    return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+    if task and (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
+        if "connectors" in request.json:
+            if TaskModel.add_connector(tid, request.json, current_user):
+                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+    if not task:
+        return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+    return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
 
 @task_blueprint.route("/task/<tid>/remove_connector/<ciid>", methods=['GET'])
 @login_required

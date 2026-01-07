@@ -35,11 +35,6 @@ def generate_api_key(length=60):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
 
 
-def error_no_data():
-    """Return standard API error response for missing data"""
-    return {"message": "Please give data"}, 400
-
-
 def get_user_api(api_key):
     """Get a user by its api key"""
     return User.query.filter_by(api_key=api_key).first()

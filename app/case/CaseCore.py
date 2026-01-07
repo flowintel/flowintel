@@ -18,10 +18,12 @@ from app.utils import misp_object_helper
 
 from .. import db
 from ..db_class.db import (
-    Case, Case_Connector_Instance, Case_Custom_Tags, Case_Galaxy_Tags, Case_Org,
+    Case, Case_Connector_Instance, Case_Custom_Tags, Case_Galaxy_Tags,
+    Case_Misp_Object, Case_Misp_Object_Connector_Instance, Case_Org,
     Case_Tags, Case_Task_Template, Case_Template, Cluster, Connector_Instance,
-    Custom_Tags, Galaxy, History, Note, Org, Recurring_Notification, Tags, Task,
-    Task_Galaxy_Tags, Task_Tags, Task_Template, Task_User, User
+    Custom_Tags, Galaxy, Misp_Attribute, Misp_Attribute_Instance_Uuid,
+    Misp_Object_Instance_Uuid, Note, Org, Recurring_Notification, Tags, Task,
+    Task_Galaxy_Tags, Task_Tags, Task_Template, Task_User, User, Case_Link_Case
 )
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract

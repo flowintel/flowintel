@@ -4,7 +4,7 @@ import uuid
 import datetime
 from .. import db
 from ..db_class.db import (
-    Cluster, Connector, Custom_Tags, File, Note, Tags, Task,
+    Cluster, Connector, Custom_Tags, File, Note, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy_Tags,
     Task_Tags, Task_Url_Tool, Task_User, User
 )

@@ -212,7 +212,7 @@ def delete_icon_file(file_icon_id):
 
     try:
         os.remove(os.path.join(ICON_FOLDER, icon_file.uuid))
-    except:
+    except OSError:
         return False
     
     db.session.delete(icon_file)

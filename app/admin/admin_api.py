@@ -1,7 +1,6 @@
 from flask import request
 from . import admin_core as AdminModel
 from . import admin_core_api as AdminModelApi
-from ..utils.utils import error_no_data
 
 from flask_restx import Namespace, Resource
 from ..decorators import api_required, admin_required
@@ -74,7 +73,7 @@ class AddUser(Resource):
                 user = AdminModel.add_user_core(verif_dict)
                 return {"message": f"User created {user.id}", "id": user.id}, 201
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
 
                 
 @admin_ns.route('/edit_user/<id>')
@@ -95,7 +94,7 @@ class EditUser(Resource):
                 AdminModel.admin_edit_user_core(verif_dict, id)
                 return {"message": "User edited"}, 200
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
 
 
 @admin_ns.route('/delete_user/<id>')
@@ -152,7 +151,7 @@ class AddOrg(Resource):
                 org = AdminModel.add_org_core(verif_dict)
                 return {"message": f"Org created: {org.id}", "org_id": org.id}, 201
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
 
 
 @admin_ns.route('/edit_org/<id>')
@@ -172,7 +171,7 @@ class EditOrg(Resource):
                 AdminModel.edit_org_core(verif_dict, id)
                 return {"message": f"Org edited"}, 200
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
 
 @admin_ns.route('/delete_org/<oid>')
 @admin_ns.doc(description='Delete Org', params={'oid': "id of an org"})

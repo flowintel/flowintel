@@ -6,7 +6,6 @@ from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..utils import utils
-from ..utils.utils import error_no_data
 
 from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
@@ -75,7 +74,7 @@ class CreateCase(Resource):
                 return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
     
 
 @case_ns.route('/create_with_event', methods=['POST'])
@@ -106,7 +105,7 @@ class CreateCaseEvent(Resource):
                 return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
-        return error_no_data()
+        return {"message": "Please give data"}, 400
     
 
 @case_ns.route('/<cid>/edit', methods=['POST'])
@@ -139,7 +138,7 @@ class EditCase(Resource):
                         return {"message": f"Case {cid} edited"}, 200
 
                     return verif_dict, 400
-                return error_no_data()
+                return {"message": "Please give data"}, 400
             return {"message": "Permission denied"}, 403
         return {"message": "Case not found"}, 404
     
@@ -164,7 +163,7 @@ class ForkCase(Resource):
                         return new_case, 400
                     return {"new_case_id": new_case.id}, 201
                 return {"message": "Need to pass 'case_title_fork'"}, 400
-            return error_no_data()
+            return {"message": "Please give data"}, 400
         return {"message": "Case not found"}, 404
     
 @case_ns.route('/<cid>/merge/<ocid>', methods=['GET'])
@@ -179,9 +178,8 @@ class MergeCase(Resource):
                 return {"message": "Permission denied"}, 403
             
             merging_case = CommonModel.get_case(ocid)
-            if merging_case:
-                if not check_user_private_case(merging_case, request.headers, current_user):
-                    return {"message": "Permission denied"}, 403
+            if merging_case and not check_user_private_case(merging_case, request.headers, current_user):
+                return {"message": "Permission denied"}, 403
             
             if CaseModel.merge_case_core(case, merging_case, current_user):
                 CaseModel.delete_case(cid, current_user)
@@ -191,7 +189,7 @@ class MergeCase(Resource):
 
 @case_ns.route('/not_completed')
 @case_ns.doc(description='Get all not completed cases')
-class GetCases_not_completed(Resource):
+class GetCasesNotCompleted(Resource):
     method_decorators = [api_required]
     def get(self):
         current_user = utils.get_user_from_api(request.headers)
@@ -200,7 +198,7 @@ class GetCases_not_completed(Resource):
     
 @case_ns.route('/completed')
 @case_ns.doc(description='Get all completed cases')
-class GetCases_not_completed(Resource):
+class GetCasesCompleted(Resource):
     method_decorators = [api_required]
     def get(self):
         current_user = utils.get_user_from_api(request.headers)
@@ -350,7 +348,7 @@ class RecurringCase(Resource):
                     CaseModel.change_recurring(verif_dict, cid, current_user)
                     return {"message": "Recurring changed"}, 200
                 return verif_dict
-            return error_no_data()
+            return {"message": "Please give data"}, 400
         return {"message": "Permission denied"}, 403
 
 
@@ -810,7 +808,7 @@ class CreateTask(Resource):
                     task = TaskModel.create_task(verif_dict, cid, current_user)
                     return {"message": f"Task {task.id} created for case id: {cid}", "task_id": task.id}, 201
                 return verif_dict, 400
-            return error_no_data()
+            return {"message": "Please give data"}, 400
         return {"message": "Permission denied"}, 403    
 
 @case_ns.route('/<cid>/change_order/<tid>', methods=['POST'])
