@@ -1,6 +1,7 @@
 from flask import request
 from . import custom_tags_core as CustomModel
 from . import custom_tags_core_api as CustomModelApi
+from ..utils.utils import error_no_data
 
 from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
@@ -23,7 +24,7 @@ class AddCustomTags(Resource):
                 CustomModel.add_custom_tag_core(verif_dict)
                 return {"message": f"New custom tag created"}, 201
             return verif_dict, 400
-        return {"message": "Please give data"}, 400
+        return error_no_data()
     
 @custom_tags_ns.route('/<ctid>/delete')
 @custom_tags_ns.doc(description='Delete a custom tag', params={'ctid': 'id of a custom tag'})
@@ -60,7 +61,7 @@ class EditCustomTags(Resource):
                     return {"message": f"Custom tag edited"}, 200
                 return {"message": "Custom tag not found"}, 404
             return verif_dict, 400
-        return {"message": "Please give data"}, 400
+        return error_no_data()
     
 @custom_tags_ns.route('/<ctid>')
 @custom_tags_ns.doc(description='Get a custom tag', params={'ctid': 'id of a custom tag'})

@@ -41,7 +41,7 @@ def add_user():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_user_core(form_dict)
-        return redirect("/admin/orgs")
+        return redirect(url_for('admin.orgs'))
     return render_template("admin/add_user.html", form=form)
 
 
@@ -70,7 +70,7 @@ def edit_user(uid):
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
         AdminModel.admin_edit_user_core(form_dict, uid)
-        return redirect("/admin/users")
+        return redirect(url_for('admin.users'))
     else:
         user_modif = AdminModel.get_user(uid)
         form.first_name.data = user_modif.first_name
@@ -131,7 +131,7 @@ def add_org():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_org_core(form_dict)
-        return redirect("/admin/orgs")
+        return redirect(url_for('admin.orgs'))
     return render_template("admin/add_edit_org.html", form=form)
 
 
@@ -144,7 +144,7 @@ def edit_org(id):
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.edit_org_core(form_dict, id)
-        return redirect("/admin/orgs")
+        return redirect(url_for('admin.orgs'))
     else:
         org = AdminModel.get_org(id)
         form.name.data = org.name

@@ -6,6 +6,7 @@ from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..utils import utils
+from ..utils.utils import error_no_data
 
 from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
@@ -74,7 +75,7 @@ class CreateCase(Resource):
                 return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
-        return {"message": "Please give data"}, 400
+        return error_no_data()
     
 
 @case_ns.route('/create_with_event', methods=['POST'])
@@ -105,7 +106,7 @@ class CreateCaseEvent(Resource):
                 return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
-        return {"message": "Please give data"}, 400
+        return error_no_data()
     
 
 @case_ns.route('/<cid>/edit', methods=['POST'])
@@ -138,7 +139,7 @@ class EditCase(Resource):
                         return {"message": f"Case {cid} edited"}, 200
 
                     return verif_dict, 400
-                return {"message": "Please give data"}, 400
+                return error_no_data()
             return {"message": "Permission denied"}, 403
         return {"message": "Case not found"}, 404
     
@@ -163,7 +164,7 @@ class ForkCase(Resource):
                         return new_case, 400
                     return {"new_case_id": new_case.id}, 201
                 return {"message": "Need to pass 'case_title_fork'"}, 400
-            return {"message": "Please give data"}, 400
+            return error_no_data()
         return {"message": "Case not found"}, 404
     
 @case_ns.route('/<cid>/merge/<ocid>', methods=['GET'])
@@ -349,7 +350,7 @@ class RecurringCase(Resource):
                     CaseModel.change_recurring(verif_dict, cid, current_user)
                     return {"message": "Recurring changed"}, 200
                 return verif_dict
-            return {"message": "Please give data"}, 400
+            return error_no_data()
         return {"message": "Permission denied"}, 403
 
 
@@ -809,7 +810,7 @@ class CreateTask(Resource):
                     task = TaskModel.create_task(verif_dict, cid, current_user)
                     return {"message": f"Task {task.id} created for case id: {cid}", "task_id": task.id}, 201
                 return verif_dict, 400
-            return {"message": "Please give data"}, 400
+            return error_no_data()
         return {"message": "Permission denied"}, 403    
 
 @case_ns.route('/<cid>/change_order/<tid>', methods=['POST'])

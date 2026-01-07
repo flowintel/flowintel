@@ -5,6 +5,7 @@ from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..utils import utils
+from ..utils.utils import error_no_data
 
 from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
@@ -80,7 +81,7 @@ class EditTake(Resource):
                         return {"message": f"Task {tid} edited"}, 200
 
                     return verif_dict, 400
-                return {"message": "Please give data"}, 400
+                return error_no_data()
             return {"message": "Permission denied"}, 403
         return {"message": "Task not found"}, 404
 

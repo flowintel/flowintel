@@ -11,17 +11,25 @@ import requests
 from flask import send_file
 
 from sqlalchemy import desc, and_
+from sqlalchemy.exc import SQLAlchemyError
 from dateutil import relativedelta
 
 from app.utils import misp_object_helper
 
 from .. import db
-from ..db_class.db import *
+from ..db_class.db import (
+    Case, Case_Connector_Instance, Case_Custom_Tags, Case_Galaxy_Tags, Case_Org,
+    Case_Tags, Case_Task_Template, Case_Template, Cluster, Connector_Instance,
+    Custom_Tags, Galaxy, History, Note, Org, Recurring_Notification, Tags, Task,
+    Task_Galaxy_Tags, Task_Tags, Task_Template, Task_User, User
+)
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
 from . import common_core as CommonModel
 from . TaskCore import TaskModel
 from ..utils.utils import get_modules_list
+
+DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
 from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 
@@ -61,7 +69,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def create_case(self, form_dict, user):
         if "template_select" in form_dict and not 0 in form_dict["template_select"]:
-            pass
             for template in form_dict["template_select"]:
                 if Case_Template.query.get(template):
                     case = CaseTemplateModel.create_case_from_template(template, form_dict["title_template"], user)
@@ -124,16 +131,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         
         for misp_tags in event.tags:
             tag = Tags.query.filter_by(name=misp_tags.name).first()
-            if tag:
-                if not Case_Tags.query.filter_by(tag_id=tag.id, case_id=case.id).first():
-                    CaseModel.add_tag(tag, case.id)
+            if tag and not Case_Tags.query.filter_by(tag_id=tag.id, case_id=case.id).first():
+                CaseModel.add_tag(tag, case.id)
 
         for misp_galaxy in event.galaxies:
             for misp_cluster in misp_galaxy.clusters:
                 cluster = Cluster.query.filter_by(tag=misp_cluster.tag_name).first()
-                if cluster:
-                    if not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
-                        CaseModel.add_cluster(cluster, case.id)
+                if cluster and not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
+                    CaseModel.add_cluster(cluster, case.id)
 
         object_uuid_list = {}
         for obje in event.objects:
@@ -180,7 +185,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             if os.path.isfile(history_path):
                 try:
                     os.remove(history_path)
-                except:
+                except OSError:
                     return False
 
             NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", case_id, html_icon="fa-solid fa-trash", current_user=current_user)
@@ -332,14 +337,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             else:
                 list_case_user_in.append(case)
 
-        if filter:
-            if not filter == "my_org":
-                loc = list()
-                for case in list_case_user_in:
-                    if getattr(case, filter):
-                        loc.append(case)
-                loc, nb_pages = self.paginate_cases(loc, page)
-                return loc, nb_pages
+        if filter and filter != "my_org":
+            loc = list()
+            for case in list_case_user_in:
+                if getattr(case, filter):
+                    loc.append(case)
+            loc, nb_pages = self.paginate_cases(loc, page)
+            return loc, nb_pages
         
         list_case_user_in, nb_pages = self.paginate_cases(list_case_user_in, page)
         return list_case_user_in, nb_pages
@@ -422,7 +426,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             org = CommonModel.get_org(org_id)
             for user in org.users:
                 for task in case.tasks:
-                    task
                     t_u = Task_User.query.filter_by(user_id=user.id, task_id=task.id).first()
                     if t_u:
                         db.session.delete(t_u)
@@ -466,7 +469,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         else:
             try:
                 loc["nb_pages"] = cases.pages
-            except:
+            except AttributeError:
                 pass
 
         return loc
@@ -1073,7 +1076,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             db.session.delete(case_link_case)
             db.session.delete(case_link_case_2)
 
-            case = CommonModel.get_case(case_id)
             case_2 = CommonModel.get_case(case_link_id)
 
             CommonModel.update_last_modif(case_id)
@@ -1108,7 +1110,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 if md.status_code == 200:
                     return {"notes": md.text}, 200
                 return {"message": "Notes not found", 'toast_class': "danger-subtle"}, 404
-            except:
+            except requests.exceptions.RequestException:
                 return {"message": "Error with the url", 'toast_class': "warning-subtle"}, 400
         return {"notes": ""}, 200
 
@@ -1138,12 +1140,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
             instance_list = list()
             for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
-                    if instance.type==type_module:
-                        loc_instance = instance.to_json()
-                        identifier = CommonModel.get_case_connector_id(instance.id, case_id)
-                        loc_instance["identifier"] = identifier.identifier
-                        instance_list.append(loc_instance)
+                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id) and instance.type == type_module:
+                    loc_instance = instance.to_json()
+                    identifier = CommonModel.get_case_connector_id(instance.id, case_id)
+                    loc_instance["identifier"] = identifier.identifier
+                    instance_list.append(loc_instance)
             return instance_list
         return []
 
@@ -1173,7 +1174,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         try:
             Case_Connector_Instance.query.filter_by(id=case_instance_id).delete()
             db.session.commit()
-        except:
+        except SQLAlchemyError:
             return False
         return True
 
@@ -1324,9 +1325,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 ids_flag = False
                 disable_correlation = False
                 if attribute["first_seen"]:
-                    first_seen = datetime.datetime.strptime(attribute["first_seen"], '%Y-%m-%dT%H:%M')
+                    first_seen = datetime.datetime.strptime(attribute["first_seen"], DATETIME_FORMAT)
                 if attribute["last_seen"]:
-                    last_seen = datetime.datetime.strptime(attribute["last_seen"], '%Y-%m-%dT%H:%M')
+                    last_seen = datetime.datetime.strptime(attribute["last_seen"], DATETIME_FORMAT)
 
                 if attribute["ids_flag"] and attribute["ids_flag"] == 'true':
                     ids_flag = True
@@ -1365,9 +1366,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 ids_flag = False
                 disable_correlation = False
                 if request_json["first_seen"]:
-                    first_seen = datetime.datetime.strptime(request_json["first_seen"], '%Y-%m-%dT%H:%M')
+                    first_seen = datetime.datetime.strptime(request_json["first_seen"], DATETIME_FORMAT)
                 if request_json["last_seen"]:
-                    last_seen = datetime.datetime.strptime(request_json["last_seen"], '%Y-%m-%dT%H:%M')
+                    last_seen = datetime.datetime.strptime(request_json["last_seen"], DATETIME_FORMAT)
 
                 if request_json["ids_flag"] and (request_json["ids_flag"] == 'true' or request_json["ids_flag"] == True):
                     ids_flag = True
@@ -1453,7 +1454,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
             CommonModel.save_history(case.uuid, current_user, f"Connector {instance.name} added")
             CommonModel.update_last_modif(case_id)
-        except:
+        except SQLAlchemyError:
             return False
         return True
 
@@ -1656,13 +1657,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                             if type(attr.first_seen) == datetime.datetime:
                                 db_misp_attr.first_seen = attr.first_seen
                             else:
-                                db_misp_attr.first_seen = datetime.datetime.strptime(attr.get("first_seen"), '%Y-%m-%dT%H:%M')
+                                db_misp_attr.first_seen = datetime.datetime.strptime(attr.get("first_seen"), DATETIME_FORMAT)
                             flag = True
                         if not db_misp_attr.last_seen == attr.get("last_seen"):
                             if type(attr.last_seen) == datetime.datetime:
                                 db_misp_attr.last_seen = attr.last_seen
                             else:
-                                db_misp_attr.last_seen = datetime.datetime.strptime(attr.get("last_seen"), '%Y-%m-%dT%H:%M')
+                                db_misp_attr.last_seen = datetime.datetime.strptime(attr.get("last_seen"), DATETIME_FORMAT)
                             flag = True
                         if not db_misp_attr.comment == attr.comment:
                             db_misp_attr.comment = attr.comment
@@ -1686,8 +1687,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                             base[key] = value
                     return base
                 loc = misp_object_helper.create_misp_object(case["id"], obje)
-                # print(loc)
-                # for d in loc: object_uuid_list.update(d)
                 object_uuid_list = append_dict(object_uuid_list, loc)
 
         self.result_misp_object_module(object_uuid_list, instance_id=instance["id"], case_id=case["id"])

@@ -1,6 +1,6 @@
 import json
 from .. import db
-from ..db_class.db import *
+from ..db_class.db import Configurable_Fields, Misp_Module, Misp_Module_Config, Misp_Module_Result, User
 from ..utils.utils import query_get_module
 from sqlalchemy import desc
 from ..case.CaseCore import CaseModel
@@ -66,9 +66,8 @@ def get_modules():
         loc_list = list()
         for module in res:
             module_loc = module
-            if "expansion" in module["meta"]["module-type"] or "hover" in module["meta"]["module-type"]:
-                if not module_loc in loc_list:
-                    loc_list.append(module_loc)
+            if ("expansion" in module["meta"]["module-type"] or "hover" in module["meta"]["module-type"]) and module_loc not in loc_list:
+                loc_list.append(module_loc)
         loc_list.sort(key=lambda x: x["name"])
         return loc_list
     return res
@@ -128,11 +127,10 @@ def get_history_uuid(huuid):
 
 def delete_history(huuid, current_user):
     history = get_history_uuid(huuid)
-    if history:
-        if history.user_id == current_user.id:
-            db.session.delete(history)
-            db.session.commit()
-            return True
+    if history and history.user_id == current_user.id:
+        db.session.delete(history)
+        db.session.commit()
+        return True
     return False
 
 def manage_notes_selected(request_json, current_user):

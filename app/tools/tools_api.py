@@ -5,6 +5,7 @@ from flask_restx import Namespace, Resource
 from ..decorators import api_required
 
 from ..utils import utils
+from ..utils.utils import error_no_data
 
 from . import validate_api as ValidateApi
 
@@ -74,5 +75,5 @@ class CaseMispEvent(Resource):
                 return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
-        return {"message": "Please give data"}, 400
+        return error_no_data()
     

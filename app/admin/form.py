@@ -59,9 +59,8 @@ class AdminEditUserFrom(FlaskForm):
 
     def validate_email(self, field):
         user = User.query.get(self.user_id.data)
-        if not field.data == user.email:
-            if User.query.filter_by(email=field.data).first():
-                raise ValidationError('Email already registered')
+        if field.data != user.email and User.query.filter_by(email=field.data).first():
+            raise ValidationError('Email already registered')
     
     def validate_password(self, field):
         """Validate password only if change_password is checked"""
@@ -98,6 +97,5 @@ class CreateOrgForm(FlaskForm):
             raise ValidationError("Name Already Exist")
 
     def validate_uuid(self, field):
-        if field.data:
-            if not isUUID(field.data):
-                raise ValidationError("UUID is not valid")
+        if field.data and not isUUID(field.data):
+            raise ValidationError("UUID is not valid")

@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, redirect, render_template, request, session
 from flask_login import current_user, login_required
-from ..db_class.db import *
 from ..decorators import editor_required
 from . import session_class as SessionModel
 from . import misp_modules_core as MispModuleModel
@@ -96,7 +95,7 @@ def run_misp_modules():
     if "query" in request.json:
         if "input" in request.json and request.json["input"]:
             if "modules" in request.json:
-                session = SessionModel.Session_class(request.json, current_user)
+                session = SessionModel.SessionClass(request.json, current_user)
                 session.start()
                 SessionModel.sessions.append(session)
                 return jsonify(session.status()), 201
@@ -145,11 +144,6 @@ def misp_modules_change_config():
 def misp_module_loading(sid):
     """Loading page waiting for results"""
 
-    # l = {"query": ["circl.lu"], "input": "domain", "modules": ["circl_passivedns"]}
-    # session = SessionModel.Session_class(l, current_user)
-    # session.uuid = 12345
-    # return render_template("analyzer/misp_modules_loading.html", sid=session.uuid)
-
     for s in SessionModel.sessions:
         if s.uuid == sid:
             return render_template("analyzer/misp_modules_loading.html", sid=sid)
@@ -161,10 +155,6 @@ def misp_module_loading(sid):
 @login_required
 def misp_module_loading_status(sid):
     """Loading page waiting for results"""
-    # l = {"query": ["circl.lu"], "input": "domain", "modules": ["circl_passivedns"]}
-    # session = SessionModel.Session_class(l, current_user)
-    # session.uuid = 12345
-    # return jsonify(session.status_for_test())
 
     for s in SessionModel.sessions:
         if s.uuid == sid:

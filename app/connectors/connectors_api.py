@@ -5,6 +5,7 @@ from ..decorators import api_required, admin_required
 from . import connectors_core as ConnectorModel
 from . import connectors_core_api as ConnectorModelApi
 from ..utils import utils
+from ..utils.utils import error_no_data
 
 connectors_ns = Namespace("case", description="Endpoints to manage connectors")
 
@@ -57,7 +58,7 @@ class AddConnector(Resource):
                 connector = ConnectorModel.add_connector_core(verif_dict)
                 return {"message": f"Connector created", "connector_id": connector.id}, 200
             return verif_dict, 400
-        return {"message": "Please give data"}, 400
+        return error_no_data()
     
 @connectors_ns.route('/<cid>/edit_connector', methods=['POST'])
 @connectors_ns.doc(description='Edit a connector')
@@ -75,7 +76,7 @@ class EditConnector(Resource):
                 connector = ConnectorModel.edit_connector_core(cid, verif_dict)
                 return {"message": f"Connector created", "connector_id": connector.id}, 200
             return verif_dict, 400
-        return {"message": "Please give data"}, 400
+        return error_no_data()
     
 @connectors_ns.route('/<cid>/add_instance', methods=['POST'])
 @connectors_ns.doc(description='Add a new instance of a connector')
@@ -96,7 +97,7 @@ class AddInstance(Resource):
                     instance = ConnectorModel.add_connector_instance_core(cid, verif_dict, utils.get_user_from_api(request.headers).id)
                     return {"message": f"Instance created", "connector_id": instance.id}, 200
                 return verif_dict, 400
-            return {"message": "Please give data"}, 400
+            return error_no_data()
         return {"message": "Connector not found"}, 404
     
 @connectors_ns.route('/<cid>/edit_instance/<iid>', methods=['POST'])
@@ -118,7 +119,7 @@ class EditInstance(Resource):
                     instance = ConnectorModel.edit_connector_instance_core(iid, verif_dict)
                     return {"message": f"Instance created", "connector_id": instance.id}, 200
                 return verif_dict, 400
-            return {"message": "Please give data"}, 400
+            return error_no_data()
         return {"message": "Connector not found"}, 404
     
 @connectors_ns.route('/type_select')

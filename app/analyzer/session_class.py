@@ -10,7 +10,7 @@ from ..db_class.db import Misp_Module_Result, User
 
 sessions = list()
 
-class Session_class:
+class SessionClass:
     def __init__(self, request_json, user: User) -> None:
         self.uuid = str(uuid4())
         self.thread_count = 4
@@ -126,17 +126,15 @@ class Session_class:
             res = query_post_query(send_to)
 
             ## Sort attr in object by ui-priority
-            if res:
-                if "results" in res:
-                    if "Object" in res["results"]:
-                        for obj in res["results"]["Object"]:
-                            loc_obj = get_object(obj["name"])
-                            if loc_obj:
-                                for attr in obj["Attribute"]:
-                                    attr["ui-priority"] = loc_obj["attributes"][attr["object_relation"]]["ui-priority"]
-                                
-                                # After adding 'ui-priority'
-                                obj["Attribute"].sort(key=lambda x: x["ui-priority"], reverse=True)
+            if res and "results" in res and "Object" in res["results"]:
+                for obj in res["results"]["Object"]:
+                    loc_obj = get_object(obj["name"])
+                    if loc_obj:
+                        for attr in obj["Attribute"]:
+                            attr["ui-priority"] = loc_obj["attributes"][attr["object_relation"]]["ui-priority"]
+                        
+                        # After adding 'ui-priority'
+                        obj["Attribute"].sort(key=lambda x: x["ui-priority"], reverse=True)
                     
             if res and "error" in res:
                 self.nb_errors += 1
@@ -162,6 +160,3 @@ class Session_class:
         )
         db.session.add(s)
         db.session.commit()
-
-
-        return
