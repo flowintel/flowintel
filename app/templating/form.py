@@ -39,9 +39,8 @@ class TaskTemplateEditForm(FlaskForm):
 
     def validate_title(self, field):
         template = Task_Template.query.get(self.template_id.data)
-        if not template.title == field.data:
-            if field.data and Task_Template.query.filter_by(title=field.data).first():
-                raise ValidationError("The title already exist")
+        if not template.title == field.data and field.data and Task_Template.query.filter_by(title=field.data).first():
+            raise ValidationError("The title already exist")
     
 
 class CaseTemplateForm(FlaskForm):
@@ -66,8 +65,7 @@ class CaseTemplateEditForm(FlaskForm):
 
     def validate_title(self, field):
         template = Case_Template.query.get(self.template_id.data)
-        if not template.title == field.data:
-            if Case_Template.query.filter_by(title=field.data).first():
-                raise ValidationError("The title already exist")
+        if not template.title == field.data and Case_Template.query.filter_by(title=field.data).first():
+            raise ValidationError("The title already exist")
 
         

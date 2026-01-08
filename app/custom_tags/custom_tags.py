@@ -30,9 +30,8 @@ def index():
 def add_custom_tag():
     """List all cases"""
     form = AddCustomTagForm()
-    if form.validate_on_submit():
-        if CustomCore.add_custom_tag_core(form_to_dict(form)):
-            return redirect("/custom_tags/")
+    if form.validate_on_submit() and CustomCore.add_custom_tag_core(form_to_dict(form)):
+        return redirect("/custom_tags/")
     return render_template("custom_tags/add_custom_tag.html", form=form)
 
 

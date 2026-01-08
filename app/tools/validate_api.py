@@ -27,7 +27,7 @@ def validate_case_from_misp(request_json: dict, current_user: User):
         
         try:
             misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
-        except:
+        except Exception:
             return {"message": "Error connecting to MISP"}        
             
     if "misp_event_id" not in request_json or not request_json["misp_event_id"]:

@@ -1034,8 +1034,9 @@ def add_misp_object_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "connectors" in request.json and CaseModel.add_misp_object_connector(cid, request.json, current_user):
-                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            if "connectors" in request.json:
+                if CaseModel.add_misp_object_connector(cid, request.json, current_user):
+                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -1137,8 +1138,9 @@ def add_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "connectors" in request.json and CaseModel.add_connector(cid, request.json, current_user):
-                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            if "connectors" in request.json:
+                if CaseModel.add_connector(cid, request.json, current_user):
+                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404

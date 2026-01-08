@@ -34,6 +34,8 @@ class SessionClass:
             request_json["config"] = {}
             request_json["config"][query] = {}
             module = MispModuleModel.get_module_by_name(query)
+            if not module:
+                continue
             mcs = MispModuleModel.get_module_config_module(module.id, self.current_user)
             for mc in mcs:
                 config_db = MispModuleModel.get_configurable_fields(mc.config_id)

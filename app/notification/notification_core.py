@@ -3,6 +3,8 @@ from ..db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_Us
 from sqlalchemy import desc
 import datetime
 
+DATE_FORMAT = '%Y-%m-%d'
+
 
 def get_notif(nid):
     return Notification.query.get(nid)
@@ -120,13 +122,12 @@ def case_task_deadline_notif(case_or_task, msg, html_icon, now, current_user, fl
         if case_or_task.notif_deadline_id:
             notif_deadline = get_notif(case_or_task.notif_deadline_id)
 
-        case_deadline = datetime.datetime.strptime(case_or_task.deadline.strftime("%Y-%m-%d"), "%Y-%m-%d")
+        case_deadline = datetime.datetime.strptime(case_or_task.deadline.strftime(DATE_FORMAT), DATE_FORMAT)
         loc = case_deadline - now
 
-        if loc.days > 0:
-            if loc.days <= 10:
-                if notif_deadline:
-                    if (case_deadline - notif_deadline.for_deadline).days > loc.days:
+        if loc.days > 0 and loc.days <= 10:
+            if notif_deadline:
+                if (case_deadline - notif_deadline.for_deadline).days > loc.days:
                         notif_deadline.message = f"{loc.days} {msg}"
                         notif_deadline.for_deadline = now
                         notif_deadline.is_read = False
@@ -142,8 +143,7 @@ def case_task_deadline_notif(case_or_task, msg, html_icon, now, current_user, fl
 
 
 def create_notification_deadline(current_user):
-    now = datetime.datetime.strptime(datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d"), "%Y-%m-%d")
-    # now = datetime.datetime.strptime("2023-07-01", "%Y-%m-%d")
+    now = datetime.datetime.strptime(datetime.datetime.now(tz=datetime.timezone.utc).strftime(DATE_FORMAT), DATE_FORMAT)
 
     cases = Case.query.join(Case_Org, Case_Org.org_id==current_user.org_id).all()
     for case in cases:

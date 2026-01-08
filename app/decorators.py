@@ -38,9 +38,8 @@ def verification_required():
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if request.path.startswith("/api/"):
-                if verif_api_key(request.headers):
-                    abort(403)
+            if request.path.startswith("/api/") and verif_api_key(request.headers):
+                abort(403)
             return f(*args, **kwargs)
 
         return decorated_function

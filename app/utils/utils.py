@@ -39,15 +39,15 @@ def get_user_api(api_key):
     """Get a user by its api key"""
     return User.query.filter_by(api_key=api_key).first()
 
+
 def get_user_from_api(headers):
     """Try to get bot user by matrix id. If not, get basic user"""
     if "MATRIX-ID" in headers:
         bot = User.query.filter_by(last_name="Bot", first_name="Matrix").first()
-        if bot:
-            if bot.api_key == headers["X-API-KEY"]:
-                user = User.query.filter_by(matrix_id=headers["MATRIX-ID"]).first()
-                if user:
-                    return user
+        if bot and bot.api_key == headers["X-API-KEY"]:
+            user = User.query.filter_by(matrix_id=headers["MATRIX-ID"]).first()
+            if user:
+                return user
     return get_user_api(headers["X-API-KEY"])
 
 
@@ -59,6 +59,7 @@ def verif_api_key(headers):
     if not user:
         return {"message": "API key not found"}, 403
     return {}
+
 
 def form_to_dict(form):
     """Parse a form into a dict"""
@@ -155,7 +156,7 @@ def get_object(obj_name):
 
 
 
-def validateImporterJson(json_data, jsonschema_flowintel):
+def validate_importer_json(json_data, jsonschema_flowintel):
     """Validate the format of a case's JSON"""
     try:
         jsonschema.validate(instance=json_data, schema=jsonschema_flowintel)
