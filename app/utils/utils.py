@@ -5,7 +5,7 @@ import json
 import re
 import sys
 import uuid
-import random
+import secrets
 import string
 import jsonschema
 import requests
@@ -32,7 +32,7 @@ def isUUID(uid):
 
 def generate_api_key(length=60):
     """Generate a new api key"""
-    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+    return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(length))
 
 
 def get_user_api(api_key):
