@@ -82,7 +82,7 @@ def edit_user(uid):
     return render_template("admin/add_user.html", form=form, edit_mode=True)
 
 
-@admin_blueprint.route("/delete_user/<uid>", methods=['GET','POST'])
+@admin_blueprint.route("/delete_user/<uid>", methods=['POST'])
 @login_required
 @admin_required
 def delete_user(uid):
@@ -153,7 +153,7 @@ def edit_org(id):
     return render_template("admin/add_edit_org.html", form=form)
 
 
-@admin_blueprint.route("/delete_org/<oid>", methods=['GET','POST'])
+@admin_blueprint.route("/delete_org/<oid>", methods=['POST'])
 @login_required
 @admin_required
 def delete_org(oid):

@@ -154,7 +154,10 @@
                 }
 
                 async function delete_user(user){
-                    const res = await fetch('/admin/delete_user/'+user.id)
+                    const res = await fetch('/admin/delete_user/'+user.id, {
+                        method: 'POST',
+                        headers: { "X-CSRFToken": $("#csrf_token").val() }
+                    })
                     if(await res.status == 200){
                         let index = users_list.value.users.indexOf(user)
                         if(index > -1)
