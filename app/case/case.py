@@ -526,6 +526,23 @@ def history(cid):
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/audit_logs/<cid>", methods=['GET'])
+@login_required
+def audit_logs(cid):
+    """Get the audit logs for a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Get audit logs: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
+        audit_logs = CommonModel.get_audit_logs(cid)
+        if audit_logs:
+            return {"audit_logs": audit_logs}
+        return {"audit_logs": []}
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
 @case_blueprint.route("/get_taxonomies", methods=['GET'])
 @login_required
 def get_taxonomies():

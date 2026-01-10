@@ -412,6 +412,59 @@ def get_history(case_uuid):
         return loc_file
     except:
         return False
+
+
+def get_audit_logs(case_id):
+    """Return audit logs for a specific case by case ID"""
+    from flask import current_app
+    import re
+    
+    try:
+        log_file_path = os.path.join('logs', current_app.config.get('LOG_FILE', 'record.log'))
+        
+        if not os.path.exists(log_file_path):
+            return []
+        
+        audit_logs = []
+        case_id_str = str(case_id)
+        
+        with open(log_file_path, "r") as log_file:
+            for line in log_file:
+                # Check if the line contains AUDIT and the specific CaseId
+                if 'AUDIT:' in line and f'CaseId: {case_id_str}' in line:
+                    # Parse the log line
+                    # Format: DD/Mon/YYYY HH:MM:SS - IP - - "AUDIT: STATUS - MESSAGE. User: EMAIL CaseId: ID ..."
+                    try:
+                        # Extract timestamp (first part before " - ")
+                        timestamp_match = re.match(r'^(\d{2}/\w{3}/\d{4} \d{2}:\d{2}:\d{2})', line)
+                        if timestamp_match:
+                            timestamp = timestamp_match.group(1)
+                            
+                            # Extract user email
+                            user_match = re.search(r'User:\s*([^\s]+)', line)
+                            user = user_match.group(1) if user_match else "Unknown"
+                            
+                            # Extract the audit message (between "AUDIT: STATUS - " and " User:")
+                            message_match = re.search(r'AUDIT:\s*\d+\s*-\s*([^.]+\.)', line)
+                            message = message_match.group(1).strip() if message_match else line.split('AUDIT:')[1].strip() if 'AUDIT:' in line else ""
+                            
+                            # Create formatted entry similar to case history
+                            # Format: [YYYY-MM-DD HH:MM](User): Message
+                            # Convert timestamp from DD/Mon/YYYY HH:MM:SS to YYYY-MM-DD HH:MM
+                            from datetime import datetime
+                            dt = datetime.strptime(timestamp, '%d/%b/%Y %H:%M:%S')
+                            formatted_timestamp = dt.strftime('%Y-%m-%d %H:%M')
+                            
+                            formatted_entry = f"[{formatted_timestamp}]({user}): {message}"
+                            audit_logs.append(formatted_entry)
+                    except Exception as parse_error:
+                        # If parsing fails, skip this line
+                        continue
+        
+        return audit_logs
+    except Exception as e:
+        return []
+
     
 def save_history(case_uuid, current_user, message):
     """Save historic message of a case"""
