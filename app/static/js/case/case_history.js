@@ -233,6 +233,11 @@ export default {
         fetch_case_misp_object()
 
         function prepare_misp_timeline(){
+            // Check if there are MISP objects
+            if (!case_misp_objects.value || case_misp_objects.value.length === 0) {
+                return; // Don't create timeline if no objects exist
+            }
+
             function toStartDateObject(date) {
                 return {
                   year: String(date.getFullYear()),
@@ -294,10 +299,13 @@ export default {
             }
 
 
-            const timelineJson = {
-                "events":loc_list
-            };
-            new TL.Timeline('timeline-embed', timelineJson);
+            // Only create timeline if there are events
+            if (loc_list.length > 0) {
+                const timelineJson = {
+                    "events":loc_list
+                };
+                new TL.Timeline('timeline-embed', timelineJson);
+            }
         }
 
         async function active_tab(tab_name){
@@ -406,7 +414,12 @@ export default {
 
     </template>
     <template v-else-if="main_tab == 'history-misp'">
-        <div id="timeline-embed" style="width: 100%; height: 60vh;"></div>
+        <template v-if="case_misp_objects && case_misp_objects.length > 0">
+            <div id="timeline-embed" style="width: 100%; height: 60vh;"></div>
+        </template>
+        <template v-else>
+            <i>No MISP objects</i>
+        </template>
     </template>
     <template v-else-if="main_tab == 'history-audit'">
         <template v-if="audit_history && Object.keys(audit_history).length > 0">
