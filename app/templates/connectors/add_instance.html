@@ -5,11 +5,14 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    {% if edit_mode %}
-        <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit an Instance</h2>
-    {%else%}
-        <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Add an Instance</h2>
-    {%endif%}
+    <div class="case-core-style d-flex align-items-center" style="border-radius: 0;">
+        <a type="button" class="btn btn-outline-dark me-2" href="/connectors"><i class="fa-solid fa-arrow-left"></i></a>
+        {% if edit_mode %}
+            <h5 class="mb-0"><i class="fa-solid fa-pen-to-square me-2"></i>Edit Instance</h5>
+        {% else %}
+            <h5 class="mb-0"><i class="fa-solid fa-plug-circle-plus me-2"></i>Add Instance</h5>
+        {% endif %}
+    </div>
 
     <hr class="fading-line-2 mb-4 mt-4">
 
@@ -17,56 +20,58 @@
         {{ form.hidden_tag() }}
         <div class="modal-body">
             <div class="row">
-                <div class="mb-3 w-50">
-                    {{form.name.label(class_="col-form-label")}}:
+                <div class="col-md-6 mb-3">
+                    <label class="col-form-label"><i class="fa-solid fa-tag me-1"></i>{{form.name.label.text}}:</label>
                     {{form.name(class_="form-control")}}
                     {% if form.name.errors %}
-                        <div style="color: red;">{{form.name.errors[0] | safe}}</div>
+                        <div class="text-danger small">{{form.name.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
-                <div class="mb-3 w-50">
-                    {{form.url.label(class_="col-form-label")}}:
+                <div class="col-md-6 mb-3">
+                    <label class="col-form-label"><i class="fa-solid fa-link me-1"></i>{{form.url.label.text}}:</label>
                     {{form.url(class_="form-control")}}
                     {% if form.url.errors %}
-                        <div style="color: red;">{{form.url.errors[0] | safe}}</div>
+                        <div class="text-danger small">{{form.url.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
             </div>
             <div class="mb-3">
-                <label for="description" class="col-form-label">Description:</label>
+                <label for="description" class="col-form-label"><i class="fa-solid fa-align-left me-1"></i>Description:</label>
                 {{form.description(class_="form-control")}}
                 {% if form.description.errors %}
-                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                    <div class="text-danger small">{{form.description.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="row">
-                <div class="mb-3 w-50">
-                    {{form.api_key.label(class_="col-form-label")}}:
+                <div class="col-md-6 mb-3">
+                    <label class="col-form-label"><i class="fa-solid fa-key me-1"></i>{{form.api_key.label.text}}:</label>
                     {{form.api_key(class_="form-control")}}
                     {% if form.api_key.errors %}
-                        <div style="color: red;">{{form.api_key.errors[0] | safe}}</div>
+                        <div class="text-danger small">{{form.api_key.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
-                <div class="mb-3 w-50">
-                    <label style="padding: 4px;" for="type_select">Type:</label>
-                    <select data-placeholder="Icons" class="select2-select form-control" name="type_select" id="type_select">
+                <div class="col-md-6 mb-3">
+                    <label class="col-form-label"><i class="fa-solid fa-cube me-1"></i>Type:</label>
+                    <select data-placeholder="Type" class="select2-select form-control" name="type_select" id="type_select">
                         {% for i, choice in form.type_select.choices %}
                             <option value="{{i}}">{{choice}}</option>
                         {% endfor %}
                     </select>
                     {% if form.type_select.errors %}
-                        <div style="color: red;">{{form.type_select.errors[0] | safe}}</div>
+                        <div class="text-danger small">{{form.type_select.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
             </div>
-            <div>
-                <label for="is_global_connector" class="col-form-label">Global connector:</label>
-                {{form.is_global_connector(class_="mx-2")}}
+            <div class="mb-3">
+                <label for="is_global_connector" class="col-form-label"><i class="fa-solid fa-globe me-1"></i>Global connector:</label>
+                {{form.is_global_connector(class_="form-check-input mx-2")}}
                 {% if form.is_global_connector.errors %}
-                    <div style="color: red;">{{form.is_global_connector.errors[0] | safe}}</div>
+                    <div class="text-danger small">{{form.is_global_connector.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div class="modal-footer">
+            <hr>
+            <div class="d-flex justify-content-end">
+                <a href="/connectors" class="btn btn-outline-secondary me-2"><i class="fa-solid fa-xmark me-1"></i>Cancel</a>
                 {{form.submit(class='btn btn-primary')}}
             </div>
         </div>

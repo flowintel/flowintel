@@ -1,43 +1,43 @@
-import {display_toast} from '/static/js/toaster.js'
+import { display_toast } from '/static/js/toaster.js'
 const { ref, nextTick, onMounted, watch } = Vue
 export default {
-    delimiters: ['[[', ']]'],
+	delimiters: ['[[', ']]'],
 	props: {
 		cases_info: Object,
 		task: Object,
-        md: Object
+		md: Object
 	},
 	setup(props) {
-        const is_exporting = ref(false)		 	// Boolean to display a spinner when exporting
-        const note_editor_render = ref([])		// Notes display in mermaid
+		const is_exporting = ref(false)		 	// Boolean to display a spinner when exporting
+		const note_editor_render = ref([])		// Notes display in mermaid
 		let editor_list = []								// Variable for the editor
 		const edit_mode = ref(-1)			// Boolean use when the note is in edit mode
 
-        if(props.task.notes.length){
-			for(let i in props.task.notes){
+		if (props.task.notes.length) {
+			for (let i in props.task.notes) {
 				note_editor_render.value[i] = props.task.notes[i].note		// If this task has notes
 			}
-		}else{
+		} else {
 			note_editor_render.value[0] = ""
 		}
 
 
-        async function add_notes_task(){
+		async function add_notes_task() {
 			// Create a new empty note in the task
-			const res = await fetch('/case/' + props.task.case_id + '/create_note/'+props.task.id)
+			const res = await fetch('/case/' + props.task.case_id + '/create_note/' + props.task.id)
 
-			if(await res.status == 200){
+			if (await res.status == 200) {
 				let loc = await res.json()
 				props.task.notes.push(loc["note"])
-				let key = props.task.notes.length-1
+				let key = props.task.notes.length - 1
 				note_editor_render.value[key] = ""
 				await nextTick()
 				const targetElement = document.getElementById('editor_' + key + "_" + props.task.id)
-				
-				if(targetElement.innerHTML === ""){
+
+				if (targetElement.innerHTML === "") {
 					let editor = new Editor.EditorView({
 						doc: "\n\n",
-						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+						extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
 								note_editor_render.value[key] = editor.state.doc.toString()
 							}
@@ -50,17 +50,17 @@ export default {
 			}
 		}
 
-        async function delete_note(task, note_id, key){
+		async function delete_note(task, note_id, key) {
 			// Delete a note of the task
-			const res = await fetch('/case/' + task.case_id + '/delete_note/' + task.id + '?note_id='+note_id)
+			const res = await fetch('/case/' + task.case_id + '/delete_note/' + task.id + '?note_id=' + note_id)
 
-			if( await res.status == 200){
+			if (await res.status == 200) {
 				props.task.notes.splice(key, 1);
 			}
 			display_toast(res)
 		}
 
-        async function edit_note(task, note_id, key){
+		async function edit_note(task, note_id, key) {
 			// Edit the note of the task
 			edit_mode.value = note_id
 
@@ -69,10 +69,10 @@ export default {
 			task.notes[key].note = loc["note"]
 
 			// Initialize the editor
-			const targetElement = document.getElementById('editor1_'+ key + "_" + props.task.id)
+			const targetElement = document.getElementById('editor1_' + key + "_" + props.task.id)
 			let editor = new Editor.EditorView({
 				doc: task.notes[key].note,
-				extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+				extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
 					if (v.docChanged) {
 						note_editor_render.value[key] = editor.state.doc.toString()
 					}
@@ -83,58 +83,58 @@ export default {
 			props.md.mermaid.run()
 		}
 
-		async function export_notes(task, type, note_id){
+		async function export_notes(task, type, note_id) {
 			// Export notes in different format and download it
 			is_exporting.value = true
 			let filename = ""
-			await fetch('/case/'+task.case_id+'/task/'+task.id+'/export_notes?type=' + type+"&note_id="+note_id)
-			.then(res =>{
-				filename = res.headers.get("content-disposition").split("=")
-				filename = filename[filename.length - 1]
-				return res.blob() 
-			})
-			.then(data =>{
-				var a = document.createElement("a")
-				a.href = window.URL.createObjectURL(data);
-				a.download = filename;
-				a.click();
-			})
+			await fetch('/case/' + task.case_id + '/task/' + task.id + '/export_notes?type=' + type + "&note_id=" + note_id)
+				.then(res => {
+					filename = res.headers.get("content-disposition").split("=")
+					filename = filename[filename.length - 1]
+					return res.blob()
+				})
+				.then(data => {
+					var a = document.createElement("a")
+					a.href = window.URL.createObjectURL(data);
+					a.download = filename;
+					a.click();
+				})
 			is_exporting.value = false
 		}
 
-        async function modif_note(task, note_id, key){
+		async function modif_note(task, note_id, key) {
 			// Modify notes of the task
 			let notes_loc = editor_list[key].state.doc.toString()
-			if(notes_loc.trim().length == 0){
+			if (notes_loc.trim().length == 0) {
 				notes_loc = notes_loc.trim()
 			}
 			const res_msg = await fetch(
-				'/case/' + task.case_id + '/modif_note/' + task.id + '?note_id=' + note_id,{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-					method: "POST",
-					body: JSON.stringify({"notes": notes_loc})
-				}
+				'/case/' + task.case_id + '/modif_note/' + task.id + '?note_id=' + note_id, {
+				headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+				method: "POST",
+				body: JSON.stringify({ "notes": notes_loc })
+			}
 			)
 
-			if(await res_msg.status == 200){
+			if (await res_msg.status == 200) {
 				let loc = await res_msg.json()
 				edit_mode.value = -1
 				task.last_modif = Date.now()
-				if(note_id == -1){
+				if (note_id == -1) {
 					note_id = loc["note"]["id"]
 					task.notes.push(loc["note"])
-				}else{
+				} else {
 					task.notes[key].note = notes_loc
 				}
 
 				await nextTick()
-				
-				if(!notes_loc){
-					const targetElement = document.getElementById('editor_' +key + "_" + props.task.id)
-					if(targetElement.innerHTML === ""){
+
+				if (!notes_loc) {
+					const targetElement = document.getElementById('editor_' + key + "_" + props.task.id)
+					if (targetElement.innerHTML === "") {
 						let editor = new Editor.EditorView({
 							doc: "\n\n",
-							extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+							extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
 								if (v.docChanged) {
 									note_editor_render.value[key] = editor.state.doc.toString()
 								}
@@ -145,18 +145,18 @@ export default {
 					}
 				}
 				props.md.mermaid.run()
-			}else{
+			} else {
 				display_toast(res_msg)
 			}
 		}
 
-        onMounted( () => {
-			if(props.task.notes.length){
-				for(let i in props.task.notes){
-					const targetElement = document.getElementById('editor_' +i +'_' + props.task.id)
-					let editor=new Editor.EditorView({
+		onMounted(() => {
+			if (props.task.notes.length) {
+				for (let i in props.task.notes) {
+					const targetElement = document.getElementById('editor_' + i + '_' + props.task.id)
+					let editor = new Editor.EditorView({
 						doc: "\n\n",
-						extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+						extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
 								note_editor_render.value[i] = editor.state.doc.toString()
 							}
@@ -165,11 +165,11 @@ export default {
 					})
 					editor_list[i] = editor
 				}
-			}else{
+			} else {
 				const targetElement = document.getElementById('editor_0_' + props.task.id)
-				let editor=new Editor.EditorView({
+				let editor = new Editor.EditorView({
 					doc: "\n\n",
-					extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+					extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
 						if (v.docChanged) {
 							note_editor_render.value[0] = editor.state.doc.toString()
 						}
@@ -182,30 +182,29 @@ export default {
 
 		})
 
-        watch(note_editor_render, async (newAllContent, oldAllContent) => {
-            await nextTick()
-            props.md.mermaid.run()
-        }, {deep: true})
+		watch(note_editor_render, async (newAllContent, oldAllContent) => {
+			await nextTick()
+			props.md.mermaid.run()
+		}, { deep: true })
 
 		return {
-            // md,
-            note_editor_render,
+			// md,
+			note_editor_render,
 			is_exporting,
 			edit_mode,
 
-            add_notes_task,
-            delete_note,
-            edit_note,
-            export_notes,
-            modif_note,
+			add_notes_task,
+			delete_note,
+			edit_note,
+			export_notes,
+			modif_note,
 		}
-    },
+	},
 	template: `
 	<div>
         <fieldset class="analyzer-select-case">
             <legend class="analyzer-select-case">
-                <i class="fa-solid fa-note-sticky"></i> 
-                Notes 
+                <i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes</span> 
 				<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
                 	<button class="btn btn-outline-primary btn-sm me-1" title="Add notes" @click="add_notes_task()" style="margin-bottom: 1px; border-radius: 10px">
 						<i class="fa-solid fa-plus fa-fw"></i>

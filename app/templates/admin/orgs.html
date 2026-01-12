@@ -5,23 +5,22 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="case-core-style d-flex" style="border-radius: 0">
-        <h1>
-            Organisations
+    <div class="case-core-style" style="border-radius: 0">
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-building me-2"></i>Organisations</h5>
+                {% if current_user.is_admin() %}
+                    <a class="btn btn-primary btn-sm ms-3" href="/admin/add_org" title="Add organisation"><i class="fa-solid fa-plus fa-sm"></i></a>
+                {% endif %}
+            </div>
 
-            {% if current_user.is_admin() %}
-                <span>
-                    <a class="btn btn-primary ms-1" href="/admin/add_org"><i class="fa-solid fa-plus"></i></a>
-                </span>
-            {% endif %}
-        </h1>
-
-        <!-- Search bar -->
-        <div class="input-group w-auto start-50 translate-middle-x" id="search_org" >
-            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Org by name' style="min-width: 350px;" />
+            <!-- Search bar -->
+            <div class="col input-group w-auto">
+                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Org by name' />
+            </div>
+            <!-- Search bar -->
         </div>
-        <!-- Search bar -->
     </div>
 
     <hr class="fading-line-2 mt-4 mb-4">
@@ -53,11 +52,13 @@
                     <div style="display:flex; border-top-left-radius: 15px; border-top-right-radius: 15px;">
                         <a @click="extend_collapse(org.id)" class="list-group-item list-group-item-action case-index-list">
                             <div class="d-flex w-100 justify-content-between">
-                                <h4 class="mb-1">[[ org.id ]]- [[ org.name ]]</h4>
+                                <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
+                                    <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ org.id ]]- [[ org.name ]]
+                                </h5>
                             </div>
                             <div class="d-flex w-100 justify-content-between">
-                                <p v-if="org.description" class="card-text">[[ org.description ]]</p>
-                                <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                                <small v-if="org.description" class="text-muted">[[ org.description ]]</small>
+                                <small v-else class="text-muted"><i>No description</i></small>
                             </div>
                         </a>
                         {% if current_user.is_admin() %}

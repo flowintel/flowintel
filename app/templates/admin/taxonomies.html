@@ -5,15 +5,19 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="case-core-style d-flex" style="border-radius: 0">
-        <h1>Taxonomies</h1>
+    <div class="case-core-style" style="border-radius: 0">
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-tag me-2"></i>Taxonomies</h5>
+            </div>
 
-        <!-- Search bar -->
-        <div class="input-group w-auto start-50 translate-middle-x" id="search_org">
-            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search taxonomies by name' style="min-width: 350px;" />
+            <!-- Search bar -->
+            <div class="col input-group w-auto">
+                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search taxonomies by name' />
+            </div>
+            <!-- Search bar -->
         </div>
-        <!-- Search bar -->
     </div>
 
     <hr class="fading-line-2 mb-4 mt-4">
@@ -37,16 +41,16 @@
     <div class="case-core-style">
         <template v-if="taxonomies_list">
             <template v-for="taxonomy in taxonomies_list.taxonomies">
-                <div class="list-group" style="margin-bottom: 10px;">
+                <div class="list-group" style="margin-bottom: 5px;">
                     <div class="d-flex align-items-center" style="border-radius: 10px;">
-                        <input v-if="taxonomy.exclude" class="form-check-input me-2" type="checkbox" name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)">
-                        <input v-else class="form-check-input me-2" type="checkbox" checked name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)">
-                        <a @click="extend_collapse(taxonomy.id)" class="list-group-item list-group-item-action case-index-list">
+                        <input v-if="taxonomy.exclude" class="form-check-input me-2" type="checkbox" name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)" style="transform: scale(0.85);">
+                        <input v-else class="form-check-input me-2" type="checkbox" checked name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)" style="transform: scale(0.85);">
+                        <a @click="extend_collapse(taxonomy.id)" class="list-group-item list-group-item-action case-index-list py-1">
                             <div class="d-flex w-100 justify-content-between">
-                                <h4 class="mb-1">[[taxonomy.name]]</h4>
+                                <h6 class="mb-0" style="font-size: 0.9rem;">[[taxonomy.name]]</h6>
                             </div>
                             <div class="d-flex w-100 justify-content-between">
-                                <p class="mb-1">[[taxonomy.description]]</p>
+                                <small class="text-muted mb-0" style="font-size: 0.8rem;">[[taxonomy.description]]</small>
                             </div>
                         </a>
                     </div>
