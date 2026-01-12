@@ -87,6 +87,7 @@ def edit_task(cid, tid):
             
             return render_template("case/edit_task.html", form=form, description=task_modif.description, case_id=cid, task_id=tid)
         else:
+            flowintel_log("audit", 403, "Task edited: Access denied", User=current_user.email, CaseId=cid, TaskId=tid)
             flash("Access denied", "error")
         return redirect(f"/case/{cid}")
     return render_template("404.html")
@@ -104,10 +105,10 @@ def complete_task(tid):
                 flowintel_log("audit", 200, "Task completed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                 return {"message": "Task completed", "toast_class": "success-subtle"}, 200
             return {"message": "Error task completed", "toast_class": "danger-subtle"}, 400
+        flowintel_log("audit", 403, "Task completed: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     
-
 
 @task_blueprint.route("/<cid>/delete_task/<tid>", methods=['GET'])
 @login_required
@@ -118,8 +119,10 @@ def delete_task(cid, tid):
         if CommonModel.get_task(tid):
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if TaskModel.delete_task(tid, current_user):
+                    flowintel_log("audit", 200, "Task deleted", User=current_user.email, CaseId=cid, TaskId=tid)
                     return {"message": "Task deleted", "toast_class": "success-subtle"}, 200
                 return {"message": "Error task deleted", "toast_class": "danger-subtle"}, 400
+            flowintel_log("audit", 403, "Delete task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -137,12 +140,15 @@ def modif_note(cid, tid):
                 if "note_id" in request.args:
                     res_note = TaskModel.modif_note_core(tid, current_user, notes, request.args.get("note_id"))
                     if res_note and not type(res_note) == dict:
+                        flowintel_log("audit", 200, "Task note modified", User=current_user.email, CaseId=cid, TaskId=tid, NoteId=request.args.get("note_id"))
                         return {"note": res_note.to_json(), "message": "Note added", "toast_class": "success-subtle"}, 200
                     return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
                 return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
+            flowintel_log("audit", 403, "Modify task note: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/create_note/<tid>", methods=['GET'])
 @login_required
@@ -154,11 +160,14 @@ def create_note(cid, tid):
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 res_note = TaskModel.create_note(tid, current_user)
                 if res_note:
+                    flowintel_log("audit", 200, "Task note created", User=current_user.email, CaseId=cid, TaskId=tid, NoteId=res_note.id)
                     return {"note": res_note.to_json(), "message": "Note created", "toast_class": "success-subtle"}, 200
                 return {"message": "Error create note", "toast_class": "danger-subtle"}, 400
+            flowintel_log("audit", 403, "Create task note: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/delete_note/<tid>", methods=['GET'])
 @login_required
@@ -170,9 +179,11 @@ def delete_note(cid, tid):
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "note_id" in request.args:
                     if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
+                        flowintel_log("audit", 200, "Task note deleted", User=current_user.email, CaseId=cid, TaskId=tid, NoteId=request.args.get("note_id"))
                         return {"message": "Note deleted", "toast_class": "success-subtle"}, 200
                     return {"message": "Error delete note", "toast_class": "danger-subtle"}, 400
                 return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
+            flowintel_log("audit", 403, "Delete task note: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -181,10 +192,11 @@ def delete_note(cid, tid):
 @task_blueprint.route("/<cid>/get_note/<tid>", methods=['GET'])
 @login_required
 def get_note(cid, tid):
-    """Get not of a task in text format"""
+    """Get note of a task in text format"""
     case = CommonModel.get_case(cid)
     if case:
         if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Get note of a task: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
         
         task = CommonModel.get_task(tid)
@@ -284,8 +296,10 @@ def change_task_status(cid, tid):
             if task:
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if TaskModel.change_task_status(status, task, current_user):
+                        flowintel_log("audit", 200, "Task status changed", User=current_user.email, CaseId=cid, TaskId=tid, Status=status)
                         return {"message": "Status changed", "toast_class": "success-subtle"}, 200
                     return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
+                flowintel_log("audit", 403, "Change task status: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
                 return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
             return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
         return {"message": "'status' is missing", "toast_class": "danger-subtle"}, 400
@@ -301,6 +315,7 @@ def download_file(tid, fid):
     file = CommonModel.get_file(fid)
     if file and file in task.files:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            flowintel_log("audit", 200, "Task file downloaded", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
             return TaskModel.download_file(file)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "File not found", "toast_class": "danger-subtle"}, 404
@@ -316,8 +331,10 @@ def delete_file(tid, fid):
     if file and file in task.files:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if TaskModel.delete_file(file, task, current_user):
+                flowintel_log("audit", 200, "Task file deleted", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
                 return {"message": "File Deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Error deleting file", "toast_class": "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Delete task file: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "File not found", "toast_class": "danger-subtle"}, 404
 
@@ -333,9 +350,11 @@ def add_files(cid, tid):
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if len(request.files) > 0:
                     if TaskModel.add_file_core(task=task, files_list=request.files, current_user=current_user):
+                        flowintel_log("audit", 200, "Files added to task", User=current_user.email, CaseId=cid, TaskId=tid, FilesCount=len(request.files))
                         return {"message":"Files added", "toast_class": "success-subtle"}, 200
                     return {"message":"Something goes wrong adding files", "toast_class": "danger-subtle"}, 400
                 return {"message":"No Files given", "toast_class": "warning-subtle"}, 400
+            flowintel_log("audit", 403, "Add files to task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
         return {"message":"Task not found", "toast_class": "danger-subtle"}, 404
     return {"message":"Case not found", "toast_class": "danger-subtle"}, 404
@@ -349,11 +368,13 @@ def get_files(cid, tid):
     case = CommonModel.get_case(cid)
     if case:
         if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Get files of a task: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)            
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         task = CommonModel.get_task(tid)
         if task:
             file_list = [file.to_json() for file in task.files]
+            flowintel_log("audit", 200, "Get files of a task", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"files": file_list}, 200
         return {"message":"Task not found", "toast_class": "danger-subtle"}, 404
     return {"message":"Case not found", "toast_class": "danger-subtle"}, 404
@@ -366,6 +387,7 @@ def sort_tasks(cid):
     case = CommonModel.get_case(cid)
 
     if not check_user_private_case(case):
+        flowintel_log("audit", 403, "Sort tasks: Private case: Permission denied", User=current_user.email, CaseId=cid)
         return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
     
     filter = request.args.get('filter')
@@ -422,8 +444,10 @@ def notify_user(cid, tid):
             if task:
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if CaseModel.notify_user(task, user):
+                        flowintel_log("audit", 200, "User notified about task", User=current_user.email, CaseId=cid, TaskId=tid, NotifiedUserId=user)
                         return {"message":"User notified", "toast_class": "success-subtle"}, 200
                     return {"message":"Something goes wrong", "toast_class": "danger-subtle"}, 400
+                flowintel_log("audit", 403, "Notify user about task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
                 return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
             return {"message":"Task not found", "toast_class": "danger-subtle"}, 404
         return {"message": "'user_id' is missing", "toast_class": "danger-subtle"}, 404
@@ -437,6 +461,7 @@ def export_notes(cid, tid):
     case = CommonModel.get_case(cid)
     if case:
         if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Export note of a task: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         if CommonModel.get_task(tid):
@@ -446,6 +471,7 @@ def export_notes(cid, tid):
                     note_id = request.args.get("note_id")
                     res = CommonModel.export_notes(case_task=False, case_task_id=tid, type_req=type_req, note_id=note_id)
                     CommonModel.delete_temp_folder()
+                    flowintel_log("audit", 200, "Export notes of a task", User=current_user.email, CaseId=cid, TaskId=tid, ExportType=type_req, NoteId=note_id)
                     return res
                 return {"message": "'note_id' is missing", 'toast_class': "warning-subtle"}, 400
             return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
@@ -460,6 +486,7 @@ def get_taxonomies_task(tid):
     task = CommonModel.get_task(tid)
     if task:
         if not check_user_private_case(CommonModel.get_case(task.case_id)):
+            flowintel_log("audit", 403, "Get taxonomies of a task: Private case: Permission denied", User=current_user.email, CaseId=task.case_id, TaskId=tid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         tags = CommonModel.get_task_tags_json(tid)
@@ -478,6 +505,7 @@ def get_galaxies_task(tid):
     task = CommonModel.get_task(tid)
     if task:
         if not check_user_private_case(CommonModel.get_case(task.case_id)):
+            flowintel_log("audit", 403, "Get galaxies of a task: Private case: Permission denied", User=current_user.email, CaseId=task.case_id, TaskId=tid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         clusters = CommonModel.get_task_clusters(tid)
@@ -505,10 +533,12 @@ def change_order(cid, tid):
             if task:
                 if task.case_id == case.id:
                     if TaskModel.change_order(case, task, request.json):
+                        flowintel_log("audit", 200, "Task order changed", User=current_user.email, CaseId=cid, TaskId=tid)
                         return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
                     return {"message": "New index is not one of an other task", 'toast_class': "danger-subtle"}, 400
                 return {"message": "Task not in this case", 'toast_class': "danger-subtle"}, 400
             return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Change task order: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -519,6 +549,7 @@ def get_task_modules():
     """Get all modules"""
     return {"modules": CommonModel.get_modules_by_case_task('task')}, 200
 
+
 @task_blueprint.route("/<cid>/task/<tid>/get_instance_module", methods=['GET'])
 @login_required
 def get_instance_module(cid, tid):
@@ -526,6 +557,7 @@ def get_instance_module(cid, tid):
     case = CommonModel.get_case(cid)
     if case:
         if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Get instances of a task module: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         if CommonModel.get_task(tid):
@@ -538,6 +570,7 @@ def get_instance_module(cid, tid):
             return {"instances": TaskModel.get_instance_module_core(module, type_module, tid, current_user.id)}, 200
         return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/task/<tid>/call_module_task", methods=['GET', 'POST'])
 @login_required
@@ -555,10 +588,12 @@ def call_module_task(cid, tid):
                 if res:
                     res["toast_class"] = "danger-subtle"
                     return jsonify(res), 400
+                flowintel_log("audit", 200, "Call module on task", User=current_user.email, CaseId=cid, TaskId=tid, Module=module)
                 return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
             return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message":"Case not found", "toast_class": "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/task/<tid>/call_module_task_no_instance", methods=['GET', 'POST'])
 @login_required
@@ -566,6 +601,7 @@ def call_module_task_no_instance(cid, tid):
     """Run a module"""
     case = CommonModel.get_case(cid)
     if not check_user_private_case(case):
+        flowintel_log("audit", 403, "Call module on task: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
         return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
     
     task = CommonModel.get_task(tid)
@@ -576,8 +612,10 @@ def call_module_task_no_instance(cid, tid):
         if res:
             res["toast_class"] = "danger-subtle"
             return jsonify(res), 400
+        flowintel_log("audit", 200, "Call module on task without instance", User=current_user.email, CaseId=cid, TaskId=tid, Module=module)
         return {"message": "Module used", 'toast_class': "success-subtle"}, 200
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/get_custom_tags_task/<tid>", methods=['GET'])
 @login_required
@@ -586,11 +624,10 @@ def get_custom_tags_task(tid):
     task = CommonModel.get_task(tid)
     if task:
         if not check_user_private_case(CommonModel.get_case(task.case_id)):
+            flowintel_log("audit", 403, "Get custom tags of a task: Private case: Permission denied", User=current_user.email, CaseId=task.case_id, TaskId=tid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         return {"custom_tags": CommonModel.get_task_custom_tags_json(tid)}, 200
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
-
-
 
 
 ##############
@@ -608,11 +645,14 @@ def create_url_tool(cid,tid):
             if "name" in request.json:
                 url_tool = TaskModel.create_url_tool(tid, request.json["name"], current_user)
                 if url_tool:
+                    flowintel_log("audit", 200, "URL/Tool created for task", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=url_tool.id)
                     return {"message": f"Url/Tool created", "id": url_tool.id, 'toast_class': "success-subtle", "icon": "fas fa-plus"}, 200 
                 return {"message": "Error creating Url/Tool", 'toast_class': "danger-subtle"}, 400
             return {"message": "Need to pass 'name", 'toast_class': "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Create URL/Tool for task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/task/<tid>/edit_url_tool/<utid>", methods=['POST'])
 @login_required
@@ -624,11 +664,14 @@ def edit_url_tool(cid, tid, utid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "name" in request.json:
                 if TaskModel.edit_url_tool(tid, utid, request.json["name"], current_user):
+                    flowintel_log("audit", 200, "URL/Tool edited for task", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=utid)
                     return {"message": "Url/Tool edited", 'toast_class': "success-subtle"}, 200 
                 return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
             return {"message": "Need to pass 'name", 'toast_class': "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Edit URL/Tool for task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=utid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/task/<tid>/delete_url_tool/<utid>", methods=['GET'])
 @login_required
@@ -639,8 +682,10 @@ def delete_url_tool(cid, tid, utid):
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if TaskModel.delete_url_tool(tid, utid, current_user):
+                flowintel_log("audit", 200, "URL/Tool deleted from task", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=utid)
                 return {"message": "Url/Tool deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200 
             return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Delete URL/Tool from task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=utid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -660,11 +705,14 @@ def create_subtask(cid,tid):
             if "description" in request.json:
                 subtask = TaskModel.create_subtask(tid, request.json["description"], current_user)
                 if subtask:
+                    flowintel_log("audit", 200, "Subtask created", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=subtask.id)
                     return {"message": f"Subtask created", "id": subtask.id, 'toast_class': "success-subtle", "icon": "fas fa-plus"}, 200 
                 return {"message": "Error creating subtask", 'toast_class': "danger-subtle"}, 400
             return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Create subtask: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/task/<tid>/edit_subtask/<sid>", methods=['POST'])
 @login_required
@@ -676,11 +724,14 @@ def edit_subtask(cid, tid, sid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "description" in request.json:
                 if TaskModel.edit_subtask(tid, sid, request.json["description"], current_user):
+                    flowintel_log("audit", 200, "Subtask edited", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
                     return {"message": "Subtask edited", 'toast_class': "success-subtle"}, 200 
                 return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
             return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Edit subtask: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/task/<tid>/complete_subtask/<sid>", methods=['GET'])
 @login_required
@@ -691,10 +742,13 @@ def complete_subtask(cid, tid, sid):
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if TaskModel.complete_subtask(tid, sid, current_user):
+                flowintel_log("audit", 200, "Subtask completed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
                 return {"message": "Subtask completed", 'toast_class': "success-subtle"}, 200 
             return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Complete subtask: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/task/<tid>/delete_subtask/<sid>", methods=['GET'])
 @login_required
@@ -705,10 +759,13 @@ def delete_subtask(cid, tid, sid):
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if TaskModel.delete_subtask(tid, sid, current_user):
+                flowintel_log("audit", 200, "Subtask deleted", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
                 return {"message": "Subtask deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200 
             return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Delete subtask: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/<cid>/task/<tid>/change_order_subtask/<sid>", methods=['GET'])
 @login_required
@@ -725,10 +782,12 @@ def change_order_subtask(cid, tid, sid):
                     if "up_down" in request.args:
                         up_down = request.args.get("up_down")
                         TaskModel.change_order_subtask(task, subtask, up_down)
+                        flowintel_log("audit", 200, "Subtask order changed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid, Direction=up_down)
                         return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
                     return {"message": "Need to pass up_down", 'toast_class': "danger-subtle"}, 400
                 return {"message": "Subtask Not found", 'toast_class': "danger-subtle"}, 404
             return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Change subtask order: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -755,6 +814,7 @@ def get_connectors():
     
     return jsonify({"connectors": connectors_dict}), 200
 
+
 @task_blueprint.route("/get_task_connectors/<tid>", methods=['GET'])
 @login_required
 def get_task_connectors(tid):
@@ -762,6 +822,7 @@ def get_task_connectors(tid):
     task = CommonModel.get_task(tid)
     if task:
         if not check_user_private_case(CommonModel.get_case(task.case_id)):
+            flowintel_log("audit", 403, "Get connectors of a task: Private case: Permission denied", User=current_user.email, CaseId=task.case_id, TaskId=tid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         instance_list = list()
@@ -785,10 +846,13 @@ def add_connector(tid):
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if "connectors" in request.json:
                 if TaskModel.add_connector(tid, request.json, current_user):
+                    flowintel_log("audit", 200, "Connector added to task", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                     return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Add connector to task: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/task/<tid>/remove_connector/<ciid>", methods=['GET'])
 @login_required
@@ -799,10 +863,13 @@ def remove_connector(tid, ciid):
     if task:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if TaskModel.remove_connector(ciid):
+                flowintel_log("audit", 200, "Connector removed from task", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
                 return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
             return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
+        flowintel_log("audit", 403, "Remove connector from task: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+
 
 @task_blueprint.route("/task/<tid>/edit_connector/<ciid>", methods=['POST'])
 @login_required
@@ -814,9 +881,10 @@ def edit_connector(tid, ciid):
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if "identifier" in request.json:
                 if TaskModel.edit_connector(ciid, request.json):
+                    flowintel_log("audit", 200, "Task connector edited", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
                     return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
                 return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
-            return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
+            return {"message": "Need to pass 'identifier'", "toast_class": "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Edit task connector: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
-

@@ -8,6 +8,7 @@ from .form import RegistrationForm, CreateOrgForm, AdminEditUserFrom
 from . import admin_core as AdminModel
 from ..decorators import admin_required
 from ..utils.utils import form_to_dict
+from ..utils.logger import flowintel_log
 
 admin_blueprint = Blueprint(
     'admin',
@@ -41,6 +42,7 @@ def add_user():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_user_core(form_dict)
+        flowintel_log("audit", 200, "User added", User=form.email.data)
         return redirect("/admin/orgs")
     return render_template("admin/add_user.html", form=form)
 
@@ -69,6 +71,7 @@ def edit_user(uid):
         if not form.change_password.data:
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
+        flowintel_log("audit", 200, "User edited", User=user_modif.email, UserId=uid)
         AdminModel.admin_edit_user_core(form_dict, uid)
         return redirect("/admin/users")
     else:
@@ -89,6 +92,7 @@ def delete_user(uid):
     """Delete the user"""
     if AdminModel.get_user(uid):
         if AdminModel.delete_user_core(uid):
+            flowintel_log("audit", 200, "User deleted", UserId=uid)
             return {"message":"User deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error user deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"User not found", "toast_class": "danger-subtle"}, 404
@@ -131,6 +135,7 @@ def add_org():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_org_core(form_dict)
+        flowintel_log("audit", 200, "Org added", Org=form.name.data)
         return redirect("/admin/orgs")
     return render_template("admin/add_edit_org.html", form=form, edit_mode=False)
 
@@ -144,6 +149,7 @@ def edit_org(id):
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.edit_org_core(form_dict, id)
+        flowintel_log("audit", 200, "Org edited", Org=form.name.data, OrgId=id)
         return redirect("/admin/orgs")
     else:
         org = AdminModel.get_org(id)
@@ -160,6 +166,7 @@ def delete_org(oid):
     """Delete the org"""
     if AdminModel.get_org(oid):
         if AdminModel.delete_org_core(oid):
+            flowintel_log("audit", 200, "Org deleted", OrgId=oid)
             return {"message":"Org deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error Org deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"Org not found", "toast_class": "danger-subtle"}, 404
