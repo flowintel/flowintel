@@ -11,23 +11,24 @@
 {%endblock%}
 
 {% block content %}
-    <div class="case-core-style d-flex" style="border-radius: 0;">
-        <h1>
-            Case Templates
-            <span>
-                <a class="btn btn-primary btn-small" href="/templating/create_case" title="Add a Template"><i class="fa-solid fa-plus"></i></a>
-            </span>
-        </h1>
+    <div class="case-core-style" style="border-radius: 0;">
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-folder-open me-2"></i>Case Templates</h5>
+                <a class="btn btn-primary btn-sm ms-3" href="/templating/create_case" title="Add a Template">
+                    <i class="fa-solid fa-plus fa-sm"></i>
+                </a>
+            </div>
 
-        <!-- Search bar -->
-        <div class="input-group w-auto translate-middle-x" style="left: 35% !important;">
-            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
-                <i class="fa-solid fa-filter"></i>
-            </button>
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
+            <!-- Search bar -->
+            <div class="col input-group w-auto">
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
+                    <i class="fa-solid fa-filter fa-sm"></i>
+                </button>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search case by title' />
+            </div>
+            <!-- Search bar -->
         </div>
-        <!-- Search bar -->
-
     </div>
 
 

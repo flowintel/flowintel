@@ -1,117 +1,116 @@
-import {display_toast, create_message} from '/static/js/toaster.js'
-const { ref, nextTick} = Vue
+import { display_toast, create_message } from '/static/js/toaster.js'
+const { ref, nextTick } = Vue
 export default {
     delimiters: ['[[', ']]'],
-	props: {
-		task: Object,
-		cases_info: Object,
+    props: {
+        task: Object,
+        cases_info: Object,
         is_template: Boolean
-	},
-	setup(props) {
-        async function create_url_tool(task){
-			$("#textarea-url_tool-error-"+task.id).text("")
-			let name = $("#textarea-url_tool-"+task.id).val()
-			if(!name){
-				$("#textarea-url_tool-error-"+task.id).text("Cannot be empty...").css("color", "brown")
-			}
-			
-            let url
-            if(props.is_template){
-                url = "/templating/task/"+task.id+"/create_url_tool"
-            }else{
-                url = "/case/"+ task.case_id + "/task/" + task.id + "/create_url_tool"
+    },
+    setup(props) {
+        async function create_url_tool(task) {
+            $("#textarea-url_tool-error-" + task.id).text("")
+            let name = $("#textarea-url_tool-" + task.id).val()
+            if (!name) {
+                $("#textarea-url_tool-error-" + task.id).text("Cannot be empty...").css("color", "brown")
             }
 
-			const res = await fetch(url, {
-				method: "POST",
-				headers: {
-					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-				},
-				body: JSON.stringify({
-					"name": name
-				})				
-			});
-			if( await res.status == 200){
-				let loc = await res.json()
-				
-				task.urls_tools.push({"id": loc["id"], "name": name, "task_id": task.id})
-				create_message("url_tool created", "success-subtle", false, "fas fa-plus")
-				$("#textarea-url_tool-"+task.id).val("")
-                $("#create_url_tool_"+task.id).modal("hide")
-			}else{
-				await display_toast(res)
-			}
-		}
-
-		async function edit_url_tool(task, url_tool_id){
-			$("#edit-url_tool-error-"+url_tool_id).text("")
-			let name = $("#edit-url_tool-"+url_tool_id).val()
-			if(!name){
-				$("#edit-url_tool-error-"+url_tool_id).text("Cannot be empty...").css("color", "brown")
-			}
-
             let url
-            if(props.is_template){
-                url = "/templating/task/"+task.id+"/edit_url_tool/"+url_tool_id
-            }else{
-                url = "/case/"+ task.case_id + "/task/" + task.id + "/edit_url_tool/" + url_tool_id
+            if (props.is_template) {
+                url = "/templating/task/" + task.id + "/create_url_tool"
+            } else {
+                url = "/case/" + task.case_id + "/task/" + task.id + "/create_url_tool"
             }
 
-			const res = await fetch(url, {
-				method: "POST",
-				headers: {
-					"X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-				},
-				body: JSON.stringify({
-					"name": name
-				})				
-			});
-			if( await res.status == 200){
-				for(let i in task.urls_tools){
-					if (task.urls_tools[i].id == url_tool_id){
-						task.urls_tools[i].name = name
-						break
-					}
-				}
-                $("#edit_url_tool_"+url_tool_id).modal("hide")
-			}
-			await display_toast(res)
-		}
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "name": name
+                })
+            });
+            if (await res.status == 200) {
+                let loc = await res.json()
 
-		async function delete_url_tool(task, url_tool_id){
+                task.urls_tools.push({ "id": loc["id"], "name": name, "task_id": task.id })
+                create_message("url_tool created", "success-subtle", false, "fas fa-plus")
+                $("#textarea-url_tool-" + task.id).val("")
+                $("#create_url_tool_" + task.id).modal("hide")
+            } else {
+                await display_toast(res)
+            }
+        }
+
+        async function edit_url_tool(task, url_tool_id) {
+            $("#edit-url_tool-error-" + url_tool_id).text("")
+            let name = $("#edit-url_tool-" + url_tool_id).val()
+            if (!name) {
+                $("#edit-url_tool-error-" + url_tool_id).text("Cannot be empty...").css("color", "brown")
+            }
+
             let url
-            if(props.is_template){
+            if (props.is_template) {
+                url = "/templating/task/" + task.id + "/edit_url_tool/" + url_tool_id
+            } else {
+                url = "/case/" + task.case_id + "/task/" + task.id + "/edit_url_tool/" + url_tool_id
+            }
+
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "name": name
+                })
+            });
+            if (await res.status == 200) {
+                for (let i in task.urls_tools) {
+                    if (task.urls_tools[i].id == url_tool_id) {
+                        task.urls_tools[i].name = name
+                        break
+                    }
+                }
+                $("#edit_url_tool_" + url_tool_id).modal("hide")
+            }
+            await display_toast(res)
+        }
+
+        async function delete_url_tool(task, url_tool_id) {
+            let url
+            if (props.is_template) {
                 url = "/templating/task/" + task.id + "/delete_url_tool/" + url_tool_id
-            }else{
+            } else {
                 url = '/case/' + task.case_id + '/task/' + task.id + "/delete_url_tool/" + url_tool_id
             }
-			const res = await fetch(url)
+            const res = await fetch(url)
 
-			if( await res.status == 200){
-				let loc_i
-				for(let i in task.urls_tools){
-					if (task.urls_tools[i].id == url_tool_id){
-						loc_i=i
-						break
-					}
-				}
-				task.urls_tools.splice(loc_i, 1)
-			}
-			await display_toast(res)
-		}
+            if (await res.status == 200) {
+                let loc_i
+                for (let i in task.urls_tools) {
+                    if (task.urls_tools[i].id == url_tool_id) {
+                        loc_i = i
+                        break
+                    }
+                }
+                task.urls_tools.splice(loc_i, 1)
+            }
+            await display_toast(res)
+        }
 
-		return {
+        return {
             create_url_tool,
             edit_url_tool,
             delete_url_tool
-		}
+        }
     },
-	template: `
+    template: `
 	<div class="col">
         <fieldset class="analyzer-select-case">
             <legend class="analyzer-select-case">
-                <i class="fa-solid fa-screwdriver-wrench"></i>
-                Urls/Tools
+                <i class="fa-solid fa-screwdriver-wrench fa-sm me-1"></i><span class="section-title">Urls/Tools</span>
 				<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 					<button class="btn btn-primary btn-sm" title="Add new url/tool" data-bs-toggle="modal" :data-bs-target="'#create_url_tool_'+task.id" style="float: right; margin-left:3px;">
 						<i class="fa-solid fa-plus"></i>

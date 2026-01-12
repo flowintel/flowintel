@@ -6,12 +6,15 @@
 
 {% block content %}
 
-<div style="margin-bottom: 10px;">
-    <h1>Note Template
-        <span>
-            <a type="button" class="btn btn-primary" href="/tools/create_note_template_view"><i class="fa-solid fa-plus"></i></a>
-        </span>
-    </h1>
+<div class="case-core-style" style="border-radius: 0; margin-bottom: 10px;">
+    <div class="row align-items-center">
+        <div class="col-auto d-flex align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-note-sticky me-2"></i>Note Templates</h5>
+            <a type="button" class="btn btn-primary btn-sm ms-3" href="/tools/create_note_template_view" title="Add new note template">
+                <i class="fa-solid fa-plus fa-sm"></i>
+            </a>
+        </div>
+    </div>
 </div>
 <hr class="fading-line">
 
@@ -43,9 +46,9 @@
                 <div style="display:flex; border-radius: 15px;">
                     <a :href="`/tools/note_template_view/${note_loc.id}`" class="list-group-item list-group-item-action case-index-list">
                         <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">
-                                [[ note_loc.id ]]-[[ note_loc.title ]]
-                            </h4>                            
+                            <h5 class="mb-1">
+                                <i class="fa-solid fa-note-sticky fa-sm me-2"></i>[[ note_loc.id ]]-[[ note_loc.title ]]
+                            </h5>                            
                             <small><i>Changed [[ (dayjs.utc(note_loc.last_modif).fromNow()) ]]</i></small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">

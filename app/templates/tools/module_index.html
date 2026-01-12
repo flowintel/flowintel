@@ -5,11 +5,15 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="case-core-style d-flex" style="border-radius: 0">
-        <h1>Modules</h1>
-        <i class="fa fa-question" title="List of modules usable"></i>
+    <div class="case-core-style" style="border-radius: 0">
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-puzzle-piece me-2"></i>Modules</h5>
+                <i class="fa fa-question ms-2" title="List of modules usable" style="font-size: small;"></i>
+            </div>
+        </div>
     </div>
-    <hr>
+    <hr class="fading-line-2 mt-4 mb-4">
 
     <button class="btn btn-primary" @click="reload()"><i class="fa-solid fa-arrow-rotate-right"></i> Reload</button>
 

@@ -1,44 +1,44 @@
-import {display_toast} from '/static/js/toaster.js'
+import { display_toast } from '/static/js/toaster.js'
 const { ref } = Vue
 import subtask from './subtask.js'
 import TaskUrlTool from './TaskUrlTool.js'
 export default {
-    delimiters: ['[[', ']]'],
-    components: {
-        subtask,
+	delimiters: ['[[', ']]'],
+	components: {
+		subtask,
 		TaskUrlTool
-    },
+	},
 	props: {
 		cases_info: Object,
 		status_info: Object,
 		users_in_case: Object,
 		task: Object,
 		task_modules: Object,
-        open_closed: Object
+		open_closed: Object
 	},
 	setup(props) {
-        const is_module_loading = ref(false)
+		const is_module_loading = ref(false)
 
-        async function assign_user_task(){
+		async function assign_user_task() {
 			// Assign users present in the case to the task
-			let users_select = $('#selectUser'+props.task.id).val()
-			if(users_select.length){
+			let users_select = $('#selectUser' + props.task.id).val()
+			if (users_select.length) {
 				const res_msg = await fetch(
-					'/case/' + props.task.case_id + '/assign_users/' + props.task.id,{
-						headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-						method: "POST",
-						body: JSON.stringify({"users_id": users_select})
-					}
+					'/case/' + props.task.case_id + '/assign_users/' + props.task.id, {
+					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+					method: "POST",
+					body: JSON.stringify({ "users_id": users_select })
+				}
 				)
-				if( await res_msg.status == 200){
+				if (await res_msg.status == 200) {
 					// Check if current user is assign
-					if(users_select.includes(props.cases_info.current_user.id.toString())){
+					if (users_select.includes(props.cases_info.current_user.id.toString())) {
 						props.task.is_current_user_assigned = true
 					}
-					const res = await fetch('/case/' + props.task.case_id + '/get_assigned_users/' +props.task.id)
-					if(await res.status == 404){
+					const res = await fetch('/case/' + props.task.case_id + '/get_assigned_users/' + props.task.id)
+					if (await res.status == 404) {
 						display_toast(res)
-					}else{
+					} else {
 						let loc = await res.json()
 						props.task.users = loc
 						props.task.last_modif = Date.now()
@@ -48,27 +48,27 @@ export default {
 			}
 		}
 
-        async function change_status(status, task){
+		async function change_status(status, task) {
 			// Change the status of the task
 			const res = await fetch(
-				'/case/' + task.case_id + '/change_task_status/'+task.id,{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-					method: "POST",
-					body: JSON.stringify({"status": status})
-				}
+				'/case/' + task.case_id + '/change_task_status/' + task.id, {
+				headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+				method: "POST",
+				body: JSON.stringify({ "status": status })
+			}
 			)
-			if(await res.status==200){
+			if (await res.status == 200) {
 				task.last_modif = Date.now()
-				task.status_id=status
-					
+				task.status_id = status
+
 				// If 'Finished' is selected, the task is completed
-				if(props.status_info.status[status-1].name == 'Finished'){
+				if (props.status_info.status[status - 1].name == 'Finished') {
 					props.open_closed["closed"] += 1
 					props.open_closed["open"] -= 1
 					task.last_modif = Date.now()
 					task.completed = true
-					fetch('/case/complete_task/'+task.id)
-				}else{
+					fetch('/case/complete_task/' + task.id)
+				} else {
 					props.open_closed["closed"] -= 1
 					props.open_closed["open"] += 1
 					task.completed = false
@@ -77,47 +77,47 @@ export default {
 			await display_toast(res)
 		}
 
-        function present_user_in_task(task_user_list, user){
+		function present_user_in_task(task_user_list, user) {
 			// Check if user is already assign
 			let index = -1
 
-			for(let i=0;i<task_user_list.length;i++){
-				if (task_user_list[i].id==user.id)
+			for (let i = 0; i < task_user_list.length; i++) {
+				if (task_user_list[i].id == user.id)
 					index = i
 			}
 			return index
 		}
 
-        async function notify_user(user_id){
+		async function notify_user(user_id) {
 			// Send a notification to the user
 			const res = await fetch(
-				'/case/' + props.task.case_id + '/task/' + props.task.id + '/notify_user',{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-					method: "POST",
-					body: JSON.stringify({"task_id": props.task.id, "user_id": user_id})
-				}
+				'/case/' + props.task.case_id + '/task/' + props.task.id + '/notify_user', {
+				headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+				method: "POST",
+				body: JSON.stringify({ "task_id": props.task.id, "user_id": user_id })
+			}
 			)
 			await display_toast(res)
 		}
 
-        async function remove_assigned_user(user_id){
+		async function remove_assigned_user(user_id) {
 			// Remove a user from assignment to the task
 			const res = await fetch(
-				'/case/' + props.task.case_id + '/remove_assigned_user/' + props.task.id,{
-					headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-					method: "POST",
-					body: JSON.stringify({"user_id": user_id})
-				}
+				'/case/' + props.task.case_id + '/remove_assigned_user/' + props.task.id, {
+				headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+				method: "POST",
+				body: JSON.stringify({ "user_id": user_id })
+			}
 			)
 
-			if( await res.status == 200){
+			if (await res.status == 200) {
 				props.task.last_modif = Date.now()
 
 				let index = -1
-				for(let i=0;i<props.task.users.length;i++){
-					if (props.task.users[i].id==user_id){
+				for (let i = 0; i < props.task.users.length; i++) {
+					if (props.task.users[i].id == user_id) {
 						// Check if the user is the current one
-						if(user_id == props.cases_info.current_user.id.toString()){
+						if (user_id == props.cases_info.current_user.id.toString()) {
 							props.task.is_current_user_assigned = true
 						}
 						props.task.is_current_user_assigned = false
@@ -125,46 +125,46 @@ export default {
 					}
 				}
 
-				if(index > -1)
+				if (index > -1)
 					props.task.users.splice(index, 1)
 			}
 			await display_toast(res)
 		}
 
-        async function submit_module_task(user_id){
+		async function submit_module_task(user_id) {
 			is_module_loading.value = true
 			$("#modules_errors").hide()
-			const loc_val = $("#modules_select_"+props.task.id+"_"+user_id).val()
-			if(!loc_val || loc_val == "None"){
+			const loc_val = $("#modules_select_" + props.task.id + "_" + user_id).val()
+			if (!loc_val || loc_val == "None") {
 				$("#modules_errors").text("Select an item")
 				$("#modules_errors").show()
-			}else{
-				if(loc_val == "flowintel"){
+			} else {
+				if (loc_val == "flowintel") {
 					notify_user(user_id)
-				}else{
-					const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.task.id+"/call_module_task_no_instance?module=" + loc_val + "&user_id="+user_id);
+				} else {
+					const res = await fetch("/case/" + window.location.pathname.split("/").slice(-1) + "/task/" + props.task.id + "/call_module_task_no_instance?module=" + loc_val + "&user_id=" + user_id);
 					display_toast(res, true)
 				}
-                is_module_loading.value = false
+				is_module_loading.value = false
 			}
 		}
 
 		return {
-            is_module_loading,
+			is_module_loading,
 
-            assign_user_task,
-            change_status,
-            notify_user,
-            present_user_in_task,
-            remove_assigned_user,
-            submit_module_task
+			assign_user_task,
+			change_status,
+			notify_user,
+			present_user_in_task,
+			remove_assigned_user,
+			submit_module_task
 		}
-    },
+	},
 	template: `
 	<div class="row">
         <div class="col" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
             <fieldset class="analyzer-select-case">
-                <legend class="analyzer-select-case"><i class="fa-solid fa-user"></i> Assign</legend>
+                <legend class="analyzer-select-case"><i class="fa-solid fa-user fa-sm me-1"></i><span class="section-title" style="font-size: 0.85em;">Assign</span></legend>
                 <div v-if="users_in_case">
                     <select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
                         <template v-for="user in users_in_case.users_list">
@@ -222,7 +222,7 @@ export default {
 
         <div class="col" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
             <fieldset class="analyzer-select-case">
-                <legend class="analyzer-select-case"><i class="fa-solid fa-temperature-three-quarters"></i> Status</legend>
+                <legend class="analyzer-select-case"><i class="fa-solid fa-temperature-three-quarters fa-sm me-1"></i><span class="section-title">Status</span></legend>
                 <div>
                     <div class="dropdown" :id="'dropdown_status_'+task.id">
                         <template v-if="status_info">

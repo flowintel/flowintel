@@ -1,17 +1,17 @@
-import {display_toast, create_message} from '../toaster.js'
+import { display_toast, create_message } from '../toaster.js'
 const { ref, onMounted } = Vue
 export default {
     delimiters: ['[[', ']]'],
-	props: {
+    props: {
         case_task_connectors_list: Object,
         all_connectors_list: Object,
         modules: Object,
         is_case: Boolean,
         object_id: Number,
         cases_info: Object
-	},
+    },
     emits: ['case_connectors', 'task_connectors'],
-	setup(props, {emit}) {
+    setup(props, { emit }) {
         const is_sending = ref(false)
         const connectors_selected = ref([])
         const edit_instance = ref()
@@ -20,17 +20,17 @@ export default {
         const is_loading_update = ref(false)
 
         let modal_identifier = ""
-        if(props.is_case){
+        if (props.is_case) {
             modal_identifier = "case-" + props.object_id
-        }else{
+        } else {
             modal_identifier = "task-" + props.object_id
         }
 
-        async function save_connector(){
+        async function save_connector() {
             let connector_dict = []
-            for(let i in connectors_selected.value){
-                let loc = $("#identifier_"+connectors_selected.value[i].id).val()
-                
+            for (let i in connectors_selected.value) {
+                let loc = $("#identifier_" + connectors_selected.value[i].id).val()
+
                 let loc_key = connectors_selected.value[i].name
                 connector_dict.push({
                     "name": loc_key,
@@ -39,10 +39,10 @@ export default {
             }
 
             let url
-            if(props.is_case){
-                url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/add_connector"
-            }else{
-                url = "/case/task/"+props.object_id+"/add_connector"
+            if (props.is_case) {
+                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/add_connector"
+            } else {
+                url = "/case/task/" + props.object_id + "/add_connector"
             }
 
             const res = await fetch(url, {
@@ -54,32 +54,32 @@ export default {
                     "connectors": connector_dict
                 })
             });
-            if(await res.status==200){
+            if (await res.status == 200) {
                 connectors_selected.value = []
-                if (props.is_case){
+                if (props.is_case) {
                     emit("case_connectors", true)
-                }else{
+                } else {
                     emit("task_connectors", true)
                 }
-                $("#modal-add-connectors-"+modal_identifier).modal("hide");
+                $("#modal-add-connectors-" + modal_identifier).modal("hide");
             }
             display_toast(res)
-            
+
         }
 
         async function remove_connector(element_instance_id) {
             let url
-            if(props.is_case){
-                url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/connectors/"+element_instance_id+"/remove_connector"
-            }else{
-                url = "/case/task/"+props.object_id+"/remove_connector/"+element_instance_id
+            if (props.is_case) {
+                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/connectors/" + element_instance_id + "/remove_connector"
+            } else {
+                url = "/case/task/" + props.object_id + "/remove_connector/" + element_instance_id
             }
 
             const res = await fetch(url)
-            if(await res.status==200){
+            if (await res.status == 200) {
                 let loc
-                for(let i in props.case_task_connectors_list){
-                    if(props.case_task_connectors_list[i].case_task_instance_id == element_instance_id){
+                for (let i in props.case_task_connectors_list) {
+                    if (props.case_task_connectors_list[i].case_task_instance_id == element_instance_id) {
                         loc = i
                         break
                     }
@@ -89,20 +89,20 @@ export default {
             display_toast(res)
         }
 
-        function edit_instance_open_modal(instance){
+        function edit_instance_open_modal(instance) {
             edit_instance.value = instance
-            var myModal = new bootstrap.Modal(document.getElementById("modal-edit-connectors-"+modal_identifier), {});
+            var myModal = new bootstrap.Modal(document.getElementById("modal-edit-connectors-" + modal_identifier), {});
             myModal.show();
         }
 
-        async function edit_connector(){            
+        async function edit_connector() {
             let url
             let loc_update_from_misp = false
-            if(props.is_case){
-                url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/connectors/"+edit_instance.value.case_task_instance_id+"/edit_connector"
+            if (props.is_case) {
+                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/connectors/" + edit_instance.value.case_task_instance_id + "/edit_connector"
                 loc_update_from_misp = $("#checkbox-update-misp-" + modal_identifier).is(":checked")
-            }else{
-                url = "/case/task/"+props.object_id+"/edit_connector/"+edit_instance.value.case_task_instance_id
+            } else {
+                url = "/case/task/" + props.object_id + "/edit_connector/" + edit_instance.value.case_task_instance_id
             }
 
             let loc_identifier = $("#input-edit-connector-" + modal_identifier).val()
@@ -116,55 +116,55 @@ export default {
                     "update_from_misp": loc_update_from_misp
                 })
             });
-            if(await res.status==200){
-                for (let i in props.case_task_connectors_list){
-                    if (props.case_task_connectors_list[i].case_task_instance_id == edit_instance.value.case_task_instance_id){
+            if (await res.status == 200) {
+                for (let i in props.case_task_connectors_list) {
+                    if (props.case_task_connectors_list[i].case_task_instance_id == edit_instance.value.case_task_instance_id) {
                         props.case_task_connectors_list[i].identifier = loc_identifier
-                        if(loc_update_from_misp){
+                        if (loc_update_from_misp) {
                             props.case_task_connectors_list[i].is_updating_case = true
-                        }else{
+                        } else {
                             props.case_task_connectors_list[i].is_updating_case = false
                         }
                     }
                 }
-                if(props.is_case){
-                    if(loc_update_from_misp){
+                if (props.is_case) {
+                    if (loc_update_from_misp) {
                         props.cases_info.case.is_updated_from_misp = true
-                    }else{
+                    } else {
                         props.cases_info.case.is_updated_from_misp = false
                     }
                 }
                 edit_instance.value = {}
-                $("#modal-edit-connectors-"+modal_identifier).modal("hide");
-                
+                $("#modal-edit-connectors-" + modal_identifier).modal("hide");
+
             }
             display_toast(res)
-            
+
         }
 
-        function send_to_modal(instance){
-            send_to_instance.value=instance
-            var myModal = new bootstrap.Modal(document.getElementById("modal-send-to-"+modal_identifier), {});
+        function send_to_modal(instance) {
+            send_to_instance.value = instance
+            var myModal = new bootstrap.Modal(document.getElementById("modal-send-to-" + modal_identifier), {});
             myModal.show();
         }
 
-        async function submit_module(){
+        async function submit_module() {
             is_sending.value = true
             $("#modules_errors").hide()
-            let modules_select = $("#modules_select_"+modal_identifier).val()
-            
+            let modules_select = $("#modules_select_" + modal_identifier).val()
 
-            if(!modules_select || modules_select == "None"){
+
+            if (!modules_select || modules_select == "None") {
                 $("#modules_errors").text("Select an item")
                 $("#modules_errors").show()
                 return
             }
 
             let url
-            if(props.is_case){
-                url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/call_module_case"
-            }else{
-                url = "/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.object_id+"/call_module_task"
+            if (props.is_case) {
+                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/call_module_case"
+            } else {
+                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/task/" + props.object_id + "/call_module_task"
             }
 
             const res = await fetch(url, {
@@ -179,54 +179,54 @@ export default {
             });
             is_sending.value = false
 
-            if (await res.status==200){
-                $("#modal-send-to").modal("hide");
+            if (await res.status == 200) {
+                $("#modal-send-to-" + modal_identifier).modal("hide");
             }
 
             display_toast(res, true)
         }
 
-        async function update_case(instance_id){
+        async function update_case(instance_id) {
             is_loading_update.value = true
-            let url = '/case/'+props.cases_info.case.id+'/update_case/'+instance_id
+            let url = '/case/' + props.cases_info.case.id + '/update_case/' + instance_id
             const res = await fetch(url)
-            if(await res.status==200){
-                window.location.href='/case/'+props.cases_info.case.id
+            if (await res.status == 200) {
+                window.location.href = '/case/' + props.cases_info.case.id
             }
             display_toast(res)
             is_loading_update.value = false
         }
 
 
-		onMounted(() => {
+        onMounted(() => {
             $('.select2-connect').select2({
                 theme: 'bootstrap-5',
-                dropdownParent: $("#modal-add-connectors-"+modal_identifier)
+                dropdownParent: $("#modal-add-connectors-" + modal_identifier)
             })
             $('.select2-module').select2({
                 theme: 'bootstrap-5',
-                dropdownParent: $("#modal-send-to-"+modal_identifier)
+                dropdownParent: $("#modal-send-to-" + modal_identifier)
             })
 
-            $("#modules_select_" +modal_identifier).on('change.select2', function (e) {
+            $("#modules_select_" + modal_identifier).on('change.select2', function (e) {
                 let loc = $(this).select2('data').map(item => item.id)
-                
-                for(let i in props.modules){
-                    if(loc == i){
+
+                for (let i in props.modules) {
+                    if (loc == i) {
                         module_selected.value = props.modules[i].config
                         break
                     }
                 }
-                
+
             })
 
-            $('#connectors_select_'+modal_identifier).on('change.select2', function (e) {
+            $('#connectors_select_' + modal_identifier).on('change.select2', function (e) {
                 connectors_selected.value = []
                 let loc = $(this).select2('data').map(item => item.id)
-                for(let element in loc){                    
-                    for(let connectors in props.all_connectors_list){
-                        for(let connector in props.all_connectors_list[connectors]){
-                            if(loc[element] == props.all_connectors_list[connectors][connector].id){
+                for (let element in loc) {
+                    for (let connectors in props.all_connectors_list) {
+                        for (let connector in props.all_connectors_list[connectors]) {
+                            if (loc[element] == props.all_connectors_list[connectors][connector].id) {
                                 connectors_selected.value.push({
                                     "id": props.all_connectors_list[connectors][connector].id,
                                     "name": props.all_connectors_list[connectors][connector].name
@@ -234,19 +234,19 @@ export default {
                             }
                         }
                     }
-                }                
+                }
             })
-            
+
         })
 
-		return {
+        return {
             is_sending,
             connectors_selected,
             edit_instance,
             modal_identifier,
             module_selected,
             is_loading_update,
-            
+
             save_connector,
             remove_connector,
             edit_instance_open_modal,
@@ -254,7 +254,7 @@ export default {
             send_to_modal,
             submit_module,
             update_case
-		}
+        }
     },
     css: `
         .tab-content {
@@ -264,7 +264,7 @@ export default {
             padding: 10px;
         }
     `,
-	template: `
+    template: `
         <div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
             <button class="btn btn-outline-primary" data-bs-toggle="modal" :data-bs-target="'#modal-add-connectors-'+modal_identifier">
                 <i class="fa-solid fa-plus"></i>

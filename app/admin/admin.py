@@ -137,7 +137,7 @@ def add_org():
         AdminModel.add_org_core(form_dict)
         flowintel_log("audit", 200, "Org added", Org=form.name.data)
         return redirect("/admin/orgs")
-    return render_template("admin/add_edit_org.html", form=form)
+    return render_template("admin/add_edit_org.html", form=form, edit_mode=False)
 
 
 @admin_blueprint.route("/edit_org/<id>", methods=['GET','POST'])
@@ -156,7 +156,7 @@ def edit_org(id):
         form.name.data = org.name
         form.description.data = org.description
         form.uuid.data = org.uuid
-    return render_template("admin/add_edit_org.html", form=form)
+    return render_template("admin/add_edit_org.html", form=form, edit_mode=True)
 
 
 @admin_blueprint.route("/delete_org/<oid>", methods=['GET','POST'])

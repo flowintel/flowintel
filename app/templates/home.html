@@ -11,30 +11,63 @@
 {%endblock%}
 
 {% block content %}
-    <div style="text-align: center;">
-        <a href="https://github.com/flowintel/flowintel" style="text-decoration: none;">
-            <img src="{{ url_for('static',filename='image/flowintel.png') }}" height="100" alt="flowintel Logo" loading="lazy"/>
-            <div style="margin-left:120px">
-                    <i style="font-size: 15px; color: #666470;">Version: [[version]]</i>
+    <!-- Welcome Header Notification -->
+    <div class="case-core-style mb-4" style="background: linear-gradient(135deg, #1f3763 0%, #456297 100%); border-radius: 8px; color: white;">
+        <div class="p-3">
+            <div class="d-flex align-items-center justify-content-between flex-wrap">
+                <div class="d-flex align-items-center">
+                    <i class="fa-solid fa-hand-wave fa-lg me-3"></i>
+                    <h5 class="mb-0" v-if="home_stats">Welcome to Flowintel, <strong>[[home_stats.user.first_name]] [[home_stats.user.last_name]]</strong></h5>
+                    <h5 class="mb-0" v-else>Welcome to Flowintel</h5>
+                </div>
+                <small style="opacity: 0.8;">
+                    <i class="fa-solid fa-code-branch me-1"></i>Version: [[version]]
+                </small>
             </div>
-        </a>
+            <div class="d-flex flex-wrap gap-3 mt-3">
+                <span class="badge bg-light text-dark px-3 py-2" v-if="home_stats">
+                    <i class="fa-solid fa-folder-open me-1"></i>
+                    <strong>[[home_stats.open_cases]]</strong> open cases
+                </span>
+                <span class="badge bg-light text-dark px-3 py-2" v-else>
+                    <i class="fa-solid fa-folder-open me-1"></i>
+                    Loading...
+                </span>
+                <template v-if="home_stats">
+                    <a v-if="home_stats.assigned_tasks > 0" href="/my_assignment/" class="badge bg-warning text-dark px-3 py-2 text-decoration-none">
+                        <i class="fa-solid fa-list-check me-1"></i>
+                        You have <strong>[[home_stats.assigned_tasks]]</strong> tasks assigned
+                    </a>
+                    <span v-else class="badge bg-success text-white px-3 py-2">
+                        <i class="fa-solid fa-check me-1"></i>
+                        No tasks assigned to you
+                    </span>
+                    <a v-if="home_stats.notifications > 0" href="/notification/" class="badge bg-danger text-white px-3 py-2 text-decoration-none">
+                        <i class="fa-solid fa-bell me-1"></i>
+                        You have <strong>[[home_stats.notifications]]</strong> notifications
+                    </a>
+                    <span v-else class="badge bg-light text-dark px-3 py-2">
+                        <i class="fa-solid fa-bell-slash me-1"></i>
+                        No waiting notifications
+                    </span>
+                </template>
+            </div>
+        </div>
     </div>
-    <!-- <hr> -->
 
-    <div>
-        <h1>Last modifications</h1>
-    </div>
-
-    <!-- <hr> -->
-
-    <template v-if="case_list">
-        <template v-for="case_loc in case_list">
-            <div class="list-group" style="margin-bottom: 20px;">
-                <div style="display:flex; border-radius: 15px;">
+    <!-- Last Modifications Section -->
+    <div class="case-core-style">
+        <h5 class="mb-3"><i class="fa-solid fa-clock-rotate-left me-2"></i>Last modifications</h5>
+        
+        <div style="margin-left: 20px;">
+            <template v-if="case_list">
+                <template v-for="case_loc in case_list">
+            <div class="list-group" style="margin-bottom: 15px;">
+                <div style="display:flex; border-radius: 10px;">
                     <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action case-index-list">
                         <div class="d-flex w-100 justify-content-between">
-                            <h4 class="mb-1">
-                                [[ case_loc.id ]]-[[ case_loc.title ]]
+                            <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
+                                <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ case_loc.id ]]-[[ case_loc.title ]]
                                 <span style="font-size: 12px; vertical-align: middle;">
                                     <i v-if="case_loc.is_private" class="fa-solid fa-lock" 
                                     title="The case is private, only org present in can see this case"></i>
@@ -44,7 +77,7 @@
                                 <button v-if="case_loc.link_to.length" disabled class="btn btn-outline-primary btn-sm" style="margin-left: 20px;">
                                     <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[case_loc.link_to.length]]</span>
                                 </button>
-                            </h4>                            
+                            </h5>                            
                             <small><i>Changed [[ (dayjs.utc(case_loc.last_modif).fromNow()) ]]</i></small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
@@ -112,7 +145,16 @@
                 </div>
             </div>
         </template>
-    </template>
+            </template>
+            <template v-else>
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
 {% endblock %}
 
 {% block script %}
@@ -126,6 +168,7 @@
             const case_list = ref(null)
             const status_info = ref(null)
             const version = ref(null)
+            const home_stats = ref(null)
             const md = window.markdownit()
             const expandedCases = ref({})
 
@@ -145,6 +188,21 @@
                 
             }
             fetchVersion()
+
+            async function fetchHomeStats() {
+                try {
+                    const res = await fetch("/home_stats")
+                    if (res.ok) {
+                        let loc = await res.json()
+                        home_stats.value = loc
+                    } else {
+                        console.error("Failed to fetch home stats:", res.status)
+                    }
+                } catch (e) {
+                    console.error("Error fetching home stats:", e)
+                }
+            }
+            fetchHomeStats()
 
             async function fetchStatus() {
                 status_info.value = null
@@ -166,6 +224,7 @@
                 case_list,
                 status_info,
                 version,
+                home_stats,
                 expandedCases
             }
         }

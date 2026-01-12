@@ -1,11 +1,11 @@
-import {display_toast} from '/static/js/toaster.js'
+import { display_toast } from '/static/js/toaster.js'
 import tabMain from './TaskComponent/tab-main.js'
 import tabNote from './TaskComponent/tab-note.js'
 import tabFile from './TaskComponent/tab-file.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
-import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
-const { ref, nextTick} = Vue
+import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
+const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -20,12 +20,12 @@ export default {
 		task_modules: Object,
 	},
 	components: {
-        tabMain,
+		tabMain,
 		tabNote,
 		tabFile,
 		tabInfo,
 		caseconnectors
-    },
+	},
 	setup(props) {
 		// Variables part
 		let is_mounted = false			// Boolean use to know if the app is mount to initialize mermaid
@@ -38,75 +38,75 @@ export default {
 
 		const expandedTasks = ref({});
 
-		
 
-		async function complete_task(task){
+
+		async function complete_task(task) {
 			// Complete a task
-			const res = await fetch('/case/complete_task/'+task.id)
-			if (await res.status == 200){
-				if(task.completed){
+			const res = await fetch('/case/complete_task/' + task.id)
+			if (await res.status == 200) {
+				if (task.completed) {
 					props.open_closed["open"] += 1
 					props.open_closed["closed"] -= 1
-				}else{
+				} else {
 					props.open_closed["closed"] += 1
 					props.open_closed["open"] -= 1
 				}
 				task.last_modif = Date.now()
 				task.completed = !task.completed
 				let status = task.status_id
-				if(props.status_info.status[task.status_id -1].name == 'Finished'){
-					for(let i in props.status_info.status){
-						if(props.status_info.status[i].name == 'Created')
+				if (props.status_info.status[task.status_id - 1].name == 'Finished') {
+					for (let i in props.status_info.status) {
+						if (props.status_info.status[i].name == 'Created')
 							task.status_id = props.status_info.status[i].id
 					}
-					if(task.status_id == status)
+					if (task.status_id == status)
 						task.status_id = 1
 
-				}else{
-					for(let i in props.status_info.status){
-						if(props.status_info.status[i].name == 'Finished'){
+				} else {
+					for (let i in props.status_info.status) {
+						if (props.status_info.status[i].name == 'Finished') {
 							task.status_id = props.status_info.status[i].id
 							break
 						}
 					}
 				}
 				let index = props.cases_info.tasks.indexOf(task)
-				if(index > -1)
+				if (index > -1)
 					props.cases_info.tasks.splice(index, 1)
 			}
 			await display_toast(res)
 		}
 
-		async function fetch_task_connectors(){			
-			const res = await fetch("/case/get_task_connectors/"+props.task.id)
-			if(await res.status==404 ){
+		async function fetch_task_connectors() {
+			const res = await fetch("/case/get_task_connectors/" + props.task.id)
+			if (await res.status == 404) {
 				display_toast(res)
-			}else{
+			} else {
 				let loc = await res.json()
 				task_connectors_list.value = loc["task_connectors"]
 			}
 		}
-		
-		async function fetch_module_selected(module){
+
+		async function fetch_module_selected(module) {
 			// Get modules and instances linked on
-			const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/task/"+props.task.id+"/get_instance_module?type=send_to&module="+module)
-			if(await res.status==400 ){
+			const res = await fetch("/case/" + window.location.pathname.split("/").slice(-1) + "/task/" + props.task.id + "/get_instance_module?type=send_to&module=" + module)
+			if (await res.status == 400) {
 				display_toast(res)
-			}else{
+			} else {
 				let loc = await res.json()
 				task_module_selected.value = loc["instances"]
 				await nextTick()
-				$('#task_instances_select_'+props.task.id).select2({
+				$('#task_instances_select_' + props.task.id).select2({
 					theme: 'bootstrap-5',
 					width: '50%',
 					closeOnSelect: false
 				})
-				$('#task_instances_select_'+props.task.id).on('change.select2', function (e) {
+				$('#task_instances_select_' + props.task.id).on('change.select2', function (e) {
 					let name_instance = $(this).select2('data').map(item => item.id)
 					task_instances_selected.value = []
-					for( let index in task_module_selected.value){
-						if (name_instance.includes(task_module_selected.value[index].name)){
-							if(!task_instances_selected.value.includes(task_module_selected.value[index]))
+					for (let index in task_module_selected.value) {
+						if (name_instance.includes(task_module_selected.value[index].name)) {
+							if (!task_instances_selected.value.includes(task_module_selected.value[index]))
 								task_instances_selected.value.push(task_module_selected.value[index])
 						}
 					}
@@ -114,43 +114,43 @@ export default {
 			}
 		}
 
-		function present_user_in_task(task_user_list, user){
+		function present_user_in_task(task_user_list, user) {
 			// Check if user is already assign
 			let index = -1
 
-			for(let i=0;i<task_user_list.length;i++){
-				if (task_user_list[i].id==user.id)
+			for (let i = 0; i < task_user_list.length; i++) {
+				if (task_user_list[i].id == user.id)
 					index = i
 			}
 			return index
 		}
 
-		async function remove_assign_task(task, current_user){
+		async function remove_assign_task(task, current_user) {
 			// Remove current user from assignment to the task
 			const res = await fetch('/case/' + task.case_id + '/remove_assignment/' + task.id)
 
-			if( await res.status == 200){
+			if (await res.status == 200) {
 				task.last_modif = Date.now()
 				task.is_current_user_assigned = false
-	
+
 				let index = -1
-	
-				for(let i=0;i<task.users.length;i++){
-					if (task.users[i].id==current_user.id)
+
+				for (let i = 0; i < task.users.length; i++) {
+					if (task.users[i].id == current_user.id)
 						index = i
 				}
-	
-				if(index > -1)
+
+				if (index > -1)
 					task.users.splice(index, 1)
 			}
 			await display_toast(res)
 		}
 
-		async function take_task(task, current_user){
+		async function take_task(task, current_user) {
 			// Assign the task to the current user
 			const res = await fetch('/case/' + task.case_id + '/take_task/' + task.id)
 
-			if( await res.status == 200){
+			if (await res.status == 200) {
 				task.last_modif = Date.now()
 				task.is_current_user_assigned = true
 				task.users.push(current_user)
@@ -165,72 +165,72 @@ export default {
 			return dayjs.utc(dt).from(dayjs.utc())
 		}
 
-		function endOf(dt){
+		function endOf(dt) {
 			return dayjs.utc(dt).endOf().from(dayjs.utc())
 		}
 
-		function select2_change(tid){
-			$('.select2-selectUser'+tid).select2({width: 'element'})
+		function select2_change(tid) {
+			$('.select2-selectUser' + tid).select2({ width: 'element' })
 			$('.select2-container').css("min-width", "200px")
-		}		
+		}
 
 
-		async function select_tab_task(tab_name){
-			if(tab_name == 'main'){
+		async function select_tab_task(tab_name) {
+			if (tab_name == 'main') {
 				selected_tab.value = 'main'
-				if ( !document.getElementById("tab-task-main-"+props.task.id).classList.contains("active") ){
-					document.getElementById("tab-task-main-"+props.task.id).classList.add("active")
-					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
+				if (!document.getElementById("tab-task-main-" + props.task.id).classList.contains("active")) {
+					document.getElementById("tab-task-main-" + props.task.id).classList.add("active")
+					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
-			}else if(tab_name == 'notes'){
+			} else if (tab_name == 'notes') {
 				selected_tab.value = 'notes'
-				if ( !document.getElementById("tab-task-notes-"+props.task.id).classList.contains("active") ){
-					document.getElementById("tab-task-notes-"+props.task.id).classList.add("active")
-					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
+				if (!document.getElementById("tab-task-notes-" + props.task.id).classList.contains("active")) {
+					document.getElementById("tab-task-notes-" + props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
 				await nextTick()
 				props.md.mermaid.run({
 					querySelector: `#collapse${props.task.id} .mermaid`
 				})
-			}else if(tab_name == 'files'){
+			} else if (tab_name == 'files') {
 				selected_tab.value = 'files'
-				if ( !document.getElementById("tab-task-files-"+props.task.id).classList.contains("active") ){
-					document.getElementById("tab-task-files-"+props.task.id).classList.add("active")
-					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
+				if (!document.getElementById("tab-task-files-" + props.task.id).classList.contains("active")) {
+					document.getElementById("tab-task-files-" + props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
-			}else if(tab_name == 'connectors'){
+			} else if (tab_name == 'connectors') {
 				// await fetch_task_connectors()
 				await nextTick()
 				selected_tab.value = 'connectors'
-				if ( !document.getElementById("tab-task-connectors-"+props.task.id).classList.contains("active") ){
-					document.getElementById("tab-task-connectors-"+props.task.id).classList.add("active")
-					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-info-"+props.task.id).classList.remove("active")
+				if (!document.getElementById("tab-task-connectors-" + props.task.id).classList.contains("active")) {
+					document.getElementById("tab-task-connectors-" + props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
 			}
-			else if(tab_name == 'info'){
+			else if (tab_name == 'info') {
 				selected_tab.value = 'info'
-				if ( !document.getElementById("tab-task-info-"+props.task.id).classList.contains("active") ){
-					document.getElementById("tab-task-info-"+props.task.id).classList.add("active")
-					document.getElementById("tab-task-main-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-notes-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-files-"+props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-"+props.task.id).classList.remove("active")
+				if (!document.getElementById("tab-task-info-" + props.task.id).classList.contains("active")) {
+					document.getElementById("tab-task-info-" + props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 
 				}
 			}
-			
+
 		}
 
 		function toggleCollapse(id) {
@@ -241,7 +241,7 @@ export default {
 
 
 		// Vue function
-		Vue.onMounted( () => {
+		Vue.onMounted(() => {
 			fetch_task_connectors()
 			select2_change(props.task.id)
 			// $('.select2-select').select2({
@@ -258,16 +258,16 @@ export default {
 			// 	})
 			// })
 			is_mounted = true
-			
+
 		})
 		Vue.onUpdated(() => {
 			select2_change(props.task.id)
 			// do not initialize mermaid before the page is mounted
-			if(is_mounted){
-				$('#task_modules_select_'+props.task.id).on('change.select2', function (e) {
-					if($(this).select2('data').map(item => item.id)[0] == "None"){
+			if (is_mounted) {
+				$('#task_modules_select_' + props.task.id).on('change.select2', function (e) {
+					if ($(this).select2('data').map(item => item.id)[0] == "None") {
 						task_module_selected.value = []
-					}else{
+					} else {
 						fetch_module_selected($(this).select2('data').map(item => item.id))
 					}
 				})
@@ -305,7 +305,7 @@ export default {
 			@click="toggleCollapse(task.id)"
 		>
 			<div class="d-flex w-100 justify-content-between">
-				<h5 class="mb-1">[[ key_loop+1 ]]- [[task.title]]</h5>
+				<h5 class="mb-1"><i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ key_loop+1 ]]- [[task.title]]</h5>
 				<small :title="'Changed: ' + task.last_modif"><i><i class="fa-solid fa-arrows-rotate"></i> [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
 
@@ -444,19 +444,29 @@ export default {
 			
 			<ul class="nav nav-tabs" style="margin-bottom: 10px;">
 				<li class="nav-item">
-					<button class="nav-link active" :id="'tab-task-main-'+task.id" aria-current="page" @click="select_tab_task('main')">Main</button>
+					<button class="nav-link active" :id="'tab-task-main-'+task.id" aria-current="page" @click="select_tab_task('main')">
+						<i class="fa-solid fa-house fa-sm me-1"></i><span class="section-title">Main</span>
+					</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" :id="'tab-task-notes-'+task.id" @click="select_tab_task('notes')">Notes</button>
+					<button class="nav-link" :id="'tab-task-notes-'+task.id" @click="select_tab_task('notes')">
+						<i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes</span>
+					</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" :id="'tab-task-connectors-'+task.id" @click="select_tab_task('connectors')">Connectors</button>
+					<button class="nav-link" :id="'tab-task-connectors-'+task.id" @click="select_tab_task('connectors')">
+						<i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title">Connectors</span>
+					</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" :id="'tab-task-files-'+task.id" @click="select_tab_task('files')">Files</button>
+					<button class="nav-link" :id="'tab-task-files-'+task.id" @click="select_tab_task('files')">
+						<i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title">Files</span>
+					</button>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" :id="'tab-task-info-'+task.id" @click="select_tab_task('info')">Info</button>
+					<button class="nav-link" :id="'tab-task-info-'+task.id" @click="select_tab_task('info')">
+						<i class="fa-solid fa-circle-info fa-sm me-1"></i><span class="section-title">Info</span>
+					</button>
 				</li>
 			</ul>
 

@@ -8,28 +8,30 @@
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
 <script src="{{ url_for('static',filename='js/editor.js') }}"></script>
 
+<title>Edit task #{{ task_id }} - Case #{{ case_id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
 {%endblock%}
 
 
 {% block content %}
 
-    <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit a task</h2>
+    <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit task #{{ task_id }} (Case #{{ case_id }})</h2>
     <hr class="fading-line-2 mb-4 mt-4">
 
-    <form action="" method="post" id="form" class="case-core-style">
+    <form action="" method="post" id="form" class="case-core-style" novalidate>
         {{ form.hidden_tag() }}
         <div class="row">
             <div class="mb-3 w-50">
-                {{form.title.label(class_="col-form-label")}}:
-                {{form.title(class_="form-control")}}
+                <i class="fa-solid fa-heading"></i> <strong>{{form.title.label(class_="col-form-label")}}:</strong> <span style="color: red;">*</span>
+                {{form.title(class_="form-control", placeholder="Task title or description", id="task_title")}}
+                <div id="title_error" style="color: red; display: none;">Title is required</div>
                 {% if form.title.errors %}
                     <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="mb-3 w-50">
-                {{form.time_required.label(class_="col-form-label")}}:
-                {{form.time_required(class_="form-control")}}
+                <i class="fa-solid fa-hourglass-half"></i> <strong>{{form.time_required.label(class_="col-form-label")}}:</strong>
+                {{form.time_required(class_="form-control", placeholder="How much time is required?")}}
                 {% if form.time_required.errors %}
                     <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
                 {%endif%}
@@ -37,22 +39,22 @@
         </div>
         <div class="row">
             <div class="col">
-                {{form.deadline_date.label(class_="col-form-label")}}:
-                {{form.deadline_date(class_="form-control")}}
+                <i class="fa-solid fa-calendar"></i> <strong>{{form.deadline_date.label(class_="col-form-label")}}:</strong>
+                {{form.deadline_date(class_="form-control", placeholder="When should this be completed")}}
                     {% if form.deadline_date.errors %}
                     <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="col">
-                {{form.deadline_time.label(class_="col-form-label")}}:
-                {{form.deadline_time(class_="form-control")}}
+                <i class="fa-solid fa-clock"></i> <strong>{{form.deadline_time.label(class_="col-form-label")}}:</strong>
+                {{form.deadline_time(class_="form-control", placeholder="Specific time for the deadline")}}
                 {% if form.deadline_time.errors %}
                     <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
                 {%endif%}
             </div>
         </div>
         <div class="row">
-            <span class="mb-2">Description:</span>
+            <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
             <div style="display: flex">
                 <div class="note-editor" id="editor"></div>
                 <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
@@ -74,7 +76,8 @@
         </edition_select>
 
         <div style="margin-top: 10px;">
-            <button class="btn btn-primary" @click="submit_form()">Save</button>
+            <button class="btn btn-primary" type="button" @click="submit_form()">Save</button>
+            <a href="/case/{{ case_id }}" class="btn btn-secondary ms-2">Cancel</a>
         </div>
     </form>
 {% endblock %}
@@ -100,22 +103,34 @@
             const note_editor_render = ref(description_content)
             
             function submit_form(){
+                // Validate title first
+                const titleInput = document.getElementById('task_title');
+                const titleError = document.getElementById('title_error');
+                const titleValue = titleInput ? titleInput.value.trim() : '';
                 
-                $("#form").submit( function(eventObj) {
-                    $.each(selected_clusters.value, function(i, v){
-                        var input = $("<input>").attr({"type":"hidden","name":"clusters_select"}).val(v.uuid);
-                        $('#form').append(input);    
-                    });
-                    $.each(selected_tags.value, function(i, v){
-                        var input = $("<input>").attr({"type":"hidden","name":"tags_select"}).val(v.name);
-                        $('#form').append(input);    
-                    });
-                    $.each(selected_custom_tags.value, function(i, v){
-                        var input = $("<input>").attr({"type":"hidden","name":"custom_select"}).val(v.name);
-                        $('#form').append(input);    
-                    });
-                    return true;
+                if (!titleValue) {
+                    titleError.style.display = 'block';
+                    titleInput.focus();
+                    return; // Stop - do not submit
+                }
+                titleError.style.display = 'none';
+                
+                // Add hidden inputs for tags, clusters, and custom tags
+                $.each(selected_clusters.value, function(i, v){
+                    var input = $("<input>").attr({"type":"hidden","name":"clusters_select"}).val(v.uuid);
+                    $('#form').append(input);    
                 });
+                $.each(selected_tags.value, function(i, v){
+                    var input = $("<input>").attr({"type":"hidden","name":"tags_select"}).val(v.name);
+                    $('#form').append(input);    
+                });
+                $.each(selected_custom_tags.value, function(i, v){
+                    var input = $("<input>").attr({"type":"hidden","name":"custom_select"}).val(v.name);
+                    $('#form').append(input);    
+                });
+                
+                // Submit the form
+                document.getElementById('form').submit();
             } 
 
             onMounted(() => {
