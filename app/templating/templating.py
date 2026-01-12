@@ -6,7 +6,7 @@ from . import common_template_core as CommonModel
 from .TaskTemplateCore import TaskModel
 from ..decorators import editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
-from ..utils.utils import form_to_dict
+from ..utils.utils import form_to_dict, get_flowintel_templates
 from ..utils.formHelper import prepare_tags
 from ..case import common_core as CommonCaseModel
 from ..case.common_core import get_instance_with_icon
@@ -262,6 +262,28 @@ def get_template(cid):
     if template:
         return {"template": template.to_json()}
     return {"message": "Template not found"}
+
+
+
+
+########
+# Repo #
+########
+
+
+@templating_blueprint.route("/repo", methods=['GET'])
+@login_required
+def repo_index():
+    """View all case templates"""
+    return render_template("templating/repo_index.html")
+
+@templating_blueprint.route("/get_flowintel_templates", methods=['GET'])
+@login_required
+def get_flowintel_templates_route():
+    """Get list of misp object"""
+    return {"flowintel-templates": get_flowintel_templates()}, 200
+
+
 
 
 

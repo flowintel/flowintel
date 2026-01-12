@@ -1,0 +1,97 @@
+{
+    "clusters": [
+        {
+            "description": "Wants a ransom to get the victim\u2019s files back . Originated in English. Spread worldwide.",
+            "meta": "\"{\\\"date\\\": \\\"January 2017\\\", \\\"encryption\\\": \\\"AES-256\\\", \\\"extensions\\\": [\\\".potato\\\"], \\\"payment-method\\\": \\\"Email\\\", \\\"ransomnotes-filenames\\\": [\\\"How to recover my files.txt\\\", \\\"README.html\\\", \\\"README.png\\\"], \\\"ransomnotes-refs\\\": [\\\"https://2.bp.blogspot.com/-E9GDxEoz95k/WIop79nWZ2I/AAAAAAAADZU/CnsvOl96yesoH07BZ2Q05Fp40kLcTMmqQCLcB/s1600/note.jpg\\\"], \\\"refs\\\": [\\\"https://id-ransomware.blogspot.co.il/2017/01/polato-ransomware.html\\\"]}\"",
+            "name": "ransomware",
+            "tag": "misp-galaxy:ransomware=\"potato ransomware\"",
+            "uuid": "378cb77c-bb89-4d32-bef9-1b132343f3fe",
+            "version": 146
+        }
+    ],
+    "description": "Example forensic case\r\nticket id: 100001",
+    "notes": null,
+    "tags": [
+        "tlp:amber"
+    ],
+    "tasks_template": [
+        {
+            "clusters": [],
+            "description": "Only one machine",
+            "notes": [
+                {
+                    "note": "```mermaid\ngantt\n    title A Gantt Diagram\n    dateFormat YYYY-MM-DD\n    section Section\n        A task          :a1, 2014-01-01, 30d\n        Another task    :after a1, 20d\n    section Another\n        Task in Another :2014-01-12, 12d\n        another task    :24d\n```\n\n"
+                },
+                {
+                    "note": "1234\n\n"
+                }
+            ],
+            "subtasks": [],
+            "tags": [
+                "PAP:AMBER"
+            ],
+            "time_required": null,
+            "title": "Extract disk",
+            "urls_tools": [
+                {
+                    "name": null
+                }
+            ]
+        },
+        {
+            "clusters": [
+                {
+                    "description": "CopyCat is a fully developed malware with vast capabilities, including rooting devices, establishing persistency, and injecting code into Zygote \u2013 a daemon responsible for launching apps in the Android operating system \u2013 that allows the malware to control any activity on the device.",
+                    "meta": "\"{\\\"refs\\\": [\\\"https://blog.checkpoint.com/2017/07/06/how-the-copycat-malware-infected-android-devices-around-the-world/\\\"]}\"",
+                    "name": "copycat",
+                    "tag": "misp-galaxy:android=\"copycat\"",
+                    "uuid": "40aa797a-ee87-43a1-8755-04d040dbea28",
+                    "version": 22
+                }
+            ],
+            "description": "The time is your ally",
+            "notes": [
+                {
+                    "note": "# Timeline\nPlaso or mactime. Choose your side..."
+                }
+            ],
+            "subtasks": [],
+            "tags": [
+                "PAP:WHITE"
+            ],
+            "time_required": "",
+            "title": "Create a timeline",
+            "urls_tools": [
+                {
+                    "name": null
+                }
+            ]
+        },
+        {
+            "clusters": [],
+            "description": "Boring part but do it",
+            "notes": [
+                {
+                    "note": ""
+                }
+            ],
+            "subtasks": [
+                {
+                    "description": "d"
+                }
+            ],
+            "tags": [],
+            "time_required": null,
+            "title": "Write report",
+            "urls_tools": [
+                {
+                    "name": "w"
+                }
+            ]
+        }
+    ],
+    "time_required": null,
+    "title": "Forensic Investigation",
+    "uuid": "44af085a-0cc7-4a1b-b1dd-2e28bbdf2536",
+    "version": 1
+}

@@ -1,0 +1,426 @@
+<!-- 
+    Author: David Cruciani
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="case-core-style d-flex" style="border-radius: 0;">
+        <h1>
+            Templates from Repo
+            <span>
+                <a class="btn btn-primary btn-small" href="/templating/create_case" title="Add a Template"><i class="fa-solid fa-plus"></i></a>
+            </span>
+        </h1>
+
+        <!-- Search bar -->
+        <div class="input-group w-auto translate-middle-x" style="left: 35% !important;">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
+                <i class="fa-solid fa-filter"></i>
+            </button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
+        </div>
+        <!-- Search bar -->
+
+    </div>
+
+
+    <div class="modal fade" id="modalCaseFilter" tabindex="-1" aria-labelledby="modalCaseFilterLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="modalCaseFilterLabel">Cases Filter</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex w-100 justify-content-evenly">
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="radioOther" id="radioOtherTitle" @click="sort_by_title()">
+                                <label class="form-check-label" for="radioOtherTitle">Title</label>
+                            </div>
+                        </div>
+
+                        <div style="display:flex">
+                        <span style="margin-right: 10px">Asc</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
+                                <label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div>Taxonomies:</div>
+                    <div class="d-flex w-100 justify-content-center">
+                        <div style="display:flex">
+                            <span style="margin-right: 10px">OR</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
+                                <label class="form-check-label" for="switchOperator">AND</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <template v-if="taxonomies">
+                            <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
+                                <template v-for="taxonomy, key in taxonomies">
+                                    <option :value="[[taxonomy]]">[[taxonomy]]</option>
+                                </template>
+                            </select>
+                        </template>
+                        
+                        <template v-if="tags_list">
+                            <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
+                                <template v-for="(tags, taxo) in tags_list">
+                                    <optgroup :label="[[taxo]]">
+                                        <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
+                                    </optgroup>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+                    <hr>
+
+                    <div>Galaxies:</div>
+                    <div class="d-flex w-100 justify-content-center">
+                        <div style="display:flex">
+                            <span style="margin-right: 10px">OR</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
+                                <label class="form-check-label" for="switchOperator">AND</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <template v-if="galaxies">
+                            <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
+                                <template v-for="galaxy, key in galaxies">
+                                    <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
+                                </template>
+                            </select>
+                        </template>
+                        
+                        <template v-if="cluster_list">
+                            <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
+                                <template v-for="(clusters, galaxy) in cluster_list">
+                                    <optgroup :label="[[galaxy]]">
+                                        <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
+                                    </optgroup>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+
+                    <hr>
+
+                    <div>Custom Tags:</div>
+                    <div>
+                        <template v-if="custom_tags">
+                            <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
+                                <template v-for="custom_tag, key in custom_tags">
+                                    <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+                </div>
+            </div>
+		</div>
+	</div>
+    <hr class="fading-line mt-4 mb-4">
+    <!-- Search bar -->
+
+    <nav aria-label="Page navigation" class="nav-pagination" v-if="templates_list && templates_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button>
+            </li>
+            <li v-for="page in visiblePages"
+                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
+                <button class="page-link" v-if="page !== '...'" @click="fetch_templates(page)">[[ page ]]</button>
+                <span class="page-link" v-else>...</span>
+            </li>
+            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
+                <button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
+            </li>
+        </ul>
+    </nav>
+
+    <template v-if="templates_list">
+        <template v-for="template in templates_list">
+            <div class="list-group" style="margin-bottom: 20px;">
+                <div style="display: flex; border-radius: 10px;">
+                    <a :href="`/templating/repo/${template.uuid}`" class="list-group-item list-group-item-action case-index-list">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h4 class="mb-1">[[ template.title ]]</h4>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <p v-if="template.description" class="card-text">[[ template.description ]]</p>
+                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <!-- <div style="display: flex;" v-if="template.tags">
+                                <template v-for="tag in template.tags">
+                                    <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                                        [[tag.name]]
+                                    </div>
+                                </template>
+                            </div>
+                            <div v-else></div> -->
+                        </div>
+                        <div class="d-flex w-100 justify-content-between">
+                            <div style="display: flex;" v-if="template.clusters">
+                                <template v-for="cluster in template.clusters">
+                                    <div class="cluster" :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + JSON.stringify(JSON.parse(cluster.meta), null, 4)">
+                                        <span v-html="mapIcon(cluster.icon)"></span>
+                                        [[cluster.tag]]
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </template>
+    </template>
+    <template v-else>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </template>
+
+    <nav aria-label="Page navigation" class="nav-pagination" v-if="templates_list && templates_list.nb_pages > 1">
+        <ul class="pagination">
+            <li :class="{'page-item': true, 'disabled': current_page == 1}">
+                <button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button>
+            </li>
+            <li v-for="page in visiblePages"
+                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
+                <button class="page-link" v-if="page !== '...'" @click="fetch_templates(page)">[[ page ]]</button>
+                <span class="page-link" v-else>...</span>
+            </li>
+            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
+                <button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
+            </li>
+        </ul>
+    </nav>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+        import {getTextColor, mapIcon} from '/static/js/utils.js'
+        
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const templates_list = ref([])
+                const current_page = ref(1)
+
+                let title_filter = false
+                let asc_desc = true
+                let temp_case_list = []
+                let or_and_taxo = true
+                let or_and_galaxies = true
+                const taxonomies = ref([])
+                const tags_list = ref([])
+                const selected_taxo = ref([])
+                const selected_tags = ref([])
+
+                const galaxies = ref([])
+                const cluster_list = ref([])
+                const selected_galaxies = ref([])
+                const selected_clusters = ref([])
+
+                const custom_tags = ref([])
+                const selected_custom_tags = ref([])
+
+                async function fetch_templates(page){
+                    // let loc_page = `page=${page}`
+                    // let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
+                    // let loc_or_and_galax = `&or_and_galaxies=${or_and_galaxies}`
+                    // let loc_title = `&title=${title_filter}`
+
+                    // let tags = ""
+                    // let taxo = ""
+                    // let galax = ""
+                    // let clusters = ""
+                    // let custom_tg = ""
+                    // if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
+                    // if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
+                    // if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
+                    // if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
+                    // if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
+
+                    // let url = `/templating/get_page_case_templates?${loc_page}${loc_or_and_taxo}${loc_or_and_galax}${loc_title}${tags}${taxo}${galax}${clusters}${custom_tg}`
+                    // const res = await fetch(url)
+                    // let loc = await res.json()
+
+                    // if(asc_desc){
+                    //     templates_list.value.templates = loc.templates
+                    // }
+                    // else{
+                    //     templates_list.value.templates = loc.templates.reverse()
+                    // }
+                    // templates_list.value.nb_pages = loc.nb_pages
+                    // current_page.value = page
+                    // temp_case_list = templates_list.value.templates
+
+                    const res = await fetch("/templating/get_flowintel_templates")
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        templates_list.value = loc["flowintel-templates"]
+                    }
+                }
+                fetch_templates(1)
+
+
+                async function delete_case(case_template){
+                    const res = await fetch("/templating/delete_case/" + case_template.id)
+                    if(await res.status == 200){
+                        let index = templates_list.value.templates.indexOf(case_template)
+                        if(index > -1)
+                            templates_list.value.templates.splice(index, 1)
+
+                        var myModalEl = document.getElementById('delete_template_modal_'+case_template.id);
+                        var modal = bootstrap.Modal.getInstance(myModalEl)
+                        modal.hide();
+                    }
+                    display_toast(res)
+                }
+
+                function sort_by_title(){
+                    title_filter = !title_filter
+                    fetch_templates(1)
+                }
+
+                function change_switch_check(change=false, changeOperator=false, changeOperatorGalaxies=false){
+                    if (change) asc_desc = !asc_desc
+                    if (changeOperator) or_and_taxo = !or_and_taxo
+                    if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
+
+                    fetch_templates(1)
+                }
+
+                function onInput(e){
+                    templates_list.value.templates = []
+                    if(e.target.value){
+                        templates_list.value.templates = temp_case_list.filter((template) => {
+                            return template.title.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                    }else{
+                        templates_list.value.templates = fetch_templates(1)
+                    }
+                }
+                
+
+                async function fetch_taxonomies(){
+                    const res = await fetch("/case/get_taxonomies")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        taxonomies.value = loc["taxonomies"]
+                    }
+                }
+                fetch_taxonomies()
+
+                async function fetch_galaxies(){
+                    const res = await fetch("/case/get_galaxies")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        galaxies.value = loc["galaxies"]
+                    }
+                }
+                fetch_galaxies()
+
+                async function fetch_tags(){
+                    tags_list.value = []
+                    const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        tags_list.value = loc["tags"]
+                        $('#tags_select').trigger('change');
+                    }
+                }
+                async function fetch_cluster(){
+                    cluster_list.value = []
+                    const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        cluster_list.value = loc["clusters"]
+                        $('#clusters_select').trigger('change');
+                    }
+                }
+
+                async function fetch_custom_tags(){
+                    const res = await fetch("/custom_tags/list")
+                    if(await res.status==400 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        custom_tags.value = loc
+                    }                    
+                }
+                fetch_custom_tags() 
+                
+                
+                const visiblePages = computed(() => {
+                    const pages = []
+                    const total = case_list.value.nb_pages
+                    const current = current_page.value
+                    if (total <= 7) {
+                        for (let i = 1; i <= total; i++) pages.push(i)
+                    } else {
+                        if (current <= 4) {
+                            pages.push(1, 2, 3, 4, 5, '...', total-1, total)
+                        } else if (current >= total - 3) {
+                            console.log("Over total-3");
+                            pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
+                        } else {
+                            pages.push(1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total)
+                        }
+                    }
+                    return pages
+                })
+
+
+                onMounted(() => {
+                })
+    
+                return {
+                    message_list,
+                    getTextColor,
+                    mapIcon,
+
+                    templates_list,
+                    current_page,
+                    taxonomies,
+                    tags_list,
+                    galaxies,
+                    cluster_list,
+                    custom_tags,
+                    visiblePages,
+
+                    delete_case,
+                    fetch_templates,
+                    sort_by_title,
+                    onInput,
+                    change_switch_check
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
+{% endblock %}

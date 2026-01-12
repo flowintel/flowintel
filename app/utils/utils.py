@@ -219,3 +219,52 @@ def get_object_templates():
     templates = sorted(templates, key=lambda d: d['name'])
 
     return templates
+
+
+@lru_cache
+def get_flowintel_templates():
+    """Get object template.
+    
+    Enumerate misp-objects by walking through misp-objects submodule directory
+    """
+    templates = []
+    objects_dir = os.path.join(os.getcwd(), "modules/flowintel-templates/templates")
+
+    for root, dirs, __ in os.walk(objects_dir):
+        for template_dir in dirs:
+            template_def = os.path.join(root, template_dir, "definition.json")
+            raw_template = open(template_def)
+            raw_template = json.load(raw_template)
+
+            # tasks = []
+            # for name, attribute in raw_template["tasks"].items():
+            #     tasks.append(
+            #         {
+            #             "name": name,
+            #             "description": attribute.get("description"),
+            #             "disable_correlation": attribute.get(
+            #                 "disable_correlation", False
+            #             ),
+            #             "misp_attribute": attribute["misp-attribute"],
+            #             "multiple": attribute.get("multiple", False),
+            #             "ui_priority": attribute.get("ui-priority", 0),
+            #             "sane_default": attribute.get("sane_default"),
+            #         }
+            #     )
+
+            # template = {
+            #     "uuid": raw_template["uuid"],
+            #     "name": raw_template["name"],
+            #     "description": raw_template["description"],
+            #     "meta_category": raw_template["meta-category"],
+            #     "version": raw_template["version"],
+            #     "tasks": tasks,
+            #     "requiredOneOf": raw_template.get("requiredOneOf", []),
+            # }
+
+            templates.append(raw_template)
+
+    # print(templates)
+    templates = sorted(templates, key=lambda d: d['title'])
+
+    return templates
