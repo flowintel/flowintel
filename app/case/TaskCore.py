@@ -4,7 +4,7 @@ import uuid
 import datetime
 from .. import db
 from ..db_class.db import (
-    Cluster, Connector, Custom_Tags, File, Note, Subtask, Tags, Task,
+    Cluster, Custom_Tags, File, Note, Status, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy_Tags,
     Task_Tags, Task_Url_Tool, Task_User, User
 )
@@ -693,7 +693,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def create_subtask(self, tid, subtask_description, current_user):
         task = CommonModel.get_task(tid)
-        cp = len(task.subtasks)
+        cp = 0
+
+        for _ in task.subtasks:
+            cp += 1
 
         subtask = Subtask(
             description=subtask_description,

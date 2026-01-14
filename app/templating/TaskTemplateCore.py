@@ -5,7 +5,7 @@ from sqlalchemy import and_, desc
 
 from .. import db
 from ..db_class.db import (
-    Task_Template, Note_Template, Task_Template_Url_Tool, Subtask_Template,
+    Case_Task_Template, Task_Template, Note_Template, Task_Template_Url_Tool, Subtask_Template,
     Task_Template_Tags, Task_Template_Galaxy_Tags, Task_Template_Custom_Tags,
     Tags, Cluster, Custom_Tags
 )
