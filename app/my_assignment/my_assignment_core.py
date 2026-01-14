@@ -20,18 +20,18 @@ def get_task_info(tasks_list, user):
     for task in tasks_list:
         case = CommonModel.get_case(task.case_id)
         users, _ = TaskModel.get_users_assign_task(task.id, user)
-        finalTask = task.to_json()
-        finalTask["users"] = users
-        finalTask["subtasks"] = []
+        final_task = task.to_json()
+        final_task["users"] = users
+        final_task["subtasks"] = []
         cp_open=0
         subtasks = Subtask.query.filter_by(task_id=task.id).order_by(Subtask.task_order_id).all()
         for subtask in subtasks:
-            finalTask["subtasks"].append(subtask.to_json())
+            final_task["subtasks"].append(subtask.to_json())
             if not subtask.completed:
                 cp_open += 1
-        finalTask["nb_open_subtasks"] = cp_open
+        final_task["nb_open_subtasks"] = cp_open
 
         if not case.title in tasks_by_case:
             tasks_by_case[case.title] = []
-        tasks_by_case[case.title].append(finalTask)
+        tasks_by_case[case.title].append(final_task)
     return tasks_by_case

@@ -352,7 +352,7 @@ def get_status():
 def sort_cases():
     """Sort Cases"""
     page = request.args.get('page', 1, type=int)
-    filter = request.args.get('filter')
+    filter_by = request.args.get('filter')
     status = request.args.get('status')
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
@@ -391,7 +391,7 @@ def sort_cases():
                                       custom_tags=custom_tags,
                                       or_and_taxo=or_and_taxo, 
                                       or_and_galaxies=or_and_galaxies,
-                                      filter=filter, 
+                                      filter=filter_by, 
                                       user=current_user)
     
     return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
@@ -490,10 +490,9 @@ def merge_case(cid, ocid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         merging_case = CommonModel.get_case(ocid)
-        if merging_case:
-            if not check_user_private_case(merging_case):
-                flowintel_log("audit", 403, "Merge case: Permission denied for target case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
-                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        if merging_case and not check_user_private_case(merging_case):
+            flowintel_log("audit", 403, "Merge case: Permission denied for target case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
             
         if CaseModel.merge_case_core(case, merging_case, current_user):
             CaseModel.delete_case(cid, current_user)
@@ -750,7 +749,7 @@ def export_notes(cid):
             res = CommonModel.export_notes(case_task=True, case_task_id=cid, type_req=request.args.get("type"))
             try:
                 CommonModel.delete_temp_folder()
-            except:
+            except OSError:
                 pass
             flowintel_log("audit", 200, "Export notes of a case", User=current_user.email, CaseId=cid, ExportType=request.args.get("type"))
             return res
@@ -820,7 +819,7 @@ def export_computer_assistate_report(cid):
                                                 download_filename=f"case_{case.uuid}_computer_assistate_report")
             try:
                 CommonModel.delete_temp_folder()
-            except:
+            except OSError:
                 pass
             if isinstance(res, dict):
                 return res, 400
@@ -1359,7 +1358,7 @@ def export_notes_template(cid):
                 res = CommonModel.export_notes_core(case_task_id=cid, type_req=request.args.get("type"), note=request.json["content"])
                 try:
                     CommonModel.delete_temp_folder()
-                except:
+                except OSError:
                     pass
                 flowintel_log("audit", 200, "Export notes template of a case", User=current_user.email, CaseId=cid, ExportType=request.args.get("type"))
                 return res

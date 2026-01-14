@@ -23,7 +23,7 @@ def handler(instance, case, user):
     """
     try:
         misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
-    except:
+    except Exception:
         return {"message": "Error connecting to MISP"}
     
     event = misp.get_event(instance["identifier"], pythonify=True)

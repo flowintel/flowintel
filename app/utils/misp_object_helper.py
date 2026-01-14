@@ -1,5 +1,6 @@
 from pymisp import MISPObject
-from ..db_class.db import *
+from ..db_class.db import db, Case_Misp_Object, Misp_Attribute
+import datetime
 
 def create_misp_object(case_id: int, misp_object: MISPObject):
     """

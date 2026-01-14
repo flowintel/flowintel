@@ -216,7 +216,10 @@
                 }
 
                 async function delete_org(org){
-                    const res = await fetch('/admin/delete_org/'+org.id)
+                    const res = await fetch('/admin/delete_org/'+org.id, {
+                        method: 'POST',
+                        headers: { "X-CSRFToken": $("#csrf_token").val() }
+                    })
                     if(await res.status == 200){
                         let index = orgs_list.value.orgs.indexOf(org)
                         if(index > -1)
@@ -227,7 +230,10 @@
                 }
 
                 async function delete_user(user, org_id){
-                    const res = await fetch('/admin/delete_user/'+user.id)
+                    const res = await fetch('/admin/delete_user/'+user.id, {
+                        method: 'POST',
+                        headers: { "X-CSRFToken": $("#csrf_token").val() }
+                    })
                     if(await res.status == 200){
                         let index = users_table.value[org_id].indexOf(user)
                         if(index > -1)

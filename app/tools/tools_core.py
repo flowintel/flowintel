@@ -13,20 +13,22 @@ from ..templating.TaskTemplateCore import TaskModel as TaskTemplateModel
 from sqlalchemy import or_
 from ..utils import misp_object_helper
 
+DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
+
 
 def case_creation_from_importer(case, current_user):
-    if not utils.validateImporterJson(case, jsonschema_flowintel.caseSchema):
+    if not utils.validate_importer_json(case, jsonschema_flowintel.caseSchema):
         return {"message": f"Case '{case['title']}' format not okay"}
     for task in case["tasks"]:
-        if not utils.validateImporterJson(task, jsonschema_flowintel.taskSchema):
+        if not utils.validate_importer_json(task, jsonschema_flowintel.taskSchema):
             return {"message": f"Task '{task['title']}' format not okay"}
         
     for misp_obj in case["misp-objects"]:
-        if not utils.validateImporterJson(misp_obj, jsonschema_flowintel.mispObjectSchema):
+        if not utils.validate_importer_json(misp_obj, jsonschema_flowintel.mispObjectSchema):
             return {"message": f"MISP-OBject '{misp_obj['name']}' format not okay"}
 
         for attr in misp_obj["attributes"]:
-            if not utils.validateImporterJson(misp_obj, jsonschema_flowintel.mispAttrSchema):
+            if not utils.validate_importer_json(misp_obj, jsonschema_flowintel.mispAttrSchema):
                 return {"message": f"MISP-Attribute '{attr['value']}' format not okay"}
 
 
@@ -41,7 +43,7 @@ def case_creation_from_importer(case, current_user):
     # deadline
     if case["deadline"]:
         try:
-            loc_date = datetime.datetime.strptime(case["deadline"], "%Y-%m-%d %H:%M")
+            loc_date = datetime.datetime.strptime(case["deadline"], DATETIME_FORMAT_FULL)
             case["deadline_date"] = loc_date.date()
             case["deadline_time"] = loc_date.time()
         except Exception as e:
@@ -54,8 +56,8 @@ def case_creation_from_importer(case, current_user):
     if case["recurring_date"]:
         if case["recurring_type"]:
             try:
-                datetime.datetime.strptime(case["recurring_date"], "%Y-%m-%d %H:%M")
-            except:
+                datetime.datetime.strptime(case["recurring_date"], DATETIME_FORMAT_FULL)
+            except ValueError:
                 return {"message": f"Case '{case['title']}': recurring_date bad format, %Y-%m-%d"}
         else:
             return {"message": f"Case '{case['title']}': recurring_type is missing"}
@@ -89,10 +91,10 @@ def case_creation_from_importer(case, current_user):
 
         if task["deadline"]:
             try:
-                loc_date = datetime.datetime.strptime(task["deadline"], "%Y-%m-%d %H:%M")
+                loc_date = datetime.datetime.strptime(task["deadline"], DATETIME_FORMAT_FULL)
                 task["deadline_date"] = loc_date.date()
                 task["deadline_time"] = loc_date.time()
-            except:
+            except ValueError:
                 return {"message": f"Task '{task['title']}': deadline bad format, %Y-%m-%d %H:%M"}
         else:
             task["deadline_date"] = ""
@@ -139,10 +141,10 @@ def case_creation_from_importer(case, current_user):
 
 
 def case_template_creation_from_importer(template):
-    if not utils.validateImporterJson(template, jsonschema_flowintel.caseTemplateSchema):
+    if not utils.validate_importer_json(template, jsonschema_flowintel.caseTemplateSchema):
         return {"message": f"Case template '{template['title']}' format not okay"}
     for task in template["tasks_template"]:
-        if not utils.validateImporterJson(task, jsonschema_flowintel.taskTemplateSchema):
+        if not utils.validate_importer_json(task, jsonschema_flowintel.taskTemplateSchema):
             return {"message": f"Task Template '{task['title']}' format not okay"}
         
     #######################
@@ -201,7 +203,6 @@ def case_template_creation_from_importer(template):
 
     ## Task creation
     for task in template["tasks_template"]:
-        # task_created = TaskModel.create_task(task, case_created.id, current_user)
         task_created = TaskTemplateModel.add_task_template_core(task)
         TemplateModel.add_task_case_template({"tasks": [task_created.id]}, case_created.id)
         if task["notes"]:
@@ -230,7 +231,7 @@ def importer_core(files_list, current_user, importer_type):
                         if importer_type == 'case':
                             res = case_creation_from_importer(case, current_user)
                         elif importer_type == 'template':
-                            res = case_template_creation_from_importer(case, current_user)
+                            res = case_template_creation_from_importer(case)
                         if res: return res
                 else:
                     if importer_type == 'case':
@@ -353,36 +354,6 @@ def stats_core(cases):
             "tasks-elapsed-time": loc_tasks_elapsed_time, "tasks-per-case": loc_tasks_per_case,
             "total_opened_tasks": total_opened_tasks, "total_closed_tasks": total_closed_tasks}
 
-
-        
-
-    # loc_cases_opened_month = [
-    #     {'calendar': 'January', 'count': 25}, {'calendar': 'February', 'count': 5}, {'calendar': 'March', 'count': 10}, 
-    #     {'calendar': 'April', 'count': 30}, {'calendar': 'May', 'count': 3}, {'calendar': 'June', 'count': 12}, 
-    #     {'calendar': 'July', 'count': 4}, {'calendar': 'August', 'count': 33}, {'calendar': 'September', 'count': 21}, 
-    #     {'calendar': 'October', 'count': 55}, {'calendar': 'November', 'count': 7}, {'calendar': 'December', 'count': 70}]
-    
-    # loc_cases_closed_month = [
-    #     {'calendar': 'January', 'count': 11}, {'calendar': 'February', 'count': 6}, {'calendar': 'March', 'count': 1}, 
-    #     {'calendar': 'April', 'count': 4}, {'calendar': 'May', 'count': 20}, {'calendar': 'June', 'count': 9}, 
-    #     {'calendar': 'July', 'count': 3}, {'calendar': 'August', 'count': 3}, {'calendar': 'September', 'count': 30}, 
-    #     {'calendar': 'October', 'count': 50}, {'calendar': 'November', 'count': 6}, {'calendar': 'December', 'count': 3}]
-    
-    # loc_cases_opened_year = [
-    #     {'calendar': '2024', "count": 50}, {'calendar': '2025', "count": 31}
-    # ]
-    # loc_cases_closed_year = [
-    #     {'calendar': '2024', "count": 50}, {'calendar': '2025', "count": 20}
-    # ]
-
-    # loc_cases_elapsed_time = [
-    #     {"calendar": 1, "count": 30}, {"calendar": 5, "count": 20}, {"calendar": 10, "count": 3}, {"calendar": 24, "count": 2}
-    # ]
-
-    # return {"cases-opened-month": loc_cases_opened_month, "cases-opened-year": loc_cases_opened_year,
-    #         "cases-closed-month": loc_cases_closed_month, "cases-closed-year": loc_cases_closed_year,
-    #         "elapsed-time": loc_cases_elapsed_time}
-
 def get_case_by_tags(current_user):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
     dict_case_tag = {}
@@ -457,7 +428,7 @@ def check_connection_misp(misp_instance_id: int, current_user: User):
         if loc_api_key:
             try:
                 misp = PyMISP(instance.url, loc_api_key, ssl=False, timeout=20)
-            except:
+            except Exception:
                 return "Error connecting to MISP"
             
             return misp
@@ -515,16 +486,14 @@ def create_case_misp_event(request_form, current_user):
 
     for misp_tags in event.tags:
         tag = Tags.query.filter_by(name=misp_tags.name).first()
-        if tag:
-            if not Case_Tags.query.filter_by(tag_id=tag.id, case_id=case.id).first():
-                CaseModel.add_tag(tag, case.id)
+        if tag and not Case_Tags.query.filter_by(tag_id=tag.id, case_id=case.id).first():
+            CaseModel.add_tag(tag, case.id)
 
     for misp_galaxy in event.galaxies:
         for misp_cluster in misp_galaxy.clusters:
             cluster = Cluster.query.filter_by(tag=misp_cluster.tag_name).first()
-            if cluster:
-                if not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
-                    CaseModel.add_cluster(cluster, case.id)
+            if cluster and not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
+                CaseModel.add_cluster(cluster, case.id)
 
     object_uuid_list = {}
     for obje in event.objects:
@@ -611,7 +580,6 @@ def edit_note_template(note_id: int, request_json: dict) -> bool:
 
     note_template.title = request_json["title"]
     note_template.description = request_json["description"]
-    # note_template.version = request_json["description"]
 
     db.session.commit()
     return True

@@ -5,6 +5,11 @@ from .. import db, login_manager
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
 
+DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
+CASCADE_DELETE_ORPHAN = "all, delete-orphan"
+FK_TASK_ID = 'task.id'
+FK_TASK_TEMPLATE_ID = 'task__template.id'
+
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -52,7 +57,7 @@ class User(UserMixin, db.Model):
             "org_id": self.org_id, 
             "role_id": self.role_id,
             "matrix_id": self.matrix_id,
-            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M')
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL)
         }
 
 class AnonymousUser(AnonymousUserMixin):
@@ -72,7 +77,7 @@ class Case(db.Model):
     deadline = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
     finish_date = db.Column(db.DateTime, index=True)
-    tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade="all, delete-orphan")
+    tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     status_id = db.Column(db.Integer, index=True)
     completed = db.Column(db.Boolean, default=False)
     owner_org_id = db.Column(db.Integer, index=True)
@@ -94,8 +99,8 @@ class Case(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
+            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "status_id": self.status_id,
             "completed": self.completed,
             "owner_org_id": self.owner_org_id,
@@ -111,12 +116,12 @@ class Case(db.Model):
             "computer_assistate_report": self.computer_assistate_report
         }
         if self.deadline:
-            json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
+            json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
         else:
             json_dict["deadline"] = self.deadline
 
         if self.finish_date:
-            json_dict["finish_date"] = self.finish_date.strftime('%Y-%m-%d %H:%M')
+            json_dict["finish_date"] = self.finish_date.strftime(DATETIME_FORMAT_FULL)
         else:
             json_dict["finish_date"] = self.finish_date
 
@@ -153,7 +158,7 @@ class Case(db.Model):
             "computer_assistate_report": self.computer_assistate_report
         }
         if self.deadline:
-            json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
+            json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
         else:
             json_dict["deadline"] = self.deadline
 
@@ -175,8 +180,8 @@ class Task(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String)
     description = db.Column(db.String, nullable=True)
-    urls_tools = db.relationship('Task_Url_Tool', backref='task', lazy='dynamic', cascade="all, delete-orphan")
-    notes = db.relationship('Note', backref='task', lazy='dynamic', cascade="all, delete-orphan")
+    urls_tools = db.relationship('Task_Url_Tool', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    notes = db.relationship('Note', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
@@ -186,9 +191,9 @@ class Task(db.Model):
     completed = db.Column(db.Boolean, default=False)
     notif_deadline_id = db.Column(db.Integer, index=True)
     case_order_id = db.Column(db.Integer, index=True)
-    files = db.relationship('File', backref='task', lazy='dynamic', cascade="all, delete-orphan")
+    files = db.relationship('File', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     nb_notes = db.Column(db.Integer, index=True)
-    subtasks = db.relationship('Subtask', backref='Task', lazy='dynamic', cascade="all, delete-orphan")
+    subtasks = db.relationship('Subtask', backref='Task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     time_required = db.Column(db.String)
 
     def to_json(self):
@@ -197,8 +202,8 @@ class Task(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
+            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "case_id": self.case_id,
             "status_id": self.status_id,
             "completed": self.completed,
@@ -210,12 +215,12 @@ class Task(db.Model):
         json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["urls_tools"] = [url_tool.to_json() for url_tool in self.urls_tools]
         if self.deadline:
-            json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
+            json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
         else:
             json_dict["deadline"] = self.deadline
 
         if self.finish_date:
-            json_dict["finish_date"] = self.finish_date.strftime('%Y-%m-%d %H:%M')
+            json_dict["finish_date"] = self.finish_date.strftime(DATETIME_FORMAT_FULL)
         else:
             json_dict["finish_date"] = self.finish_date
 
@@ -238,7 +243,7 @@ class Task(db.Model):
         }
         json_dict["notes"] = [note.download() for note in self.notes]
         if self.deadline:
-            json_dict["deadline"] = self.deadline.strftime('%Y-%m-%d %H:%M')
+            json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
         else:
             json_dict["deadline"] = self.deadline
 
@@ -253,7 +258,7 @@ class Task(db.Model):
     
 class Subtask(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     completed = db.Column(db.Boolean, default=False)
     description = db.Column(db.String, nullable=True)
     task_order_id = db.Column(db.Integer, index=True)
@@ -280,7 +285,7 @@ class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
     note = db.Column(db.String, nullable=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     task_order_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
@@ -304,7 +309,7 @@ class Note(db.Model):
     
 class Task_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     name = db.Column(db.String, index=True)
     uuid = db.Column(db.String(36), index=True, default=str(uuid.uuid4()))
 
@@ -331,7 +336,7 @@ class Org(db.Model):
     name = db.Column(db.String(64), index=True)
     description = db.Column(db.String, nullable=True)
     uuid = db.Column(db.String(36), index=True)
-    users = db.relationship('User', backref='Org', lazy='dynamic', cascade="all, delete-orphan")
+    users = db.relationship('User', backref='Org', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     default_org = db.Column(db.Boolean, default=True)
 
     def to_json(self):
@@ -363,7 +368,7 @@ class Role(db.Model):
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True, unique=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete="CASCADE"))
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     uuid = db.Column(db.String(36), index=True)
 
     def to_json(self):
@@ -417,15 +422,15 @@ class Notification(db.Model):
             "user_id": self.user_id,
             "case_id": self.case_id,
             "html_icon": self.html_icon,
-            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M')
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL)
         }
         if self.read_date:
-            json_dict["read_date"] = self.read_date.strftime('%Y-%m-%d %H:%M')
+            json_dict["read_date"] = self.read_date.strftime(DATETIME_FORMAT_FULL)
         else:
             json_dict["read_date"] = self.read_date
 
         if self.for_deadline:
-            json_dict["for_deadline"] = self.for_deadline.strftime('%Y-%m-%d %H:%M')
+            json_dict["for_deadline"] = self.for_deadline.strftime(DATETIME_FORMAT_FULL)
         else:
             json_dict["for_deadline"] = self.for_deadline
         
@@ -462,7 +467,7 @@ class Case_Template(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "time_required": self.time_required,
             "notes": self.notes
         }
@@ -497,11 +502,11 @@ class Task_Template(db.Model):
     uuid = db.Column(db.String(36), index=True)
     title = db.Column(db.String, index=True)
     description = db.Column(db.String, nullable=True)
-    urls_tools = db.relationship('Task_Template_Url_Tool', backref='task', lazy='dynamic', cascade="all, delete-orphan")
-    notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade="all, delete-orphan")
+    urls_tools = db.relationship('Task_Template_Url_Tool', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     nb_notes = db.Column(db.Integer, index=True)
     last_modif = db.Column(db.DateTime, index=True)
-    subtasks = db.relationship('Subtask_Template', backref='task_template', lazy='dynamic', cascade="all, delete-orphan")
+    subtasks = db.relationship('Subtask_Template', backref='task_template', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     time_required = db.Column(db.String)
 
     def to_json(self):
@@ -511,7 +516,7 @@ class Task_Template(db.Model):
             "title": self.title,
             "description": self.description,
             "nb_notes": self.nb_notes,
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "time_required": self.time_required
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
@@ -542,7 +547,7 @@ class Task_Template(db.Model):
     
 class Subtask_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    template_id = db.Column(db.Integer, db.ForeignKey('task__template.id', ondelete="CASCADE"))
+    template_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_TEMPLATE_ID, ondelete="CASCADE"))
     completed = db.Column(db.Boolean, default=False)
     description = db.Column(db.String, nullable=True)
 
@@ -565,7 +570,7 @@ class Note_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
     note = db.Column(db.String, nullable=True)
-    template_id = db.Column(db.Integer, db.ForeignKey('task__template.id', ondelete="CASCADE"))
+    template_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_TEMPLATE_ID, ondelete="CASCADE"))
     template_order_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
@@ -588,7 +593,7 @@ class Note_Template(db.Model):
     
 class Task_Template_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('task__template.id', ondelete="CASCADE"))
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_TEMPLATE_ID, ondelete="CASCADE"))
     name = db.Column(db.String, index=True)
 
     def to_json(self):
@@ -619,7 +624,7 @@ class Taxonomy(db.Model):
     name = db.Column(db.String)
     description = db.Column(db.String)
     exclude = db.Column(db.Boolean, default=False)
-    tags = db.relationship('Tags', backref='taxonomy', lazy='dynamic', cascade="all, delete-orphan")
+    tags = db.relationship('Tags', backref='taxonomy', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     version = db.Column(db.String(15))
 
     def to_json(self):
@@ -685,7 +690,7 @@ class Galaxy(db.Model):
     icon = db.Column(db.String)
     type = db.Column(db.String)
     exclude = db.Column(db.Boolean, default=False)
-    clusters = db.relationship('Cluster', backref='galaxy', lazy='dynamic', cascade="all, delete-orphan")
+    clusters = db.relationship('Cluster', backref='galaxy', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
 
     def to_json(self):
         json_dict = {
@@ -765,7 +770,7 @@ class Connector(db.Model):
     description = db.Column(db.String)
     uuid = db.Column(db.String(36), index=True)
     icon_id = db.Column(db.Integer, index=True)
-    instances = db.relationship('Connector_Instance', backref='connector', lazy='dynamic', cascade="all, delete-orphan")
+    instances = db.relationship('Connector_Instance', backref='connector', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
 
     def to_json(self):
         json_dict = {
@@ -905,7 +910,7 @@ class Misp_Module_Result(db.Model):
             "input_query": self.input_query,
             "result": json.loads(self.result),
             "nb_errors": self.nb_errors,
-            "query_date": self.query_date.strftime('%Y-%m-%d %H:%M'),
+            "query_date": self.query_date.strftime(DATETIME_FORMAT_FULL),
             "user_id": self.user_id
         }
         return json_dict
@@ -916,7 +921,7 @@ class Misp_Module_Result(db.Model):
             "modules": json.loads(self.modules_list),
             "query": json.loads(self.query_enter),
             "input": self.input_query,
-            "query_date": self.query_date.strftime('%Y-%m-%d %H:%M')
+            "query_date": self.query_date.strftime(DATETIME_FORMAT_FULL)
         }
         return json_dict
     
@@ -986,7 +991,7 @@ class Case_Misp_Object(db.Model):
     name = db.Column(db.String)
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
-    attributes = db.relationship('Misp_Attribute', backref='Case_Misp_Object', lazy='dynamic', cascade="all, delete-orphan")
+    attributes = db.relationship('Misp_Attribute', backref='Case_Misp_Object', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
 
     def to_json(self):
         json_dict = {
@@ -994,8 +999,8 @@ class Case_Misp_Object(db.Model):
             "case_id": self.case_id,
             "template_uuid": self.template_uuid,
             "name": self.name,
-            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M')
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
+            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL)
         }
         return json_dict
     
@@ -1032,15 +1037,15 @@ class Misp_Attribute(db.Model):
             "last_seen": self.last_seen,   # Added to the dict here in case of empty
             "comment": self.comment,
             "ids_flag": self.ids_flag,
-            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
+            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "disable_correlation": self.disable_correlation
         }
 
         if self.first_seen:
-            json_dict["first_seen"] = self.first_seen.strftime('%Y-%m-%d %H:%M')
+            json_dict["first_seen"] = self.first_seen.strftime(DATETIME_FORMAT_FULL)
         if self.last_seen:
-            json_dict["last_seen"] = self.last_seen.strftime('%Y-%m-%d %H:%M')
+            json_dict["last_seen"] = self.last_seen.strftime(DATETIME_FORMAT_FULL)
 
         return json_dict
     
@@ -1141,8 +1146,8 @@ class Note_Template_Model(db.Model):
             "description": self.description,
             "content": self.content,
             "version": self.version,
-            "creation_date": self.creation_date.strftime('%Y-%m-%d %H:%M'),
-            "last_modif": self.last_modif.strftime('%Y-%m-%d %H:%M'),
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
+            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "params": self.params
         }
 

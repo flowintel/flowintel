@@ -4,7 +4,11 @@ from typing import List
 from sqlalchemy import and_, desc
 
 from .. import db
-from ..db_class.db import *
+from ..db_class.db import (
+    Task_Template, Note_Template, Task_Template_Url_Tool, Subtask_Template,
+    Task_Template_Tags, Task_Template_Galaxy_Tags, Task_Template_Custom_Tags,
+    Tags, Cluster, Custom_Tags
+)
 from ..case.CommonAbstract import CommonAbstract
 from ..case.FilteringAbstract import FilteringAbstract
 from . import common_template_core as CommonModel
@@ -229,12 +233,11 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
     def delete_note(self, tid, note_id):
         """Delete a note by id"""
         note = CommonModel.get_task_note(note_id)
-        if note:
-            if note.template_id == int(tid):
-                Note_Template.query.filter_by(id=note_id).delete()
-                db.session.commit()
-                CommonModel.update_last_modif_task(tid)
-                return True
+        if note and note.template_id == int(tid):
+            Note_Template.query.filter_by(id=note_id).delete()
+            db.session.commit()
+            CommonModel.update_last_modif_task(tid)
+            return True
         return False
 
     def change_order(self, case, task, request_json):
@@ -282,20 +285,18 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
 
     def edit_subtask(self, tid, sid, description):
         subtask = CommonModel.get_subtask_template(sid)
-        if subtask:
-            if subtask.template_id == int(tid):
-                subtask.description = description
-                db.session.commit()
-                return True
+        if subtask and subtask.template_id == int(tid):
+            subtask.description = description
+            db.session.commit()
+            return True
         return False
 
     def delete_subtask(self, tid, sid):
         subtask = CommonModel.get_subtask_template(sid)
-        if subtask:
-            if subtask.template_id == int(tid):
-                db.session.delete(subtask)
-                db.session.commit()
-                return True
+        if subtask and subtask.template_id == int(tid):
+            db.session.delete(subtask)
+            db.session.commit()
+            return True
         return False
     
     
@@ -308,11 +309,10 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
 
     def delete_url_tool(self, tid, utid):
         url_tool = self.get_url_tool_template(utid)
-        if url_tool:
-            if url_tool.task_id == int(tid):
-                db.session.delete(url_tool)
-                db.session.commit()
-                return True
+        if url_tool and url_tool.task_id == int(tid):
+            db.session.delete(url_tool)
+            db.session.commit()
+            return True
         return False
 
     def create_url_tool(self, tid, url_tool_name):
@@ -327,12 +327,11 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
 
     def edit_url_tool(self, tid, utid, url_tool_name):
         url_tool = self.get_url_tool_template(utid)
-        if url_tool:
-            if url_tool.task_id == int(tid):
-                url_tool.name = url_tool_name
-                db.session.commit()
+        if url_tool and url_tool.task_id == int(tid):
+            url_tool.name = url_tool_name
+            db.session.commit()
 
-                return True
+            return True
         return False
 
 

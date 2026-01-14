@@ -1,4 +1,4 @@
-from ..db_class.db import *
+from ..db_class.db import Connector, Connector_Icon, Connector_Instance
 from ..utils import utils
 
 def verif_add_connector(data_dict):
@@ -13,7 +13,7 @@ def verif_add_connector(data_dict):
     if "icon_select" not in data_dict or not data_dict["icon_select"]:
         data_dict["icon_select"] = ""
     elif not Connector_Icon.query.get(data_dict["icon_select"]).first():
-        {"message": "Icon not found"}
+        return {"message": "Icon not found"}
 
     return data_dict
 

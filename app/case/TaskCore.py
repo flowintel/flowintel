@@ -3,10 +3,15 @@ from typing import List
 import uuid
 import datetime
 from .. import db
-from ..db_class.db import *
+from ..db_class.db import (
+    Cluster, Connector, Custom_Tags, File, Note, Subtask, Tags, Task,
+    Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy_Tags,
+    Task_Tags, Task_Url_Tool, Task_User, User
+)
 from ..utils.utils import create_specific_dir
 
 from sqlalchemy import and_
+from sqlalchemy.exc import SQLAlchemyError
 from flask import request, send_file
 from werkzeug.utils import secure_filename
 from ..notification import notification_core as NotifModel
@@ -130,7 +135,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             for file in task.files:
                 try:
                     os.remove(os.path.join(FILE_FOLDER, file.uuid))
-                except:
+                except OSError:
                     return False
                 db.session.delete(file)
                 db.session.commit()
@@ -179,12 +184,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 task.finish_date = datetime.datetime.now(tz=datetime.timezone.utc)
                 task.case_order_id = -1
                 self.reorder_tasks(case, task.id)
-                message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
             else:
                 task.status_id = Status.query.filter_by(name="Created").first().id
                 task.finish_date = None
                 task.case_order_id = self.get_nb_open_tasks(case)
-                message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived"
             for task_user in task_users:
                 if task.completed:
                     message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
@@ -200,19 +203,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def create_task(self, form_dict, cid, current_user):
         """Add a task to the DB"""
-        if "template_select" in form_dict and not 0 in form_dict["template_select"]:
+        if "template_select" in form_dict and 0 not in form_dict["template_select"]:
             task = CommonModel.create_task_from_template(form_dict["template_select"], cid)
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
             case = CommonModel.get_case(cid)
-            if not case.nb_tasks:
-                case.nb_tasks = 0
-
-            if "completed" in form_dict:
-                completed = form_dict["completed"]
-            else:
-                completed = False
+            case.nb_tasks = case.nb_tasks or 0
 
             task = Task(
                 uuid=str(uuid.uuid4()),
@@ -224,7 +221,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 case_id=cid,
                 status_id=1,
                 case_order_id=self.get_nb_open_tasks(case)+1,
-                completed=completed,
+                completed=form_dict.get("completed", False),
                 nb_notes=0,
                 time_required=form_dict["time_required"]
             )
@@ -345,14 +342,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def delete_note(self, tid, note_id, current_user):
         """Delete note"""
         note = Note.query.get(note_id)
-        if note:
-            if note.task_id == int(tid):
-                Note.query.filter_by(id=note_id).delete()
-                db.session.commit()
+        if note and note.task_id == int(tid):
+            Note.query.filter_by(id=note_id).delete()
+            db.session.commit()
 
-                task = CommonModel.get_task(tid)
-                self.update_task_time_modification(task, current_user, f"Notes for '{task.title}' deleted")
-                return True
+            task = CommonModel.get_task(tid)
+            self.update_task_time_modification(task, current_user, f"Notes for '{task.title}' deleted")
+            return True
         return False
 
     def assign_task(self, tid, user, current_user, flag_current_user):
@@ -423,7 +419,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         """Delete a file"""
         try:
             os.remove(os.path.join(FILE_FOLDER, file.uuid))
-        except:
+        except OSError:
             return False
 
         db.session.delete(file)
@@ -442,22 +438,22 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             file_list = list()
             for file in task.files:
                 file_list.append(file.to_json())
-            finalTask = task.to_json()
-            finalTask["users"] = users
-            finalTask["is_current_user_assigned"] = is_current_user_assigned
-            finalTask["files"] = file_list
-            finalTask["case_title"] = case.title
+            final_task = task.to_json()
+            final_task["users"] = users
+            final_task["is_current_user_assigned"] = is_current_user_assigned
+            final_task["files"] = file_list
+            final_task["case_title"] = case.title
 
-            finalTask["subtasks"] = []
+            final_task["subtasks"] = []
             cp_open=0
             subtasks = Subtask.query.filter_by(task_id=task.id).order_by(Subtask.task_order_id).all()
             for subtask in subtasks:
-                finalTask["subtasks"].append(subtask.to_json())
+                final_task["subtasks"].append(subtask.to_json())
                 if not subtask.completed:
                     cp_open += 1
-            finalTask["nb_open_subtasks"] = cp_open
+            final_task["nb_open_subtasks"] = cp_open
 
-            tasks.append(finalTask)
+            tasks.append(final_task)
         return tasks
 
 
@@ -556,16 +552,11 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
             instance_list = list()
             for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
-                    if instance.type==type_module:
-                        loc_instance = instance.to_json()
-                        identifier = CommonModel.get_task_connector_id(instance.id, task_id)
-                        if identifier:
-                            loc_id = identifier.identifier
-                        else:
-                            loc_id = None
-                        loc_instance["identifier"] = loc_id
-                        instance_list.append(loc_instance)
+                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id) and instance.type == type_module:
+                    loc_instance = instance.to_json()
+                    identifier = CommonModel.get_task_connector_id(instance.id, task_id)
+                    loc_instance["identifier"] = identifier.identifier if identifier else None
+                    instance_list.append(loc_instance)
             return instance_list
         return []
 
@@ -638,14 +629,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def delete_url_tool(self, tid, utid, current_user):
         url_tool = self.get_url_tool(utid)
-        if url_tool:
-            if url_tool.task_id == int(tid):
-                db.session.delete(url_tool)
-                db.session.commit()
+        if url_tool and url_tool.task_id == int(tid):
+            db.session.delete(url_tool)
+            db.session.commit()
 
-                task = CommonModel.get_task(tid)
-                self.update_task_time_modification(task, current_user, f"Url/Tool '{url_tool.name}' deleted for '{task.title}'")
-                return True
+            task = CommonModel.get_task(tid)
+            self.update_task_time_modification(task, current_user, f"Url/Tool '{url_tool.name}' deleted for '{task.title}'")
+            return True
         return False
 
     def create_url_tool(self, tid, url_tool_name, current_user):
@@ -663,14 +653,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def edit_url_tool(self, tid, utid, url_tool_name, current_user):
         url_tool = self.get_url_tool(utid)
-        if url_tool:
-            if url_tool.task_id == int(tid):
-                url_tool.name = url_tool_name
-                db.session.commit()
+        if url_tool and url_tool.task_id == int(tid):
+            url_tool.name = url_tool_name
+            db.session.commit()
 
-                task = CommonModel.get_task(tid)
-                self.update_task_time_modification(task, current_user, f"Url/Tool '{url_tool.name}' edited for '{task.title}'")
-                return True
+            task = CommonModel.get_task(tid)
+            self.update_task_time_modification(task, current_user, f"Url/Tool '{url_tool.name}' edited for '{task.title}'")
+            return True
         return False
     
     ############
@@ -682,33 +671,29 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def complete_subtask(self, tid, sid, current_user):
         subtask = self.get_subtask(sid)
-        if subtask:
-            if subtask.task_id == int(tid):
-                subtask.completed = not subtask.completed
-                db.session.commit()
+        if subtask and subtask.task_id == int(tid):
+            subtask.completed = not subtask.completed
+            db.session.commit()
 
-                task = CommonModel.get_task(tid)
-                self.update_task_time_modification(task, current_user, f"Subtask '{subtask.description}' completed for '{task.title}'")
-                return True
+            task = CommonModel.get_task(tid)
+            self.update_task_time_modification(task, current_user, f"Subtask '{subtask.description}' completed for '{task.title}'")
+            return True
         return False
 
     def delete_subtask(self, tid, sid, current_user):
         subtask = self.get_subtask(sid)
-        if subtask:
-            if subtask.task_id == int(tid):
-                db.session.delete(subtask)
-                db.session.commit()
+        if subtask and subtask.task_id == int(tid):
+            db.session.delete(subtask)
+            db.session.commit()
 
-                task = CommonModel.get_task(tid)
-                self.update_task_time_modification(task, current_user, f"Subtask '{subtask.description}' deleted for '{task.title}'")
-                return True
+            task = CommonModel.get_task(tid)
+            self.update_task_time_modification(task, current_user, f"Subtask '{subtask.description}' deleted for '{task.title}'")
+            return True
         return False
 
     def create_subtask(self, tid, subtask_description, current_user):
         task = CommonModel.get_task(tid)
-        cp = 0
-        for s in task.subtasks:
-            cp += 1
+        cp = len(task.subtasks)
 
         subtask = Subtask(
             description=subtask_description,
@@ -724,14 +709,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def edit_subtask(self, tid, sid, subtask_description, current_user):
         subtask = self.get_subtask(sid)
-        if subtask:
-            if subtask.task_id == int(tid):
-                subtask.description = subtask_description
-                db.session.commit()
+        if subtask and subtask.task_id == int(tid):
+            subtask.description = subtask_description
+            db.session.commit()
 
-                task = CommonModel.get_task(tid)
-                self.update_task_time_modification(task, current_user, f"Subtask '{subtask.description}' edited for '{task.title}'")
-                return True
+            task = CommonModel.get_task(tid)
+            self.update_task_time_modification(task, current_user, f"Subtask '{subtask.description}' edited for '{task.title}'")
+            return True
         return False
     
     def change_order_subtask(self, task, subtask, up_down):
@@ -756,7 +740,6 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def add_connector(self, tid, request_json, current_user) -> bool:
         task = CommonModel.get_task(tid)
-        case = CommonModel.get_case(task.case_id)
 
         for connector in request_json["connectors"]:
             instance = CommonModel.get_instance_by_name(connector["name"])
@@ -777,7 +760,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         try:
             Task_Connector_Instance.query.filter_by(id=task_instance_id).delete()
             db.session.commit()
-        except:
+        except SQLAlchemyError:
             return False
         return True
 

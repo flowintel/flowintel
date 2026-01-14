@@ -27,6 +27,6 @@ def my_assignment_sort_tasks():
     page = request.args.get('page', 1, type=int)
     status = request.args.get('status', default=False, type=is_it_true)
     status = not status
-    filter = request.args.get('filter', type=str)
-    tasks_list = AssignModel.my_assignment_sort(user=current_user, completed=status, page=page, filter=filter)
+    filter_value = request.args.get('filter', type=str)
+    tasks_list = AssignModel.my_assignment_sort(user=current_user, completed=status, page=page, filter=filter_value)
     return {"tasks": AssignModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}

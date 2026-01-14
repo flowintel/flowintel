@@ -136,7 +136,7 @@ def create_galaxy_cluster(misp: PyMISP, event, clusters):
                 m.add_galaxy_cluster(**cluster.to_dict())
 
                 loc_cluster = [{"GalaxyCluster": json.loads(cluster.to_json())}]
-                res = misp._prepare_request(request_type='POST', url='galaxies/import', data=loc_cluster)
+                misp._prepare_request(request_type='POST', url='galaxies/import', data=loc_cluster)
                 event.add_galaxy(m)
         else:
             res_cluster = misp.get_galaxy_cluster(cluster["uuid"])
@@ -174,7 +174,7 @@ def create_galaxy_cluster(misp: PyMISP, event, clusters):
 
                 m.add_galaxy_cluster(**cluster.to_dict())
                 loc_cluster = [{"GalaxyCluster": json.loads(cluster.to_json())}]
-                res = misp._prepare_request(request_type='POST', url='galaxies/import', data=loc_cluster)
+                misp._prepare_request(request_type='POST', url='galaxies/import', data=loc_cluster)
                 event.add_galaxy(m)
                 
             else:
@@ -197,7 +197,7 @@ def handler(instance, case, user):
     """
     try:
         misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
-    except:
+    except Exception:
         return {"message": "Error connecting to MISP"}, {}
     flag = False
     object_uuid_list = {}
@@ -210,10 +210,9 @@ def handler(instance, case, user):
             current_case_object = None
             for i in range(0, len(misp_objects)):
                 for attribute in misp_objects[i].attributes:
-                    if attribute.object_relation == 'case-uuid':
-                        if attribute.value == case["uuid"]:
-                            current_case_object = i
-                            break
+                    if attribute.object_relation == 'case-uuid' and attribute.value == case["uuid"]:
+                        current_case_object = i
+                        break
             ## Case exist in the event
             if not current_case_object == None:
                 event = create_galaxy_cluster(misp, event, case["clusters"])
@@ -235,10 +234,9 @@ def handler(instance, case, user):
                     current_object = None
                     for i in range(0, len(misp_objects)):
                         for attribute in misp_objects[i].attributes:
-                            if attribute.object_relation == 'task-uuid':
-                                if attribute.value == task["uuid"]:
-                                    current_object = i
-                                    break
+                            if attribute.object_relation == 'task-uuid' and attribute.value == task["uuid"]:
+                                current_object = i
+                                break
                     ## Task exist in the event
                     if not current_object == None:
                         for attribute in misp_objects[current_object].attributes:
@@ -250,10 +248,9 @@ def handler(instance, case, user):
                             current_note = None
                             for i in range(0, len(misp_objects_note)):
                                 for attr in misp_objects_note[i].attributes:
-                                    if attr.object_relation == 'note-uuid':
-                                        if attr.value == note["uuid"]:
-                                            current_note = i
-                                            break
+                                    if attr.object_relation == 'note-uuid' and attr.value == note["uuid"]:
+                                        current_note = i
+                                        break
                             ## Note exist in the event
                             if not current_note == None:
                                 for attr in misp_objects_note[current_note].attributes:
@@ -271,10 +268,9 @@ def handler(instance, case, user):
                             current_resource = None
                             for i in range(0, len(misp_objects_resource)):
                                 for attr in misp_objects_resource[i].attributes:
-                                    if attr.object_relation == 'resource-uuid':
-                                        if attr.value == resource["uuid"]:
-                                            current_resource = i
-                                            break
+                                    if attr.object_relation == 'resource-uuid' and attr.value == resource["uuid"]:
+                                        current_resource = i
+                                        break
                             ## Resource exist in the event
                             if not current_resource == None:
                                 for attr in misp_objects_resource[current_resource].attributes:

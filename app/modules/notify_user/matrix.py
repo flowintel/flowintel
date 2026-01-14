@@ -54,7 +54,7 @@ async def matrix(task, case, current_user, user):
                     f'{Config.MATRIX_SERVER}/_matrix/client/r0/account/whoami?access_token={client.access_token}'
                 ) as response:
                     if isinstance(response, LoginError):
-                        raise Exception(response)
+                        raise ConnectionError(response)
 
                     r = json.loads((await response.text()).replace(":false,", ":\"false\","))
                     # This assumes there was an error that needs to be communicated to the user. A key error happens in
@@ -78,17 +78,7 @@ async def matrix(task, case, current_user, user):
         if client_config.encryption_enabled:
             client.load_store()
 
-        resp = await client.sync(timeout=65536, full_state=False)  #Ignore prior messages
-
-        # if isinstance(resp, SyncResponse):
-        #     print(
-        #         f"Connected to {client.homeserver} as {client.user_id} ({client.device_id})"
-        #     )
-        #     if client_config.encryption_enabled:
-        #         key = client.olm.account.identity_keys['ed25519']
-        #         print(
-        #             f"This bot's public fingerprint (\"Session key\") for one-sided verification is: "
-        #             f"{' '.join([key[i:i+4] for i in range(0, len(key), 4)])}")
+        await client.sync(timeout=65536, full_state=False)  #Ignore prior messages
 
         mentions = {}
         if user.matrix_id:

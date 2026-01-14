@@ -42,8 +42,6 @@ def verif_add_task_template(data_dict):
 
     if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = ""
-    else:
-        data_dict["description"] = data_dict["description"]
 
     return common_creation(data_dict)
 

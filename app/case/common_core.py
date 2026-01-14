@@ -410,7 +410,7 @@ def get_history(case_uuid):
         with open(path_history, "r") as read_file:
             loc_file = read_file.read().splitlines()
         return loc_file
-    except:
+    except OSError:
         return False
     
 def save_history(case_uuid, current_user, message):
@@ -560,7 +560,7 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
 
     try:
         shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
-    except:
+    except OSError:
         pass
 
     if not os.path.isfile(temp_export):
@@ -730,4 +730,3 @@ def module_error_check(event):
             if loc:
                 return {"message": json.loads(loc.group())["value"][0]}
             return {"message": event["errors"][1]["errors"]}
-    return

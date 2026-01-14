@@ -119,7 +119,7 @@ def edit_user():
     return render_template("account/edit_user.html", form=form)
 
 
-@account_blueprint.route("/change_api_key", methods=['GET', 'POST'])
+@account_blueprint.route("/change_api_key", methods=['POST'])
 @login_required
 def change_api_key():
     """Change the api key of the user"""

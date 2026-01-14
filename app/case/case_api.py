@@ -178,9 +178,8 @@ class MergeCase(Resource):
                 return {"message": "Permission denied"}, 403
             
             merging_case = CommonModel.get_case(ocid)
-            if merging_case:
-                if not check_user_private_case(merging_case, request.headers, current_user):
-                    return {"message": "Permission denied"}, 403
+            if merging_case and not check_user_private_case(merging_case, request.headers, current_user):
+                return {"message": "Permission denied"}, 403
             
             if CaseModel.merge_case_core(case, merging_case, current_user):
                 CaseModel.delete_case(cid, current_user)
@@ -190,7 +189,7 @@ class MergeCase(Resource):
 
 @case_ns.route('/not_completed')
 @case_ns.doc(description='Get all not completed cases')
-class GetCases_not_completed(Resource):
+class GetCasesNotCompleted(Resource):
     method_decorators = [api_required]
     def get(self):
         current_user = utils.get_user_from_api(request.headers)
@@ -199,7 +198,7 @@ class GetCases_not_completed(Resource):
     
 @case_ns.route('/completed')
 @case_ns.doc(description='Get all completed cases')
-class GetCases_not_completed(Resource):
+class GetCasesCompleted(Resource):
     method_decorators = [api_required]
     def get(self):
         current_user = utils.get_user_from_api(request.headers)

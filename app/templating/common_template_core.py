@@ -1,6 +1,11 @@
 import datetime
 from typing import Optional
-from ..db_class.db import *
+from ..db_class.db import (
+    Case_Template, Task_Template, Note_Template, Subtask_Template,
+    Case_Template_Tags, Case_Template_Galaxy_Tags, Task_Template_Tags, Task_Template_Galaxy_Tags,
+    Case_Task_Template, Case_Template_Connector_Instance,
+    Tags, Taxonomy, Cluster, Galaxy, Custom_Tags
+)
 from sqlalchemy import func
 from ..case.common_core import get_instance_by_name
 

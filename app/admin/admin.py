@@ -43,7 +43,7 @@ def add_user():
         form_dict = form_to_dict(form)
         AdminModel.add_user_core(form_dict)
         flowintel_log("audit", 200, "User added", User=form.email.data)
-        return redirect("/admin/orgs")
+        return redirect(url_for('admin.orgs'))
     return render_template("admin/add_user.html", form=form)
 
 
@@ -73,7 +73,7 @@ def edit_user(uid):
             form_dict.pop('password2', None)
         flowintel_log("audit", 200, "User edited", User=user_modif.email, UserId=uid)
         AdminModel.admin_edit_user_core(form_dict, uid)
-        return redirect("/admin/users")
+        return redirect(url_for('admin.users'))
     else:
         user_modif = AdminModel.get_user(uid)
         form.first_name.data = user_modif.first_name
@@ -85,7 +85,7 @@ def edit_user(uid):
     return render_template("admin/add_user.html", form=form, edit_mode=True)
 
 
-@admin_blueprint.route("/delete_user/<uid>", methods=['GET','POST'])
+@admin_blueprint.route("/delete_user/<uid>", methods=['POST'])
 @login_required
 @admin_required
 def delete_user(uid):
@@ -136,7 +136,7 @@ def add_org():
         form_dict = form_to_dict(form)
         AdminModel.add_org_core(form_dict)
         flowintel_log("audit", 200, "Org added", Org=form.name.data)
-        return redirect("/admin/orgs")
+        return redirect(url_for('admin.orgs'))
     return render_template("admin/add_edit_org.html", form=form, edit_mode=False)
 
 
@@ -150,7 +150,7 @@ def edit_org(id):
         form_dict = form_to_dict(form)
         AdminModel.edit_org_core(form_dict, id)
         flowintel_log("audit", 200, "Org edited", Org=form.name.data, OrgId=id)
-        return redirect("/admin/orgs")
+        return redirect(url_for('admin.orgs'))
     else:
         org = AdminModel.get_org(id)
         form.name.data = org.name
@@ -159,7 +159,7 @@ def edit_org(id):
     return render_template("admin/add_edit_org.html", form=form, edit_mode=True)
 
 
-@admin_blueprint.route("/delete_org/<oid>", methods=['GET','POST'])
+@admin_blueprint.route("/delete_org/<oid>", methods=['POST'])
 @login_required
 @admin_required
 def delete_org(oid):
