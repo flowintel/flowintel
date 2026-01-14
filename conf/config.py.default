@@ -10,6 +10,7 @@ class Config:
     VALKEY_PORT = os.getenv('VALKEY_PORT', '6379')
     AUDIT_LOG_PREFIX = os.getenv('AUDIT_LOG_PREFIX', 'AUDIT')
     LOG_FILE = os.getenv('LOG_FILE', 'record.log')
+    APP_NAME = "Flowintel"
     
     # Initial users configuration
     INIT_ADMIN_USER = {
