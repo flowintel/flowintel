@@ -14,24 +14,27 @@
 
 {% block content %}
     <div class="case-core-style" style="border-radius: 0;">
-        <h1>MISP-Modules 
-            <i class="fa fa-question" title="Select text from note present in case or tasks" style="font-size: initial;"></i>
-            <a class="btn btn-outline-primary mt-1 mx-2" href="/analyzer/misp-modules/config" style="float: right">
-                <i class="fa-solid fa-gear"></i> Config
-            </a>
-            <a class="btn btn-outline-primary mt-1 mx-2" href="/analyzer/misp-modules/history" style="float: right">
-                <i class="fa-solid fa-clock-rotate-left"></i> History
-            </a>
-            
-        </h1>
-        
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-puzzle-piece me-2"></i>MISP-Modules</h5>
+                <i class="fa fa-question ms-2" title="Select text from note present in case or tasks" style="font-size: small;"></i>
+            </div>
+            <div class="col-auto ms-auto">
+                <a class="btn btn-outline-primary btn-sm" href="/analyzer/misp-modules/history">
+                    <i class="fa-solid fa-clock-rotate-left fa-sm"></i> History
+                </a>
+                <a class="btn btn-outline-primary btn-sm ms-2" href="/analyzer/misp-modules/config">
+                    <i class="fa-solid fa-gear fa-sm"></i> Config
+                </a>
+            </div>
+        </div>
     </div>
     <hr>
 
     <div class="row">
         <div class="col-6">
             <fieldset class="analyzer-select-case">
-                <legend class="analyzer-select-case">Select a Case</legend>
+                <legend class="analyzer-select-case"><i class="fa-solid fa-briefcase fa-sm me-1"></i><span class="section-title">Select a Case</span></legend>
                 <div id="case-search" class="d-none">
                     <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
                         <input id="case-search-input" @input="onInputCase" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
@@ -48,7 +51,7 @@
         </div>
         <div class="col-6">
             <fieldset class="analyzer-select-case d-none" id="task-search">
-                <legend class="analyzer-select-case">Select a Task</legend>
+                <legend class="analyzer-select-case"><i class="fa-solid fa-clipboard-list fa-sm me-1"></i><span class="section-title">Select a Task</span></legend>
                 <select data-placeholder="Select a Task" class="select2-select form-control" name="task_select" id="task_select">
                     <option value="None">--</option>
                     <template v-for="task, key in result_search_task">
@@ -64,22 +67,22 @@
             <ul class="nav nav-tabs" style="margin-bottom: 10px;">
                 <li class="nav-item">
                     <button :disabled="!case_selected || !case_selected.notes" class="nav-link" id="tab-case-notes" @click="active_tab('case')">
-                        Case notes
+                        <i class="fa-solid fa-briefcase fa-sm me-1"></i><span class="section-title">Case notes</span>
                     </button>
                 </li>
                 <li class="nav-item">
                     <button :disabled="!case_selected || !case_selected.notes" class="nav-link" id="tab-all-notes" @click="active_tab('all')">
-                        All Tasks notes
+                        <i class="fa-solid fa-layer-group fa-sm me-1"></i><span class="section-title">All Tasks notes</span>
                     </button>
                 </li>
                 <li class="nav-item">
                     <button :disabled="!task_selected || !task_selected.notes" class="nav-link" id="tab-task-notes" @click="active_tab('task')">
-                        Task notes
+                        <i class="fa-solid fa-clipboard-list fa-sm me-1"></i><span class="section-title">Task notes</span>
                     </button>
                 </li>
                 <li class="nav-item">
                     <button :disabled="!case_selected" class="nav-link" id="tab-misp-object" @click="active_tab('misp-object')">
-                        MISP Objects
+                        <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title">MISP Objects</span>
                     </button>
                 </li>
             </ul>

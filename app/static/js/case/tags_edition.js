@@ -1,17 +1,17 @@
-import {display_toast} from '../toaster.js'
+import { display_toast } from '../toaster.js'
 import edition_select from './edition_select.js'
-import {getTextColor, mapIcon} from '/static/js/utils.js'
+import { getTextColor, mapIcon } from '/static/js/utils.js'
 const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
-	props: {
-		current_case: Object,
+    props: {
+        current_case: Object,
         type_object: String
-	},
+    },
     components: {
         edition_select
     },
-	setup(props) {
+    setup(props) {
         const selected_tags = ref([])
         const selected_clusters = ref([])
         const selected_custom_tags = ref([])
@@ -20,37 +20,37 @@ export default {
             let tags_select = []
             let clusters_select = []
             let custom_select = []
-            $.each(selected_clusters.value, function(i, v){
-                clusters_select.push(v.uuid) 
+            $.each(selected_clusters.value, function (i, v) {
+                clusters_select.push(v.uuid)
             });
-            $.each(selected_tags.value, function(i, v){
+            $.each(selected_tags.value, function (i, v) {
                 tags_select.push(v.name)
             });
-            $.each(selected_custom_tags.value, function(i, v){
-                custom_select.push(v.name)  
+            $.each(selected_custom_tags.value, function (i, v) {
+                custom_select.push(v.name)
             });
 
             let url
 
-            if(props.type_object == 'case')
+            if (props.type_object == 'case')
                 url = '/case/edit_tags/'
-            else if(props.type_object == 'case_template')
+            else if (props.type_object == 'case_template')
                 url = '/templating/case/edit_tags/'
             url += props.current_case.id
 
             const res_msg = await fetch(
-                url,{
-                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                    method: "POST",
-                    body: JSON.stringify({
-                        "tags_select": tags_select, 
-                        "clusters_select": clusters_select, 
-                        "custom_select": custom_select
-                    })
-                }
+                url, {
+                headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                method: "POST",
+                body: JSON.stringify({
+                    "tags_select": tags_select,
+                    "clusters_select": clusters_select,
+                    "custom_select": custom_select
+                })
+            }
             )
 
-            if(await res_msg.status == 200){
+            if (await res_msg.status == 200) {
                 props.current_case.tags = selected_tags.value
                 props.current_case.clusters = selected_clusters.value
                 props.current_case.custom_tags = selected_custom_tags.value
@@ -61,37 +61,37 @@ export default {
             }
             await display_toast(res_msg)
         }
-        
 
-		return {
+
+        return {
             getTextColor,
             mapIcon,
             selected_tags,
             selected_clusters,
             selected_custom_tags,
             change_tags
-		}
+        }
     },
-	template: `
+    template: `
     <div class="case-tags-style">
         <button type="button" class="btn btn-outline-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#ModalEditTags">
-            <i class="fa-solid fa-pen"></i>
+            <i class="fa-solid fa-pen fa-sm"></i>
         </button>
-        <h4>Tags: </h4>
-        <hr class="fading-line-2">
-        <div v-if="current_case.custom_tags" style="display: flex; margin-bottom: 5px;">
+        <h6 class="section-title mb-0"><i class="fa-solid fa-tags fa-sm me-2"></i>Tags</h6>
+        <hr class="fading-line-2 mt-2 mb-2">
+        <div v-if="current_case.custom_tags" style="display: flex; flex-wrap: wrap; margin-bottom: 5px;">
             <template v-for="tag in current_case.custom_tags">
                 <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                    <i v-if="tag.icon" :class="tag.icon"></i>
+                    <i v-if="tag.icon" :class="tag.icon" style="font-size: 0.75rem;"></i>
                     [[tag.name]]
                 </div>
             </template>
         </div>
 
-        <div v-if="current_case.tags" style="display: flex; margin-bottom: 5px;">
+        <div v-if="current_case.tags" style="display: flex; flex-wrap: wrap; margin-bottom: 5px;">
             <template v-for="tag in current_case.tags">
                 <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                    <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                    <i class="fa-solid fa-tag fa-sm" style="margin-right: 3px; margin-left: 3px;"></i>
                     [[tag.name]]
                 </div>
             </template>
@@ -115,7 +115,7 @@ export default {
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="exampleModalLabel">Modal title</h1>
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">Edit Tags</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
