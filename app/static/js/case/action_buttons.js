@@ -160,7 +160,7 @@ export default {
     },
 	template: `
         <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="margin-right:10px;">
-            <button v-if="cases_info.case.completed" class="btn btn-secondary" @click="complete_case(cases_info.case)" title="Complete the case" style="margin-right:10px">
+            <button v-if="cases_info.case.completed" class="btn btn-secondary" @click="complete_case(cases_info.case)" title="Revive the case" style="margin-right:10px">
                 <i class="fa-solid fa-backward"></i>
             </button>
             <button v-else class="btn btn-success" @click="complete_case(cases_info.case)" title="Complete the case" style="margin-right:10px">

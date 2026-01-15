@@ -213,7 +213,7 @@
                         </div>
                         <hr class="fading-line-2 mt-2 mb-2">
                         <div class="progress mt-1" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                            <div v-if="open_closed.closed > 0"  class="progress-bar" :style="{'width': get_completion_pourcentage() +'%'}">
+                            <div v-if="open_closed.closed > 0"  class="progress-bar" :style="{'width': get_completion_pourcentage() +'%', 'background-color': get_completion_color()}">
                                 [[get_completion_pourcentage()]]%
                             </div>
                             <div v-else class="progress-bar" style="width: 0%"></div>
@@ -1224,7 +1224,22 @@
                 }
 
                 function get_completion_pourcentage(){
-                    return (open_closed.value.closed / (open_closed.value.open + open_closed.value.closed) )*100
+                    return Math.round((open_closed.value.closed / (open_closed.value.open + open_closed.value.closed) )*100)
+                }
+
+                function get_completion_color(){
+                    const percentage = get_completion_pourcentage()
+                    if (percentage >= 100) {
+                        return '#28a745' // Fully green
+                    } else if (percentage >= 75) {
+                        return '#82c91e' // Closer to green
+                    } else if (percentage >= 25) {
+                        return '#ffc107' // Amber
+                    } else if (percentage >= 1) {
+                        return '#ff9800' // Amber closer to red
+                    } else {
+                        return '#e0e0e0' // Gray for 0%
+                    }
                 }
 
                 onMounted( async () => {
@@ -1388,6 +1403,7 @@
                     fetch_nb_misp_objects,
 
                     get_completion_pourcentage,
+                    get_completion_color,
                     is_open_cases
                 }
             }
