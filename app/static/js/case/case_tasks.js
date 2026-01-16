@@ -450,17 +450,17 @@ export default {
 				</li>
 				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-notes-'+task.id" @click="select_tab_task('notes')">
-						<i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes</span>
+					<i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes<template v-if="task.notes.length"> ([[ task.notes.length ]])</template></span>
 					</button>
 				</li>
 				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-connectors-'+task.id" @click="select_tab_task('connectors')">
-						<i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title">Connectors</span>
+					<i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title">Connectors<template v-if="task_connectors_list && task_connectors_list.length"> ([[ task_connectors_list.length ]])</template></span>
 					</button>
 				</li>
 				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-files-'+task.id" @click="select_tab_task('files')">
-						<i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title">Files</span>
+					<i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title">Files<template v-if="task.files.length"> ([[ task.files.length ]])</template></span>
 					</button>
 				</li>
 				<li class="nav-item">

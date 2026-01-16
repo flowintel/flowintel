@@ -46,6 +46,9 @@ export default {
 
 		async function delete_file(file, task) {
 			// Delete a file in the task
+			if (!confirm('Are you sure you want to delete "' + file.name + '"?')) {
+				return
+			}
 			const res = await fetch('/case/task/' + task.id + '/delete_file/' + file.id)
 			if (await res.status == 200) {
 				task.last_modif = Date.now()
@@ -72,16 +75,36 @@ export default {
         </div>
         <br/>
         <template v-if="task.files.length">
-            <template v-for="file in task.files">
-                <div>
-                    <a class="btn btn-link" :href="'/case/task/'+task.id+'/download_file/'+file.id">
-                        [[ file.name ]]
-                    </a>
-					<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                    	<button class="btn btn-danger" @click="delete_file(file, task)"><i class="fa-solid fa-trash"></i></button>
-					</template>
-                </div>
-            </template>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>Upload Date</th>
+                            <th>Size</th>
+                            <th>Type</th>
+                            <th v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="file in task.files" :key="file.id">
+                            <td>
+                                <a :href="'/case/task/'+task.id+'/download_file/'+file.id">
+                                    <i class="fa-solid fa-download me-1"></i>[[ file.name ]]
+                                </a>
+                            </td>
+                            <td>[[ file.upload_date ]]</td>
+                            <td><template v-if="file.file_size !== 'Unknown'">[[ (file.file_size / 1024).toFixed(2) ]] KB</template><template v-else>Unknown</template></td>
+                            <td>[[ file.file_type ]]</td>
+                            <td v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                                <button class="btn btn-danger btn-sm" @click="delete_file(file, task)" title="Delete file">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </template>
     </fieldset>
     `
