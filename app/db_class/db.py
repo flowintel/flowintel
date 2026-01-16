@@ -370,13 +370,18 @@ class File(db.Model):
     name = db.Column(db.String(64), index=True, unique=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     uuid = db.Column(db.String(36), index=True)
-
+    upload_date = db.Column(db.DateTime, nullable=True)
+    file_size = db.Column(db.Integer, nullable=True)
+    file_type = db.Column(db.String(100), nullable=True)
     def to_json(self):
         return {
             "id": self.id, 
             "name": self.name,
             "task_id": self.task_id,
-            "uuid": self.uuid
+            "uuid": self.uuid,
+            "upload_date": self.upload_date.strftime('%Y-%m-%d %H:%M:%S') if self.upload_date else "Unknown",
+            "file_size": self.file_size if self.file_size is not None else "Unknown",
+            "file_type": self.file_type if self.file_type else "Unknown"
         }
 
 class Status(db.Model):
