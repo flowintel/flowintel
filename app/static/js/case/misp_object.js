@@ -19,6 +19,10 @@ export default {
         const activeTemplateAttr = ref({requiredOneOf: [],})
         const selectedQuickTemplate = ref('');
         const list_attr = ref([])
+        const editingAttrId = ref(null)
+        const editState = ref({})
+        const addingAttrToObject = ref(null)
+        const newAttrState = ref({})
 
         const defaultObjectTemplates = {
             'domain/ip': '43b3b146-77eb-4931-b4cc-b66c60f28734',
@@ -120,82 +124,237 @@ export default {
             
         }
 
-        async function edit_attr(misp_object_id, attr_id){
-            let value = $("#attribute_value_"+attr_id).val()
-            let type = $("#select-type-attr-"+attr_id).val()
-            let first_seen = $("#attribute_"+attr_id+"_first_seen").val()
-            let last_seen = $("#attribute_"+attr_id+"_last_seen").val()
-            let ids = $("#attribute_"+attr_id+"_ids").is(":checked")
-            let disable_correlation = $("#attribute_"+attr_id+"_disable_correlation").is(":checked")
-            let comment = $("#attribute_"+attr_id+"_comment").val()            
+        async function delete_attribute(attribute_id, misp_object_id) {
+            // Find the MISP object and attribute
+            let misp_object = null
+            let attribute_to_delete = null
+            let loc = null
 
-            if(value){
-                let url = "/case/"+props.case_id+"/misp_object/"+misp_object_id+"/edit_attr/"+attr_id
-                const res = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        "value": value,
-                        "type": type.split("::")[1],
-                        "object_relation": type.split("::")[0],
-                        "first_seen": first_seen,
-                        "last_seen": last_seen,
-                        "comment": comment,
-                        "ids_flag": ids,
-                        "disable_correlation": disable_correlation
-                    })
-                });
-                if(await res.status==200){
-                    for(let i in case_misp_objects.value){
-                        if(misp_object_id == case_misp_objects.value[i].object_id){
-                            for(let j in case_misp_objects.value[i].attributes){
-                                if(attr_id == case_misp_objects.value[i].attributes[j].id){
-                                    case_misp_objects.value[i].attributes[j].value = value
-                                    case_misp_objects.value[i].attributes[j].type = type.split("::")[1]
-                                    case_misp_objects.value[i].attributes[j].object_relation = type.split("::")[0]
-                                    case_misp_objects.value[i].attributes[j].first_seen = first_seen.replace("T", " ");
-                                    case_misp_objects.value[i].attributes[j].last_seen = last_seen.replace("T", " ");
-                                    case_misp_objects.value[i].attributes[j].ids_flag = ids
-                                    case_misp_objects.value[i].attributes[j].disable_correlation = disable_correlation
-                                    case_misp_objects.value[i].attributes[j].comment = comment
-                                    if(disable_correlation){
-                                        case_misp_objects.value[i].attributes[j].correlation_list = []
-                                    }else{
-                                        const res_correlation = await fetch("/case/"+props.case_id+"/get_correlation_attr/"+case_misp_objects.value[i].attributes[j].id)
-                                        let loc_cor = await res_correlation.json()
-                                        case_misp_objects.value[i].attributes[j].correlation_list = loc_cor["correlation_list"]
-                                    }
+            for(let i in case_misp_objects.value){
+                if(misp_object_id == case_misp_objects.value[i].object_id){
+                    misp_object = case_misp_objects.value[i]
+                    for(let j in case_misp_objects.value[i].attributes){
+                        if(attribute_id == case_misp_objects.value[i].attributes[j].id){
+                            attribute_to_delete = case_misp_objects.value[i].attributes[j]
+                            loc = [i,j]
+                            break
+                        }
+                    }
+                    break
+                }
+            }
+
+            if (!misp_object || !attribute_to_delete) {
+                display_toast({status: 400, json: async () => ({message: "Attribute not found", toast_class: "danger-subtle"})})
+                return
+            }
+
+            const template = misp_objects.value.find((t) => t.uuid === misp_object.object_uuid)
+            
+            if (template && template.requiredOneOf && template.requiredOneOf.length > 0) {
+                const attr_relation = attribute_to_delete.object_relation
+                
+                if (template.requiredOneOf.includes(attr_relation)) {
+                    // Count how many attributes matching ANY of the requiredOneOf types will remain after deletion
+                    const remainingRequiredAttrs = misp_object.attributes.filter(attr => 
+                        attr.id !== attribute_id && template.requiredOneOf.includes(attr.object_relation)
+                    ).length
+                    
+                    // If no required attributes will remain, prevent deletion
+                    if (remainingRequiredAttrs === 0) {
+                        display_toast({
+                            status: 400, 
+                            json: async () => ({
+                                message: `Cannot delete attribute: At least one attribute of type [${template.requiredOneOf.join(', ')}] is required for this object`, 
+                                toast_class: "danger-subtle"
+                            })
+                        })
+                        return
+                    }
+                }
+            }
+
+            const res = await fetch("/case/"+props.case_id+"/misp_object/"+misp_object_id+"/delete_attribute/"+attribute_id)
+            if(await res.status==200 ){
+                case_misp_objects.value[loc[0]].attributes.splice(loc[1], 1)
+            }
+            display_toast(res)
+        }
+
+        function enterEditMode(attribute, template_uuid) {
+            editingAttrId.value = attribute.id
+            editState.value = {
+                value: attribute.value,
+                type: attribute.type,
+                object_relation: attribute.object_relation,
+                relation_type_combo: attribute.object_relation + '::' + attribute.type,
+                first_seen: attribute.first_seen ? attribute.first_seen.replace(' ', 'T') : '',
+                last_seen: attribute.last_seen ? attribute.last_seen.replace(' ', 'T') : '',
+                ids_flag: attribute.ids_flag,
+                disable_correlation: attribute.disable_correlation,
+                comment: attribute.comment || ''
+            }
+            activeTemplateAttr.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid)
+        }
+
+        function cancelEdit() {
+            editingAttrId.value = null
+            editState.value = {}
+        }
+
+        function startAddingAttribute(object_id, template_uuid) {
+            addingAttrToObject.value = object_id
+            activeTemplateAttr.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid)
+            newAttrState.value = {
+                value: '',
+                relation_type_combo: activeTemplateAttr.value.attributes[0] ? 
+                    activeTemplateAttr.value.attributes[0].name + '::' + activeTemplateAttr.value.attributes[0].misp_attribute : '',
+                first_seen: '',
+                last_seen: '',
+                ids_flag: false,
+                disable_correlation: false,
+                comment: ''
+            }
+        }
+
+        function cancelAddAttribute() {
+            addingAttrToObject.value = null
+            newAttrState.value = {}
+        }
+
+        async function saveNewAttribute(misp_object_id) {
+            if(!newAttrState.value.value) {
+                create_message("Need to add a value", "warning-subtle")
+                return
+            }
+
+            // Parse relation_type_combo to get object_relation and type
+            const parts = newAttrState.value.relation_type_combo.split('::')
+            const object_relation = parts[0]
+            const type = parts[1]
+
+            let url = "/case/"+props.case_id+"/add_attributes/"+misp_object_id
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "object-template": activeTemplateAttr.value,
+                    "attributes": [{
+                        "value": newAttrState.value.value,
+                        "type": type,
+                        "object_relation": object_relation,
+                        "first_seen": newAttrState.value.first_seen,
+                        "last_seen": newAttrState.value.last_seen,
+                        "comment": newAttrState.value.comment,
+                        "ids_flag": newAttrState.value.ids_flag,
+                        "disable_correlation": newAttrState.value.disable_correlation
+                    }]
+                })
+            });
+            
+            if(await res.status==200){
+                await fetch_case_misp_object()
+                cancelAddAttribute()
+                emit("modif_misp_objects", true)
+            }
+            display_toast(res)
+        }
+
+        async function saveInlineEdit(misp_object_id, attr_id) {
+            if(!editState.value.value) {
+                create_message("Need to add a value", "warning-subtle")
+                return
+            }
+
+            const parts = editState.value.relation_type_combo.split('::')
+            const object_relation = parts[0]
+            const type = parts[1]
+
+            let misp_object = null
+            let original_attribute = null
+            for(let i in case_misp_objects.value){
+                if(misp_object_id == case_misp_objects.value[i].object_id){
+                    misp_object = case_misp_objects.value[i]
+                    for(let j in case_misp_objects.value[i].attributes){
+                        if(attr_id == case_misp_objects.value[i].attributes[j].id){
+                            original_attribute = case_misp_objects.value[i].attributes[j]
+                            break
+                        }
+                    }
+                    break
+                }
+            }
+
+            if(misp_object && original_attribute && original_attribute.object_relation !== object_relation) {
+                const template = misp_objects.value.find((t) => t.uuid === misp_object.object_uuid)
+                
+                if (template && template.requiredOneOf && template.requiredOneOf.length > 0) {
+                    if (template.requiredOneOf.includes(original_attribute.object_relation)) {
+                        const remainingRequiredAttrs = misp_object.attributes.filter(attr => 
+                            attr.id !== attr_id && template.requiredOneOf.includes(attr.object_relation)
+                        ).length
+                        
+                        const newIsRequired = template.requiredOneOf.includes(object_relation)
+                        
+                        if (remainingRequiredAttrs === 0 && !newIsRequired) {
+                            display_toast({
+                                status: 400,
+                                json: async () => ({
+                                    message: `Cannot change type: At least one attribute of type [${template.requiredOneOf.join(', ')}] is required for this object`,
+                                    toast_class: "danger-subtle"
+                                })
+                            })
+                            return
+                        }
+                    }
+                }
+            }
+
+            let url = "/case/"+props.case_id+"/misp_object/"+misp_object_id+"/edit_attr/"+attr_id
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "value": editState.value.value,
+                    "type": type,
+                    "object_relation": object_relation,
+                    "first_seen": editState.value.first_seen,
+                    "last_seen": editState.value.last_seen,
+                    "comment": editState.value.comment,
+                    "ids_flag": editState.value.ids_flag,
+                    "disable_correlation": editState.value.disable_correlation
+                })
+            });
+            
+            if(await res.status==200){
+                for(let i in case_misp_objects.value){
+                    if(misp_object_id == case_misp_objects.value[i].object_id){
+                        for(let j in case_misp_objects.value[i].attributes){
+                            if(attr_id == case_misp_objects.value[i].attributes[j].id){
+                                case_misp_objects.value[i].attributes[j].value = editState.value.value
+                                case_misp_objects.value[i].attributes[j].type = type
+                                case_misp_objects.value[i].attributes[j].object_relation = object_relation
+                                case_misp_objects.value[i].attributes[j].first_seen = editState.value.first_seen ? editState.value.first_seen.replace("T", " ") : null
+                                case_misp_objects.value[i].attributes[j].last_seen = editState.value.last_seen ? editState.value.last_seen.replace("T", " ") : null
+                                case_misp_objects.value[i].attributes[j].ids_flag = editState.value.ids_flag
+                                case_misp_objects.value[i].attributes[j].disable_correlation = editState.value.disable_correlation
+                                case_misp_objects.value[i].attributes[j].comment = editState.value.comment
+                                if(editState.value.disable_correlation){
+                                    case_misp_objects.value[i].attributes[j].correlation_list = []
+                                }else{
+                                    const res_correlation = await fetch("/case/"+props.case_id+"/get_correlation_attr/"+case_misp_objects.value[i].attributes[j].id)
+                                    let loc_cor = await res_correlation.json()
+                                    case_misp_objects.value[i].attributes[j].correlation_list = loc_cor["correlation_list"]
                                 }
                             }
                         }
                     }
-                    var myModal = new bootstrap.Modal(document.getElementById("modal-edit-attr-"+attr_id), {});
-                    myModal.hide();
                 }
-                display_toast(res)
-            }else{
-                create_message("Need to add a value", "warning-subtle")
-            }
-        }
-
-        async function delete_attribute(attribute_id, misp_object_id) {
-            const res = await fetch("/case/"+props.case_id+"/misp_object/"+misp_object_id+"/delete_attribute/"+attribute_id)
-            if(await res.status==200 ){
-                let loc
-
-                for(let i in case_misp_objects.value){
-                    if(misp_object_id == case_misp_objects.value[i].object_id){
-                        for(let j in case_misp_objects.value[i].attributes){
-                            if(attribute_id == case_misp_objects.value[i].attributes[j].id){
-                                loc = [i,j]
-                                break
-                            }
-                        }
-                    }
-                }
-                case_misp_objects.value[loc[0]].attributes.splice(loc[1], 1)
+                cancelEdit()
             }
             display_toast(res)
         }
@@ -236,8 +395,17 @@ export default {
             copyUuidToClipboard,
             delete_object,
             open_modal_add_attribute,
-            edit_attr,
-            delete_attribute
+            delete_attribute,
+            editingAttrId,
+            editState,
+            enterEditMode,
+            cancelEdit,
+            saveInlineEdit,
+            addingAttrToObject,
+            newAttrState,
+            startAddingAttribute,
+            cancelAddAttribute,
+            saveNewAttribute
 		}
     },
     css: `
@@ -281,7 +449,8 @@ export default {
                 </h2>
                 <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
                     <div class="accordion-body">
-                        <button type="button" class="btn btn-primary btn-sm" title="Add new attributes" @click="open_modal_add_attribute(misp_object.object_uuid, 'modal-add-attribute-', key_obj)" >
+                        <button type="button" class="btn btn-primary btn-sm" title="Add new attributes" 
+                            @click="startAddingAttribute(misp_object.object_id, misp_object.object_uuid)" >
                             <i class="fa-solid fa-plus"></i>
                         </button>
                         <button type="button" class="btn btn-danger btn-sm" @click="delete_object(misp_object.object_id)" title="Delete object">
@@ -304,146 +473,98 @@ export default {
                                 </thead>
                                 <tbody>
                                     <tr v-for="attribute, key_attr in misp_object.attributes ">
-                                        <td>[[attribute.value]]</td>
-                                        <td>[[attribute.object_relation]]</td>
-                                        <td>[[attribute.type]]</td>
-
-                                        <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
-                                        <td v-else><i>none</i></td>
-
-                                        <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
-                                        <td v-else><i>none</i></td>
-
-                                        <td>[[attribute.ids_flag]]</td>
-
-                                        <td>
-                                            <template v-for="cid, key in attribute.correlation_list">
-                                                <a :href="'/case/'+cid">[[cid]]</a>
-                                                <template v-if="key != attribute.correlation_list.length-1">
-                                                ,
+                                        <!-- Display mode -->
+                                        <template v-if="editingAttrId !== attribute.id">
+                                            <td>[[attribute.value]]</td>
+                                            <td>[[attribute.object_relation]]</td>
+                                            <td>[[attribute.type]]</td>
+                                            <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
+                                            <td v-else><i>none</i></td>
+                                            <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
+                                            <td v-else><i>none</i></td>
+                                            <td>[[attribute.ids_flag]]</td>
+                                            <td>
+                                                <template v-if="attribute.disable_correlation">
+                                                    <i class="fa-solid fa-link-slash text-muted" title="Correlation disabled"></i>
                                                 </template>
-                                            </template>
+                                                <template v-else>
+                                                    <template v-for="cid, key in attribute.correlation_list">
+                                                        <a :href="'/case/'+cid">[[cid]]</a>
+                                                        <template v-if="key != attribute.correlation_list.length-1">,</template>
+                                                    </template>
+                                                </template>
+                                            </td>
+                                            <td v-if="attribute.comment">[[attribute.comment]]</td>
+                                            <td v-else><i>none</i></td>
+                                            <td style="white-space: nowrap;">
+                                                <button type="button" class="btn btn-primary btn-sm" title="Edit attribute"
+                                                @click="enterEditMode(attribute, misp_object.object_uuid)">
+                                                    <i class="fa-solid fa-fw fa-pen-to-square"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-sm" title="Delete attribute"
+                                                @click="delete_attribute(attribute.id, misp_object.object_id)">
+                                                    <i class="fa-solid fa-fw fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </template>
+                                        
+                                        <!-- Edit mode -->
+                                        <template v-else>
+                                            <td><input v-model="editState.value" class="form-control form-control-sm" type="text" style="font-size: 0.875rem;"></td>
+                                            <td colspan="2">
+                                                <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                    <template v-for="attr in activeTemplateAttr.attributes">
+                                                        <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
+                                                    </template>
+                                                </select>
+                                            </td>
+                                            <td><input v-model="editState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;"></td>
+                                            <td><input v-model="editState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;"></td>
+                                            <td><input v-model="editState.ids_flag" type="checkbox"></td>
+                                            <td><input v-model="editState.disable_correlation" type="checkbox" title="Disable correlation"></td>
+                                            <td><textarea v-model="editState.comment" class="form-control form-control-sm" placeholder="Comment" rows="1" style="font-size: 0.875rem; resize: both; min-height: 2rem;"></textarea></td>
+                                            <td style="white-space: nowrap;">
+                                                <button type="button" class="btn btn-success btn-sm" title="Save changes"
+                                                @click="saveInlineEdit(misp_object.object_id, attribute.id)">
+                                                    <i class="fa-solid fa-fw fa-check"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
+                                                @click="cancelEdit()">
+                                                    <i class="fa-solid fa-fw fa-times"></i>
+                                                </button>
+                                            </td>
+                                        </template>
+                                    </tr>
+                                    
+                                    <!-- Add new attribute row -->
+                                    <tr v-if="addingAttrToObject === misp_object.object_id">
+                                        <td><input v-model="newAttrState.value" class="form-control form-control-sm" type="text" placeholder="Value" style="font-size: 0.875rem;"></td>
+                                        <td colspan="2">
+                                            <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                <template v-for="attr in activeTemplateAttr.attributes">
+                                                    <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
+                                                </template>
+                                            </select>
                                         </td>
-
-                                        <td v-if="attribute.comment">[[attribute.comment]]</td>
-                                        <td v-else><i>none</i></td>
-                                        <td>
-                                            <button type="button" class="btn btn-primary btn-sm" title="Edit attribute"
-                                            @click="open_modal_add_attribute(misp_object.object_uuid, 'modal-edit-attr-', attribute.id)">
-                                                <i class="fa-solid fa-fw fa-pen-to-square"></i>
+                                        <td><input v-model="newAttrState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;"></td>
+                                        <td><input v-model="newAttrState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;"></td>
+                                        <td><input v-model="newAttrState.ids_flag" type="checkbox"></td>
+                                        <td><input v-model="newAttrState.disable_correlation" type="checkbox" title="Disable correlation"></td>
+                                        <td><textarea v-model="newAttrState.comment" class="form-control form-control-sm" placeholder="Comment" rows="1" style="font-size: 0.875rem; resize: both; min-height: 2rem;"></textarea></td>
+                                        <td style="white-space: nowrap;">
+                                            <button type="button" class="btn btn-success btn-sm" title="Add attribute"
+                                            @click="saveNewAttribute(misp_object.object_id)">
+                                                <i class="fa-solid fa-fw fa-check"></i>
                                             </button>
-                                            <button type="button" class="btn btn-danger btn-sm" title="Delete attribute"
-                                            @click="delete_attribute(attribute.id, misp_object.object_id)">
-                                                <i class="fa-solid fa-fw fa-trash"></i>
+                                            <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
+                                            @click="cancelAddAttribute()">
+                                                <i class="fa-solid fa-fw fa-times"></i>
                                             </button>
                                         </td>
-
-
-                                        <!-- Modal Edit attribute -->
-                                        <div class="modal fade" :id="'modal-edit-attr-'+attribute.id" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
-                                            <div class="modal-dialog modal-xl">
-                                                <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h1 class="modal-title fs-5" id="EditObjectLabel">Edit Attribute</h1>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <div class="form-floating input-group mb-3">
-                                                        <div class="row">
-                                                            <div class="form-floating col">
-                                                                <input :id="'attribute_value_'+attribute.id" class="form-control" :value="attribute.value">
-                                                                <label>value</label>
-                                                            </div>
-                                                            <div class="form-floating col">
-                                                                <select class="form-select" :id='"select-type-attr-"+attribute.id'>
-                                                                    <template v-for="attr in activeTemplateAttr.attributes">
-                                                                        <option :value="attr.name+'::'+attr.misp_attribute">
-                                                                            [[attr.name]]::[[attr.misp_attribute]]
-                                                                        </option>
-                                                                    </template>
-                                                                </select>
-                                                                <label>type</label>
-                                                            </div>
-                                                            <div class="form-floating col">
-                                                                <input :id="'attribute_'+attribute.id+'_first_seen'" 
-                                                                        :value="attribute.first_seen" 
-                                                                        class="form-control"
-                                                                        type="datetime-local">
-                                                                <label>first_seen</label>
-                                                            </div>
-                                                            <div class="form-floating col">
-                                                                <input :id="'attribute_'+attribute.id+'_last_seen'" 
-                                                                        :value="attribute.last_seen" 
-                                                                        class="form-control"
-                                                                        type="datetime-local">
-                                                                <label>last_seen</label>
-                                                            </div>
-                                                        </div>
-                                                        <div class="row mt-3">
-                                                            <div class="col">
-                                                                <input :id="'attribute_'+attribute.id+'_ids'" 
-                                                                        :checked="attribute.ids_flag"
-                                                                        type="checkbox">
-                                                                <label>IDS</label>
-                                                            </div>
-                                                            <div class="col">
-                                                                <input :id="'attribute_'+attribute.id+'_disable_correlation'" 
-                                                                        :checked="attribute.disable_correlation"
-                                                                        type="checkbox">
-                                                                <label>Disable Corrleation</label>
-                                                            </div>
-                                                        </div>
-                                                        <div class="row mt-3">
-                                                            <div class="form-floating col">
-                                                                <textarea :id="'attribute_'+attribute.id+'_comment'" 
-                                                                            :value="attribute.comment" 
-                                                                            class="form-control" row="4" cols="70">
-                                                                </textarea>
-                                                                <label>Comment</label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                    <button type="button" class="btn btn-primary" 
-                                                        @click="edit_attr(misp_object.object_id, attribute.id)">
-                                                        Save changes
-                                                    </button>
-                                                </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal add attributes -->
-            <div class="modal fade" :id="'modal-add-attribute-'+key_obj" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
-                <div class="modal-dialog modal-xl">
-                    <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="EditObjectLabel">Add Attributes</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <AddObjectAttributes v-if="activeTemplateAttr.uuid"
-                            :template="activeTemplateAttr"
-                            :only_attr="true"
-                            :key_obj="key_obj"
-                            @object-attribute-added="(object) => add_attribute_list(object)"
-                            @object-attribute-deleted="delete_attribute_list"/>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" @click="save_changes(misp_object.object_id, key_obj)">Save changes</button>
-                    </div>
                     </div>
                 </div>
             </div>
