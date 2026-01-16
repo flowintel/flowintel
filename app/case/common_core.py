@@ -18,6 +18,32 @@ TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
 HISTORY_DIR = os.environ.get("HISTORY_DIR", "history")
 
 
+def _format_logs_as_markdown(case, log_entries, title="History"):
+    """Format log entries as markdown table with case metadata.
+    """
+    loc_list = ["**Case ID:** " + str(case.id)]
+    loc_list.append("**Case Title:** " + case.title)
+    loc_list.append("**Case Description:** \n" + case.description)
+    loc_list.append("**Generated on:** " + str(datetime.datetime.now(tz=datetime.timezone.utc)) + "\n\n")
+    loc_list.append("---")
+    loc_list.append(f"# {title}")
+    loc_list.append("| Timestamp | User | Action |")
+    loc_list.append("|-------|-------|-------|")
+    
+    for line in log_entries:
+        if line.strip() == "":
+            continue
+        # Try to match the standard log format: [timestamp](user): action or [timestamp](user) action
+        parts = re.match(r"\[(.*?)\]\((.*?)\):?\s*(.*)", line)
+        if parts:
+            groups = parts.groups()
+            if len(groups) == 3:
+                date_str, user_str, action_str = groups
+                loc_list.append(f"| {date_str.strip()} | {user_str.strip()} | {action_str.strip()} |")
+    
+    return "\n".join(loc_list) + "\n"
+
+
 def get_present_in_case(case_id: int, current_user: User) -> bool:
     """Return if current user is present in a case"""
     orgs_in_case = get_orgs_in_case(case_id)
@@ -440,7 +466,6 @@ def get_audit_logs(case_id):
                         if timestamp_match:
                             timestamp = timestamp_match.group(1)
                             
-                            # Extract user email
                             user_match = re.search(r'User:\s*([^\s]+)', line)
                             user = user_match.group(1) if user_match else "Unknown"
                             
@@ -458,12 +483,45 @@ def get_audit_logs(case_id):
                             formatted_entry = f"[{formatted_timestamp}]({user}): {message}"
                             audit_logs.append(formatted_entry)
                     except Exception as parse_error:
-                        # If parsing fails, skip this line
                         continue
         
         return audit_logs
     except Exception as e:
         return []
+
+
+def download_audit_logs(case):
+    """Download audit logs as text file"""
+    from flask import current_app
+    
+    try:
+        audit_logs = get_audit_logs(case.id)
+        if not audit_logs:
+            return {"message": "No audit logs found", "toast_class": "warning-subtle"}, 404
+        
+        log_content = "\n".join(audit_logs)        
+        temp_file_path = os.path.join(TEMP_FOLDER, f"{case.uuid}_audit_logs.txt")
+        create_specific_dir(TEMP_FOLDER)
+        
+        with open(temp_file_path, 'w') as f:
+            f.write(log_content)
+        
+        return send_file(temp_file_path, as_attachment=True, download_name=f"{case.title}_audit_logs.txt")
+    except Exception as e:
+        return {"message": "Error generating audit logs file", "toast_class": "danger-subtle"}, 500
+
+
+def download_audit_logs_md(case):
+    """Download audit logs as markdown file"""
+    try:
+        audit_logs = get_audit_logs(case.id)
+        if not audit_logs:
+            return {"message": "No audit logs found", "toast_class": "warning-subtle"}, 404
+        
+        loc_rep = _format_logs_as_markdown(case, audit_logs, title="Audit Logs")
+        return loc_rep, 200, {'Content-Disposition': f'attachment; filename={case.title}_audit_logs.md'}
+    except Exception as e:
+        return {"message": "Error generating audit logs markdown", "toast_class": "danger-subtle"}, 500
 
     
 def save_history(case_uuid, current_user, message):

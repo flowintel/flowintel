@@ -423,6 +423,21 @@ export default {
     </template>
     <template v-else-if="main_tab == 'history-audit'">
         <template v-if="audit_history && Object.keys(audit_history).length > 0">
+            <div class="btn-group">
+                <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <small><i class="fa-solid fa-download fa-fw"></i></small> Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li class="mb-1 text-center">
+                        <a :href="'/case/'+case_id+'/download_audit_logs'">Text</a>
+                    </li>
+                    <li class="text-center">
+                        <a :href="'/case/'+case_id+'/download_audit_logs_md'">Markdown</a>
+                    </li>
+                </ul>
+            </div>
+            <p class="text-muted mt-2" style="font-size: 0.85em;"><i class="fa-solid fa-info-circle"></i> Audit entries are extracted from the audit log file</p>
+            
             <div class="timeline timeline-custom-style">
                 <template v-for="h, key in audit_history">
                     <template v-for="month, key_month in h">

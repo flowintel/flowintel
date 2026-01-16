@@ -832,6 +832,30 @@ def download_history_md(cid):
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
+
+@case_blueprint.route("/<cid>/download_audit_logs", methods=['GET'])
+@login_required
+def download_audit_logs(cid):
+    """Download the audit logs as text file"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            return CommonModel.download_audit_logs(case)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/download_audit_logs_md", methods=['GET'])
+@login_required
+def download_audit_logs_md(cid):
+    """Download the audit logs as markdown file"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            return CommonModel.download_audit_logs_md(case)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
 @case_blueprint.route("/<cid>/add_new_link", methods=['GET', 'POST'])
 @login_required
 @editor_required
