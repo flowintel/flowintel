@@ -563,6 +563,23 @@ def history(cid):
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/audit_logs/<cid>", methods=['GET'])
+@login_required
+def audit_logs(cid):
+    """Get the audit logs for a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Get audit logs: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
+        audit_logs = CommonModel.get_audit_logs(cid)
+        if audit_logs:
+            return {"audit_logs": audit_logs}
+        return {"audit_logs": []}
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
 @case_blueprint.route("/get_taxonomies", methods=['GET'])
 @login_required
 def get_taxonomies():
@@ -870,6 +887,30 @@ def download_history_md(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             flowintel_log("audit", 200, "Download case markdown", User=current_user.email, CaseId=cid)
             return CaseModel.download_history_md(case)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/download_audit_logs", methods=['GET'])
+@login_required
+def download_audit_logs(cid):
+    """Download the audit logs as text file"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            return CommonModel.download_audit_logs(case)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/download_audit_logs_md", methods=['GET'])
+@login_required
+def download_audit_logs_md(cid):
+    """Download the audit logs as markdown file"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            return CommonModel.download_audit_logs_md(case)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 

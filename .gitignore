@@ -49,5 +49,7 @@ conf/config_modules.py
 conf/config_module.py
 /data
 
+# Ignore temp files
+/temp
 # Flask history
 .flask_history/*
