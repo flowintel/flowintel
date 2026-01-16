@@ -8,7 +8,7 @@ from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from ..decorators import editor_required
-from ..utils.utils import form_to_dict
+from ..utils.utils import form_to_dict, validate_file_size
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
 
@@ -348,6 +348,14 @@ def add_files(cid, tid):
         if task:
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if len(request.files) > 0:
+                    # Validate file sizes before processing
+                    for file_key in request.files:
+                        file = request.files[file_key]
+                        is_valid, error_msg, file_size = validate_file_size(file)
+                        if not is_valid:
+                            flowintel_log("audit", 400, f"File upload rejected: {error_msg}", User=current_user.email, CaseId=cid, TaskId=tid, FileName=file.filename, FileSize=f"{file_size}MB")
+                            return {"message": error_msg, "toast_class": "danger-subtle"}, 400
+                    
                     if TaskModel.add_file_core(task=task, files_list=request.files, current_user=current_user):
                         flowintel_log("audit", 200, "Files added to task", User=current_user.email, CaseId=cid, TaskId=tid, FilesCount=len(request.files))
                         return {"message":"Files added", "toast_class": "success-subtle"}, 200
