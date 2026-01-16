@@ -12,6 +12,8 @@ class Config:
     LOG_FILE = os.getenv('LOG_FILE', 'record.log')
     APP_NAME = "Flowintel"
     
+    FILE_UPLOAD_MAX_SIZE = int(os.getenv('FILE_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))  # Default 5MB
+
     # Initial users configuration
     INIT_ADMIN_USER = {
         "first_name": "admin",
