@@ -87,7 +87,7 @@ class EditIconForm(FlaskForm):
     submit = SubmitField('Modify')
 
     def validate_name(self, field):
-        if Connector_Icon.query.filter_by(name=field.data).first() and not Connector_Icon.query.get(self.icon_id.data).name == field.data:
+        if Connector_Icon.query.filter_by(name=field.data).first() and Connector_Icon.query.get(self.icon_id.data).name != field.data:
             raise ValidationError("Name Already Exist")
         
     def validate_icon_upload(self, field):

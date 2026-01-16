@@ -11,6 +11,9 @@ engine = create_engine("sqlite:///instance/flowintel.sqlite")
 
 session = Session(engine)
 
+REMINDER_ICON = "fa-solid fa-clock"
+
+
 def create_notification(case, message, html_icon):
     stmt = select(Recurring_Notification).where(Recurring_Notification.case_id == case.id)
     recur_notif = session.scalars(stmt).all()
@@ -33,29 +36,25 @@ def job():
     cp = 0
     stmt = select(Case)
     for case in session.scalars(stmt):
-        if not case.completed:
-            if case.recurring_type:
-                if case.recurring_type == "once":
-                    if case.recurring_date.date() == today.date():
-                        create_notification(case, f"Unique reminder for '{case.id}-{case.title}'", "fa-solid fa-clock")
-                        case.recurring_type = None
-                        case.recurring_date = None
-                        cp += 1
-                elif case.recurring_type == "daily":
-                    create_notification(case, f"Daily reminder for '{case.id}-{case.title}'", "fa-solid fa-clock")
-                    case.recurring_date = datetime.today() + timedelta(days=1)
-                    cp += 1
-                elif case.recurring_type == "weekly":
-                    if case.recurring_date.date() == today.date():
-                        create_notification(case, f"Weekly reminder for '{case.id}-{case.title}'", "fa-solid fa-clock")
-                        case.recurring_date = case.recurring_date + datetime.timedelta(days=(case.recurring_date.weekday() - case.recurring_date.weekday() + 7))
-                        cp += 1
-                elif case.recurring_type == "monthly":
-                    if case.recurring_date.date() == today.date():
-                        create_notification(case, f"Monthly reminder for '{case.id}-{case.title}'", "fa-solid fa-clock")
-                        case.recurring_date = case.recurring_date + relativedelta.relativedelta(months=1)
-                        cp += 1
-                session.commit()
+        if not case.completed and case.recurring_type:
+            if case.recurring_type == "once" and case.recurring_date.date() == today.date():
+                create_notification(case, f"Unique reminder for '{case.id}-{case.title}'", REMINDER_ICON)
+                case.recurring_type = None
+                case.recurring_date = None
+                cp += 1
+            elif case.recurring_type == "daily":
+                create_notification(case, f"Daily reminder for '{case.id}-{case.title}'", REMINDER_ICON)
+                case.recurring_date = datetime.today() + timedelta(days=1)
+                cp += 1
+            elif case.recurring_type == "weekly" and case.recurring_date.date() == today.date():
+                create_notification(case, f"Weekly reminder for '{case.id}-{case.title}'", REMINDER_ICON)
+                case.recurring_date = case.recurring_date + timedelta(days=7)
+                cp += 1
+            elif case.recurring_type == "monthly" and case.recurring_date.date() == today.date():
+                create_notification(case, f"Monthly reminder for '{case.id}-{case.title}'", REMINDER_ICON)
+                case.recurring_date = case.recurring_date + relativedelta.relativedelta(months=1)
+                cp += 1
+            session.commit()
     print(f"[+] Finished. {cp} new notifications")
 
 # job()

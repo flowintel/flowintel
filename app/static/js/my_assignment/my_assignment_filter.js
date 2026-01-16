@@ -4,12 +4,12 @@ export default {
 		tasks_list: Object
 	},
 	emits: ['tasks_list', 'current_filter'],
-	setup(props, {emit}) {
+	setup(props, { emit }) {
 		let show_ongoing = true
 		let current_filter = ""
 		let asc_desc = true
 
-		async function filter_ongoing(ongoing){
+		async function filter_ongoing(ongoing) {
 			show_ongoing = ongoing
 
 			const res = await fetch(`/my_assignment/sort_tasks?status=${show_ongoing}&page=1`)
@@ -17,45 +17,45 @@ export default {
 			emit('tasks_list', loc)
 		}
 
-		function sort_by_title(){
+		function sort_by_title() {
 			current_filter = "title"
 			asc_desc_filter()
 		}
 
-		function sort_by_last_modif(){
+		function sort_by_last_modif() {
 			current_filter = "last_modif"
 			asc_desc_filter()
 		}
 
-		function sort_by_deadline(){
+		function sort_by_deadline() {
 			current_filter = "deadline"
 			asc_desc_filter()
 		}
 
-		function sort_by_status(){
+		function sort_by_status() {
 			current_filter = "status_id"
 			asc_desc_filter()
 		}
 
-		async function asc_desc_filter(change=false){
+		async function asc_desc_filter(change = false) {
 			emit("current_filter", current_filter)
-			if(change)
+			if (change)
 				asc_desc = !asc_desc
 
-			if (current_filter){
+			if (current_filter) {
 				let res = await fetch(`/my_assignment/sort_tasks?status=${show_ongoing}&page=1&filter=${current_filter}`)
 				let loc = await res.json()
-				if(!asc_desc){
-					for(let key in loc["tasks"]){
+				if (!asc_desc) {
+					for (let key in loc["tasks"]) {
 						loc["tasks"][key] = loc["tasks"][key].reverse()
 					}
 				}
 				emit('tasks_list', loc)
 			}
-			
+
 		}
 
-		
+
 		return {
 			filter_ongoing,
 			sort_by_last_modif,
@@ -75,30 +75,30 @@ export default {
 				<div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_ongoing(true)" checked>
-						<label class="form-check-label" for="radioStatusOngoing">Ongoing Tasks</label>
+						<label class="form-check-label" for="radioStatusOngoing"><i class="fa-solid fa-spinner fa-sm me-1"></i>Ongoing Tasks</label>
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_ongoing(false)">
-						<label class="form-check-label" for="radioStatusFinished">Finished Tasks</label>
+						<label class="form-check-label" for="radioStatusFinished"><i class="fa-solid fa-check-circle fa-sm me-1"></i>Finished Tasks</label>
 					</div>
 				</div>
 
 				<div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_title()">
-						<label class="form-check-label" for="radioOtherTitle">Title</label>
+						<label class="form-check-label" for="radioOtherTitle"><i class="fa-solid fa-heading fa-sm me-1"></i>Title</label>
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_last_modif()">
-						<label class="form-check-label" for="radioOrderAsc">Last modification</label>
+						<label class="form-check-label" for="radioOrderAsc"><i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i>Last modification</label>
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_deadline()">
-						<label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
+						<label class="form-check-label" for="radioOtherDeadLine"><i class="fa-solid fa-calendar-check fa-sm me-1"></i>Deadline</label>
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_status()">
-						<label class="form-check-label" for="radioOtherStatus">Status</label>
+						<label class="form-check-label" for="radioOtherStatus"><i class="fa-solid fa-signal fa-sm me-1"></i>Status</label>
 					</div>
 				</div>
 

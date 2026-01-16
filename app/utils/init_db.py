@@ -1,5 +1,6 @@
 import uuid
 import datetime
+from flask import current_app
 from ..db_class.db import Case, Case_Org, Connector, Connector_Icon, Icon_File, Task, db
 from ..db_class.db import User, Role, Org, Status
 from .utils import generate_api_key
@@ -262,13 +263,24 @@ def create_admin():
     create_misp_ail_connector()
 
     # Admin user
-    admin_user = User.query.filter_by(email="admin@admin.admin").first()
+    admin_config = current_app.config.get('INIT_ADMIN_USER')
+    if not admin_config:
+        raise ValueError("INIT_ADMIN_USER configuration is required but not found in config")
+    
+    # Validate required fields
+    required_admin_fields = ['first_name', 'last_name', 'email', 'password']
+    for field in required_admin_fields:
+        if field not in admin_config or not admin_config[field]:
+            raise ValueError(f"INIT_ADMIN_USER.{field} is required but not specified in config")
+    
+    admin_email = admin_config['email']
+    admin_user = User.query.filter_by(email=admin_email).first()
     if not admin_user:
         admin_user = User(
-            first_name="admin",
-            last_name="admin",
-            email="admin@admin.admin",
-            password="admin",
+            first_name=admin_config['first_name'],
+            last_name=admin_config['last_name'],
+            email=admin_email,
+            password=admin_config['password'],
             role_id=role.id,
             api_key = generate_api_key()
         )
@@ -281,12 +293,23 @@ def create_admin():
         db.session.commit()
 
     # Matrix bot user
-    user = User.query.filter_by(email="neo@admin.admin").first()
+    bot_config = current_app.config.get('INIT_BOT_USER')
+    if not bot_config:
+        raise ValueError("INIT_BOT_USER configuration is required but not found in config")
+    
+    # Validate required fields
+    required_bot_fields = ['first_name', 'last_name', 'email']
+    for field in required_bot_fields:
+        if field not in bot_config or not bot_config[field]:
+            raise ValueError(f"INIT_BOT_USER.{field} is required but not specified in config")
+    
+    bot_email = bot_config['email']
+    user = User.query.filter_by(email=bot_email).first()
     if not user:
         user = User(
-            first_name="Matrix",
-            last_name="Bot",
-            email="neo@admin.admin",
+            first_name=bot_config['first_name'],
+            last_name=bot_config['last_name'],
+            email=bot_email,
             password=generate_api_key(),
             role_id=role.id,
             api_key = generate_api_key()

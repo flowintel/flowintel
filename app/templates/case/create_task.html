@@ -8,12 +8,13 @@
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
 <script src="{{ url_for('static',filename='js/editor.js') }}"></script>
 
+<title>Create task - Case #{{ case_id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
 {%endblock%}
 
 {% block content %}
 <h2 class="case-core-style" style="border-radius: 0;">
-    Create task 
+    Create task for Case #{{ case_id }}
     <button class="btn btn-outline-primary mt-1 mx-3" @click="hide_task_creation()" style="float: right" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
         Create from template
     </button> 
@@ -21,12 +22,12 @@
 
 <hr class="fading-line-2 mb-4 mt-4">
 
-<form action="" method="post" class="case-core-style">
+<form action="" method="post" class="case-core-style" id="task_form">
     {{ form.hidden_tag() }}
             
     <div class="collapse mb-4" id="collapseTemplate">
         <div class="mb-3 w-50">
-            <p>Select from Template:</p>
+            <i class="fa-solid fa-file-import"></i> <strong><label class="col-form-label">Select from Template:</label></strong>
             <select data-placeholder="Templates" class="select2-select-template form-control" name="template_select" id="template_select">
                 {% for choice in form.template_select.choices %}
                     <option value="{{choice[0]}}">{{choice[1]}}</option>
@@ -41,15 +42,16 @@
     <div class="mb-3" id="create_task">
         <div class="row">
             <div class="mb-3 w-50">
-                {{form.title.label(class_="col-form-label")}}:
-                {{form.title(class_="form-control")}}
+                <i class="fa-solid fa-heading"></i> <strong>{{form.title.label(class_="col-form-label")}}:</strong> <span style="color: red;">*</span>
+                {{form.title(class_="form-control", placeholder="Task title or description", id="task_title")}}
+                <div id="title_error" style="color: red; display: none;">Title is required</div>
                 {% if form.title.errors %}
                     <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="mb-3 w-50">
-                {{form.time_required.label(class_="col-form-label")}}:
-                {{form.time_required(class_="form-control")}}
+                <i class="fa-solid fa-hourglass-half"></i> <strong>{{form.time_required.label(class_="col-form-label")}}:</strong>
+                {{form.time_required(class_="form-control", placeholder="How much time is required?")}}
                 {% if form.time_required.errors %}
                     <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
                 {%endif%}
@@ -57,22 +59,22 @@
         </div>
         <div class="row">
             <div class="mb-3 w-50">
-                {{form.deadline_date.label(class_="col-form-label")}}:
-                {{form.deadline_date(class_="form-control")}}
+                <i class="fa-solid fa-calendar"></i> <strong>{{form.deadline_date.label(class_="col-form-label")}}:</strong>
+                {{form.deadline_date(class_="form-control", placeholder="When should this be completed")}}
                 {% if form.deadline_date.errors %}
                     <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="mb-3 w-50">
-                {{form.deadline_time.label(class_="col-form-label")}}:
-                {{form.deadline_time(class_="form-control")}}
+                <i class="fa-solid fa-clock"></i> <strong>{{form.deadline_time.label(class_="col-form-label")}}:</strong>
+                {{form.deadline_time(class_="form-control", placeholder="Specific time for the deadline")}}
                 {% if form.deadline_time.errors %}
                     <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
                 {%endif%}
             </div>
         </div>
         <div class="row">
-            <span class="mb-2">Description:</span>
+            <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
             <div style="display: flex">
                 <div class="note-editor" id="editor"></div>
                 <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
@@ -307,6 +309,28 @@
             }
         }
     }).mount('#main-container')
+
+    // Client-side validation for create task
+    window.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('task_form').addEventListener('submit', function(e) {
+            const titleInput = document.getElementById('task_title');
+            const titleError = document.getElementById('title_error');
+            const titleValue = titleInput ? titleInput.value.trim() : '';
+            
+            // Check if template is selected
+            const templateSelect = document.getElementById('template_select');
+            const selectedTemplates = Array.from(templateSelect.selectedOptions).filter(opt => opt.value !== '0');
+            
+            // Require title OR template
+            if (!titleValue && selectedTemplates.length === 0) {
+                e.preventDefault();
+                titleError.style.display = 'block';
+                titleInput.focus();
+                return false;
+            }
+            titleError.style.display = 'none';
+        });
+    });
 
 </script>
 {% endblock %}

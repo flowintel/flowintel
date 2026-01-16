@@ -196,9 +196,9 @@ class GetNoteTask(Resource):
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
+            current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "note_id" in request.args:
-                    current_user = utils.get_user_from_api(request.headers)
                     if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
                         return {"message": "Note deleted"}, 200
                 return {"message": "Need to pass a note id"}, 400
@@ -401,7 +401,7 @@ class GetGalaxiesTask(Resource):
                     index = clusters.index(cluster)
                     clusters[index] = cluster.tag
             return {"clusters": clusters, "galaxies": galaxies}
-        return {"message": "task Not found"}, 404
+        return {"message": "Task Not found"}, 404
 
 
 ##############
@@ -540,7 +540,7 @@ class ListSubtask(Resource):
                 return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
             
             return {"subtasks": [subtask.to_json() for subtask in task.subtasks]}, 200
-        return {"message": "task Not found"}, 404
+        return {"message": "Task Not found"}, 404
     
 @task_ns.route('/<tid>/subtask/<sid>', methods=['GET'])
 @task_ns.doc(description='Get a subtask of a task')
@@ -555,7 +555,7 @@ class GetSubtask(Resource):
             subtask = TaskModel.get_subtask(sid)
             if subtask:
                 return subtask.to_json()
-        return {"message": "task Not found"}, 404
+        return {"message": "Task Not found"}, 404
     
 @task_ns.route('/<tid>/complete_subtask/<sid>', methods=['GET'])
 @task_ns.doc(description='Complete a subtask')
@@ -570,7 +570,7 @@ class CompleteSubtask(Resource):
                     return {"message": "Subtask completed"}, 200
                 return {"message": "Subtask not found"}, 404
             return {"message": "Permission denied"}, 403
-        return {"message": "task Not found"}, 404
+        return {"message": "Task Not found"}, 404
     
 @task_ns.route('/<tid>/delete_subtask/<sid>', methods=['GET'])
 @task_ns.doc(description='Delete a subtask')
@@ -585,7 +585,7 @@ class DeleteSubtask(Resource):
                     return {"message": "Subtask deleted"}, 200
                 return {"message": "Subtask not found"}, 404
             return {"message": "Permission denied"}, 403
-        return {"message": "task Not found"}, 404
+        return {"message": "Task Not found"}, 404
     
 
 ##############
@@ -643,7 +643,7 @@ class ListUrlsTools(Resource):
                 return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
             
             return {"urls_tools": [url_tool.to_json() for url_tool in task.urls_tools]}, 200
-        return {"message": "task Not found"}, 404
+        return {"message": "Task Not found"}, 404
     
 @task_ns.route('/<tid>/url_tool/<utid>', methods=['GET'])
 @task_ns.doc(description='Get a Url/Tool of a task')
@@ -658,7 +658,7 @@ class GetUrlTool(Resource):
             url_tool = TaskModel.get_url_tool(utid)
             if url_tool:
                 return url_tool.to_json()
-        return {"message": "task Not found"}, 404
+        return {"message": "Task Not found"}, 404
     
 @task_ns.route('/<tid>/delete_url_tool/<utid>', methods=['GET'])
 @task_ns.doc(description='Delete a Url/Tool')
@@ -673,5 +673,5 @@ class DeleteUrlTool(Resource):
                     return {"message": "Url/Tool deleted"}, 200
                 return {"message": "Url/Tool not found"}, 404
             return {"message": "Permission denied"}, 403
-        return {"message": "task Not found"}, 404
+        return {"message": "Task Not found"}, 404
     

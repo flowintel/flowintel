@@ -44,12 +44,7 @@
         </div>
 
         <div class="d-flex">
-            <h1 style="margin-top: -9px;">
-                <a type="button" class="btn btn-outline-dark" href="/templating/cases">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </a>
-            </h1>
-            <h1 style="font-size: xx-large; margin-left: 8px">[[case_template.id]] - [[case_template.title]]</h1>
+            <h4 class="mb-0"><span class="text-muted">[[case_template.id]]</span> - [[case_template.title]]</h4>
         </div>
 
         <div v-if="case_template.description">
@@ -114,20 +109,24 @@
         <ul class="nav nav-tabs" style="margin-bottom: 10px;">
             <li class="nav-item">
                 <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')" style="min-width: 100px;">
-                    <i class="fa-solid fa-house"></i>
+                    <i class="fa-solid fa-house fa-sm me-1"></i><span class="section-title">Main</span>
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="tab-note" @click="active_tab('note')">Notes</button>
+                <button class="nav-link" id="tab-note" @click="active_tab('note')">
+                    <i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes</span>
+                </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="tab-connectors" @click="active_tab('connectors')">
-                    Connectors
+                    <i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title">Connectors</span>
                     <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_template_connectors_list.length]]</span>
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="tab-info" @click="active_tab('info')">Info</button>
+                <button class="nav-link" id="tab-info" @click="active_tab('info')">
+                    <i class="fa-solid fa-circle-info fa-sm me-1"></i><span class="section-title">Info</span>
+                </button>
             </li>
         </ul>
 
@@ -180,7 +179,7 @@
                 <div class="row">
                     <div class="col-auto">
                         <fieldset class="analyzer-select-case" style="text-align: center;">
-                            <legend class="analyzer-select-case">Time required</legend>
+                            <legend class="analyzer-select-case"><i class="fa-solid fa-clock fa-sm me-1"></i><span class="section-title">Time required</span></legend>
                             <i>[[case_template.time_required]]</i>
                         </fieldset>
                     </div>
@@ -192,13 +191,13 @@
     <hr class="fading-line-2 mt-4 mb-5">
 
     <div class="case-core-style">
-        <div style="display: flex;">
-            <h3>Tasks</h3>
-            <span style="padding-left: 10px;">
-                <a href="/templating/case/{{case_id}}/add_task" class="btn btn-primary">
-                    <i class="fa-solid fa-plus"></i>
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-list-check me-2"></i>Tasks</h5>
+                <a href="/templating/case/{{case_id}}/add_task" class="btn btn-primary btn-sm ms-3" title="Add new task">
+                    <i class="fa-solid fa-plus fa-sm"></i>
                 </a>
-            </span>
+            </div>
         </div>
 
         <template v-if="tasks_list">

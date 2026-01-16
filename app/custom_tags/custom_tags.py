@@ -1,5 +1,4 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
-# from .form import CaseForm, CaseEditForm, AddOrgsCase, RecurringForm
 from flask_login import login_required, current_user
 from .form import AddCustomTagForm
 from ..db_class.db import Task_Template, Case_Template
@@ -31,9 +30,8 @@ def index():
 def add_custom_tag():
     """List all cases"""
     form = AddCustomTagForm()
-    if form.validate_on_submit():
-        if CustomCore.add_custom_tag_core(form_to_dict(form)):
-            return redirect("/custom_tags/")
+    if form.validate_on_submit() and CustomCore.add_custom_tag_core(form_to_dict(form)):
+        return redirect("/custom_tags/")
     return render_template("custom_tags/add_custom_tag.html", form=form)
 
 

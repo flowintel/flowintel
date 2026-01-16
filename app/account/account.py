@@ -106,6 +106,7 @@ def edit_user():
         if not form.change_password.data:
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
+        flowintel_log("audit", 200, "User edited", User=current_user.email, UserId=current_user.id)
         AccountModel.edit_user_core(form_dict, current_user.id)
         return redirect("/account")
     else:
@@ -118,12 +119,13 @@ def edit_user():
     return render_template("account/edit_user.html", form=form)
 
 
-@account_blueprint.route("/change_api_key", methods=['GET', 'POST'])
+@account_blueprint.route("/change_api_key", methods=['POST'])
 @login_required
 def change_api_key():
     """Change the api key of the user"""
     api_key = AccountModel.change_api_key(current_user)
     if api_key:
+        flowintel_log("audit", 200, "API key changed", User=current_user.email, UserId=current_user.id)
         return {"message": "API key changed", "toast_class": "success-subtle", "api_key": api_key}, 200
     return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400
 
@@ -139,7 +141,7 @@ def login():
         is_allowed, remaining_time = check_rate_limit('login_attempts_', MAX_LOGIN_ATTEMPTS, RATE_LIMIT_WINDOW)
         
         if not is_allowed:
-            logger.warning(f"Rate limit exceeded for login from IP: {get_client_ip()}")
+            flowintel_log("audit", 429, "Rate limit exceeded for login", IP=get_client_ip())
             flash(f'Too many login attempts. Please try again in {remaining_time} seconds.', 'error')
             return render_template('account/login.html', form=form, show_reset_link=False)
         
@@ -187,7 +189,7 @@ def request_password_reset():
     """Request password reset from an administrator"""
     # Security check: Validate token from failed login
     if not validate_password_reset_token():
-        logger.warning(f"Unauthorized access to password reset page from IP: {get_client_ip()}")
+        flowintel_log("audit", 403, "Unauthorized access to password reset page", IP=get_client_ip())
         flash('Access denied. Please attempt to login first.', 'error')
         return redirect(url_for('account.login'))
     
@@ -200,7 +202,7 @@ def request_password_reset():
         is_allowed, remaining_time = check_rate_limit('reset_attempts_', MAX_RESET_REQUESTS, RATE_LIMIT_WINDOW)
         
         if not is_allowed:
-            logger.warning(f"Rate limit exceeded for password reset from IP: {get_client_ip()}")
+            flowintel_log("audit", 429, "Rate limit exceeded for password reset", IP=get_client_ip())
             flash(f'Too many password reset requests. Please try again in {remaining_time} seconds.', 'error')
             return render_template('account/request_password_reset.html', form=form)
         
@@ -208,7 +210,7 @@ def request_password_reset():
         user = User.query.filter_by(email=email).first()
         
         if user:
-            logger.info(f"Password reset requested for user: {email} (ID: {user.id}) from IP: {get_client_ip()}")
+            flowintel_log("audit", 200, "Password reset requested", User=email, UserId=user.id, IP=get_client_ip())
             
             NotifModel.create_notification_for_admins(
                 message=f"Password reset requested for user {email}",
@@ -216,7 +218,7 @@ def request_password_reset():
                 user_id_for_redirect=user.id
             )
         else:
-            logger.warning(f"Password reset requested for non-existent user: {email} from IP: {get_client_ip()}")
+            flowintel_log("audit", 200, "Password reset requested for non-existent user", Email=email, IP=get_client_ip())
         
         # Clear the token after use
         session.pop('password_reset_token', None)

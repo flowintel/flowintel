@@ -23,7 +23,7 @@ class Query(Resource):
         if "query" in request.json:
             if "input" in request.json and request.json["input"]:
                 if "modules" in request.json:
-                    sess = SessionModel.Session_class(request.json, user)
+                    sess = SessionModel.SessionClass(request.json, user)
                     sess.start()
                     SessionModel.sessions.append(sess)
                     return sess.status(), 201

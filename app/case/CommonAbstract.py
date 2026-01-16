@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from . import common_core as CommonModel
-from ..db_class.db import *
 from ..custom_tags import custom_tags_core as CustomModel
 
 

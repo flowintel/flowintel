@@ -82,7 +82,7 @@ def all_object_to_misp(misp, event, objects, object_uuid_list):
                         res = misp.update_attribute(attribute)
                         if "errors" in res:
                             return res, object_uuid_list
-                except InvalidMISPObjectAttribute as e:
+                except InvalidMISPObjectAttribute:
                     # Object exist but not this attribute
                     loc_attr = loc_object.add_attribute(attr["object_relation"], value=attr["value"])
                     attr_uuid_list.append({
@@ -97,7 +97,7 @@ def all_object_to_misp(misp, event, objects, object_uuid_list):
                     "attributes": attr_uuid_list,
                     "uuid": loc_object.uuid
                 }
-        except InvalidMISPObject as e:
+        except InvalidMISPObject:
             # Object not found or not exist, Create a new one
             res, object_uuid_list = manage_object_creation(misp, event, object, object_uuid_list)
             if "errors" in res:
@@ -119,7 +119,7 @@ def handler(instance, case, user):
     """
     try:
         misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
-    except:
+    except Exception:
         return {"message": "Error connecting to MISP"}, {}
     flag = False
     object_uuid_list = {}

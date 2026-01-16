@@ -10,6 +10,7 @@ from ..utils.utils import form_to_dict
 from ..utils.formHelper import prepare_tags
 from ..case import common_core as CommonCaseModel
 from ..case.common_core import get_instance_with_icon
+from ..utils.logger import flowintel_log
 
 templating_blueprint = Blueprint(
     'templating',
@@ -72,7 +73,7 @@ def create_task_template():
             form_dict = form_to_dict(form)
             form_dict.update(res)
             form_dict["description"] = request.form.get("description")
-            template = TaskModel.add_task_template_core(form_dict)
+            TaskModel.add_task_template_core(form_dict)
             flash("Template created", "success")
             return redirect(f"/templating/tasks")
         return render_template("templating/create_task_template.html", form=form)
@@ -85,7 +86,6 @@ def case_template_view(cid):
     """View a case Template"""
     template = CommonModel.get_case_template(cid)
     if template:
-        case = template.to_json()
         return render_template("templating/case_template_view.html", case_id=cid)
     return render_template("404.html")
 
@@ -131,7 +131,7 @@ def edit_case(cid):
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             form_dict["description"] = request.form.get("description")
-            template = TemplateModel.edit(form_dict, cid)
+            TemplateModel.edit(form_dict, cid)
             flash("Template edited", "success")
             return redirect(f"/templating/case/{cid}")
         else:
@@ -179,7 +179,7 @@ def edit_task(tid):
                 form_dict = form_to_dict(form)
                 form_dict.update(res)
                 form_dict["description"] = request.form.get("description")
-                template = TaskModel.edit_task_template(form_dict, tid)
+                TaskModel.edit_task_template(form_dict, tid)
                 flash("Template edited", "success")
                 return redirect(f"/templating/tasks")
             return render_template("templating/edit_task_template.html", form=form, description=template.description)
@@ -460,6 +460,7 @@ def create_case_from_template(cid):
         new_case = TemplateModel.create_case_from_template(cid, case_title_fork, current_user)
         if type(new_case) == dict:
             return new_case
+        flowintel_log("audit", 200, "Case created from template", User=current_user.email, TemplateId=cid, CaseId=new_case.id, CaseTitle=new_case.title)
         return {"new_case_id": new_case.id}, 201
     return {"message": "Template not found"}
 

@@ -8,6 +8,7 @@
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
 <script src="{{ url_for('static',filename='js/editor.js') }}"></script>
 
+<title>Create case - {{ config.APP_NAME }}</title>
 {{ super() }}
 {%endblock%}
 
@@ -21,24 +22,26 @@
 
 <hr class="fading-line-2 mb-4 mt-4">
 
-<form action="" method="post" class="case-core-style">
+<form action="" method="post" class="case-core-style" id="case_form">
     {{ form.hidden_tag() }}
         
     <div class="collapse mb-4" id="collapseTemplate">
         <div class="mb-3 w-50">
-            <p>Create from Template:</p>
+            <i class="fa-solid fa-file-import"></i> <strong><label class="col-form-label">Create from Template:</label></strong>
             <select data-placeholder="Templates" class="select2-select-template form-control" name="template_select" id="template_select">
                 {% for choice in form.template_select.choices %}
                     <option value="{{choice[0]}}">{{choice[1]}}</option>
                 {% endfor %}
             </select>
+            <div id="template_select_error" style="color: red; display: none;">Please select a template</div>
             {% if form.template_select.errors %}
                 <div style="color: red;">{{form.template_select.errors[0] | safe}}</div>
             {%endif%}
         </div>
         <div class="mb-3 w-50">
-            {{form.title_template.label(class_="col-form-label")}}:
-            {{form.title_template(class_="form-control")}}
+            <i class="fa-solid fa-heading"></i> <strong>{{form.title_template.label(class_="col-form-label")}}:</strong> <span style="color: red;">*</span>
+            {{form.title_template(class_="form-control", placeholder="Title for the case created from template", id="case_title_template")}}
+            <div id="title_template_error" style="color: red; display: none;">Title is required when creating from template</div>
             {% if form.title_template.errors %}
                 <div style="color: red;">{{form.title_template.errors[0] | safe}}</div>
             {%endif%}
@@ -49,15 +52,16 @@
     <div id="create_case">
         <div class="row">
             <div class="mb-3 w-50">
-                {{form.title.label(class_="col-form-label")}}:
-                {{form.title(class_="form-control")}}
+                <i class="fa-solid fa-heading"></i> <strong>{{form.title.label(class_="col-form-label")}}:</strong> <span style="color: red;">*</span>
+                {{form.title(class_="form-control", placeholder="Quick case description or tracking info", id="case_title")}}
+                <div id="title_error" style="color: red; display: none;">Title is required</div>
                 {% if form.title.errors %}
                     <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="mb-3 w-50">
                 <br>
-                {{form.is_private.label(class_="col-form-label")}}:
+                <i class="fa-solid fa-lock"></i> <strong>{{form.is_private.label(class_="col-form-label")}}:</strong>
                 {{form.is_private(class_="ms-2")}}
                 {% if form.is_private.errors %}
                     <div style="color: red;">{{form.is_private.errors[0] | safe}}</div>
@@ -66,15 +70,15 @@
         </div>
         <div class="row">
             <div class="mb-3 w-50">
-                {{form.deadline_date.label(class_="col-form-label")}}:
-                {{form.deadline_date(class_="form-control")}}
+                <i class="fa-solid fa-calendar"></i> <strong>{{form.deadline_date.label(class_="col-form-label")}}:</strong>
+                {{form.deadline_date(class_="form-control", placeholder="When does the case need to be solved")}}
                 {% if form.deadline_date.errors %}
                     <div style="color: red;">{{form.deadline_date.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="mb-3 w-50">
-                {{form.deadline_time.label(class_="col-form-label")}}:
-                {{form.deadline_time(class_="form-control")}}
+                <i class="fa-solid fa-clock"></i> <strong>{{form.deadline_time.label(class_="col-form-label")}}:</strong>
+                {{form.deadline_time(class_="form-control", placeholder="Specific time for the deadline")}}
                 {% if form.deadline_time.errors %}
                     <div style="color: red;">{{form.deadline_time.errors[0] | safe}}</div>
                 {%endif%}
@@ -82,22 +86,22 @@
         </div>
         <div class="row">
             <div class="mb-3 w-50">
-                {{form.time_required.label(class_="col-form-label")}}:
-                {{form.time_required(class_="form-control")}}
+                <i class="fa-solid fa-hourglass-half"></i> <strong>{{form.time_required.label(class_="col-form-label")}}:</strong>
+                {{form.time_required(class_="form-control", placeholder="How much time is required by this case?")}}
                 {% if form.time_required.errors %}
                     <div style="color: red;">{{form.time_required.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="mb-3 w-50">
-                {{form.ticket_id.label(class_="col-form-label")}}:
-                {{form.ticket_id(class_="form-control")}}
+                <i class="fa-solid fa-ticket"></i> <strong>{{form.ticket_id.label(class_="col-form-label")}}:</strong>
+                {{form.ticket_id(class_="form-control", placeholder="External ticket or reference ID")}}
                 {% if form.ticket_id.errors %}
                     <div style="color: red;">{{form.ticket_id.errors[0] | safe}}</div>
                 {%endif%}
             </div>
         </div>
         <div class="row">
-            <span class="mb-2">Description:</span>
+            <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
             <div style="display: flex">
                 <div class="note-editor" id="editor"></div>
                 <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
@@ -195,7 +199,7 @@
         <hr>
         
         <div class="mb-3 w-50">
-            <div>Add tasks from templates:</div>
+            <div><strong>Add tasks from templates:</strong></div>
             <select data-placeholder="Templates" multiple class="select2-select form-control" name="tasks_templates" id="tasks_templates">
                 {% for choice in form.tasks_templates.choices %}
                     <option value="{{choice[0]}}">{{choice[1]}}</option>
@@ -349,6 +353,59 @@
             }
         }
     }).mount('#main-container')
+
+    // Client-side validation for create case
+    window.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('case_form').addEventListener('submit', function(e) {
+            const templateCollapse = document.getElementById('collapseTemplate');
+            const isTemplateMode = templateCollapse.classList.contains('show');
+            
+            if (isTemplateMode) {
+                // Template mode: check template selection and title
+                const templateSelect = document.getElementById('template_select');
+                const templateSelectError = document.getElementById('template_select_error');
+                const selectedTemplates = Array.from(templateSelect.selectedOptions).filter(opt => opt.value !== '0');
+                
+                const titleTemplateInput = document.getElementById('case_title_template');
+                const titleTemplateError = document.getElementById('title_template_error');
+                const titleTemplateValue = titleTemplateInput.value.trim();
+                
+                let hasError = false;
+                
+                if (selectedTemplates.length === 0) {
+                    e.preventDefault();
+                    templateSelectError.style.display = 'block';
+                    hasError = true;
+                } else {
+                    templateSelectError.style.display = 'none';
+                }
+                
+                if (!titleTemplateValue) {
+                    e.preventDefault();
+                    titleTemplateError.style.display = 'block';
+                    titleTemplateInput.focus();
+                    hasError = true;
+                } else {
+                    titleTemplateError.style.display = 'none';
+                }
+                
+                if (hasError) return false;
+            } else {
+                // Regular mode: check title
+                const titleInput = document.getElementById('case_title');
+                const titleError = document.getElementById('title_error');
+                const titleValue = titleInput.value.trim();
+                
+                if (!titleValue) {
+                    e.preventDefault();
+                    titleError.style.display = 'block';
+                    titleInput.focus();
+                    return false;
+                }
+                titleError.style.display = 'none';
+            }
+        });
+    });
 
 </script>
 {% endblock %}

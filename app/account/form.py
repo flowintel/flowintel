@@ -34,11 +34,10 @@ class EditUserFrom(FlaskForm):
     submit = SubmitField('Save')
 
     def validate_email(self, field):
-        if not field.data == current_user.email:
-            if User.query.filter_by(email=field.data).first():
-                raise ValidationError('Email already registered. (Did you mean to '
-                                    '<a href="{}">log in</a> instead?)'.format(
-                                        url_for('account.index')))
+        if field.data != current_user.email and User.query.filter_by(email=field.data).first():
+            raise ValidationError('Email already registered. (Did you mean to '
+                                '<a href="{}">log in</a> instead?)'.format(
+                                    url_for('account.index')))
     
     def validate_password(self, field):
         """Validate password only if change_password is checked"""

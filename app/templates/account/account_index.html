@@ -86,7 +86,11 @@
 
                 async function change_api_key() {
                     const res = await fetch(
-                        '/account/change_api_key'
+                        '/account/change_api_key',
+                        {
+                            method: 'POST',
+                            headers: { "X-CSRFToken": $("#csrf_token").val() }
+                        }
                     )
                     if(await res.status == 200){
                         let loc = await res.json()
