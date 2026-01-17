@@ -40,6 +40,7 @@ from .custom_tags.custom_tags_api import custom_tags_ns
 from .my_assignment.my_assignment_api import my_assignment_ns
 from .templating.templating_api import templating_ns
 from .tools.tools_api import importer_ns, case_misp_ns
+from .calendar.calendar_api import calendar_api
 
 api.add_namespace(case_ns, path="/case")
 api.add_namespace(task_ns, path="/task")
@@ -51,6 +52,7 @@ api.add_namespace(my_assignment_ns, path="/my_assignment")
 api.add_namespace(templating_ns, path="/templating")
 api.add_namespace(importer_ns, path="/importer")
 api.add_namespace(case_misp_ns, path="/case_from_misp")
+api.add_namespace(calendar_api, path="/calendar")
 
 
 
