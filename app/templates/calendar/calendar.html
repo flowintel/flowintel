@@ -64,6 +64,12 @@
                     <label class="form-check-label" for="radioCreation">Creation</label>
                 </div>
             </div>
+
+            <div>
+                <button class="btn btn-sm btn-primary" @click="downloadCalendarFeed">
+                    <i class="fa-solid fa-calendar-plus me-1"></i>Download Calendar Feed
+                </button>
+            </div>
         </div>
     </div>
 
@@ -205,6 +211,9 @@
                 if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
             }
 
+            function downloadCalendarFeed() {
+                window.location.href = '/calendar/calendar_feed'
+            }
 
             onMounted(() => {
                 fetchStatus()
@@ -223,6 +232,39 @@
                         listMonth: {
                             buttonText: 'List'
                         }
+                    },
+                    eventContent: function(arg) {
+                        let arrayOfDomNodes = []
+                        
+                        let containerEl = document.createElement('div')
+                        containerEl.style.cssText = 'display: flex; align-items: center; width: 100%;'
+                        
+                        let titleEl = document.createElement('span')
+                        titleEl.classList.add('fc-event-title')
+                        titleEl.style.cssText = 'flex: 1;'
+                        titleEl.innerHTML = arg.event.title
+                        
+                        let downloadEl = document.createElement('a')
+                        downloadEl.innerHTML = '<i class="fa-solid fa-download"></i>'
+                        downloadEl.classList.add('fc-event-download')
+                        downloadEl.style.cssText = 'margin-left: 8px; color: inherit; cursor: pointer; flex-shrink: 0;'
+                        downloadEl.title = 'Download ICS'
+                        
+                        if (arg.event.extendedProps.toJson.case_id) {
+                            downloadEl.href = '/calendar/download_task_ics/' + arg.event.extendedProps.toJson.id
+                        } else {
+                            downloadEl.href = '/calendar/download_case_ics/' + arg.event.extendedProps.toJson.id
+                        }
+                        
+                        downloadEl.addEventListener('click', function(e) {
+                            e.stopPropagation() // Prevent opening the modal
+                        })
+                        
+                        containerEl.appendChild(titleEl)
+                        containerEl.appendChild(downloadEl)
+                        arrayOfDomNodes.push(containerEl)
+                        
+                        return { domNodes: arrayOfDomNodes }
                     },
                     datesSet: function(info) {
                         onDateChange();
@@ -274,7 +316,7 @@
 
             return {
                 message_list,
-                openModal, closeModal, select_dead_filter, select_creation_filter, selection_case_task
+                openModal, closeModal, select_dead_filter, select_creation_filter, selection_case_task, downloadCalendarFeed
             }
         }
     }).mount('#main-container')

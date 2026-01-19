@@ -48,3 +48,17 @@ def get_case_month_core(date_month, flag_dead_creation, user):
             Case.creation_date >= start,
             Case.creation_date < end
         ).all()
+
+
+def get_all_cases_for_user(user):
+    """Get all cases for a user (for calendar feed)"""
+    return Case.query.join(Case_Org, Case_Org.case_id==Case.id).filter(
+        Case_Org.org_id == user.org_id
+    ).all()
+
+
+def get_all_tasks_for_user(user):
+    """Get all tasks for a user (for calendar feed)"""
+    return Task.query.join(Task_User, Task_User.task_id == Task.id).filter(
+        Task_User.user_id == user.id
+    ).all()
