@@ -280,16 +280,22 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 filename = secure_filename(files_list[file].filename)
                 try:
                     file_data = request.files[file].read()
+                    file_size = len(file_data)
                     with open(os.path.join(FILE_FOLDER, uuid_loc), "wb") as write_file:
                         write_file.write(file_data)
                 except Exception as e:
                     print(e)
                     return False
 
+                file_type = files_list[file].content_type if files_list[file].content_type else filename.rsplit('.', 1)[-1] if '.' in filename else 'unknown'
+
                 f = File(
                     name=filename,
                     task_id=task.id,
-                    uuid = uuid_loc
+                    uuid=uuid_loc,
+                    upload_date=datetime.datetime.now(tz=datetime.timezone.utc),
+                    file_size=file_size,
+                    file_type=file_type
                 )
                 db.session.add(f)
         self.update_task_time_modification(task, current_user, f"File added for task '{task.title}'")
