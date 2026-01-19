@@ -11,8 +11,27 @@ import jsonschema
 import requests
 from ..db_class.db import Tags, User
 from functools import lru_cache
+from flask import current_app
 from conf.config import Config
 from pymisp.tools import update_objects
+
+
+def validate_file_size(file, max_size=None):
+    """Validate file size against maximum allowed size."""
+    if max_size is None:
+        max_size = current_app.config.get('FILE_UPLOAD_MAX_SIZE', 5 * 1024 * 1024)
+    
+    # Get file size by seeking to end, then reset to begin to read
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+    file_size_mb = round(file_size / (1024 * 1024), 2)
+    max_size_mb = round(max_size / (1024 * 1024), 2)
+    
+    if file_size > max_size:
+        return False, f"File '{file.filename}' is too large ({file_size_mb}MB). Maximum allowed size is {max_size_mb}MB.", file_size_mb
+    
+    return True, None, file_size_mb
 
 MODULES = {}
 MODULES_CONFIG = {}
