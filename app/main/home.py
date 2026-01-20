@@ -25,8 +25,10 @@ def home():
 def home_stats():
     """Get stats for home page welcome header"""
     try:
-        # Count open cases (status_id = 1 typically means open)
-        open_cases = Case.query.filter_by(completed=False).count()
+        # Count open cases that user has access to
+        all_open_cases = Case.query.filter_by(completed=False).all()
+        accessible_cases = CommonModel.check_user_in_private_cases(all_open_cases, current_user)
+        open_cases = len(accessible_cases)
         
         # Count tasks assigned to current user (not completed)
         # Get task IDs assigned to current user
