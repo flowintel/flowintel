@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..decorators import editor_required
 from ..utils.utils import get_modules_list
+from ..utils.logger import flowintel_log
 
 tools_blueprint = Blueprint(
     'tools',
@@ -130,6 +131,12 @@ def create_note_template_view():
 def note_template_view(nid):
     return render_template("tools/note_template_view.html", note_template=ToolsModel.get_note_template(nid).to_json())
 
+@tools_blueprint.route("/edit_note_template_view/<int:nid>")
+@login_required
+@editor_required
+def edit_note_template_view(nid):
+    return render_template("tools/edit_note_template.html", note_template=ToolsModel.get_note_template(nid).to_json())
+
 @tools_blueprint.route("/note_template")
 @login_required
 def note_template():
@@ -165,7 +172,9 @@ def create_note_template():
         if "title" in request.json:
             if "description" in request.json:
                 if "content" in request.json:
-                    if ToolsModel.create_note_template(request.json, current_user):
+                    note = ToolsModel.create_note_template(request.json, current_user)
+                    if note:
+                        flowintel_log("audit", 200, "Note template created", User=current_user.email, NoteTemplateId=note.id, NoteTemplateTitle=note.title)
                         return {"message": "Note added correctly", "toast_class": "success-subtle"}, 201
                     return {"message": "Error adding note", "toast_class": "danger-subtle"}, 400
                 return {"message": "Need to pass 'content'", "toast_class": "warning-subtle"}, 400
@@ -179,11 +188,14 @@ def create_note_template():
 @login_required
 @editor_required
 def edit_content_note_template(nid):
-    if ToolsModel.get_note_template(nid):
+    note = ToolsModel.get_note_template(nid)
+    if note:
         if request.json:
             if "content" in request.json:
-                if ToolsModel.edit_content_note_template(nid, request.json):
-                    return {"message": "Note edited correctly", "toast_class": "success-subtle"}, 200
+                result = ToolsModel.edit_content_note_template(nid, request.json)
+                if result:
+                    flowintel_log("audit", 200, "Note template content edited", User=current_user.email, NoteTemplateId=nid, NoteTemplateTitle=note.title)
+                    return {"message": "Note edited correctly", "toast_class": "success-subtle", "version": result["version"]}, 200
                 return {"message": "Error editing note", "toast_class": "danger-subtle"}, 400
             return {"message": "Need to pass 'content'", "toast_class": "warning-subtle"}, 400
         return {"message": "An error occur", "toast_class": "warning-subtle"}, 400
@@ -192,16 +204,33 @@ def edit_content_note_template(nid):
 @tools_blueprint.route("/note_template/<int:nid>/edit", methods=['POST'])
 @login_required
 @editor_required
-def edit_note_template():
-    if request.json:
-        if "title" in request.json:
-            if "description" in request.json:
-                if ToolsModel.edit_note_template(request.json, current_user):
-                    return {"message": "Note eddited correctly", "toast_class": "success-subtle"}, 200
-                return {"message": "Error editing note", "toast_class": "danger-subtle"}, 400
-            return {"message": "Need to pass 'description'", "toast_class": "warning-subtle"}, 400
-        return {"message": "Need to pass 'title'", "toast_class": "warning-subtle"}, 400
-    return {"message": "An error occur", "toast_class": "warning-subtle"}, 400
+def edit_note_template(nid):
+    note = ToolsModel.get_note_template(nid)
+    if note:
+        if request.json:
+            if "title" in request.json:
+                if "description" in request.json:
+                    result = ToolsModel.edit_note_template(nid, request.json)
+                    if result:
+                        flowintel_log("audit", 200, "Note template edited", User=current_user.email, NoteTemplateId=nid, NoteTemplateTitle=request.json["title"])
+                        return {"message": "Note edited correctly", "toast_class": "success-subtle", "version": result["version"]}, 200
+                    return {"message": "Error editing note", "toast_class": "danger-subtle"}, 400
+                return {"message": "Need to pass 'description'", "toast_class": "warning-subtle"}, 400
+            return {"message": "Need to pass 'title'", "toast_class": "warning-subtle"}, 400
+        return {"message": "An error occur", "toast_class": "warning-subtle"}, 400
+    return {"message": "Note template not found", "toast_class": "warning-subtle"}, 404
+
+
+@tools_blueprint.route("/delete_note_template/<int:nid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_note_template(nid):
+    note = ToolsModel.get_note_template(nid)
+    if note:
+        if ToolsModel.delete_note_template(nid):
+            flowintel_log("audit", 200, "Note template deleted", User=current_user.email, NoteTemplateId=nid, NoteTemplateTitle=note.title)
+            return {"message": "Note template deleted", "toast_class": "success-subtle"}, 200
+    return {"message": "Error deleting note template", "toast_class": "danger-subtle"}, 400
 
 
 
