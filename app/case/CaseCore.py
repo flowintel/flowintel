@@ -1689,7 +1689,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             case = CommonModel.get_case(case_id)
             values = request_json["values"]
             if not values:
-                for par in note_template.params.list:
+                values = {}
+                for par in note_template.params.get('list', []):
                     values[par] = ""
 
             c = Case_Note_Template_Model(
