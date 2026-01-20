@@ -23,6 +23,7 @@ export default {
         const editState = ref({})
         const addingAttrToObject = ref(null)
         const newAttrState = ref({})
+        const compactView = ref(false)
 
         const defaultObjectTemplates = {
             'domain/ip': '43b3b146-77eb-4931-b4cc-b66c60f28734',
@@ -94,6 +95,10 @@ export default {
         }
         function delete_attribute_list(object){
             list_attr.value.splice(object, 1)
+        }
+
+        function toggleCompactView() {
+            compactView.value = !compactView.value
         }
 
         function copyUuidToClipboard() {
@@ -405,7 +410,9 @@ export default {
             newAttrState,
             startAddingAttribute,
             cancelAddAttribute,
-            saveNewAttribute
+            saveNewAttribute,
+            compactView,
+            toggleCompactView
 		}
     },
     css: `
@@ -435,6 +442,10 @@ export default {
         :href="'/analyzer/misp-modules?case_id='+case_id+'&misp_object=True'">
             <i class="fa-solid fa-magnifying-glass"></i>
         </a>
+        <button type="button" class="btn btn-outline-secondary ms-3" @click="toggleCompactView()" :title="compactView ? 'Show all columns' : 'Show compact view'">
+            <i :class="compactView ? 'fa-solid fa-expand' : 'fa-solid fa-compress'"></i>
+            <span class="d-none d-sm-inline ms-1">[[ compactView ? 'Detailed' : 'Compact' ]]</span>
+        </button>
         <button class="btn btn-outline-primary" style="float: right;" data-bs-toggle="modal" data-bs-target="#modal-send-to">
             <i class="fa-solid fa-link"></i> MISP Connectors
         </button>
@@ -463,11 +474,11 @@ export default {
                                         <th>Value</th>
                                         <th>Object Relation</th>
                                         <th>Type</th>
-                                        <th>First seen</th>
-                                        <th>Last seen</th>
-                                        <th>IDS</th>
-                                        <th title="Correlation"><i class="fa-solid fa-diagram-project"></i></th>
-                                        <th>Comment</th>
+                                        <th v-show="!compactView">First seen</th>
+                                        <th v-show="!compactView">Last seen</th>
+                                        <th v-show="!compactView">IDS</th>
+                                        <th v-show="!compactView" title="Correlation"><i class="fa-solid fa-diagram-project"></i></th>
+                                        <th v-show="!compactView">Comment</th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -478,12 +489,16 @@ export default {
                                             <td>[[attribute.value]]</td>
                                             <td>[[attribute.object_relation]]</td>
                                             <td>[[attribute.type]]</td>
-                                            <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
-                                            <td v-else><i>none</i></td>
-                                            <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
-                                            <td v-else><i>none</i></td>
-                                            <td>[[attribute.ids_flag]]</td>
-                                            <td>
+                                            <td v-show="!compactView">
+                                                <template v-if="attribute.first_seen">[[attribute.first_seen]]</template>
+                                                <i v-else>none</i>
+                                            </td>
+                                            <td v-show="!compactView">
+                                                <template v-if="attribute.last_seen">[[attribute.last_seen]]</template>
+                                                <i v-else>none</i>
+                                            </td>
+                                            <td v-show="!compactView">[[attribute.ids_flag]]</td>
+                                            <td v-show="!compactView">
                                                 <template v-if="attribute.disable_correlation">
                                                     <i class="fa-solid fa-link-slash text-muted" title="Correlation disabled"></i>
                                                 </template>
@@ -494,8 +509,10 @@ export default {
                                                     </template>
                                                 </template>
                                             </td>
-                                            <td v-if="attribute.comment">[[attribute.comment]]</td>
-                                            <td v-else><i>none</i></td>
+                                            <td v-show="!compactView">
+                                                <template v-if="attribute.comment">[[attribute.comment]]</template>
+                                                <i v-else>none</i>
+                                            </td>
                                             <td style="white-space: nowrap;">
                                                 <button type="button" class="btn btn-primary btn-sm" title="Edit attribute"
                                                 @click="enterEditMode(attribute, misp_object.object_uuid)">
@@ -510,56 +527,110 @@ export default {
                                         
                                         <!-- Edit mode -->
                                         <template v-else>
-                                            <td><input v-model="editState.value" class="form-control form-control-sm" type="text" style="font-size: 0.875rem;"></td>
-                                            <td colspan="2">
-                                                <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                    <template v-for="attr in activeTemplateAttr.attributes">
-                                                        <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
-                                                    </template>
-                                                </select>
-                                            </td>
-                                            <td><input v-model="editState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;"></td>
-                                            <td><input v-model="editState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;"></td>
-                                            <td><input v-model="editState.ids_flag" type="checkbox"></td>
-                                            <td><input v-model="editState.disable_correlation" type="checkbox" title="Disable correlation"></td>
-                                            <td><textarea v-model="editState.comment" class="form-control form-control-sm" placeholder="Comment" rows="1" style="font-size: 0.875rem; resize: both; min-height: 2rem;"></textarea></td>
-                                            <td style="white-space: nowrap;">
-                                                <button type="button" class="btn btn-success btn-sm" title="Save changes"
-                                                @click="saveInlineEdit(misp_object.object_id, attribute.id)">
-                                                    <i class="fa-solid fa-fw fa-check"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
-                                                @click="cancelEdit()">
-                                                    <i class="fa-solid fa-fw fa-times"></i>
-                                                </button>
+                                            <td :colspan="compactView ? 4 : 9" style="padding: 1rem;">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                                                    <input v-model="editState.value" class="form-control form-control-sm" type="text" style="font-size: 0.875rem;">
+                                                </div>
+                                                <div class="row g-2 mb-3">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                                                        <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                            <template v-for="attr in activeTemplateAttr.attributes">
+                                                                <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
+                                                            </template>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
+                                                        <input v-model="editState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Last Seen</label>
+                                                        <input v-model="editState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                                    </div>
+                                                    <div class="col-md-1">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">IDS</label>
+                                                        <div class="form-check mt-1">
+                                                            <input v-model="editState.ids_flag" type="checkbox" class="form-check-input">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-1">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;" title="Disable correlation">Corr.</label>
+                                                        <div class="form-check mt-1">
+                                                            <input v-model="editState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Comment</label>
+                                                    <textarea v-model="editState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    <button type="button" class="btn btn-success btn-sm" title="Save changes"
+                                                    @click="saveInlineEdit(misp_object.object_id, attribute.id)">
+                                                        <i class="fa-solid fa-fw fa-check me-1"></i>Save
+                                                    </button>
+                                                    <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
+                                                    @click="cancelEdit()">
+                                                        <i class="fa-solid fa-fw fa-times me-1"></i>Cancel
+                                                    </button>
+                                                </div>
                                             </td>
                                         </template>
                                     </tr>
                                     
                                     <!-- Add new attribute row -->
                                     <tr v-if="addingAttrToObject === misp_object.object_id">
-                                        <td><input v-model="newAttrState.value" class="form-control form-control-sm" type="text" placeholder="Value" style="font-size: 0.875rem;"></td>
-                                        <td colspan="2">
-                                            <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                <template v-for="attr in activeTemplateAttr.attributes">
-                                                    <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
-                                                </template>
-                                            </select>
-                                        </td>
-                                        <td><input v-model="newAttrState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;"></td>
-                                        <td><input v-model="newAttrState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;"></td>
-                                        <td><input v-model="newAttrState.ids_flag" type="checkbox"></td>
-                                        <td><input v-model="newAttrState.disable_correlation" type="checkbox" title="Disable correlation"></td>
-                                        <td><textarea v-model="newAttrState.comment" class="form-control form-control-sm" placeholder="Comment" rows="1" style="font-size: 0.875rem; resize: both; min-height: 2rem;"></textarea></td>
-                                        <td style="white-space: nowrap;">
-                                            <button type="button" class="btn btn-success btn-sm" title="Add attribute"
-                                            @click="saveNewAttribute(misp_object.object_id)">
-                                                <i class="fa-solid fa-fw fa-check"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
-                                            @click="cancelAddAttribute()">
-                                                <i class="fa-solid fa-fw fa-times"></i>
-                                            </button>
+                                        <td :colspan="compactView ? 4 : 9" style="padding: 1rem; background-color: #f8f9fa;">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                                                <input v-model="newAttrState.value" class="form-control form-control-sm" type="text" placeholder="Value" style="font-size: 0.875rem;">
+                                            </div>
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                                                    <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                        <template v-for="attr in activeTemplateAttr.attributes">
+                                                            <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
+                                                        </template>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
+                                                    <input v-model="newAttrState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Last Seen</label>
+                                                    <input v-model="newAttrState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">IDS</label>
+                                                    <div class="form-check mt-1">
+                                                        <input v-model="newAttrState.ids_flag" type="checkbox" class="form-check-input">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;" title="Disable correlation">Corr.</label>
+                                                    <div class="form-check mt-1">
+                                                        <input v-model="newAttrState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Comment</label>
+                                                <textarea v-model="newAttrState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-success btn-sm" title="Add attribute"
+                                                @click="saveNewAttribute(misp_object.object_id)">
+                                                    <i class="fa-solid fa-fw fa-check me-1"></i>Add
+                                                </button>
+                                                <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
+                                                @click="cancelAddAttribute()">
+                                                    <i class="fa-solid fa-fw fa-times me-1"></i>Cancel
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
