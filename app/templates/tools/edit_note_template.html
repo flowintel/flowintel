@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
+{% block content %}
+    <div class="case-core-style" style="border-radius: 0;">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <h2 class="mb-0">Edit Note Template</h2>
+            </div>
+            <div class="col-auto">
+                <a type="button" class="btn btn-outline-dark" href="/tools/note_template_index"><i class="fa-solid fa-arrow-left"></i></a>
+            </div>
+        </div>
+    </div>
+    <hr class="fading-line-2 mt-4 mb-4">
+
+    <div class="case-core-style">
+        <div class="mb-3">
+            <label class="col-form-label">Title:</label>
+            <input v-model="title" class="form-control" placeholder="Title">
+        </div>
+        
+        <div class="mb-3">
+            <label class="col-form-label">Description:</label>
+            <textarea v-model="description" class="form-control" rows="3" placeholder="Description"></textarea>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <button class="btn btn-primary" @click="submit_form()">Save</button>
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+<script type="module">
+    // @ts-nocheck
+    const { createApp, ref } = Vue
+    import {display_toast} from '/static/js/toaster.js'
+    
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const title = ref("{{ note_template.title }}")
+            const description = ref("{{ note_template.description or '' }}")
+            const note_id = {{ note_template.id }}
+
+            async function submit_form() {
+                const res = await fetch('/tools/note_template/' + note_id + '/edit', {
+                    headers: { 
+                        "X-CSRFToken": $("#csrf_token").val(), 
+                        "Content-Type": "application/json" 
+                    },
+                    method: "POST",
+                    body: JSON.stringify({
+                        "title": title.value,
+                        "description": description.value
+                    })
+                })
+
+                if (await res.status == 200) {
+                    window.location.href = '/tools/note_template_index'
+                }
+                display_toast(res)
+            }
+
+            return {
+                title,
+                description,
+                submit_form
+            }
+        }
+    }).mount('#main-container')
+</script>
+{% endblock %}
