@@ -3,20 +3,30 @@
 -->
 {% extends 'base.html' %}
 {% import 'macros/form_macros.html' as f %}
-{% import 'macros/check_password.html' as check %}
 
 {% block content %}
     {% if not edit_mode %}
         <div class="case-core-style" style="border-radius: 0;">
             <h5 class="mb-0"><i class="fa-solid fa-user-plus me-2"></i>Create an account</h5>
         </div>
-    {%else%}
+    {% else %}
         <div class="case-core-style" style="border-radius: 0;">
             <h5 class="mb-0"><i class="fa-solid fa-user-pen me-2"></i>Edit an account</h5>
         </div>
-    {%endif%}
+    {% endif %}
 
     <hr class="fading-line-2 mb-4 mt-4">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
     <form action="" method="post" class="case-core-style">
         {{ form.hidden_tag() }}
@@ -60,7 +70,7 @@
                 {%endif%}
             </div>
             <div class="col">
-                {{form.matrix_id.label(class_="col-form-label")}}:
+                {{form.matrix_id.label(class_="col-form-label")}}
                 {{form.matrix_id(class_="form-control")}}
                 {% if form.matrix_id.errors %}
                     <div style="color: red;">{{form.matrix_id.errors[0] | safe}}</div>
@@ -78,24 +88,18 @@
         </div>
         {% endif %}
         
-        <div class="row" id="password-fields" {% if edit_mode %}style="display: none;"{% endif %}>
-            <div class="col" id="password-container">
+        <div class="row" id="password-fields" {% if edit_mode %}style="display: none;" data-edit-mode="true"{% else %}data-edit-mode="false"{% endif %}>
+            <div class="col">
                 <label for="password" class="col-form-label">{{ form.password.label }}</label>  
                 {% if not edit_mode %}
                     <span style="color:red">*</span>
                 {%endif%}
                 <div class="position-relative">
-                    <div class="position-relative">
-                        {{ form.password(class_="form-control pe-5", id="password") }}
-                        <script>
-                            document.getElementById("password").setAttribute("v-model", "password");
-                        </script>
-                        <i class="fa fa-eye position-absolute top-50 end-0 translate-middle-y me-3"
-                        style="cursor: pointer"
-                        id="togglePasswordIcon"
-                        @click="togglePassword"></i>
-                    </div>
-
+                    <input class="form-control pe-5" id="password" name="password" type="password" v-model="password">
+                    <i class="fa fa-eye position-absolute top-50 end-0 translate-middle-y me-3"
+                    style="cursor: pointer"
+                    id="togglePasswordIcon"
+                    @click="togglePassword"></i>
                 </div>
                 {% if form.password.errors %}
                     <div style="color: red;">{{ form.password.errors[0] | safe }}</div>
@@ -139,10 +143,13 @@
             </div>
             <div class="col">
                 {{form.password2.label(class_="col-form-label")}}
-                {{form.password2(class_="form-control", id="password2")}}
+                <input class="form-control" id="password2" name="password2" type="password" v-model="password2">
                 {% if form.password2.errors %}
                     <div style="color: red;">{{form.password2.errors[0] | safe}}</div>
                 {%endif%}
+                <div v-if="password && password2 && password !== password2" style="color: red; margin-top: 5px;">
+                    <i class="fa-solid fa-xmark"></i> Passwords do not match
+                </div>
             </div>
         </div>
         <div class="row">
@@ -175,37 +182,58 @@
 
     createApp({
         setup() {
-            const password = ref('');
+            const password = ref('')
+            const password2 = ref('')
+            const change_pwd = ref(false)
 
-            const passwordValid = computed(() => {
+            const is_valid = computed(() => {
                 return password.value.length >= 8 &&
                     /[A-Z]/.test(password.value) &&
                     /[a-z]/.test(password.value) &&
-                    /[0-9]/.test(password.value);
-            });
+                    /[0-9]/.test(password.value)
+            })
+
+            const passwords_match = computed(() => password.value === password2.value)
+
+            const can_submit = computed(() => {
+                const edit_mode = document.getElementById('password-fields').dataset.editMode === 'true'
+                if (!edit_mode) {
+                    return is_valid.value && passwords_match.value
+                } else {
+                    if (change_pwd.value) {
+                        return is_valid.value && passwords_match.value
+                    }
+                    return true
+                }
+            })
 
             const togglePassword = () => {
-                const input = document.getElementById("password");
-                const icon = document.getElementById("togglePasswordIcon");
-                input.type = input.type === "password" ? "text" : "password";
-                icon.classList.toggle("fa-eye");
-                icon.classList.toggle("fa-eye-slash");
-            };
+                const input = document.getElementById("password")
+                const icon = document.getElementById("togglePasswordIcon")
+                input.type = input.type === "password" ? "text" : "password"
+                icon.classList.toggle("fa-eye")
+                icon.classList.toggle("fa-eye-slash")
+            }
 
             onMounted(() => {
-                const submitBtn = document.getElementById('submitBtn');
-                const editMode = {{ 'true' if edit_mode else 'false' }};                
-                if (!editMode) {
-                    submitBtn.disabled = true;
-                    watch(passwordValid, (val) => {
-                        submitBtn.disabled = !val;
-                    });
+                const submit_btn = document.getElementById('submitBtn')
+                const checkbox = document.getElementById('changePasswordCheckbox')
+                
+                if (checkbox) {
+                    change_pwd.value = checkbox.checked
+                    checkbox.addEventListener('change', (e) => {
+                        change_pwd.value = e.target.checked
+                    })
                 }
-            });
+                
+                watch(can_submit, (val) => {
+                    submit_btn.disabled = !val
+                }, { immediate: true })
+            })
 
-            return { password, togglePassword };
+            return { password, password2, togglePassword }
         }
-    }).mount('#password-container');
+    }).mount('#password-fields');
 
     document.addEventListener('DOMContentLoaded', function() {
         const checkbox = document.getElementById('changePasswordCheckbox');
@@ -214,14 +242,19 @@
             
             checkbox.addEventListener('change', function() {
                 if (this.checked) {
-                    passwordFields.style.display = '';
+                    passwordFields.style.display = ''
                 } else {
-                    passwordFields.style.display = 'none';
-                    // Clear password fields when hiding
-                    const passwordInput = document.getElementById('password');
-                    const password2Input = document.getElementById('password2');
-                    if (passwordInput) passwordInput.value = '';
-                    if (password2Input) password2Input.value = '';
+                    passwordFields.style.display = 'none'
+                    const pwd = document.getElementById('password')
+                    const pwd2 = document.getElementById('password2')
+                    if (pwd) {
+                        pwd.value = ''
+                        pwd.dispatchEvent(new Event('input'))
+                    }
+                    if (pwd2) {
+                        pwd2.value = ''
+                        pwd2.dispatchEvent(new Event('input'))
+                    }
                 }
             });
         }
