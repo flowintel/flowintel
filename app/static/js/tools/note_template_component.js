@@ -1,5 +1,6 @@
 import { display_toast } from '../toaster.js'
-const { ref, nextTick } = Vue
+const { ref, nextTick, onMounted, onUpdated } = Vue
+const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
 export default {
 	delimiters: ['[[', ']]'],
@@ -18,7 +19,7 @@ export default {
 
 		let content_editor = null
 
-		Vue.onMounted(async () => {
+		onMounted(async () => {
 			const allCollapses = document.getElementById('collapse' + props.note_template.id)
 			if (allCollapses) {
 				allCollapses.addEventListener('shown.bs.collapse', async event => {
@@ -28,7 +29,7 @@ export default {
 			is_mounted.value = true
 		})
 
-		Vue.onUpdated(async () => {
+		onUpdated(async () => {
 			if (is_mounted.value) {
 				md.mermaid.init()
 			}
@@ -56,9 +57,9 @@ export default {
 			await nextTick()
 			const targetElement = document.getElementById('editor_' + props.note_template.id)
 			if (targetElement) {
-				content_editor = new Editor.EditorView({
+				content_editor = new EditorView({
 					doc: props.note_template.content || "\n\n",
-					extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
+					extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 						if (v.docChanged) {
 							temp_content.value = content_editor.state.doc.toString()
 						}

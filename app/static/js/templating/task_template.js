@@ -1,6 +1,7 @@
 import { display_toast, create_message } from '../toaster.js'
 import TaskUrlTool from '../case/TaskComponent/TaskUrlTool.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
+const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -27,9 +28,9 @@ export default {
 			if (props.template.notes.length) {
 				for (let i in props.template.notes) {
 					const targetElement = document.getElementById('editor_' + i + '_' + props.template.id)
-					let editor = new Editor.EditorView({
+					let editor = new EditorView({
 						doc: "\n\n",
-						extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
+						extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
 								note_editor_render.value[i] = editor.state.doc.toString()
 							}
@@ -40,9 +41,9 @@ export default {
 				}
 			} else {
 				const targetElement = document.getElementById('editor_0_' + props.template.id)
-				let editor = new Editor.EditorView({
+				let editor = new EditorView({
 					doc: "\n\n",
-					extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
+					extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 						if (v.docChanged) {
 							note_editor_render.value[0] = editor.state.doc.toString()
 						}
@@ -94,9 +95,9 @@ export default {
 				const targetElement = document.getElementById('editor_' + key + "_" + props.template.id)
 
 				if (targetElement.innerHTML === "") {
-					let editor = new Editor.EditorView({
+					let editor = new EditorView({
 						doc: "\n\n",
-						extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
+						extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
 								note_editor_render.value[key] = editor.state.doc.toString()
 							}
@@ -151,9 +152,9 @@ export default {
 			template.notes[key].note = loc["notes"]
 
 			const targetElement = document.getElementById('editor1_' + key + "_" + props.template.id)
-			let editor = new Editor.EditorView({
+			let editor = new EditorView({
 				doc: template.notes[key].note,
-				extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
+				extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 					if (v.docChanged) {
 						note_editor_render.value[key] = editor.state.doc.toString()
 					}
@@ -191,9 +192,9 @@ export default {
 				if (!notes_loc) {
 					const targetElement = document.getElementById('editor_' + props.template.id)
 					if (targetElement.innerHTML === "") {
-						editor = new Editor.EditorView({
+						editor = new EditorView({
 							doc: "\n\n",
-							extensions: [Editor.basicSetup, Editor.markdown(), Editor.EditorView.updateListener.of((v) => {
+							extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 								if (v.docChanged) {
 									note_editor_render.value = editor.state.doc.toString()
 								}

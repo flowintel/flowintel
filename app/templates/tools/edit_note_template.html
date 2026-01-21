@@ -1,12 +1,5 @@
 {% extends 'base.html' %}
 
-{% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
-<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
-
-{{ super() }}
-{%endblock%}
-
 {% block content %}
     <div class="case-core-style" style="border-radius: 0;">
         <div class="row align-items-center">
@@ -42,7 +35,7 @@
 <script type="module">
     // @ts-nocheck
     const { createApp, ref } = Vue
-    import {display_toast} from '/static/js/toaster.js'
+    import {message_list, display_toast} from '/static/js/toaster.js'
     
     createApp({
         delimiters: ['[[', ']]'],
@@ -71,6 +64,7 @@
             }
 
             return {
+                message_list,
                 title,
                 description,
                 submit_form

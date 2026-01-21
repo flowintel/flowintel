@@ -403,7 +403,7 @@ export default {
 					<i>[[task.urls_tools.length]] Urls/Tools</i>
 				</span>
 			</div>
-			<p class="mt-2 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
+			<div class="mt-2 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
 				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
 				<template v-for="subtask in task.subtasks">
 					<div v-if="!subtask.completed" style="display: flex;">
@@ -411,7 +411,7 @@ export default {
 						[[subtask.description]]
 					</div>
 				</template>
-			</p>
+			</div>
 		</a>
 		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
 			<div>

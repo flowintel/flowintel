@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -154,6 +154,7 @@
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import misp_object from '/static/js/analyzer/misp_object.js'
+        const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
         createApp({
             delimiters: ['[[', ']]'],
@@ -186,9 +187,9 @@
                 function setEditor(note){
                     if(!editor){
                         const targetElement = document.getElementById('editor-selected-notes')
-                        editor = new Editor.EditorView({
+                        editor = new EditorView({
                             doc: note,
-                            extensions: [Editor.basicSetup, Editor.markdown()],
+                            extensions: [basicSetup, languages.markdown()],
                             parent: targetElement
                         })
                     }else{

@@ -5,8 +5,8 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
-<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 
 {{ super() }}
@@ -167,6 +167,8 @@
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import misp_modules from '/static/js/analyzer/misp_modules.js'
+        const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
+
         createApp({
             delimiters: ['[[', ']]'],
             components: {
@@ -290,9 +292,9 @@
                     $('#case-search').removeClass('d-none')
 
                     const targetElement = document.getElementById('editor-selected-notes')
-                    editor = new Editor.EditorView({
+                    editor = new EditorView({
                         doc: "\n\n",
-                        extensions: [Editor.basicSetup, Editor.markdown()],
+                        extensions: [basicSetup, languages.markdown()],
                         parent: targetElement
                     })
 

@@ -1,5 +1,5 @@
-import { display_toast, create_message } from '/static/js/toaster.js'
-const { ref } = Vue
+import { display_toast } from '/static/js/toaster.js'
+
 export default {
 	delimiters: ['[[', ']]'],
 	props: {

@@ -5,16 +5,16 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
-<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
-<script src="{{ url_for('static',filename='js/handlebars.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timeline.css') }}">
 
-<script src="{{ url_for('static',filename='js/timelinejs.js') }}"></script>
-<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timelinejs.css') }}">
+<script src="{{ url_for('static',filename='js/vendor/timelinejs.js') }}"></script>
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/timelinejs.css') }}">
 
-<script src="{{ url_for('static',filename='js/sortablejs.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/Sortable.min.js') }}"></script>
 
 <title>View case #{{ case.id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -615,6 +615,7 @@
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
+        const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -871,9 +872,9 @@
                 async function prepare_editor(default_text){
                     const targetElement = document.getElementById('editor')
                     if(targetElement && targetElement.innerHTML === ""){
-                        editor = new Editor.EditorView({
+                        editor = new EditorView({
                             doc: default_text,
-                            extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
                                 if (v.docChanged) {
                                     note_editor_render.value = editor.state.doc.toString()
                                 }

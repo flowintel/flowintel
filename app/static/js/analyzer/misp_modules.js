@@ -1,4 +1,4 @@
-import { display_toast, message_list, create_message } from '/static/js/toaster.js'
+import { display_toast } from '/static/js/toaster.js'
 const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],

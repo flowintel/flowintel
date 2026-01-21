@@ -6,7 +6,7 @@
 
 {% block head %}
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
-<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 
 {{ super() }}
@@ -46,6 +46,8 @@ Content:
 <script type="module">
     const { createApp, onMounted, ref} = Vue
     import {message_list, display_toast} from '/static/js/toaster.js'
+    const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
+
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
@@ -89,9 +91,9 @@ Content:
             onMounted(() => {
                 const targetElement = document.getElementById('editor')
                 if(targetElement && targetElement.innerHTML === ""){
-                        editor = new Editor.EditorView({
+                        editor = new EditorView({
                             doc: "\n\n",
-                            extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
                                 if (v.docChanged) {
                                     note_editor_render.value = editor.state.doc.toString()
                                 }
