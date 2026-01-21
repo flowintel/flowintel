@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="case-core-style" style="border-radius: 0">
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-user-shield me-2"></i>Roles</h5>
+                {% if current_user.is_admin() %}
+                    <a class="btn btn-primary btn-sm ms-3" href="/admin/add_role" title="Add role"><i class="fa-solid fa-plus fa-sm"></i></a>
+                {% endif %}
+            </div>
+
+            <!-- Search bar -->
+            <div class="col input-group w-auto">
+                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Role by name' />
+            </div>
+            <!-- Search bar -->
+        </div>
+    </div>
+
+    <hr class="fading-line-2 mt-4 mb-4">
+
+    <div class="case-core-style">
+        <template v-if="roles_list">
+            <template v-for="role in roles_list.roles">
+                <div class="list-group" style="margin-bottom: 10px;">
+                    <div style="display:flex; border-top-left-radius: 15px; border-top-right-radius: 15px;">
+                        <!-- Normal view -->
+                        <a v-if="editing_role !== role.id" @click="extend_collapse(role.id)" class="list-group-item list-group-item-action case-index-list">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
+                                    <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ role.id ]]- [[ role.name ]]
+                                    <i v-if="is_system_role(role.id)" class="fa-solid fa-shield-halved ms-2" style="color: #6c757d;" title="System role"></i>
+                                    <span v-if="role.admin" class="badge bg-danger ms-2">Admin</span>
+                                    <span v-if="role.read_only" class="badge bg-info ms-2">Read Only</span>
+                                </h5>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <small v-if="role.description" class="text-muted">[[ role.description ]]</small>
+                                <small v-else class="text-muted"><i>No description</i></small>
+                            </div>
+                        </a>
+                        
+                        <!-- Edit mode -->
+                        <div v-if="editing_role === role.id" class="list-group-item case-index-list" style="flex: 1;">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Role ID: [[ role.id ]]</label>
+                                <span v-if="is_system_role(role.id)" class="badge bg-secondary ms-2">System Role - View Only</span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Role Name</label>
+                                <input type="text" class="form-control" v-model="edit_data.name" :disabled="is_system_role(role.id)">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Description</label>
+                                <textarea class="form-control" rows="2" v-model="edit_data.description" :disabled="is_system_role(role.id)"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Permissions</label>
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Permission</th>
+                                            <th style="width: 100px; text-align: center;">Enabled</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td title="Full administrative access to all features">Admin</td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" v-model="edit_data.admin" :disabled="is_system_role(role.id)">
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td title="User can only view data, cannot make changes">Read Only</td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" v-model="edit_data.read_only" :disabled="is_system_role(role.id)">
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td title="Can add users to one organisation" class="text-muted">Org Admin <small>(coming soon)</small></td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" disabled>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td title="Permission that allows users to approve tasks" class="text-muted">Queue Admin <small>(coming soon)</small></td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" disabled>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td title="Allows users to request tasks which administrators can later approve" class="text-muted">Queuer <small>(coming soon)</small></td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" disabled>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td title="Allows users to create cases" class="text-muted">Case Admin <small>(coming soon)</small></td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" disabled>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td title="Allows users to view logs" class="text-muted">Audit Viewer <small>(coming soon)</small></td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" disabled>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td title="Allows users to edit case or task templates" class="text-muted">Template Editor <small>(coming soon)</small></td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" disabled>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td title="Allows users to sync data with MISP" class="text-muted">MISP Editor <small>(coming soon)</small></td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" disabled>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td title="Allows users to import data" class="text-muted">Importer <small>(coming soon)</small></td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" disabled>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Buttons -->
+                        {% if current_user.is_admin() %}
+                            <div v-if="editing_role !== role.id">
+                                <div>
+                                    <button 
+                                        class="btn btn-primary btn-sm" 
+                                        @click="edit_role(role)" 
+                                        type="button" 
+                                        :title="is_system_role(role.id) ? 'View role' : 'Edit role'">
+                                        <i :class="is_system_role(role.id) ? 'fa-solid fa-eye fa-fw' : 'fa-solid fa-pen-to-square fa-fw'"></i>
+                                    </button>
+                                </div>
+                                <div>
+                                    <span v-if="is_system_role(role.id)" title="Cannot delete system role">
+                                        <button 
+                                            class="btn btn-danger btn-sm" 
+                                            disabled 
+                                            type="button">
+                                            <i class="fa-solid fa-trash fa-fw"></i>
+                                        </button>
+                                    </span>
+                                    <span v-else-if="role.user_count > 0" :title="'Cannot delete: ' + role.user_count + ' user(s) associated with this role'">
+                                        <button 
+                                            class="btn btn-danger btn-sm" 
+                                            disabled 
+                                            type="button">
+                                            <i class="fa-solid fa-trash fa-fw"></i>
+                                        </button>
+                                    </span>
+                                    <button 
+                                        v-else
+                                        class="btn btn-danger btn-sm" 
+                                        type="button" 
+                                        title="Delete role" 
+                                        data-bs-toggle="modal" 
+                                        :data-bs-target="'#delete_role_modal_'+role.id">
+                                        <i class="fa-solid fa-trash fa-fw"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else>
+                                <div>
+                                    <button 
+                                        v-if="!is_system_role(role.id)"
+                                        class="btn btn-success btn-sm" 
+                                        @click="save_role(role)" 
+                                        type="button" 
+                                        title="Save">
+                                        <i class="fa-solid fa-floppy-disk fa-fw"></i>
+                                    </button>
+                                </div>
+                                <div>
+                                    <button class="btn btn-secondary btn-sm" @click="cancel_edit()" type="button" title="Cancel">
+                                        <i class="fa-solid fa-xmark fa-fw"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Delete modal -->
+                    <div class="modal fade" :id="'delete_role_modal_'+role.id" tabindex="-1" aria-labelledby="delete_role_modal" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="delete_role_modal">Delete role '[[role.name]]' ?</h1>
+                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button class="btn btn-danger" @click="delete_role(role)">
+                                        <i class="fa-solid fa-trash"></i> Confirm
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="collapse" :id="'collapse'+role.id" style="margin-bottom: 20px;">
+                    <div class="card card-body" :id="'card-body_'+role.id" style="background-color: whitesmoke;">
+                        <template v-if="users_table">
+                            <template v-if="users_table[role.id]">
+                                <table>
+                                    <tr>
+                                        <th>Id</th>
+                                        <th>First name</th>
+                                        <th>Last name</th>
+                                        <th>Nickname</th>
+                                        <th>Email</th>
+                                        <th>Organisation</th>
+                                    </tr>
+                                    <template v-for="user in users_table[role.id]">
+                                        <tr>
+                                            <td title="Id">[[user.id]]</td>
+                                            <td title="First name">[[user.first_name]]</td>
+                                            <td title="last name">[[user.last_name]]</td>
+                                            <td title="Nickname">[[user.nickname]]</td>
+                                            <td title="Email">[[user.email]]</td>
+                                            <td title="Organisation">[[user.org]]</td>
+                                        </tr>
+                                    </template>
+                                </table>
+                            </template>
+                            <template v-else>
+                                <i>No users with this role</i>
+                            </template>
+                        </template>
+                        <template v-else>
+                            Loading...
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </template>
+        <template v-else>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </template>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed, onMounted } = Vue
+        import {display_toast, message_list} from '../../static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const roles_list = ref(null)
+                const users_table = ref({})
+                const current_page = ref(1)
+                const editing_role = ref(null)
+                const edit_data = ref({
+                    name: '',
+                    description: '',
+                    admin: false,
+                    read_only: false
+                })
+                const system_roles = [1, 2, 3]
+                let temp_roles_list = []
+
+
+                async function fetchRoles(page) {
+                    roles_list.value = null
+                    const res = await fetch('get_roles?page='+page)
+                    let loc = await res.json()
+                    roles_list.value = loc
+                    current_page.value = page
+                    temp_roles_list = roles_list.value.roles
+                }
+
+                async function extend_collapse(role_id){
+                    const res = await fetch('get_role_users?role_id='+role_id)
+                    let loc = await res.json()
+                    users_table.value[role_id] = loc["users"]
+
+                    const collapseElementList = document.querySelectorAll('#collapse'+role_id)
+                    const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
+                }
+
+                function is_system_role(role_id) {
+                    return system_roles.includes(role_id)
+                }
+
+                async function delete_role(role){
+                    const res = await fetch('/admin/delete_role/'+role.id, {
+                        method: 'POST',
+                        headers: { "X-CSRFToken": $("#csrf_token").val() }
+                    })
+                    if(await res.status == 200){
+                        let index = roles_list.value.roles.indexOf(role)
+                        if(index > -1)
+                            roles_list.value.roles.splice(index, 1)
+                        $("#delete_role_modal_"+role.id).modal("hide")
+                    }
+                    display_toast(res)
+                }
+
+                async function save_role(role){
+                    const res = await fetch('/admin/edit_role/'+role.id, {
+                        method: 'POST',
+                        headers: { 
+                            "X-CSRFToken": $("#csrf_token").val(),
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            name: edit_data.value.name,
+                            description: edit_data.value.description,
+                            admin: edit_data.value.admin,
+                            read_only: edit_data.value.read_only
+                        })
+                    })
+                    if(await res.status == 200){
+                        role.name = edit_data.value.name
+                        role.description = edit_data.value.description
+                        role.admin = edit_data.value.admin
+                        role.read_only = edit_data.value.read_only
+                        editing_role.value = null
+                    }
+                    display_toast(res)
+                }
+
+                function edit_role(role) {
+                    editing_role.value = role.id
+                    edit_data.value.name = role.name
+                    edit_data.value.description = role.description || ''
+                    edit_data.value.admin = role.admin
+                    edit_data.value.read_only = role.read_only
+                }
+
+                function cancel_edit() {
+                    editing_role.value = null
+                    edit_data.value.name = ''
+                    edit_data.value.description = ''
+                    edit_data.value.admin = false
+                    edit_data.value.read_only = false
+                }
+
+                function onInput(e){
+                    roles_list.value.roles = []
+                    if(e.target.value){
+                        roles_list.value.roles = temp_roles_list.filter((roles) => {
+                            return roles.name.toLowerCase().includes(e.target.value.toLowerCase())
+                        })
+                    }else{
+                        roles_list.value.roles = fetchRoles(1)
+                    }
+                }
+
+
+                fetchRoles(1)
+
+    
+                return {
+                    message_list,
+                    roles_list,
+                    users_table,
+                    extend_collapse,
+                    current_page,
+                    fetchRoles,
+                    onInput,
+                    editing_role,
+                    edit_data,
+                    edit_role,
+                    cancel_edit,
+                    is_system_role,
+                    delete_role,
+                    save_role
+                }
+            }
+        }).mount('#main-container')
+
+    </script>
+{% endblock %}

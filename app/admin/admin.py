@@ -4,7 +4,7 @@ from flask_login import (
     login_required,
 )
 
-from .form import RegistrationForm, CreateOrgForm, AdminEditUserFrom
+from .form import RegistrationForm, CreateOrgForm, AdminEditUserFrom, CreateRoleForm
 from . import admin_core as AdminModel
 from ..decorators import admin_required
 from ..utils.utils import form_to_dict
@@ -126,6 +126,70 @@ def orgs():
     """List all organisations"""
     return render_template("admin/orgs.html")
 
+
+#########
+# Roles #
+#########
+
+@admin_blueprint.route("/roles", methods=['GET', 'POST'])
+@login_required
+def roles():
+    """List all roles"""
+    return render_template("admin/roles.html")
+
+@admin_blueprint.route("/add_role", methods=['GET','POST'])
+@login_required
+@admin_required
+def add_role():
+    """Add a role"""
+    form = CreateRoleForm()
+    if form.validate_on_submit():
+        form_dict = form_to_dict(form)
+        AdminModel.add_role_core(form_dict)
+        flowintel_log("audit", 200, "Role added", RoleName=form.name.data, Admin=form.admin.data, ReadOnly=form.read_only.data)
+        return redirect(url_for('admin.roles'))
+    return render_template("admin/add_edit_role.html", form=form, edit_mode=False)
+
+@admin_blueprint.route("/edit_role/<id>", methods=['POST'])
+@login_required
+@admin_required
+def edit_role(id):
+    """Edit a role"""
+    from conf.config import Config
+    
+    if int(id) in Config.SYSTEM_ROLES:
+        return {"message": "Cannot edit system role", "toast_class": "danger-subtle"}, 400
+    
+    data = request.get_json()
+    if AdminModel.edit_role_core(id, data):
+        role_name = data.get('name', 'N/A')
+        flowintel_log("audit", 200, "Role edited", RoleId=id, RoleName=role_name, Description=data.get('description'), Admin=data.get('admin'), ReadOnly=data.get('read_only'))
+        return {"message": "Role updated", "toast_class": "success-subtle"}, 200
+    return {"message": "Error updating role", "toast_class": "danger-subtle"}, 400
+
+@admin_blueprint.route("/delete_role/<id>", methods=['POST'])
+@login_required
+@admin_required
+def delete_role(id):
+    """Delete a role"""
+    from conf.config import Config
+    
+    if int(id) in Config.SYSTEM_ROLES:
+        return {"message": "Cannot delete system role", "toast_class": "danger-subtle"}, 400
+    
+    users_count = AdminModel.count_users_with_role(id)
+    if users_count > 0:
+        msg = "Cannot delete role. {} user(s) are associated with this role".format(users_count)
+        return {"message": msg, "toast_class": "danger-subtle"}, 400
+    
+    role = AdminModel.get_role(id)
+    role_name = role.name if role else "Unknown"
+    if AdminModel.delete_role(id):
+        flowintel_log("audit", 200, "Role deleted", RoleId=id, RoleName=role_name)
+        return {"message": "Role deleted", "toast_class": "success-subtle"}, 200
+    return {"message": "Error deleting role", "toast_class": "danger-subtle"}, 400
+
+
 @admin_blueprint.route("/add_org", methods=['GET','POST'])
 @login_required
 @admin_required
@@ -202,6 +266,40 @@ def get_org_users():
 
         return {"users": users_list}
     return {"message": "No user in the org"}
+
+
+@admin_blueprint.route("/get_roles", methods=['GET','POST'])
+@login_required
+def get_roles():
+    """get all roles"""
+    page = request.args.get('page', 1, type=int)
+    roles = AdminModel.get_roles_page(page)
+    if roles:
+        roles_list = list()
+        for role in roles:
+            role_dict = role.to_json()
+            role_dict["user_count"] = AdminModel.count_users_with_role(role.id)
+            roles_list.append(role_dict)
+        return {"roles": roles_list, "nb_pages": roles.pages}
+    return {"message": "No roles"}
+
+
+@admin_blueprint.route("/get_role_users", methods=['GET','POST'])
+@login_required
+def get_role_users():
+    """get all user of a role"""
+    data_dict = dict(request.args)
+    users = AdminModel.get_all_user_role(data_dict["role_id"])
+    if users:
+        users_list = list()
+        for user in users:
+            u = user.to_json()
+            o = AdminModel.get_org(user.org_id)
+            u["org"] = o.name
+            users_list.append(u)
+
+        return {"users": users_list}
+    return {"message": "No user with this role"}
 
 
 

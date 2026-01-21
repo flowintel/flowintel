@@ -86,10 +86,7 @@
                 {%endif%}
                 <div class="position-relative">
                     <div class="position-relative">
-                        {{ form.password(class_="form-control pe-5", id="password") }}
-                        <script>
-                            document.getElementById("password").setAttribute("v-model", "password");
-                        </script>
+                        <input class="form-control pe-5" id="password" name="password" type="password" v-model="password">
                         <i class="fa fa-eye position-absolute top-50 end-0 translate-middle-y me-3"
                         style="cursor: pointer"
                         id="togglePasswordIcon"
@@ -224,6 +221,7 @@
                     if (password2Input) password2Input.value = '';
                 }
             });
+            })
         }
     });
 </script>

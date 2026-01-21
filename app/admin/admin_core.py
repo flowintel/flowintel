@@ -26,6 +26,10 @@ def get_orgs_page(page):
     """Return all organisations by page"""
     return Org.query.paginate(page=page, per_page=20, max_per_page=50)
 
+def get_roles_page(page):
+    """Return all roles by page"""
+    return Role.query.paginate(page=page, per_page=20, max_per_page=50)
+
 def get_user(id):
     """Return the user"""
     return User.query.get(id)
@@ -47,6 +51,10 @@ def get_role(id):
 def get_all_user_org(org_id):
     """Return all users of an org"""
     return User.query.join(Org, User.org_id==Org.id).where(Org.id==org_id).all()
+
+def get_all_user_role(role_id):
+    """Return all users of a role"""
+    return User.query.join(Role, User.role_id==Role.id).where(Role.id==role_id).all()
 
 
 ## Taxonomies
@@ -209,6 +217,45 @@ def add_org_core(form_dict):
     db.session.add(org)
     db.session.commit()
     return org
+
+def add_role_core(form_dict):
+    """Add a role to the DB"""
+    role = Role(
+        name = form_dict["name"],
+        description = form_dict["description"],
+        admin = form_dict.get("admin", False),
+        read_only = form_dict.get("read_only", False)
+    )
+    db.session.add(role)
+    db.session.commit()
+    return role
+
+def count_users_with_role(role_id):
+    """Count users with a specific role"""
+    return User.query.filter_by(role_id=role_id).count()
+
+def delete_role(role_id):
+    """Delete a role"""
+    role = Role.query.get(role_id)
+    if role:
+        db.session.delete(role)
+        db.session.commit()
+        return True
+    return False
+
+def edit_role_core(role_id, data):
+    """Edit a role"""
+    role = Role.query.get(role_id)
+    if role:
+        if 'name' in data:
+            role.name = data['name']
+        if 'description' in data:
+            role.description = data['description']
+        role.admin = data.get("admin", False)
+        role.read_only = data.get("read_only", False)
+        db.session.commit()
+        return True
+    return False
 
 
 def edit_org_core(form_dict, id):
