@@ -14,6 +14,9 @@ class Config:
     
     FILE_UPLOAD_MAX_SIZE = int(os.getenv('FILE_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))  # Default 5MB
 
+    # System roles that cannot be deleted
+    SYSTEM_ROLES = [1, 2, 3]
+    
     # Initial users configuration
     INIT_ADMIN_USER = {
         "first_name": "admin",

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% import 'macros/form_macros.html' as f %}
+
+{% block content %}
+    {% if not edit_mode %}
+        <div class="case-core-style" style="border-radius: 0;">
+            <h5 class="mb-0"><i class="fa-solid fa-user-shield me-2"></i>Create a role</h5>
+        </div>
+    {% else %}
+        <div class="case-core-style" style="border-radius: 0;">
+            <h5 class="mb-0"><i class="fa-solid fa-user-shield me-2"></i>{% if is_system_role %}View{% else %}Edit{% endif %} a role</h5>
+        </div>
+    {% endif %}
+
+    <hr class="fading-line-2 mb-4 mt-4">
+
+    <form action="" method="post" class="case-core-style">
+        {{ form.hidden_tag() }}
+        {% if edit_mode and role %}
+            {{form.role_id(value=role.id)}}
+        {% endif %}
+        <div class="modal-body">
+            <div class="row">
+                <div class="mb-3 w-100">
+                    {{form.name.label(class_="col-form-label")}}<span class="text-danger">*</span>:
+                    {% if is_system_role %}
+                        {{form.name(class_="form-control", readonly=true)}}
+                    {% else %}
+                        {{form.name(class_="form-control")}}
+                    {% endif %}
+                    {% if form.name.errors %}
+                        <div style="color: red;">{{form.name.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="description" class="col-form-label">Description:</label>
+                {% if is_system_role %}
+                    {{form.description(class_="form-control", rows=4, readonly=true)}}
+                {% else %}
+                    {{form.description(class_="form-control", rows=4)}}
+                {% endif %}
+                {% if form.description.errors %}
+                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
+                {%endif%}
+            </div>
+
+            <div class="mb-3">
+                <label class="col-form-label fw-bold">Permissions:</label>
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Permission</th>
+                            <th style="width: 100px; text-align: center;">Enabled</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td title="Full administrative access to all features">Admin</td>
+                            <td style="text-align: center;">
+                                {% if is_system_role %}
+                                    {{form.admin(class_="form-check-input", disabled=true)}}
+                                {% else %}
+                                    {{form.admin(class_="form-check-input")}}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="User can only view data, cannot make changes">Read Only</td>
+                            <td style="text-align: center;">
+                                {% if is_system_role %}
+                                    {{form.read_only(class_="form-check-input", disabled=true)}}
+                                {% else %}
+                                    {{form.read_only(class_="form-check-input")}}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Can add users to one organisation" class="text-muted">Org Admin <small>(coming soon)</small></td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="form-check-input" disabled>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Permission that allows users to approve tasks" class="text-muted">Queue Admin <small>(coming soon)</small></td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="form-check-input" disabled>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Allows users to request tasks which administrators can later approve" class="text-muted">Queuer <small>(coming soon)</small></td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="form-check-input" disabled>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Allows users to create cases" class="text-muted">Case Admin <small>(coming soon)</small></td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="form-check-input" disabled>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Allows users to view logs" class="text-muted">Audit Viewer <small>(coming soon)</small></td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="form-check-input" disabled>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Allows users to edit case or task templates" class="text-muted">Template Editor <small>(coming soon)</small></td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="form-check-input" disabled>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Allows users to sync data with MISP" class="text-muted">MISP Editor <small>(coming soon)</small></td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="form-check-input" disabled>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Allows users to import data" class="text-muted">Importer <small>(coming soon)</small></td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="form-check-input" disabled>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <a class="btn btn-secondary" href="{{ url_for('admin.roles') }}">{% if is_system_role %}Close{% else %}Cancel{% endif %}</a>
+            {% if not is_system_role %}
+                {{form.submit(class_="btn btn-primary", value="Save" if edit_mode else "Create")}}
+            {% endif %}
+        </div>
+    </form>
+{% endblock %}

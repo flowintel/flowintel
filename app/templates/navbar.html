@@ -40,6 +40,19 @@
                 <a class="nav-link dropdown-toggle hidden-arrow d-flex align-items-center" href="#"
                     id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                     {{current_user.first_name}} {{current_user.last_name}}
+                    {% if current_user.is_admin() %}
+                        <span class="badge bg-danger ms-2" title="Admin role">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </span>
+                    {% elif current_user.read_only() %}
+                        <span class="badge bg-info ms-2" title="Read Only role">
+                            <i class="fa-solid fa-eye"></i>
+                        </span>
+                    {% else %}
+                        <span class="badge bg-success ms-2" title="Editor role">
+                            <i class="fa-solid fa-pen"></i>
+                        </span>
+                    {% endif %}
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownMenuLink">
                     <li>

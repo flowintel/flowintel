@@ -105,3 +105,22 @@ class CreateOrgForm(FlaskForm):
     def validate_uuid(self, field):
         if field.data and not isUUID(field.data):
             raise ValidationError("UUID is not valid")
+
+
+class CreateRoleForm(FlaskForm):
+    name = StringField('Name', validators=[InputRequired(), Length(1, 64)])
+    description = TextAreaField('Description', default="", validators=[Optional()])
+    admin = BooleanField('Admin', default=False)
+    read_only = BooleanField('Read Only', default=False)
+    role_id = HiddenField()
+
+    submit = SubmitField('Create')
+
+    def validate_name(self, field):
+        from ..db_class.db import Role
+        existing_role = Role.query.filter_by(name=field.data).first()
+        if existing_role:
+            # Allow same name if editing the same role
+            if self.role_id.data and str(existing_role.id) == str(self.role_id.data):
+                return
+            raise ValidationError("Role name already exists")
