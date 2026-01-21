@@ -159,6 +159,7 @@ def edit_org(id):
         return redirect(url_for('admin.orgs'))
     else:
         org = AdminModel.get_org(id)
+        form.org_id.data = org.id
         form.name.data = org.name
         form.description.data = org.description
         form.uuid.data = org.uuid
