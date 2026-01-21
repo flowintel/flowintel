@@ -5,12 +5,12 @@
 <title>Calendar - {{ config.APP_NAME }}</title>
 {{ super() }}
 
-<script src="{{ url_for('static',filename='js/calendar/fullcalendar.global.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/calendar/fullcalendar.global.min.js') }}"></script>
 
-<script src="{{ url_for('static',filename='js/calendar/flatpickr.js') }}"></script>
-<script src="{{ url_for('static',filename='js/calendar/flatpickr-monthSelect.js') }}"></script>
-<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/flatpickr/flatpickr.css') }}">
-<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/flatpickr/flatpickr-monthSelect.css') }}">
+<script src="{{ url_for('static',filename='js/vendor/calendar/flatpickr.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/calendar/flatpickr-monthSelect.js') }}"></script>
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/calendar/flatpickr.min.css') }}">
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/calendar/flatpickr-monthSelect.css') }}">
 {%endblock%}
 
 {% block content %}

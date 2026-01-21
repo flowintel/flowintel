@@ -181,6 +181,7 @@
 
 {% block script %}
 <script type="module">
+    document.getElementById("password").setAttribute("v-model", "password");
     const { createApp, ref, computed, onMounted, watch } = Vue;
 
     createApp({

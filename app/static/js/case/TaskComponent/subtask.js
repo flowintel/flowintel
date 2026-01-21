@@ -1,5 +1,4 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
-const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {

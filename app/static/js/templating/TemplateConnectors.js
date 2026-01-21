@@ -1,5 +1,6 @@
-import {display_toast, create_message} from '../toaster.js'
+import {display_toast} from '../toaster.js'
 const { ref, onMounted } = Vue
+
 export default {
     delimiters: ['[[', ']]'],
     props: {

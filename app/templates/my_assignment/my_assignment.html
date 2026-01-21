@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 
 <title>My tasks assignments - {{ config.APP_NAME }}</title>
 {{ super() }}

@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/jsonParser.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mispParser.js') }}"></script>
 
@@ -205,6 +205,7 @@ Value: [[misp_attr]]
     <script type="module">
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
         createApp({
             delimiters: ['[[', ']]'],
@@ -299,9 +300,9 @@ Value: [[misp_attr]]
 
                 onMounted(() => {
                     const targetElement = document.getElementById('editor-selected-notes')
-                    editor = new Editor.EditorView({
+                    editor = new EditorView({
                         doc: "\n\n",
-                        extensions: [Editor.basicSetup, Editor.markdown()],
+                        extensions: [basicSetup, languages.markdown()],
                         parent: targetElement
                     })
                 })

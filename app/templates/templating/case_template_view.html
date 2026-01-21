@@ -5,7 +5,7 @@
 
 {% block head %}
 <script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
-<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 <script src="{{ url_for('static',filename='js/sortablejs.js') }}"></script>
 
@@ -227,6 +227,7 @@
         import {display_toast, message_list} from '/static/js/toaster.js'
         import templateconnectors from '/static/js/templating/TemplateConnectors.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
+        const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
         createApp({
             delimiters: ['[[', ']]'],
@@ -320,9 +321,9 @@
                 function prepare_editor(){
                     md.mermaid.init()
                     const targetElement = document.getElementById('editor')
-                    editor = new Editor.EditorView({
+                    editor = new EditorView({
                         doc: case_template.value.notes,
-                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                        extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
                             if (v.docChanged) {
                                 note_editor_render.value = editor.state.doc.toString()
                             }
@@ -353,9 +354,9 @@
                         await nextTick()
                         if(!case_template.value.notes && loc_tab != 'note'){                            
                             const targetElement = document.getElementById('editor')
-                            editor = new Editor.EditorView({
+                            editor = new EditorView({
                                 doc: "\n\n",
-                                extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                                extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
                                     if (v.docChanged) {
                                         note_editor_render.value = editor.state.doc.toString()
                                     }
@@ -393,9 +394,9 @@
                     // prepare_editor()
                     md.mermaid.init()
                     const targetElement = document.getElementById('editor')
-                    editor = new Editor.EditorView({
+                    editor = new EditorView({
                         doc: case_template.value.notes,
-                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                        extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
                             if (v.docChanged) {
                                 note_editor_render.value = editor.state.doc.toString()
                             }
@@ -425,9 +426,9 @@
                         if(!notes_loc){
                             const targetElement = document.getElementById('editor')
                             if(targetElement.innerHTML === ""){
-                                editor = new Editor.EditorView({
+                                editor = new EditorView({
                                     doc: "\n\n",
-                                    extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                                    extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
                                         if (v.docChanged) {
                                             note_editor_render.value = editor.state.doc.toString()
                                         }

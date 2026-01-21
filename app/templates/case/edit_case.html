@@ -5,8 +5,8 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
-<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 
 <title>Edit case #{{ case_id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -90,6 +90,7 @@
 <script type="module">
     const { createApp, ref, onMounted} = Vue
     import {message_list} from '/static/js/toaster.js'
+    const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
     
     createApp({
         delimiters: ['[[', ']]'],
@@ -102,9 +103,9 @@
             onMounted(() => {
                 const targetElement = document.getElementById('editor')
                 if(targetElement && targetElement.innerHTML === ""){
-                    editor = new Editor.EditorView({
+                    editor = new EditorView({
                         doc: description_content,
-                        extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                        extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
                             if (v.docChanged) {
                                 note_editor_render.value = editor.state.doc.toString()
                             }

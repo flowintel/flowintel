@@ -1,5 +1,7 @@
 import {display_toast} from '../toaster.js'
 const { ref, onMounted, nextTick } = Vue
+const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
+
 export default {
     delimiters: ['[[', ']]'],
 	props: {
@@ -107,9 +109,9 @@ export default {
 
                     const targetElement = document.getElementById('editor')
                     if(targetElement && targetElement.innerHTML === ""){
-                        editor = new Editor.EditorView({
+                        editor = new EditorView({
                             doc: case_note_template.value.content,
-                            extensions: [Editor.basicSetup, Editor.markdown(),Editor.EditorView.updateListener.of((v) => {
+                            extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
                                 if (v.docChanged) {
                                     note_editor_render.value = editor.state.doc.toString()
                                 }

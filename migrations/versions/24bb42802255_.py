@@ -25,26 +25,27 @@ def upgrade():
     
     # Handle tags table
     tags_columns = [col['name'] for col in inspector.get_columns('tags')]
-    if 'uuid' not in tags_columns:
-        op.add_column('tags', sa.Column('uuid', sa.String(length=36), nullable=True))
-        op.create_index('ix_tags_uuid', 'tags', ['uuid'], unique=False)
+    foreign_keys = inspector.get_foreign_keys('tags')
+    with op.batch_alter_table('tags', schema=None) as batch_op:
+        if 'uuid' not in tags_columns:
+            batch_op.add_column(sa.Column('uuid', sa.String(length=36), nullable=True))
+            batch_op.create_index('ix_tags_uuid', ['uuid'], unique=False)
     
-    if 'cluster_id' in tags_columns:
-        foreign_keys = inspector.get_foreign_keys('tags')
-        for fk in foreign_keys:
-            if fk['constrained_columns'] == ['cluster_id']:
-                op.drop_constraint(fk['name'], 'tags', type_='foreignkey')
-                break
-        op.drop_column('tags', 'cluster_id')
+        if 'cluster_id' in tags_columns:
+            for fk in foreign_keys:
+                if fk['constrained_columns'] == ['cluster_id']:
+                    batch_op.drop_constraint(fk['name'], type_='foreignkey')
+                    break
+            batch_op.drop_column('cluster_id')
     
     # Handle taxonomy table  
     taxonomy_columns = [col['name'] for col in inspector.get_columns('taxonomy')]
-    if 'uuid' not in taxonomy_columns:
-        op.add_column('taxonomy', sa.Column('uuid', sa.String(length=36), nullable=True))
-        op.create_index('ix_taxonomy_uuid', 'taxonomy', ['uuid'], unique=False)
-    if 'version' not in taxonomy_columns:
-        op.add_column('taxonomy', sa.Column('version', sa.String(length=15), nullable=True))
-
+    with op.batch_alter_table('taxonomy', schema=None) as batch_op:
+        if 'uuid' not in taxonomy_columns:
+            batch_op.add_column(sa.Column('uuid', sa.String(length=36), nullable=True))
+            batch_op.create_index('ix_taxonomy_uuid', ['uuid'], unique=False)
+        if 'version' not in taxonomy_columns:
+            batch_op.add_column(sa.Column('version', sa.String(length=15), nullable=True))
     # ### end Alembic commands ###
 
 
@@ -56,23 +57,24 @@ def downgrade():
     # Revert taxonomy table
     taxonomy_columns = [col['name'] for col in inspector.get_columns('taxonomy')]
     taxonomy_indexes = [idx['name'] for idx in inspector.get_indexes('taxonomy')]
-    if 'ix_taxonomy_uuid' in taxonomy_indexes:
-        op.drop_index('ix_taxonomy_uuid', table_name='taxonomy')
-    if 'version' in taxonomy_columns:
-        op.drop_column('taxonomy', 'version')
-    if 'uuid' in taxonomy_columns:
-        op.drop_column('taxonomy', 'uuid')
-
+    with op.batch_alter_table('taxonomy', schema=None) as batch_op:
+        if 'ix_taxonomy_uuid' in taxonomy_indexes:
+            batch_op.drop_index('ix_taxonomy_uuid')
+        if 'version' in taxonomy_columns:
+            batch_op.drop_column('version')
+        if 'uuid' in taxonomy_columns:
+            batch_op.drop_column('uuid')
     # Revert tags table
     tags_columns = [col['name'] for col in inspector.get_columns('tags')]
     tags_indexes = [idx['name'] for idx in inspector.get_indexes('tags')]
     
-    if 'cluster_id' not in tags_columns:
-        op.add_column('tags', sa.Column('cluster_id', sa.INTEGER(), nullable=True))
-        op.create_foreign_key('fk_tags_cluster_id_cluster', 'tags', 'cluster', ['cluster_id'], ['id'], ondelete='CASCADE')
-    if 'ix_tags_uuid' in tags_indexes:
-        op.drop_index('ix_tags_uuid', table_name='tags')
-    if 'uuid' in tags_columns:
-        op.drop_column('tags', 'uuid')
+    with op.batch_alter_table('tags', schema=None) as batch_op:
+        if 'cluster_id' not in tags_columns:
+            batch_op.add_column(sa.Column('cluster_id', sa.INTEGER(), nullable=True))
+            batch_op.create_foreign_key('fk_tags_cluster_id_cluster', 'tags', 'cluster', ['cluster_id'], ['id'], ondelete='CASCADE')
+        if 'ix_tags_uuid' in tags_indexes:
+            batch_op.drop_index('ix_tags_uuid')
+        if 'uuid' in tags_columns:
+            batch_op.drop_column('uuid')
 
     # ### end Alembic commands ###

@@ -1,5 +1,6 @@
-import {display_toast, create_message} from '/static/js/toaster.js'
+import {display_toast} from '/static/js/toaster.js'
 const { ref, nextTick } = Vue
+
 export default {
     delimiters: ['[[', ']]'],
 	props: {
@@ -339,6 +340,7 @@ export default {
             history,
             audit_history,
             main_tab,
+            case_misp_objects,
 
             active_tab
 		}
