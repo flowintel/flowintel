@@ -9,6 +9,7 @@ from . import admin_core as AdminModel
 from ..decorators import admin_required
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
+from ..db_class.db import User
 
 admin_blueprint = Blueprint(
     'admin',
@@ -40,10 +41,15 @@ def add_user():
     form.org.choices.insert(0, ("None", "New org"))
 
     if form.validate_on_submit():
+        existing_user = User.query.filter_by(email=form.email.data).first()
+        if existing_user:
+            flash("A user with this email address already exists.", "error")
+            return render_template("admin/add_user.html", form=form)
+        
         form_dict = form_to_dict(form)
         AdminModel.add_user_core(form_dict)
         flowintel_log("audit", 200, "User added", User=form.email.data)
-        return redirect(url_for('admin.orgs'))
+        return redirect(url_for('admin.users'))
     return render_template("admin/add_user.html", form=form)
 
 
@@ -217,6 +223,7 @@ def edit_org(id):
         return redirect(url_for('admin.orgs'))
     else:
         org = AdminModel.get_org(id)
+        form.org_id.data = org.id
         form.name.data = org.name
         form.description.data = org.description
         form.uuid.data = org.uuid

@@ -571,16 +571,30 @@ def edit_content_note_template(note_id: int, request_json: dict) -> bool:
 
     note_template.content = content
     note_template.params = {"list": list_params}
+    
+    # Increment version on every save
+    note_template.version = (note_template.version or 0) + 1
 
     db.session.commit()
-    return True
+    return {"version": note_template.version}
 
 def edit_note_template(note_id: int, request_json: dict) -> bool:
     note_template = get_note_template(note_id)
 
     note_template.title = request_json["title"]
     note_template.description = request_json["description"]
+    # Increment version on save
+    note_template.version = (note_template.version or 0) + 1
 
+    db.session.commit()
+    return {"version": note_template.version}
+
+def delete_note_template(note_id: int) -> bool:
+    note_template = get_note_template(note_id)
+    if not note_template:
+        return False
+    
+    db.session.delete(note_template)
     db.session.commit()
     return True
 

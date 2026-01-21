@@ -4,6 +4,14 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
 
 <div class="case-core-style" style="border-radius: 0; margin-bottom: 10px;">
@@ -41,25 +49,9 @@
         <i>No Note Template</i>
     </template>
     <template v-else>
-        <template v-for="note_loc in notes_list.notes">
+        <template v-for="note_loc, key in notes_list.notes" :key="note_loc.id">
             <div class="list-group" style="margin-bottom: 20px;">
-                <div style="display:flex; border-radius: 15px;">
-                    <a :href="`/tools/note_template_view/${note_loc.id}`" class="list-group-item list-group-item-action case-index-list">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">
-                                <i class="fa-solid fa-note-sticky fa-sm me-2"></i>[[ note_loc.id ]]-[[ note_loc.title ]]
-                            </h5>                            
-                            <small><i>Changed [[ (dayjs.utc(note_loc.last_modif).fromNow()) ]]</i></small>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p v-if="note_loc.description" class="card-text">[[ note_loc.description ]]</p>
-                            <p v-else class="card-text"><i style="font-size: 12px;">No description</i></p>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <p class="card-text"><i>Version: [[ note_loc.version ]]</i></p>
-                        </div>
-                    </a>
-                </div>
+                <note_template_component :note_template="note_loc" :key_loop="key" :notes_list="notes_list.notes"></note_template_component>
             </div>
         </template>
     </template>
@@ -90,10 +82,14 @@
 {% block script %}
     <script type="module">
         const { createApp, ref, computed } = Vue
+        import note_template_component from '/static/js/tools/note_template_component.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                note_template_component
+            },
             setup() {
                 const notes_list = ref(null)
                 const current_page = ref(1)
@@ -120,7 +116,6 @@
                         if (current <= 4) {
                             pages.push(1, 2, 3, 4, 5, '...', total-1, total)
                         } else if (current >= total - 3) {
-                            console.log("Over total-3");
                             pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
                         } else {
                             pages.push(1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total)

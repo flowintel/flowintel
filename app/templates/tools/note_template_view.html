@@ -14,55 +14,42 @@
 
 
 {% block content %}
-<div style="float:right;">
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editModal">
-        <i class="fa-solid fa-pen-to-square"></i>
-    </button>
-</div>
 
-
-  
-  <!-- Modal -->
-<div v-if="note_template" class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h1 class="modal-title fs-5" id="editModalLabel">Modal title</h1>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <label for="title" class="col-form-label">Title:</label>
-                <input class="form-control" :value="note_template.title" id="title-input">
-                <span id="title-error" style="color:brown"></span>
-
-                <label for="description" class="col-form-label">Description:</label>
-                <input class="form-control" :value="note_template.description" id="description-input">
-                <span id="description-error" style="color:brown"></span>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" @click="save_modal()" class="btn btn-primary">Save changes</button>
-            </div>
-        </div>
-    </div>
-</div>
   
   
 
-<div class="case-core-style" style="border-radius: 0;">
-    <div style="margin-bottom: 10px; display: flex;">
-        <h4 class="mb-0"><span class="text-muted">{{note_template.id}}</span> - {{note_template.title}}</h4>
-        <span><i style="font-size: 12px; margin-left: 10px;">{{note_template.uuid}}</i></span>
+<div class="case-core-style" style="border-radius: 0;" v-if="note_template">
+    <div style="margin-bottom: 10px; display: flex; align-items: center;">
+        <template v-if="!editing_header">
+            <h4 class="mb-0"><span class="text-muted">{{note_template.id}}</span> - [[note_template.title]]</h4>
+            <span><i style="font-size: 12px; margin-left: 10px;">{{note_template.uuid}}</i></span>
+            <button class="btn btn-sm btn-primary ms-3" @click="edit_header()" title="Edit title and description">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+        </template>
+        <template v-else>
+            <div class="flex-grow-1">
+                <input v-model="temp_title" class="form-control form-control-sm mb-2" placeholder="Title">
+            </div>
+            <button class="btn btn-sm btn-success ms-2" @click="save_header()" title="Save">
+                <i class="fa-solid fa-check"></i>
+            </button>
+            <button class="btn btn-sm btn-secondary ms-1" @click="cancel_header()" title="Cancel">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </template>
     </div>
     
-
-
-
-    {% if note_template.description %}
+    <template v-if="!editing_header">
+        <hr v-if="note_template.description">
+        <pre v-if="note_template.description">[[note_template.description]]</pre>
+        <hr v-if="note_template.description">
+    </template>
+    <template v-else>
         <hr>
-        <pre>{{note_template.description}}</pre>
+        <textarea v-model="temp_description" class="form-control form-control-sm" rows="3" placeholder="Description"></textarea>
         <hr>
-    {%endif%}
+    </template>
 </div>
 
 <hr class="fading-line mt-4 mb-4">
@@ -111,6 +98,9 @@
                 md.use(mermaidMarkdown.default)			// Use mermaid library
 
                 const is_editing = ref(false)
+                const editing_header = ref(false)
+                const temp_title = ref('')
+                const temp_description = ref('')
 
                 async function prepare_editor(default_content){
                     await nextTick()
@@ -162,20 +152,21 @@
                     prepare_editor(note_editor_render.value)
                 }
                 
-                async function save_modal() {
-                    $("#title-error").text("")
-                    $("#description-error").text("")
-
-                    let title=$("#title-input").val()
-                    let description=$("#description-input").val()
-                    if(!title){
-                        $("#title-error").text("Need to pass a title")
-                    }
-                    if(!description){
-                        $("#description-error").text("Need to pass a description")
-                    }
-
-                    if(!title || !description){
+                function edit_header() {
+                    editing_header.value = true
+                    temp_title.value = note_template.value.title
+                    temp_description.value = note_template.value.description
+                }
+                
+                function cancel_header() {
+                    editing_header.value = false
+                    temp_title.value = ''
+                    temp_description.value = ''
+                }
+                
+                async function save_header() {
+                    if(!temp_title.value || !temp_description.value){
+                        display_toast({status: 400, json: async () => ({message: 'Title and description are required', toast_class: 'warning-subtle'})})
                         return
                     }
 
@@ -183,15 +174,16 @@
                         '/tools/note_template/{{note_template.id}}/edit',{
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
-                            body: JSON.stringify({"title": title, "description": description})
+                            body: JSON.stringify({"title": temp_title.value, "description": temp_description.value})
                         }
                     )
                     if(await res_msg.status == 200){
-                        note_template.value.title = title
-                        note_template.value.description = description
+                        note_template.value.title = temp_title.value
+                        note_template.value.description = temp_description.value
+                        editing_header.value = false
+                        await fetchNoteTemplate()
                     }
                     display_toast(res_msg)
-                
                 }
                 
                 onMounted(() => {
@@ -207,10 +199,15 @@
                     md,
                     note_editor_render,
                     is_editing,
+                    editing_header,
+                    temp_title,
+                    temp_description,
 
                     save,
                     edit,
-                    save_modal
+                    edit_header,
+                    cancel_header,
+                    save_header
                 }
             }
         }).mount('#main-container')

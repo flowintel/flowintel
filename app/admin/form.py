@@ -86,6 +86,7 @@ class AdminEditUserFrom(FlaskForm):
 
 
 class CreateOrgForm(FlaskForm):
+    org_id = HiddenField("")
     name = StringField('Name', validators=[InputRequired(), Length(1, 64)])
     description = TextAreaField('Description', default="", validators=[Optional()])
     uuid = StringField('UUID', validators=[Length(0,36)])
@@ -93,8 +94,13 @@ class CreateOrgForm(FlaskForm):
     submit = SubmitField('Register')
 
     def validate_name(self, field):
-        if Org.query.filter_by(name=field.data).first():
-            raise ValidationError("Name Already Exist")
+        if self.org_id.data:
+            org = Org.query.get(self.org_id.data)
+            if org and field.data != org.name and Org.query.filter_by(name=field.data).first():
+                raise ValidationError("Name Already Exist")
+        else:
+            if Org.query.filter_by(name=field.data).first():
+                raise ValidationError("Name Already Exist")
 
     def validate_uuid(self, field):
         if field.data and not isUUID(field.data):
