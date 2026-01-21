@@ -68,14 +68,17 @@
                                 </small>
                             </div>
                             <div class="d-flex w-100 justify-content-center mt-2">
-                                <span v-if="user.role === 'admin'" class="badge text-bg-danger" title="Role">
+                                <span v-if="user.role.toLowerCase() === 'admin'" class="badge bg-danger" title="Role">
                                     <i class="fa-solid fa-shield-halved me-1"></i>[[ user.role ]]
                                 </span>
-                                <span v-else-if="user.role === 'editor'" class="badge text-bg-primary" title="Role">
+                                <span v-else-if="user.role.toLowerCase() === 'read only'" class="badge bg-info" title="Role">
+                                    <i class="fa-solid fa-eye me-1"></i>[[ user.role ]]
+                                </span>
+                                <span v-else-if="user.role.toLowerCase() === 'editor'" class="badge bg-success" title="Role">
                                     <i class="fa-solid fa-pen me-1"></i>[[ user.role ]]
                                 </span>
-                                <span v-else class="badge text-bg-secondary" title="Role">
-                                    <i class="fa-solid fa-eye me-1"></i>[[ user.role ]]
+                                <span v-else class="badge bg-secondary" title="Role">
+                                    <i class="fa-solid fa-user me-1"></i>[[ user.role ]]
                                 </span>
                             </div>
                         </a>

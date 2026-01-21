@@ -33,7 +33,8 @@
                                     <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ role.id ]]- [[ role.name ]]
                                     <i v-if="is_system_role(role.id)" class="fa-solid fa-shield-halved ms-2" style="color: #6c757d;" title="System role"></i>
                                     <span v-if="role.admin" class="badge bg-danger ms-2">Admin</span>
-                                    <span v-if="role.read_only" class="badge bg-info ms-2">Read Only</span>
+                                    <span v-else-if="role.read_only" class="badge bg-info ms-2">Read Only</span>
+                                    <span v-else class="badge bg-success ms-2">Editor</span>
                                 </h5>
                             </div>
                             <div class="d-flex w-100 justify-content-between">
