@@ -129,6 +129,9 @@ def delete_user(uid):
     if not user:
         return {"message":"User not found", "toast_class": "danger-subtle"}, 404
     
+    if str(user.id) == str(current_user.id):
+        return {"message":"You cannot delete your own account", "toast_class": "danger-subtle"}, 403
+    
     if current_user.is_org_admin() and not current_user.is_admin():
         if user.org_id != current_user.org_id:
             return {"message":"You can only delete users from your own organisation", "toast_class": "danger-subtle"}, 403
@@ -159,9 +162,10 @@ def get_users_page():
         for user in users:
             u = user.to_json()
             r = AdminModel.get_role(user.role_id)
-            u["role"] = r.name
+            u["role"] = r.name if r else "Unknown"
             u["org_id"] = user.org_id
-            u["org_name"] = AdminModel.get_org(user.org_id).name
+            org = AdminModel.get_org(user.org_id) if user.org_id else None
+            u["org_name"] = org.name if org else "No Organization"
             users_list.append(u)
         return {"users": users_list, "nb_pages": users.pages}
     return {"message": "No Users"}, 404

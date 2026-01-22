@@ -118,7 +118,13 @@ def create_default_org(user):
 
 def delete_default_org(user_org_id):
     """Delete the default org for the user"""
+    if not user_org_id:
+        return False
+    
     org = Org.query.get(user_org_id)
+    if not org:
+        return False
+    
     cp = 0
     for user in org.users:
         cp += 1
