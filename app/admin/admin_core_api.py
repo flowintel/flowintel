@@ -24,8 +24,14 @@ def verif_add_user(data_dict, api_user=None):
 
     if "role" not in data_dict or not data_dict["role"]:
         return {"message": "Please give a role for the user"}
-    elif not Role.query.get(data_dict["role"]):
-        return {"message": "Role not identified"}
+    else:
+        role = Role.query.get(data_dict["role"])
+        if not role:
+            return {"message": "Role not identified"}
+        
+        if api_user and api_user.is_org_admin() and not api_user.is_admin():
+            if role.admin:
+                return {"message": "OrgAdmin cannot assign Admin role to users"}
     
     if "org" not in data_dict or not data_dict["org"]:
         if api_user and api_user.is_org_admin() and not api_user.is_admin():
@@ -73,8 +79,14 @@ def verif_edit_user(data_dict, user_id, api_user=None):
 
     if "role" not in data_dict or not data_dict["role"]:
         data_dict["role"] = user.role_id
-    elif not Role.query.get(data_dict["role"]):
-        return {"message": "Role not identified"}
+    else:
+        role = Role.query.get(data_dict["role"])
+        if not role:
+            return {"message": "Role not identified"}
+        
+        if api_user and api_user.is_org_admin() and not api_user.is_admin():
+            if role.admin:
+                return {"message": "OrgAdmin cannot assign Admin role to users"}
     
     if "org" not in data_dict or not data_dict["org"]:
         data_dict["org"] = user.org_id

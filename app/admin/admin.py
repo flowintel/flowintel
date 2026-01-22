@@ -9,7 +9,7 @@ from . import admin_core as AdminModel
 from ..decorators import admin_required
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
-from ..db_class.db import User
+from ..db_class.db import User, Role
 
 admin_blueprint = Blueprint(
     'admin',
@@ -35,7 +35,10 @@ def add_user():
     """Add a new user"""
     form = RegistrationForm()
 
-    form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
+    if current_user.is_org_admin() and not current_user.is_admin():
+        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not role.admin]
+    else:
+        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
     
     if current_user.is_org_admin() and not current_user.is_admin():
         user_org = AdminModel.get_org(current_user.org_id)
@@ -49,6 +52,11 @@ def add_user():
         if current_user.is_org_admin() and not current_user.is_admin():
             if form.org.data != str(current_user.org_id):
                 flash("You can only add users to your own organisation.", "error")
+                return render_template("admin/add_user.html", form=form, edit_mode=False)
+            
+            selected_role = Role.query.get(form.role.data)
+            if selected_role and selected_role.admin:
+                flash("You cannot assign Admin role to users.", "error")
                 return render_template("admin/add_user.html", form=form, edit_mode=False)
         
         existing_user = User.query.filter_by(email=form.email.data).first()
@@ -82,9 +90,17 @@ def edit_user(uid):
     
     form = AdminEditUserFrom()
     form.user_id.data = uid
-    form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
+    
+    if current_user.is_org_admin() and not current_user.is_admin():
+        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id and not role.admin]
+    else:
+        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
+    
     role_temp = AdminModel.get_role(user_modif.role_id)
-    form.role.choices.insert(0, (role_temp.id, role_temp.name))
+    if current_user.is_org_admin() and not current_user.is_admin() and role_temp.admin:
+        pass  # Don't add admin role to choices for OrgAdmin
+    else:
+        form.role.choices.insert(0, (role_temp.id, role_temp.name))
 
     if current_user.is_org_admin() and not current_user.is_admin():
         user_org = AdminModel.get_org(current_user.org_id)
@@ -101,6 +117,11 @@ def edit_user(uid):
                 return redirect(url_for('admin.users'))
             if form.org.data != str(current_user.org_id):
                 flash("You cannot change the organisation of users.", "error")
+                return render_template("admin/add_user.html", form=form, edit_mode=True)
+            
+            selected_role = Role.query.get(form.role.data)
+            if selected_role and selected_role.admin:
+                flash("You cannot assign Admin role to users.", "error")
                 return render_template("admin/add_user.html", form=form, edit_mode=True)
         
         form_dict = form_to_dict(form)

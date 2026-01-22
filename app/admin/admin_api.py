@@ -2,7 +2,7 @@ from flask import request
 from . import admin_core as AdminModel
 from . import admin_core_api as AdminModelApi
 
-from flask_restx import Namespace, Resource
+from flask_restx import Namespace, Resource, fields
 from ..decorators import api_required, admin_required, admin_or_org_admin_required
 from ..utils.utils import get_user_api
 from ..utils.logger import flowintel_log
@@ -11,6 +11,38 @@ from flask_login import current_user
 
 
 admin_ns = Namespace("admin", description="Endpoints to manage admin actions")
+
+# Define models for request body documentation
+# Changed to use JSON body fields, instead of URL parameters
+add_user_model = admin_ns.model('AddUser', {
+    'first_name': fields.String(required=True, description='First name for the user'),
+    'last_name': fields.String(required=True, description='Last name for the user'),
+    'email': fields.String(required=True, description='Email for the user'),
+    'password': fields.String(required=True, description='Password for the user'),
+    'role': fields.Integer(required=True, description='Role ID (integer) for the user'),
+    'org': fields.Integer(required=False, description='Organisation ID (integer) for the user')
+})
+
+edit_user_model = admin_ns.model('EditUser', {
+    'first_name': fields.String(required=False, description='First name for the user'),
+    'last_name': fields.String(required=False, description='Last name for the user'),
+    'email': fields.String(required=False, description='Email for the user'),
+    'role': fields.Integer(required=False, description='Role ID (integer) for the user'),
+    'org': fields.Integer(required=False, description='Organisation ID (integer) for the user')
+})
+
+add_org_model = admin_ns.model('AddOrg', {
+    'name': fields.String(required=True, description='Name for the organisation'),
+    'description': fields.String(required=False, description='Description of the organisation'),
+    'uuid': fields.String(required=False, description='UUID of the organisation')
+})
+
+edit_org_model = admin_ns.model('EditOrg', {
+    'name': fields.String(required=False, description='Name for the organisation'),
+    'description': fields.String(required=False, description='Description of the organisation'),
+    'uuid': fields.String(required=False, description='UUID of the organisation')
+})
+
 
 
 #########
@@ -67,15 +99,8 @@ class GetUserMatrix(Resource):
 @admin_ns.doc(description='Add new user')
 class AddUser(Resource):
     method_decorators = [admin_or_org_admin_required, api_required]
-    @admin_ns.doc(params={
-        "first_name": "Required. First name for the user",
-        "last_name": "Required. Last name for the user",
-        "email": "Required. Email for the user",
-        "password": "Required. Password for the user",
-        "role": "Required. Role/Permission for the user",
-        "org": "Organisation of the user"
-        })
-
+    
+    @admin_ns.expect(add_user_model)
     def post(self):
         if request.json:
             api_user = get_user_api(request.headers["X-API-KEY"])
@@ -93,13 +118,8 @@ class AddUser(Resource):
 @admin_ns.doc(description='Edit user', params={'id': 'id of a user'})
 class EditUser(Resource):
     method_decorators = [admin_or_org_admin_required, api_required]
-    @admin_ns.doc(params={
-        "first_name": "First name for the user",
-        "last_name": "Last name for the user",
-        "role": "Role/Permission for the user",
-        "org": "Organisation of the user"
-        })
-
+    
+    @admin_ns.expect(edit_user_model)
     def post(self, id):
         if request.json:
             api_user = get_user_api(request.headers["X-API-KEY"])
@@ -176,12 +196,8 @@ class GetOrgs(Resource):
 @admin_ns.doc(description='Add new organisation')
 class AddOrg(Resource):
     method_decorators = [admin_required, api_required]
-    @admin_ns.doc(params={
-        "name": "Required. Name for the org",
-        "description": "Description of the org",
-        "uuid": "uuid of the org"
-    })
-
+    
+    @admin_ns.expect(add_org_model)
     def post(self):
         if request.json:
             api_user = get_user_api(request.headers["X-API-KEY"])
@@ -198,12 +214,8 @@ class AddOrg(Resource):
 @admin_ns.doc(description='Edit org', params={'id': "id of an org"})
 class EditOrg(Resource):
     method_decorators = [admin_required, api_required]
-    @admin_ns.doc(params={
-        "name": "Name for the org",
-        "description": "Description of the org",
-        "uuid": "uuid of the org"
-        })
-
+    
+    @admin_ns.expect(edit_org_model)
     def post(self, id):
         if request.json:
             api_user = get_user_api(request.headers["X-API-KEY"])
