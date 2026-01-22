@@ -3,7 +3,10 @@ from . import admin_core as AdminModel
 from . import admin_core_api as AdminModelApi
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, admin_required
+from ..decorators import api_required, admin_required, admin_or_org_admin_required
+from ..utils.utils import get_user_api
+from flask import current_app
+from flask_login import current_user
 
 
 admin_ns = Namespace("admin", description="Endpoints to manage admin actions")
@@ -18,7 +21,13 @@ admin_ns = Namespace("admin", description="Endpoints to manage admin actions")
 class GetUsers(Resource):
     method_decorators = [api_required]
     def get(self):
-        users = AdminModel.get_all_users()
+        user = get_user_api(request.headers["X-API-KEY"])
+        
+        if current_app.config.get('LIMIT_USER_VIEW_TO_ORG', False) and not user.is_admin():
+            users = AdminModel.get_users_by_org(user.org_id)
+        else:
+            users = AdminModel.get_all_users()
+        
         return {"users": [user.to_json() for user in users]}, 200
     
 @admin_ns.route('/user/<uid>')
@@ -56,7 +65,7 @@ class GetUserMatrix(Resource):
 @admin_ns.route('/add_user')
 @admin_ns.doc(description='Add new user')
 class AddUser(Resource):
-    method_decorators = [admin_required, api_required]
+    method_decorators = [admin_or_org_admin_required, api_required]
     @admin_ns.doc(params={
         "first_name": "Required. First name for the user",
         "last_name": "Required. Last name for the user",
@@ -68,7 +77,13 @@ class AddUser(Resource):
 
     def post(self):
         if request.json:
-            verif_dict = AdminModelApi.verif_add_user(request.json)
+            api_user = get_user_api(request.headers["X-API-KEY"])
+            
+            if api_user.is_org_admin() and not api_user.is_admin():
+                if 'org' not in request.json or int(request.json['org']) != api_user.org_id:
+                    return {"message": "OrgAdmin can only add users to their own organization"}, 403
+            
+            verif_dict = AdminModelApi.verif_add_user(request.json, api_user)
             if "message" not in verif_dict:
                 user = AdminModel.add_user_core(verif_dict)
                 return {"message": f"User created {user.id}", "id": user.id}, 201
@@ -79,7 +94,7 @@ class AddUser(Resource):
 @admin_ns.route('/edit_user/<id>')
 @admin_ns.doc(description='Edit user', params={'id': 'id of a user'})
 class EditUser(Resource):
-    method_decorators = [admin_required, api_required]
+    method_decorators = [admin_or_org_admin_required, api_required]
     @admin_ns.doc(params={
         "first_name": "First name for the user",
         "last_name": "Last name for the user",
@@ -89,7 +104,20 @@ class EditUser(Resource):
 
     def post(self, id):
         if request.json:
-            verif_dict = AdminModelApi.verif_edit_user(request.json, id)
+            api_user = get_user_api(request.headers["X-API-KEY"])
+            
+            user_to_edit = AdminModel.get_user(id)
+            if not user_to_edit:
+                return {"message": "User not found"}, 404
+            
+            if api_user.is_org_admin() and not api_user.is_admin():
+                if user_to_edit.org_id != api_user.org_id:
+                    return {"message": "OrgAdmin can only edit users from their own organization"}, 403
+                
+                if 'org' in request.json and int(request.json['org']) != api_user.org_id:
+                    return {"message": "OrgAdmin cannot move users to different organization"}, 403
+            
+            verif_dict = AdminModelApi.verif_edit_user(request.json, id, api_user)
             if "message" not in verif_dict:
                 AdminModel.admin_edit_user_core(verif_dict, id)
                 return {"message": "User edited"}, 200
@@ -100,14 +128,21 @@ class EditUser(Resource):
 @admin_ns.route('/delete_user/<id>')
 @admin_ns.doc(description='Delete user' , params={'id': 'id of a user'})
 class DeleteUser(Resource):
-    method_decorators = [admin_required, api_required]
+    method_decorators = [admin_or_org_admin_required, api_required]
     def get(self, id):
-        if AdminModel.get_user(id):
-            if AdminModel.delete_user_core(id):
-                print("*"*100)
-                return {"message": "User deleted"}, 200
-            return {"message": "Error User deleted"}, 400
-        return {"message", "User not found"}, 404
+        api_user = get_user_api(request.headers["X-API-KEY"])
+        
+        user_to_delete = AdminModel.get_user(id)
+        if not user_to_delete:
+            return {"message": "User not found"}, 404
+        
+        if api_user.is_org_admin() and not api_user.is_admin():
+            if user_to_delete.org_id != api_user.org_id:
+                return {"message": "OrgAdmin can only delete users from their own organization"}, 403
+        
+        if AdminModel.delete_user_core(id):
+            return {"message": "User deleted"}, 200
+        return {"message": "Error deleting user"}, 400
 
 
 ########
@@ -155,7 +190,7 @@ class AddOrg(Resource):
 
 
 @admin_ns.route('/edit_org/<id>')
-@admin_ns.doc(description='Edit org', params={'oid': "id of an org"})
+@admin_ns.doc(description='Edit org', params={'id': "id of an org"})
 class EditOrg(Resource):
     method_decorators = [admin_required, api_required]
     @admin_ns.doc(params={

@@ -5,11 +5,14 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
+    <div class="case-core-style" style="border-radius: 0" 
+         data-is-admin="{{ 'true' if current_user.is_admin() else 'false' }}"
+         data-is-org-admin="{{ 'true' if current_user.is_org_admin() else 'false' }}"
+         data-current-user-org-id="{{ current_user.org_id if current_user.org_id else '' }}">
         <div class="row align-items-center">
             <div class="col-auto d-flex align-items-center">
                 <h5 class="mb-0"><i class="fa-solid fa-users me-2"></i>Users</h5>
-                {% if current_user.is_admin() %}
+                {% if current_user.is_admin() or current_user.is_org_admin() %}
                     <a class="btn btn-primary btn-sm ms-3" href="/admin/add_user" title="Add user"><i class="fa-solid fa-plus fa-sm"></i></a>
                 {% endif %}
             </div>
@@ -81,21 +84,20 @@
                                 </span>
                             </div>
                         </a>
-                        {% if current_user.is_admin() %}
+                        <div v-if="can_manage_user(user)">
                             <div>
-                                <div>
-                                    <a class="btn btn-primary" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user">
-                                        <i class="fa-solid fa-pen-to-square fa-fw"></i>
-                                    </a>
-                                </div>
-                                <div>
-                                    <button class="btn btn-danger" type="button" title="Delete the user" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'+user.id">
-                                        <i class="fa-solid fa-trash fa-fw"></i>
-                                    </button>
-                                </div>
+                                <a class="btn btn-primary" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user">
+                                    <i class="fa-solid fa-pen-to-square fa-fw"></i>
+                                </a>
                             </div>
-                            <!-- Modal delete user -->
-                            <div class="modal fade" :id="'delete_user_modal_'+user.id" tabindex="-1" aria-labelledby="delete_user_modal" aria-hidden="true">
+                            <div>
+                                <button class="btn btn-danger" type="button" title="Delete the user" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'+user.id">
+                                    <i class="fa-solid fa-trash fa-fw"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Modal delete user -->
+                        <div v-if="can_manage_user(user)" class="modal fade" :id="'delete_user_modal_'+user.id" tabindex="-1" aria-labelledby="delete_user_modal" aria-hidden="true">
                                 <div class="modal-dialog ">
                                     <div class="modal-content">
                                         <div class="modal-header">
@@ -111,7 +113,7 @@
                                     </div>
                                 </div>
                             </div>
-                        {% endif %}
+                        </div>
                     </div>
                 </div>
             </template>
@@ -152,7 +154,20 @@
             setup() {
                 const users_list = ref(null)
                 const current_page = ref(1)
+                
+                // Read server-side values from data attributes:: avoid Jinja2 in VS code errors
+                const mainContainer = document.getElementById('main-container')
+                const is_admin = mainContainer.dataset.isAdmin === 'true'
+                const is_org_admin = mainContainer.dataset.isOrgAdmin === 'true'
+                const current_user_org_id = mainContainer.dataset.currentUserOrgId ? parseInt(mainContainer.dataset.currentUserOrgId) : null
+                
                 let temp_users_list = []
+
+                function can_manage_user(user) {
+                    if (is_admin) return true
+                    if (is_org_admin && user.org_id === current_user_org_id) return true
+                    return false
+                }
 
 
                 async function fetchUsers(page) {
@@ -220,7 +235,8 @@
                     current_page,
                     fetchUsers,
                     onInput,
-                    visiblePages
+                    visiblePages,
+                    can_manage_user
                 }
             }
         }).mount('#main-container')

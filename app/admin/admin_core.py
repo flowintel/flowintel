@@ -10,9 +10,16 @@ def get_all_users():
     """Return all users"""
     return User.query.all()
 
-def get_users_page(page):
-    """Return all users by page"""
-    return User.query.paginate(page=page, per_page=20, max_per_page=50)
+def get_users_by_org(org_id):
+    """Return all users filtered by organization"""
+    return User.query.filter_by(org_id=org_id).all()
+
+def get_users_page(page, org_id=None):
+    """Return all users by page, optionally filtered by org_id"""
+    query = User.query
+    if org_id is not None:
+        query = query.filter_by(org_id=org_id)
+    return query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_all_roles():
     """Return all roles"""

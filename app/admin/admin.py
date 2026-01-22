@@ -31,57 +31,87 @@ def users():
 
 @admin_blueprint.route("/add_user", methods=['GET','POST'])
 @login_required
-@admin_required
 def add_user():
     """Add a new user"""
     form = RegistrationForm()
 
     form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
-    form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
-    form.org.choices.insert(0, ("None", "New org"))
+    
+    if current_user.is_org_admin() and not current_user.is_admin():
+        user_org = AdminModel.get_org(current_user.org_id)
+        form.org.choices = [(user_org.id, user_org.name)]
+        form.org.data = str(user_org.id)
+    else:
+        form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
+        form.org.choices.insert(0, ("None", "New org"))
 
     if form.validate_on_submit():
+        if current_user.is_org_admin() and not current_user.is_admin():
+            if form.org.data != str(current_user.org_id):
+                flash("You can only add users to your own organisation.", "error")
+                return render_template("admin/add_user.html", form=form, edit_mode=False)
+        
         existing_user = User.query.filter_by(email=form.email.data).first()
         if existing_user:
             flash("A user with this email address already exists.", "error")
-            return render_template("admin/add_user.html", form=form)
+            return render_template("admin/add_user.html", form=form, edit_mode=False)
         
         form_dict = form_to_dict(form)
         AdminModel.add_user_core(form_dict)
-        flowintel_log("audit", 200, "User added", User=form.email.data)
+        flowintel_log("audit", 200, "User added", User=form.email.data, By=current_user.email)
         return redirect(url_for('admin.users'))
-    return render_template("admin/add_user.html", form=form)
+    return render_template("admin/add_user.html", form=form, edit_mode=False)
 
 
 @admin_blueprint.route("/edit_user/<uid>", methods=['GET','POST'])
 @login_required
-@admin_required
 def edit_user(uid):
     """Edit the user"""
-    form = AdminEditUserFrom()
     user_modif = AdminModel.get_user(uid)
+    if not user_modif:
+        flash("User not found.", "error")
+        return redirect(url_for('admin.users'))
+    
+    if current_user.is_org_admin() and not current_user.is_admin():
+        if user_modif.org_id != current_user.org_id:
+            flash("You can only edit users from your own organisation.", "error")
+            return redirect(url_for('admin.users'))
+    elif not current_user.is_admin():
+        flash("You do not have permission to edit users.", "error")
+        return redirect(url_for('admin.users'))
+    
+    form = AdminEditUserFrom()
     form.user_id.data = uid
     form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
     role_temp = AdminModel.get_role(user_modif.role_id)
     form.role.choices.insert(0, (role_temp.id, role_temp.name))
 
-
-    form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs() if not user_modif.org_id == org.id]
-    org_temp = AdminModel.get_org(user_modif.org_id)
-    form.org.choices.insert(0, (org_temp.id, org_temp.name))
-    form.org.choices.insert(1, ("None", "--"))
+    if current_user.is_org_admin() and not current_user.is_admin():
+        user_org = AdminModel.get_org(current_user.org_id)
+        form.org.choices = [(user_org.id, user_org.name)]
+    else:
+        form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs() if not user_modif.org_id == org.id]
+        org_temp = AdminModel.get_org(user_modif.org_id)
+        form.org.choices.insert(0, (org_temp.id, org_temp.name))
 
     if form.validate_on_submit():
+        if current_user.is_org_admin() and not current_user.is_admin():
+            if user_modif.org_id != current_user.org_id:
+                flash("You can only edit users from your own organisation.", "error")
+                return redirect(url_for('admin.users'))
+            if form.org.data != str(current_user.org_id):
+                flash("You cannot change the organisation of users.", "error")
+                return render_template("admin/add_user.html", form=form, edit_mode=True)
+        
         form_dict = form_to_dict(form)
         # Only include password if change_password is checked
         if not form.change_password.data:
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
-        flowintel_log("audit", 200, "User edited", User=user_modif.email, UserId=uid)
+        flowintel_log("audit", 200, "User edited", User=user_modif.email, UserId=uid, By=current_user.email)
         AdminModel.admin_edit_user_core(form_dict, uid)
         return redirect(url_for('admin.users'))
     else:
-        user_modif = AdminModel.get_user(uid)
         form.first_name.data = user_modif.first_name
         form.last_name.data = user_modif.last_name
         form.nickname.data = user_modif.nickname
@@ -93,29 +123,44 @@ def edit_user(uid):
 
 @admin_blueprint.route("/delete_user/<uid>", methods=['POST'])
 @login_required
-@admin_required
 def delete_user(uid):
     """Delete the user"""
-    if AdminModel.get_user(uid):
-        if AdminModel.delete_user_core(uid):
-            flowintel_log("audit", 200, "User deleted", UserId=uid)
-            return {"message":"User deleted", "toast_class": "success-subtle"}, 200
-        return {"message":"Error user deleted", "toast_class": "danger-subtle"}, 400
-    return {"message":"User not found", "toast_class": "danger-subtle"}, 404
+    user = AdminModel.get_user(uid)
+    if not user:
+        return {"message":"User not found", "toast_class": "danger-subtle"}, 404
+    
+    if current_user.is_org_admin() and not current_user.is_admin():
+        if user.org_id != current_user.org_id:
+            return {"message":"You can only delete users from your own organisation", "toast_class": "danger-subtle"}, 403
+    elif not current_user.is_admin():
+        return {"message":"You do not have permission to delete users", "toast_class": "danger-subtle"}, 403
+    
+    if AdminModel.delete_user_core(uid):
+        flowintel_log("audit", 200, "User deleted", User=user.email, UserId=uid, By=current_user.email)
+        return {"message":"User deleted", "toast_class": "success-subtle"}, 200
+    return {"message":"Error user deleted", "toast_class": "danger-subtle"}, 400
 
 
 @admin_blueprint.route("/get_users_page", methods=['GET'])
 @login_required
 def get_users_page():
-    """Delete the user"""
+    """Get all users page"""
+    from conf.config import Config
+    
     page = request.args.get('page', 1, type=int)
-    users = AdminModel.get_users_page(page)
+    
+    org_id = None
+    if Config.LIMIT_USER_VIEW_TO_ORG and not current_user.is_admin():
+        org_id = current_user.org_id
+    
+    users = AdminModel.get_users_page(page, org_id=org_id)
     if users:
         users_list = list()
         for user in users:
             u = user.to_json()
             r = AdminModel.get_role(user.role_id)
             u["role"] = r.name
+            u["org_id"] = user.org_id
             u["org_name"] = AdminModel.get_org(user.org_id).name
             users_list.append(u)
         return {"users": users_list, "nb_pages": users.pages}
