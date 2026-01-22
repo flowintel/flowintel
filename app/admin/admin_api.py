@@ -128,7 +128,7 @@ class EditUser(Resource):
             if not user_to_edit:
                 return {"message": "User not found"}, 404
             
-            if api_user.is_org_admin() and not api_user.is_admin():
+            if api_user.is_pure_org_admin():
                 if user_to_edit.org_id != api_user.org_id:
                     return {"message": "OrgAdmin can only edit users from their own organization"}, 403
                 
@@ -155,10 +155,10 @@ class DeleteUser(Resource):
         if not user_to_delete:
             return {"message": "User not found"}, 404
         
-        if str(user_to_delete.id) == str(api_user.id):
+        if user_to_delete.id == api_user.id:
             return {"message": "You cannot delete your own account"}, 403
         
-        if api_user.is_org_admin() and not api_user.is_admin():
+        if api_user.is_pure_org_admin():
             if user_to_delete.org_id != api_user.org_id:
                 return {"message": "OrgAdmin can only delete users from their own organization"}, 403
         

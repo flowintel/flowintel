@@ -17,6 +17,9 @@ class Config:
     # System roles that cannot be deleted
     SYSTEM_ROLES = [1, 2, 3]
     
+    # Limit user view to own organization (only admins can see all users)
+    LIMIT_USER_VIEW_TO_ORG = False # False is the previous default ; alt.: True 
+
     # Initial users configuration
     INIT_ADMIN_USER = {
         "first_name": "admin",

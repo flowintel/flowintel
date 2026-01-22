@@ -84,9 +84,9 @@ def verif_edit_user(data_dict, user_id, api_user=None):
         if not role:
             return {"message": "Role not identified"}
         
-        if api_user and api_user.is_org_admin() and not api_user.is_admin():
+        if api_user and api_user.is_pure_org_admin():
             if role.admin:
-                return {"message": "OrgAdmin cannot assign Admin role to users"}
+                return {"message": "OrgAdmin cannot assign Admin role"}
     
     if "org" not in data_dict or not data_dict["org"]:
         data_dict["org"] = user.org_id
@@ -96,9 +96,9 @@ def verif_edit_user(data_dict, user_id, api_user=None):
             if not Org.query.get(org_id):
                 return {"message": f"Organisation with ID {org_id} not found"}
             
-            if api_user and api_user.is_org_admin() and not api_user.is_admin():
+            if api_user and api_user.is_pure_org_admin():
                 if org_id != api_user.org_id:
-                    return {"message": "OrgAdmin can only move users to their own organization"}
+                    return {"message": "OrgAdmin cannot move users to different organization"}
             
             data_dict["org"] = org_id
         except ValueError:

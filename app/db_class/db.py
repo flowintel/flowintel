@@ -42,6 +42,9 @@ class User(UserMixin, db.Model):
             return True
         return False
 
+    def is_pure_org_admin(self):
+        return self.is_org_admin() and not self.is_admin()
+
     @property
     def password(self):
         raise AttributeError('`password` is not a readable attribute')

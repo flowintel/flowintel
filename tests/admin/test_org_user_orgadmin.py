@@ -5,7 +5,6 @@ import time
 API_KEY = "orgadmin_api_key"
 
 def get_orgadmin_org_id(client):
-    """Get OrgAdmin's organization ID dynamically"""
     with client.application.app_context():
         return get_user_api(API_KEY).org_id
 
@@ -60,7 +59,7 @@ def test_create_user_in_different_org(client):
                            json={"first_name": "test", "last_name": "test", "email": email, "password": "test", "role": 2, "org": different_org_id}
                         )
     assert response.status_code == 400
-    assert b"OrgAdmin can only add users to their own organisation" in response.data
+    assert b"OrgAdmin can only add users to their own organization" in response.data
 
 def test_create_user_with_admin_role(client):
     """OrgAdmin should NOT be able to assign Admin role"""
@@ -130,7 +129,7 @@ def test_edit_user_in_different_org(client):
                            json={"last_name": "hacked"}
                         )
     assert response.status_code == 403
-    assert b"OrgAdmin can only edit users from their own organisation" in response.data
+    assert b"OrgAdmin can only edit users from their own organization" in response.data
 
 def test_edit_user_assign_admin_role(client):
     """OrgAdmin should NOT be able to assign Admin role when editing"""
@@ -160,7 +159,7 @@ def test_edit_user_move_to_different_org(client):
                            json={"org": different_org_id}
                         )
     assert response.status_code == 403
-    assert b"OrgAdmin cannot move users to different organisation" in response.data
+    assert b"OrgAdmin cannot move users to different organization" in response.data
 
 def test_delete_user_in_own_org(client):
     """OrgAdmin should be able to delete users in their own organization"""
@@ -179,7 +178,7 @@ def test_delete_user_in_different_org(client):
     
     response = client.get(f"/api/admin/delete_user/{admin_user_id}", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 403
-    assert b"OrgAdmin can only delete users from their own organisation" in response.data
+    assert b"OrgAdmin can only delete users from their own organization" in response.data
 
 def test_delete_self(client):
     """OrgAdmin should NOT be able to delete their own account"""
