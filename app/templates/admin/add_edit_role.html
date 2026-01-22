@@ -47,6 +47,10 @@
 
             <div class="mb-3">
                 <label class="col-form-label fw-bold">Permissions:</label>
+                <div class="alert alert-info py-2 px-3 mb-2" style="font-size: 0.875rem;">
+                    <i class="fa-solid fa-info-circle me-1"></i>
+                    <strong>Note:</strong> Select one of the three role types below. Additional permissions can be combined with Admin or Editor roles.
+                </div>
                 <table class="table table-sm table-bordered">
                     <thead>
                         <tr>
@@ -55,13 +59,16 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <tr class="table-light">
+                            <td colspan="2" class="fw-bold" style="background-color: #f8f9fa;">Role Type</td>
+                        </tr>
                         <tr>
                             <td title="Full administrative access to all features">Admin</td>
                             <td style="text-align: center;">
                                 {% if is_system_role %}
-                                    {{form.admin(class_="form-check-input", disabled=true)}}
+                                    {{form.admin(id="admin_checkbox", class_="form-check-input", disabled=true)}}
                                 {% else %}
-                                    {{form.admin(class_="form-check-input")}}
+                                    {{form.admin(id="admin_checkbox", class_="form-check-input")}}
                                 {% endif %}
                             </td>
                         </tr>
@@ -69,16 +76,33 @@
                             <td title="User can only view data, cannot make changes">Read Only</td>
                             <td style="text-align: center;">
                                 {% if is_system_role %}
-                                    {{form.read_only(class_="form-check-input", disabled=true)}}
+                                    {{form.read_only(id="read_only_checkbox", class_="form-check-input", disabled=true)}}
                                 {% else %}
-                                    {{form.read_only(class_="form-check-input")}}
+                                    {{form.read_only(id="read_only_checkbox", class_="form-check-input")}}
                                 {% endif %}
                             </td>
                         </tr>
                         <tr>
-                            <td title="Can add users to one organisation" class="text-muted">Org Admin <small>(coming soon)</small></td>
+                            <td title="Can create and edit content, but not perform admin functions">Editor</td>
                             <td style="text-align: center;">
-                                <input type="checkbox" class="form-check-input" disabled>
+                                {% if is_system_role %}
+                                    <input type="checkbox" id="editor_checkbox" class="form-check-input" disabled>
+                                {% else %}
+                                    <input type="checkbox" id="editor_checkbox" class="form-check-input">
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr class="table-light">
+                            <td colspan="2" class="fw-bold" style="background-color: #f8f9fa;">Additional Permissions</td>
+                        </tr>
+                        <tr>
+                            <td title="Can add, edit or delete users in their organisation">Org Admin</td>
+                            <td style="text-align: center;">
+                                {% if is_system_role %}
+                                    {{form.org_admin(id="org_admin_checkbox", class_="form-check-input", disabled=true)}}
+                                {% else %}
+                                    {{form.org_admin(id="org_admin_checkbox", class_="form-check-input")}}
+                                {% endif %}
                             </td>
                         </tr>
                         <tr>
@@ -134,4 +158,53 @@
             {% endif %}
         </div>
     </form>
+{% endblock %}
+
+{% block script %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminCheckbox = document.getElementById('admin_checkbox');
+            const readOnlyCheckbox = document.getElementById('read_only_checkbox');
+            const editorCheckbox = document.getElementById('editor_checkbox');
+            const orgAdminCheckbox = document.getElementById('org_admin_checkbox');
+            
+            if (adminCheckbox && readOnlyCheckbox && editorCheckbox && orgAdminCheckbox) {
+                function updateEditorState() {
+                    editorCheckbox.checked = !adminCheckbox.checked && !readOnlyCheckbox.checked;
+                }
+                
+                updateEditorState();
+                
+                adminCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        readOnlyCheckbox.checked = false;
+                    }
+                    updateEditorState();
+                });
+                
+                readOnlyCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        adminCheckbox.checked = false;
+                        orgAdminCheckbox.checked = false;
+                    }
+                    updateEditorState();
+                });
+                
+                // When editor is checked, uncheck admin and read_only
+                editorCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        adminCheckbox.checked = false;
+                        readOnlyCheckbox.checked = false;
+                    }
+                });
+                
+                orgAdminCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        readOnlyCheckbox.checked = false;
+                    }
+                    updateEditorState();
+                });
+            }
+        });
+    </script>
 {% endblock %}

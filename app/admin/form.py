@@ -112,6 +112,7 @@ class CreateRoleForm(FlaskForm):
     description = TextAreaField('Description', default="", validators=[Optional()])
     admin = BooleanField('Admin', default=False)
     read_only = BooleanField('Read Only', default=False)
+    org_admin = BooleanField('Org Admin', default=False)
     role_id = HiddenField()
 
     submit = SubmitField('Create')

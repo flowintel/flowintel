@@ -224,7 +224,8 @@ def add_role_core(form_dict):
         name = form_dict["name"],
         description = form_dict["description"],
         admin = form_dict.get("admin", False),
-        read_only = form_dict.get("read_only", False)
+        read_only = form_dict.get("read_only", False),
+        org_admin = form_dict.get("org_admin", False)
     )
     db.session.add(role)
     db.session.commit()
@@ -253,6 +254,7 @@ def edit_role_core(role_id, data):
             role.description = data['description']
         role.admin = data.get("admin", False)
         role.read_only = data.get("read_only", False)
+        role.org_admin = data.get("org_admin", False)
         db.session.commit()
         return True
     return False

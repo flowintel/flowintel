@@ -26,13 +26,19 @@ class User(UserMixin, db.Model):
 
     def is_admin(self):
         r = Role.query.get(self.role_id)
-        if r.admin:
+        if r and r.admin:
             return True
         return False
 
     def read_only(self):
         r = Role.query.get(self.role_id)
-        if r.read_only:
+        if r and r.read_only:
+            return True
+        return False
+
+    def is_org_admin(self):
+        r = Role.query.get(self.role_id)
+        if r and r.org_admin:
             return True
         return False
 
@@ -355,6 +361,7 @@ class Role(db.Model):
     description = db.Column(db.String, nullable=True)
     admin = db.Column(db.Boolean, default=False)
     read_only = db.Column(db.Boolean, default=False)
+    org_admin = db.Column(db.Boolean, default=False)
 
     def to_json(self):
         return {
@@ -362,7 +369,8 @@ class Role(db.Model):
             "name": self.name,
             "description": self.description,
             "admin": self.admin,
-            "read_only": self.read_only
+            "read_only": self.read_only,
+            "org_admin": self.org_admin
         }
 
 class File(db.Model):

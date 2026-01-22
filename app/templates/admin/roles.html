@@ -34,7 +34,10 @@
                                     <i v-if="is_system_role(role.id)" class="fa-solid fa-shield-halved ms-2" style="color: #6c757d;" title="System role"></i>
                                     <span v-if="role.admin" class="badge bg-danger ms-2">Admin</span>
                                     <span v-else-if="role.read_only" class="badge bg-info ms-2">Read Only</span>
-                                    <span v-else class="badge bg-success ms-2">Editor</span>
+                                    <span v-else class="badge bg-success ms-2">
+                                        Editor
+                                        <i v-if="role.org_admin" class="fa-solid fa-users ms-1" title="Also Org Admin"></i>
+                                    </span>
                                 </h5>
                             </div>
                             <div class="d-flex w-100 justify-content-between">
@@ -59,6 +62,10 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Permissions</label>
+                                <div class="alert alert-info py-2 px-3 mb-2" style="font-size: 0.875rem;">
+                                    <i class="fa-solid fa-info-circle me-1"></i>
+                                    <strong>Note:</strong> Select one of the three role types below. Additional permissions can be combined with Admin or Editor roles.
+                                </div>
                                 <table class="table table-sm table-bordered">
                                     <thead>
                                         <tr>
@@ -67,22 +74,34 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        <tr class="table-light">
+                                            <td colspan="2" class="fw-bold" style="background-color: #f8f9fa;">Role Type</td>
+                                        </tr>
                                         <tr>
                                             <td title="Full administrative access to all features">Admin</td>
                                             <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" v-model="edit_data.admin" :disabled="is_system_role(role.id)">
+                                                <input type="checkbox" class="form-check-input" v-model="edit_data.admin" @change="handleAdminChange" :disabled="is_system_role(role.id)">
                                             </td>
                                         </tr>
                                         <tr>
                                             <td title="User can only view data, cannot make changes">Read Only</td>
                                             <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" v-model="edit_data.read_only" :disabled="is_system_role(role.id)">
+                                                <input type="checkbox" class="form-check-input" v-model="edit_data.read_only" @change="handleReadOnlyChange" :disabled="is_system_role(role.id)">
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td title="Can add users to one organisation" class="text-muted">Org Admin <small>(coming soon)</small></td>
+                                            <td title="Can create and edit content, but not perform admin functions">Editor</td>
                                             <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" disabled>
+                                                <input type="checkbox" class="form-check-input" :checked="is_editor" @change="handleEditorChange" :disabled="is_system_role(role.id)">
+                                            </td>
+                                        </tr>
+                                        <tr class="table-light">
+                                            <td colspan="2" class="fw-bold" style="background-color: #f8f9fa;">Additional Permissions</td>
+                                        </tr>
+                                        <tr>
+                                            <td title="Can add, edit or delete users in their organisation">Org Admin</td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" class="form-check-input" v-model="edit_data.org_admin" @change="handleOrgAdminChange" :disabled="is_system_role(role.id)">
                                             </td>
                                         </tr>
                                         <tr>
@@ -272,10 +291,16 @@
                     name: '',
                     description: '',
                     admin: false,
-                    read_only: false
+                    read_only: false,
+                    org_admin: false
                 })
                 const system_roles = [1, 2, 3]
                 let temp_roles_list = []
+
+                // Computed property for editor checkbox
+                const is_editor = computed(() => {
+                    return !edit_data.value.admin && !edit_data.value.read_only
+                })
 
 
                 async function fetchRoles(page) {
@@ -325,7 +350,8 @@
                             name: edit_data.value.name,
                             description: edit_data.value.description,
                             admin: edit_data.value.admin,
-                            read_only: edit_data.value.read_only
+                            read_only: edit_data.value.read_only,
+                            org_admin: edit_data.value.org_admin
                         })
                     })
                     if(await res.status == 200){
@@ -333,6 +359,7 @@
                         role.description = edit_data.value.description
                         role.admin = edit_data.value.admin
                         role.read_only = edit_data.value.read_only
+                        role.org_admin = edit_data.value.org_admin
                         editing_role.value = null
                     }
                     display_toast(res)
@@ -344,6 +371,7 @@
                     edit_data.value.description = role.description || ''
                     edit_data.value.admin = role.admin
                     edit_data.value.read_only = role.read_only
+                    edit_data.value.org_admin = role.org_admin || false
                 }
 
                 function cancel_edit() {
@@ -352,6 +380,33 @@
                     edit_data.value.description = ''
                     edit_data.value.admin = false
                     edit_data.value.read_only = false
+                    edit_data.value.org_admin = false
+                }
+
+                function handleAdminChange() {
+                    if (edit_data.value.admin) {
+                        edit_data.value.read_only = false
+                    }
+                }
+
+                function handleReadOnlyChange() {
+                    if (edit_data.value.read_only) {
+                        edit_data.value.admin = false
+                        edit_data.value.org_admin = false
+                    }
+                }
+
+                function handleEditorChange(event) {
+                    if (event.target.checked) {
+                        edit_data.value.admin = false
+                        edit_data.value.read_only = false
+                    }
+                }
+
+                function handleOrgAdminChange() {
+                    if (edit_data.value.org_admin) {
+                        edit_data.value.read_only = false
+                    }
                 }
 
                 function onInput(e){
@@ -383,7 +438,12 @@
                     cancel_edit,
                     is_system_role,
                     delete_role,
-                    save_role
+                    save_role,
+                    handleAdminChange,
+                    handleReadOnlyChange,
+                    handleEditorChange,
+                    handleOrgAdminChange,
+                    is_editor
                 }
             }
         }).mount('#main-container')

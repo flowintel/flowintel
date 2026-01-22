@@ -51,6 +51,9 @@
                     {% else %}
                         <span class="badge bg-success ms-2" title="Editor role">
                             <i class="fa-solid fa-pen"></i>
+                            {% if current_user.is_org_admin() %}
+                                <i class="fa-solid fa-users ms-1" title="Also Org Admin"></i>
+                            {% endif %}
                         </span>
                     {% endif %}
                 </a>
