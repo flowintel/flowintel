@@ -26,7 +26,6 @@ Flowintel is an open-source platform designed to assist analysts in organizing t
 
 ![task-management](./doc/case_example.png)
 
-
 ## Quick start
 
 Copy the **default configuration**:
@@ -50,9 +49,23 @@ Run the **installation** script `./install.sh`
 - password: `admin`
 
 ## Documentation
+
 A more detailed documentation can be found here: [https://flowintel.github.io/flowintel-doc](https://flowintel.github.io/flowintel-doc)
 
 There is also a recorded training [available on YouTube](https://www.youtube.com/watch?v=Dx03GqW1SN0) 
+
+
+
+## Using vite
+
+To build assets using vite:
+
+```bash
+cd app/assets
+npm run build:static
+```
+
+
 
 ## License
 

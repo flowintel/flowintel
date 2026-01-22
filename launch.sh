@@ -30,6 +30,20 @@ if [ ! -f "$CONFIG_FILE" ]; then
     fi
 fi
 
+CONF_DIR="$(dirname "$0")/conf"
+CONFIG_MODULE_FILE="$CONF_DIR/config_module.py"
+DEFAULT_MODULE_FILE="$CONF_DIR/config_module.py.default"
+echo $CONFIG_MODULE_FILE
+if [ ! -f "$CONFIG_MODULE_FILE" ]; then
+    if [ -f "$DEFAULT_MODULE_FILE" ]; then
+        echo "config_module.py not found. Creating one from config_module.py.default..."
+        cp "$DEFAULT_MODULE_FILE" "$CONFIG_MODULE_FILE"
+    else
+        echo "No default config file found in $CONF_DIR"
+        exit 1
+    fi
+fi
+
 # Get app URL and port from config
 APP_URL=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_URL)")
 APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_PORT)")
