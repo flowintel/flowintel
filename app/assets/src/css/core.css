@@ -13,8 +13,7 @@ main {
 }
 
 .nav-pagination {
-  position: relative;
-  left: calc(40% - var(--sidebar));
+  margin-left: calc(40% - var(--sidebar));
 }
 
 [v-cloak] {
