@@ -92,17 +92,17 @@ function launch {
     export HISTORY_DIR=$history_dir/history
     killscript
 
-    # Sessions screen avec logs
+    # Start screen sessions with logs
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
-    # Afficher les logs à l'écran
+    # Display logs
     tail -n 0 -F logs/fcm.log logs/misp.log &
     TAIL_PID=$!
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
-    # Lancer le serveur principal (en avant-plan pour Docker)
+    # Start our main application
     python3 app.py
 }
 
@@ -140,6 +140,7 @@ function init_db {
     python3 app.py -i
     python3 app.py -tg
     python3 app.py -mm
+    python3 app.py -td
 
     killscript
 }
@@ -154,6 +155,7 @@ function init_db_prod {
     python3 app.py -i
     python3 app.py -tg
     python3 app.py -mm
+    python3 app.py -td
 }
 
 function reload_db {
@@ -167,7 +169,7 @@ function launch_docker {
     export FLASKENV="docker"
     export HISTORY_DIR=$history_dir/history
 
-    # Sessions screen with logs
+    # Start screen sessions with logs
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
@@ -190,6 +192,7 @@ function init_db_docker {
     python3 app.py -i
     python3 app.py -tg
     python3 app.py -mm
+    python3 app.py -td
 }
 
 if [ "$1" ]; then

@@ -1,0 +1,295 @@
+{
+    "uuid": "c0a48002-d113-46e0-8c4a-949a936f017f",
+    "title": "New Compromised Workstation",
+    "description": "## Compromised workstation \u2013 malware activity\r\n\r\nInvestigation on a compromised workstation found at institution ABC.",
+    "recurring_type": null,
+    "notes": null,
+    "time_required": "",
+    "is_private": false,
+    "ticket_id": "",
+    "is_updated_from_misp": false,
+    "computer_assistate_report": null,
+    "deadline": "2026-01-31 00:00",
+    "recurring_date": null,
+    "tags": [
+        "tlp:amber",
+        "europol-incident:malware=\"infection\"",
+        "csirt_case_classification:incident-category=\"malware\""
+    ],
+    "clusters": [],
+    "tasks": [
+        {
+            "uuid": "6cf3ba37-5424-42f2-aa46-1a86df8f53cd",
+            "title": "Immediate containment",
+            "description": "- Isolate the affected workstation and prevent further spread.\r\n- Disconnect the host from the network (EDR network isolation, switch port shutdown, VPN disconnect).\r\n- Instruct the user to stop using the device.\r\n- Record who reported the incident and when.",
+            "time_required": "",
+            "notes": [],
+            "deadline": "2026-01-20 00:00",
+            "tags": [
+                "workflow:todo=\"preserve-evidence\""
+            ],
+            "clusters": [],
+            "subtasks": [
+                {
+                    "task_id": 5,
+                    "description": "Isolate the workstation from the network."
+                },
+                {
+                    "task_id": 5,
+                    "description": "Contact the user and instruct them to stop using the device."
+                }
+            ],
+            "urls_tools": [
+                {
+                    "name": "EDR console",
+                    "task_uuid": "6cf3ba37-5424-42f2-aa46-1a86df8f53cd",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                },
+                {
+                    "name": "Asset management system",
+                    "task_uuid": "6cf3ba37-5424-42f2-aa46-1a86df8f53cd",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                }
+            ]
+        },
+        {
+            "uuid": "0bb6936a-24d5-4c6a-89e3-a69b62657d41",
+            "title": "Evidence collection",
+            "description": "Collect volatile and non-volatile evidence from the compromised workstation.\r\n- Capture relevant logs (system, security, EDR, proxy if available).\r\n- Preserve suspicious files and artefacts for analysis.\r\n- Avoid unnecessary reboots until evidence collection is complete.\r\n\r\n",
+            "time_required": "2h",
+            "notes": [],
+            "deadline": "2026-01-24 17:00",
+            "tags": [
+                "workflow:todo=\"preserve-evidence\"",
+                "course-of-action:passive=\"discover\""
+            ],
+            "clusters": [],
+            "subtasks": [
+                {
+                    "task_id": 6,
+                    "description": "Export EDR and system logs for the affected endpoint."
+                },
+                {
+                    "task_id": 6,
+                    "description": "Collect suspicious binaries, scripts and documents."
+                }
+            ],
+            "urls_tools": [
+                {
+                    "name": "Log collection / SIEM",
+                    "task_uuid": "0bb6936a-24d5-4c6a-89e3-a69b62657d41",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                },
+                {
+                    "name": "Forensic toolkit",
+                    "task_uuid": "0bb6936a-24d5-4c6a-89e3-a69b62657d41",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                }
+            ]
+        },
+        {
+            "uuid": "073092b2-25b3-45dc-8c80-53a4f72055a2",
+            "title": "Malware analysis",
+            "description": "Identify the malware family and capabilities.\r\n- Perform static and dynamic analysis in a controlled environment.\r\n- Extract indicators (hashes, domains, IPs, mutexes, registry keys).\r\n- Document persistence mechanisms and command and control behaviour.\r\n\r\n",
+            "time_required": "5h",
+            "notes": [],
+            "deadline": "2026-01-25 00:00",
+            "tags": [
+                "workflow:todo=\"expansion\""
+            ],
+            "clusters": [],
+            "subtasks": [
+                {
+                    "task_id": 7,
+                    "description": "Analyse samples in a sandbox."
+                },
+                {
+                    "task_id": 7,
+                    "description": "Document indicators of compromise and behaviours."
+                }
+            ],
+            "urls_tools": [
+                {
+                    "name": "Sandbox platform",
+                    "task_uuid": "073092b2-25b3-45dc-8c80-53a4f72055a2",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                },
+                {
+                    "name": "Malware analysis VM",
+                    "task_uuid": "073092b2-25b3-45dc-8c80-53a4f72055a2",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                }
+            ]
+        },
+        {
+            "uuid": "0d463edf-a7c9-4af6-b870-02592cf85acd",
+            "title": "Scope and impact assessment",
+            "description": "Assess whether the compromise extends beyond the initial workstation.\r\n- Review authentication logs, EDR alerts and network telemetry for lateral movement.\r\n- Identify any additional systems or accounts that may be affected.\r\n- Evaluate the likelihood of data exfiltration.\r\n\r\n",
+            "time_required": null,
+            "notes": [],
+            "deadline": null,
+            "tags": [
+                "PAP:GREEN",
+                "course-of-action:passive=\"discover\""
+            ],
+            "clusters": [],
+            "subtasks": [
+                {
+                    "task_id": 8,
+                    "description": "Hunt for related activity on other endpoints and servers."
+                },
+                {
+                    "task_id": 8,
+                    "description": "Check for suspicious use of privileged accounts."
+                }
+            ],
+            "urls_tools": [
+                {
+                    "name": "SIEM / log search",
+                    "task_uuid": "0d463edf-a7c9-4af6-b870-02592cf85acd",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                },
+                {
+                    "name": "Network monitoring",
+                    "task_uuid": "0d463edf-a7c9-4af6-b870-02592cf85acd",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                }
+            ]
+        },
+        {
+            "uuid": "7e1d96b7-5de1-443a-b666-b2ca276da1d4",
+            "title": "Eradication and recovery",
+            "description": "Remove the malware and restore the workstation safely.\r\n- Remove malicious files and persistence artefacts or reimage the system according to policy.\r\n- Apply missing security updates and hardening measures.\r\n- Validate that the system is clean before returning it to production.\r\n\r\n",
+            "time_required": null,
+            "notes": [
+                {
+                    "uuid": "ba1faf1b-17d3-4767-b38f-aba64e06ef68",
+                    "note": "# NOte 1\n\n",
+                    "task_uuid": "7e1d96b7-5de1-443a-b666-b2ca276da1d4"
+                },
+                {
+                    "uuid": "8fce99fd-c6cb-4511-bbf9-b95e2db05908",
+                    "note": "# NOte2\n\n",
+                    "task_uuid": "7e1d96b7-5de1-443a-b666-b2ca276da1d4"
+                }
+            ],
+            "deadline": null,
+            "tags": [],
+            "clusters": [],
+            "subtasks": [
+                {
+                    "task_id": 9,
+                    "description": "Execute eradication procedure or perform full reimage."
+                },
+                {
+                    "task_id": 9,
+                    "description": "Verify that malware activity no longer occurs."
+                }
+            ],
+            "urls_tools": [
+                {
+                    "name": "Endpoint management / reimaging tool",
+                    "task_uuid": "7e1d96b7-5de1-443a-b666-b2ca276da1d4",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                }
+            ]
+        },
+        {
+            "uuid": "cc3bdecd-369e-4811-90ca-7bbec8cec4e2",
+            "title": "Update MISP / threat repository",
+            "description": "Share indicators and context with MISP or an internal threat repository.\r\n- Create or update a MISP event with indicators from the case.\r\n- Apply appropriate TLP and distribution settings.\r\n- Link the Flowintel case ID in the MISP event for traceability.\r\n\r\n",
+            "time_required": "",
+            "notes": [],
+            "deadline": "2026-01-31 00:00",
+            "tags": [
+                "workflow:todo=\"review-before-publication\"",
+                "workflow:todo=\"review-for-privacy\""
+            ],
+            "clusters": [],
+            "subtasks": [
+                {
+                    "task_id": 10,
+                    "description": "Publish indicators of compromise to MISP."
+                },
+                {
+                    "task_id": 10,
+                    "description": "Map indicators to relevant malware or intrusion-set galaxies."
+                }
+            ],
+            "urls_tools": [
+                {
+                    "name": "MISP instance",
+                    "task_uuid": "cc3bdecd-369e-4811-90ca-7bbec8cec4e2",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                }
+            ]
+        },
+        {
+            "uuid": "8a5e8e1a-6eef-486f-946e-e563fe64248f",
+            "title": "Post-incident review",
+            "description": "Capture lessons learned and close the case.\r\n- Summarise root cause, detection quality and response timeline.\r\n- Propose improvements (rules, hardening, awareness, processes).\r\n- Attach the final report and update case status.\r\n",
+            "time_required": null,
+            "notes": [],
+            "deadline": null,
+            "tags": [
+                "workflow:todo=\"release-requested\""
+            ],
+            "clusters": [],
+            "subtasks": [
+                {
+                    "task_id": 11,
+                    "description": "Draft and attach the final incident report."
+                },
+                {
+                    "task_id": 11,
+                    "description": "Log agreed follow-up actions for tracking in separate tasks or cases."
+                }
+            ],
+            "urls_tools": [
+                {
+                    "name": "Reporting template",
+                    "task_uuid": "8a5e8e1a-6eef-486f-946e-e563fe64248f",
+                    "uuid": "498ee4a3-d7ab-40d0-a4fe-58a047c747e8"
+                }
+            ]
+        }
+    ],
+    "misp-objects": [
+        {
+            "template_uuid": "688c46fb-5edb-40a3-8273-1af7923e2215",
+            "name": "file",
+            "attributes": [
+                {
+                    "value": "44d88612fea8a8f36de82e1278abb02f",
+                    "type": "datetime",
+                    "object_relation": "access-time",
+                    "first_seen": null,
+                    "last_seen": null,
+                    "comment": "EICAR test file",
+                    "ids_flag": true,
+                    "disable_correlation": false
+                },
+                {
+                    "value": "3395856ce81f2b7382583e5c2f0f4a36f4d2f1f0",
+                    "type": "datetime",
+                    "object_relation": "access-time",
+                    "first_seen": null,
+                    "last_seen": null,
+                    "comment": "EICAR test file",
+                    "ids_flag": true,
+                    "disable_correlation": false
+                },
+                {
+                    "value": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538a7f65757d54",
+                    "type": "datetime",
+                    "object_relation": "access-time",
+                    "first_seen": null,
+                    "last_seen": null,
+                    "comment": "EICAR test file",
+                    "ids_flag": true,
+                    "disable_correlation": false
+                }
+            ]
+        }
+    ]
+}
