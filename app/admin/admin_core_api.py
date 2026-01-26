@@ -1,7 +1,7 @@
 from ..db_class.db import User, Role, Org
 
 
-def verif_add_user(data_dict):
+def verif_add_user(data_dict, api_user=None):
     if "first_name" not in data_dict or not data_dict["first_name"]:
         return {"message": "Please give a first name for the user"}
 
@@ -24,16 +24,42 @@ def verif_add_user(data_dict):
 
     if "role" not in data_dict or not data_dict["role"]:
         return {"message": "Please give a role for the user"}
-    elif not Role.query.get(data_dict["role"]):
-        return {"message": "Role not identified"}
+    else:
+        role = Role.query.get(data_dict["role"])
+        if not role:
+            return {"message": "Role not identified"}
+        
+        if api_user and api_user.is_org_admin() and not api_user.is_admin():
+            if role.admin:
+                return {"message": "OrgAdmin cannot assign Admin role to users"}
     
     if "org" not in data_dict or not data_dict["org"]:
-        data_dict["org"] = None
+        if api_user and api_user.is_org_admin() and not api_user.is_admin():
+            data_dict["org"] = api_user.org_id
+        else:
+            data_dict["org"] = None
+    else:
+        try:
+            org_id = int(data_dict["org"])
+            if not Org.query.get(org_id):
+                return {"message": f"Organisation with ID {org_id} not found"}
+            
+            # Org admins can only create users in their own organization
+            if api_user and api_user.is_org_admin() and not api_user.is_admin():
+                if org_id != api_user.org_id:
+                    return {"message": "OrgAdmin can only add users to their own organization"}
+            
+            data_dict["org"] = org_id
+        except ValueError:
+            return {"message": f"Organisation must be an ID (integer)"}
 
     return data_dict
 
-def verif_edit_user(data_dict, user_id):
+def verif_edit_user(data_dict, user_id, api_user=None):
     user = User.query.get(user_id)
+    if not user:
+        return {"message": "User not found"}
+    
     if "first_name" not in data_dict or not data_dict["first_name"]:
         data_dict["first_name"] = user.first_name
 
@@ -45,19 +71,38 @@ def verif_edit_user(data_dict, user_id):
 
     if "email" not in data_dict or not data_dict["email"]:
         data_dict["email"] = user.email
-    elif User.query.filter_by(email=data_dict["email"]).first():
-        return {"message": "Email already exist"}
+    elif data_dict["email"] != user.email and User.query.filter_by(email=data_dict["email"]).first():
+        return {"message": "Email already exists"}
     
     if "matrix_id" not in data_dict or not data_dict["matrix_id"]:
         data_dict["matrix_id"] = user.matrix_id
 
     if "role" not in data_dict or not data_dict["role"]:
         data_dict["role"] = user.role_id
-    elif not Role.query.get(data_dict["role"]):
-        return {"message": "Role not identified"}
+    else:
+        role = Role.query.get(data_dict["role"])
+        if not role:
+            return {"message": "Role not identified"}
+        
+        if api_user and api_user.is_pure_org_admin():
+            if role.admin:
+                return {"message": "OrgAdmin cannot assign Admin role"}
     
     if "org" not in data_dict or not data_dict["org"]:
         data_dict["org"] = user.org_id
+    else:
+        try:
+            org_id = int(data_dict["org"])
+            if not Org.query.get(org_id):
+                return {"message": f"Organisation with ID {org_id} not found"}
+            
+            if api_user and api_user.is_pure_org_admin():
+                if org_id != api_user.org_id:
+                    return {"message": "OrgAdmin cannot move users to different organization"}
+            
+            data_dict["org"] = org_id
+        except ValueError:
+            return {"message": f"Organisation must be an ID (integer)"}
 
     return data_dict
 

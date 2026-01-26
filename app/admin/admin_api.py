@@ -2,11 +2,47 @@ from flask import request
 from . import admin_core as AdminModel
 from . import admin_core_api as AdminModelApi
 
-from flask_restx import Namespace, Resource
-from ..decorators import api_required, admin_required
+from flask_restx import Namespace, Resource, fields
+from ..decorators import api_required, admin_required, admin_or_org_admin_required
+from ..utils.utils import get_user_api
+from ..utils.logger import flowintel_log
+from flask import current_app
+from flask_login import current_user
 
 
 admin_ns = Namespace("admin", description="Endpoints to manage admin actions")
+
+# Define models for request body documentation
+# Changed to use JSON body fields, instead of URL parameters
+add_user_model = admin_ns.model('AddUser', {
+    'first_name': fields.String(required=True, description='First name for the user'),
+    'last_name': fields.String(required=True, description='Last name for the user'),
+    'email': fields.String(required=True, description='Email for the user'),
+    'password': fields.String(required=True, description='Password for the user'),
+    'role': fields.Integer(required=True, description='Role ID (integer) for the user'),
+    'org': fields.Integer(required=False, description='Organisation ID (integer) for the user')
+})
+
+edit_user_model = admin_ns.model('EditUser', {
+    'first_name': fields.String(required=False, description='First name for the user'),
+    'last_name': fields.String(required=False, description='Last name for the user'),
+    'email': fields.String(required=False, description='Email for the user'),
+    'role': fields.Integer(required=False, description='Role ID (integer) for the user'),
+    'org': fields.Integer(required=False, description='Organisation ID (integer) for the user')
+})
+
+add_org_model = admin_ns.model('AddOrg', {
+    'name': fields.String(required=True, description='Name for the organisation'),
+    'description': fields.String(required=False, description='Description of the organisation'),
+    'uuid': fields.String(required=False, description='UUID of the organisation')
+})
+
+edit_org_model = admin_ns.model('EditOrg', {
+    'name': fields.String(required=False, description='Name for the organisation'),
+    'description': fields.String(required=False, description='Description of the organisation'),
+    'uuid': fields.String(required=False, description='UUID of the organisation')
+})
+
 
 
 #########
@@ -18,7 +54,13 @@ admin_ns = Namespace("admin", description="Endpoints to manage admin actions")
 class GetUsers(Resource):
     method_decorators = [api_required]
     def get(self):
-        users = AdminModel.get_all_users()
+        user = get_user_api(request.headers["X-API-KEY"])
+        
+        if current_app.config.get('LIMIT_USER_VIEW_TO_ORG', False) and not user.is_admin():
+            users = AdminModel.get_users_by_org(user.org_id)
+        else:
+            users = AdminModel.get_all_users()
+        
         return {"users": [user.to_json() for user in users]}, 200
     
 @admin_ns.route('/user/<uid>')
@@ -56,21 +98,17 @@ class GetUserMatrix(Resource):
 @admin_ns.route('/add_user')
 @admin_ns.doc(description='Add new user')
 class AddUser(Resource):
-    method_decorators = [admin_required, api_required]
-    @admin_ns.doc(params={
-        "first_name": "Required. First name for the user",
-        "last_name": "Required. Last name for the user",
-        "email": "Required. Email for the user",
-        "password": "Required. Password for the user",
-        "role": "Required. Role/Permission for the user",
-        "org": "Organisation of the user"
-        })
-
+    method_decorators = [admin_or_org_admin_required, api_required]
+    
+    @admin_ns.expect(add_user_model)
     def post(self):
         if request.json:
-            verif_dict = AdminModelApi.verif_add_user(request.json)
+            api_user = get_user_api(request.headers["X-API-KEY"])
+            
+            verif_dict = AdminModelApi.verif_add_user(request.json, api_user)
             if "message" not in verif_dict:
                 user = AdminModel.add_user_core(verif_dict)
+                flowintel_log("audit", 200, "User added via API", User=request.json.get('email'), UserId=user.id, By=api_user.email)
                 return {"message": f"User created {user.id}", "id": user.id}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -79,19 +117,28 @@ class AddUser(Resource):
 @admin_ns.route('/edit_user/<id>')
 @admin_ns.doc(description='Edit user', params={'id': 'id of a user'})
 class EditUser(Resource):
-    method_decorators = [admin_required, api_required]
-    @admin_ns.doc(params={
-        "first_name": "First name for the user",
-        "last_name": "Last name for the user",
-        "role": "Role/Permission for the user",
-        "org": "Organisation of the user"
-        })
-
+    method_decorators = [admin_or_org_admin_required, api_required]
+    
+    @admin_ns.expect(edit_user_model)
     def post(self, id):
         if request.json:
-            verif_dict = AdminModelApi.verif_edit_user(request.json, id)
+            api_user = get_user_api(request.headers["X-API-KEY"])
+            
+            user_to_edit = AdminModel.get_user(id)
+            if not user_to_edit:
+                return {"message": "User not found"}, 404
+            
+            if api_user.is_pure_org_admin():
+                if user_to_edit.org_id != api_user.org_id:
+                    return {"message": "OrgAdmin can only edit users from their own organization"}, 403
+                
+                if 'org' in request.json and int(request.json['org']) != api_user.org_id:
+                    return {"message": "OrgAdmin cannot move users to different organization"}, 403
+            
+            verif_dict = AdminModelApi.verif_edit_user(request.json, id, api_user)
             if "message" not in verif_dict:
                 AdminModel.admin_edit_user_core(verif_dict, id)
+                flowintel_log("audit", 200, "User edited via API", User=user_to_edit.email, UserId=id, By=api_user.email)
                 return {"message": "User edited"}, 200
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -100,14 +147,25 @@ class EditUser(Resource):
 @admin_ns.route('/delete_user/<id>')
 @admin_ns.doc(description='Delete user' , params={'id': 'id of a user'})
 class DeleteUser(Resource):
-    method_decorators = [admin_required, api_required]
+    method_decorators = [admin_or_org_admin_required, api_required]
     def get(self, id):
-        if AdminModel.get_user(id):
-            if AdminModel.delete_user_core(id):
-                print("*"*100)
-                return {"message": "User deleted"}, 200
-            return {"message": "Error User deleted"}, 400
-        return {"message", "User not found"}, 404
+        api_user = get_user_api(request.headers["X-API-KEY"])
+        
+        user_to_delete = AdminModel.get_user(id)
+        if not user_to_delete:
+            return {"message": "User not found"}, 404
+        
+        if user_to_delete.id == api_user.id:
+            return {"message": "You cannot delete your own account"}, 403
+        
+        if api_user.is_pure_org_admin():
+            if user_to_delete.org_id != api_user.org_id:
+                return {"message": "OrgAdmin can only delete users from their own organization"}, 403
+        
+        if AdminModel.delete_user_core(id):
+            flowintel_log("audit", 200, "User deleted via API", User=user_to_delete.email, UserId=id, By=api_user.email)
+            return {"message": "User deleted"}, 200
+        return {"message": "Error deleting user"}, 400
 
 
 ########
@@ -138,37 +196,37 @@ class GetOrgs(Resource):
 @admin_ns.doc(description='Add new organisation')
 class AddOrg(Resource):
     method_decorators = [admin_required, api_required]
-    @admin_ns.doc(params={
-        "name": "Required. Name for the org",
-        "description": "Description of the org",
-        "uuid": "uuid of the org"
-    })
-
+    
+    @admin_ns.expect(add_org_model)
     def post(self):
         if request.json:
+            api_user = get_user_api(request.headers["X-API-KEY"])
             verif_dict = AdminModelApi.verif_add_org(request.json)
             if "message" not in verif_dict:
                 org = AdminModel.add_org_core(verif_dict)
+                flowintel_log("audit", 200, "Org added via API", Org=request.json.get('name'), OrgId=org.id, By=api_user.email)
                 return {"message": f"Org created: {org.id}", "org_id": org.id}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400
 
 
 @admin_ns.route('/edit_org/<id>')
-@admin_ns.doc(description='Edit org', params={'oid': "id of an org"})
+@admin_ns.doc(description='Edit org', params={'id': "id of an org"})
 class EditOrg(Resource):
     method_decorators = [admin_required, api_required]
-    @admin_ns.doc(params={
-        "name": "Name for the org",
-        "description": "Description of the org",
-        "uuid": "uuid of the org"
-        })
-
+    
+    @admin_ns.expect(edit_org_model)
     def post(self, id):
         if request.json:
+            api_user = get_user_api(request.headers["X-API-KEY"])
+            org = AdminModel.get_org(id)
+            if not org:
+                return {"message": "Org not found"}, 404
+            
             verif_dict = AdminModelApi.verif_edit_org(request.json, id)
             if "message" not in verif_dict:
                 AdminModel.edit_org_core(verif_dict, id)
+                flowintel_log("audit", 200, "Org edited via API", Org=verif_dict.get('name'), OrgId=id, By=api_user.email)
                 return {"message": f"Org edited"}, 200
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -178,8 +236,11 @@ class EditOrg(Resource):
 class DeleteOrg(Resource):
     method_decorators = [admin_required, api_required]
     def get(self, oid):
-        if AdminModel.get_org(oid):
+        api_user = get_user_api(request.headers["X-API-KEY"])
+        org = AdminModel.get_org(oid)
+        if org:
             if AdminModel.delete_org_core(oid):
+                flowintel_log("audit", 200, "Org deleted via API", OrgId=oid, By=api_user.email)
                 return {"message": "Org deleted"}, 200
             return {"message": "Error Org deleted"}, 400
         return {"message": "Org not found"}, 404

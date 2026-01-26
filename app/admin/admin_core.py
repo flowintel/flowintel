@@ -10,9 +10,16 @@ def get_all_users():
     """Return all users"""
     return User.query.all()
 
-def get_users_page(page):
-    """Return all users by page"""
-    return User.query.paginate(page=page, per_page=20, max_per_page=50)
+def get_users_by_org(org_id):
+    """Return all users filtered by organization"""
+    return User.query.filter_by(org_id=org_id).all()
+
+def get_users_page(page, org_id=None):
+    """Return all users by page, optionally filtered by org_id"""
+    query = User.query
+    if org_id is not None:
+        query = query.filter_by(org_id=org_id)
+    return query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_all_roles():
     """Return all roles"""
@@ -111,7 +118,13 @@ def create_default_org(user):
 
 def delete_default_org(user_org_id):
     """Delete the default org for the user"""
+    if not user_org_id:
+        return False
+    
     org = Org.query.get(user_org_id)
+    if not org:
+        return False
+    
     cp = 0
     for user in org.users:
         cp += 1
@@ -224,7 +237,8 @@ def add_role_core(form_dict):
         name = form_dict["name"],
         description = form_dict["description"],
         admin = form_dict.get("admin", False),
-        read_only = form_dict.get("read_only", False)
+        read_only = form_dict.get("read_only", False),
+        org_admin = form_dict.get("org_admin", False)
     )
     db.session.add(role)
     db.session.commit()
@@ -253,6 +267,7 @@ def edit_role_core(role_id, data):
             role.description = data['description']
         role.admin = data.get("admin", False)
         role.read_only = data.get("read_only", False)
+        role.org_admin = data.get("org_admin", False)
         db.session.commit()
         return True
     return False

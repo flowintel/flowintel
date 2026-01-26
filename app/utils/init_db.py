@@ -343,7 +343,7 @@ def create_user_test():
         email="admin@admin.admin",
         password="admin",
         role_id=role.id,
-        api_key = "admin_api_key"
+        api_key="admin_api_key"
     )
     db.session.add(user)
     db.session.commit()
@@ -353,13 +353,14 @@ def create_user_test():
     user.org_id = org.id
     db.session.commit()
 
+    # Editor user
     user = User(
         first_name="editor",
         last_name="editor",
         email="editor@editor.editor",
         password="editor",
         role_id=2,
-        api_key = "editor_api_key"
+        api_key="editor_api_key"
     )
     db.session.add(user)
     db.session.commit()
@@ -369,13 +370,43 @@ def create_user_test():
     user.org_id = org.id
     db.session.commit()
 
+    # Read only user
     user = User(
         first_name="read",
         last_name="read",
         email="read@read.read",
         password="read",
         role_id=3,
-        api_key = "read_api_key"
+        api_key="read_api_key"
+    )
+    db.session.add(user)
+    db.session.commit()
+    
+    # Org
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
+    # OrgAdmin user - Create an OrgAdmin role first
+    orgadmin_role = Role.query.filter_by(name="OrgAdmin").first()
+    if not orgadmin_role:
+        orgadmin_role = Role(
+            name="OrgAdmin",
+            description="Organization administrator",
+            admin=False,
+            read_only=False,
+            org_admin=True
+        )
+        db.session.add(orgadmin_role)
+        db.session.commit()
+
+    user = User(
+        first_name="orgadmin",
+        last_name="orgadmin",
+        email="orgadmin@orgadmin.orgadmin",
+        password="orgadmin",
+        role_id=orgadmin_role.id,
+        api_key="orgadmin_api_key"
     )
     db.session.add(user)
     db.session.commit()

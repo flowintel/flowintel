@@ -18,7 +18,14 @@ def permission_required(perm):
                         abort(403)
                 elif not current_user.is_admin():
                     abort(403)
-            if perm == "read_only":
+            elif perm == "admin_or_org_admin":
+                if request.path.startswith("/api/"):
+                    user = get_user_api(request.headers["X-API-KEY"])
+                    if not (user.is_admin() or user.is_org_admin()):
+                        abort(403)
+                elif not (current_user.is_admin() or current_user.is_org_admin()):
+                    abort(403)
+            elif perm == "read_only":
                 if request.path.startswith("/api/"):
                     user = get_user_api(request.headers["X-API-KEY"])
                     if user.read_only():
@@ -49,6 +56,9 @@ def verification_required():
 
 def admin_required(f):
     return permission_required("admin")(f)
+
+def admin_or_org_admin_required(f):
+    return permission_required("admin_or_org_admin")(f)
 
 def editor_required(f):
     return permission_required("read_only")(f)

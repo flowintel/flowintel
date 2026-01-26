@@ -9,7 +9,7 @@
         <div class="row align-items-center">
             <div class="col-auto d-flex align-items-center">
                 <h5 class="mb-0"><i class="fa-solid fa-users me-2"></i>Users</h5>
-                {% if current_user.is_admin() %}
+                {% if current_user.is_admin() or current_user.is_org_admin() %}
                     <a class="btn btn-primary btn-sm ms-3" href="/admin/add_user" title="Add user"><i class="fa-solid fa-plus fa-sm"></i></a>
                 {% endif %}
             </div>
@@ -47,13 +47,13 @@
                 <div class="list-group" style="margin-bottom: 10px;">
                     <div style="display:flex; border-top-left-radius: 15px; border-top-right-radius: 15px;">
                         <a class="list-group-item list-group-item-action case-index-list">
-                            <div class="d-flex w-100 justify-content-between">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
                                 <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
                                     <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ user.id ]]- [[ user.first_name ]] [[ user.last_name ]]
                                 </h5>
-                                <small v-if="user.nickname" title="nickname" class="btn btn-primary btn-sm person">
-                                    <i class="fa-solid fa-user"></i> [[user.nickname]]
-                                </small>
+                                <span v-if="user.nickname" title="nickname" class="badge bg-primary d-flex align-items-center">
+                                    <i class="fa-solid fa-user me-1"></i>[[user.nickname]]
+                                </span>
                             </div>
                             <div class="d-flex w-100 justify-content-between">
                                 <small class="text-muted" title="email adress">[[ user.email ]]</small>
@@ -61,41 +61,35 @@
                             <div v-if="user.matrix_id" class="d-flex w-100 justify-content-between">
                                 <small class="text-muted" title="matrix id">[[ user.matrix_id ]]</small>
                             </div>
-                            <div class="d-flex w-100 justify-content-between mt-2">
-                                <small title="Organisation" class="btn btn-primary btn-sm orgs">
-                                    <i class="fa-solid fa-users"></i> [[ user.org_name ]]
-                                </small>
-                            </div>
-                            <div class="d-flex w-100 justify-content-center mt-2">
+                            <div class="d-flex w-100 justify-content-start mt-2">
+                                <span title="Organisation" class="badge bg-primary me-2">
+                                    <i class="fa-solid fa-users me-1"></i>[[ user.org_name ]]
+                                </span>
                                 <span v-if="user.role.toLowerCase() === 'admin'" class="badge bg-danger" title="Role">
                                     <i class="fa-solid fa-shield-halved me-1"></i>[[ user.role ]]
                                 </span>
                                 <span v-else-if="user.role.toLowerCase() === 'read only'" class="badge bg-info" title="Role">
                                     <i class="fa-solid fa-eye me-1"></i>[[ user.role ]]
                                 </span>
-                                <span v-else-if="user.role.toLowerCase() === 'editor'" class="badge bg-success" title="Role">
+                                <span v-else class="badge bg-success" title="Role">
                                     <i class="fa-solid fa-pen me-1"></i>[[ user.role ]]
-                                </span>
-                                <span v-else class="badge bg-secondary" title="Role">
-                                    <i class="fa-solid fa-user me-1"></i>[[ user.role ]]
                                 </span>
                             </div>
                         </a>
-                        {% if current_user.is_admin() %}
+                        <div v-if="can_manage_user(user)">
                             <div>
-                                <div>
-                                    <a class="btn btn-primary" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user">
-                                        <i class="fa-solid fa-pen-to-square fa-fw"></i>
-                                    </a>
-                                </div>
-                                <div>
-                                    <button class="btn btn-danger" type="button" title="Delete the user" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'+user.id">
-                                        <i class="fa-solid fa-trash fa-fw"></i>
-                                    </button>
-                                </div>
+                                <a class="btn btn-primary" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user">
+                                    <i class="fa-solid fa-pen-to-square fa-fw"></i>
+                                </a>
                             </div>
-                            <!-- Modal delete user -->
-                            <div class="modal fade" :id="'delete_user_modal_'+user.id" tabindex="-1" aria-labelledby="delete_user_modal" aria-hidden="true">
+                            <div>
+                                <button class="btn btn-danger" type="button" title="Delete the user" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'+user.id">
+                                    <i class="fa-solid fa-trash fa-fw"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Modal delete user -->
+                        <div v-if="can_manage_user(user)" class="modal fade" :id="'delete_user_modal_'+user.id" tabindex="-1" aria-labelledby="delete_user_modal" aria-hidden="true">
                                 <div class="modal-dialog ">
                                     <div class="modal-content">
                                         <div class="modal-header">
@@ -111,7 +105,7 @@
                                     </div>
                                 </div>
                             </div>
-                        {% endif %}
+                        </div>
                     </div>
                 </div>
             </template>
@@ -152,7 +146,16 @@
             setup() {
                 const users_list = ref(null)
                 const current_page = ref(1)
+                const is_admin = {{ 'true' if current_user.is_admin() else 'false' }}
+                const is_org_admin = {{ 'true' if current_user.is_org_admin() else 'false' }}
+                const current_user_org_id = {{ current_user.org_id if current_user.org_id else 'null' }}
                 let temp_users_list = []
+
+                function can_manage_user(user) {
+                    if (is_admin) return true
+                    if (is_org_admin && user.org_id === current_user_org_id) return true
+                    return false
+                }
 
 
                 async function fetchUsers(page) {
@@ -220,7 +223,8 @@
                     current_page,
                     fetchUsers,
                     onInput,
-                    visiblePages
+                    visiblePages,
+                    can_manage_user
                 }
             }
         }).mount('#main-container')
