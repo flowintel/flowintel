@@ -237,6 +237,7 @@ def test_get_users_limited_to_org(client):
     # Should only contain users from OrgAdmin's org
     users = response.json["users"]
     for user in users:
+        print(user)
         assert user["org_id"] == org_id
 
 def test_get_specific_user_in_own_org(client):

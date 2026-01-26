@@ -17,7 +17,6 @@ SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 CONF_DIR="$(dirname "$0")/conf"
 CONFIG_FILE="$CONF_DIR/config.py"
 DEFAULT_FILE="$CONF_DIR/config.py.default"
-echo $CONFIG_FILE
 
 # Check if config.py exists
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -33,7 +32,7 @@ fi
 CONF_DIR="$(dirname "$0")/conf"
 CONFIG_MODULE_FILE="$CONF_DIR/config_module.py"
 DEFAULT_MODULE_FILE="$CONF_DIR/config_module.py.default"
-echo $CONFIG_MODULE_FILE
+
 if [ ! -f "$CONFIG_MODULE_FILE" ]; then
     if [ -f "$DEFAULT_MODULE_FILE" ]; then
         echo "config_module.py not found. Creating one from config_module.py.default..."
