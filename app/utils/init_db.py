@@ -1,5 +1,7 @@
 import uuid
 import datetime
+import json
+import os
 from flask import current_app
 from ..db_class.db import Case, Case_Org, Connector, Connector_Icon, Icon_File, Task, db
 from ..db_class.db import User, Role, Org, Status
@@ -172,80 +174,28 @@ def create_default_icon():
         )
         db.session.add(icon)
         db.session.commit()
-    
-
-def create_task(case, user, title, description):
-    nb_tasks = 1
-    if case.nb_tasks:
-        nb_tasks = case.nb_tasks+1
-    else:
-        case.nb_tasks = 0
-
-    task = Task(
-        uuid=str(uuid.uuid4()),
-        title=title,
-        description=description,
-        creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
-        last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
-        case_id=case.id,
-        status_id=1,
-        case_order_id=nb_tasks,
-        completed=False,
-        nb_notes=0
-    )
-    db.session.add(task)
-    db.session.commit()
-
-    case.nb_tasks += 1
-    db.session.commit()
-
-    CommonModel.update_last_modif(case.id)
-    CommonModel.save_history(case.uuid, user, f"Task '{task.title}' Created")
-    return task
 
 
 def create_default_case(user):
-    # Create a case
-    case = Case.query.filter_by(title="Forensic Case").first()
-    if case:
+    from ..tools.tools_core import case_creation_from_importer
+    
+    app_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    testdata_dir = os.path.join(app_dir, "tests", "testdata")
+    
+    if not os.path.exists(testdata_dir):
         return
-    case = Case(
-        title="Forensic Case",
-        description="Example forensic case",
-        uuid=str(uuid.uuid4()),
-        creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
-        last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
-        status_id=1,
-        owner_org_id=user.org_id
-    )
-    db.session.add(case)
-    db.session.commit()
-
-    case_org = Case_Org(
-        case_id=case.id, 
-        org_id=user.org_id
-    )
-    db.session.add(case_org)
-    db.session.commit()
-
-    CommonModel.save_history(case.uuid, user, "Case Created")
-
-    # Create tasks
-    task_1 = create_task(case, user, title="Extract disk", description="Only one machine")
-    task_2 = create_task(case, user, title="Create a timeline", description="The time is your ally")
-    task_3 = create_task(case, user, title="Extract and analyze evtx", description="Lost in the wild Windows")
-    task_4 = create_task(case, user, title="Write report", description="Boring part but do it")
-
-    note_1 = TaskModel.create_note(task_1.id, user)
-    note_2 = TaskModel.create_note(task_2.id, user)
-    note_3 = TaskModel.create_note(task_3.id, user)
-    note_3_1 = TaskModel.create_note(task_3.id, user)
-    note_4 = TaskModel.create_note(task_4.id, user)
-    TaskModel.modif_note_core(task_1.id, user, "# Important\nDon't forget to do a copy. \nNever work on original evidence.", note_1.id)
-    TaskModel.modif_note_core(task_2.id, user, "# Timeline\nPlaso or mactime. Choose your side...", note_2.id)
-    TaskModel.modif_note_core(task_3.id, user, "There's always a few in a Windows machine.", note_3.id)
-    TaskModel.modif_note_core(task_3.id, user, "Found it...\n\n\nQuickly...", note_3_1.id)
-    TaskModel.modif_note_core(task_3.id, user, "Markdown this time.", note_4.id)
+    
+    case_files = sorted([f for f in os.listdir(testdata_dir) if f.startswith("case_") and f.endswith(".json")])
+    
+    for filename in case_files:
+        filepath = os.path.join(testdata_dir, filename)
+        with open(filepath) as f:
+            case_data = json.load(f)
+        result = case_creation_from_importer(case_data, user)
+        if result:
+            print(f"  Failed: {filename} - {result.get('message', 'Unknown error')}")
+        else:
+            print(f"  Created: {case_data['title']}")
 
 
 
@@ -324,8 +274,6 @@ def create_admin():
 
     # Status
     create_status()
-
-    create_default_case(admin_user)
 
 
 

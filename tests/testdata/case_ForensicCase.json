@@ -1,0 +1,105 @@
+{
+    "uuid": "c468b5de-f289-4e38-8dc4-b047982fd459",
+    "title": "Forensic Case",
+    "description": "Example forensic case",
+    "recurring_type": null,
+    "notes": null,
+    "time_required": null,
+    "is_private": false,
+    "ticket_id": null,
+    "is_updated_from_misp": false,
+    "computer_assistate_report": null,
+    "deadline": null,
+    "recurring_date": null,
+    "tags": [
+        "tlp:amber",
+        "enisa:nefarious-activity-abuse=\"installation-of-sophisticated-and-targeted-malware\""
+    ],
+    "clusters": [],
+    "tasks": [
+        {
+            "uuid": "b9b94032-97f0-4b42-b20a-8b119bcae42d",
+            "title": "Extract disk",
+            "description": "Only one machine",
+            "time_required": null,
+            "notes": [
+                {
+                    "uuid": "eb3827cf-92a1-4846-8c73-a2fb156df076",
+                    "note": "# Important\nDon't forget to do a copy. \nNever work on original evidence.",
+                    "task_uuid": "b9b94032-97f0-4b42-b20a-8b119bcae42d"
+                }
+            ],
+            "deadline": null,
+            "tags": [
+                "PAP:GREEN"
+            ],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        },
+        {
+            "uuid": "704c0664-a3b6-462e-bc80-935a669eb199",
+            "title": "Create a timeline",
+            "description": "The time is your ally",
+            "time_required": null,
+            "notes": [
+                {
+                    "uuid": "726a8496-ed97-4351-811d-aa1e3bbbe058",
+                    "note": "# Timeline\nPlaso or mactime. Choose your side...",
+                    "task_uuid": "704c0664-a3b6-462e-bc80-935a669eb199"
+                }
+            ],
+            "deadline": null,
+            "tags": [
+                "PAP:GREEN"
+            ],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        },
+        {
+            "uuid": "16aa6610-79c4-4b69-b291-b4f5800fc99c",
+            "title": "Extract and analyze evtx",
+            "description": "Lost in the wild Windows",
+            "time_required": null,
+            "notes": [
+                {
+                    "uuid": "1c8c31ab-e148-4234-93ea-f6056ef96b84",
+                    "note": "There's always a few in a Windows machine.",
+                    "task_uuid": "16aa6610-79c4-4b69-b291-b4f5800fc99c"
+                },
+                {
+                    "uuid": "40e71fda-072b-46aa-b5db-6bab472165af",
+                    "note": "Found it...\n\n\nQuickly...",
+                    "task_uuid": "16aa6610-79c4-4b69-b291-b4f5800fc99c"
+                }
+            ],
+            "deadline": null,
+            "tags": [
+                "PAP:GREEN"
+            ],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        },
+        {
+            "uuid": "a41c64b7-3c61-4d5f-988d-4cf1bfcdf48a",
+            "title": "Write report",
+            "description": "Boring part but do it",
+            "time_required": null,
+            "notes": [
+                {
+                    "uuid": "19f14f8c-f437-4c55-bf8a-57da6a780191",
+                    "note": "",
+                    "task_uuid": "a41c64b7-3c61-4d5f-988d-4cf1bfcdf48a"
+                }
+            ],
+            "deadline": null,
+            "tags": [],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        }
+    ],
+    "misp-objects": []
+}

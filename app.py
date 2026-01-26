@@ -48,6 +48,7 @@ parser.add_argument("-d", "--delete_db", help="Delete the db", action="store_tru
 parser.add_argument("-tg", "--taxo_galaxies", help="Add or update taxonomies and galaxies", action="store_true")
 parser.add_argument("-mm", "--misp_modules", help="Add or update misp-modules", action="store_true")
 parser.add_argument("-py", "--pymisp", help="Update pymisp misp objects", action="store_true")
+parser.add_argument("-td", "--test_data", help="Create default test cases", action="store_true")
 args = parser.parse_args()
 
 app = create_app()
@@ -93,6 +94,15 @@ elif args.misp_modules:
 elif args.pymisp:
     with app.app_context():
         update_pymisp_objects()
+elif args.test_data:
+    with app.app_context():
+        from app.db_class.db import User
+        from app.utils.init_db import create_default_case
+        admin_user = User.query.filter_by(role_id=1).first()
+        if admin_user:
+            create_default_case(admin_user)
+        else:
+            print("Error: No admin user found")
 else:
     # get_modules_list()
     app.run(host=app.config.get("FLASK_URL"), port=app.config.get("FLASK_PORT"))
