@@ -5,6 +5,7 @@ from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..utils import utils
+from ..utils.logger import flowintel_log
 
 from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
@@ -323,7 +324,10 @@ class UploadFile(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-                if TaskModel.add_file_core(task, request.files, current_user):
+                created_files = TaskModel.add_file_core(task, request.files, current_user)
+                if created_files:
+                    file_details = [f"{f.name} ({f.file_size} bytes, {f.file_type})" for f in created_files]
+                    flowintel_log("audit", 200, "Files added to task", User=current_user.email, CaseId=task.case_id, TaskId=tid, FilesCount=len(created_files), Files="; ".join(file_details))
                     return {"message": "File added"}, 200
                 return {"message": "Error file added"}, 400
             return {"message": "Permission denied"}, 403
@@ -356,7 +360,12 @@ class DeleteFile(Resource):
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 file = CommonModel.get_file(fid)
                 if file and file in task.files:
+                    file_name = file.name
+                    file_size = file.file_size if file.file_size else 0
+                    file_type = file.file_type if file.file_type else "unknown"
+                    
                     if TaskModel.delete_file(file, task, current_user):
+                        flowintel_log("audit", 200, "Task file deleted", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid, FileName=file_name, FileSize=f"{file_size} bytes", FileType=file_type)
                         return {"message": "File Deleted"}, 200
                     return {"message": "Error File Deleted"}, 400
             return {"message": "Permission denied"}, 403

@@ -329,8 +329,12 @@ def delete_file(tid, fid):
     file = CommonModel.get_file(fid)
     if file and file in task.files:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            file_name = file.name
+            file_size = file.file_size if file.file_size else 0
+            file_type = file.file_type if file.file_type else "unknown"
+            
             if TaskModel.delete_file(file, task, current_user):
-                flowintel_log("audit", 200, "Task file deleted", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
+                flowintel_log("audit", 200, "Task file deleted", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid, FileName=file_name, FileSize=f"{file_size} bytes", FileType=file_type)
                 return {"message": "File Deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Error deleting file", "toast_class": "warning-subtle"}, 400
         flowintel_log("audit", 403, "Delete task file: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
@@ -356,8 +360,10 @@ def add_files(cid, tid):
                             flowintel_log("audit", 400, f"File upload rejected: {error_msg}", User=current_user.email, CaseId=cid, TaskId=tid, FileName=file.filename, FileSize=f"{file_size}MB")
                             return {"message": error_msg, "toast_class": "danger-subtle"}, 400
                     
-                    if TaskModel.add_file_core(task=task, files_list=request.files, current_user=current_user):
-                        flowintel_log("audit", 200, "Files added to task", User=current_user.email, CaseId=cid, TaskId=tid, FilesCount=len(request.files))
+                    created_files = TaskModel.add_file_core(task=task, files_list=request.files, current_user=current_user)
+                    if created_files:
+                        file_details = [f"{f.name} ({f.file_size} bytes, {f.file_type})" for f in created_files]
+                        flowintel_log("audit", 200, "Files added to task", User=current_user.email, CaseId=cid, TaskId=tid, FilesCount=len(created_files), Files="; ".join(file_details))
                         return {"message":"Files added", "toast_class": "success-subtle"}, 200
                     return {"message":"Something goes wrong adding files", "toast_class": "danger-subtle"}, 400
                 return {"message":"No Files given", "toast_class": "warning-subtle"}, 400
