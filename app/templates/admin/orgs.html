@@ -194,16 +194,19 @@
                 const orgs_list = ref(null)
                 const users_table = ref({})
                 const current_page = ref(1)
-                let temp_orgs_list = []
+                const search_query = ref('')
 
 
                 async function fetchOrgs(page) {
                     orgs_list.value = null
-                    const res = await fetch('get_orgs?page='+page)
+                    let url = 'get_orgs?page=' + page
+                    if (search_query.value) {
+                        url += '&name=' + encodeURIComponent(search_query.value)
+                    }
+                    const res = await fetch(url)
                     let loc = await res.json()
                     orgs_list.value = loc
                     current_page.value = page
-                    temp_orgs_list = orgs_list.value.orgs
                 }
 
                 async function extend_collapse(org_id){
@@ -243,15 +246,21 @@
                     display_toast(res)
                 }
 
-                function onInput(e){
-                    orgs_list.value.orgs = []
-                    if(e.target.value){
-                        orgs_list.value.orgs = temp_orgs_list.filter((orgs) => {
-                            return orgs.name.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        orgs_list.value.orgs = fetchOrgs(1)
+                let orgs_search_timer = null
+                function debounceOrgs(fn, delay=300){
+                    return (...args) => {
+                        if (orgs_search_timer) clearTimeout(orgs_search_timer)
+                        orgs_search_timer = setTimeout(() => fn(...args), delay)
                     }
+                }
+                const debouncedOrgsSearch = debounceOrgs(async (q) => {
+                    search_query.value = q
+                    await fetchOrgs(1)
+                }, 300)
+
+                function onInput(e){
+                    const q = e.target.value
+                    debouncedOrgsSearch(q || '')
                 }
 
                 const visiblePages = computed(() => {

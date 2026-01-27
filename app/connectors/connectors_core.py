@@ -39,6 +39,52 @@ def get_icons():
     """Return all icons"""
     return Connector_Icon.query.all()
 
+
+def get_connectors_page(page, name=None):
+    """Return connectors by page, optionally filtered by case-insensitive partial name match.
+
+    Returns a list of connector dicts (same shape as `/get_connectors`).
+    """
+    nb = 25
+    connectors_list = []
+    for connector in get_connectors():
+        connector_loc = connector.to_json()
+        icon_loc = get_icon(connector.icon_id)
+        if icon_loc:
+            icon_file = get_icon_file(icon_loc.file_icon_id)
+            connector_loc["icon_filename"] = icon_file.name
+            connector_loc["icon_uuid"] = icon_file.uuid
+        else:
+            connector_loc["icon_filename"] = None
+            connector_loc["icon_uuid"] = None
+        connectors_list.append(connector_loc)
+
+    if name:
+        name_l = name.lower()
+        connectors_list = [c for c in connectors_list if name_l in c.get('name','').lower()]
+
+    to_give = nb * page
+    if to_give > len(connectors_list):
+        limit = len(connectors_list)
+    else:
+        limit = to_give
+    to_start = limit - nb
+
+    out_list = list()
+    for i in range(max(0, to_start), limit):
+        out_list.append(connectors_list[i])
+    return out_list
+
+
+def get_nb_page_connectors(name=None):
+    connectors_list = []
+    for connector in get_connectors():
+        connectors_list.append(connector.to_json())
+    if name:
+        name_l = name.lower()
+        connectors_list = [c for c in connectors_list if name_l in c.get('name','').lower()]
+    return int(len(connectors_list) / 25) + 1
+
 def get_icon(iid):
     """Return an icon"""
     return Connector_Icon.query.get(iid)
@@ -50,6 +96,42 @@ def get_default_icon():
 def get_icon_file(file_id):
     """Return a file"""
     return Icon_File.query.get(file_id)
+
+
+def get_icons_page(page, name=None):
+    """Return icons by page, optionally filtered by partial case-insensitive name."""
+    nb = 25
+    icons_list = []
+    for icon in get_icons():
+        icon_loc = icon.to_json()
+        icon_file = get_icon_file(icon.file_icon_id)
+        icon_loc["icon_filename"] = icon_file.name
+        icon_loc["icon_uuid"] = icon_file.uuid
+        icons_list.append(icon_loc)
+
+    if name:
+        name_l = name.lower()
+        icons_list = [i for i in icons_list if name_l in i.get('name','').lower()]
+
+    to_give = nb * page
+    if to_give > len(icons_list):
+        limit = len(icons_list)
+    else:
+        limit = to_give
+    to_start = limit - nb
+
+    out_list = list()
+    for i in range(max(0, to_start), limit):
+        out_list.append(icons_list[i])
+    return out_list
+
+
+def get_nb_page_icons(name=None):
+    icons_list = [icon.to_json() for icon in get_icons()]
+    if name:
+        name_l = name.lower()
+        icons_list = [i for i in icons_list if name_l in i.get('name','').lower()]
+    return int(len(icons_list) / 25) + 1
 
 
 def add_connector_core(form_dict):

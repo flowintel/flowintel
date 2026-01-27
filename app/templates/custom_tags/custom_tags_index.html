@@ -76,13 +76,15 @@
             setup() {
                 const custom_tag_config = ref({})
                 const current_config = ref({})
-                let loc_custom_tag = {}
+                const search_query = ref('')
+                let searchTimer = null
 
-                async function query_custom_tags(){
-                    let res = await fetch("/custom_tags/list")
+                async function query_custom_tags(q=''){
+                    let url = "/custom_tags/list"
+                    if(q) url += '?q='+encodeURIComponent(q)
+                    let res = await fetch(url)
                     let loc = await res.json()
                     custom_tag_config.value = loc
-                    loc_custom_tag = custom_tag_config.value
                 }
                 query_custom_tags()
 
@@ -155,14 +157,9 @@
                 }
 
                 function onInput(e){
-                    custom_tag_config.value = []
-                    if(e.target.value){
-                        custom_tag_config.value = loc_custom_tag.filter((custom_tag) => {
-                            return custom_tag.name.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        custom_tag_config.value = loc_custom_tag
-                    }
+                    clearTimeout(searchTimer)
+                    search_query.value = e.target.value
+                    searchTimer = setTimeout(() => query_custom_tags(search_query.value), 300)
                 }
 
                 async function delete_custom_tag(){

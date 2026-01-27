@@ -100,7 +100,7 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
 
 
 
-    def build_task_query(self, page, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, title_filter=None):
+    def build_task_query(self, page, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, title_filter=None, title_search=None):
         query, conditions = self._build_sort_query(None, tags, taxonomies, galaxies, clusters, custom_tags)
 
         if title_filter=='true':
@@ -108,12 +108,14 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         else:
             query = query.order_by(desc('last_modif'))
         
+        if title_search:
+            conditions.append(Task_Template.title.ilike(f"%{title_search}%"))
         return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
 
 
-    def sort_tasks(self, page, title_filter, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true"):
+    def sort_tasks(self, page, title_filter, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", title_search=None):
         if tags or taxonomies or galaxies or clusters or custom_tags:
-            tasks = self.build_task_query(page, tags, taxonomies, galaxies, clusters, custom_tags, title_filter)
+            tasks = self.build_task_query(page, tags, taxonomies, galaxies, clusters, custom_tags, title_filter, title_search)
             nb_pages = tasks.pages
             tasks = self._sort(tasks, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
         else:
@@ -122,6 +124,8 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
                 query = query.order_by('title')
             else:
                 query = query.order_by(desc('last_modif'))
+            if title_search:
+                query = query.filter(Task_Template.title.ilike(f"%{title_search}%"))
             tasks = query.paginate(page=page, per_page=25, max_per_page=50)
             nb_pages = tasks.pages
         return tasks, nb_pages

@@ -4,7 +4,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 
@@ -201,6 +201,8 @@
             setup() {
                 const templates_list = ref(null)
                 const current_page = ref(1)
+                const search_query = ref('')
+                let searchTimer = null
 
                 let title_filter = false
                 let asc_desc = true
@@ -233,8 +235,9 @@
                     if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
                     if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
                     if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
-
-                    const res = await fetch(`/templating/get_page_task_templates?page=${page}&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`)
+                    let url = `/templating/get_page_task_templates?page=${page}&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`
+                    if (search_query.value) url += '&q=' + encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
                     let loc = await res.json()
                     templates_list.value = loc
                     current_page.value = page
@@ -262,7 +265,9 @@
                         if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
                         if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
 
-                    let res = await fetch(`/templating/get_page_task_templates?page=1&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`)
+                    let url = `/templating/get_page_task_templates?page=1&or_and_taxo=${or_and_taxo}&or_and_galaxies=${or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`
+                    if (search_query.value) url += '&q=' + encodeURIComponent(search_query.value)
+                    let res = await fetch(url)
                     
                     let loc = await res.json()
                     if(asc_desc){
@@ -277,14 +282,9 @@
                 }
 
                 function onInput(e){
-                    templates_list.value.templates = []
-                    if(e.target.value){
-                        templates_list.value.templates = temp_task_list.filter((template) => {
-                            return template.title.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        templates_list.value.templates = asc_desc_filter()
-                    }
+                    clearTimeout(searchTimer)
+                    search_query.value = e.target.value
+                    searchTimer = setTimeout(() => fetch_template(1), 300)
                 }
 
                 fetch_template(1)

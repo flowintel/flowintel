@@ -382,6 +382,9 @@ def sort_cases():
     if custom_tags:
         custom_tags = ast.literal_eval(custom_tags)
 
+    # optional title search filter
+    title_q = request.args.get('q', None, type=str)
+
     cases_list, nb_pages = CaseModel.sort_cases(page=page, 
                                       completed=status,
                                       taxonomies=taxonomies, 
@@ -392,7 +395,8 @@ def sort_cases():
                                       or_and_taxo=or_and_taxo, 
                                       or_and_galaxies=or_and_galaxies,
                                       filter=filter_by, 
-                                      user=current_user)
+                                      user=current_user,
+                                      title_filter=title_q)
     
     return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
 

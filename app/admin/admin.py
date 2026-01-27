@@ -177,12 +177,13 @@ def get_users_page():
     from conf.config import Config
     
     page = request.args.get('page', 1, type=int)
+    lastname = request.args.get('lastname', None, type=str)
     
     org_id = None
     if Config.LIMIT_USER_VIEW_TO_ORG and not current_user.is_admin():
         org_id = current_user.org_id
     
-    users = AdminModel.get_users_page(page, org_id=org_id)
+    users = AdminModel.get_users_page(page, org_id=org_id, lastname=lastname)
     if users:
         users_list = list()
         for user in users:
@@ -195,6 +196,9 @@ def get_users_page():
             users_list.append(u)
         return {"users": users_list, "nb_pages": users.pages}
     return {"message": "No Users"}, 404
+
+
+
 
 
 ########
@@ -323,7 +327,8 @@ def delete_org(oid):
 def get_orgs():
     """get all orgs"""
     page = request.args.get('page', 1, type=int)
-    orgs = AdminModel.get_orgs_page(page)
+    name = request.args.get('name', None, type=str)
+    orgs = AdminModel.get_orgs_page(page, name=name)
     if orgs:
         orgs_list = list()
         for org in orgs:
@@ -363,7 +368,8 @@ def get_org_users():
 def get_roles():
     """get all roles"""
     page = request.args.get('page', 1, type=int)
-    roles = AdminModel.get_roles_page(page)
+    name = request.args.get('name', None, type=str)
+    roles = AdminModel.get_roles_page(page, name=name)
     if roles:
         roles_list = list()
         for role in roles:
@@ -415,13 +421,15 @@ def get_taxonomies():
 def get_taxonomies_page():
     """Get taxonomies of a specific page"""
     page = request.args.get('page', 1, type=int)
-    return {"taxonomies": AdminModel.get_taxonomies_page(page)}
+    name = request.args.get('name', None, type=str)
+    return {"taxonomies": AdminModel.get_taxonomies_page(page, name=name)}
 
 @admin_blueprint.route("/nb_page_taxo", methods=['GET'])
 @login_required
 def nb_page_taxo():
     """Get number of page to list all taxonomies"""
-    return {"nb_page": AdminModel.get_nb_page_taxo()}
+    name = request.args.get('name', None, type=str)
+    return {"nb_page": AdminModel.get_nb_page_taxo(name=name)}
 
 @admin_blueprint.route("/get_tags", methods=['GET'])
 @login_required
@@ -465,14 +473,16 @@ def get_galaxies():
 def get_galaxies_page():
     """Get galaxies of a specific page"""
     page = request.args.get('page', 1, type=int)
-    gal = AdminModel.get_galaxies_page(page)
+    name = request.args.get('name', None, type=str)
+    gal = AdminModel.get_galaxies_page(page, name=name)
     return {"galaxies": gal}
 
 @admin_blueprint.route("/nb_page_galaxies", methods=['GET'])
 @login_required
 def nb_page_galaxies():
     """Get number of page to list all galaxies"""
-    return {"nb_page": AdminModel.get_nb_page_galaxies()}
+    name = request.args.get('name', None, type=str)
+    return {"nb_page": AdminModel.get_nb_page_galaxies(name=name)}
 
 @admin_blueprint.route("/get_tags_galaxy", methods=['GET'])
 @login_required

@@ -35,8 +35,10 @@
                                     <input v-else type="checkbox" class="form-check-input me-2" @click.stop="change_status(module)">
                                     [[module.name]]
                                 </h5>
-                                <span v-if="!module.config.length" class="badge bg-warning text-dark">No config</span>
-                                <span v-else class="badge bg-success">[[module.config.length]] settings</span>
+                                <div>
+                                    <span v-if="!module.config.length" class="badge bg-warning text-dark">No config</span>
+                                    <span v-else class="badge bg-success">[[module.config.length]] settings</span>
+                                </div>
                             </div>
                             <p v-if="module.description" class="card-text mb-0"><small class="text-muted">[[module.description.substring(0, 100)]]<span v-if="module.description.length > 100">...</span></small></p>
                             <p v-else class="card-text mb-0"><small class="text-muted"><i>No description</i></small></p>
@@ -85,13 +87,15 @@
         setup() {
             const modules_config = ref([])
             const current_config = ref({})
-            let loc_modules = []
+            const search_query = ref('')
+            let searchTimer = null
 
-            async function query_modules(){
-                let res = await fetch("/analyzer/misp-modules/modules_config_data")
+            async function query_modules(q=''){
+                let url = "/analyzer/misp-modules/modules_config_data"
+                if(q) url += '?q='+encodeURIComponent(q)
+                let res = await fetch(url)
                 let loc = await res.json()
                 modules_config.value = loc
-                loc_modules = modules_config.value
             }
             query_modules()
 
@@ -153,15 +157,10 @@
 
 
             function onInput(e){
-				modules_config.value = []
-				if(e.target.value){
-                    modules_config.value = loc_modules.filter((module) => {
-                        return module.name.toLowerCase().includes(e.target.value.toLowerCase())
-                    })
-				}else{
-                    modules_config.value = loc_modules
-                }
-			}
+                clearTimeout(searchTimer)
+                search_query.value = e.target.value
+                searchTimer = setTimeout(() => query_modules(search_query.value), 300)
+            }
 
             async function change_status(module){
                 const res = await fetch('/analyzer/misp-modules/change_status', {

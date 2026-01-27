@@ -358,6 +358,7 @@
                 let or_and_galaxies = true
 
                 const is_open_cases = ref(true)
+                const search_query = ref('')
 
                 const taxonomies = ref([])
                 const tags_list = ref([])
@@ -405,7 +406,10 @@
                     if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
                     if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
 
-                    let url = `/case/sort_cases?${loc_page}${loc_filter}${loc_status}${loc_or_and_taxo}${loc_or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`
+                    let loc_q = ''
+                    if (search_query.value) loc_q = '&q=' + encodeURIComponent(search_query.value)
+
+                    let url = `/case/sort_cases?${loc_page}${loc_filter}${loc_status}${loc_or_and_taxo}${loc_or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}${loc_q}`
 
                     const res = await fetch(url)
                     let loc = await res.json()
@@ -479,15 +483,23 @@
                 }
 
 
-                function onInput(e){
-                    case_list.value.cases = []
-                    if(e.target.value){
-                        case_list.value.cases = temp_case_list.filter((cases) => {
-                            return cases.title.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        case_list.value.cases = fetch_sorted_cases(1)
+                // Debounced server-side search that preserves filters
+                let case_search_timer = null
+                function debounceCaseSearch(fn, delay=300){
+                    return (...args) => {
+                        if (case_search_timer) clearTimeout(case_search_timer)
+                        case_search_timer = setTimeout(() => fn(...args), delay)
                     }
+                }
+
+                const debouncedCaseSearch = debounceCaseSearch(async (q) => {
+                    search_query.value = q
+                    await fetch_sorted_cases(1)
+                }, 300)
+
+                function onInput(e){
+                    const q = e.target.value
+                    debouncedCaseSearch(q || '')
                 }
 
                 async function fetch_taxonomies(){

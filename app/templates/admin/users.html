@@ -146,10 +146,11 @@
             setup() {
                 const users_list = ref(null)
                 const current_page = ref(1)
+                const search_query = ref('')
+                
                 const is_admin = {{ 'true' if current_user.is_admin() else 'false' }}
                 const is_org_admin = {{ 'true' if current_user.is_org_admin() else 'false' }}
                 const current_user_org_id = {{ current_user.org_id if current_user.org_id else 'null' }}
-                let temp_users_list = []
 
                 function can_manage_user(user) {
                     if (is_admin) return true
@@ -160,11 +161,14 @@
 
                 async function fetchUsers(page) {
                     users_list.value = null
-                    const res = await fetch('get_users_page?page='+page)
+                    let url = 'get_users_page?page=' + page
+                    if (search_query.value) {
+                        url += '&lastname=' + encodeURIComponent(search_query.value)
+                    }
+                    const res = await fetch(url)
                     let loc = await res.json()
                     users_list.value = loc
                     current_page.value = page
-                    temp_users_list = users_list.value.users
                 }
 
                 async function delete_user(user){
@@ -181,16 +185,23 @@
                     }
                     display_toast(res)
                 }
+                
+
+                let users_search_timer = null
+                function debounceUsers(fn, delay=300){
+                    return (...args) => {
+                        if (users_search_timer) clearTimeout(users_search_timer)
+                        users_search_timer = setTimeout(() => fn(...args), delay)
+                    }
+                }
+                const debouncedUsersSearch = debounceUsers(async (q) => {
+                    search_query.value = q
+                    await fetchUsers(1)
+                }, 300)
 
                 function onInput(e){
-                    users_list.value.users = []
-                    if(e.target.value){
-                        users_list.value.users = temp_users_list.filter((orgs) => {
-                            return orgs.last_name.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        users_list.value.users = fetchUsers(1)
-                    }
+                    const q = e.target.value
+                    debouncedUsersSearch(q || '')
                 }
 
 

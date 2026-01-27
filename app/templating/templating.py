@@ -212,6 +212,7 @@ def get_page_case_templates():
     """Get a page of case templates"""
     page = request.args.get('page', 1, type=int)
     title_filter = request.args.get('title')
+    q = request.args.get('q', None, type=str)
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
     or_and_taxo = request.args.get("or_and_taxo")
@@ -243,7 +244,8 @@ def get_page_case_templates():
                                         clusters, 
                                         custom_tags,
                                         or_and_taxo, 
-                                        or_and_galaxies)
+                                        or_and_galaxies,
+                                        q)
 
     templates_list = list()
     for template in templates:
@@ -357,6 +359,8 @@ def get_page_task_templates():
     page = request.args.get('page', 1, type=int)
     title_filter = request.args.get('title')
     tags = request.args.get('tags')
+    q = request.args.get('q', None, type=str)
+    
     taxonomies = request.args.get('taxonomies')
     or_and_taxo = request.args.get("or_and_taxo")
 
@@ -387,7 +391,8 @@ def get_page_task_templates():
                                                 clusters,
                                                 custom_tags,
                                                 or_and_taxo, 
-                                                or_and_galaxies)
+                                                or_and_galaxies,
+                                                q)
 
     if templates:
         templates_list = list()

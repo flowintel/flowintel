@@ -45,6 +45,24 @@ def get_connectors():
         connectors_list.append(connector_loc)
     return {"connectors": connectors_list}, 200
 
+
+@connector_blueprint.route("/get_connectors_page", methods=['GET'])
+@login_required
+def get_connectors_page():
+    """Get connectors of a specific page (supports optional `name` filter)."""
+    page = request.args.get('page', 1, type=int)
+    name = request.args.get('name', None, type=str)
+    connectors = ConnectorModel.get_connectors_page(page, name=name)
+    return {"connectors": connectors}, 200
+
+
+@connector_blueprint.route("/nb_page_connectors", methods=['GET'])
+@login_required
+def nb_page_connectors():
+    """Get number of page to list all connectors (supports optional `name` filter)."""
+    name = request.args.get('name', None, type=str)
+    return {"nb_page": ConnectorModel.get_nb_page_connectors(name=name)}
+
 @connector_blueprint.route("/get_icons", methods=['GET'])
 @login_required
 def get_icons():
@@ -57,6 +75,24 @@ def get_icons():
         icon_loc["icon_uuid"] = icon_file.uuid
         icon_list.append(icon_loc)
     return {"icons": icon_list}, 200
+
+
+@connector_blueprint.route("/get_icons_page", methods=['GET'])
+@login_required
+def get_icons_page():
+    """Get icons of a specific page (supports optional `name` filter)."""
+    page = request.args.get('page', 1, type=int)
+    name = request.args.get('name', None, type=str)
+    icons = ConnectorModel.get_icons_page(page, name=name)
+    return {"icons": icons}, 200
+
+
+@connector_blueprint.route("/nb_page_icons", methods=['GET'])
+@login_required
+def nb_page_icons():
+    """Get number of page to list icons (supports optional `name` filter)."""
+    name = request.args.get('name', None, type=str)
+    return {"nb_page": ConnectorModel.get_nb_page_icons(name=name)}
 
 
 @connector_blueprint.route("/<cid>/get_instances", methods=['GET'])

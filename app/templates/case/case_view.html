@@ -639,6 +639,8 @@
                 let loc_tasks_list = []
 
                 let current_filter = ""
+                const search_query = ref('')
+                let searchTimer = null
                 let asc_desc = true
                 let or_and_taxo = true
                 let or_and_galaxies = true
@@ -785,6 +787,7 @@
                     if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
 
                     let url = `/case/${cases_info.value.case.id}/sort_tasks?${loc_status}${loc_filter}${loc_or_and_taxo}${loc_or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`
+                    if (search_query.value) url += '&q=' + encodeURIComponent(search_query.value)
                     
                     const res = await fetch(url)
                     let loc = await res.json()
@@ -848,14 +851,9 @@
                 get_all_users_case()
 
                 function onInput(e){
-                    cases_info.value.tasks = []
-                    if(e.target.value){
-                        cases_info.value.tasks = loc_tasks_list.filter((task) => {
-                            return task.title.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        cases_info.value.tasks = fetch_sorted_tasks()
-                    }
+                    clearTimeout(searchTimer)
+                    search_query.value = e.target.value
+                    searchTimer = setTimeout(() => fetch_sorted_tasks(), 300)
                 }
 
                 function scrollIntoSelectedElement() {

@@ -163,19 +163,21 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         self.update_case_time_modification(template)
         
 
-    def build_case_query(self, page, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, title_filter=None):
+    def build_case_query(self, page, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, title_filter=None, title_search=None):
         query, conditions = self._build_sort_query(None, tags, taxonomies, galaxies, clusters, custom_tags)
 
         if title_filter=='true':
             query = query.order_by('title')
         else:
             query = query.order_by(desc('last_modif'))
-        
+        if title_search:
+            conditions.append(Case_Template.title.ilike(f"%{title_search}%"))
+
         return query.filter(and_(*conditions)).paginate(page=page, per_page=25, max_per_page=50)
 
-    def sort_cases(self, page, title_filter, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true"):
+    def sort_cases(self, page, title_filter, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", title_search=None):
         if tags or taxonomies or galaxies or clusters or custom_tags:
-            cases = self.build_case_query(page, tags, taxonomies, galaxies, clusters, custom_tags, title_filter)
+            cases = self.build_case_query(page, tags, taxonomies, galaxies, clusters, custom_tags, title_filter, title_search)
             nb_pages = cases.pages
             cases = self._sort(cases, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
         else:
@@ -184,6 +186,8 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
                 query = query.order_by('title')
             else:
                 query = query.order_by(desc('last_modif'))
+            if title_search:
+                query = query.filter(Case_Template.title.ilike(f"%{title_search}%"))
             cases = query.paginate(page=page, per_page=25, max_per_page=50)
             nb_pages = cases.pages
         return cases, nb_pages

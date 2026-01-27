@@ -162,17 +162,22 @@
             setup() {
                 const connectors_list = ref(null)
                 const instances_table = ref({})
-                let temp_connectors_list = []
+                const search_query = ref('')
+                let searchTimer = null
+                const current_page = ref(1)
+                const nb_pages = ref(0)
 
 
-                async function fetchConnectors() {
+                async function fetchConnectors(page=1) {
                     connectors_list.value = null
-                    const res = await fetch('get_connectors')
+                    let url = 'get_connectors_page?page='+page
+                    if (search_query.value) url += '&name='+encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
                     let loc = await res.json()
                     connectors_list.value = loc
-                    temp_connectors_list = connectors_list.value.connectors
+                    await fetchNbPage()
                 }
-                fetchConnectors()
+                fetchConnectors(1)
 
                 async function extend_collapse(connector_id){
                     const res = await fetch(connector_id+'/get_instances')
@@ -209,14 +214,17 @@
                 }
 
                 function onInput(e){
-                    connectors_list.value.connectors = []
-                    if(e.target.value){
-                        connectors_list.value.connectors = temp_connectors_list.filter((connectors) => {
-                            return connectors.name.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        connectors_list.value.connectors = fetchConnectors()
-                    }
+                    clearTimeout(searchTimer)
+                    search_query.value = e.target.value
+                    searchTimer = setTimeout(() => fetchConnectors(1), 300)
+                }
+
+                async function fetchNbPage() {
+                    let url = 'nb_page_connectors'
+                    if (search_query.value) url += '?name='+encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
+                    let loc = await res.json()
+                    nb_pages.value = loc["nb_page"]
                 }
 
 
@@ -224,6 +232,7 @@
                     message_list,
                     connectors_list,
                     instances_table,
+                    search_query,
                     extend_collapse,
                     delete_connector,
                     delete_instance,

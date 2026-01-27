@@ -313,7 +313,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         return paginated_cases, nb_pages
 
-    def sort_cases(self, page, completed, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", filter=None, user: User = None):
+    def sort_cases(self, page, completed, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", filter=None, user: User = None, title_filter: str = None):
         if tags or taxonomies or galaxies or clusters or custom_tags:
             cases = self.build_case_query(completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
             cases = self._sort(cases, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
@@ -338,9 +338,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             for case in list_case_user_in:
                 if getattr(case, filter):
                     loc.append(case)
-            loc, nb_pages = self.paginate_cases(loc, page)
-            return loc, nb_pages
-        
+            list_case_user_in = loc
+
+        # Apply optional title filter (case-insensitive substring)
+        if title_filter:
+            tf = title_filter.lower()
+            list_case_user_in = [c for c in list_case_user_in if c.title and tf in c.title.lower()]
+
         list_case_user_in, nb_pages = self.paginate_cases(list_case_user_in, page)
         return list_case_user_in, nb_pages
 

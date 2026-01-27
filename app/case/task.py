@@ -408,6 +408,7 @@ def sort_tasks(cid):
     or_and_galaxies = request.args.get("or_and_galaxies")
 
     custom_tags = request.args.get('custom_tags')
+    q = request.args.get('q', None, type=str)
 
     if status == 'true':
         status = True
@@ -436,7 +437,8 @@ def sort_tasks(cid):
                                 custom_tags,
                                 or_and_taxo, or_and_galaxies, 
                                 completed=status,
-                                filter=filter_by)
+                                filter=filter_by,
+                                title_search=q)
 
 
 @task_blueprint.route("/<cid>/task/<tid>/notify_user", methods=['POST'])

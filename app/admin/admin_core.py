@@ -14,11 +14,16 @@ def get_users_by_org(org_id):
     """Return all users filtered by organization"""
     return User.query.filter_by(org_id=org_id).all()
 
-def get_users_page(page, org_id=None):
-    """Return all users by page, optionally filtered by org_id"""
+def get_users_page(page, org_id=None, lastname=None):
+    """Return users by page, optionally filtered by org_id and/or partial lastname match.
+
+    - `lastname` performs a case-insensitive partial match against `User.last_name`.
+    """
     query = User.query
     if org_id is not None:
         query = query.filter_by(org_id=org_id)
+    if lastname:
+        query = query.filter(User.last_name.ilike(f"%{lastname}%"))
     return query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_all_roles():
@@ -29,20 +34,27 @@ def get_all_orgs():
     """Return all organisations"""
     return Org.query.all()
 
-def get_orgs_page(page):
-    """Return all organisations by page"""
-    return Org.query.paginate(page=page, per_page=20, max_per_page=50)
+def get_orgs_page(page, name=None):
+    """Return organisations by page, optionally filtered by partial case-insensitive name."""
+    query = Org.query
+    if name:
+        query = query.filter(Org.name.ilike(f"%{name}%"))
+    return query.paginate(page=page, per_page=20, max_per_page=50)
 
-def get_roles_page(page):
-    """Return all roles by page"""
-    return Role.query.paginate(page=page, per_page=20, max_per_page=50)
+def get_roles_page(page, name=None):
+    """Return roles by page, optionally filtered by partial case-insensitive name."""
+    query = Role.query
+    if name:
+        query = query.filter(Role.name.ilike(f"%{name}%"))
+    return query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_user(id):
     """Return the user"""
     return User.query.get(id)
 
 def get_user_by_lastname(lastname):
-    return User.query.filter_by(last_name=lastname).all()
+    # Case-insensitive partial match for last name
+    return User.query.filter(User.last_name.ilike(f"%{lastname}%")).all()
 
 def get_user_by_matrix_id(matrix_id):
     return User.query.filter_by(matrix_id=matrix_id).first()
@@ -68,8 +80,17 @@ def get_all_user_role(role_id):
 def get_taxonomies():
     return [taxo.to_json() for taxo in Taxonomy.query.all()]
 
-def get_nb_page_taxo():
-    return int(len(get_taxonomies())/25)+1
+def get_nb_page_taxo(name=None):
+    """Return number of pages for taxonomies, optionally filtered by name.
+
+    Uses the same in-memory list logic as `get_taxonomies_page` so results
+    remain consistent when a `name` filter is provided.
+    """
+    taxo_list = get_taxonomies()
+    if name:
+        name_l = name.lower()
+        taxo_list = [t for t in taxo_list if name_l in t.get('name', '').lower()]
+    return int(len(taxo_list) / 25) + 1
 
 def get_tags(taxonomy_id):
     return [tag.to_json() for tag in Taxonomy.query.get(taxonomy_id).tags]
@@ -88,8 +109,17 @@ def get_clusters():
 def get_clusters_galaxy(galaxy_id):
     return [cluster.to_json() for cluster in get_galaxy(galaxy_id).clusters]
 
-def get_nb_page_galaxies():
-    return int(len(get_galaxies()) / 25) + 1
+def get_nb_page_galaxies(name=None):
+    """Return number of pages for galaxies, optionally filtered by name.
+
+    Uses the same in-memory list logic as `get_galaxies_page` so results
+    remain consistent when a `name` filter is provided.
+    """
+    gal_list = get_galaxies()
+    if name:
+        name_l = name.lower()
+        gal_list = [g for g in gal_list if name_l in g.get('name', '').lower()]
+    return int(len(gal_list) / 25) + 1
 
 def get_tags_galaxy(galaxy_id):
     return [cluster.tag for cluster in get_galaxy(galaxy_id).clusters]
@@ -308,11 +338,14 @@ def delete_org_core(oid):
         return False
     
 
-def get_taxonomies_page(page):
+def get_taxonomies_page(page, name=None):
     nb_taxo = 25
-    to_give = nb_taxo * page
     taxo_list = get_taxonomies()
-    
+    if name:
+        name_l = name.lower()
+        taxo_list = [t for t in taxo_list if name_l in t.get('name','').lower()]
+
+    to_give = nb_taxo * page
     if to_give > len(taxo_list):
         limit = len(taxo_list)
     else:
@@ -320,7 +353,7 @@ def get_taxonomies_page(page):
     to_start = limit - nb_taxo
 
     out_list = list()
-    for i in range(to_start, limit):
+    for i in range(max(0, to_start), limit):
         out_list.append(taxo_list[i])
     return out_list
 
@@ -329,11 +362,14 @@ def taxonomy_status(taxonomy_id):
     taxo.exclude = not taxo.exclude
     db.session.commit()
 
-def get_galaxies_page(page):
+def get_galaxies_page(page, name=None):
     nb_galaxies = 25
-    to_give = nb_galaxies * page
     galaxies_list = get_galaxies()
-    
+    if name:
+        name_l = name.lower()
+        galaxies_list = [g for g in galaxies_list if name_l in g.get('name','').lower()]
+
+    to_give = nb_galaxies * page
     if to_give > len(galaxies_list):
         limit = len(galaxies_list)
     else:
@@ -341,7 +377,7 @@ def get_galaxies_page(page):
     to_start = limit - nb_galaxies
 
     out_list = list()
-    for i in range(to_start, limit):
+    for i in range(max(0, to_start), limit):
         out_list.append(galaxies_list[i])
     return out_list
 

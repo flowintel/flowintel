@@ -120,29 +120,29 @@
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
+
                 const taxonomies_list = ref(null)
                 const tags_table = ref({})
                 const current_page = ref(1)
-                const all_taxo = ref([])
                 const nb_pages = ref(0)
-
+                const search_query = ref('')
+                let searchTimer = null
 
                 async function fetchTaxonomies(page) {
                     taxonomies_list.value = null
-                    const res = await fetch('get_taxonomies_page?page='+page)
+                    let url = 'get_taxonomies_page?page='+page
+                    if (search_query.value) url += '&name='+encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
                     let loc = await res.json()
                     taxonomies_list.value = loc
                     current_page.value = page
-                }
-
-                async function fetchAllTaxonomies() {
-                    const res = await fetch('get_taxonomies')
-                    let loc = await res.json()
-                    all_taxo.value = loc["taxonomies"]
+                    await fetchNbPage()
                 }
 
                 async function fetchNbPage() {
-                    const res = await fetch('nb_page_taxo')
+                    let url = 'nb_page_taxo'
+                    if (search_query.value) url += '?name='+encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
                     let loc = await res.json()
                     nb_pages.value = loc["nb_page"]
                 }
@@ -158,14 +158,9 @@
 
 
                 function onInput(e){
-                    taxonomies_list.value.taxonomies = []
-                    if(e.target.value){
-                        taxonomies_list.value.taxonomies = all_taxo.value.filter((taxonomies) => {
-                            return taxonomies.name.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        taxonomies_list.value.taxonomies = fetchTaxonomies(1)
-                    }
+                    clearTimeout(searchTimer)
+                    search_query.value = e.target.value
+                    searchTimer = setTimeout(() => fetchTaxonomies(1), 300)
                 }
 
 
@@ -176,8 +171,6 @@
 
 
                 fetchTaxonomies(1)
-                fetchAllTaxonomies()
-                fetchNbPage()
 
                 const visiblePages = computed(() => {
                     const pages = []

@@ -469,7 +469,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         
         return query.where(Task.case_id==case_id).filter(and_(*conditions)).order_by(Task.case_order_id).all()
 
-    def sort_tasks(self, case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False, filter=False):
+    def sort_tasks(self, case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False, filter=False, title_search=None):
         """Sort all tasks by completed and depending of taxonomies and galaxies"""
 
 
@@ -505,7 +505,17 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 # status, last_modif, title
                 tasks.sort(key=lambda x: getattr(x, filter))
 
+            # apply title search filter if provided
+            if title_search:
+                ql = title_search.lower()
+                tasks = [t for t in tasks if ql in getattr(t, 'title','').lower()]
+
             return self.get_task_info(tasks, user)
+
+        # apply title search when no 'filter' parameter used
+        if title_search:
+            ql = title_search.lower()
+            tasks = [t for t in tasks if ql in getattr(t, 'title','').lower()]
 
         return self.get_task_info(tasks, user)
 

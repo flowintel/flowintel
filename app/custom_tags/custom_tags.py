@@ -39,7 +39,12 @@ def add_custom_tag():
 @login_required
 def list():
     """List all custom tags"""
-    return [c_t.to_json() for c_t in CustomCore.get_custom_tags()]
+    q = request.args.get('q', None, type=str)
+    tags = [c_t.to_json() for c_t in CustomCore.get_custom_tags()]
+    if q:
+        ql = q.lower()
+        tags = [t for t in tags if ql in t.get('name','').lower()]
+    return tags
 
 @custom_tags_blueprint.route("/<ctid>/delete_custom_tag", methods=['GET', 'POST'])
 @login_required

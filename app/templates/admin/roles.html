@@ -286,6 +286,8 @@
                 const roles_list = ref(null)
                 const users_table = ref({})
                 const current_page = ref(1)
+                const search_query = ref('')
+                
                 const editing_role = ref(null)
                 const edit_data = ref({
                     name: '',
@@ -295,7 +297,6 @@
                     org_admin: false
                 })
                 const system_roles = [1, 2, 3]
-                let temp_roles_list = []
 
                 // Computed property for editor checkbox
                 const is_editor = computed(() => {
@@ -305,11 +306,14 @@
 
                 async function fetchRoles(page) {
                     roles_list.value = null
-                    const res = await fetch('get_roles?page='+page)
+                    let url = 'get_roles?page=' + page
+                    if (search_query.value) {
+                        url += '&name=' + encodeURIComponent(search_query.value)
+                    }
+                    const res = await fetch(url)
                     let loc = await res.json()
                     roles_list.value = loc
                     current_page.value = page
-                    temp_roles_list = roles_list.value.roles
                 }
 
                 async function extend_collapse(role_id){
@@ -409,15 +413,21 @@
                     }
                 }
 
-                function onInput(e){
-                    roles_list.value.roles = []
-                    if(e.target.value){
-                        roles_list.value.roles = temp_roles_list.filter((roles) => {
-                            return roles.name.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        roles_list.value.roles = fetchRoles(1)
+                let roles_search_timer = null
+                function debounceRoles(fn, delay=300){
+                    return (...args) => {
+                        if (roles_search_timer) clearTimeout(roles_search_timer)
+                        roles_search_timer = setTimeout(() => fn(...args), delay)
                     }
+                }
+                const debouncedRolesSearch = debounceRoles(async (q) => {
+                    search_query.value = q
+                    await fetchRoles(1)
+                }, 300)
+
+                function onInput(e){
+                    const q = e.target.value
+                    debouncedRolesSearch(q || '')
                 }
 
 

@@ -123,26 +123,26 @@
                 const galaxies_list = ref(null)
                 const clusters_table = ref({})
                 const current_page = ref(1)
-                const all_galax = ref([])
                 const nb_pages = ref(0)
+                const search_query = ref('')
+                let searchTimer = null
 
 
                 async function fetchGalaxies(page) {
                     galaxies_list.value = null
-                    const res = await fetch('get_galaxies_page?page='+page)
+                    let url = 'get_galaxies_page?page='+page
+                    if (search_query.value) url += '&name='+encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
                     let loc = await res.json()
                     galaxies_list.value = loc
                     current_page.value = page
-                }
-
-                async function fetchAllGalaxies() {
-                    const res = await fetch('get_galaxies')
-                    let loc = await res.json()
-                    all_galax.value = loc["galaxies"]
+                    await fetchNbPage()
                 }
 
                 async function fetchNbPage() {
-                    const res = await fetch('nb_page_galaxies')
+                    let url = 'nb_page_galaxies'
+                    if (search_query.value) url += '?name='+encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
                     let loc = await res.json()
                     nb_pages.value = loc["nb_page"]
                 }
@@ -159,14 +159,9 @@
 
 
                 function onInput(e){
-                    galaxies_list.value.galaxies = []
-                    if(e.target.value){
-                        galaxies_list.value.galaxies = all_galax.value.filter((galaxies) => {
-                            return galaxies.name.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        galaxies_list.value.galaxies = fetchGalaxies(1)
-                    }
+                    clearTimeout(searchTimer)
+                    search_query.value = e.target.value
+                    searchTimer = setTimeout(() => fetchGalaxies(1), 300)
                 }
 
 
@@ -196,8 +191,6 @@
 
 
                 fetchGalaxies(1)
-                fetchAllGalaxies()
-                fetchNbPage()
 
     
                 return {

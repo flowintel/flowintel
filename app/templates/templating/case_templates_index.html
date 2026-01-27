@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -264,6 +264,8 @@
             setup() {
                 const templates_list = ref([])
                 const current_page = ref(1)
+                const search_query = ref('')
+                let searchTimer = null
 
                 let title_filter = false
                 let asc_desc = true
@@ -291,6 +293,8 @@
                     let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
                     let loc_or_and_galax = `&or_and_galaxies=${or_and_galaxies}`
                     let loc_title = `&title=${title_filter}`
+                    let loc_q = ''
+                    if (search_query.value) loc_q = '&q=' + encodeURIComponent(search_query.value)
 
                     let tags = ""
                     let taxo = ""
@@ -303,7 +307,7 @@
                     if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
                     if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
 
-                    let url = `/templating/get_page_case_templates?${loc_page}${loc_or_and_taxo}${loc_or_and_galax}${loc_title}${tags}${taxo}${galax}${clusters}${custom_tg}`
+                    let url = `/templating/get_page_case_templates?${loc_page}${loc_or_and_taxo}${loc_or_and_galax}${loc_title}${loc_q}${tags}${taxo}${galax}${clusters}${custom_tg}`
                     const res = await fetch(url)
                     let loc = await res.json()
 
@@ -348,14 +352,9 @@
                 }
 
                 function onInput(e){
-                    templates_list.value.templates = []
-                    if(e.target.value){
-                        templates_list.value.templates = temp_case_list.filter((template) => {
-                            return template.title.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        templates_list.value.templates = fetch_templates(1)
-                    }
+                    clearTimeout(searchTimer)
+                    search_query.value = e.target.value
+                    searchTimer = setTimeout(() => fetch_templates(1), 300)
                 }
                 
 

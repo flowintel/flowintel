@@ -119,7 +119,11 @@ def misp_modules_config():
 def modules_config_data():
     """List all modules for configuration"""
 
+    q = request.args.get('q', None, type=str)
     modules_config = MispModuleModel.get_modules_config(current_user)
+    if q:
+        ql = q.lower()
+        modules_config = [m for m in modules_config if ql in m.get('name','').lower()]
     return modules_config, 200
 
 @analyzer_blueprint.route("/misp-modules/change_config", methods=["POST"])

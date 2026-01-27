@@ -98,17 +98,21 @@
             delimiters: ['[[', ']]'],
             setup() {
                 const icons_list = ref(null)
-                let temp_icons_list = []
+                const search_query = ref('')
+                let searchTimer = null
+                const current_page = ref(1)
+                const nb_pages = ref(0)
 
-
-                async function fetchIcons() {
+                async function fetchIcons(page=1) {
                     icons_list.value = null
-                    const res = await fetch('get_icons')
+                    let url = 'get_icons_page?page='+page
+                    if (search_query.value) url += '&name='+encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
                     let loc = await res.json()
                     icons_list.value = loc
-                    temp_icons_list = icons_list.value.icons
+                    await fetchNbPage()
                 }
-                fetchIcons()
+                fetchIcons(1)
 
                 async function delete_icon(icon){
                     const res = await fetch('/connectors/delete_icon/'+icon.id)
@@ -122,14 +126,17 @@
                 }
 
                 function onInput(e){
-                    icons_list.value.icons = []
-                    if(e.target.value){
-                        icons_list.value.icons = temp_icons_list.filter((icons) => {
-                            return icons.name.toLowerCase().includes(e.target.value.toLowerCase())
-                        })
-                    }else{
-                        icons_list.value.icons = fetchIcons()
-                    }
+                    clearTimeout(searchTimer)
+                    search_query.value = e.target.value
+                    searchTimer = setTimeout(() => fetchIcons(1), 300)
+                }
+
+                async function fetchNbPage() {
+                    let url = 'nb_page_icons'
+                    if (search_query.value) url += '?name='+encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
+                    let loc = await res.json()
+                    nb_pages.value = loc["nb_page"]
                 }
                 
     
@@ -138,7 +145,8 @@
                     icons_list,
                     delete_icon,
                     fetchIcons,
-                    onInput
+                    onInput,
+                    search_query
                 }
             }
         }).mount('#main-container')
