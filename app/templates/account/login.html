@@ -19,13 +19,28 @@
             background-color: #f5f5f5;
         }
 
+        .logo-container {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 10%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
         .form-signin {
             width: 100%;
             max-width: 330px;
-            padding: 15px;
+            padding: 30px;
             top: 25%;
-            left: 40%;
+            left: 50%;
+            transform: translateX(-50%);
             position: absolute;
+            background: linear-gradient(135deg, rgb(31, 55, 99) 0%, rgb(69, 98, 151) 100%);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .form-signin .checkbox {
@@ -50,34 +65,49 @@
     <main>
         {% include 'macros/_flashes.html' %}
 
+        <div class="logo-container mb-4">
+            {% if config.WELCOME_LOGO %}
+            <img src="{{ config.WELCOME_LOGO }}" alt="Welcome Logo" loading="lazy" />
+            {% endif %}
+            <img src="{{ config.MAIN_LOGO }}" height="100" alt="{{ config.APP_NAME }} Logo" loading="lazy" />
+        </div>
+
         <form action="" method="post" class="form-signin">
             {{ form.hidden_tag() }}
 
-            <div class="mb-5" style="text-align: center;margin-top: -50px;">
-                <img src="{{ url_for('static',filename='image/flowintel.png') }}" height="100" alt="flowintel Logo"
-                    loading="lazy" />
+            {% if config.WELCOME_TEXT_TOP %}
+            <div class="mb-3" style="text-align: center;">
+                <p class="fw-bold" style="color: white;">{{ config.WELCOME_TEXT_TOP }}</p>
             </div>
+            {% endif %}
+
+            {% if config.WELCOME_TEXT_BOTTOM %}
+            <div class="mb-3" style="text-align: center;">
+                <p class="fw-bold" style="color: white;">{{ config.WELCOME_TEXT_BOTTOM }}</p>
+            </div>
+            {% endif %}
+
             <div class="mb-3">
-                {{form.email.label}}:
+                <label for="email" style="color: white;">{{form.email.label.text}}:</label>
                 {{form.email(class_="form-control")}}
                 {% if form.email.errors %}
-                <div style="color: red;">{{form.email.errors[0] | safe}}</div>
+                <div style="color: #ffcccc;">{{form.email.errors[0] | safe}}</div>
                 {%endif%}
             </div>
             <div class="mb-3">
-                {{form.password.label}}:
+                <label for="password" style="color: white;">{{form.password.label.text}}:</label>
                 {{form.password(class_="form-control")}}
             </div>
             <div class="checkbox mb-3">
-                {{form.remember_me.label}}:
                 {{form.remember_me}}
+                <label for="remember_me" style="color: white;">{{form.remember_me.label.text}}</label>
             </div>
 
-            {{form.submit(class='btn btn-primary')}}
+            {{form.submit(class='btn btn-light w-100')}}
 
             {% if show_reset_link %}
             <div class="mt-3" style="text-align: center;">
-                <a href="{{ url_for('account.request_password_reset') }}">Request password reset from administrator</a>
+                <a href="{{ url_for('account.request_password_reset') }}" style="color: #ccddff;">Request password reset from administrator</a>
             </div>
             {% endif %}
         </form>

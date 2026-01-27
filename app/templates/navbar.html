@@ -23,7 +23,13 @@
         </div>
 
         <!-- Right links -->
-        <ul class="navbar-nav ms-auto d-flex flex-row">
+        <ul class="navbar-nav ms-auto d-flex flex-row align-items-center">
+            {% if config.TOPRIGHT_LOGO %}
+            <li class="nav-item me-3">
+                <img src="{{ config.TOPRIGHT_LOGO }}" alt="{{ config.APP_NAME }}" style="max-height: 40px; height: auto;" loading="lazy" />
+            </li>
+            {% endif %}
+            
             <!-- Notification dropdown -->
             <li class="nav-item dropdown">
                 <a class="nav-link me-3 me-lg-0" href="/notification" id="notification_id">

@@ -12,6 +12,15 @@ class Config:
     LOG_FILE = os.getenv('LOG_FILE', 'record.log')
     APP_NAME = "Flowintel"
     
+    # Logo configuration
+    MAIN_LOGO = os.getenv('MAIN_LOGO', '/static/image/flowintel.png')
+    TOPRIGHT_LOGO = os.getenv('TOPRIGHT_LOGO', '')
+    
+    # Login page configuration
+    WELCOME_TEXT_TOP = os.getenv('WELCOME_TEXT_TOP', '')
+    WELCOME_TEXT_BOTTOM = os.getenv('WELCOME_TEXT_BOTTOM', '')
+    WELCOME_LOGO = os.getenv('WELCOME_LOGO', '')
+    
     FILE_UPLOAD_MAX_SIZE = int(os.getenv('FILE_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))  # Default 5MB
 
     # System roles that cannot be deleted
