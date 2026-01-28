@@ -274,6 +274,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         """Upload a new file"""
         create_specific_dir(UPLOAD_FOLDER)
         create_specific_dir(FILE_FOLDER)
+        created_files = []
         for file in files_list:
             if files_list[file].filename:
                 uuid_loc = str(uuid.uuid4())
@@ -285,7 +286,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                         write_file.write(file_data)
                 except Exception as e:
                     print(e)
-                    return False
+                    return None
 
                 file_type = files_list[file].content_type if files_list[file].content_type else filename.rsplit('.', 1)[-1] if '.' in filename else 'unknown'
 
@@ -298,8 +299,11 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                     file_type=file_type
                 )
                 db.session.add(f)
-        self.update_task_time_modification(task, current_user, f"File added for task '{task.title}'")
-        return True
+                created_files.append(f)
+        
+        if created_files:
+            self.update_task_time_modification(task, current_user, f"File added for task '{task.title}'")
+        return created_files
 
     def modif_note_core(self, tid, current_user, notes, note_id):
         """Modify a note of a task to the DB"""

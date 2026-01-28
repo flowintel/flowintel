@@ -378,9 +378,9 @@ class Role(db.Model):
 
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(64), index=True, unique=True)
+    name = db.Column(db.String(64), index=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
-    uuid = db.Column(db.String(36), index=True)
+    uuid = db.Column(db.String(36), index=True, unique=True)
     upload_date = db.Column(db.DateTime, nullable=True)
     file_size = db.Column(db.Integer, nullable=True)
     file_type = db.Column(db.String(100), nullable=True)

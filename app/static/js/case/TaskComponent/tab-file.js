@@ -26,6 +26,8 @@ export default {
 			}
 			)
 			if (await res.status == 200) {
+				document.getElementById('formFileMultiple' + task.id).value = ''
+				
 				// Get the new list of files of the task
 				const res_files = await fetch('/case/' + task.case_id + '/get_files/' + task.id)
 
