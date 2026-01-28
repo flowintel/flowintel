@@ -864,6 +864,150 @@ class ModifNoteCase(Resource):
                 return {"message": "Key 'note' not found"}, 400
             return {"message": "Permission denied"}, 403
         return {"message": "Case not found"}, 404
+
+    ###############
+    # MISP Object #
+    ###############
+
+    @case_ns.route('/<cid>/get_case_misp_object', methods=['GET'])
+    @case_ns.doc(description='Get case list of misp object')
+    class GetCaseMispObject(Resource):
+        method_decorators = [api_required]
+        def get(self, cid):
+            case = CommonModel.get_case(cid)
+            if case:
+                current_user = utils.get_user_from_api(request.headers)
+                if not check_user_private_case(case, request.headers, current_user):
+                    return {"message": "Permission denied"}, 403
+
+                misp_object = CaseModel.get_misp_object_by_case(cid)
+                loc_object = list()
+                for obj in misp_object:
+                    loc_attr_list = list()
+                    for attribute in obj.attributes:
+                        res = CaseModel.check_correlation_attr(cid, attribute)
+                        loc_attr = attribute.to_json()
+                        loc_attr["correlation_list"] = res
+                        loc_attr_list.append(loc_attr)
+
+                    loc_object.append({
+                        "object_name": obj.name,
+                        "attributes": loc_attr_list,
+                        "object_id": obj.id,
+                        "object_uuid": obj.template_uuid,
+                        "object_creation_date": obj.creation_date.strftime('%Y-%m-%d %H:%M') if obj.creation_date else None,
+                        "object_last_modif": obj.last_modif.strftime('%Y-%m-%d %H:%M') if obj.last_modif else None
+                    })
+
+                return {"misp-object": loc_object}, 200
+            return {"message": "Case not found"}, 404
+
+
+    @case_ns.route('/<cid>/get_correlation_attr/<aid>', methods=['GET'])
+    @case_ns.doc(description='Get correlation list for an attribute')
+    class GetCorrelationAttr(Resource):
+        method_decorators = [api_required]
+        def get(self, cid, aid):
+            attribute = CaseModel.get_misp_attribute(aid)
+            res = CaseModel.check_correlation_attr(cid, attribute)
+            return {"correlation_list": res}, 200
+
+
+    @case_ns.route('/get_misp_object', methods=['GET'])
+    @case_ns.doc(description='Get list of misp object templates')
+    class GetMispObjectTemplates(Resource):
+        method_decorators = [api_required]
+        def get(self):
+            return {"misp-object": utils.get_object_templates()}, 200
+
+
+    @case_ns.route('/<cid>/create_misp_object', methods=['POST'])
+    @case_ns.doc(description='Create misp object')
+    class CreateMispObject(Resource):
+        method_decorators = [editor_required, api_required]
+        def post(self, cid):
+            if CommonModel.get_case(cid):
+                current_user = utils.get_user_from_api(request.headers)
+                if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    if request.json:
+                        if "object-template" in request.json:
+                            if "attributes" in request.json:
+                                CaseModel.create_misp_object(cid, request.json, current_user)
+                                return {"message": "Object created"}, 200
+                            return {"message": "Need to pass 'attributes'"}, 400
+                        return {"message": "Need to pass 'object-template'"}, 400
+                    return {"message": "Please give data"}, 400
+                return {"message": "Permission denied"}, 403
+            return {"message": "Case not found"}, 404
+
+
+    @case_ns.route('/<cid>/delete_object/<oid>', methods=['GET'])
+    @case_ns.doc(description='Delete an object from case')
+    class DeleteMispObject(Resource):
+        method_decorators = [editor_required, api_required]
+        def get(self, cid, oid):
+            if CommonModel.get_case(cid):
+                current_user = utils.get_user_from_api(request.headers)
+                if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    if CaseModel.delete_object(cid, oid, current_user):
+                        return {"message": "Object deleted"}, 200
+                    return {"message": "Object not found in this case"}, 404
+                return {"message": "Permission denied"}, 403
+            return {"message": "Case not found"}, 404
+
+
+    @case_ns.route('/<cid>/add_attributes/<oid>', methods=['POST'])
+    @case_ns.doc(description='Add attributes to an existing object')
+    class AddAttributes(Resource):
+        method_decorators = [editor_required, api_required]
+        def post(self, cid, oid):
+            if CommonModel.get_case(cid):
+                current_user = utils.get_user_from_api(request.headers)
+                if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    if request.json:
+                        if "object-template" in request.json:
+                            if "attributes" in request.json:
+                                if CaseModel.add_attributes_object(cid, oid, request.json):
+                                    return {"message": "Receive"}, 200
+                                return {"message": "Object not found in this case"}, 404
+                            return {"message": "Need to pass 'attributes'"}, 400
+                        return {"message": "Need to pass 'object-template'"}, 400
+                    return {"message": "Please give data"}, 400
+                return {"message": "Permission denied"}, 403
+            return {"message": "Case not found"}, 404
+
+
+    @case_ns.route('/<cid>/misp_object/<oid>/edit_attr/<aid>', methods=['POST'])
+    @case_ns.doc(description='Edit misp object attribute')
+    class EditMispAttr(Resource):
+        method_decorators = [editor_required, api_required]
+        def post(self, cid, oid, aid):
+            if CommonModel.get_case(cid):
+                current_user = utils.get_user_from_api(request.headers)
+                if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    if request.json:
+                        if "value" in request.json and "type" in request.json:
+                            return CaseModel.edit_attr(cid, oid, aid, request.json)
+                        if "type" not in request.json:
+                            return {"message": "Need to pass 'type'"}, 400
+                        return {"message": "Need to pass 'value'"}, 400
+                    return {"message": "Please give data"}, 400
+                return {"message": "Permission denied"}, 403
+            return {"message": "Case not found"}, 404
+
+
+    @case_ns.route('/<cid>/misp_object/<oid>/delete_attribute/<aid>', methods=['GET'])
+    @case_ns.doc(description='Delete an attribute from a misp object')
+    class DeleteMispAttr(Resource):
+        method_decorators = [editor_required, api_required]
+        def get(self, cid, oid, aid):
+            if CommonModel.get_case(cid):
+                current_user = utils.get_user_from_api(request.headers)
+                if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    return CaseModel.delete_attribute(cid, oid, aid)
+                return {"message": "Permission denied"}, 403
+            return {"message": "Case not found"}, 404
+
     
 
 @case_ns.route('/<cid>/append_case_note', methods=['POST'])
