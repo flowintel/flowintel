@@ -15,6 +15,13 @@
         </div>
     {% endif %}
 
+    {% if edit_mode and from_notification %}
+        <div class="alert alert-info mt-3 mb-0" role="alert">
+            <i class="fa-solid fa-info-circle me-2"></i>
+            <strong>Password reset request:</strong> Editing a user profile on request of the user
+        </div>
+    {% endif %}
+
     <hr class="fading-line-2 mb-4 mt-4">
 
     {% with messages = get_flashed_messages(with_categories=true) %}

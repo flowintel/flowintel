@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from flask_login import login_required, current_user
 from . import notification_core as NotifModel
+from ..utils.logger import flowintel_log
+from ..db_class.db import User
 
 notification_blueprint = Blueprint(
     'notification',
@@ -72,3 +74,17 @@ def mark_all_read():
     if NotifModel.mark_all_read(current_user):
         return {"message": "Notifications all read", "toast_class": "success-subtle"}, 200
     return {"message": "Error Notification all read", "toast_class": "danger-subtle"}, 400
+
+
+@notification_blueprint.route("/mark_password_reset_notifs_as_read/<uid>", methods=['GET'])
+@login_required
+def mark_password_reset_notifs_as_read(uid):
+    """Mark all password reset notifications for a user as read"""
+    user = User.query.get(uid)
+    if not user:
+        return {"message": "User not found", "toast_class": "danger-subtle"}, 404
+    
+    if NotifModel.mark_password_reset_notifications_as_read(uid):
+        flowintel_log("audit", 200, "Password reset notifications marked as read", User=user.email, UserId=uid, By=current_user.email)
+        return {"message": "Password reset notifications marked as read for all admins", "toast_class": "success-subtle"}, 200
+    return {"message": "Error marking password reset notifications as read", "toast_class": "danger-subtle"}, 400

@@ -95,6 +95,8 @@ def edit_user(uid):
         flash("You do not have permission to edit users.", "error")
         return redirect(url_for('admin.users'))
     
+    from_notification = request.args.get('from_notif', 'false') == 'true'
+    
     form = AdminEditUserFrom()
     form.user_id.data = uid
     
@@ -122,20 +124,24 @@ def edit_user(uid):
                 return redirect(url_for('admin.users'))
             if form.org.data != str(current_user.org_id):
                 flash("You cannot change the organization of users.", "error")
-                return render_template("admin/add_user.html", form=form, edit_mode=True)
+                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
             
             selected_role = Role.query.get(form.role.data)
             if selected_role and selected_role.admin:
                 flash("You cannot assign Admin role to users.", "error")
-                return render_template("admin/add_user.html", form=form, edit_mode=True)
+                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
         
         form_dict = form_to_dict(form)
         # Only include password if change_password is checked
-        if not form.change_password.data:
+        password_was_changed = form.change_password.data
+        if not password_was_changed:
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
         flowintel_log("audit", 200, "User edited", User=user_modif.email, UserId=uid, By=current_user.email)
         AdminModel.admin_edit_user_core(form_dict, uid)
+        
+        if from_notification and password_was_changed:
+            return redirect(url_for('notification.index', password_reset_completed='true', user_id=uid))
         return redirect(url_for('admin.users'))
     else:
         form.first_name.data = user_modif.first_name
@@ -144,7 +150,7 @@ def edit_user(uid):
         form.email.data = user_modif.email
         form.matrix_id.data = user_modif.matrix_id
 
-    return render_template("admin/add_user.html", form=form, edit_mode=True)
+    return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
 
 
 @admin_blueprint.route("/delete_user/<uid>", methods=['POST'])

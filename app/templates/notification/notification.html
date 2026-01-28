@@ -34,6 +34,19 @@
     </div>
 </div>
 
+<div v-if="show_password_reset_prompt" class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+    <i class="fa-solid fa-check-circle me-2"></i>
+    <strong>Password reset completed.</strong> Would you like to mark all password reset notifications for this user for all admins as read?
+    <div class="mt-2">
+        <button class="btn btn-sm btn-success me-2" @click="mark_password_reset_notifs_as_read()">
+            <i class="fa-solid fa-check me-1"></i>Yes, mark all as read
+        </button>
+        <button class="btn btn-sm btn-secondary" @click="dismiss_password_reset_prompt()">
+            No, keep them
+        </button>
+    </div>
+</div>
+
 <hr class="fading-line-2 mt-4 mb-4">
 
 <div class="case-core-style">
@@ -96,6 +109,16 @@
         setup() {
             let flag_is_read = ref(false)
             const notif_list = ref(null)
+            const show_password_reset_prompt = ref(false)
+            const password_reset_user_id = ref(null)
+
+            // Check URL parameters for password reset completion
+            const urlParams = new URLSearchParams(window.location.search)
+            if (urlParams.get('password_reset_completed') === 'true') {
+                show_password_reset_prompt.value = true
+                password_reset_user_id.value = urlParams.get('user_id')
+                window.history.replaceState({}, document.title, window.location.pathname)
+            }
 
             async function fetchNotif(unread_read) {
                 notif_list.value = null
@@ -152,6 +175,22 @@
                 display_toast(res)
             }
 
+            async function mark_password_reset_notifs_as_read() {
+                if (!password_reset_user_id.value) return
+
+                const res = await fetch(`/notification/mark_password_reset_notifs_as_read/${password_reset_user_id.value}`)
+                
+                if (await res.status == 200) {
+                    show_password_reset_prompt.value = false
+                    fetchNotif(true)
+                }
+                display_toast(res)
+            }
+
+            function dismiss_password_reset_prompt() {
+                show_password_reset_prompt.value = false
+            }
+
             function getNotificationUrl(notif) {
                 // If case_id is null or undefined, redirect to homepage
                 if (!notif.case_id) {
@@ -161,7 +200,7 @@
                 // NOTE: This convention (negative case_id means user ID) may be confusing for future maintainers.
                 // Consider using a more explicit property (e.g., notif.user_id or notif.type) to distinguish notification types.
                 if (notif.case_id < 0) {
-                    return `/admin/edit_user/${Math.abs(notif.case_id)}`;
+                    return `/admin/edit_user/${Math.abs(notif.case_id)}?from_notif=true`;
                 }
                 // Otherwise, it's a regular case ID
                 return `/case/${notif.case_id}`;
@@ -178,7 +217,10 @@
                 delete_notif,
                 dayjs,
                 mark_all_read,
-                getNotificationUrl
+                getNotificationUrl,
+                show_password_reset_prompt,
+                mark_password_reset_notifs_as_read,
+                dismiss_password_reset_prompt
             }
         }
     }).mount('#main-container')

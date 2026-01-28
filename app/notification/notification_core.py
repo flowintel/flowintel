@@ -37,15 +37,17 @@ def delete_notification_core(nid):
 
 
 def create_notification_for_admins(message, html_icon, case_id=None, user_id_for_redirect=None):
-    # Create a notification for all administrators in the system.
-    admin_role = Role.query.filter_by(admin=True).first()
-    if not admin_role:
+    """Create a notification for all users with admin permissions."""
+    admin_roles = Role.query.filter_by(admin=True).all()
+    if not admin_roles:
         return False
-    admin_users = User.query.filter_by(role_id=admin_role.id).all()
+    
+    admin_role_ids = [role.id for role in admin_roles]
+    admin_users = User.query.filter(User.role_id.in_(admin_role_ids)).all()
 
-    # If user_id_for_redirect is provided, store it as negative to distinguish from real case IDs
     stored_case_id = None
     if user_id_for_redirect:
+        # Store user_id as negative to distinguish from case IDs
         stored_case_id = -abs(user_id_for_redirect)
     elif case_id:
         stored_case_id = case_id
@@ -167,4 +169,16 @@ def mark_all_read(user):
         notif.read_date = datetime.datetime.now(tz=datetime.timezone.utc)
         db.session.commit()
 
+    return True
+
+def mark_password_reset_notifications_as_read(user_id):
+    """Mark all password reset notifications for a specific user as read."""
+    negative_user_id = -abs(int(user_id))
+    password_reset_notifs = Notification.query.filter_by(case_id=negative_user_id).all()
+    
+    for notif in password_reset_notifs:
+        notif.is_read = True
+        notif.read_date = datetime.datetime.now(tz=datetime.timezone.utc)
+    
+    db.session.commit()
     return True
