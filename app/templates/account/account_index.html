@@ -49,6 +49,39 @@
                     {%endif%}
                 </tr>
                 <tr>
+                    <td style="color:#494950">Organisation</td>
+                    <td>
+                        <a href="/admin/orgs" class="text-decoration-none">{{ org.name }}</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color:#494950">Role</td>
+                    <td>
+                        <a href="/admin/roles" class="text-decoration-none">{{ role.name }}</a>
+                            <a href="/admin/roles" class="text-decoration-none">
+                                {{ role.name }}
+                                {% if role.admin %}
+                                    <span class="badge bg-danger ms-2">Admin</span>
+                                {% elif role.read_only %}
+                                    <span class="badge bg-info ms-2">Read Only</span>
+                                {% else %}
+                                    <span class="badge bg-success ms-2">
+                                        Editor
+                                        {% if role.org_admin %}
+                                            <i class="fa-solid fa-users ms-1" title="Org Admin"></i>
+                                        {% endif %}
+                                        {% if role.queue_admin %}
+                                            <i class="fa-solid fa-list-check ms-1" title="Queue Admin"></i>
+                                        {% endif %}
+                                        {% if role.queuer %}
+                                            <i class="fa-solid fa-inbox ms-1" title="Queuer"></i>
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+                            </a>
+                    </td>
+                </tr>
+                <tr>
                     <td style="color:#494950">API key</td>
                     <td>
                         <div class="d-flex align-items-center">

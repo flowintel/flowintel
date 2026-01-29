@@ -91,7 +91,12 @@ def validate_password_reset_token():
 @account_blueprint.route("/")
 @login_required
 def index():
-    return render_template("account/account_index.html", user=current_user)
+    from ..admin import admin_core as AdminModel
+    
+    org = AdminModel.get_org(current_user.org_id) if current_user.org_id else None    
+    role = AdminModel.get_role(current_user.role_id) if current_user.role_id else None
+    
+    return render_template("account/account_index.html", user=current_user, org=org, role=role)
 
 
 @account_blueprint.route("/edit", methods=['GET', 'POST'])
