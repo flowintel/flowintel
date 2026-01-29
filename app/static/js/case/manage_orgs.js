@@ -41,7 +41,7 @@ export default {
         async function submit_add_orgs() {
             $("#add_orgs_error").text("")
             if ($("#add_orgs_select").val().includes("None") || !$("#add_orgs_select").val().length) {
-                $("#add_orgs_error").text("Give me more")
+                $("#add_orgs_error").text("You need to select an organisation!")
             } else {
                 const res = await fetch('/case/' + props.cases_info.case.id + '/add_orgs', {
                     headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
@@ -68,7 +68,7 @@ export default {
         async function submit_change_owner() {
             $("#change_owner_error").text("")
             if ($("#change_owner_select").val() == "None" || !$("#change_owner_select")) {
-                $("#change_owner_error").text("Give me more")
+                $("#change_owner_error").text("You need to select an organisation!")
             } else {
                 const res = await fetch('/case/' + props.cases_info.case.id + '/change_owner', {
                     headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
@@ -77,6 +77,7 @@ export default {
                 })
                 if (await res.status == 200) {
                     props.cases_info.case.owner_org_id = $("#change_owner_select").val()
+                    bootstrap.Modal.getInstance(document.getElementById('change_owner')).hide()
                 }
                 display_toast(res)
             }
@@ -99,7 +100,9 @@ export default {
                         <button class="btn btn-primary btn-sm" title="Add an org to the case" style="margin-right: 3px" data-bs-toggle="modal" data-bs-target="#add_orgs">
                             <i class="fa-solid fa-users fa-sm"></i>+
                         </button>
-                        <button class="btn btn-primary btn-sm me-1" title="Change owner of the case" data-bs-toggle="modal" data-bs-target="#change_owner">
+                        <button class="btn btn-primary btn-sm me-1" title="Change owner of the case" 
+                                :disabled="cases_info.orgs_in_case.length <= 1"
+                                data-bs-toggle="modal" data-bs-target="#change_owner">
                             <i class="fa-solid fa-user-pen fa-sm"></i>
                         </button>
                         <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
@@ -174,7 +177,7 @@ export default {
                                 Orgs:
                                 <select class="form-control" name="change_owner_select" id="change_owner_select" style="width: 50%">
                                     <option value="None">--</option>
-                                    <template v-for="org in orgs">
+                                    <template v-for="org in cases_info.orgs_in_case">
                                         <option v-if="org.id != cases_info.case.owner_org_id" :value="[[org.id]]">[[org.name]]</option>
                                     </template>
                                 </select>

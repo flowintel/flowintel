@@ -461,6 +461,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             case_loc["present_in_case"] = CommonModel.get_present_in_case(case.id, user)
             case_loc["current_user_permission"] = CommonModel.get_role(user).to_json()
             case_loc["open_tasks"], case_loc["closed_tasks"] = self.open_closed(case)
+            
+            owner_org = CommonModel.get_org(case.owner_org_id)
+            case_loc["owner_org_name"] = owner_org.name if owner_org else "Unknown"            
+            orgs_in_case = CommonModel.get_orgs_in_case(case.id)
+            case_loc["orgs_in_case"] = [{"id": org.id, "name": org.name} for org in orgs_in_case]
+            
             loc["cases"].append(case_loc)
 
 
