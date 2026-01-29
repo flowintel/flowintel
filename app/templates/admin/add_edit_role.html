@@ -106,15 +106,23 @@
                             </td>
                         </tr>
                         <tr>
-                            <td title="Permission that allows users to approve tasks" class="text-muted">Queue Admin <small>(coming soon)</small></td>
+                            <td title="Permission that allows users to approve tasks">Queue Admin</td>
                             <td style="text-align: center;">
-                                <input type="checkbox" class="form-check-input" disabled>
+                                {% if is_system_role %}
+                                    {{form.queue_admin(id="queue_admin_checkbox", class_="form-check-input", disabled=true)}}
+                                {% else %}
+                                    {{form.queue_admin(id="queue_admin_checkbox", class_="form-check-input")}}
+                                {% endif %}
                             </td>
                         </tr>
                         <tr>
-                            <td title="Allows users to request tasks which administrators can later approve" class="text-muted">Queuer <small>(coming soon)</small></td>
+                            <td title="Allows users to request tasks which administrators can later approve">Queuer</td>
                             <td style="text-align: center;">
-                                <input type="checkbox" class="form-check-input" disabled>
+                                {% if is_system_role %}
+                                    {{form.queuer(id="queuer_checkbox", class_="form-check-input", disabled=true)}}
+                                {% else %}
+                                    {{form.queuer(id="queuer_checkbox", class_="form-check-input")}}
+                                {% endif %}
                             </td>
                         </tr>
                         <tr>
@@ -167,8 +175,10 @@
             const readOnlyCheckbox = document.getElementById('read_only_checkbox');
             const editorCheckbox = document.getElementById('editor_checkbox');
             const orgAdminCheckbox = document.getElementById('org_admin_checkbox');
+            const queueAdminCheckbox = document.getElementById('queue_admin_checkbox');
+            const queuerCheckbox = document.getElementById('queuer_checkbox');
             
-            if (adminCheckbox && readOnlyCheckbox && editorCheckbox && orgAdminCheckbox) {
+            if (adminCheckbox && readOnlyCheckbox && editorCheckbox && orgAdminCheckbox && queueAdminCheckbox && queuerCheckbox) {
                 function updateEditorState() {
                     editorCheckbox.checked = !adminCheckbox.checked && !readOnlyCheckbox.checked;
                 }
@@ -186,6 +196,8 @@
                     if (this.checked) {
                         adminCheckbox.checked = false;
                         orgAdminCheckbox.checked = false;
+                        queueAdminCheckbox.checked = false;
+                        queuerCheckbox.checked = false;
                     }
                     updateEditorState();
                 });
@@ -199,6 +211,20 @@
                 });
                 
                 orgAdminCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        readOnlyCheckbox.checked = false;
+                    }
+                    updateEditorState();
+                });
+                
+                queueAdminCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        readOnlyCheckbox.checked = false;
+                    }
+                    updateEditorState();
+                });
+                
+                queuerCheckbox.addEventListener('change', function() {
                     if (this.checked) {
                         readOnlyCheckbox.checked = false;
                     }

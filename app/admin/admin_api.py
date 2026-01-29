@@ -108,7 +108,9 @@ class AddUser(Resource):
             verif_dict = AdminModelApi.verif_add_user(request.json, api_user)
             if "message" not in verif_dict:
                 user = AdminModel.add_user_core(verif_dict)
-                flowintel_log("audit", 200, "User added via API", User=request.json.get('email'), UserId=user.id, By=api_user.email)
+                role = AdminModel.get_role(user.role_id)
+                org = AdminModel.get_org(user.org_id)
+                flowintel_log("audit", 200, "User added via API", User=request.json.get('email'), UserId=user.id, Role=role.name if role else "Unknown", Organisation=org.name if org else "Unknown", By=api_user.email)
                 return {"message": f"User created {user.id}", "id": user.id}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400
@@ -138,7 +140,10 @@ class EditUser(Resource):
             verif_dict = AdminModelApi.verif_edit_user(request.json, id, api_user)
             if "message" not in verif_dict:
                 AdminModel.admin_edit_user_core(verif_dict, id)
-                flowintel_log("audit", 200, "User edited via API", User=user_to_edit.email, UserId=id, By=api_user.email)
+                updated_user = AdminModel.get_user(id)
+                role = AdminModel.get_role(updated_user.role_id)
+                org = AdminModel.get_org(updated_user.org_id)
+                flowintel_log("audit", 200, "User edited via API", User=user_to_edit.email, UserId=id, Role=role.name if role else "Unknown", Organisation=org.name if org else "Unknown", By=api_user.email)
                 return {"message": "User edited"}, 200
             return verif_dict, 400
         return {"message": "Please give data"}, 400

@@ -60,6 +60,12 @@
                             {% if current_user.is_org_admin() %}
                                 <i class="fa-solid fa-users ms-1" title="Also Org Admin"></i>
                             {% endif %}
+                            {% if current_user.is_queue_admin() %}
+                                <i class="fa-solid fa-clipboard-check ms-1" title="Also Queue Admin"></i>
+                            {% endif %}
+                            {% if current_user.is_queuer() %}
+                                <i class="fa-solid fa-list-check ms-1" title="Also Queuer"></i>
+                            {% endif %}
                         </span>
                     {% endif %}
                 </a>
