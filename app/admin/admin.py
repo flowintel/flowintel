@@ -72,8 +72,11 @@ def add_user():
             return render_template("admin/add_user.html", form=form, edit_mode=False)
         
         form_dict = form_to_dict(form)
-        AdminModel.add_user_core(form_dict)
-        flowintel_log("audit", 200, "User added", User=form.email.data, By=current_user.email)
+        user = AdminModel.add_user_core(form_dict)
+        
+        role = AdminModel.get_role(form.role.data)
+        org = AdminModel.get_org(form.org.data)
+        flowintel_log("audit", 200, "User added", User=form.email.data, UserId=user.id, Role=role.name if role else "Unknown", Organisation=org.name if org else "Unknown", By=current_user.email)
         return redirect(url_for('admin.users'))
     return render_template("admin/add_user.html", form=form, edit_mode=False)
 
@@ -137,7 +140,10 @@ def edit_user(uid):
         if not password_was_changed:
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
-        flowintel_log("audit", 200, "User edited", User=user_modif.email, UserId=uid, By=current_user.email)
+        
+        role = AdminModel.get_role(form.role.data)
+        org = AdminModel.get_org(form.org.data)
+        flowintel_log("audit", 200, "User edited", User=user_modif.email, UserId=uid, Role=role.name if role else "Unknown", Organisation=org.name if org else "Unknown", By=current_user.email)
         AdminModel.admin_edit_user_core(form_dict, uid)
         
         if from_notification and password_was_changed:
@@ -237,7 +243,7 @@ def add_role():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_role_core(form_dict)
-        flowintel_log("audit", 200, "Role added", RoleName=form.name.data, Admin=form.admin.data, ReadOnly=form.read_only.data, OrgAdmin=form.org_admin.data)
+        flowintel_log("audit", 200, "Role added", RoleName=form.name.data, Admin=form.admin.data, ReadOnly=form.read_only.data, OrgAdmin=form.org_admin.data, QueueAdmin=form.queue_admin.data, Queuer=form.queuer.data)
         return redirect(url_for('admin.roles'))
     return render_template("admin/add_edit_role.html", form=form, edit_mode=False)
 

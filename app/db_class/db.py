@@ -45,6 +45,18 @@ class User(UserMixin, db.Model):
     def is_pure_org_admin(self):
         return self.is_org_admin() and not self.is_admin()
 
+    def is_queue_admin(self):
+        r = Role.query.get(self.role_id)
+        if r and r.queue_admin:
+            return True
+        return False
+
+    def is_queuer(self):
+        r = Role.query.get(self.role_id)
+        if r and r.queuer:
+            return True
+        return False
+
     @property
     def password(self):
         raise AttributeError('`password` is not a readable attribute')
@@ -365,6 +377,8 @@ class Role(db.Model):
     admin = db.Column(db.Boolean, default=False)
     read_only = db.Column(db.Boolean, default=False)
     org_admin = db.Column(db.Boolean, default=False)
+    queue_admin = db.Column(db.Boolean, default=False)
+    queuer = db.Column(db.Boolean, default=False)
 
     def to_json(self):
         return {
@@ -373,7 +387,9 @@ class Role(db.Model):
             "description": self.description,
             "admin": self.admin,
             "read_only": self.read_only,
-            "org_admin": self.org_admin
+            "org_admin": self.org_admin,
+            "queue_admin": self.queue_admin,
+            "queuer": self.queuer
         }
 
 class File(db.Model):

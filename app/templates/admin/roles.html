@@ -37,6 +37,8 @@
                                     <span v-else class="badge bg-success ms-2">
                                         Editor
                                         <i v-if="role.org_admin" class="fa-solid fa-users ms-1" title="Also Org Admin"></i>
+                                        <i v-if="role.queue_admin" class="fa-solid fa-clipboard-check ms-1" title="Also Queue Admin"></i>
+                                        <i v-if="role.queuer" class="fa-solid fa-list-check ms-1" title="Also Queuer"></i>
                                     </span>
                                 </h5>
                             </div>
@@ -105,15 +107,15 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td title="Permission that allows users to approve tasks" class="text-muted">Queue Admin <small>(coming soon)</small></td>
+                                            <td title="Permission that allows users to approve tasks">Queue Admin</td>
                                             <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" disabled>
+                                                <input type="checkbox" class="form-check-input" v-model="edit_data.queue_admin" @change="handleQueueAdminChange" :disabled="is_system_role(role.id)">
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td title="Allows users to request tasks which administrators can later approve" class="text-muted">Queuer <small>(coming soon)</small></td>
+                                            <td title="Allows users to request tasks which administrators can later approve">Queuer</td>
                                             <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" disabled>
+                                                <input type="checkbox" class="form-check-input" v-model="edit_data.queuer" @change="handleQueuerChange" :disabled="is_system_role(role.id)">
                                             </td>
                                         </tr>
                                         <tr>
@@ -294,7 +296,9 @@
                     description: '',
                     admin: false,
                     read_only: false,
-                    org_admin: false
+                    org_admin: false,
+                    queue_admin: false,
+                    queuer: false
                 })
                 const system_roles = [1, 2, 3]
 
@@ -355,7 +359,9 @@
                             description: edit_data.value.description,
                             admin: edit_data.value.admin,
                             read_only: edit_data.value.read_only,
-                            org_admin: edit_data.value.org_admin
+                            org_admin: edit_data.value.org_admin,
+                            queue_admin: edit_data.value.queue_admin,
+                            queuer: edit_data.value.queuer
                         })
                     })
                     if(await res.status == 200){
@@ -364,6 +370,8 @@
                         role.admin = edit_data.value.admin
                         role.read_only = edit_data.value.read_only
                         role.org_admin = edit_data.value.org_admin
+                        role.queue_admin = edit_data.value.queue_admin
+                        role.queuer = edit_data.value.queuer
                         editing_role.value = null
                     }
                     display_toast(res)
@@ -376,6 +384,8 @@
                     edit_data.value.admin = role.admin
                     edit_data.value.read_only = role.read_only
                     edit_data.value.org_admin = role.org_admin || false
+                    edit_data.value.queue_admin = role.queue_admin || false
+                    edit_data.value.queuer = role.queuer || false
                 }
 
                 function cancel_edit() {
@@ -385,6 +395,8 @@
                     edit_data.value.admin = false
                     edit_data.value.read_only = false
                     edit_data.value.org_admin = false
+                    edit_data.value.queue_admin = false
+                    edit_data.value.queuer = false
                 }
 
                 function handleAdminChange() {
@@ -397,6 +409,8 @@
                     if (edit_data.value.read_only) {
                         edit_data.value.admin = false
                         edit_data.value.org_admin = false
+                        edit_data.value.queue_admin = false
+                        edit_data.value.queuer = false
                     }
                 }
 
@@ -409,6 +423,18 @@
 
                 function handleOrgAdminChange() {
                     if (edit_data.value.org_admin) {
+                        edit_data.value.read_only = false
+                    }
+                }
+
+                function handleQueueAdminChange() {
+                    if (edit_data.value.queue_admin) {
+                        edit_data.value.read_only = false
+                    }
+                }
+
+                function handleQueuerChange() {
+                    if (edit_data.value.queuer) {
                         edit_data.value.read_only = false
                     }
                 }
@@ -453,6 +479,8 @@
                     handleReadOnlyChange,
                     handleEditorChange,
                     handleOrgAdminChange,
+                    handleQueueAdminChange,
+                    handleQueuerChange,
                     is_editor
                 }
             }
