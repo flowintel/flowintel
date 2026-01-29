@@ -159,7 +159,7 @@ def delete_default_org(user_org_id):
     for user in org.users:
         cp += 1
     if org.default_org and not cp > 0:
-        delete_org_core(org)
+        delete_org_core(org.id)
         return True
     return False
 
@@ -210,10 +210,10 @@ def admin_edit_user_core(form_dict, id):
         org = get_org(prev_user_org_id)
         if not org.default_org:
             org = create_default_org(user)
-        org_change = str(org.id)
+        org_change = org.id
     else:
-        org_change = form_dict["org"]
-        if not get_org(form_dict["org"]).id == prev_user_org_id:
+        org_change = int(form_dict["org"])
+        if not get_org(org_change).id == prev_user_org_id:
             flag = True
 
     user.first_name=form_dict["first_name"]
@@ -223,7 +223,7 @@ def admin_edit_user_core(form_dict, id):
     user.matrix_id = form_dict["matrix_id"] or None  # Convert empty string to None to avoid UNIQUE constraint issues
     if "password" in form_dict and form_dict["password"]:
         user.password=form_dict["password"]
-    user.role_id = form_dict["role"]
+    user.role_id = int(form_dict["role"])
     user.org_id = org_change
 
     db.session.commit()
