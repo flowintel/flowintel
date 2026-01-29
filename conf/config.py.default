@@ -23,6 +23,14 @@ class Config:
     
     FILE_UPLOAD_MAX_SIZE = int(os.getenv('FILE_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))  # Default 5MB
 
+    # Reverse proxy configuration
+    # SECURITY: Only enable if Flask is NOT directly accessible (firewall blocks Flask port)
+    BEHIND_PROXY = os.getenv('BEHIND_PROXY', 'false').lower() == 'true'
+    PROXY_X_FOR = int(os.getenv('PROXY_X_FOR', 1))       # Number of proxies to trust
+    PROXY_X_PROTO = int(os.getenv('PROXY_X_PROTO', 1))   # Trust X-Forwarded-Proto
+    PROXY_X_HOST = int(os.getenv('PROXY_X_HOST', 1))     # Trust X-Forwarded-Host
+    PROXY_X_PREFIX = int(os.getenv('PROXY_X_PREFIX', 0)) # Trust X-Forwarded-Prefix
+
     # System roles that cannot be deleted
     SYSTEM_ROLES = [1, 2, 3]
     

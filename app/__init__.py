@@ -4,6 +4,7 @@ from flask_wtf import CSRFProtect
 from flask_migrate import Migrate
 from flask_session import Session
 from flask_login import LoginManager
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from conf.config import config as Config
 import os
@@ -24,6 +25,16 @@ def create_app():
     app.config.from_object(Config[config_name])
 
     Config[config_name].init_app(app)
+
+    # ProxyFix for reverse proxy deployments
+    if app.config.get('BEHIND_PROXY', False):
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app,
+            x_for=app.config.get('PROXY_X_FOR', 1),
+            x_proto=app.config.get('PROXY_X_PROTO', 1),
+            x_host=app.config.get('PROXY_X_HOST', 1),
+            x_prefix=app.config.get('PROXY_X_PREFIX', 0)
+        )
 
     db.init_app(app)
     csrf.init_app(app)
