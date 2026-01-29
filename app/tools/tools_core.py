@@ -359,6 +359,9 @@ def get_case_by_tags(current_user):
     dict_case_tag = {}
     dict_case_cluster_tag = {}
     dict_case_custom_tag = {}
+    dict_task_tag = {}
+    dict_task_cluster_tag = {}
+    dict_task_custom_tag = {}
 
     for case in cases:
         custom = Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(case_id=case.id).all()
@@ -379,10 +382,6 @@ def get_case_by_tags(current_user):
                 dict_case_cluster_tag[cl.tag] = 0
             dict_case_cluster_tag[cl.tag] += 1
 
-        
-        dict_task_tag = {}
-        dict_task_cluster_tag = {}
-        dict_task_custom_tag = {}
         for task in case.tasks:
             custom = Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(task_id=task.id).all()
             for c in custom:

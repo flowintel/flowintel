@@ -85,6 +85,9 @@
 				<a class="collapse-item" href="/tools/module"><i class="fa-solid fa-wrench fa-fw me-2"></i>Modules</a>
 				<a class="collapse-item" href="/tools/case_misp_event"><i class="fa-solid fa-plus fa-fw me-2"></i>Case from MISP</a>
 				<a class="collapse-item" href="/tools/search_attr"><i class="fa-solid fa-magnifying-glass-location fa-fw me-2"></i>Search Attr</a>
+				{% if current_user.is_admin() %}
+				<a class="collapse-item" href="/tools/system_settings"><i class="fa-solid fa-gears fa-fw me-2"></i>System Settings</a>
+				{% endif %}
 			</div>
 		</div>
 	</li>
