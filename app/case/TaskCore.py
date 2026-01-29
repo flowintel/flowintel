@@ -280,12 +280,14 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 uuid_loc = str(uuid.uuid4())
                 filename = secure_filename(files_list[file].filename)
                 try:
-                    file_data = request.files[file].read()
+                    files_list[file].seek(0)
+                    file_data = files_list[file].read()
                     file_size = len(file_data)
                     with open(os.path.join(FILE_FOLDER, uuid_loc), "wb") as write_file:
                         write_file.write(file_data)
                 except Exception as e:
-                    print(e)
+                    from ..utils.logger import flowintel_log
+                    flowintel_log("error", 500, f"Error uploading file to task: {str(e)}", User=current_user.email, TaskId=task.id, FileName=filename)
                     return None
 
                 file_type = files_list[file].content_type if files_list[file].content_type else filename.rsplit('.', 1)[-1] if '.' in filename else 'unknown'

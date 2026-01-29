@@ -1,6 +1,6 @@
 from flask import request
 
-from app.db_class.db import Case, User
+from app.db_class.db import Case, User, File
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
@@ -1025,5 +1025,110 @@ class AppendNoteCase(Resource):
                         return {"message": f"Note for Case {cid} edited"}, 200
                     return {"message": f"Error Note for Case {cid} edited"}, 400
                 return {"message": "Key 'note' not found"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
+
+
+@case_ns.route('/<cid>/files')
+@case_ns.doc(description='Get list of files for a case', params={"cid": "id of a case"})
+class GetCaseFiles(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
+            
+            try:
+                file_list = [file.to_json() for file in case.files]
+            except Exception:
+                file_list = []
+            return {"files": file_list}, 200
+        return {"message": "Case not found"}, 404
+
+
+@case_ns.route('/<cid>/upload_file')
+@case_ns.doc(description='Upload a file to a case')
+class UploadCaseFile(Resource):
+    method_decorators = [editor_required, api_required]
+    @case_ns.doc(params={})
+    def post(self, cid):
+        from ..utils.utils import validate_file_size
+        from ..utils.logger import flowintel_log
+        
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                files_list = request.files
+                has_files = any(files_list[key].filename for key in files_list)
+                if has_files:
+                    # Validate file sizes before processing
+                    for file_key in files_list:
+                        file_obj = files_list[file_key]
+                        if file_obj.filename:
+                            is_valid, error_msg, file_size_mb = validate_file_size(file_obj)
+                            if not is_valid:
+                                flowintel_log("audit", 400, "API: Add files to case: File size too large", User=current_user.email, CaseId=cid, FileName=file_obj.filename, FileSizeMB=file_size_mb)
+                                return {"message": error_msg}, 400
+                    
+                    # Reset 
+                    for file_key in files_list:
+                        if files_list[file_key].filename:
+                            files_list[file_key].seek(0)
+                    
+                    created_files = CaseModel.add_file_core(case, files_list, current_user)
+                    if created_files:
+                        file_details = [f"{f.name} ({f.file_size} bytes, {f.file_type})" for f in created_files]
+                        flowintel_log("audit", 200, "API: Files added to case", User=current_user.email, CaseId=cid, FilesCount=len(created_files), Files="; ".join(file_details))
+                        return {"message": "File(s) added"}, 200
+                    return {"message": "Error adding file(s)"}, 400
+                return {"message": "No files provided"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
+
+
+@case_ns.route('/<cid>/download_file/<fid>')
+@case_ns.doc(description='Download a file from a case', params={"cid": "id of a case", "fid": "id of a file"})
+class DownloadCaseFile(Resource):
+    method_decorators = [api_required]
+    def get(self, cid, fid):
+        from ..utils.logger import flowintel_log
+        
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                file = File.query.get(fid)
+                if file and file.case_id == int(cid):
+                    flowintel_log("audit", 200, "API: File downloaded from case", User=current_user.email, CaseId=cid, FileId=fid, FileName=file.name)
+                    return CaseModel.download_file(file)
+                return {"message": "File not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
+
+
+@case_ns.route('/<cid>/delete_file/<fid>')
+@case_ns.doc(description='Delete a file from a case', params={"cid": "id of a case", "fid": "id of a file"})
+class DeleteCaseFile(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid, fid):
+        from ..utils.logger import flowintel_log
+        
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                file = File.query.get(fid)
+                if file and file.case_id == int(cid):
+                    file_name = file.name
+                    file_size = file.file_size if file.file_size else 0
+                    file_type = file.file_type if file.file_type else "unknown"
+                    
+                    if CaseModel.delete_file(file, case, current_user):
+                        flowintel_log("audit", 200, "API: Case file deleted", User=current_user.email, CaseId=cid, FileId=fid, FileName=file_name, FileSize=f"{file_size} bytes", FileType=file_type)
+                        return {"message": "File deleted"}, 200
+                    return {"message": "Error deleting file"}, 400
+                return {"message": "File not found"}, 404
             return {"message": "Permission denied"}, 403
         return {"message": "Case not found"}, 404

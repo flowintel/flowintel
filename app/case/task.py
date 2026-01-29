@@ -335,7 +335,7 @@ def delete_file(tid, fid):
             
             if TaskModel.delete_file(file, task, current_user):
                 flowintel_log("audit", 200, "Task file deleted", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid, FileName=file_name, FileSize=f"{file_size} bytes", FileType=file_type)
-                return {"message": "File Deleted", "toast_class": "success-subtle"}, 200
+                return {"message": "File deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Error deleting file", "toast_class": "warning-subtle"}, 400
         flowintel_log("audit", 403, "Delete task file: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403

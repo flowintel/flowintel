@@ -26,6 +26,9 @@ from . TaskCore import TaskModel
 from ..utils.utils import get_modules_list
 
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
+
 from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 
@@ -1742,5 +1745,67 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             db.session.commit()
             return True
         return False
+
+    def add_file_core(self, case, files_list, current_user):
+        """Upload a new file to a case"""
+        from ..utils.utils import create_specific_dir
+        from werkzeug.utils import secure_filename
+        
+        create_specific_dir(UPLOAD_FOLDER)
+        create_specific_dir(FILE_FOLDER)
+        created_files = []
+        for file in files_list:
+            if files_list[file].filename:
+                uuid_loc = str(uuid.uuid4())
+                filename = secure_filename(files_list[file].filename)
+                try:
+                    files_list[file].seek(0)
+                    file_data = files_list[file].read()
+                    file_size = len(file_data)
+                    with open(os.path.join(FILE_FOLDER, uuid_loc), "wb") as write_file:
+                        write_file.write(file_data)
+                except Exception as e:
+                    from ..utils.logger import flowintel_log
+                    flowintel_log("error", 500, f"Error uploading file to case: {str(e)}", User=current_user.email, CaseId=case.id, FileName=filename)
+                    return None
+
+                file_type = files_list[file].content_type if files_list[file].content_type else filename.rsplit('.', 1)[-1] if '.' in filename else 'unknown'
+
+                f = File(
+                    name=filename,
+                    case_id=case.id,
+                    uuid=uuid_loc,
+                    upload_date=datetime.datetime.now(tz=datetime.timezone.utc),
+                    file_size=file_size,
+                    file_type=file_type
+                )
+                db.session.add(f)
+                created_files.append(f)
+        
+        if created_files:
+            CommonModel.save_history(case.uuid, current_user, f"File added for case '{case.title}'")
+            CommonModel.update_last_modif(case.id)
+        return created_files
+
+    def download_file(self, file):
+        """Download a file"""
+        return send_file(os.path.join(FILE_FOLDER, file.uuid), as_attachment=True, download_name=file.name)
+
+    def delete_file(self, file, case, current_user):
+        """Delete a file"""
+        try:
+            os.remove(os.path.join(FILE_FOLDER, file.uuid))
+        except OSError:
+            return False
+
+        db.session.delete(file)
+        db.session.commit()
+        
+        CommonModel.save_history(case.uuid, current_user, f"File '{file.name}' deleted from case '{case.title}'")
+        CommonModel.update_last_modif(case.id)
+
+        CommonModel.save_history(case.uuid, current_user, f"File deleted for case '{case.title}'")
+        CommonModel.update_last_modif(case.id)
+        return True
 
 CaseModel = CaseCore()
