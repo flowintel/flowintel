@@ -87,7 +87,7 @@ function misp_module_update {
 
 function launch {
     prepare_app_run
-    #export FLASKENV="development"
+    export FLASKENV="development"
     export HISTORY_DIR=$history_dir/history
     killscript
 
