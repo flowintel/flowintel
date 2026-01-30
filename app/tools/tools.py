@@ -1,9 +1,10 @@
-from flask import Blueprint, flash, redirect, render_template, request
+from flask import Blueprint, flash, redirect, render_template, request, current_app
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
-from ..decorators import editor_required
+from ..decorators import editor_required, admin_required
 from ..utils.utils import get_modules_list
 from ..utils.logger import flowintel_log
+import os
 
 tools_blueprint = Blueprint(
     'tools',
@@ -290,4 +291,40 @@ def search_attr_with_value():
     attr_value = request.args.get('value', 1, type=str)
     res = ToolsModel.search_attr_with_value(attr_value, current_user)
     return res
+
+
+@tools_blueprint.route("/system_settings")
+@login_required
+@admin_required
+def system_settings():
+    from conf.config import config as app_config
+    
+    flaskenv = os.getenv('FLASKENV', 'development')
+    config_class = app_config.get(flaskenv)
+    
+    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_uri.startswith('postgresql'):
+        db_type = 'PostgreSQL'
+    elif db_uri.startswith('mysql'):
+        db_type = 'MySQL/MariaDB'
+    elif db_uri.startswith('sqlite'):
+        db_type = 'SQLite'
+    else:
+        db_type = 'Unknown'
+    
+    db_name = getattr(config_class, 'db_name', None)
+    db_host = getattr(config_class, 'db_host', None)
+    
+    system_info = {
+        'flaskenv': flaskenv,
+        'session_type': current_app.config.get('SESSION_TYPE'),
+        'debug': current_app.config.get('DEBUG', False),
+        'db_type': db_type,
+        'db_name': db_name,
+        'db_host': db_host,
+        'file_upload_max_size': current_app.config.get('FILE_UPLOAD_MAX_SIZE'),
+        'limit_user_view_to_org': current_app.config.get('LIMIT_USER_VIEW_TO_ORG')
+    }
+    
+    return render_template('tools/system_settings.html', system_info=system_info)
 
