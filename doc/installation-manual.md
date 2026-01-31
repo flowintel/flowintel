@@ -43,7 +43,12 @@ Flowintel runs on Ubuntu Linux 22.04 LTS and 24.04 LTS. Other Debian-based distr
             - `*.github.com`, `*.github.io`, `*.githubusercontent.com` (source code)
             - `*.pypi.org`, `*.python.org`, `*.pythonhosted.org` (Python packages)
         - After installation, internet access is only needed for updates.
-        - *Note*: if you plan on using the MISP modules additional internet access is needed. Details are covered in the MISP modules section.    
+    - **MISP server connectivity** (optional)
+        - If you plan to integrate with a MISP server, HTTPS access to that server is required.
+        - Installing or configuring MISP is not part of this manual.
+    - **MISP modules enrichment services** (optional)
+        - If you want to use MISP modules for enrichment of objects as analysers, you need access to the enrichment services such as CIRCL Passive DNS, VirusTotal, and similar platforms.
+        - Some enrichment services require accounts and API keys. Setting up the analysers is covered in the user manual.    
 - **DNS resolution**
     - The system must be able to resolve hostnames. Point to corporate DNS servers or use public resolvers.
 - **Time synchronisation**
@@ -219,6 +224,27 @@ Verify the mount:
 df -h /opt/flowintel
 ```
 
+**Expanding LVM volumes** (when additional storage is needed)
+
+One of the key advantages of LVM is the ability to expand storage without downtime. If you need more space in the future:
+
+```bash
+# Add a new physical disk to the volume group (for example /dev/sdc)
+sudo pvcreate /dev/sdc
+sudo vgextend flowintel-vg /dev/sdc
+
+# Extend the logical volume (add all free space from new disk)
+sudo lvextend -l +100%FREE /dev/flowintel-vg/flowintel-lv
+
+# Resize the filesystem to use the new space
+sudo resize2fs /dev/flowintel-vg/flowintel-lv
+
+# Verify new size
+df -h /opt/flowintel
+```
+
+This process can be performed while Flowintel is running, though it's recommended to perform such operations during a maintenance window.
+
 ## Download Flowintel
 
 ### Clone the repository
@@ -384,6 +410,34 @@ If the test passes, reload NGINX:
 # Reload NGINX
 sudo systemctl reload nginx
 ```
+
+## Optional: Encryption
+
+If your environment requires data-at-rest encryption (for GDPR compliance, law enforcement agency policies, or other security requirements), you must configure encryption **before** installing PostgreSQL and Flowintel.
+
+**When to implement encryption**:
+- Required by organisational policy or regulatory requirements
+- Handling sensitive investigation data
+- Compliance with GDPR Article 32 or LEA data protection policies
+- Physical server security cannot be guaranteed
+
+**Encryption options**:
+- **Full disk encryption**: Best for new installations. Encrypt the entire system during Ubuntu installation.
+- **Partition encryption**: For existing systems. Encrypt `/opt/flowintel` where all Flowintel data will be stored.
+
+**Implementation**:
+
+Refer to the [Flowintel encryption guide](encryption-guide.md) for detailed instructions. The encryption guide covers:
+- LUKS encryption setup for Ubuntu Linux
+- Full disk encryption (Option 1)
+- Partition encryption (Option 2)
+- Key management and backup
+- Performance considerations
+- Recovery procedures
+
+If you choose to implement encryption, follow the encryption guide now and return to this point in the installation manual once the encrypted volume is mounted and ready. The encryption guide will direct you back here.
+
+If encryption is not required, continue with the next section.
 
 ## Database: PostgreSQL
 
@@ -1388,3 +1442,150 @@ When facing issues:
    Full disks cause cryptic errors. Ensure you have at least 1 GB free.
 
 If problems persist, check the GitHub issues page or contact your system administrator with the relevant log excerpts.
+
+## Uninstalling Flowintel
+
+This section describes how to completely remove Flowintel and all associated services from your system.
+
+**Warning**: This process is destructive and irreversible. All case data, configurations, and user files will be permanently deleted. Make sure you have backups if you need to preserve any data.
+
+### Before uninstalling
+
+Create a backup if you need to preserve any data. Refer to the backup and restore documentation for detailed backup procedures.
+
+### Stop all services
+
+Stop all running Flowintel services:
+
+```bash
+# Stop Flowintel
+sudo systemctl stop flowintel
+sudo systemctl disable flowintel
+
+# Stop NGINX
+sudo systemctl stop nginx
+
+# Stop PostgreSQL
+sudo systemctl stop postgresql
+
+# Stop Valkey
+sudo systemctl stop valkey
+```
+
+### Remove Flowintel application
+
+Remove the systemd service file:
+
+```bash
+sudo rm /etc/systemd/system/flowintel.service
+sudo systemctl daemon-reload
+```
+
+Remove the application directory:
+
+```bash
+sudo rm -rf /opt/flowintel
+```
+
+### Remove NGINX
+
+Remove NGINX and its configuration:
+
+```bash
+# Remove NGINX package
+sudo apt remove --purge nginx nginx-common nginx-core -y
+
+# Remove configuration files
+sudo rm -rf /etc/nginx
+
+# Remove log files
+sudo rm -rf /var/log/nginx
+
+# Remove default web root
+sudo rm -rf /var/www/html
+```
+
+### Remove PostgreSQL
+
+Remove PostgreSQL and all database data:
+
+```bash
+# Remove PostgreSQL packages
+sudo apt remove --purge postgresql postgresql-* -y
+
+# Remove data directory
+sudo rm -rf /var/lib/postgresql
+
+# Remove configuration directory
+sudo rm -rf /etc/postgresql
+
+# Remove log files
+sudo rm -rf /var/log/postgresql
+```
+
+### Remove Valkey
+
+Remove Valkey service and files:
+
+```bash
+# Stop and disable service
+sudo systemctl stop valkey
+sudo systemctl disable valkey
+
+# Remove systemd service file
+sudo rm /etc/systemd/system/valkey.service
+sudo systemctl daemon-reload
+
+# Remove Valkey binary
+sudo rm /usr/local/bin/valkey-server
+sudo rm /usr/local/bin/valkey-cli
+
+# Remove configuration
+sudo rm -rf /etc/valkey
+
+# Remove data directory
+sudo rm -rf /var/lib/valkey
+
+# Remove log files
+sudo rm -rf /var/log/valkey
+```
+
+### Clean up remaining files
+
+Remove any remaining configuration or temporary files:
+
+```bash
+# Clean package cache
+sudo apt clean
+sudo apt autoremove -y
+```
+
+### Verify removal
+
+Check that all services have been removed:
+
+```bash
+# Check systemd services
+systemctl list-units --all | grep -E 'flowintel|valkey'
+
+# Check for remaining processes
+ps aux | grep -E 'flowintel|valkey|nginx|postgres'
+
+# Check for remaining files
+ls -la /opt/flowintel 2>/dev/null || echo "Directory removed"
+ls -la /etc/nginx 2>/dev/null || echo "NGINX config removed"
+ls -la /var/lib/postgresql 2>/dev/null || echo "PostgreSQL data removed"
+```
+
+All checks should show that files and services have been removed.
+
+### Final cleanup
+
+Remove any remaining dependencies that are no longer needed:
+
+```bash
+sudo apt autoremove -y
+sudo apt autoclean
+```
+
+The uninstallation is now complete. Your system has been returned to its pre-Flowintel state.
