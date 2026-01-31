@@ -1,0 +1,193 @@
+import os
+
+class Config:
+    """
+    Base configuration for Flowintel.
+    """
+    
+    # =============================================================================
+    # SECRET KEY (REQUIRED)
+    # =============================================================================
+    # The SECRET_KEY is used for session encryption and CSRF protection.
+    # Generate a strong random key using:
+    #   python3 -c 'import secrets; print(secrets.token_hex(32))'
+    SECRET_KEY = 'SECRET_KEY_ENV_VAR_NOT_SET'
+    
+    # =============================================================================
+    # FLASK APPLICATION BINDING
+    # =============================================================================
+    # FLASK_URL: IP address Flask binds to
+    #   - Use '127.0.0.1' for local access only (recommended when behind NGINX)
+    #   - Use '0.0.0.0' to allow direct access from other machines (testing only)
+    # FLASK_PORT: Port number Flask listens on (default 7006)
+    FLASK_URL = '127.0.0.1'
+    FLASK_PORT = 7006
+    
+    # =============================================================================
+    # MISP MODULES
+    # =============================================================================
+    # Address and port where MISP modules are running for analysis and enrichment
+    MISP_MODULE = '127.0.0.1:6666'
+    
+    # =============================================================================
+    # DATABASE CONFIGURATION
+    # =============================================================================
+    # Connection pool settings for PostgreSQL
+    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    
+    # =============================================================================
+    # SESSION STORAGE (VALKEY)
+    # =============================================================================
+    # Valkey is used for session management. It runs as a systemd service
+    # Only change these if Valkey runs on a different host.
+    VALKEY_IP = os.getenv('VALKEY_IP', '127.0.0.1')
+    VALKEY_PORT = os.getenv('VALKEY_PORT', '6379')
+    
+    # =============================================================================
+    # AUDIT LOGGING
+    # =============================================================================
+    # All user actions are logged to logs/record.log with the AUDIT prefix.
+    AUDIT_LOG_PREFIX = os.getenv('AUDIT_LOG_PREFIX', 'AUDIT')
+    LOG_FILE = os.getenv('LOG_FILE', 'record.log')
+    
+    # =============================================================================
+    # APPLICATION BRANDING
+    # =============================================================================
+    APP_NAME = "Flowintel"
+    
+    # Logo configuration (paths relative to static directory)
+    MAIN_LOGO = os.getenv('MAIN_LOGO', '/static/image/flowintel.png')
+    TOPRIGHT_LOGO = os.getenv('TOPRIGHT_LOGO', '')  # Optional logo in top-right corner
+    
+    # Login page customization
+    WELCOME_TEXT_TOP = os.getenv('WELCOME_TEXT_TOP', '')  # Text above login form
+    WELCOME_TEXT_BOTTOM = os.getenv('WELCOME_TEXT_BOTTOM', '')  # Text below login form
+    WELCOME_LOGO = os.getenv('WELCOME_LOGO', '')  # Optional logo on login page
+    
+    # =============================================================================
+    # FILE UPLOADS
+    # =============================================================================
+    # Maximum file size for attachments (in bytes)
+    # Remember to keep this in sync with NGINX client_max_body_size setting.
+    FILE_UPLOAD_MAX_SIZE = int(os.getenv('FILE_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))
+
+    # =============================================================================
+    # ACCESS CONTROL
+    # =============================================================================
+    # System roles that cannot be deleted (admin, user, bot)
+    SYSTEM_ROLES = [1, 2, 3]
+    
+    # Limit user view to own organization
+    # When True: Users can only see other users within their own organisation
+    # When False: All users can see all other users
+    # Administrators always see all users regardless of this setting.
+    LIMIT_USER_VIEW_TO_ORG = False
+
+    # =============================================================================
+    # INITIAL USER ACCOUNTS
+    # =============================================================================
+    # These users are created on first installation.
+    # IMPORTANT: Change the admin password immediately after first login!
+    INIT_ADMIN_USER = {
+        "first_name": "admin",
+        "last_name": "admin",
+        "email": "admin@admin.admin",
+        "password": "admin"  # Change this immediately after first login!
+    }
+    
+    # Bot user for Matrix notifications (password auto-generated)
+    INIT_BOT_USER = {
+        "first_name": "Matrix",
+        "last_name": "Bot",
+        "email": "neo@admin.admin"
+    }
+
+
+# =============================================================================
+# DEVELOPMENT CONFIGURATION
+# =============================================================================
+# Used for local development and testing.
+class DevelopmentConfig(Config):
+    DEBUG = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel.sqlite"
+    SESSION_TYPE = "redis"
+
+    @classmethod
+    def init_app(cls, app):
+        print('THIS APP IS IN DEBUG MODE. \
+                YOU SHOULD NOT SEE THIS IN PRODUCTION.')
+
+# =============================================================================
+# TESTING CONFIGURATION
+# =============================================================================
+# Used for automated testing (pytest).
+class TestingConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel-test.sqlite"
+    WTF_CSRF_ENABLED = False
+    SESSION_TYPE = "redis"
+
+    @classmethod
+    def init_app(cls, app):
+        print('THIS APP IS IN TESTING MODE.  \
+                YOU SHOULD NOT SEE THIS IN PRODUCTION.')
+
+# =============================================================================
+# PRODUCTION CONFIGURATION
+# =============================================================================
+# Used for production deployments.
+# Database: PostgreSQL (recommended for production)
+# 
+# Configure these settings using environment variables or a .env file.
+# 
+# Example .env file:
+#   DB_USER=flowintel
+#   DB_PASSWORD=your_secure_password
+#   DB_HOST=localhost
+#   DB_PORT=5432
+#   DB_NAME=flowintel
+class ProductionConfig(Config):
+    # Session storage uses Valkey (Redis protocol)
+    SESSION_TYPE = "redis"
+    
+    # PostgreSQL database configuration
+    db_user = os.getenv('DB_USER', 'flowintel')
+    db_password = os.getenv('DB_PASSWORD', 'your_secure_password_here')
+    db_host = os.getenv('DB_HOST', 'localhost')
+    db_port = os.getenv('DB_PORT', '5432')
+    db_name = os.getenv('DB_NAME', 'flowintel')
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
+    @classmethod
+    def init_app(cls, app):
+        print('THIS APP IS IN PRODUCTION MODE.')
+
+# =============================================================================
+# DOCKER CONFIGURATION
+# =============================================================================
+# Used for Docker container deployments.
+# Database: PostgreSQL (required for Docker deployments)
+# All settings are configured via environment variables in docker-compose.yml
+class DockerConfig(Config):
+    DEBUG = True
+    SESSION_TYPE = "redis"
+    
+    # PostgreSQL database configuration (from Docker environment)
+    db_user = os.getenv('DB_USER', 'flowintel')
+    db_password = os.getenv('DB_PASSWORD', 'flowintel_password')
+    db_host = os.getenv('DB_HOST', 'db')  # Docker service name
+    db_port = os.getenv('DB_PORT', '5432')
+    db_name = os.getenv('DB_NAME', 'flowintel')
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
+    @classmethod
+    def init_app(cls, app):
+        print('THIS APP IS IN DOCKER MODE.')
+
+config = {
+    'development': DevelopmentConfig,
+    'testing': TestingConfig,
+    'production': ProductionConfig,
+    'docker': DockerConfig,
+    'default': DevelopmentConfig
+}

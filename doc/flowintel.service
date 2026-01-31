@@ -1,0 +1,18 @@
+[Unit]
+Description=Flowintel Case Management Platform
+After=network.target postgresql.service valkey.service
+Requires=postgresql.service valkey.service
+
+[Service]
+Type=simple
+User=yourusername
+Group=yourusername
+WorkingDirectory=/opt/flowintel/flowintel
+Environment="PATH=/opt/flowintel/flowintel/env/bin"
+Environment="FLASKENV=production"
+ExecStart=/opt/flowintel/flowintel/env/bin/python app.py
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

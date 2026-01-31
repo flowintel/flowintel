@@ -6,6 +6,38 @@ info(){ printf '\033[1;34m[INFO]\033[0m %s\n' "$*"; }
 warn(){ printf '\033[1;33m[WARN]\033[0m %s\n' "$*"; }
 err(){ printf '\033[1;31m[ERROR]\033[0m %s\n' "$*"; exit 1; }
 
+# Installation mode (default: development)
+# Can be overridden with --production flag
+INSTALL_MODE="development"
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -p|--production)
+      INSTALL_MODE="production"
+      info "Installation mode: PRODUCTION"
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  -p, --production    Install for production (uses PostgreSQL, production settings)"
+      echo "  -h, --help          Show this help message"
+      echo ""
+      echo "Default: Install for development (uses SQLite, development settings)"
+      exit 0
+      ;;
+    *)
+      err "Unknown option: $1. Use --help for usage information."
+      ;;
+  esac
+done
+
+if [ "$INSTALL_MODE" = "development" ]; then
+  info "Installation mode: DEVELOPMENT (default)"
+fi
+
 # Install variables
 VENV_DIR="env"
 NODE_VERSION="${NODE_VERSION:-20.19.2}"
@@ -174,13 +206,37 @@ fi
 # make launch script executable and run initial setup
 if [ -f ./launch.sh ]; then
   chmod +x ./launch.sh || warn "chmod launch.sh failed"
-  if ./launch.sh -i; then
-    info "Ran ./launch.sh -i successfully"
+  
+  if [ "$INSTALL_MODE" = "production" ]; then
+    info "Running production database initialization..."
+    if ./launch.sh -ip; then
+      info "Ran ./launch.sh -ip (production init) successfully"
+    else
+      warn "./launch.sh -ip returned non-zero exit code"
+    fi
   else
-    warn "./launch.sh -i returned non-zero exit code"
+    info "Running development database initialization..."
+    if ./launch.sh -i; then
+      info "Ran ./launch.sh -i (development init) successfully"
+    else
+      warn "./launch.sh -i returned non-zero exit code"
+    fi
   fi
 else
   warn "launch.sh not found; skipping"
 fi
 
 info "install.safe.sh completed successfully"
+if [ "$INSTALL_MODE" = "production" ]; then
+  info ""
+  info "Production installation complete!"
+  info "To start Flowintel in production mode, run:"
+  info "  bash launch.sh -p"
+  info ""
+  info "Or configure as a systemd service (see installation manual)."
+else
+  info ""
+  info "Development installation complete!"
+  info "To start Flowintel, run:"
+  info "  bash launch.sh -l"
+fi
