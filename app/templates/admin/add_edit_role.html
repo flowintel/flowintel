@@ -47,116 +47,144 @@
 
             <div class="mb-3">
                 <label class="col-form-label fw-bold">Permissions:</label>
-                <div class="alert alert-info py-2 px-3 mb-2" style="font-size: 0.875rem;">
+                <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 0.875rem;">
                     <i class="fa-solid fa-info-circle me-1"></i>
-                    <strong>Note:</strong> Select one of the three role types below. Additional permissions can be combined with Admin or Editor roles.
+                    <strong>Note:</strong> Select one of the three role types below. Additional permissions apply to the Editor role only. An Admin already possesses all additional permissions, and a Read Only cannot have any additional permissions.
                 </div>
-                <table class="table table-sm table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Permission</th>
-                            <th style="width: 100px; text-align: center;">Enabled</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="table-light">
-                            <td colspan="2" class="fw-bold" style="background-color: #f8f9fa;">Role Type</td>
-                        </tr>
-                        <tr>
-                            <td title="Full administrative access to all features">Admin</td>
-                            <td style="text-align: center;">
-                                {% if is_system_role %}
-                                    {{form.admin(id="admin_checkbox", class_="form-check-input", disabled=true)}}
-                                {% else %}
-                                    {{form.admin(id="admin_checkbox", class_="form-check-input")}}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td title="User can only view data, cannot make changes">Read Only</td>
-                            <td style="text-align: center;">
-                                {% if is_system_role %}
-                                    {{form.read_only(id="read_only_checkbox", class_="form-check-input", disabled=true)}}
-                                {% else %}
-                                    {{form.read_only(id="read_only_checkbox", class_="form-check-input")}}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td title="Can create and edit content, but not perform admin functions">Editor</td>
-                            <td style="text-align: center;">
-                                {% if is_system_role %}
-                                    <input type="checkbox" id="editor_checkbox" class="form-check-input" disabled>
-                                {% else %}
-                                    <input type="checkbox" id="editor_checkbox" class="form-check-input">
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr class="table-light">
-                            <td colspan="2" class="fw-bold" style="background-color: #f8f9fa;">Additional Permissions</td>
-                        </tr>
-                        <tr>
-                            <td title="Can add, edit or delete users in their organisation">Org Admin</td>
-                            <td style="text-align: center;">
-                                {% if is_system_role %}
-                                    {{form.org_admin(id="org_admin_checkbox", class_="form-check-input", disabled=true)}}
-                                {% else %}
-                                    {{form.org_admin(id="org_admin_checkbox", class_="form-check-input")}}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td title="Permission that allows users to approve tasks">Queue Admin</td>
-                            <td style="text-align: center;">
-                                {% if is_system_role %}
-                                    {{form.queue_admin(id="queue_admin_checkbox", class_="form-check-input", disabled=true)}}
-                                {% else %}
-                                    {{form.queue_admin(id="queue_admin_checkbox", class_="form-check-input")}}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td title="Allows users to request tasks which administrators can later approve">Queuer</td>
-                            <td style="text-align: center;">
-                                {% if is_system_role %}
-                                    {{form.queuer(id="queuer_checkbox", class_="form-check-input", disabled=true)}}
-                                {% else %}
-                                    {{form.queuer(id="queuer_checkbox", class_="form-check-input")}}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td title="Allows users to create cases" class="text-muted">Case Admin <small>(coming soon)</small></td>
-                            <td style="text-align: center;">
-                                <input type="checkbox" class="form-check-input" disabled>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td title="Allows users to view logs" class="text-muted">Audit Viewer <small>(coming soon)</small></td>
-                            <td style="text-align: center;">
-                                <input type="checkbox" class="form-check-input" disabled>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td title="Allows users to edit case or task templates" class="text-muted">Template Editor <small>(coming soon)</small></td>
-                            <td style="text-align: center;">
-                                <input type="checkbox" class="form-check-input" disabled>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td title="Allows users to sync data with MISP" class="text-muted">MISP Editor <small>(coming soon)</small></td>
-                            <td style="text-align: center;">
-                                <input type="checkbox" class="form-check-input" disabled>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td title="Allows users to import data" class="text-muted">Importer <small>(coming soon)</small></td>
-                            <td style="text-align: center;">
-                                <input type="checkbox" class="form-check-input" disabled>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                
+                <div class="mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <h6 class="mb-0 fw-bold">System role</h6>
+                    </div>
+                    <table class="table table-sm table-bordered mb-0">
+                        <tbody>
+                            <tr>
+                                <td title="Full administrative access to all features"><i class="fa-solid fa-shield-halved me-2" style="color: #dc3545;"></i>Admin</td>
+                                <td style="width: 100px; text-align: center;">
+                                    {% if is_system_role %}
+                                        {{form.admin(id="admin_checkbox", class_="form-check-input", disabled=true)}}
+                                    {% else %}
+                                        {{form.admin(id="admin_checkbox", class_="form-check-input")}}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td title="User can only view data, cannot make changes"><i class="fa-solid fa-eye me-2" style="color: #0dcaf0;"></i>Read Only</td>
+                                <td style="text-align: center;">
+                                    {% if is_system_role %}
+                                        {{form.read_only(id="read_only_checkbox", class_="form-check-input", disabled=true)}}
+                                    {% else %}
+                                        {{form.read_only(id="read_only_checkbox", class_="form-check-input")}}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td title="Can create and edit content, but not perform admin functions"><i class="fa-solid fa-pen me-2" style="color: #198754;"></i>Editor</td>
+                                <td style="text-align: center;">
+                                    {% if is_system_role %}
+                                        <input type="checkbox" id="editor_checkbox" class="form-check-input" disabled>
+                                    {% else %}
+                                        <input type="checkbox" id="editor_checkbox" class="form-check-input">
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <h6 class="mb-0 fw-bold text-muted">Additional permissions <small>(Editor only)</small></h6>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-building me-1"></i>Organisation Management</small>
+                        <table class="table table-sm table-bordered mb-0 mt-1">
+                            <tbody>
+                                <tr>
+                                    <td title="Allows a user to add, create or edit users within an organisation">Org Admin</td>
+                                    <td style="width: 100px; text-align: center;">
+                                        {% if is_system_role %}
+                                            {{form.org_admin(id="org_admin_checkbox", class_="form-check-input", disabled=true)}}
+                                        {% else %}
+                                            {{form.org_admin(id="org_admin_checkbox", class_="form-check-input")}}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mb-2">
+                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-lock me-1"></i>Privileged Cases</small>
+                        <table class="table table-sm table-bordered mb-0 mt-1">
+                            <tbody>
+                                <tr>
+                                    <td title="Can create and complete cases, and can edit a case to a privileged case">Case Admin</td>
+                                    <td style="width: 100px; text-align: center;">
+                                        {% if is_system_role %}
+                                            {{form.case_admin(id="case_admin_checkbox", class_="form-check-input", disabled=true)}}
+                                        {% else %}
+                                            {{form.case_admin(id="case_admin_checkbox", class_="form-check-input")}}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td title="Can approve a task for privileged cases">Queue Admin</td>
+                                    <td style="text-align: center;">
+                                        {% if is_system_role %}
+                                            {{form.queue_admin(id="queue_admin_checkbox", class_="form-check-input", disabled=true)}}
+                                        {% else %}
+                                            {{form.queue_admin(id="queue_admin_checkbox", class_="form-check-input")}}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td title="Can request a task for privileged cases">Queuer</td>
+                                    <td style="text-align: center;">
+                                        {% if is_system_role %}
+                                            {{form.queuer(id="queuer_checkbox", class_="form-check-input", disabled=true)}}
+                                        {% else %}
+                                            {{form.queuer(id="queuer_checkbox", class_="form-check-input")}}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-clock me-1"></i>Coming soon</small>
+                        <table class="table table-sm table-bordered mb-0 mt-1">
+                            <tbody>
+                                <tr class="text-muted">
+                                    <td title="Allows users to view logs">Audit Viewer <small class="fst-italic">(planned)</small></td>
+                                    <td style="width: 100px; text-align: center;">
+                                        <input type="checkbox" class="form-check-input" disabled>
+                                    </td>
+                                </tr>
+                                <tr class="text-muted">
+                                    <td title="Allows users to edit case or task templates">Template Editor <small class="fst-italic">(planned)</small></td>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" class="form-check-input" disabled>
+                                    </td>
+                                </tr>
+                                <tr class="text-muted">
+                                    <td title="Allows users to sync data with MISP">MISP Editor <small class="fst-italic">(planned)</small></td>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" class="form-check-input" disabled>
+                                    </td>
+                                </tr>
+                                <tr class="text-muted">
+                                    <td title="Allows users to import data">Importer <small class="fst-italic">(planned)</small></td>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" class="form-check-input" disabled>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -175,10 +203,11 @@
             const readOnlyCheckbox = document.getElementById('read_only_checkbox');
             const editorCheckbox = document.getElementById('editor_checkbox');
             const orgAdminCheckbox = document.getElementById('org_admin_checkbox');
+            const caseAdminCheckbox = document.getElementById('case_admin_checkbox');
             const queueAdminCheckbox = document.getElementById('queue_admin_checkbox');
             const queuerCheckbox = document.getElementById('queuer_checkbox');
             
-            if (adminCheckbox && readOnlyCheckbox && editorCheckbox && orgAdminCheckbox && queueAdminCheckbox && queuerCheckbox) {
+            if (adminCheckbox && readOnlyCheckbox && editorCheckbox && orgAdminCheckbox && caseAdminCheckbox && queueAdminCheckbox && queuerCheckbox) {
                 function updateEditorState() {
                     editorCheckbox.checked = !adminCheckbox.checked && !readOnlyCheckbox.checked;
                 }
@@ -196,6 +225,7 @@
                     if (this.checked) {
                         adminCheckbox.checked = false;
                         orgAdminCheckbox.checked = false;
+                        caseAdminCheckbox.checked = false;
                         queueAdminCheckbox.checked = false;
                         queuerCheckbox.checked = false;
                     }
@@ -210,25 +240,14 @@
                     }
                 });
                 
-                orgAdminCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        readOnlyCheckbox.checked = false;
-                    }
-                    updateEditorState();
-                });
-                
-                queueAdminCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        readOnlyCheckbox.checked = false;
-                    }
-                    updateEditorState();
-                });
-                
-                queuerCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        readOnlyCheckbox.checked = false;
-                    }
-                    updateEditorState();
+                // Additional permissions force Editor role
+                [orgAdminCheckbox, caseAdminCheckbox, queueAdminCheckbox, queuerCheckbox].forEach(function(checkbox) {
+                    checkbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            readOnlyCheckbox.checked = false;
+                        }
+                        updateEditorState();
+                    });
                 });
             }
         });

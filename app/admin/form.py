@@ -113,6 +113,7 @@ class CreateRoleForm(FlaskForm):
     admin = BooleanField('Admin', default=False)
     read_only = BooleanField('Read Only', default=False)
     org_admin = BooleanField('Org Admin', default=False)
+    case_admin = BooleanField('Case Admin', default=False)
     queue_admin = BooleanField('Queue Admin', default=False)
     queuer = BooleanField('Queuer', default=False)
     role_id = HiddenField()

@@ -45,6 +45,12 @@ class User(UserMixin, db.Model):
     def is_pure_org_admin(self):
         return self.is_org_admin() and not self.is_admin()
 
+    def is_case_admin(self):
+        r = Role.query.get(self.role_id)
+        if r and r.case_admin:
+            return True
+        return False
+
     def is_queue_admin(self):
         r = Role.query.get(self.role_id)
         if r and r.queue_admin:
@@ -377,6 +383,7 @@ class Role(db.Model):
     admin = db.Column(db.Boolean, default=False)
     read_only = db.Column(db.Boolean, default=False)
     org_admin = db.Column(db.Boolean, default=False)
+    case_admin = db.Column(db.Boolean, default=False)
     queue_admin = db.Column(db.Boolean, default=False)
     queuer = db.Column(db.Boolean, default=False)
 
@@ -388,6 +395,7 @@ class Role(db.Model):
             "admin": self.admin,
             "read_only": self.read_only,
             "org_admin": self.org_admin,
+            "case_admin": self.case_admin,
             "queue_admin": self.queue_admin,
             "queuer": self.queuer
         }

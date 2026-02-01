@@ -243,7 +243,7 @@ def add_role():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_role_core(form_dict)
-        flowintel_log("audit", 200, "Role added", RoleName=form.name.data, Admin=form.admin.data, ReadOnly=form.read_only.data, OrgAdmin=form.org_admin.data, QueueAdmin=form.queue_admin.data, Queuer=form.queuer.data)
+        flowintel_log("audit", 200, "Role added", RoleName=form.name.data, Admin=form.admin.data, ReadOnly=form.read_only.data, OrgAdmin=form.org_admin.data, CaseAdmin=form.case_admin.data, QueueAdmin=form.queue_admin.data, Queuer=form.queuer.data)
         return redirect(url_for('admin.roles'))
     return render_template("admin/add_edit_role.html", form=form, edit_mode=False)
 
@@ -260,7 +260,7 @@ def edit_role(id):
     data = request.get_json()
     if AdminModel.edit_role_core(id, data):
         role_name = data.get('name', 'N/A')
-        flowintel_log("audit", 200, "Role edited", RoleId=id, RoleName=role_name, Description=data.get('description'), Admin=data.get('admin'), ReadOnly=data.get('read_only'), OrgAdmin=data.get('org_admin'))
+        flowintel_log("audit", 200, "Role edited", RoleId=id, RoleName=role_name, Description=data.get('description'), Admin=data.get('admin'), ReadOnly=data.get('read_only'), OrgAdmin=data.get('org_admin'), CaseAdmin=data.get('case_admin'), QueueAdmin=data.get('queue_admin'), Queuer=data.get('queuer'))
         return {"message": "Role updated", "toast_class": "success-subtle"}, 200
     return {"message": "Error updating role", "toast_class": "danger-subtle"}, 400
 

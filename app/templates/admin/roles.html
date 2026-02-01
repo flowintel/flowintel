@@ -37,6 +37,7 @@
                                     <span v-else class="badge bg-success ms-2">
                                         Editor
                                         <i v-if="role.org_admin" class="fa-solid fa-users ms-1" title="Also Org Admin"></i>
+                                        <i v-if="role.case_admin" class="fa-solid fa-briefcase ms-1" title="Also Case Admin"></i>
                                         <i v-if="role.queue_admin" class="fa-solid fa-clipboard-check ms-1" title="Also Queue Admin"></i>
                                         <i v-if="role.queuer" class="fa-solid fa-list-check ms-1" title="Also Queuer"></i>
                                     </span>
@@ -64,92 +65,121 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Permissions</label>
-                                <div class="alert alert-info py-2 px-3 mb-2" style="font-size: 0.875rem;">
+                                <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 0.875rem;">
                                     <i class="fa-solid fa-info-circle me-1"></i>
-                                    <strong>Note:</strong> Select one of the three role types below. Additional permissions can be combined with Admin or Editor roles.
+                                    <strong>Note:</strong> Select one of the three role types below. Additional permissions apply to the Editor role only. An Admin already possesses all additional permissions, and a Read Only cannot have any additional permissions.
                                 </div>
-                                <table class="table table-sm table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Permission</th>
-                                            <th style="width: 100px; text-align: center;">Enabled</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr class="table-light">
-                                            <td colspan="2" class="fw-bold" style="background-color: #f8f9fa;">Role Type</td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Full administrative access to all features">Admin</td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" v-model="edit_data.admin" @change="handleAdminChange" :disabled="is_system_role(role.id)">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td title="User can only view data, cannot make changes">Read Only</td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" v-model="edit_data.read_only" @change="handleReadOnlyChange" :disabled="is_system_role(role.id)">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Can create and edit content, but not perform admin functions">Editor</td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" :checked="is_editor" @change="handleEditorChange" :disabled="is_system_role(role.id)">
-                                            </td>
-                                        </tr>
-                                        <tr class="table-light">
-                                            <td colspan="2" class="fw-bold" style="background-color: #f8f9fa;">Additional Permissions</td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Can add, edit or delete users in their organisation">Org Admin</td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" v-model="edit_data.org_admin" @change="handleOrgAdminChange" :disabled="is_system_role(role.id)">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Permission that allows users to approve tasks">Queue Admin</td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" v-model="edit_data.queue_admin" @change="handleQueueAdminChange" :disabled="is_system_role(role.id)">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Allows users to request tasks which administrators can later approve">Queuer</td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" v-model="edit_data.queuer" @change="handleQueuerChange" :disabled="is_system_role(role.id)">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Allows users to create cases" class="text-muted">Case Admin <small>(coming soon)</small></td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" disabled>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Allows users to view logs" class="text-muted">Audit Viewer <small>(coming soon)</small></td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" disabled>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Allows users to edit case or task templates" class="text-muted">Template Editor <small>(coming soon)</small></td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" disabled>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Allows users to sync data with MISP" class="text-muted">MISP Editor <small>(coming soon)</small></td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" disabled>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td title="Allows users to import data" class="text-muted">Importer <small>(coming soon)</small></td>
-                                            <td style="text-align: center;">
-                                                <input type="checkbox" class="form-check-input" disabled>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                
+                                <!-- Role Types -->
+                                <div class="mb-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <h6 class="mb-0 fw-bold">System role</h6>
+                                    </div>
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <tbody>
+                                            <tr>
+                                                <td title="Full administrative access to all features"><i class="fa-solid fa-shield-halved me-2" style="color: #dc3545;"></i>Admin</td>
+                                                <td style="width: 100px; text-align: center;">
+                                                    <input type="checkbox" class="form-check-input" v-model="edit_data.admin" @change="handleAdminChange" :disabled="is_system_role(role.id)">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td title="User can only view data, cannot make changes"><i class="fa-solid fa-eye me-2" style="color: #0dcaf0;"></i>Read Only</td>
+                                                <td style="text-align: center;">
+                                                    <input type="checkbox" class="form-check-input" v-model="edit_data.read_only" @change="handleReadOnlyChange" :disabled="is_system_role(role.id)">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td title="Can create and edit content, but not perform admin functions"><i class="fa-solid fa-pen me-2" style="color: #198754;"></i>Editor</td>
+                                                <td style="text-align: center;">
+                                                    <input type="checkbox" class="form-check-input" :checked="is_editor" @change="handleEditorChange" :disabled="is_system_role(role.id)">
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Additional Permissions -->
+                                <div class="mb-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <h6 class="mb-0 fw-bold text-muted">Additional permissions <small>(Editor only)</small></h6>
+                                    </div>
+                                    
+                                    <!-- Organisation Management -->
+                                    <div class="mb-2">
+                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-building me-1"></i>Organisation Management</small>
+                                        <table class="table table-sm table-bordered mb-0 mt-1">
+                                            <tbody>
+                                                <tr>
+                                                    <td title="Allows a user to add, create or edit users within an organisation">Org Admin</td>
+                                                    <td style="width: 100px; text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.org_admin" @change="handleOrgAdminChange" :disabled="is_system_role(role.id)">
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Privileged Case Permissions -->
+                                    <div class="mb-2">
+                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-lock me-1"></i>Privileged Cases</small>
+                                        <table class="table table-sm table-bordered mb-0 mt-1">
+                                            <tbody>
+                                                <tr>
+                                                    <td title="Can create and complete cases, and can edit a case to a privileged case">Case Admin</td>
+                                                    <td style="width: 100px; text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.case_admin" @change="handleCaseAdminChange" :disabled="is_system_role(role.id)">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td title="Can approve a task for privileged cases">Queue Admin</td>
+                                                    <td style="text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.queue_admin" @change="handleQueueAdminChange" :disabled="is_system_role(role.id)">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td title="Can request a task for privileged cases">Queuer</td>
+                                                    <td style="text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.queuer" @change="handleQueuerChange" :disabled="is_system_role(role.id)">
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Future Permissions -->
+                                    <div>
+                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-clock me-1"></i>Coming soon</small>
+                                        <table class="table table-sm table-bordered mb-0 mt-1">
+                                            <tbody>
+                                                <tr class="text-muted">
+                                                    <td title="Allows users to view logs">Audit Viewer <small class="fst-italic">(planned)</small></td>
+                                                    <td style="width: 100px; text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" disabled>
+                                                    </td>
+                                                </tr>
+                                                <tr class="text-muted">
+                                                    <td title="Allows users to edit case or task templates">Template Editor <small class="fst-italic">(planned)</small></td>
+                                                    <td style="text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" disabled>
+                                                    </td>
+                                                </tr>
+                                                <tr class="text-muted">
+                                                    <td title="Allows users to sync data with MISP">MISP Editor <small class="fst-italic">(planned)</small></td>
+                                                    <td style="text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" disabled>
+                                                    </td>
+                                                </tr>
+                                                <tr class="text-muted">
+                                                    <td title="Allows users to import data">Importer <small class="fst-italic">(planned)</small></td>
+                                                    <td style="text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" disabled>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -297,6 +327,7 @@
                     admin: false,
                     read_only: false,
                     org_admin: false,
+                    case_admin: false,
                     queue_admin: false,
                     queuer: false
                 })
@@ -360,6 +391,7 @@
                             admin: edit_data.value.admin,
                             read_only: edit_data.value.read_only,
                             org_admin: edit_data.value.org_admin,
+                            case_admin: edit_data.value.case_admin,
                             queue_admin: edit_data.value.queue_admin,
                             queuer: edit_data.value.queuer
                         })
@@ -370,6 +402,7 @@
                         role.admin = edit_data.value.admin
                         role.read_only = edit_data.value.read_only
                         role.org_admin = edit_data.value.org_admin
+                        role.case_admin = edit_data.value.case_admin
                         role.queue_admin = edit_data.value.queue_admin
                         role.queuer = edit_data.value.queuer
                         editing_role.value = null
@@ -384,6 +417,7 @@
                     edit_data.value.admin = role.admin
                     edit_data.value.read_only = role.read_only
                     edit_data.value.org_admin = role.org_admin || false
+                    edit_data.value.case_admin = role.case_admin || false
                     edit_data.value.queue_admin = role.queue_admin || false
                     edit_data.value.queuer = role.queuer || false
                 }
@@ -395,6 +429,7 @@
                     edit_data.value.admin = false
                     edit_data.value.read_only = false
                     edit_data.value.org_admin = false
+                    edit_data.value.case_admin = false
                     edit_data.value.queue_admin = false
                     edit_data.value.queuer = false
                 }
@@ -409,6 +444,7 @@
                     if (edit_data.value.read_only) {
                         edit_data.value.admin = false
                         edit_data.value.org_admin = false
+                        edit_data.value.case_admin = false
                         edit_data.value.queue_admin = false
                         edit_data.value.queuer = false
                     }
@@ -423,6 +459,12 @@
 
                 function handleOrgAdminChange() {
                     if (edit_data.value.org_admin) {
+                        edit_data.value.read_only = false
+                    }
+                }
+
+                function handleCaseAdminChange() {
+                    if (edit_data.value.case_admin) {
                         edit_data.value.read_only = false
                     }
                 }
@@ -479,6 +521,7 @@
                     handleReadOnlyChange,
                     handleEditorChange,
                     handleOrgAdminChange,
+                    handleCaseAdminChange,
                     handleQueueAdminChange,
                     handleQueuerChange,
                     is_editor
