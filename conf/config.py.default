@@ -37,6 +37,10 @@ class Config:
     # Limit user view to own organization (only admins can see all users)
     LIMIT_USER_VIEW_TO_ORG = False # False is the previous default ; alt.: True 
 
+    # GDPR and privacy notice for case and task forms
+    SHOW_GDPR_NOTICE = os.getenv('SHOW_GDPR_NOTICE', 'true').lower() == 'true'
+    GDPR_NOTICE = os.getenv('GDPR_NOTICE', 'Please be mindful of GDPR and privacy regulations when adding personal or sensitive information to cases and tasks.')
+
     # Initial users configuration
     INIT_ADMIN_USER = {
         "first_name": "admin",
