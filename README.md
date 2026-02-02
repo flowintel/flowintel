@@ -65,6 +65,9 @@ cd app/assets
 npm run build:static
 ```
 
+## Roadmap
+Overview of features currently under development.
+https://github.com/orgs/flowintel/projects/5
 
 
 ## License
