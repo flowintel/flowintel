@@ -261,6 +261,18 @@
                         <div class="d-flex w-100">
                             <small><i>[[case_loc.open_tasks]] open/ [[case_loc.closed_tasks]] closed</i></small>
                         </div>
+                        <div class="d-flex w-100" style="margin-top: 5px;">
+                            <small>
+                                <i class="fa-solid fa-building me-1"></i>
+                                <span style="font-weight: 600;">Owner:</span> [[case_loc.owner_org_name]]
+                                <template v-if="case_loc.orgs_in_case && case_loc.orgs_in_case.length > 1">
+                                    | <span style="font-weight: 600;">Orgs:</span>
+                                    <template v-for="(org, index) in case_loc.orgs_in_case">
+                                        [[org.name]]<template v-if="index < case_loc.orgs_in_case.length - 1">, </template>
+                                    </template>
+                                </template>
+                            </small>
+                        </div>
                         <div class="d-flex w-100" v-if="case_loc.custom_tags" style="margin-top: 5px;">
                             <template v-for="custom_tag in case_loc.custom_tags">
                                 <div class="tag" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">
