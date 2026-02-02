@@ -135,6 +135,7 @@ class EditCase(Resource):
 
                     if "message" not in verif_dict:
                         CaseModel.edit(verif_dict, cid, current_user)
+                        CaseModel.edit_tags(verif_dict, cid, current_user)
                         return {"message": f"Case {cid} edited"}, 200
 
                     return verif_dict, 400
