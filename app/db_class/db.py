@@ -1108,22 +1108,6 @@ class Misp_Attribute(db.Model):
 
         return json_dict
 
-class Case_Misp_Object_Connector_Instance(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    case_id = db.Column(db.Integer, index=True)
-    instance_id = db.Column(db.Integer, index=True)
-    identifier = db.Column(db.String)
-
-    def to_json(self):
-        json_dict = {
-            "id": self.id,
-            "case_id": self.case_id,
-            "instance_id": self.instance_id,
-            "identifier": self.identifier
-        }
-
-        return json_dict
-        
 class Misp_Object_Instance_Uuid(db.Model):
     # UUID of an object on a misp instance
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
