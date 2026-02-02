@@ -5,7 +5,7 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 
 {{ super() }}
