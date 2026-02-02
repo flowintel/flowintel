@@ -266,7 +266,7 @@
                                 <i class="fa-solid fa-building me-1"></i>
                                 <span style="font-weight: 600;">Owner:</span> [[case_loc.owner_org_name]]
                                 <template v-if="case_loc.orgs_in_case && case_loc.orgs_in_case.length > 1">
-                                    | <span style="font-weight: 600;">Orgs:</span>
+                                    | <span style="font-weight: 600;">Orgs: </span>
                                     <template v-for="(org, index) in case_loc.orgs_in_case">
                                         [[org.name]]<template v-if="index < case_loc.orgs_in_case.length - 1">, </template>
                                     </template>
