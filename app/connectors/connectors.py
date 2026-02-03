@@ -7,7 +7,7 @@ from flask_login import (
 from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm, AddConnectorInstanceForm, EditConnectorInstanceForm
 from . import connectors_core as ConnectorModel
 from ..decorators import admin_required
-from ..utils.utils import form_to_dict, get_module_type
+from ..utils.utils import form_to_dict, get_module_type, get_module_type_with_desc, get_modules_list
 
 connector_blueprint = Blueprint(
     'connector',
@@ -95,6 +95,15 @@ def nb_page_icons():
     return {"nb_page": ConnectorModel.get_nb_page_icons(name=name)}
 
 
+
+@connector_blueprint.route("/type_select_info", methods=['GET'])
+@login_required
+def type_select_info():
+    """Get module types with descriptions."""
+    module_list = get_module_type_with_desc()
+    return {"type_select_info": module_list}, 200
+
+
 @connector_blueprint.route("/<cid>/get_instances", methods=['GET'])
 @login_required
 def get_instances(cid):
@@ -137,11 +146,6 @@ def add_instance(cid):
     """Add an instance"""
     if ConnectorModel.get_connector(cid):
         form = AddConnectorInstanceForm()
-        type_list = get_module_type()
-        form.type_select.choices = list()
-        for i in range(0, len(type_list)):
-            form.type_select.choices.append((type_list[i], type_list[i]))
-        form.type_select.choices.insert(0, ("None","--"))
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             if ConnectorModel.add_connector_instance_core(cid, form_dict, current_user.id):
@@ -204,15 +208,6 @@ def edit_instance(cid, iid):
         loc_instance = ConnectorModel.get_instance(iid)
         form.instance_id.data = iid
 
-        type_list = get_module_type()
-        form.type_select.choices = list()
-        for i in range(0, len(type_list)):
-            if not type_list[i] == loc_instance.type:
-                form.type_select.choices.append((type_list[i], type_list[i]))
-        form.type_select.choices.insert(0, ("None","--"))
-        if loc_instance.type:
-            form.type_select.choices.insert(0, (loc_instance.type, loc_instance.type))
-
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             if not ConnectorModel.edit_connector_instance_core(iid, form_dict):
@@ -223,6 +218,7 @@ def edit_instance(cid, iid):
             form.url.data = loc_instance.url
             form.description.data = loc_instance.description
             form.is_global_connector.data = True if loc_instance.global_api_key else False
+            form.type_select.data = loc_instance.type
             
         return render_template("connectors/add_instance.html", form=form, edit_mode=True)
     return render_template("404.html")

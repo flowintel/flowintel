@@ -18,6 +18,7 @@
 
     <form action="" method="post" class="case-core-style">
         {{ form.hidden_tag() }}
+        <input type="hidden" id="type_select_initial" value="{{ form.type_select.data or '' }}">
         <div class="modal-body">
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -52,14 +53,14 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="col-form-label"><i class="fa-solid fa-cube me-1"></i>Type:</label>
-                    <select data-placeholder="Type" class="select2-select form-control" name="type_select" id="type_select">
-                        {% for i, choice in form.type_select.choices %}
-                            <option value="{{i}}">{{choice}}</option>
-                        {% endfor %}
+                    <select data-placeholder="Type" class="select2-select form-control" name="type_select" id="type_select" ref="typeSelect" v-model="selected" data-initial="{{ form.type_select.data or '' }}">
+                        <option value="">--</option>
+                        <option v-for="t in types" :value="t">[[ t ]]</option>
                     </select>
                     {% if form.type_select.errors %}
                         <div class="text-danger small">{{form.type_select.errors[0] | safe}}</div>
                     {%endif%}
+                    <div id="type_description" class="small text-muted mt-2">[[ description ]]</div>
                 </div>
             </div>
             <div class="mb-3">
@@ -81,17 +82,49 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, onMounted} = Vue
+    const { createApp, onMounted, ref, computed } = Vue
     import {message_list} from '/static/js/toaster.js'
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
+            const selected = ref('')
+            const types = ref([])
+            const infoKeys = ref({})
+
+            const description = computed(() => {
+                return (infoKeys.value && selected.value) ? (infoKeys.value[selected.value] || '') : ''
+            })
+
             onMounted(() => {
-                $('.select2-select').select2({
-                    theme: 'bootstrap-5'
-                })
+                const refEl = document.querySelector('#type_select')
+                // server-provided initial value (read from hidden input)
+                const serverInitial = document.getElementById('type_select_initial').value || ''
+                if (serverInitial) selected.value = serverInitial
+                // Fetch type -> description mapping and populate reactive state
+                fetch('/connectors/type_select_info')
+                    .then(r => r.json())
+                    .then(data => {
+                        const raw = data.type_select_info || []
+                        let infoMap = {}
+                        if (Array.isArray(raw)) {
+                            raw.forEach(item => { if (item && item.type) infoMap[item.type] = item.description || '' })
+                        } else {
+                            infoMap = raw
+                        }
+                        types.value = Object.keys(infoMap).sort()
+                        infoKeys.value = infoMap
+                        // init select2 and keep it in sync with v-model
+                        $(refEl).select2({ theme: 'bootstrap-5' })
+                        // set initial value after select2 init
+                        if (selected.value) $(refEl).val(selected.value).trigger('change')
+                        $(refEl).on('change', function() { selected.value = $(this).val() })
+                    })
+                    .catch(() => { $(refEl).select2({ theme: 'bootstrap-5' }) })
             })
             return {
+                selected,
+                types,
+                description,
                 message_list
             }
         }
