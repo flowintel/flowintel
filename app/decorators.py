@@ -65,3 +65,12 @@ def editor_required(f):
 
 def api_required(f):
     return verification_required()(f)
+
+
+def check_privileged_case_permission(user, operation="access"):
+    from .utils.logger import flowintel_log
+    
+    if not (user.is_admin() or user.is_case_admin()):
+        flowintel_log("audit", 403, f"Privileged case {operation} denied", User=user.email)
+        return {"message": "Insufficient permissions"}, 403
+    return None

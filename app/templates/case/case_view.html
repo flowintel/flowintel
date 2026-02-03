@@ -34,6 +34,9 @@
                     <i v-if="cases_info.case.is_private" class="fa-solid fa-lock"></i>
                     <i v-else class="fa-solid fa-globe"></i>
                 </span>
+                <span v-if="cases_info && cases_info.case.privileged_case" class="case-visibility-badge" title="Privileged case - four-eye-review workflow">
+                    <i class="fa-solid fa-user-shield" style="color: #dc3545;"></i>
+                </span>
                 <span v-if="status_info" :class="'badge rounded-pill text-bg-' + status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
                     [[ status_info.status[{{case.status_id}} -1].name ]]
                 </span>

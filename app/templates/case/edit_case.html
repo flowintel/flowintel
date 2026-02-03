@@ -36,6 +36,17 @@
                     {% if form.is_private.errors %}
                         <div style="color: red;">{{form.is_private.errors[0] | safe}}</div>
                     {%endif%}
+                    <br>
+                    <i class="fa-solid fa-user-shield"></i> <strong>{{form.privileged_case.label(class_="col-form-label")}}:</strong>
+                    {% if current_user.is_admin() or current_user.is_case_admin() %}
+                        {{form.privileged_case(class_="ms-2", id="privileged_case_checkbox")}}
+                    {% else %}
+                        {{form.privileged_case(class_="ms-2", id="privileged_case_checkbox", disabled=True, title="Switching between privileged or non-privileged case is restricted to Admins or Case Admins")}}
+                    {% endif %}
+                    <i class="fa-solid fa-info-circle ms-1" title="Privileged cases implement the four-eye-review workflow" style="cursor: help; color: #0d6efd;"></i>
+                    {% if form.privileged_case.errors %}
+                        <div style="color: red;">{{form.privileged_case.errors[0] | safe}}</div>
+                    {%endif%}
                 </div>
             </div>
             <div class="row">

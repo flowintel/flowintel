@@ -6,6 +6,7 @@ from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..utils import utils
+from ..utils.logger import flowintel_log
 
 from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
@@ -61,6 +62,7 @@ class CreateCase(Resource):
         "custom_tags" : "List of custom tags created on the instance",
         "time_required": "Time required to realize the case",
         "is_private": "Specify if a case is private or not. By default a case is public",
+        "privileged_case": "Specify if a case is privileged (four-eye-review workflow). Only Admin or Case Admin can set this. By default False",
         "ticket_id": "Id of a ticket related to the case"
     })
     def post(self):
@@ -70,7 +72,15 @@ class CreateCase(Resource):
             verif_dict = CaseModelApi.verif_create_case_task(request.json)
 
             if "message" not in verif_dict:
+                # Only Admin or Case Admin can create privileged cases
+                if verif_dict["privileged_case"]:
+                    from ..decorators import check_privileged_case_permission
+                    error = check_privileged_case_permission(user, operation="creation")
+                    if error:
+                        return error
+                
                 case = CaseModel.create_case(verif_dict, user)
+                flowintel_log("audit", 201, "Case created", User=user.email, CaseId=case.id, CaseTitle=case.title, IsPrivate=case.is_private, IsPrivileged=case.privileged_case)
                 return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
@@ -102,6 +112,7 @@ class CreateCaseEvent(Resource):
 
             if "message" not in verif_dict:
                 case = CaseModel.create_case_with_event(verif_dict, user)
+                flowintel_log("audit", 201, "Case created with event", User=user.email, CaseId=case.id, CaseTitle=case.title, IsPrivate=case.is_private, IsPrivileged=case.privileged_case)
                 return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
@@ -120,6 +131,7 @@ class EditCase(Resource):
                      "clusters": "list of tags from galaxies",
                      "custom_tags" : "List of custom tags created on the instance",
                      "is_private": "Specify if a case is private or not. By default a case is public",
+                     "privileged_case": "Specify if a case is privileged (four-eye-review workflow). Only Admin or Case Admin can modify this",
                      "ticket_id": "Id of a ticket related to the case"
                     })
     def post(self, cid):
@@ -131,10 +143,18 @@ class EditCase(Resource):
             
             if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
                 if request.json:
+                    if "privileged_case" in request.json:
+                        if request.json["privileged_case"] != case.privileged_case:
+                            from ..decorators import check_privileged_case_permission
+                            error = check_privileged_case_permission(current_user, operation="modification")
+                            if error:
+                                return error
+                    
                     verif_dict = CaseModelApi.verif_edit_case(request.json, cid)
 
                     if "message" not in verif_dict:
                         CaseModel.edit(verif_dict, cid, current_user)
+                        flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid, IsPrivate=verif_dict["is_private"], IsPrivileged=verif_dict["privileged_case"])
                         return {"message": f"Case {cid} edited"}, 200
 
                     return verif_dict, 400
@@ -183,6 +203,7 @@ class MergeCase(Resource):
             
             if CaseModel.merge_case_core(case, merging_case, current_user):
                 CaseModel.delete_case(cid, current_user)
+                flowintel_log("audit", 200, "Case deleted (merged)", User=current_user.email, CaseId=cid)
                 return {"message": "Case is merged"}, 200
             return {"message": "Error Merging"}, 400
         return {"message": "Case not found"}, 404
@@ -245,6 +266,7 @@ class DeleteCase(Resource):
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_case(cid, current_user):
+                flowintel_log("audit", 200, "Case deleted", User=current_user.email, CaseId=cid)
                 return {"message": "Case deleted"}, 200
             return {"message": "Error case deleted"}, 400
         return {"message": "Permission denied"}, 403

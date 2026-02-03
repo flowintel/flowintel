@@ -247,7 +247,7 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         return True
 
 
-    def create_case_from_template(self, cid: int, case_title_fork: str, user: User):
+    def create_case_from_template(self, cid: int, case_title_fork: str, user: User, privileged_case: bool = False):
         case_title_stored = Case.query.filter_by(title=case_title_fork.strip()).first()
         if case_title_stored:
             return {"message": "Error, title already exist"}
@@ -264,7 +264,8 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
             status_id=1,
             owner_org_id=user.org_id,
             nb_tasks=len(case_tasks),
-            notes=case_template.notes
+            notes=case_template.notes,
+            privileged_case=privileged_case
         )
         db.session.add(case)
         db.session.commit()

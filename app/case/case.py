@@ -94,7 +94,7 @@ def edit_case(cid):
                 form_dict = form_to_dict(form)
                 form_dict["description"] = request.form.get("description")
                 CaseModel.edit(form_dict, cid, current_user)
-                flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid)
+                flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid, IsPrivate=form_dict.get("is_private", False), IsPrivileged=form_dict.get("privileged_case", False))
                 flash("Case edited", "success")
                 return redirect(f"/case/{cid}")
             else:
@@ -104,6 +104,7 @@ def edit_case(cid):
                 form.deadline_time.data = case_modif.deadline
                 form.time_required.data = case_modif.time_required
                 form.is_private.data = case_modif.is_private
+                form.privileged_case.data = case_modif.privileged_case
                 form.ticket_id.data = case_modif.ticket_id
 
             return render_template("case/edit_case.html", form=form, description=case_modif.description, case_id=cid)
