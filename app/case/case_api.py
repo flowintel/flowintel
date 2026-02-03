@@ -170,17 +170,24 @@ class ForkCase(Resource):
         "case_title_fork": "Required. Title for the case"
     })
     def post(self, cid):
+        from ..decorators import check_privileged_case_permission
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
             
+            if case.privileged_case:
+                error = check_privileged_case_permission(current_user, operation="forking")
+                if error:
+                    return error
+            
             if request.json:
                 if "case_title_fork" in request.json:
                     new_case = CaseModel.fork_case_core(cid, request.json["case_title_fork"], current_user)
                     if type(new_case) == dict:
                         return new_case, 400
+                    flowintel_log("audit", 200, "Case forked", User=current_user.email, OriginalCaseId=cid, NewCaseId=new_case.id)
                     return {"new_case_id": new_case.id}, 201
                 return {"message": "Need to pass 'case_title_fork'"}, 400
             return {"message": "Please give data"}, 400
@@ -202,6 +209,7 @@ class MergeCase(Resource):
                 return {"message": "Permission denied"}, 403
             
             if CaseModel.merge_case_core(case, merging_case, current_user):
+                flowintel_log("audit", 200, "Case merged", User=current_user.email, SourceCaseId=cid, TargetCaseId=ocid)
                 CaseModel.delete_case(cid, current_user)
                 flowintel_log("audit", 200, "Case deleted (merged)", User=current_user.email, CaseId=cid)
                 return {"message": "Case is merged"}, 200
@@ -248,11 +256,24 @@ class GetCaseTitle(Resource):
 class CompleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
+        from ..decorators import check_privileged_case_permission
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             case = CommonModel.get_case(cid)
             if case:
+                if case.privileged_case:
+                    operation = "revival" if case.completed else "completion"
+                    error = check_privileged_case_permission(current_user, operation=operation)
+                    if error:
+                        return error
+                
+                was_completed = case.completed
+                
                 if CaseModel.complete_case(cid, current_user):
+                    if was_completed:
+                        flowintel_log("audit", 200, "Case revived", User=current_user.email, CaseId=cid)
+                    else:
+                        flowintel_log("audit", 200, "Case completed", User=current_user.email, CaseId=cid)
                     return {"message": f"Case {cid} completed"}, 200
                 return {"message": f"Error case {cid} completed"}, 400
             return {"message": "Case not found"}, 404
@@ -263,12 +284,21 @@ class CompleteCase(Resource):
 class DeleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
+        from ..decorators import check_privileged_case_permission
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.delete_case(cid, current_user):
-                flowintel_log("audit", 200, "Case deleted", User=current_user.email, CaseId=cid)
-                return {"message": "Case deleted"}, 200
-            return {"message": "Error case deleted"}, 400
+            case = CommonModel.get_case(cid)
+            if case:
+                if case.privileged_case:
+                    error = check_privileged_case_permission(current_user, operation="deletion")
+                    if error:
+                        return error
+                
+                if CaseModel.delete_case(cid, current_user):
+                    flowintel_log("audit", 200, "Case deleted", User=current_user.email, CaseId=cid)
+                    return {"message": "Case deleted"}, 200
+                return {"message": "Error case deleted"}, 400
+            return {"message": "Case not found"}, 404
         return {"message": "Permission denied"}, 403
     
 @case_ns.route('/<cid>/add_org', methods=['POST'])
@@ -335,15 +365,23 @@ class CreateTemplate(Resource):
     method_decorators = [editor_required, api_required]
     @case_ns.doc(params={"title_template": "Title for the template that will be create"})
     def post(self, cid):
+        from ..decorators import check_privileged_case_permission
         if "title_template" in request.json:
             case = CommonModel.get_case(cid)
             if case:
                 current_user = utils.get_user_from_api(request.headers)
                 if not check_user_private_case(case, request.headers, current_user):
                     return {"message": "Permission denied"}, 403
+                
+                if case.privileged_case:
+                    error = check_privileged_case_permission(current_user, operation="template creation")
+                    if error:
+                        return error
+                
                 new_template = CaseModel.create_template_from_case(cid, request.json["title_template"], current_user)
                 if type(new_template) == dict:
                     return new_template
+                flowintel_log("audit", 200, "Template created from case", User=current_user.email, CaseId=cid, TemplateId=new_template.id)
                 return {"template_id": new_template.id}, 201
             return {"message": "Case not found"}, 404
         return {"message": "'title_template' is missing"}, 400
@@ -361,16 +399,25 @@ class RecurringCase(Resource):
         "remove": "Boolean"
     })
     def post(self, cid):
+        from ..decorators import check_privileged_case_permission
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if request.json:
-                verif_dict = CaseModelApi.verif_set_recurring(request.json)
+            case = CommonModel.get_case(cid)
+            if case:
+                if case.privileged_case:
+                    error = check_privileged_case_permission(current_user, operation="recurring configuration")
+                    if error:
+                        return error
+                
+                if request.json:
+                    verif_dict = CaseModelApi.verif_set_recurring(request.json)
 
-                if "message" not in verif_dict:
-                    CaseModel.change_recurring(verif_dict, cid, current_user)
-                    return {"message": "Recurring changed"}, 200
-                return verif_dict
-            return {"message": "Please give data"}, 400
+                    if "message" not in verif_dict:
+                        CaseModel.change_recurring(verif_dict, cid, current_user)
+                        return {"message": "Recurring changed"}, 200
+                    return verif_dict
+                return {"message": "Please give data"}, 400
+            return {"message": "Case not found"}, 404
         return {"message": "Permission denied"}, 403
 
 

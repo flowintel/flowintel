@@ -1353,7 +1353,10 @@
                         }
                     };
 
-                    new Sortable(document.getElementById('list-container'), options);
+                    const listContainer = document.getElementById('list-container');
+                    if (listContainer) {
+                        new Sortable(listContainer, options);
+                    }
                 })
 
                 

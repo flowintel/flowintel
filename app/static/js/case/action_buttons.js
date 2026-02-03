@@ -160,12 +160,26 @@ export default {
     },
 	template: `
         <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="margin-right:10px;">
-            <button v-if="cases_info.case.completed" class="btn btn-secondary" @click="complete_case(cases_info.case)" title="Revive the case" style="margin-right:10px">
-                <i class="fa-solid fa-backward"></i>
-            </button>
-            <button v-else class="btn btn-success" @click="complete_case(cases_info.case)" title="Complete the case" style="margin-right:10px">
-                <i class="fa-solid fa-check"></i>
-            </button>
+            <span v-if="cases_info.case.completed" 
+                  :title="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin ? 'You cannot revive a privileged case' : 'Revive the case'"
+                  style="margin-right:10px; display:inline-block;">
+                <button class="btn btn-secondary" 
+                        @click="complete_case(cases_info.case)" 
+                        :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin"
+                        style="pointer-events: auto;">
+                    <i class="fa-solid fa-backward"></i>
+                </button>
+            </span>
+            <span v-else 
+                  :title="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin ? 'You cannot complete a privileged case' : 'Complete the case'"
+                  style="margin-right:10px; display:inline-block;">
+                <button class="btn btn-success" 
+                        @click="complete_case(cases_info.case)" 
+                        :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin"
+                        style="pointer-events: auto;">
+                    <i class="fa-solid fa-check"></i>
+                </button>
+            </span>
 
             <a class="btn btn-primary" :href="'/case/edit/'+cases_info.case.id" type="button" title="Edit the case">
                 <i class="fa-solid fa-pen-to-square"></i>
@@ -183,27 +197,52 @@ export default {
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" :href="'/case/'+cases_info.case.id+'/recurring'" type="button" title="Recurring Case">
+                        <a class="dropdown-item" 
+                           :href="'/case/'+cases_info.case.id+'/recurring'" 
+                           type="button" 
+                           title="Recurring Case"
+                           :class="{'disabled': cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin}"
+                           :aria-disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin"
+                           @click="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin ? $event.preventDefault() : null">
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-clock"></i></span> Recurring
                         </a>
                     </li>
                     <li>
-                        <button type="button" class="dropdown-item" title="Merge this case into an other one" @click="merge_case_modal()">
+                        <button type="button" 
+                                class="dropdown-item" 
+                                title="Merge this case into an other one" 
+                                @click="merge_case_modal()"
+                                :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin">
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-merge"></i></span> Merge
                         </button>
                     </li>
                     <li>
-                        <button type="button" class="dropdown-item" title="Fork this case" data-bs-toggle="modal" data-bs-target="#fork_case_modal">
+                        <button type="button" 
+                                class="dropdown-item" 
+                                title="Fork this case" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#fork_case_modal"
+                                :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin">
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
                         </button>
                     </li>
                     <li>
-                        <button type="button" class="dropdown-item" title="Create a template from the case" data-bs-toggle="modal" data-bs-target="#template_case_modal">
+                        <button type="button" 
+                                class="dropdown-item" 
+                                title="Create a template from the case" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#template_case_modal"
+                                :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin">
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-book-bookmark"></i></span> Template
                         </button>
                     </li>
                     <li>
-                        <button type="button" class="dropdown-item" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
+                        <button type="button" 
+                                class="dropdown-item" 
+                                title="Delete the case" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#delete_case_modal"
+                                :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin">
                             <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
                         </button>
                     </li>
