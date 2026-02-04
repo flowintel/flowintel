@@ -189,8 +189,14 @@ def change_owner(cid):
 def recurring(cid):
     """Recurring form"""
 
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
+                flowintel_log("audit", 403, "Recurring: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
+                flash("Cannot modify recurring settings for privileged cases", "warning")
+                return redirect(f"/case/{cid}")
+            
             form = RecurringForm()
             form.case_id.data = cid
 

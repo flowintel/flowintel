@@ -4,10 +4,10 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
-<script src="{{ url_for('static',filename='js/sortablejs.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/Sortable.min.js') }}"></script>
 
 {{ super() }}
 {%endblock%}

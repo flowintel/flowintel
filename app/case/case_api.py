@@ -199,11 +199,17 @@ class ForkCase(Resource):
 class MergeCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, ocid):
+        from ..decorators import check_privileged_case_permission
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
+            
+            if case.privileged_case:
+                error = check_privileged_case_permission(current_user, operation="merging")
+                if error:
+                    return error
             
             merging_case = CommonModel.get_case(ocid)
             if merging_case and not check_user_private_case(merging_case, request.headers, current_user):

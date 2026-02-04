@@ -399,15 +399,15 @@ export default {
 					<i>[[template.notes.length]] Notes</i>
 				</span>
 			</div>
-			<p class="mt-1 card card-body" v-if="template.subtasks.length" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
-				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
-				<template v-for="subtask in template.subtasks">
-					<div v-if="!subtask.completed" style="display: flex;">
-						<div class="subtask-tree"></div>
-						[[subtask.description]]
-					</div>
-				</template>
-			</p>
+		<div class="mt-1 card card-body" v-if="template.subtasks.length" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
+			<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
+			<template v-for="subtask in template.subtasks">
+				<div v-if="!subtask.completed" style="display: flex;">
+					<div class="subtask-tree"></div>
+					[[subtask.description]]
+				</div>
+			</template>
+		</div>
         </a>
         <div v-if="!template.current_user_permission.read_only">
 			<div>

@@ -50,7 +50,12 @@ export function getAvailableStatuses(task, casesInfo, statusInfo) {
         if (status.id === task.status_id) return false;
         
         if (isRequestedPrivileged) {
-            return ['Requested', 'Approved', 'Rejected'].includes(status.name);
+            const allowedStatusIds = [
+                statusInfo.config.TASK_REQUESTED,
+                statusInfo.config.TASK_APPROVED,
+                statusInfo.config.TASK_REJECTED
+            ];
+            return allowedStatusIds.includes(status.id);
         }
         
         return true;

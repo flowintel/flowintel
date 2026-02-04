@@ -731,8 +731,9 @@ def check_custom_tags(tags_list):
     return True
 
 
-def create_task_from_template(template_id, cid):
+def create_task_from_template(template_id, cid, current_user=None):
     """Create a task from a task template"""
+    from flask import current_app
     template = Task_Template.query.get(template_id)
     case = get_case(cid)
     nb_tasks = 1
@@ -740,6 +741,11 @@ def create_task_from_template(template_id, cid):
         nb_tasks = case.nb_tasks+1
     else:
         case.nb_tasks = 0
+    
+    status_id = 1
+    if current_user and case.privileged_case and current_user.is_queuer() and not current_user.is_admin() and not current_user.is_case_admin() and not current_user.is_queue_admin():
+        status_id = current_app.config['TASK_REQUESTED']
+    
     task = Task(
         uuid=str(uuid.uuid4()),
         title=template.title,
@@ -747,7 +753,7 @@ def create_task_from_template(template_id, cid):
         creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
         last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
         case_id=cid,
-        status_id=1,
+        status_id=status_id,
         case_order_id=nb_tasks,
         nb_notes=0
     )
@@ -805,6 +811,22 @@ def create_task_from_template(template_id, cid):
         )
         db.session.add(subtask)
         db.session.commit()
+
+    if current_user and status_id == current_app.config['TASK_REQUESTED']:
+        from ..notification import notification_core as NotifModel
+        task_user = Task_User(
+            task_id=task.id,
+            user_id=current_user.id
+        )
+        db.session.add(task_user)
+        db.session.commit()
+        
+        NotifModel.create_notification_for_approvers(
+            message=f"New task '{task.id}-{task.title}' requested by {current_user.first_name} {current_user.last_name} in case '{case.id}-{case.title}'. You can approve or reject this task.",
+            case_id=cid,
+            org_id=case.owner_org_id,
+            html_icon="fa-solid fa-circle-exclamation"
+        )
 
     return task
 
