@@ -1,5 +1,6 @@
 from ..db_class.db import Case_Template, Task_Template
 from ..utils.datadictHelper import edition_verification_tags_connectors, creation_verification_tags_connectors
+from  ..case import common_core as CommonModel
 
 
 def common_creation(data_dict):
@@ -53,4 +54,15 @@ def verif_edit_task_template(data_dict, task_id):
     if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = task_template.description
 
-    return common_edit(data_dict, task_template)
+    data_dict = common_edit(data_dict, task_template)
+
+    loc_json = task_template.to_json()
+    if "galaxies" in data_dict:
+        loc = CommonModel.check_galaxy(data_dict["galaxies"])
+        if not isinstance(loc, bool):
+            return {"message": f"Galaxy '{loc}' doesn't exist"}
+    elif loc_json["galaxies"]:
+        data_dict["galaxies"] = loc_json["galaxies"]
+    else:        data_dict["galaxies"] = []
+    
+    return data_dict

@@ -7,7 +7,7 @@ from flask_login import (
 from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm, AddConnectorInstanceForm, EditConnectorInstanceForm
 from . import connectors_core as ConnectorModel
 from ..decorators import admin_required
-from ..utils.utils import form_to_dict, get_module_type, get_module_type_with_desc, get_modules_list
+from ..utils.utils import form_to_dict, get_module_type_with_desc
 
 connector_blueprint = Blueprint(
     'connector',

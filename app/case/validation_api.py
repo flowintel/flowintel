@@ -126,4 +126,13 @@ def verif_edit_task(data_dict, task_id):
 
     data_dict = common_verif(data_dict, task)
 
+    loc_json = task.to_json()
+    if "galaxies" in data_dict:
+        loc = CommonModel.check_galaxy(data_dict["galaxies"])
+        if not isinstance(loc, bool):
+            return {"message": f"Galaxy '{loc}' doesn't exist"}
+    elif loc_json["galaxies"]:
+        data_dict["galaxies"] = loc_json["galaxies"]
+    else:        data_dict["galaxies"] = []
+
     return data_dict

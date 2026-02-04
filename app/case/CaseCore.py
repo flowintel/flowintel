@@ -568,6 +568,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     loc_clusters.append(cluster["name"])
                 task_json["clusters"] = loc_clusters
 
+                loc_galaxies = list()
+                for galaxy in task_json["galaxies"]:
+                    loc_galaxies.append(galaxy["name"])
+                task_json["galaxies"] = loc_galaxies
+
                 new_task = TaskModel.create_task(task_json, new_case.id, user)
 
                 for note in task_json["notes"]:
@@ -742,6 +747,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                         tag_id=t_t.tag_id
                     )
                     db.session.add(task_tag)
+                    db.session.commit()
+
+                ## Galaxies
+                for t_t in Task_Galaxy.query.filter_by(task_id=task.id).all():
+                    task_cluster = Task_Template_Galaxy(
+                        template_id=task_template.id,
+                        galaxy_id=t_t.galaxy_id
+                    )
+                    db.session.add(task_cluster)
                     db.session.commit()
 
                 ## Clusters

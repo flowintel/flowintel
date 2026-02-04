@@ -2,8 +2,8 @@ import datetime
 from typing import Optional
 from ..db_class.db import (
     Case_Template, Case_Template_Custom_Tags, Role, Task_Template, Note_Template, Subtask_Template,
-    Case_Template_Tags, Case_Template_Galaxy_Tags, Task_Template_Custom_Tags, Task_Template_Tags, Task_Template_Galaxy_Tags,
-    Case_Task_Template, Case_Template_Connector_Instance,
+    Case_Template_Tags, Case_Template_Galaxy_Tags, Task_Template_Custom_Tags, Task_Template_Galaxy, 
+    Task_Template_Tags, Task_Template_Galaxy_Tags, Case_Task_Template, Case_Template_Connector_Instance,
     Tags, Cluster, Galaxy, Custom_Tags
 )
 from .. import db
@@ -31,6 +31,11 @@ def get_case_clusters(cid):
 def get_task_clusters(tid):
     return [cluster for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.cluster_id==Cluster.id).filter_by(template_id=tid).all()]
 
+def get_task_galaxies(tid):
+    """Return a list of galaxies present in a task"""
+    return [galaxy for galaxy in \
+            Galaxy.query.join(Task_Template_Galaxy, Task_Template_Galaxy.galaxy_id==Galaxy.id)\
+                .filter_by(template_id=tid).all()]
 def get_galaxy(galaxy_id):
     return Galaxy.query.get(galaxy_id)
 
