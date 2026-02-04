@@ -34,6 +34,11 @@ class Config:
     # System roles that cannot be deleted
     SYSTEM_ROLES = [1, 2, 3]
     
+    # Task status IDs for privileged case workflow
+    TASK_REQUESTED = 7   # Task requested by Queuer in privileged case, pending approval
+    TASK_APPROVED = 8    # Task approved by Admin/CaseAdmin/QueueAdmin
+    TASK_REJECTED = 5    # Task rejected by Admin/CaseAdmin/QueueAdmin
+    
     # Limit user view to own organization (only admins can see all users)
     LIMIT_USER_VIEW_TO_ORG = False # False is the previous default ; alt.: True 
 

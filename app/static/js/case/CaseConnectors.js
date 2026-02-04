@@ -265,7 +265,7 @@ export default {
         }
     `,
     template: `
-        <div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+        <div v-if="(!is_case && object_id && cases_info.tasks) ? (cases_info.tasks.find(t => t.id === object_id)?.can_edit && cases_info.present_in_case || cases_info.permission.admin) : (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)">
             <button class="btn btn-outline-primary" data-bs-toggle="modal" :data-bs-target="'#modal-add-connectors-'+modal_identifier">
                 <i class="fa-solid fa-plus"></i>
             </button>
@@ -303,7 +303,7 @@ export default {
                     </td>
                     <td v-else><i>None</i></td>
 
-                    <td v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                    <td v-if="(!is_case && object_id && cases_info.tasks) ? (cases_info.tasks.find(t => t.id === object_id)?.can_edit && cases_info.present_in_case || cases_info.permission.admin) : (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)">
                         <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)"> <i class="fa-solid fa-pen-to-square"></i> </button> 
                         <button v-if="!is_sending" class="btn btn-outline-secondary" @click="send_to_modal(instance)"> Send to </button>
                         <button v-else class="btn btn-outline-secondary" type="button" disabled>

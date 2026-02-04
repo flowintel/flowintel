@@ -161,8 +161,12 @@ export default {
 		}
 	},
 	template: `
+	<div v-if="status_info && cases_info.case && cases_info.case.privileged_case && (task.status_id == status_info.config.TASK_REQUESTED || task.status_id == status_info.config.TASK_REJECTED) && !task.can_edit" class="alert alert-info" role="alert" style="margin-bottom: 15px;">
+		<i class="fa-solid fa-info-circle me-2"></i>
+		A task in Requested or Rejected status in a privileged case can only be modified by Admin, Case Admin or Queue Admin
+	</div>
 	<div class="row">
-        <div class="col" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+        <div class="col" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
             <fieldset class="analyzer-select-case">
                 <legend class="analyzer-select-case"><i class="fa-solid fa-user fa-sm me-1"></i><span class="section-title" style="font-size: 0.85em;">Assign</span></legend>
                 <div v-if="users_in_case">
@@ -177,8 +181,8 @@ export default {
                 <div v-if="task.users.length">
                     <div v-for="user in task.users">
                         <span style="margin-right: 5px"><i class="fa-solid fa-user"></i> [[user.first_name]] [[user.last_name]]</span>
-                        <button v-if="cases_info.current_user.id != user.id" class="btn btn-primary btn-sm" data-bs-toggle="modal" :data-bs-target="'#notify_modal_'+task.id+'_'+user.id" title="Use a module to notify user"><i class="fa-solid fa-bell"></i></button>
-                        <button class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
+                        <button v-if="(cases_info.current_user.id != user.id) && (task.can_edit && cases_info.present_in_case || cases_info.permission.admin)" class="btn btn-primary btn-sm" data-bs-toggle="modal" :data-bs-target="'#notify_modal_'+task.id+'_'+user.id" title="Use a module to notify user"><i class="fa-solid fa-bell"></i></button>
+                        <button v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin" class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
                     
                         <div class="modal fade" :id="'notify_modal_'+task.id+'_'+user.id" tabindex="-1" aria-labelledby="notify_modalLabel" aria-hidden="true">
                             <div class="modal-dialog modal-lg">
@@ -220,20 +224,35 @@ export default {
 
 		<TaskUrlTool :task="task" :cases_info="cases_info" :is_template="false"></TaskUrlTool>
 
-        <div class="col" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+        <div class="col" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
             <fieldset class="analyzer-select-case">
                 <legend class="analyzer-select-case"><i class="fa-solid fa-temperature-three-quarters fa-sm me-1"></i><span class="section-title">Status</span></legend>
                 <div>
                     <div class="dropdown" :id="'dropdown_status_'+task.id">
                         <template v-if="status_info">
-                            <button class="btn btn-secondary dropdown-toggle" :id="'button_'+task.id" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn btn-secondary dropdown-toggle" 
+                                    :id="'button_'+task.id" 
+                                    type="button" 
+                                    data-bs-toggle="dropdown" 
+                                    aria-expanded="false"
+                                    :disabled="status_info && cases_info.case && cases_info.case.privileged_case && task.status_id == status_info.config.TASK_REQUESTED && !cases_info.permission.admin && !cases_info.permission.case_admin && !cases_info.permission.queue_admin"
+                                    :title="status_info && cases_info.case && cases_info.case.privileged_case && task.status_id == status_info.config.TASK_REQUESTED && !cases_info.permission.admin && !cases_info.permission.case_admin && !cases_info.permission.queue_admin ? 'Task in Requested status in a privileged case can only be modified by Admin, Case Admin or Queue Admin' : ''">
                                 [[ status_info.status[task.status_id -1].name ]]
                             </button>
                             <ul class="dropdown-menu" :id="'dropdown_ul_status_'+task.id">
                                 <template v-for="status_list in status_info.status">
-                                    <li v-if="status_list.id != task.status_id">
-                                        <button class="dropdown-item" @click="change_status(status_list.id, task)">[[ status_list.name ]]</button>
-                                    </li>
+                                    <template v-if="status_info && cases_info.case && cases_info.case.privileged_case && task.status_id == status_info.config.TASK_REQUESTED">
+                                        <!-- If task is in Requested status in a privileged case, only show Requested, Approved, Rejected -->
+                                        <li v-if="(status_list.name == 'Requested' || status_list.name == 'Approved' || status_list.name == 'Rejected') && status_list.id != task.status_id">
+                                            <button class="dropdown-item" @click="change_status(status_list.id, task)">[[ status_list.name ]]</button>
+                                        </li>
+                                    </template>
+                                    <template v-else>
+                                        <!-- Normal status options for non-Requested tasks -->
+                                        <li v-if="status_list.id != task.status_id">
+                                            <button class="dropdown-item" @click="change_status(status_list.id, task)">[[ status_list.name ]]</button>
+                                        </li>
+                                    </template>
                                 </template>
                             </ul>
                         </template>

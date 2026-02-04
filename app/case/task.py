@@ -1,7 +1,7 @@
 import ast
-from flask import Blueprint, render_template, redirect, jsonify, request, flash
+from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 
-from app.db_class.db import Case
+from app.db_class.db import Case, User, db
 from .form import TaskEditForm, TaskForm
 from flask_login import login_required, current_user
 from .CaseCore import CaseModel
@@ -30,6 +30,7 @@ def check_user_private_case(case: Case, present_in_case: bool = None) -> bool:
 
 @task_blueprint.route("/<cid>/create_task", methods=['GET', 'POST'])
 @login_required
+@editor_required
 def create_task(cid):
     """View of a case"""
     if CommonModel.get_case(cid):
@@ -67,6 +68,11 @@ def edit_task(cid, tid):
             form = TaskEditForm()
             task_modif = CommonModel.get_task(tid)
 
+            if TaskModel.is_task_restricted(task_modif) and not TaskModel.can_edit_requested_task(current_user):
+                flowintel_log("audit", 403, "Task edit denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                flash("Task in Requested or Rejected status can only be edited by Admin, Case Admin or Queue Admin", "error")
+                return redirect(f"/case/{cid}")
+
             if form.validate_on_submit():
                 res = prepare_tags(request)
                 if isinstance(res, dict):
@@ -100,6 +106,10 @@ def complete_task(tid):
     task = CommonModel.get_task(str(tid))
     if task:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                flowintel_log("audit", 403, "Complete task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+            
             if TaskModel.complete_task(tid, current_user):
                 flowintel_log("audit", 200, "Task completed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                 return {"message": "Task completed", "toast_class": "success-subtle"}, 200
@@ -115,8 +125,13 @@ def complete_task(tid):
 def delete_task(cid, tid):
     """Delete the task"""
     if CommonModel.get_case(cid):
-        if CommonModel.get_task(tid):
+        task = CommonModel.get_task(tid)
+        if task:
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Delete task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                
                 if TaskModel.delete_task(tid, current_user):
                     flowintel_log("audit", 200, "Task deleted", User=current_user.email, CaseId=cid, TaskId=tid)
                     return {"message": "Task deleted", "toast_class": "success-subtle"}, 200
@@ -133,13 +148,18 @@ def delete_task(cid, tid):
 def modif_note(cid, tid):
     """Modify note of the task"""
     if CommonModel.get_case(cid):
-        if CommonModel.get_task(tid):
+        task = CommonModel.get_task(tid)
+        if task:
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Modify task note denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                
                 notes = request.json["notes"]
                 if "note_id" in request.args:
                     res_note = TaskModel.modif_note_core(tid, current_user, notes, request.args.get("note_id"))
                     if res_note and not type(res_note) == dict:
-                        flowintel_log("audit", 200, "Task note modified", User=current_user.email, CaseId=cid, TaskId=tid, NoteId=request.args.get("note_id"))
+                        flowintel_log("audit", 200, "Task note modified", User=current_user.email, CaseId=cid, TaskId=tid, NoteId=res_note.id)
                         return {"note": res_note.to_json(), "message": "Note added", "toast_class": "success-subtle"}, 200
                     return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
                 return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
@@ -156,7 +176,12 @@ def create_note(cid, tid):
     """Create note"""
     if CommonModel.get_case(cid):
         if CommonModel.get_task(tid):
+            task = CommonModel.get_task(tid)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Create task note denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                
                 res_note = TaskModel.create_note(tid, current_user)
                 if res_note:
                     flowintel_log("audit", 200, "Task note created", User=current_user.email, CaseId=cid, TaskId=tid, NoteId=res_note.id)
@@ -175,7 +200,12 @@ def delete_note(cid, tid):
     """Create note"""
     if CommonModel.get_case(cid):
         if CommonModel.get_task(tid):
+            task = CommonModel.get_task(tid)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Delete task note denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                
                 if "note_id" in request.args:
                     if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
                         flowintel_log("audit", 200, "Task note deleted", User=current_user.email, CaseId=cid, TaskId=tid, NoteId=request.args.get("note_id"))
@@ -214,8 +244,13 @@ def get_note(cid, tid):
 def take_task(cid, tid):
     """Assign current user to the task"""
     if CommonModel.get_case(cid):
-        if CommonModel.get_task(tid):
+        task = CommonModel.get_task(tid)
+        if task:
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Take task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                
                 if TaskModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     flowintel_log("audit", 200, "User assigned to task", User=current_user.email, CaseId=cid, TaskId=tid, AssignedUser=current_user.email)
                     return {"message": "User Assigned", "toast_class": "success-subtle"}, 200
@@ -234,11 +269,23 @@ def assign_user(cid, tid):
         if "users_id" in request.json:
             users_list = request.json["users_id"]
 
-            if CommonModel.get_task(tid):
+            task = CommonModel.get_task(tid)
+            if task:
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                    for user in users_list:
-                        TaskModel.assign_task(tid, user=user, current_user=current_user, flag_current_user=False)
-                    flowintel_log("audit", 200, "Users assigned to task", User=current_user.email, CaseId=cid, TaskId=tid, AssignedUsers=str(users_list))
+                    if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                        flowintel_log("audit", 403, "Assign users to task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                        return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                    
+                    assigned_users_info = []
+                    for user_id in users_list:
+                        TaskModel.assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False)
+                        user = User.query.get(user_id)
+                        if user:
+                            assigned_users_info.append(f"{user_id}:{user.email}")
+                        else:
+                            assigned_users_info.append(str(user_id))
+                    
+                    flowintel_log("audit", 200, "Users assigned to task", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, AssignedUsers=str(assigned_users_info))
                     return {"message": "Users Assigned", "toast_class": "success-subtle"}, 200
                 return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
             return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
@@ -271,10 +318,17 @@ def remove_assigned_user(cid, tid):
     if CommonModel.get_case(cid):
         if "user_id" in request.json:
             user_id = request.json["user_id"]
-            if CommonModel.get_task(tid):
+            task = CommonModel.get_task(tid)
+            if task:
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                        flowintel_log("audit", 403, "Remove assigned user denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                        return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                    
                     if TaskModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
-                        flowintel_log("audit", 200, "User removed from task assignment", User=current_user.email, CaseId=cid, TaskId=tid, RemovedUserId=user_id)
+                        removed_user = User.query.get(user_id)
+                        removed_user_email = removed_user.email if removed_user else str(user_id)
+                        flowintel_log("audit", 200, "User removed from task assignment", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, RemovedUserId=user_id, RemovedUser=removed_user_email)
                         return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
                     return {"message": "Error removed assignment", "toast_class": "danger-subtle"}, 400
                 return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -294,8 +348,14 @@ def change_task_status(cid, tid):
             task = CommonModel.get_task(tid)
             if task:
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                    if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                        flowintel_log("audit", 403, "Change task status denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                        return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                    
                     if TaskModel.change_task_status(status, task, current_user):
-                        flowintel_log("audit", 200, "Task status changed", User=current_user.email, CaseId=cid, TaskId=tid, Status=status)
+                        status_obj = CommonModel.get_status(status)
+                        status_name = status_obj.name if status_obj else str(status)
+                        flowintel_log("audit", 200, "Task status changed", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, Status=status_name)
                         return {"message": "Status changed", "toast_class": "success-subtle"}, 200
                     return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
                 flowintel_log("audit", 403, "Change task status: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
@@ -351,6 +411,10 @@ def add_files(cid, tid):
         task = CommonModel.get_task(tid)
         if task:
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Add files to task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                
                 if len(request.files) > 0:
                     # Validate file sizes before processing
                     for file_key in request.files:
@@ -660,7 +724,7 @@ def create_url_tool(cid,tid):
             if "name" in request.json:
                 url_tool = TaskModel.create_url_tool(tid, request.json["name"], current_user)
                 if url_tool:
-                    flowintel_log("audit", 200, "URL/Tool created for task", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=url_tool.id)
+                    flowintel_log("audit", 200, "URL/Tool created for task", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, UrlToolId=url_tool.id, UrlToolName=url_tool.name)
                     return {"message": f"Url/Tool created", "id": url_tool.id, 'toast_class': "success-subtle", "icon": "fas fa-plus"}, 200 
                 return {"message": "Error creating Url/Tool", 'toast_class': "danger-subtle"}, 400
             return {"message": "Need to pass 'name", 'toast_class': "warning-subtle"}, 400
@@ -679,7 +743,7 @@ def edit_url_tool(cid, tid, utid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "name" in request.json:
                 if TaskModel.edit_url_tool(tid, utid, request.json["name"], current_user):
-                    flowintel_log("audit", 200, "URL/Tool edited for task", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=utid)
+                    flowintel_log("audit", 200, "URL/Tool edited for task", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, UrlToolId=utid, UrlToolName=request.json["name"])
                     return {"message": "Url/Tool edited", 'toast_class': "success-subtle"}, 200 
                 return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
             return {"message": "Need to pass 'name", 'toast_class': "warning-subtle"}, 400
@@ -696,8 +760,9 @@ def delete_url_tool(cid, tid, utid):
     task = CommonModel.get_task(tid)
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if TaskModel.delete_url_tool(tid, utid, current_user):
-                flowintel_log("audit", 200, "URL/Tool deleted from task", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=utid)
+            url_tool = TaskModel.get_url_tool(utid)
+            if url_tool and TaskModel.delete_url_tool(tid, utid, current_user):
+                flowintel_log("audit", 200, "URL/Tool deleted from task", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, UrlToolId=utid, UrlToolName=url_tool.name)
                 return {"message": "Url/Tool deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200 
             return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
         flowintel_log("audit", 403, "Delete URL/Tool from task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=utid)
@@ -720,7 +785,7 @@ def create_subtask(cid,tid):
             if "description" in request.json:
                 subtask = TaskModel.create_subtask(tid, request.json["description"], current_user)
                 if subtask:
-                    flowintel_log("audit", 200, "Subtask created", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=subtask.id)
+                    flowintel_log("audit", 200, "Subtask created", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, SubtaskId=subtask.id, SubtaskDescription=subtask.description)
                     return {"message": f"Subtask created", "id": subtask.id, 'toast_class': "success-subtle", "icon": "fas fa-plus"}, 200 
                 return {"message": "Error creating subtask", 'toast_class': "danger-subtle"}, 400
             return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
@@ -739,7 +804,7 @@ def edit_subtask(cid, tid, sid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "description" in request.json:
                 if TaskModel.edit_subtask(tid, sid, request.json["description"], current_user):
-                    flowintel_log("audit", 200, "Subtask edited", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
+                    flowintel_log("audit", 200, "Subtask edited", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, SubtaskId=sid, SubtaskDescription=request.json["description"])
                     return {"message": "Subtask edited", 'toast_class': "success-subtle"}, 200 
                 return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
             return {"message": "Need to pass 'description", 'toast_class': "warning-subtle"}, 400
@@ -756,9 +821,13 @@ def complete_subtask(cid, tid, sid):
     task = CommonModel.get_task(tid)
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if TaskModel.complete_subtask(tid, sid, current_user):
-                flowintel_log("audit", 200, "Subtask completed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
-                return {"message": "Subtask completed", 'toast_class': "success-subtle"}, 200 
+            subtask = TaskModel.get_subtask(sid)
+            if subtask and TaskModel.complete_subtask(tid, sid, current_user):
+                # Refresh to get updated state after toggle
+                db.session.refresh(subtask)
+                action = "Subtask completed" if subtask.completed else "Subtask uncompleted"
+                flowintel_log("audit", 200, action, User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, SubtaskId=sid, SubtaskDescription=subtask.description)
+                return {"message": action, 'toast_class': "success-subtle"}, 200 
             return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
         flowintel_log("audit", 403, "Complete subtask: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
@@ -773,8 +842,9 @@ def delete_subtask(cid, tid, sid):
     task = CommonModel.get_task(tid)
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if TaskModel.delete_subtask(tid, sid, current_user):
-                flowintel_log("audit", 200, "Subtask deleted", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
+            subtask = TaskModel.get_subtask(sid)
+            if subtask and TaskModel.delete_subtask(tid, sid, current_user):
+                flowintel_log("audit", 200, "Subtask deleted", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, SubtaskId=sid, SubtaskDescription=subtask.description)
                 return {"message": "Subtask deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200 
             return {"message": "Subtask not found", 'toast_class': "danger-subtle"}, 404
         flowintel_log("audit", 403, "Delete subtask: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
@@ -797,7 +867,7 @@ def change_order_subtask(cid, tid, sid):
                     if "up_down" in request.args:
                         up_down = request.args.get("up_down")
                         TaskModel.change_order_subtask(task, subtask, up_down)
-                        flowintel_log("audit", 200, "Subtask order changed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid, Direction=up_down)
+                        flowintel_log("audit", 200, "Subtask order changed", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, SubtaskId=sid, Direction=up_down)
                         return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
                     return {"message": "Need to pass up_down", 'toast_class': "danger-subtle"}, 400
                 return {"message": "Subtask Not found", 'toast_class': "danger-subtle"}, 404
@@ -856,6 +926,10 @@ def add_connector(tid):
     """Add Connector"""
     task = CommonModel.get_task(tid)
     if task and (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
+        if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+            flowintel_log("audit", 403, "Add connector denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+            return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+        
         if "connectors" in request.json:
             if TaskModel.add_connector(tid, request.json, current_user):
                 flowintel_log("audit", 200, "Connector added to task", User=current_user.email, CaseId=task.case_id, TaskId=tid)

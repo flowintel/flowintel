@@ -325,7 +325,7 @@
         </template>
 
         <template v-else-if="main_tab == 'misp-objects'">
-            <misp_object :case_id="{{case.id}}" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
+            <misp_object :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
         </template>
 
         <template v-else-if="main_tab == 'connectors'">
@@ -592,11 +592,13 @@
         </template>
     </div>
 
+    {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
     <span id="createTask" title="Create a new task">
         <a href="/case/{{case.id}}/create_task" class="btn btn-outline-primary" style="border-radius: 50px;">
             <i class="fa-solid fa-plus"></i>
         </a>
     </span>
+    {%endif%}
 </div>
 {% endblock %}
 

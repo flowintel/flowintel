@@ -78,6 +78,30 @@
                     </table>
                 </div>
             </div>
+
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-list-check me-2"></i>Task Status IDs</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">Requested</td>
+                                <td><code>{{ system_info.task_requested }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Approved</td>
+                                <td><code>{{ system_info.task_approved }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Rejected</td>
+                                <td><code>{{ system_info.task_rejected }}</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-6">

@@ -56,7 +56,7 @@ export default {
 			</fieldset>
 		</div>
 	</div>
-	<div class="row">
+	<div class="row" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
 		<div class="col">
 			<button class="btn btn-danger btn-sm" title="Delete the task" data-bs-toggle="modal" :data-bs-target="'#modal-delete-task-'+task.id">
 				<i class="fa-solid fa-trash fa-fw"></i> Delete The task

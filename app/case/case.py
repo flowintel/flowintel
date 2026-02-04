@@ -1,6 +1,6 @@
 import ast
 import json
-from flask import Blueprint, render_template, redirect, jsonify, request, flash
+from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 from flask_login import login_required, current_user
 
 from .form import CaseForm, CaseEditForm, RecurringForm
@@ -60,7 +60,7 @@ def create_case():
             form_dict.update(res)
             form_dict["description"] = request.form.get("description")
             case = CaseModel.create_case(form_dict, current_user)
-            flowintel_log("audit", 200, "Case created", User=current_user.email, CaseId=case.id, CaseTitle=case.title)
+            flowintel_log("audit", 200, "Case created", User=current_user.email, CaseId=case.id, CaseTitle=case.title, IsPrivate=case.is_private, IsPrivileged=case.privileged_case)
             flash("Case created", "success")
             return redirect(f"/case/{case.id}")
         return render_template("case/create_case.html", form=form)
@@ -76,7 +76,6 @@ def view(cid):
         if not check_user_private_case(case, present_in_case):
             flowintel_log("audit", 403, "View of a case: No access to private case", User=current_user.email, CaseId=cid)
             return render_template("404.html")
-        flowintel_log("audit", 200, "View of a case", User=current_user.email, CaseId=case.id, CaseTitle=case.title)
         return render_template("case/case_view.html", case=case.to_json(), present_in_case=present_in_case)
     return render_template("404.html")
 
@@ -93,8 +92,14 @@ def edit_case(cid):
             if form.validate_on_submit():
                 form_dict = form_to_dict(form)
                 form_dict["description"] = request.form.get("description")
+                
+                if not (current_user.is_admin() or current_user.is_case_admin()):
+                    case_modif = CommonModel.get_case(cid)
+                    form_dict["privileged_case"] = case_modif.privileged_case
+                
                 CaseModel.edit(form_dict, cid, current_user)
-                flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid, IsPrivate=form_dict.get("is_private", False), IsPrivileged=form_dict.get("privileged_case", False))
+                case = CommonModel.get_case(cid)
+                flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid, CaseTitle=case.title, IsPrivate=form_dict.get("is_private", False), IsPrivileged=form_dict.get("privileged_case", False))
                 flash("Case edited", "success")
                 return redirect(f"/case/{cid}")
             else:
@@ -288,15 +293,19 @@ def complete_case(cid):
     """Mark a case as completed"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            case = CommonModel.get_case(cid)
+            was_completed = case.completed
+            
             if CaseModel.complete_case(cid, current_user):
                 flash("Case Completed")
-                if request.args.get('revived', 1) == "true":
-                    flowintel_log("audit", 200, "Case revived", User=current_user.email, CaseId=cid)
-                    return {"message": "Case Revived", "toast_class": "success-subtle"}, 200
-                flowintel_log("audit", 200, "Case completed", User=current_user.email, CaseId=cid)
-                return {"message": "Case completed", "toast_class": "success-subtle"}, 200
+                if was_completed:
+                    flowintel_log("audit", 200, "Case revived", User=current_user.email, CaseId=cid, CaseTitle=case.title)
+                    return {"message": "Case revived", "toast_class": "success-subtle"}, 200
+                else:
+                    flowintel_log("audit", 200, "Case completed", User=current_user.email, CaseId=cid, CaseTitle=case.title)
+                    return {"message": "Case completed", "toast_class": "success-subtle"}, 200
             else:
-                if request.args.get('revived', 1) == "true":
+                if was_completed:
                     return {"message": "Error case revived", 'toast_class': "danger-subtle"}, 400
                 return {"message": "Error case completed", 'toast_class': "danger-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -330,7 +339,9 @@ def change_status(cid):
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             CaseModel.change_status_core(status, case, current_user)
-            flowintel_log("audit", 200, "Case status changed", User=current_user.email, CaseId=cid, Status=status)
+            status_obj = CommonModel.get_status(status)
+            status_name = status_obj.name if status_obj else str(status)
+            flowintel_log("audit", 200, "Case status changed", User=current_user.email, CaseId=cid, CaseTitle=case.title, Status=status_name)
             return {"message": "Status changed", "toast_class": "success-subtle"}, 200
         flowintel_log("audit", 403, "Change case status: Action not allowed", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -345,7 +356,14 @@ def get_status():
     status_list = list()
     for s in status:
         status_list.append(s.to_json())
-    return jsonify({"status": status_list}), 200
+    return jsonify({
+        "status": status_list,
+        "config": {
+            "TASK_REQUESTED": current_app.config.get('TASK_REQUESTED', 7),
+            "TASK_APPROVED": current_app.config.get('TASK_APPROVED', 8),
+            "TASK_REJECTED": current_app.config.get('TASK_REJECTED', 5)
+        }
+    }), 200
 
 
 @case_blueprint.route("/sort_cases", methods=['GET'])
@@ -417,7 +435,6 @@ def get_all_users(cid):
             for user in org.users:
                 if not user == current_user:
                     users_list.append(user.to_json())
-        flowintel_log("audit", 200, "Get all users in case", User=current_user.email, CaseId=cid)
         return {"users_list": users_list}
     return {"message": "Case not found"}, 404
 
@@ -433,7 +450,6 @@ def get_assigned_users(cid, tid):
             return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
         
         users, _ = TaskModel.get_users_assign_task(tid, current_user)
-        flowintel_log("audit", 200, "Get assigned users to task", User=current_user.email, CaseId=cid, TaskId=tid)
         return users
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
@@ -561,7 +577,6 @@ def history(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         history = CommonModel.get_history(case.uuid)
-        flowintel_log("audit", 200, "Get history of a case", User=current_user.email, CaseId=cid)
         if history:
             return {"history": history}
         return {"history": None}
@@ -877,7 +892,7 @@ def download_file(cid):
     case = CommonModel.get_case(cid)
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            flowintel_log("audit", 200, "Download case", User=current_user.email, CaseId=cid)
+            flowintel_log("audit", 200, "Download case history", User=current_user.email, CaseId=cid)
             return CaseModel.download_history(case)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -1015,7 +1030,6 @@ def get_case_misp_object(cid):
                 "object_creation_date": object.creation_date.strftime('%Y-%m-%d %H:%M'),
                 "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M')
             })
-        flowintel_log("audit", 200, "Get MISP objects of a case", User=current_user.email, CaseId=cid)
         return {"misp-object": loc_object}
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
@@ -1030,7 +1044,6 @@ def get_correlation_attr(cid, aid):
 @login_required
 def get_misp_object():
     """Get list of misp object"""
-    flowintel_log("audit", 200, "Get list of MISP objects", User=current_user.email)
     return {"misp-object": get_object_templates()}, 200
 
 @case_blueprint.route("/<cid>/create_misp_object", methods=['POST'])

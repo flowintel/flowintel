@@ -5,7 +5,8 @@ const { ref, onMounted, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
-		case_id: Number
+		case_id: Number,
+		cases_info: Object
 	},
     emits: ['modif_misp_objects'],
     components: {
@@ -438,8 +439,9 @@ export default {
         <button class="btn btn-primary" title="Add a new object" data-bs-toggle="modal" data-bs-target="#modal-add-object">
             <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
         </button>
-        <a type="button" class="btn btn-secondary ms-3" title="Analyze misp-objects"
-        :href="'/analyzer/misp-modules?case_id='+case_id+'&misp_object=True'">
+        <a v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" 
+           type="button" class="btn btn-secondary ms-3" title="Analyze misp-objects"
+           :href="'/analyzer/misp-modules?case_id='+case_id+'&misp_object=True'">
             <i class="fa-solid fa-magnifying-glass"></i>
         </a>
         <button type="button" class="btn btn-outline-secondary ms-3" @click="toggleCompactView()" :title="compactView ? 'Show all columns' : 'Show compact view'">

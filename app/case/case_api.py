@@ -154,7 +154,8 @@ class EditCase(Resource):
 
                     if "message" not in verif_dict:
                         CaseModel.edit(verif_dict, cid, current_user)
-                        flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid, IsPrivate=verif_dict["is_private"], IsPrivileged=verif_dict["privileged_case"])
+                        case = CommonModel.get_case(cid)
+                        flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid, CaseTitle=case.title, IsPrivate=verif_dict["is_private"], IsPrivileged=verif_dict["privileged_case"])
                         return {"message": f"Case {cid} edited"}, 200
 
                     return verif_dict, 400
@@ -271,9 +272,9 @@ class CompleteCase(Resource):
                 
                 if CaseModel.complete_case(cid, current_user):
                     if was_completed:
-                        flowintel_log("audit", 200, "Case revived", User=current_user.email, CaseId=cid)
+                        flowintel_log("audit", 200, "Case revived", User=current_user.email, CaseId=cid, CaseTitle=case.title)
                     else:
-                        flowintel_log("audit", 200, "Case completed", User=current_user.email, CaseId=cid)
+                        flowintel_log("audit", 200, "Case completed", User=current_user.email, CaseId=cid, CaseTitle=case.title)
                     return {"message": f"Case {cid} completed"}, 200
                 return {"message": f"Error case {cid} completed"}, 400
             return {"message": "Case not found"}, 404

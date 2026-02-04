@@ -73,7 +73,7 @@
                 {% else %}
                     {{form.privileged_case(class_="ms-2", id="privileged_case_checkbox", disabled=True, title="Switching between privileged or non-privileged case is restricted to Admins or Case Admins")}}
                 {% endif %}
-                <i class="fa-solid fa-info-circle ms-1" title="Privileged cases implement the four-eye-review workflow" style="cursor: help; color: #0d6efd;"></i>
+                <i class="fa-solid fa-info-circle ms-1" title="A privileged case implements the four-eye-review workflow. Its status can only be set by an Admin or a user with Case Admin permissions." style="cursor: help; color: #0d6efd;"></i>
                 {% if form.privileged_case.errors %}
                     <div style="color: red;">{{form.privileged_case.errors[0] | safe}}</div>
                 {%endif%}
