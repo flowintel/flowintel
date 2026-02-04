@@ -615,7 +615,7 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, nextTick, onMounted } = Vue
+        const { createApp, ref, computed, nextTick, onMounted, watch } = Vue
         import case_tasks from '/static/js/case/case_tasks.js'
         import hedgedoc_template from '/static/js/case/hedgedoc_template.js'
         import action_buttons from '/static/js/case/action_buttons.js'
@@ -688,6 +688,14 @@
                 const all_notes = ref("")
                 let editor
                 const note_editor_render = ref("")
+                // Re-run mermaid on live-preview updates (editing mode)
+                watch(note_editor_render, async () => {
+                    await nextTick()
+                    try{
+                        // run mermaid only inside the preview container
+                        md.mermaid.run({ querySelector: '.markdown-render .mermaid' })
+                    }catch(e){}
+                })
                 const edit_mode = ref(false)
 
                 const md = window.markdownit()			// Library to Parse and display markdown
