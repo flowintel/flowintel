@@ -1,5 +1,6 @@
 import {display_toast} from '../toaster.js'
-const { ref } = Vue
+import {canModifyPrivilegedCase} from './helpers.js'
+const { ref, computed } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
@@ -8,6 +9,10 @@ export default {
 	},
 	setup(props) {
         const selected_merge = ref({})
+
+        const canModifyCase = computed(() => {
+            return canModifyPrivilegedCase(props.cases_info)
+        })
 
         async function delete_case(case_id){
             const res = await fetch('/case/' + case_id.toString() + '/delete')
@@ -150,6 +155,7 @@ export default {
 
 		return {
             selected_merge,
+            canModifyCase,
             delete_case,
 			complete_case,
             fork_case,
@@ -161,21 +167,21 @@ export default {
 	template: `
         <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="margin-right:10px;">
             <span v-if="cases_info.case.completed" 
-                  :title="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin ? 'You cannot revive a privileged case' : 'Revive the case'"
+                  :title="!canModifyCase ? 'You cannot revive a privileged case' : 'Revive the case'"
                   style="margin-right:10px; display:inline-block;">
                 <button class="btn btn-secondary" 
                         @click="complete_case(cases_info.case)" 
-                        :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin"
+                        :disabled="!canModifyCase"
                         style="pointer-events: auto;">
                     <i class="fa-solid fa-backward"></i>
                 </button>
             </span>
             <span v-else 
-                  :title="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin ? 'You cannot complete a privileged case' : 'Complete the case'"
+                  :title="!canModifyCase ? 'You cannot complete a privileged case' : 'Complete the case'"
                   style="margin-right:10px; display:inline-block;">
                 <button class="btn btn-success" 
                         @click="complete_case(cases_info.case)" 
-                        :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin"
+                        :disabled="!canModifyCase"
                         style="pointer-events: auto;">
                     <i class="fa-solid fa-check"></i>
                 </button>
@@ -201,9 +207,9 @@ export default {
                            :href="'/case/'+cases_info.case.id+'/recurring'" 
                            type="button" 
                            title="Recurring Case"
-                           :class="{'disabled': cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin}"
-                           :aria-disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin"
-                           @click="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin ? $event.preventDefault() : null">
+                           :class="{'disabled': !canModifyCase}"
+                           :aria-disabled="!canModifyCase"
+                           @click="!canModifyCase ? $event.preventDefault() : null">
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-clock"></i></span> Recurring
                         </a>
                     </li>
@@ -212,7 +218,7 @@ export default {
                                 class="dropdown-item" 
                                 title="Merge this case into an other one" 
                                 @click="merge_case_modal()"
-                                :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin">
+                                :disabled="!canModifyCase">
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-merge"></i></span> Merge
                         </button>
                     </li>
@@ -222,7 +228,7 @@ export default {
                                 title="Fork this case" 
                                 data-bs-toggle="modal" 
                                 data-bs-target="#fork_case_modal"
-                                :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin">
+                                :disabled="!canModifyCase">
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
                         </button>
                     </li>
@@ -232,7 +238,7 @@ export default {
                                 title="Create a template from the case" 
                                 data-bs-toggle="modal" 
                                 data-bs-target="#template_case_modal"
-                                :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin">
+                                :disabled="!canModifyCase">
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-book-bookmark"></i></span> Template
                         </button>
                     </li>
@@ -242,7 +248,7 @@ export default {
                                 title="Delete the case" 
                                 data-bs-toggle="modal" 
                                 data-bs-target="#delete_case_modal"
-                                :disabled="cases_info.case.privileged_case && !cases_info.permission.admin && !cases_info.permission.case_admin">
+                                :disabled="!canModifyCase">
                             <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
                         </button>
                     </li>

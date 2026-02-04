@@ -352,12 +352,18 @@ def change_task_status(cid, tid):
                         flowintel_log("audit", 403, "Change task status denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
                         return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                     
-                    if TaskModel.change_task_status(status, task, current_user):
-                        status_obj = CommonModel.get_status(status)
-                        status_name = status_obj.name if status_obj else str(status)
-                        flowintel_log("audit", 200, "Task status changed", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, Status=status_name)
-                        return {"message": "Status changed", "toast_class": "success-subtle"}, 200
-                    return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
+                    try:
+                        if TaskModel.change_task_status(status, task, current_user):
+                            db.session.commit()
+                            status_obj = CommonModel.get_status(status)
+                            status_name = status_obj.name if status_obj else str(status)
+                            flowintel_log("audit", 200, "Task status changed", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, Status=status_name)
+                            return {"message": "Status changed", "toast_class": "success-subtle"}, 200
+                        return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
+                    except Exception as e:
+                        db.session.rollback()
+                        flowintel_log("audit", 500, f"Error changing task status: {str(e)}", User=current_user.email, CaseId=cid, TaskId=tid)
+                        return {"message": "Error changing status", "toast_class": "danger-subtle"}, 500
                 flowintel_log("audit", 403, "Change task status: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
                 return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
             return {"message": "Task not found", "toast_class": "danger-subtle"}, 404

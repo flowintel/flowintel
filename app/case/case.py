@@ -251,8 +251,13 @@ def search():
 @editor_required
 def delete(cid):
     """Delete the case"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
+                flowintel_log("audit", 403, "Delete case: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
+                return {"message": "Cannot delete privileged cases", "toast_class": "danger-subtle"}, 403
+            
             if CaseModel.delete_case(cid, current_user):
                 flowintel_log("audit", 200, "Case deleted", User=current_user.email, CaseId=cid)
                 return {"message": "Case deleted", "toast_class": "success-subtle"}, 200
@@ -487,6 +492,10 @@ def fork_case(cid):
             flowintel_log("audit", 403, "Fork case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
+        if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
+            flowintel_log("audit", 403, "Fork case: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
+            return {"message": "Cannot fork privileged cases", 'toast_class': "danger-subtle"}, 403
+        
         if "case_title_fork" in request.json:
             case_title_fork = request.json["case_title_fork"]
 
@@ -509,6 +518,10 @@ def merge_case(cid, ocid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Merge case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
+        if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
+            flowintel_log("audit", 403, "Merge case: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
+            return {"message": "Cannot merge privileged cases", 'toast_class': "danger-subtle"}, 403
         
         merging_case = CommonModel.get_case(ocid)
         if merging_case and not check_user_private_case(merging_case):
@@ -544,6 +557,11 @@ def create_template(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Create template from case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
+        if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
+            flowintel_log("audit", 403, "Create template: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
+            return {"message": "Cannot create template from privileged cases", 'toast_class': "danger-subtle"}, 403
+        
         if "case_title_template" in request.json:
             case_title_template = request.json["case_title_template"]
 

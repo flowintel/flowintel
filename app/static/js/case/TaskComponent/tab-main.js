@@ -1,5 +1,6 @@
 import { display_toast } from '/static/js/toaster.js'
-const { ref } = Vue
+import { isStatusDropdownDisabled, getStatusDropdownTooltip, getAvailableStatuses } from '/static/js/case/helpers.js'
+const { ref, computed } = Vue
 import subtask from './subtask.js'
 import TaskUrlTool from './TaskUrlTool.js'
 export default {
@@ -18,6 +19,18 @@ export default {
 	},
 	setup(props) {
 		const is_module_loading = ref(false)
+
+		const availableStatuses = computed(() => {
+			return getAvailableStatuses(props.task, props.cases_info, props.status_info)
+		})
+
+		const statusDropdownDisabled = computed(() => {
+			return isStatusDropdownDisabled(props.task, props.cases_info, props.status_info)
+		})
+
+		const statusDropdownTooltip = computed(() => {
+			return getStatusDropdownTooltip(props.task, props.cases_info, props.status_info)
+		})
 
 		async function assign_user_task() {
 			// Assign users present in the case to the task
@@ -58,20 +71,21 @@ export default {
 			}
 			)
 			if (await res.status == 200) {
+				const wasCompleted = task.completed
+				const isFinished = props.status_info.status[status - 1].name == 'Finished'
+				
 				task.last_modif = Date.now()
 				task.status_id = status
+				task.completed = isFinished
 
-				// If 'Finished' is selected, the task is completed
-				if (props.status_info.status[status - 1].name == 'Finished') {
-					props.open_closed["closed"] += 1
-					props.open_closed["open"] -= 1
-					task.last_modif = Date.now()
-					task.completed = true
-					fetch('/case/complete_task/' + task.id)
-				} else {
+				// Update open/closed counts only if completion state actually changed
+				if (wasCompleted && !isFinished) {
 					props.open_closed["closed"] -= 1
 					props.open_closed["open"] += 1
-					task.completed = false
+				} else if (!wasCompleted && isFinished) {
+					props.open_closed["open"] -= 1
+					props.open_closed["closed"] += 1
+					fetch('/case/complete_task/' + task.id)
 				}
 			}
 			await display_toast(res)
@@ -151,6 +165,9 @@ export default {
 
 		return {
 			is_module_loading,
+			availableStatuses,
+			statusDropdownDisabled,
+			statusDropdownTooltip,
 
 			assign_user_task,
 			change_status,
@@ -235,25 +252,14 @@ export default {
                                     type="button" 
                                     data-bs-toggle="dropdown" 
                                     aria-expanded="false"
-                                    :disabled="status_info && cases_info.case && cases_info.case.privileged_case && task.status_id == status_info.config.TASK_REQUESTED && !cases_info.permission.admin && !cases_info.permission.case_admin && !cases_info.permission.queue_admin"
-                                    :title="status_info && cases_info.case && cases_info.case.privileged_case && task.status_id == status_info.config.TASK_REQUESTED && !cases_info.permission.admin && !cases_info.permission.case_admin && !cases_info.permission.queue_admin ? 'Task in Requested status in a privileged case can only be modified by Admin, Case Admin or Queue Admin' : ''">
+                                    :disabled="statusDropdownDisabled"
+                                    :title="statusDropdownTooltip">
                                 [[ status_info.status[task.status_id -1].name ]]
                             </button>
                             <ul class="dropdown-menu" :id="'dropdown_ul_status_'+task.id">
-                                <template v-for="status_list in status_info.status">
-                                    <template v-if="status_info && cases_info.case && cases_info.case.privileged_case && task.status_id == status_info.config.TASK_REQUESTED">
-                                        <!-- If task is in Requested status in a privileged case, only show Requested, Approved, Rejected -->
-                                        <li v-if="(status_list.name == 'Requested' || status_list.name == 'Approved' || status_list.name == 'Rejected') && status_list.id != task.status_id">
-                                            <button class="dropdown-item" @click="change_status(status_list.id, task)">[[ status_list.name ]]</button>
-                                        </li>
-                                    </template>
-                                    <template v-else>
-                                        <!-- Normal status options for non-Requested tasks -->
-                                        <li v-if="status_list.id != task.status_id">
-                                            <button class="dropdown-item" @click="change_status(status_list.id, task)">[[ status_list.name ]]</button>
-                                        </li>
-                                    </template>
-                                </template>
+                                <li v-for="status in availableStatuses" :key="status.id">
+                                    <button class="dropdown-item" @click="change_status(status.id, task)">[[ status.name ]]</button>
+                                </li>
                             </ul>
                         </template>
                     </div>

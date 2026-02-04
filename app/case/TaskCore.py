@@ -261,9 +261,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 db.session.commit()
                 
                 # Notify users who can approve the task (Admin, Case Admin, Queue Admin in owner org)
-                message = f"New task '{task.id}-{task.title}' requested by {current_user.first_name} {current_user.last_name} in case '{case.id}-{case.title}'. You can approve or reject this task."
                 NotifModel.create_notification_for_approvers(
-                    message=message,
+                    message=f"New task '{task.id}-{task.title}' requested by {current_user.first_name} {current_user.last_name} in case '{case.id}-{case.title}'. You can approve or reject this task.",
                     case_id=cid,
                     org_id=case.owner_org_id,
                     html_icon="fa-solid fa-circle-exclamation"
@@ -299,9 +298,9 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def is_task_restricted(self, task):
         """Check if task is in a restricted status (Requested or Rejected) in a privileged case"""
         case = CommonModel.get_case(task.case_id)
-        is_privileged = case.privileged_case if case else False
-        is_restricted_status = task.status_id in [current_app.config['TASK_REQUESTED'], current_app.config['TASK_REJECTED']]
-        return is_privileged and is_restricted_status
+        if not case:
+            return False
+        return case.privileged_case and task.status_id in (current_app.config['TASK_REQUESTED'], current_app.config['TASK_REJECTED'])
 
 
     def add_file_core(self, task, files_list, current_user):
@@ -456,10 +455,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         case = CommonModel.get_case(task.case_id)
         if case and case.privileged_case:
             if status == current_app.config['TASK_APPROVED'] and old_status_id == current_app.config['TASK_REQUESTED']:
-                message = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been approved by an administrator"
+                approval_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been approved by an administrator"
                 
                 NotifModel.create_notification_for_approvers(
-                    message=message,
+                    message=approval_msg,
                     case_id=task.case_id,
                     org_id=case.owner_org_id,
                     html_icon="fa-solid fa-circle-check"
@@ -468,17 +467,17 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 task_users = Task_User.query.filter_by(task_id=task.id).all()
                 for task_user in task_users:
                     NotifModel.create_notification_user(
-                        message=message,
+                        message=approval_msg,
                         case_id=task.case_id,
                         user_id=task_user.user_id,
                         html_icon="fa-solid fa-circle-check"
                     )
             
             elif status == current_app.config['TASK_REJECTED'] and old_status_id == current_app.config['TASK_REQUESTED']:
-                message = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been rejected by an administrator"
+                rejection_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been rejected by an administrator"
                 
                 NotifModel.create_notification_for_approvers(
-                    message=message,
+                    message=rejection_msg,
                     case_id=task.case_id,
                     org_id=case.owner_org_id,
                     html_icon="fa-solid fa-circle-xmark"
@@ -487,7 +486,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 task_users = Task_User.query.filter_by(task_id=task.id).all()
                 for task_user in task_users:
                     NotifModel.create_notification_user(
-                        message=message,
+                        message=rejection_msg,
                         case_id=task.case_id,
                         user_id=task_user.user_id,
                         html_icon="fa-solid fa-circle-xmark"
