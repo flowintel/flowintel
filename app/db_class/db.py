@@ -115,7 +115,8 @@ class Case(db.Model):
     notes = db.Column(db.String, nullable=True)
     hedgedoc_url = db.Column(db.String, nullable=True)
     time_required = db.Column(db.String)
-    is_private = db.Column(db.Boolean, default=False)
+    is_private = db.Column(db.Boolean, default=False, index=True)
+    privileged_case = db.Column(db.Boolean, default=False, index=True)
     ticket_id = db.Column(db.String)
     is_updated_from_misp = db.Column(db.Boolean, default=False)
     computer_assistate_report = db.Column(db.String)
@@ -138,6 +139,7 @@ class Case(db.Model):
             "hedgedoc_url": self.hedgedoc_url,
             "time_required": self.time_required,
             "is_private": self.is_private,
+            "privileged_case": self.privileged_case,
             "ticket_id": self.ticket_id,
             "is_updated_from_misp": self.is_updated_from_misp,
             "computer_assistate_report": self.computer_assistate_report

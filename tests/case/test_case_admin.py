@@ -2,21 +2,75 @@ from flask import url_for
 
 API_KEY = "admin_api_key"
 
-def test_create_case_no_api(client):
-    response = client.post("/api/case/create", data={
-        'title': "Test Case admin"
-    })
-    # response = client.get(url_for("account.login"))
-    assert response.status_code == 403
-
-def test_create_case(client):
-    # response = client.post(url_for("api_case.add_case/"), data={
+def create_case(client):
     response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case admin"}
                         )
-    assert response.status_code == 201 and b"Case created, id: 1" in response.data
+    return response
+
+def test_create_case_no_api(client):
+    response = client.post("/api/case/create", data={
+        'title': "Test Case admin"
+    })
+    assert response.status_code == 403
+
+def test_create_case(client):
+    response = create_case(client)
+    assert response.status_code == 201
+    assert b"Case created" in response.data
+    assert "case_id" in response.json
+
+def test_create_privileged_case(client):
+    response = client.post("/api/case/create", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"title": "Test Privileged Case admin", "privileged_case": True}
+                        )
+    assert response.status_code == 201
+    assert b"Case created" in response.data
+    case_id = response.json["case_id"]
+    
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+    assert response.json["privileged_case"] == True
+
+def test_edit_case_to_privileged(client):
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/edit", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"privileged_case": True}
+                        )
+    assert response.status_code == 200
+    assert b"edited" in response.data
+    
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+    assert response.json["privileged_case"] == True
+
+def test_edit_privileged_case_to_non_privileged(client):
+    response = client.post("/api/case/create", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"title": "Test Privileged Case admin", "privileged_case": True}
+                        )
+    case_id = response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/edit", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"privileged_case": False}
+                        )
+    assert response.status_code == 200
+    assert b"edited" in response.data
+    
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+    assert response.json["privileged_case"] == False
 
 def test_create_case_empty_title(client):
     response = client.post("/api/case/create", 
@@ -24,7 +78,8 @@ def test_create_case_empty_title(client):
                            headers={"X-API-KEY": API_KEY},
                            json={"title": ""}
                         )
-    assert response.status_code == 400 and b"Please give a title" in response.data
+    assert response.status_code == 400
+    assert b"Please give a title" in response.data
 
 def test_create_case_no_data(client):
     response = client.post("/api/case/create", 
@@ -32,7 +87,8 @@ def test_create_case_no_data(client):
                            headers={"X-API-KEY": API_KEY},
                            json={}
                         )
-    assert response.status_code == 400 and b"Please give data" in response.data
+    assert response.status_code == 400
+    assert b"Please give data" in response.data
 
 def test_create_case_deadline(client):
     response = client.post("/api/case/create", 
@@ -40,7 +96,8 @@ def test_create_case_deadline(client):
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case admin", "description": "Test case", "deadline_date": "2023-09-30"}
                         )
-    assert response.status_code == 201 and b"Case created, id: 1" in response.data
+    assert response.status_code == 201
+    assert b"Case created" in response.data
 
 def test_create_case_wrong_deadline(client):
     response = client.post("/api/case/create", 
@@ -48,16 +105,18 @@ def test_create_case_wrong_deadline(client):
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case admin", "description": "Test case", "deadline_date": "2023/09/30"}
                         )
-    assert response.status_code == 400 and b"deadline_date bad format" in response.data
+    assert response.status_code == 400
+    assert b"deadline_date bad format" in response.data
 
 def test_create_case_existing_title(client):
-    test_create_case(client)
+    create_case(client)
     response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case admin"}
                         )
-    assert response.status_code == 400 and b"Title already exist" in response.data
+    assert response.status_code == 400
+    assert b"Title already exist" in response.data
     
 
 def test_get_all_cases(client):
@@ -65,114 +124,151 @@ def test_get_all_cases(client):
     assert response.status_code == 200
 
 def test_get_case(client):
-    test_create_case(client)
-    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200
 
 def test_complete_case(client):
-    test_create_case(client)
-    response = client.get("/api/case/1/complete", headers={"X-API-KEY": API_KEY})
-    assert response.status_code == 200 and b"Case 1 completed" in response.data
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.get(f"/api/case/{case_id}/complete", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+    assert b"completed" in response.data
 
 def test_create_template(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/create_template", headers={"X-API-KEY": API_KEY},
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/create_template", headers={"X-API-KEY": API_KEY},
                            json={"title_template": "Template from case 1 admin"})
-    assert response.status_code == 201 and response.json["template_id"] == 1
+    assert response.status_code == 201
+    assert "template_id" in response.json
 
 
 def test_case_recurring_once(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
-                           json={"once": "2023-09-11"})
-    assert response.status_code == 200 and b'Recurring changed' in response.data
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
     
-    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
-    assert response.status_code == 200 and response.json["recurring_type"] and response.json["recurring_date"]
+    response = client.post(f"/api/case/{case_id}/recurring", headers={"X-API-KEY": API_KEY},
+                           json={"once": "2023-09-11"})
+    assert response.status_code == 200
+    assert b'Recurring changed' in response.data
+    
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+    assert response.json["recurring_type"]
+    assert response.json["recurring_date"]
 
 def test_case_recurring_daily(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/recurring", headers={"X-API-KEY": API_KEY},
                            json={"daily": "True"})
-    assert response.status_code == 200 and b'Recurring changed' in response.data
+    assert response.status_code == 200
+    assert b'Recurring changed' in response.data
 
-    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
-    assert response.status_code == 200 and response.json["recurring_type"]
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+    assert response.json["recurring_type"]
 
 def test_case_recurring_weekly(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/recurring", headers={"X-API-KEY": API_KEY},
                            json={"weekly": "2023-09-09"})
-    assert response.status_code == 200 and b'Recurring changed' in response.data
+    assert response.status_code == 200
+    assert b'Recurring changed' in response.data
 
-    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
-    assert response.status_code == 200 and response.json["recurring_type"] and response.json["recurring_date"]
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+    assert response.json["recurring_type"]
+    assert response.json["recurring_date"]
 
 def test_case_recurring_monthly(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/recurring", headers={"X-API-KEY": API_KEY},
                            json={"monthly": "2023-09-09"})
-    assert response.status_code == 200 and b'Recurring changed' in response.data
+    assert response.status_code == 200
+    assert b'Recurring changed' in response.data
 
-    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
-    assert response.status_code == 200 and response.json["recurring_type"] and response.json["recurring_date"]
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200
+    assert response.json["recurring_type"]
+    assert response.json["recurring_date"]
 
 def test_case_recurring_remove(client):
-    test_create_case(client)
-    client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    client.post(f"/api/case/{case_id}/recurring", headers={"X-API-KEY": API_KEY},
                            json={"monthly": "2023-09-09"})
-    response = client.post("/api/case/1/recurring", headers={"X-API-KEY": API_KEY},
+    response = client.post(f"/api/case/{case_id}/recurring", headers={"X-API-KEY": API_KEY},
                            json={"remove": "True"})
     assert response.status_code == 200 and b'Recurring changed' in response.data
 
-    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and not response.json["recurring_type"] and not response.json["recurring_date"]
 
 
 def test_edit_case(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/edit", 
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/edit", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test edit Case admin"}
                         )
-    assert response.status_code == 200 and b"Case 1 edited" in response.data
+    assert response.status_code == 200 and b"edited" in response.data
 
-    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Test edit Case admin" in response.data
 
 def test_create_edit_empty_title(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/edit", 
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/edit", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": ""}
                         )
-    assert response.status_code == 200 and b"Case 1 edited" in response.data
+    assert response.status_code == 200 and b"edited" in response.data
 
-    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and response.json["title"] == "Test Case admin"
 
 def test_create_edit_no_data(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/edit", 
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/edit", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={}
                         )
     assert response.status_code == 400 and b"Please give data" in response.data
 
-    response = client.get("/api/case/1", headers={"X-API-KEY": API_KEY})
+    response = client.get(f"/api/case/{case_id}", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and response.json["title"] == "Test Case admin"
 
 def test_edit_case_exist_title(client):
-    test_create_case(client)
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
     response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case 2 admin"}
                         )
-    response = client.post("/api/case/1/edit", 
+    response = client.post(f"/api/case/{case_id}/edit", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test Case 2 admin"}
@@ -180,17 +276,21 @@ def test_edit_case_exist_title(client):
     assert response.status_code == 400 and b"Title already exist" in response.data
 
 def test_add_org_case(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/add_org", 
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/add_org", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"oid": "2"}
                         )
-    assert response.status_code == 200 and b"Org added to case 1" in response.data
+    assert response.status_code == 200 and b"Org added to case" in response.data
 
 def test_add_org_case_wrong_org(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/add_org", 
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/add_org", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"oid": "6"}
@@ -199,19 +299,29 @@ def test_add_org_case_wrong_org(client):
 
 
 def test_remove_org_case(client):
-    test_add_org_case(client)
-    response = client.get("/api/case/1/remove_org/2", headers={"X-API-KEY": API_KEY})
-    assert response.status_code == 200 and b"Org deleted from case 1" in response.data
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    client.post(f"/api/case/{case_id}/add_org", 
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"oid": "2"})
+    
+    response = client.get(f"/api/case/{case_id}/remove_org/2", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 200 and b"Org deleted from case" in response.data
 
 def test_get_all_users(client):
-    test_create_case(client)
-    response = client.get("/api/case/1/get_all_users", headers={"X-API-KEY": API_KEY})
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.get(f"/api/case/{case_id}/get_all_users", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200
 
 
 def test_delete_case(client):
-    test_create_case(client)
-    response = client.get("/api/case/1/delete", headers={"X-API-KEY": API_KEY})
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.get(f"/api/case/{case_id}/delete", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Case deleted" in response.data
 
 
@@ -222,32 +332,44 @@ def test_delete_case(client):
 
 def test_create_task(client, flag=True, multiple=False):
     if flag:
-        test_create_case(client)
-    response = client.post("/api/case/1/create_task",
+        create_response = create_case(client)
+        case_id = create_response.json["case_id"]
+    else:
+        case_id = 1
+    
+    response = client.post(f"/api/case/{case_id}/create_task",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task admin"}
                         )
     if not multiple:
-        assert response.status_code == 201 and "Task 1 created for case id: 1" in response.json["message"]
+        assert response.status_code == 201 and "Task 1 created for case id:" in response.json["message"]
     else:
-        assert response.status_code == 201 and "Task 2 created for case id: 1" in response.json["message"]
+        assert response.status_code == 201 and "Task 2 created for case id:" in response.json["message"]
     
 
 def test_create_task_deadline(client, flag=True):
     if flag:
-        test_create_case(client)
-    response = client.post("/api/case/1/create_task",
+        create_response = create_case(client)
+        case_id = create_response.json["case_id"]
+    else:
+        case_id = 1
+    
+    response = client.post(f"/api/case/{case_id}/create_task",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task admin", "description": "Test", "url": "test", "deadline_date": "2023-09-30"}
                         )
-    assert response.status_code == 201 and "Task 1 created for case id: 1" in response.json["message"]
+    assert response.status_code == 201 and "Task 1 created for case id:" in response.json["message"]
 
 def test_create_task_wrong_deadline(client, flag=True):
     if flag:
-        test_create_case(client)
-    response = client.post("/api/case/1/create_task",
+        create_response = create_case(client)
+        case_id = create_response.json["case_id"]
+    else:
+        case_id = 1
+    
+    response = client.post(f"/api/case/{case_id}/create_task",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"title": "Test task admin", "description": "Test", "url": "test", "deadline_date": "2023/09/30"}
@@ -255,8 +377,14 @@ def test_create_task_wrong_deadline(client, flag=True):
     assert response.status_code == 400 and b"deadline_date bad format" in response.data
 
 def test_get_all_tasks(client):
-    test_create_task(client)
-    response = client.get("/api/case/1/tasks", headers={"X-API-KEY": API_KEY})
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    client.post(f"/api/case/{case_id}/create_task",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"title": "Test task admin"})
+    
+    response = client.get(f"/api/case/{case_id}/tasks", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200
 
 def test_get_task(client):
@@ -362,9 +490,21 @@ def test_delete_task(client):
     assert response.status_code == 200 and b"Task deleted" in response.data
 
 def test_change_order(client):
-    test_create_task(client)
-    test_create_task(client, flag=False, multiple=True)
-    response = client.post("/api/case/1/change_order/2",
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    # Create first task
+    client.post(f"/api/case/{case_id}/create_task",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"title": "Test task admin"})
+    # Create second task
+    client.post(f"/api/case/{case_id}/create_task",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"title": "Test task admin"})
+    
+    response = client.post(f"/api/case/{case_id}/change_order/2",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"new-index": 1}
@@ -376,34 +516,62 @@ def test_change_order(client):
 
 
 def test_get_all_notes(client):
-    test_modif_note(client)
-    response = client.get("/api/case/1/all_notes", headers={"X-API-KEY": API_KEY})
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    # Create task and add note
+    client.post(f"/api/case/{case_id}/create_task",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"title": "Test task admin"})
+    client.post("/api/task/1/modif_note",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"note": "Test super note", "note_id": "-1"})
+    client.post("/api/task/1/modif_note",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"note": "Test super note", "note_id": "1"})
+    
+    response = client.get(f"/api/case/{case_id}/all_notes", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Test super note" in response.data
 
 def test_modif_case_note(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/modify_case_note",
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/modify_case_note",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"note": "Test super note"}
                         )
-    assert response.status_code == 200 and b"Note for Case 1 edited" in response.data
+    assert response.status_code == 200 and b"Note for Case" in response.data and b"edited" in response.data
 
 def test_get_case_note(client):
-    test_modif_case_note(client)
-    response = client.get("/api/case/1/get_note", headers={"X-API-KEY": API_KEY})
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    client.post(f"/api/case/{case_id}/modify_case_note",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"note": "Test super note"})
+    
+    response = client.get(f"/api/case/{case_id}/get_note", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and b"Test super note" in response.data
 
 def test_fork_case(client):
-    test_create_case(client)
-    response = client.post("/api/case/1/fork",
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
+    
+    response = client.post(f"/api/case/{case_id}/fork",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
                            json={"case_title_fork": "Test fork case"}
                         )
     assert response.status_code == 201
 
-    response = client.get("/api/case/2", headers={"X-API-KEY": API_KEY})
+    # The forked case will have a new ID
+    forked_case_id = response.json["new_case_id"]
+    response = client.get(f"/api/case/{forked_case_id}", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200 and response.json["title"] == "Test fork case"
 
 ###########

@@ -426,25 +426,40 @@ export default {
 				</template>
 			</div>
 		</a>
-		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+		<div v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
 			<div>
-				<button v-if="task.completed" class="btn btn-secondary"  @click="complete_task(task)" title="Revive the task">
+				<button v-if="task.completed" 
+						class="btn btn-secondary"
+						@click="complete_task(task)" 
+						title="Revive the task">
 					<i class="fa-solid fa-backward fa-fw"></i>
 				</button>
-				<button v-else class="btn btn-success" @click="complete_task(task)" title="Complete the task">
+				<button v-else 
+						class="btn btn-success"
+						@click="complete_task(task)" 
+						title="Complete the task">
 					<i class="fa-solid fa-check fa-fw"></i>
 				</button>
 			</div>
 			<div>
-				<button v-if="!task.is_current_user_assigned" class="btn btn-secondary" @click="take_task(task, cases_info.current_user)" title="Be assigned to the task">
+				<button v-if="!task.is_current_user_assigned" 
+						class="btn btn-secondary"
+						@click="take_task(task, cases_info.current_user)" 
+						title="Be assigned to the task">
 					<i class="fa-solid fa-hand fa-fw"></i>
 				</button>
-				<button v-else class="btn btn-secondary" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
+				<button v-else 
+						class="btn btn-secondary"
+						@click="remove_assign_task(task, cases_info.current_user)" 
+						title="Remove the assignment">
 					<i class="fa-solid fa-handshake-slash fa-fw"></i>
 				</button>
 			</div>
 			<div>
-				<a class="btn btn-primary" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
+				<a class="btn btn-primary" 
+				   :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" 
+				   type="button" 
+				   title="Edit the task">
 					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
 			</div>

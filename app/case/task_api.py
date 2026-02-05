@@ -1,4 +1,4 @@
-from flask import request
+from flask import request, current_app
 
 from app.db_class.db import Case, User
 from . import common_core as CommonModel
@@ -74,6 +74,10 @@ class EditTake(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Task edit denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be edited by Admin, Case Admin or Queue Admin"}, 403
+                
                 if request.json:
                     verif_dict = CaseModelApi.verif_edit_task(request.json, tid)
 
@@ -91,13 +95,16 @@ class EditTake(Resource):
 class DeleteTask(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, tid):
+        from ..utils.logger import flowintel_log
         task = CommonModel.get_task(tid)
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.delete_task(tid, current_user):
+                    flowintel_log("audit", 200, "Task deleted", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                     return {"message": "Task deleted"}, 200
                 return {"message": "Error task deleted"}, 400
+            flowintel_log("audit", 403, "Task deletion denied", User=current_user.email, CaseId=task.case_id, TaskId=tid)
             return {"message": "Permission denied"}, 403
         return {"message": "Task not found"}, 404
 
@@ -111,6 +118,10 @@ class CompleteTask(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Complete task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+                
                 if TaskModel.complete_task(tid, current_user):
                     return {"message": f"Task {tid} completed"}, 200
                 return {"message": f"Error task {tid} completed"}, 400
@@ -160,6 +171,10 @@ class ModifNoteTask(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Modify task note denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+                
                 if "note_id" in request.json:
                     if "note" in request.json:
                         res = TaskModel.modif_note_core(tid, current_user, request.json["note"], request.json["note_id"])
@@ -181,6 +196,10 @@ class CreateNoteTask(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Create task note denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+                
                 if "note" in request.json:
                     res = TaskModel.modif_note_core(tid, current_user, request.json["note"], '-1')
                     if type(res) == dict:
@@ -217,6 +236,10 @@ class AssignTask(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Take task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+                
                 if TaskModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     return {"message": f"Task Take"}, 200
                 return {"message": f"Error Task Take"}, 400
@@ -233,6 +256,10 @@ class RemoveOrgCase(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Remove assignment denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+                
                 if TaskModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     return {"message": f"Removed from assignment"}, 200
                 return {"message": f"Error Removed from assignment"}, 400
@@ -325,6 +352,10 @@ class UploadFile(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Upload file denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+                
                 created_files = TaskModel.add_file_core(task, request.files, current_user)
                 if created_files:
                     file_details = [f"{f.name} ({f.file_size} bytes, {f.file_type})" for f in created_files]
@@ -452,6 +483,10 @@ class AddConnectorsTask(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Add connectors denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+                
                 if "connectors" in request.json:
                     if TaskModel.add_connector(tid, request.json):
                         return {"message": "Connector added"}, 200

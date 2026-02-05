@@ -17,9 +17,11 @@
         <div class="row align-items-center">
             <div class="col-auto d-flex align-items-center">
                 <h5 class="mb-0"><i class="fa-solid fa-folder-open me-2"></i>Cases</h5>
+                {% if not current_user.read_only() %}
                 <a type="button" class="btn btn-primary btn-sm ms-3" href="/case/create_case" title="Create new case">
                     <i class="fa-solid fa-plus fa-sm"></i>
                 </a>
+                {% endif %}
             </div>
 
             <div class="col-auto">
@@ -214,6 +216,7 @@
                                 <span style="font-size: 12px; vertical-align: middle;">
                                     <i v-if="case_loc.is_private" class="fa-solid fa-lock" title="The case is private, only org present in can see this case"></i>
                                     <i v-else class="fa-solid fa-globe" title="The case is public anyone can see this case but only org present in case can modify it"></i>
+                                    <i v-if="case_loc.privileged_case" class="fa-solid fa-user-shield ms-1" title="Privileged case - four-eye-review workflow" style="color: #dc3545;"></i>
                                 </span>
                                 <button v-if="case_loc.link_to.length" disabled class="btn btn-outline-primary btn-sm" style="margin-left: 20px;">
                                     <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[case_loc.link_to.length]]</span>
@@ -309,12 +312,26 @@
                     </a>
                     <div v-if="(!case_loc.current_user_permission.read_only && case_loc.present_in_case) || case_loc.current_user_permission.admin">
                         <div>
-                            <button v-if="case_loc.completed" class="btn btn-secondary" @click="complete_case(case_loc, case_list.cases, true)" title="Revive the case">
-                                <i class="fa-solid fa-backward fa-fw"></i>
-                            </button>
-                            <button v-else class="btn btn-success" @click="complete_case(case_loc, case_list.cases, false)" title="Complete the case">
-                                <i class="fa-solid fa-check fa-fw"></i>
-                            </button>
+                            <span v-if="case_loc.completed" 
+                                  :title="case_loc.privileged_case && !case_loc.current_user_permission.admin && !case_loc.current_user_permission.case_admin ? 'You cannot revive a privileged case' : 'Revive the case'"
+                                  style="display:inline-block;">
+                                <button class="btn btn-secondary" 
+                                        @click="complete_case(case_loc, case_list.cases, true)" 
+                                        :disabled="case_loc.privileged_case && !case_loc.current_user_permission.admin && !case_loc.current_user_permission.case_admin"
+                                        style="pointer-events: auto;">
+                                    <i class="fa-solid fa-backward fa-fw"></i>
+                                </button>
+                            </span>
+                            <span v-else 
+                                  :title="case_loc.privileged_case && !case_loc.current_user_permission.admin && !case_loc.current_user_permission.case_admin ? 'You cannot complete a privileged case' : 'Complete the case'"
+                                  style="display:inline-block;">
+                                <button class="btn btn-success" 
+                                        @click="complete_case(case_loc, case_list.cases, false)" 
+                                        :disabled="case_loc.privileged_case && !case_loc.current_user_permission.admin && !case_loc.current_user_permission.case_admin"
+                                        style="pointer-events: auto;">
+                                    <i class="fa-solid fa-check fa-fw"></i>
+                                </button>
+                            </span>
                         </div>
                         <div>
                             <a class="btn btn-primary" :href="`/case/edit/${case_loc.id}`" type="button" title="Edit the case">

@@ -71,7 +71,7 @@ export default {
 	template: `
 	<fieldset class="analyzer-select-case">
         <legend class="analyzer-select-case"><i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title">Files</span></legend>
-        <div style="display: flex;" v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+        <div style="display: flex;" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
             <input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
             <button class="btn btn-primary btn-sm" @click="add_file(task)" style="margin-left: 2px;">Submit</button>
         </div>
@@ -85,7 +85,7 @@ export default {
                             <th>Upload Date</th>
                             <th>Size</th>
                             <th>Type</th>
-                            <th v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">Actions</th>
+                            <th v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -98,7 +98,7 @@ export default {
                             <td>[[ file.upload_date ]]</td>
                             <td><template v-if="file.file_size !== 'Unknown'">[[ (file.file_size / 1024).toFixed(2) ]] KB</template><template v-else>Unknown</template></td>
                             <td>[[ file.file_type ]]</td>
-                            <td v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                            <td v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
                                 <button class="btn btn-danger btn-sm" @click="delete_file(file, task)" title="Delete file">
                                     <i class="fa-solid fa-trash"></i>
                                 </button>
