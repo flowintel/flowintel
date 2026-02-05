@@ -1,16 +1,19 @@
 import { display_toast } from '/static/js/toaster.js'
+import { renderMarkdownServer } from '/static/js/markdown_render.js'
 const { ref, nextTick, onMounted, watch } = Vue
 const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
 		cases_info: Object,
-		task: Object,
-		md: Object
+		task: Object
 	},
 	setup(props) {
 		const is_exporting = ref(false)		 	// Boolean to display a spinner when exporting
-		const note_editor_render = ref([])		// Notes display in mermaid
+		const note_editor_render = ref([])		// Raw note content per editor
+		const rendered_notes = ref([])			// Saved notes rendered server-side
+		const rendered_preview = ref([])		// Live preview per editor
+		const previewTimers = {}
 		let editor_list = []								// Variable for the editor
 		const edit_mode = ref(-1)			// Boolean use when the note is in edit mode
 
@@ -20,6 +23,28 @@ export default {
 			}
 		} else {
 			note_editor_render.value[0] = ""
+		}
+
+		async function render_existing_notes() {
+			if (props.task.notes.length) {
+				for (let i in props.task.notes) {
+					const content = props.task.notes[i].note || ""
+					rendered_notes.value[i] = await renderMarkdownServer(content)
+					rendered_preview.value[i] = rendered_notes.value[i]
+				}
+			} else {
+				rendered_notes.value[0] = ""
+				rendered_preview.value[0] = await renderMarkdownServer("")
+			}
+		}
+
+		function schedule_preview(idx, content) {
+			if (previewTimers[idx]) {
+				clearTimeout(previewTimers[idx])
+			}
+			previewTimers[idx] = setTimeout(async () => {
+				rendered_preview.value[idx] = await renderMarkdownServer(content || "")
+			}, 200)
 		}
 
 
@@ -32,6 +57,8 @@ export default {
 				props.task.notes.push(loc["note"])
 				let key = props.task.notes.length - 1
 				note_editor_render.value[key] = ""
+				rendered_notes.value[key] = ""
+				rendered_preview.value[key] = await renderMarkdownServer("")
 				await nextTick()
 				const targetElement = document.getElementById('editor_' + key + "_" + props.task.id)
 
@@ -47,7 +74,6 @@ export default {
 					})
 					editor_list.push(editor)
 				}
-				props.md.mermaid.run()
 			}
 		}
 
@@ -57,6 +83,8 @@ export default {
 
 			if (await res.status == 200) {
 				props.task.notes.splice(key, 1);
+				rendered_notes.value.splice(key, 1)
+				rendered_preview.value.splice(key, 1)
 			}
 			display_toast(res)
 		}
@@ -81,7 +109,7 @@ export default {
 				parent: targetElement
 			})
 			editor_list[key] = editor
-			props.md.mermaid.run()
+			schedule_preview(key, task.notes[key].note)
 		}
 
 		async function export_notes(task, type, note_id) {
@@ -128,6 +156,9 @@ export default {
 					task.notes[key].note = notes_loc
 				}
 
+				rendered_notes.value[key] = await renderMarkdownServer(notes_loc)
+				rendered_preview.value[key] = rendered_notes.value[key]
+
 				await nextTick()
 
 				if (!notes_loc) {
@@ -145,13 +176,13 @@ export default {
 						editor_list[key] = editor
 					}
 				}
-				props.md.mermaid.run()
 			} else {
 				display_toast(res_msg)
 			}
 		}
 
-		onMounted(() => {
+		onMounted(async () => {
+			await render_existing_notes()
 			if (props.task.notes.length) {
 				for (let i in props.task.notes) {
 					const targetElement = document.getElementById('editor_' + i + '_' + props.task.id)
@@ -183,14 +214,17 @@ export default {
 
 		})
 
-		watch(note_editor_render, async (newAllContent, oldAllContent) => {
-			await nextTick()
-			props.md.mermaid.run()
+		watch(note_editor_render, (newAllContent) => {
+			for (let i = 0; i < newAllContent.length; i++) {
+				schedule_preview(i, newAllContent[i])
+			}
 		}, { deep: true })
 
 		return {
 			// md,
 			note_editor_render,
+			rendered_notes,
+			rendered_preview,
 			is_exporting,
 			edit_mode,
 
@@ -232,7 +266,7 @@ export default {
                             </div>
                             <div style="display: flex;">
                                 <div class="note-editor" :id="'editor1_'+key+'_'+task.id"></div>
-                                <div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
+								<div class="markdown-render" v-html="rendered_preview[key]"></div>
                             </div>
                         </template>
                         <!-- Render an existing note -->
@@ -268,7 +302,7 @@ export default {
                                 </button>
 
                             </template> 
-                            <p class="markdown-render-result" v-html="md.render(task_note.note)"></p>
+							<p class="markdown-render-result" v-html="rendered_notes[key]"></p>
                         </template>
                     </template>
                     <!-- Note is empty -->
@@ -286,7 +320,7 @@ export default {
                             </div>
                             <div style="display: flex;">
                                 <div class="note-editor" :id="'editor_'+key+'_'+task.id"></div>
-                                <div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
+								<div class="markdown-render" v-html="rendered_preview[key]"></div>
                             </div>
                         </template>
                     </template>
@@ -304,7 +338,7 @@ export default {
                     </div>
                     <div style="display: flex;">
                         <div class="note-editor" :id="'editor_0_'+task.id"></div>
-                        <div class="markdown-render" v-html="md.render(note_editor_render[0])"></div>
+						<div class="markdown-render" v-html="rendered_preview[0]"></div>
                     </div>
                 </template>
             </div>

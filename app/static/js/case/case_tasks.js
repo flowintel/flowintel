@@ -5,7 +5,8 @@ import tabFile from './TaskComponent/tab-file.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
-const { ref, nextTick } = Vue
+import { renderMarkdownServer } from '/static/js/markdown_render.js'
+const { ref, nextTick, watch } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -15,7 +16,6 @@ export default {
 		task: Object,
 		key_loop: Number,
 		open_closed: Object,
-		md: Object,
 		all_connectors_list: Object,
 		task_modules: Object,
 	},
@@ -37,6 +37,8 @@ export default {
 		const task_connectors_list = ref()
 
 		const expandedTasks = ref({});
+		const rendered_description_full = ref("")
+		const rendered_description_trunc = ref("")
 
 
 
@@ -146,6 +148,12 @@ export default {
 			await display_toast(res)
 		}
 
+		async function render_descriptions() {
+			const raw = props.task.description || ""
+			rendered_description_full.value = await renderMarkdownServer(raw)
+			rendered_description_trunc.value = await renderMarkdownServer(raw ? truncateText(raw) : "")
+		}
+
 		async function take_task(task, current_user) {
 			// Assign the task to the current user
 			const res = await fetch('/case/' + task.case_id + '/take_task/' + task.id)
@@ -195,9 +203,6 @@ export default {
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
 				await nextTick()
-				props.md.mermaid.run({
-					querySelector: `#collapse${props.task.id} .mermaid`
-				})
 			} else if (tab_name == 'files') {
 				selected_tab.value = 'files'
 				if (!document.getElementById("tab-task-files-" + props.task.id).classList.contains("active")) {
@@ -241,6 +246,10 @@ export default {
 
 
 		// Vue function
+		watch(() => props.task.description, () => {
+			render_descriptions()
+		}, { immediate: true })
+
 		Vue.onMounted(() => {
 			fetch_task_connectors()
 			select2_change(props.task.id)
@@ -283,6 +292,8 @@ export default {
 			selected_tab,
 			task_connectors_list,
 			expandedTasks,
+			rendered_description_full,
+			rendered_description_trunc,
 
 			take_task,
 			remove_assign_task,
@@ -323,11 +334,11 @@ export default {
 							</button>
 
 							<!-- Show either truncated or full text -->
-							<pre class="description" v-html="md.render(expandedTasks[task.id] ? task.description : truncateText(task.description))"></pre>
+							<pre class="description" v-html="expandedTasks[task.id] ? rendered_description_full : rendered_description_trunc"></pre>
 						</div>
 					</template>
 					<template v-else>
-						<pre v-html="md.render(task.description)" class="description"></pre>
+						<pre v-html="rendered_description_full" class="description"></pre>
 					</template>
 				</template>
 				<template v-else>
@@ -495,9 +506,8 @@ export default {
 
 			<template v-else-if="selected_tab == 'notes'">
 				<tabNote :cases_info="cases_info"
-						 :task="task"
-						 :md="md">
-                </tabNote>
+						 :task="task">
+				</tabNote>
 			</template>
 
 			<template v-else-if="selected_tab == 'connectors'">

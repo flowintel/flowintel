@@ -4,6 +4,7 @@ from flask_wtf import CSRFProtect
 from flask_migrate import Migrate
 from flask_session import Session
 from flask_login import LoginManager
+import markdown
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from conf.config import config as Config
@@ -17,6 +18,7 @@ csrf = CSRFProtect()
 migrate = Migrate()
 session = Session()
 login_manager = LoginManager()
+md = markdown.Markdown(extensions=["fenced_code", "tables", "nl2br", "sane_lists"], output_format="html5")
 
 def create_app():
     app = Flask(__name__)
@@ -56,6 +58,7 @@ def create_app():
     from .connectors.connectors import connector_blueprint
     from .analyzer.misp_modules import analyzer_blueprint
     from .custom_tags.custom_tags import custom_tags_blueprint
+    from .utils.markdown_routes import markdown_blueprint
     from .templating.templating import templating_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
@@ -70,6 +73,7 @@ def create_app():
     app.register_blueprint(analyzer_blueprint, url_prefix="/analyzer")
     csrf.exempt(analyzer_blueprint)
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
+    app.register_blueprint(markdown_blueprint, url_prefix="/markdown")
 
     from .api import api_blueprint
     csrf.exempt(api_blueprint)

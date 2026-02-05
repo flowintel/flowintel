@@ -5,7 +5,6 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 
 <title>Cases - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -241,11 +240,11 @@
                                         </button>
 
                                         <!-- Show either truncated or full text -->
-                                        <pre class="description" v-html="md.render(expandedCases[case_loc.id] ? case_loc.description : truncateText(case_loc.description))"></pre>
+                                        <pre class="description" v-html="expandedCases[case_loc.id] ? renderedDescriptions[case_loc.id]?.full : renderedDescriptions[case_loc.id]?.truncated"></pre>
                                     </div>
                                 </template>
                                 <template v-else>
-                                    <pre v-html="md.render(case_loc.description)" class="description"></pre>
+                                    <pre v-html="renderedDescriptions[case_loc.id]?.full" class="description"></pre>
                                 </template>
                             </template>
                             <template v-else>
@@ -355,6 +354,7 @@
         const { createApp, ref, onMounted, computed} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
+        import { renderMarkdownServer } from '/static/js/markdown_render.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -384,9 +384,21 @@
 
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
-                const md = window.markdownit()
-
+                const renderedDescriptions = ref({})
                 const expandedCases = ref({})
+
+                async function renderDescriptions(cases) {
+                    const renders = {}
+                    await Promise.all((cases || []).map(async (c) => {
+                        const desc = c.description || ""
+                        const truncated = desc.length > 300 ? truncateText(desc) : desc
+                        renders[c.id] = {
+                            full: desc ? await renderMarkdownServer({ markdown: desc }) : "",
+                            truncated: desc ? await renderMarkdownServer({ markdown: truncated }) : ""
+                        }
+                    }))
+                    renderedDescriptions.value = renders
+                }
 
                 async function change_status_sort(status){
                     is_open_cases.value = status
@@ -435,6 +447,7 @@
                     }
                     
                     temp_case_list = case_list.value.cases
+                    await renderDescriptions(case_list.value.cases)
                 }
                 fetch_sorted_cases(1)
 
@@ -624,8 +637,6 @@
 
                     is_open_cases,
                     current_filter,
-
-                    md,
                     case_list,
                     status_info,
                     taxonomies,
@@ -635,6 +646,7 @@
                     custom_tags,
                     current_page,
                     expandedCases,
+                    renderedDescriptions,
                     visiblePages,
 
                     complete_case,

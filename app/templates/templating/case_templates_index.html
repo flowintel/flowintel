@@ -5,7 +5,6 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -175,11 +174,11 @@
                                         </button>
 
                                         <!-- Show either truncated or full text -->
-                                        <pre class="description" v-html="md.render(expandedCases[template.id] ? template.description : truncateText(template.description))"></pre>
+                                        <pre class="description" v-html="expandedCases[template.id] ? renderedDescriptions[template.id]?.full : renderedDescriptions[template.id]?.truncated"></pre>
                                     </div>
                                 </template>
                                 <template v-else>
-                                    <pre v-html="md.render(template.description)" class="description"></pre>
+                                    <pre v-html="renderedDescriptions[template.id]?.full" class="description"></pre>
                                 </template>
                             </template>
                             <template v-else>
@@ -258,6 +257,7 @@
         const { createApp, ref, computed, onMounted } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
+        import { renderMarkdownServer } from '/static/js/markdown_render.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -284,9 +284,22 @@
 
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
-                const md = window.markdownit()
+                const renderedDescriptions = ref({})
 
                 const expandedCases = ref({})
+
+                async function renderDescriptions(templates) {
+                    const renders = {}
+                    await Promise.all((templates || []).map(async (tpl) => {
+                        const desc = tpl.description || ""
+                        const truncated = desc.length > 300 ? truncateText(desc) : desc
+                        renders[tpl.id] = {
+                            full: desc ? await renderMarkdownServer({ markdown: desc }) : "",
+                            truncated: desc ? await renderMarkdownServer({ markdown: truncated }) : ""
+                        }
+                    }))
+                    renderedDescriptions.value = renders
+                }
 
                 async function fetch_templates(page){
                     let loc_page = `page=${page}`
@@ -320,6 +333,7 @@
                     templates_list.value.nb_pages = loc.nb_pages
                     current_page.value = page
                     temp_case_list = templates_list.value.templates
+                    await renderDescriptions(templates_list.value.templates)
                 }
                 fetch_templates(1)
 
@@ -468,7 +482,7 @@
                     getTextColor,
                     mapIcon,
                     truncateText,
-                    md,
+                    renderedDescriptions,
                     expandedCases,
 
                     templates_list,

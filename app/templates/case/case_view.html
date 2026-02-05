@@ -5,9 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timeline.css') }}">
 
@@ -109,7 +107,7 @@
             <i class="fa-solid fa-chevron-down"></i> Description
         </button>
         <div class="collapse show" id="collapseDescription">
-            <pre class="case-description" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
+            <pre class="case-description" v-if="cases_info" v-html="rendered_description"></pre>
         </div>
     </div>
     {% endif %}
@@ -276,7 +274,7 @@
                         </div>
                         <div class="container-fluid" style="display: flex; width:90%">
                             <div class="note-editor" id="editor"></div>
-                            <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                            <div class="markdown-render" v-html="rendered_note_preview"></div>
                         </div>
                     </template>
                     <template v-else>
@@ -306,7 +304,7 @@
                                 </ul>
                             </div>
                         </div>
-                        <div v-html="md.render(cases_info.case.notes)" class="markdown-render-result container-fluid"></div>
+                        <div v-html="rendered_case_note" class="markdown-render-result container-fluid"></div>
                     </template>
                 </div>
                 <div v-else class="d-flex">
@@ -315,7 +313,7 @@
                     </div>
                     <div class="container-fluid" style="display: flex; width:90%">
                         <div class="note-editor" id="editor"></div>
-                        <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                        <div class="markdown-render" v-html="rendered_note_preview"></div>
                     </div>
                 </div>
             </template>
@@ -580,7 +578,6 @@
                                         :task="task" 
                                         :key_loop="key"
                                         :open_closed="open_closed"
-                                        :md="md"
                                         :all_connectors_list="all_connectors_list"
                                         :task_modules="task_modules">
                             </case_tasks>
@@ -589,8 +586,8 @@
                 </div>
             </template>
             <template v-else-if="tasks_tab == 'tasks-notes'">
-                <template v-for="notes in all_notes">
-                    <div class="all-tasks-notes" v-html="md.render(notes)"></div>
+                <template v-for="notes in all_notes_html">
+                    <div class="all-tasks-notes" v-html="notes"></div>
                 </template>
             </template>
             
@@ -626,6 +623,7 @@
         import case_history from '/static/js/case/case_history.js'
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
+        import { renderMarkdownServer } from '/static/js/markdown_render.js'
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
         const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
@@ -685,22 +683,20 @@
                 const nb_misp_objects = ref(0)
 
                 const open_closed = ref({})
-                const all_notes = ref("")
+                const all_notes_html = ref([])
                 let editor
                 const note_editor_render = ref("")
-                // Re-run mermaid on live-preview updates (editing mode)
-                watch(note_editor_render, async () => {
-                    await nextTick()
-                    try{
-                        // run mermaid only inside the preview container
-                        md.mermaid.run({ querySelector: '.markdown-render .mermaid' })
-                    }catch(e){}
+                const rendered_case_note = ref("")
+                const rendered_note_preview = ref("")
+                const rendered_description = ref("")
+                let previewTimer = null
+                watch(note_editor_render, async (value) => {
+                    if (previewTimer){
+                        clearTimeout(previewTimer)
+                    }
+                    previewTimer = setTimeout(() => render_preview(value), 250)
                 })
                 const edit_mode = ref(false)
-
-                const md = window.markdownit()			// Library to Parse and display markdown
-		        md.use(mermaidMarkdown.default)			// Use mermaid library
-
                 const case_for_link = ref([])
 
 
@@ -829,6 +825,7 @@
 
                 async function fetchCase() {
                     cases_info.value = null
+                    rendered_description.value = ""
                     const res = await fetch(
                         window.location.pathname.split("/").slice(-1)+'/get_case_info'
                     )
@@ -838,6 +835,8 @@
                     }else{
                         cases_info.value = await res.json()
                         loc_tasks_list = cases_info.value.tasks
+                        rendered_description.value = await renderMarkdownServer(cases_info.value.case.description || "")
+                        await fetch_rendered_notes()
                         await nextTick()
                         scrollIntoSelectedElement()
                         fetch_open_closed()
@@ -900,15 +899,41 @@
                             })],
                             parent: targetElement
                         })
+                        note_editor_render.value = default_text
                     }
                     await nextTick()
-                    md.mermaid.init()
                 }
 
                 async function fetch_all_notes(){
-                    const res = await fetch("/case/"+cases_info.value.case.id+"/all_notes")
-                    let loc = await res.json()
-                    all_notes.value = loc["notes"]
+                    const res = await fetch(`/case/${cases_info.value.case.id}/rendered_all_notes`)
+                    if (await res.status === 200){
+                        let loc = await res.json()
+                        all_notes_html.value = loc["notes"] || []
+                    } else {
+                        display_toast(res)
+                    }
+                }
+
+                async function fetch_rendered_notes(){
+                    const res = await fetch(`/case/${cases_info.value.case.id}/rendered_notes`)
+                    if (await res.status === 200){
+                        const loc = await res.json()
+                        rendered_case_note.value = loc["html"]
+                    } else {
+                        display_toast(res)
+                    }
+                }
+
+                async function render_preview(markdownText){
+                    const res = await fetch('/case/render_markdown_preview', {
+                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                        method: "POST",
+                        body: JSON.stringify({"note": markdownText || ""})
+                    })
+                    if (await res.status === 200){
+                        const loc = await res.json()
+                        rendered_note_preview.value = loc["html"]
+                    }
                 }
 
                 async function active_tab(tab_name){
@@ -946,6 +971,7 @@
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
                         }
+                        await fetch_rendered_notes()
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'notes'){
                             prepare_editor("\n\n")
@@ -1012,7 +1038,6 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        md.mermaid.init()
                     }else if(tab_name == 'hedgedoc'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-hedgedoc").classList.contains("active") ){
@@ -1022,7 +1047,6 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        md.mermaid.init()
                     }else if(tab_name == 'computer-assistate'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-computer-assistate").classList.contains("active") ){
@@ -1032,7 +1056,6 @@
                             document.getElementById("subtab-hedgedoc").classList.remove("active")
                         }
                         await nextTick()
-                        md.mermaid.init()
                     }
                 }
 
@@ -1051,7 +1074,6 @@
                         }
                         await fetch_all_notes()
                         await nextTick()
-                        md.mermaid.init()
                     }
                 }
 
@@ -1127,11 +1149,11 @@
                         cases_info.value.case.last_modif = Date.now()
                         cases_info.value.case.notes = notes_loc
                         await nextTick()
+                        await fetch_rendered_notes()
                         
                         if(!notes_loc){
                             prepare_editor("\n\n")
                         }
-                        md.mermaid.init()
                     }
                     await display_toast(res_msg)
                 }
@@ -1143,6 +1165,7 @@
                     
                     note_editor_render.value = cases_info.value.case.notes
                     prepare_editor(cases_info.value.case.notes)
+                    render_preview(note_editor_render.value)
                     
                 }
 
@@ -1403,8 +1426,10 @@
                     cluster_list,
                     custom_tags,
                     open_closed,
-                    md,
-                    all_notes,
+                    all_notes_html,
+                    rendered_case_note,
+                    rendered_note_preview,
+                    rendered_description,
                     note_editor_render,
                     edit_mode,
                     case_connectors_list,

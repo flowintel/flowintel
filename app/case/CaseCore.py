@@ -24,6 +24,7 @@ from .FilteringAbstract import FilteringAbstract
 from . import common_core as CommonModel
 from . TaskCore import TaskModel
 from ..utils.utils import get_modules_list
+from ..utils.markdown_renderer import sanitize_markdown_input
 
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
 from ..custom_tags import custom_tags_core as CustomModel
@@ -931,7 +932,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Modify notes of a case"""
         case = CommonModel.get_case(cid)
         if case:
-            case.notes = notes
+            safe_notes = sanitize_markdown_input(notes)
+            case.notes = safe_notes
             CommonModel.update_last_modif(cid)
             db.session.commit()
             CommonModel.save_history(case.uuid, current_user, f"Case's Notes modified")
@@ -942,7 +944,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Modify notes of a case"""
         case = CommonModel.get_case(cid)
         if case:
-            case.notes += notes
+            safe_notes = sanitize_markdown_input(notes)
+            case.notes += safe_notes
             CommonModel.update_last_modif(cid)
             db.session.commit()
             CommonModel.save_history(case.uuid, current_user, f"Case's Notes modified")

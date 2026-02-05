@@ -5,7 +5,6 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 
 {{ super() }}
@@ -47,7 +46,7 @@
                 <span class="mb-2">Description:</span>
                 <div style="display: flex">
                     <div class="note-editor" id="editor"></div>
-                    <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                    <div class="markdown-render" v-html="rendered_preview"></div>
                     <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
                 </div>
             </div>
@@ -116,7 +115,8 @@
 {% block script %}
 <script type="module">
     const { createApp, ref, onMounted} = Vue
-    import {message_list} from '/static/js/toaster.js'
+    import {message_list, display_toast} from '/static/js/toaster.js'
+    import { renderMarkdownServer } from '/static/js/markdown_render.js'
     const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
     createApp({
@@ -132,8 +132,16 @@
 
             const custom_tags = ref([])
 
-            const md = window.markdownit()
             const note_editor_render = ref("")
+            const rendered_preview = ref("")
+
+            async function renderPreview() {
+                if (!note_editor_render.value) {
+                    rendered_preview.value = ""
+                    return
+                }
+                rendered_preview.value = await renderMarkdownServer({ markdown: note_editor_render.value })
+            }
             
             let to_hide = true
             function hide_task_creation(){
@@ -222,11 +230,13 @@
                         extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
                             if (v.docChanged) {
                                 note_editor_render.value = editor.state.doc.toString()
+                                renderPreview()
                             }
                         })],
                         parent: targetElement
                     })
                 }
+                renderPreview()
             })
 
             return {
@@ -237,8 +247,8 @@
                 tags_list,
                 cluster_list,
                 custom_tags,
-                md,
                 note_editor_render,
+                rendered_preview,
                 hide_task_creation
             }
         }

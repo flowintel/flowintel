@@ -5,7 +5,6 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 
 <title>My tasks assignments - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -69,14 +68,14 @@
                                             <i :class="['fa-solid', expandedTasks[task.id] ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
                                         </button>
 
-                                        <!-- Show either truncated or full text -->
-                                        <div>
-                                            <pre class="description" v-html="md.render(expandedTasks[task.id] ? task.description : truncateText(task.description))"></pre>
-                                        </div>
+                                            <!-- Show either truncated or full text -->
+                                            <div>
+                                                <pre class="description" v-html="expandedTasks[task.id] ? renderedDescriptionsFull[task.id] : renderedDescriptionsTrunc[task.id]"></pre>
+                                            </div>
                                     </div>
                                 </template>
                                 <template v-else>
-                                    <pre v-html="md.render(task.description)" class="description"></pre>
+                                    <pre v-html="renderedDescriptionsFull[task.id]" class="description"></pre>
                                 </template>
                             </template>
                             <template v-else>
@@ -188,6 +187,7 @@
         import my_assignment_filter from '/static/js/my_assignment/my_assignment_filter.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
+        import { renderMarkdownServer } from '/static/js/markdown_render.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -201,7 +201,37 @@
                 const current_filter = ref("")
 
                 const expandedTasks = ref({});
-                const md = window.markdownit()
+                const renderedDescriptionsFull = ref({})
+                const renderedDescriptionsTrunc = ref({})
+
+                async function renderTaskDescriptions(tasksPayload) {
+                    const full = {}
+                    const trunc = {}
+                    const groups = tasksPayload?.tasks || []
+                    const promises = []
+                    groups.forEach((caseGroup) => {
+                        (caseGroup || []).forEach((task) => {
+                            const desc = task.description || ''
+                            if (!desc) {
+                                full[task.id] = ''
+                                trunc[task.id] = ''
+                                return
+                            }
+                            promises.push((async () => {
+                                full[task.id] = await renderMarkdownServer({ markdown: desc })
+                                if (desc.length > 300) {
+                                    const truncated = truncateText(desc)
+                                    trunc[task.id] = await renderMarkdownServer({ markdown: truncated })
+                                } else {
+                                    trunc[task.id] = full[task.id]
+                                }
+                            })())
+                        })
+                    })
+                    await Promise.all(promises)
+                    renderedDescriptionsFull.value = full
+                    renderedDescriptionsTrunc.value = trunc
+                }
 
                 async function fetchAssignedTask(page) {
                     let url
@@ -215,6 +245,7 @@
                     const res = await fetch(url)
                     let loc = await res.json()
                     tasks_list.value = loc
+                    await renderTaskDescriptions(tasks_list.value)
                 }
 
                 async function fetchStatus() {
@@ -229,6 +260,7 @@
                     tasks_list.value.nb_pages = tasks.nb_pages
                     tasks_list.value.tasks = tasks.tasks
                     current_page.value = 1
+                    renderTaskDescriptions(tasks_list.value)
                 }
                 
 
@@ -267,7 +299,8 @@
                     truncateText,
                     mapIcon,
                     expandedTasks,
-                    md,
+                    renderedDescriptionsFull,
+                    renderedDescriptionsTrunc,
                     visiblePages
                 }
             }

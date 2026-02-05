@@ -12,6 +12,7 @@ from ..decorators import editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
+from ..utils.markdown_renderer import render_markdown_with_mermaid
 
 case_blueprint = Blueprint(
     'case',
@@ -739,6 +740,59 @@ def all_notes(cid):
         flowintel_log("audit", 200, "Get all notes of a case", User=current_user.email, CaseId=cid)
         return {"notes": notes}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/rendered_notes", methods=['GET'])
+@login_required
+def rendered_notes(cid):
+    """Render markdown notes to sanitized HTML on the server"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Render notes of a case: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        try:
+            html = render_markdown_with_mermaid(case.notes or "")
+        except RuntimeError as exc:
+            flowintel_log("error", 500, "Render notes failed: mmdc missing", User=current_user.email, CaseId=cid)
+            return {"message": str(exc), 'toast_class': "warning-subtle"}, 500
+        flowintel_log("audit", 200, "Render notes of a case", User=current_user.email, CaseId=cid)
+        return {"html": html}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/rendered_all_notes", methods=['GET'])
+@login_required
+def rendered_all_notes(cid):
+    """Render all task notes for a case to sanitized HTML"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Render all notes of a case: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        notes = CaseModel.get_all_notes(case)
+        try:
+            rendered = [render_markdown_with_mermaid(note) for note in notes]
+        except RuntimeError as exc:
+            flowintel_log("error", 500, "Render all notes failed: mmdc missing", User=current_user.email, CaseId=cid)
+            return {"message": str(exc), 'toast_class': "warning-subtle"}, 500
+        flowintel_log("audit", 200, "Render all notes of a case", User=current_user.email, CaseId=cid)
+        return {"notes": rendered}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/render_markdown_preview", methods=['POST'])
+@login_required
+def render_markdown_preview():
+    """Render arbitrary markdown (for live preview) to sanitized HTML"""
+    payload = request.get_json(silent=True) or {}
+    text = payload.get("note", "") or ""
+    try:
+        html = render_markdown_with_mermaid(text)
+    except RuntimeError as exc:
+        flowintel_log("error", 500, "Render preview failed: mmdc missing", User=current_user.email)
+        return {"message": str(exc), 'toast_class': "warning-subtle"}, 500
+    return {"html": html}, 200
 
 
 @case_blueprint.route("/<cid>/modif_note_case", methods=['POST'])

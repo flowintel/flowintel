@@ -1,4 +1,5 @@
 import {display_toast} from '../toaster.js'
+import { renderMarkdownServer } from '/static/js/markdown_render.js'
 const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -8,8 +9,7 @@ export default {
 	},
 	setup(props) {
 		const hedgedoc_notes = ref("")
-		const md = window.markdownit()			// Library to Parse and display markdown
-		md.use(mermaidMarkdown.default)			// Use mermaid library
+		const rendered_notes = ref("")
 		const is_loading = ref(false)
 
 		async function get_hedgedoc_notes(){
@@ -17,11 +17,13 @@ export default {
 			const res = await fetch('/case/' + props.cases_info.case.id + '/get_hedgedoc_notes')
 			if(await res.status == 200){
 				let loc = await res.json()
-				hedgedoc_notes.value = loc["notes"]
+				headgedoc_notes.value = loc["notes"]
+				rendered_notes.value = await renderMarkdownServer({ markdown: hedgedoc_notes.value || '' })
 			}else{
 				await display_toast(res)
 				$("#hedgedoc_input_error").text("Error with the url")
-				hedgedoc_notes.value = ""
+				headgedoc_notes.value = ""
+				rendered_notes.value = ""
 			}
 			is_loading.value = false
 		}
@@ -43,13 +45,14 @@ export default {
 			}else{
 				await display_toast(res)
 				$("#hedgedoc_input_error").text("Error with the url")
-				hedgedoc_notes.value = ""
+				headgedoc_notes.value = ""
+				rendered_notes.value = ""
 			}
 		}
 
 		return {
-			md,
 			hedgedoc_notes,
+			rendered_notes,
 			is_loading,
 			get_hedgedoc_notes,
 			change_hedgedoc_url
@@ -74,7 +77,7 @@ export default {
 				<div id="hedgedoc_input_error" style="color: brown"></div>
 			</div>
 		</div>
-		<p v-if="hedgedoc_notes" style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(hedgedoc_notes)"></p>
+		<p v-if="hedgedoc_notes" style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="rendered_notes"></p>
 		<p v-else><i>No notes</i></p>
     `
 }

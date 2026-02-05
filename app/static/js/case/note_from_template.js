@@ -1,4 +1,5 @@
 import {display_toast} from '../toaster.js'
+import { renderMarkdownServer } from '/static/js/markdown_render.js'
 const { ref, onMounted, nextTick } = Vue
 const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
@@ -13,14 +14,32 @@ export default {
         const case_note_template = ref({})
 		const is_exporting = ref(false)
         const mustache_render = ref("")
+        const rendered_mixed = ref("")
+        const rendered_template = ref("")
+        const rendered_final = ref("")
+        const rendered_note_preview = ref("")
 
         const rendering_tab = ref("mixed")
         const main_tab = ref("template")
 
         let editor
         const note_editor_render = ref("")
-		const md = window.markdownit()			// Library to Parse and display markdown
-		md.use(mermaidMarkdown.default)			// Use mermaid library
+
+        async function renderMixedView() {
+            rendered_mixed.value = await renderMarkdownServer({ markdown: mustache_render.value || '' })
+        }
+
+        async function renderTemplateView(markdown) {
+            rendered_template.value = await renderMarkdownServer({ markdown: markdown || '' })
+        }
+
+        async function renderFinalView() {
+            rendered_final.value = await renderMarkdownServer({ markdown: mustache_render.value || '' })
+        }
+
+        async function renderNotePreview() {
+            rendered_note_preview.value = await renderMarkdownServer({ markdown: note_editor_render.value || '' })
+        }
 
 		async function fetch_note_template(){
             const res = await fetch('/tools/note_template')
@@ -38,13 +57,14 @@ export default {
                     if(note_template_list.value[i].id == loc_id){
                         selected_note_template.value = note_template_list.value[i]
                         mustache_render.value = selected_note_template.value.content
+                        renderTemplateView(selected_note_template.value.content)
                         break
                     }
                 }
             })
         }
 
-        async function fetch_case_note_template() {
+		async function fetch_case_note_template() {
             const res = await fetch('/case/'+props.cases_info.case.id+'/get_note_template')
             if(await res.status == 200){
                 let loc = await res.json()
@@ -56,13 +76,13 @@ export default {
                     $("#"+selected_note_template.value.params.list[i]).val(case_note_template.value.values.list[selected_note_template.value.params.list[i]])
                 }
                 
-                reload(case_note_template.value.content)
+				await reload(case_note_template.value.content)
             }else{
                 fetch_note_template()
             }
         }
 
-        function active_rendering_tab(tab_name) {
+        async function active_rendering_tab(tab_name) {
             if(tab_name == 'mixed'){
                 rendering_tab.value = "mixed"
                 if ( !document.getElementById("tab-rendering-mixed").classList.contains("active") ){
@@ -71,9 +91,9 @@ export default {
                     document.getElementById("tab-rendering-final").classList.remove("active")
 
                     if(!Object.keys(case_note_template.value).length)
-                        reload(selected_note_template.value.content)
+                        await reload(selected_note_template.value.content)
                     else
-                        reload(case_note_template.value.content)
+                        await reload(case_note_template.value.content)
                 }
             }else if(tab_name == 'template'){
                 rendering_tab.value = "template"
@@ -81,6 +101,9 @@ export default {
                     document.getElementById("tab-rendering-template").classList.add("active")
                     document.getElementById("tab-rendering-mixed").classList.remove("active")
                     document.getElementById("tab-rendering-final").classList.remove("active")
+
+					const content = Object.keys(case_note_template.value).length ? case_note_template.value.content : selected_note_template.value.content
+					await renderTemplateView(content)
                 }
             }else if(tab_name == 'final'){
                 rendering_tab.value = "final"
@@ -90,9 +113,9 @@ export default {
                     document.getElementById("tab-rendering-mixed").classList.remove("active")
 
                     if(!Object.keys(case_note_template.value).length)
-                        reload(selected_note_template.value.content, true)
+                        await reload(selected_note_template.value.content, true)
                     else
-                        reload(case_note_template.value.content, true)
+                        await reload(case_note_template.value.content, true)
                 }
             }
         }
@@ -106,6 +129,7 @@ export default {
                     await nextTick()
 
                     note_editor_render.value = case_note_template.value.content
+                    await renderNotePreview()
 
                     const targetElement = document.getElementById('editor')
                     if(targetElement && targetElement.innerHTML === ""){
@@ -114,12 +138,12 @@ export default {
                             extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
                                 if (v.docChanged) {
                                     note_editor_render.value = editor.state.doc.toString()
+                                    renderNotePreview()
                                 }
                             })],
                             parent: targetElement
                         })
                     }
-                    md.mermaid.init()
                 }
             }else if(tab_name == 'template'){
                 main_tab.value = "template"
@@ -132,13 +156,13 @@ export default {
                         $("#"+selected_note_template.value.params.list[i]).val(case_note_template.value.values.list[selected_note_template.value.params.list[i]])
                     }
                     
-                    reload(case_note_template.value.content)
+                    await reload(case_note_template.value.content)
                 }
             }
         }
         
 
-        function reload(current_note_template_content, no_keep=false){            
+        async function reload(current_note_template_content, no_keep=false){            
             let loc = {}
             for(let i in selected_note_template.value.params.list){
                 loc[selected_note_template.value.params.list[i]] = $("#"+selected_note_template.value.params.list[i]).val()
@@ -159,6 +183,11 @@ export default {
 
             let compiled = Handlebars.compile(current_note_template_content)
             mustache_render.value = compiled(loc)
+            await Promise.all([
+                renderMixedView(),
+                renderFinalView(),
+                renderTemplateView(current_note_template_content)
+            ])
         }  
         
         async function create(){
@@ -208,6 +237,8 @@ export default {
             )
             if(await res.status == 200){
                 case_note_template.value.content = note_editor_render.value
+                await renderTemplateView(case_note_template.value.content)
+                await renderNotePreview()
             }
             
             display_toast(res)
@@ -258,16 +289,17 @@ export default {
 
         onMounted(() => {
             fetch_case_note_template()
-            md.mermaid.init()
-
         })
 
-		return {
-			md,
+        return {
 			is_exporting,
 			note_template_list,
 			selected_note_template,
             mustache_render,
+            rendered_mixed,
+            rendered_template,
+            rendered_final,
+            rendered_note_preview,
             case_note_template,
             rendering_tab,
             main_tab,
@@ -382,18 +414,17 @@ export default {
 
                         <template v-if="rendering_tab == 'mixed'">
                             <div style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px; width:99%">
-                                <span v-html="md.render(mustache_render)"></span>
+                                <span v-html="rendered_mixed"></span>
                             </div>
                         </template>
                         <template v-else-if="rendering_tab == 'template'">
                             <div style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px; width:99%">
-                                <span v-if="Object.keys(case_note_template).length" v-html="md.render(case_note_template.content)"></span>
-                                <span v-else v-html="md.render(selected_note_template.content)"></span>
+                                <span v-html="rendered_template"></span>
                             </div>
                         </template>
                         <template v-else-if="rendering_tab == 'final'">
                             <div style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px; width:99%">
-                                <span v-html="md.render(mustache_render)"></span>
+                                <span v-html="rendered_final"></span>
                             </div>
                         </template>
                     </div>
@@ -411,7 +442,7 @@ export default {
             <button class="btn btn-primary" @click="save_content()">Save</button>
             <div style="display: flex;">
                 <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; width: 50%" id="editor"></div>
-                <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+                <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="rendered_note_preview"></div>
             </div>
             <button class="btn btn-primary" @click="save_content()">Save</button>
         </template>

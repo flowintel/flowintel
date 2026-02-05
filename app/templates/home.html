@@ -5,7 +5,6 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -94,11 +93,11 @@
                                         </button>
 
                                         <!-- Show either truncated or full text -->
-                                        <pre class="description" v-html="md.render(expandedCases[case_loc.id] ? case_loc.description : truncateText(case_loc.description))"></pre>
+                                        <pre class="description" v-html="expandedCases[case_loc.id] ? renderedDescriptionsFull[case_loc.id] : renderedDescriptionsTrunc[case_loc.id]"></pre>
                                     </div>
                                 </template>
                                 <template v-else>
-                                    <pre v-html="md.render(case_loc.description)" class="description"></pre>
+                                    <pre v-html="renderedDescriptionsFull[case_loc.id]" class="description"></pre>
                                 </template>
                             </template>
                             <template v-else>
@@ -162,6 +161,7 @@
     const { createApp, ref} = Vue
     import {message_list} from '/static/js/toaster.js'
     import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
+    import { renderMarkdownServer } from '/static/js/markdown_render.js'
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
@@ -169,14 +169,38 @@
             const status_info = ref(null)
             const version = ref(null)
             const home_stats = ref(null)
-            const md = window.markdownit()
             const expandedCases = ref({})
+            const renderedDescriptionsFull = ref({})
+            const renderedDescriptionsTrunc = ref({})
+
+            async function renderCaseDescriptions(cases) {
+                const fullMap = {}
+                const truncMap = {}
+                await Promise.all((cases || []).map(async (caseLoc) => {
+                    const desc = caseLoc.description || ''
+                    if (!desc) {
+                        fullMap[caseLoc.id] = ''
+                        truncMap[caseLoc.id] = ''
+                        return
+                    }
+                    fullMap[caseLoc.id] = await renderMarkdownServer({ markdown: desc })
+                    if (desc.length > 300) {
+                        const truncated = truncateText(desc)
+                        truncMap[caseLoc.id] = await renderMarkdownServer({ markdown: truncated })
+                    } else {
+                        truncMap[caseLoc.id] = fullMap[caseLoc.id]
+                    }
+                }))
+                renderedDescriptionsFull.value = fullMap
+                renderedDescriptionsTrunc.value = truncMap
+            }
 
             async function fetchCase() {
                 case_list.value = null
                 const res = await fetch("/last_case")
                 let loc = await res.json()
                 case_list.value = loc["cases"]
+                await renderCaseDescriptions(case_list.value)
                 
             }
             fetchCase()
@@ -219,7 +243,8 @@
                 getTextColor,
                 mapIcon,
                 truncateText,
-                md,
+                renderedDescriptionsFull,
+                renderedDescriptionsTrunc,
 
                 case_list,
                 status_info,

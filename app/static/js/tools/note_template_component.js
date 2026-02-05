@@ -1,5 +1,6 @@
 import { display_toast } from '../toaster.js'
-const { ref, nextTick, onMounted, onUpdated } = Vue
+import { renderMarkdownServer } from '/static/js/markdown_render.js'
+const { ref, nextTick, onMounted, watch } = Vue
 const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
 export default {
@@ -13,26 +14,26 @@ export default {
 		const is_mounted = ref(false)
 		const edit_mode = ref(false)
 		const temp_content = ref(props.note_template.content || "")
-
-		const md = window.markdownit()
-		md.use(mermaidMarkdown.default)
+		const rendered_content = ref("")
+		const rendered_preview = ref("")
 
 		let content_editor = null
+		let previewTimer = null
+
 
 		onMounted(async () => {
-			const allCollapses = document.getElementById('collapse' + props.note_template.id)
-			if (allCollapses) {
-				allCollapses.addEventListener('shown.bs.collapse', async event => {
-					md.mermaid.init()
-				})
-			}
+			rendered_content.value = await renderMarkdownServer(props.note_template.content || "")
+			rendered_preview.value = rendered_content.value
 			is_mounted.value = true
 		})
 
-		onUpdated(async () => {
-			if (is_mounted.value) {
-				md.mermaid.init()
+		watch(temp_content, async (val) => {
+			if (previewTimer) {
+				clearTimeout(previewTimer)
 			}
+			previewTimer = setTimeout(async () => {
+				rendered_preview.value = await renderMarkdownServer(val || "")
+			}, 200)
 		})
 
 		async function delete_note_template(note_template, notes_array) {
@@ -87,6 +88,8 @@ export default {
 				let loc = await res.json()
 				props.note_template.content = content_text
 				props.note_template.version = loc.version
+				rendered_content.value = await renderMarkdownServer(content_text)
+				rendered_preview.value = rendered_content.value
 				edit_mode.value = false
 			}
 			display_toast(res)
@@ -99,9 +102,10 @@ export default {
 		}
 
 		return {
-			md,
 			temp_content,
 			edit_mode,
+			rendered_content,
+			rendered_preview,
 			delete_note_template,
 			init_editor,
 			save_content,
@@ -191,11 +195,11 @@ export default {
 					<template v-if="edit_mode">
 						<div style="display: flex;">
 							<div class="note-editor" :id="'editor_'+note_template.id"></div>
-							<div class="markdown-render" v-html="md.render(temp_content)"></div>
+							<div class="markdown-render" v-html="rendered_preview"></div>
 						</div>
 					</template>
 					<template v-else>
-						<div v-if="note_template.content" class="markdown-render-result" v-html="md.render(note_template.content)"></div>
+						<div v-if="note_template.content" class="markdown-render-result" v-html="rendered_content"></div>
 						<div v-else><i style="font-size: 12px;">No content</i></div>
 					</template>
 				</fieldset>

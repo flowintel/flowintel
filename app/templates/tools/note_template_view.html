@@ -5,9 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -61,14 +59,14 @@
         </div>
         <template v-if="!is_editing">
             <button class="btn btn-primary" @click="edit()">Edit</button>
-            <div class="markdown-render-result" v-html="md.render(note_editor_render)"></div>
+            <div class="markdown-render-result" v-html="rendered_content"></div>
         </template>
         <template v-else>
             <button class="btn btn-primary" @click="save()">Save</button>
 
             <div style="display: flex;">
                 <div class="note-editor" id="editor"></div>
-                <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                <div class="markdown-render" v-html="rendered_content"></div>
             </div>
 
         </template>
@@ -85,6 +83,7 @@
     <script type="module">
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import { renderMarkdownServer } from '/static/js/markdown_render.js'
         const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
         
         createApp({
@@ -94,9 +93,7 @@
 
                 let editor
                 const note_editor_render = ref("")
-
-                const md = window.markdownit()			// Library to Parse and display markdown
-                md.use(mermaidMarkdown.default)			// Use mermaid library
+                const rendered_content = ref("")
 
                 const is_editing = ref(false)
                 const editing_header = ref(false)
@@ -112,12 +109,20 @@
                                 extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
                                     if (v.docChanged) {
                                         note_editor_render.value = editor.state.doc.toString()
+                                        renderContent()
                                     }
                                 })],
                                 parent: targetElement
                             })
                     }
-                    md.mermaid.init()
+                }
+
+                async function renderContent() {
+                    if (!note_editor_render.value) {
+                        rendered_content.value = ""
+                        return
+                    }
+                    rendered_content.value = await renderMarkdownServer({ markdown: note_editor_render.value })
                 }
 
                 async function fetchNoteTemplate() {
@@ -126,6 +131,7 @@
                     let loc = await res.json()
                     note_template.value = loc
                     note_editor_render.value = note_template.value.content
+                    await renderContent()
                     if(!note_editor_render.value){
                         is_editing.value = true
                         prepare_editor("\n\n")
@@ -135,8 +141,6 @@
                 async function save() {
                     if(note_editor_render.value){
                         is_editing.value = false
-                        md.mermaid.init()
-
                         const res_msg = await fetch(
                             '/tools/note_template/{{note_template.id}}/edit_content',{
                                 headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
@@ -189,7 +193,6 @@
                 
                 onMounted(() => {
                     fetchNoteTemplate()
-                    md.mermaid.init()
                 })
 
                 return {
@@ -197,8 +200,8 @@
                     dayjs,
 
                     note_template,
-                    md,
                     note_editor_render,
+                    rendered_content,
                     is_editing,
                     editing_header,
                     temp_title,

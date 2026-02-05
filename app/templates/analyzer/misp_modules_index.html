@@ -5,9 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -89,19 +87,19 @@
             
             <div v-if="main_tab == 'case'">
                 <h6>Select note</h6>
-                <div class="card card-body" v-html="md.render(case_selected.notes)"></div>
+                <div class="card card-body" v-html="rendered_case_notes"></div>
             </div>
             <div v-else-if="main_tab == 'all'">
                 <h6>Select note</h6>
-                <template v-for="notes in all_notes">
-                    <div class="all-tasks-notes" v-html="md.render(notes)"></div>
+                <template v-for="notes, idx in all_notes">
+                    <div class="all-tasks-notes" v-html="rendered_all_notes[idx]"></div>
                 </template>
             </div>
             <div v-else-if="main_tab == 'task'">
                 <h6>Select note</h6>
                 <h1 title="task's title"><u>[[task_selected.title]]</u></h1>
                 <template v-for="note, key in task_selected.notes">
-                    <div class="all-tasks-notes" v-html="md.render(note.note)"></div>
+                    <div class="all-tasks-notes" v-html="rendered_task_notes[key]"></div>
                 </template>
             </div>
             <div v-else-if="main_tab == 'misp-object'">
@@ -167,6 +165,7 @@
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import misp_modules from '/static/js/analyzer/misp_modules.js'
+        import { renderMarkdownServer } from '/static/js/markdown_render.js'
         const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
         createApp({
@@ -183,10 +182,23 @@
                 const all_notes = ref()
                 const case_misp_objects = ref()
 
+                const rendered_case_notes = ref('')
+                const rendered_task_notes = ref([])
+                const rendered_all_notes = ref([])
+
                 let editor = ""
 
-                const md = window.markdownit()			// Library to Parse and display markdown
-		        md.use(mermaidMarkdown.default)			// Use mermaid library
+                async function renderCaseNotes(markdown) {
+                    rendered_case_notes.value = await renderMarkdownServer({ markdown: markdown || '' })
+                }
+
+                async function renderTaskNotes(taskNotes) {
+                    rendered_task_notes.value = await Promise.all((taskNotes || []).map((n) => renderMarkdownServer({ markdown: n.note || '' })))
+                }
+
+                async function renderAllNotes(noteList) {
+                    rendered_all_notes.value = await Promise.all((noteList || []).map((n) => renderMarkdownServer({ markdown: n || '' })))
+                }
 
 
                 const search_query = ref('')
@@ -222,6 +234,8 @@
                     const res = await fetch("/case/"+case_selected.value.id+"/all_notes")
                     let loc = await res.json()
                     all_notes.value = loc["notes"]
+                    await renderCaseNotes(case_selected.value.notes)
+                    await renderAllNotes(all_notes.value)
 
                     const res_task = await fetch("/case/"+case_selected.value.id+"/sort_tasks")
                     let loc_task = await res_task.json()
@@ -234,9 +248,10 @@
                         width: '100%'
                     })
 
-                    $('#task_select').on('change.select2', function (e) {
+                    $('#task_select').on('change.select2', async function (e) {
                         let loc = $(this).select2('data').map(item => item.id);
                         task_selected.value = result_search_task.value[loc]
+                        await renderTaskNotes(task_selected.value.notes)
                     })
 
                 }
@@ -259,7 +274,6 @@
                             document.getElementById("tab-case-notes").classList.remove("active")
                             document.getElementById("tab-task-notes").classList.remove("active")
                             document.getElementById("tab-misp-object").classList.remove("active")
-                            await nextTick()
                         }
                     }else if(tab_name == 'task'){
                         main_tab.value = 'task'
@@ -268,7 +282,6 @@
                             document.getElementById("tab-case-notes").classList.remove("active")
                             document.getElementById("tab-all-notes").classList.remove("active")
                             document.getElementById("tab-misp-object").classList.remove("active")
-                            await nextTick()
                         }
                     }else if(tab_name == 'misp-object'){
                         main_tab.value = 'misp-object'
@@ -277,7 +290,6 @@
                             document.getElementById("tab-case-notes").classList.remove("active")
                             document.getElementById("tab-all-notes").classList.remove("active")
                             document.getElementById("tab-task-notes").classList.remove("active")
-                            await nextTick()
                         }
                     }
                     md.mermaid.init()
@@ -320,6 +332,7 @@
                             for(let i in result_search_task.value){
                                 if(result_search_task.value[i].id == '{{task_id}}'){
                                     task_selected.value = result_search_task.value[i]
+                                    await renderTaskNotes(task_selected.value.notes)
                                     break
                                 }
                             }
@@ -338,7 +351,9 @@
                     case_selected,
                     task_selected,
                     all_notes,
-                    md,
+                    rendered_case_notes,
+                    rendered_task_notes,
+                    rendered_all_notes,
                     case_misp_objects,
                     onInputCase,
                     select_case,

@@ -1,8 +1,9 @@
 import { display_toast, create_message } from '../toaster.js'
 import TaskUrlTool from '../case/TaskComponent/TaskUrlTool.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
+import { renderMarkdownServer } from '/static/js/markdown_render.js'
 const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
-const { ref, nextTick } = Vue
+const { ref, nextTick, watch } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	components: {
@@ -24,6 +25,11 @@ export default {
 
 		const expandedTasks = ref({});
 
+		const rendered_description_full = ref('')
+		const rendered_description_trunc = ref('')
+		const rendered_notes = ref([])
+		const rendered_note_previews = ref([])
+
 		Vue.onMounted(async () => {
 			if (props.template.notes.length) {
 				for (let i in props.template.notes) {
@@ -33,6 +39,7 @@ export default {
 						extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
 								note_editor_render.value[i] = editor.state.doc.toString()
+								renderNotePreview(i)
 							}
 						})],
 						parent: targetElement
@@ -46,6 +53,7 @@ export default {
 					extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 						if (v.docChanged) {
 							note_editor_render.value[0] = editor.state.doc.toString()
+							renderNotePreview(0)
 						}
 					})],
 					parent: targetElement
@@ -53,33 +61,56 @@ export default {
 				editor_list[0] = editor
 			}
 
-			const allCollapses = document.getElementById('collapse' + props.template.id)
-			allCollapses.addEventListener('shown.bs.collapse', event => {
-				md.mermaid.init()
-			})
-			is_mounted.value = true
-		})
-		Vue.onUpdated(async () => {
-			// do not initialize mermaid before the page is mounted
-			if (is_mounted)
-				md.mermaid.init()
+			renderDescription()
+			renderNotesSaved()
 		})
 
-		const is_mounted = ref(false)
 		const edit_mode = ref(-1)
 
 		const note_editor_render = ref([])
 		let editor_list = []
-		const md = window.markdownit()
-		md.use(mermaidMarkdown.default)
 
 		if (props.template.notes.length) {
 			for (let i in props.template.notes) {
 				note_editor_render.value[i] = props.template.notes[i].note		// If this template has notes
+				rendered_note_previews.value[i] = ''
 			}
 		} else {
 			note_editor_render.value[0] = ""
+			rendered_note_previews.value[0] = ''
 		}
+
+		async function renderDescription() {
+			const description = props.template.description || ''
+			if (!description) {
+				rendered_description_full.value = ''
+				rendered_description_trunc.value = ''
+				return
+			}
+			const truncated = truncateText(description)
+			rendered_description_full.value = await renderMarkdownServer({ markdown: description })
+			rendered_description_trunc.value = await renderMarkdownServer({ markdown: truncated })
+		}
+
+		async function renderNotesSaved() {
+			if (!props.template.notes || !props.template.notes.length) {
+				rendered_notes.value = []
+				return
+			}
+			rendered_notes.value = await Promise.all(props.template.notes.map((note) => renderMarkdownServer({ markdown: note.note || '' })))
+		}
+
+		async function renderNotePreview(key) {
+			const content = note_editor_render.value[key] || ''
+			if (!content) {
+				rendered_note_previews.value[key] = ''
+				return
+			}
+			rendered_note_previews.value[key] = await renderMarkdownServer({ markdown: content })
+		}
+
+		watch(() => props.template.description, () => { renderDescription() })
+		watch(() => props.template.notes.map(note => note.note), () => { renderNotesSaved() })
 
 
 		async function add_notes_task() {
@@ -91,6 +122,8 @@ export default {
 				props.template.notes.push(loc["note"])
 				let key = props.template.notes.length - 1
 				note_editor_render.value[key] = ""
+				rendered_note_previews.value[key] = ''
+				rendered_notes.value[key] = ''
 				await nextTick()
 				const targetElement = document.getElementById('editor_' + key + "_" + props.template.id)
 
@@ -115,6 +148,8 @@ export default {
 
 			if (await res.status == 200) {
 				props.template.notes.splice(key, 1);
+				rendered_notes.value.splice(key, 1)
+				rendered_note_previews.value.splice(key, 1)
 			}
 			display_toast(res)
 		}
@@ -150,6 +185,8 @@ export default {
 			const res = await fetch('/templating/task/' + template.id + '/get_note?note_id=' + note_id)
 			let loc = await res.json()
 			template.notes[key].note = loc["notes"]
+			note_editor_render.value[key] = template.notes[key].note
+			renderNotePreview(key)
 
 			const targetElement = document.getElementById('editor1_' + key + "_" + props.template.id)
 			let editor = new EditorView({
@@ -157,6 +194,7 @@ export default {
 				extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 					if (v.docChanged) {
 						note_editor_render.value[key] = editor.state.doc.toString()
+						renderNotePreview(key)
 					}
 				})],
 				parent: targetElement
@@ -187,6 +225,8 @@ export default {
 				} else {
 					template.notes[key].note = notes_loc
 				}
+				rendered_notes.value[key] = await renderMarkdownServer({ markdown: notes_loc })
+				rendered_note_previews.value[key] = rendered_notes.value[key]
 				await nextTick()
 
 				if (!notes_loc) {
@@ -294,7 +334,10 @@ export default {
 
 		return {
 			note_editor_render,
-			md,
+			rendered_description_full,
+			rendered_description_trunc,
+			rendered_notes,
+			rendered_note_previews,
 			getTextColor,
 			mapIcon,
 			truncateText,
@@ -328,7 +371,7 @@ export default {
                 <h5 class="mb-1"><i class="fa-solid fa-clipboard-list fa-sm me-2"></i>[[ key_loop+1 ]]-[[ template.title ]]</h5>
             </div>
             <div class="d-flex w-100 justify-content-between">
-                <template v-if="template.description">
+				<template v-if="template.description">
 					<template v-if="template.description.length > 300">
 						<div class="position-relative">
 							<button
@@ -341,11 +384,11 @@ export default {
 							</button>
 
 							<!-- Show either truncated or full text -->
-							<pre class="description" v-html="md.render(expandedTasks[template.id] ? template.description : truncateText(template.description))"></pre>
+							<pre class="description" v-html="expandedTasks[template.id] ? rendered_description_full : rendered_description_trunc"></pre>
 						</div>
 					</template>
 					<template v-else>
-						<pre v-html="md.render(template.description)" class="description"></pre>
+						<pre v-html="rendered_description_full" class="description"></pre>
 					</template>
 				</template>
 				<template v-else>
@@ -559,7 +602,7 @@ export default {
 									</div>
 									<div style="display: flex;">
 										<div class="note-editor" :id="'editor1_'+key+'_'+template.id"></div>
-										<div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
+										<div class="markdown-render" v-html="rendered_note_previews[key]"></div>
 									</div>
 								</template>
 								<template v-else>
@@ -572,7 +615,7 @@ export default {
 											<small><i class="fa-solid fa-trash"></i></small> Delete
 										</button>
 									</template>
-									<p class="markdown-render-result" v-html="md.render(template_note.note)"></p>
+									<p class="markdown-render-result" v-html="rendered_notes[key]"></p>
 								</template>
 							</div>
 							<div v-else>
@@ -588,7 +631,7 @@ export default {
 									</div>
 									<div style="display: flex;">
 										<div class="note-editor" :id="'editor_'+key+'_'+template.id"></div>
-										<div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
+										<div class="markdown-render" v-html="rendered_note_previews[key]"></div>
 									</div>
 								</template>
 							</div>
@@ -604,7 +647,7 @@ export default {
 							</div>
 							<div style="display: flex;">
 								<div class="note-editor" :id="'editor_0_'+template.id"></div>
-								<div  class="markdown-render" v-html="md.render(note_editor_render[0])"></div>
+								<div  class="markdown-render" v-html="rendered_note_previews[0]"></div>
 							</div>
 						</template>
 					</div>

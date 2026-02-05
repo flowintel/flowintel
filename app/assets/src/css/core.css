@@ -31,16 +31,7 @@ pre.description {
   font-size: 0.85rem;
 }
 
-pre.description h1,
-pre.description h2,
-pre.description h3,
-pre.description h4,
-pre.description h5,
-pre.description h6 {
-  font-size: 0.95rem;
-  margin-top: 0.5rem;
-  margin-bottom: 0.25rem;
-}
+
 
 pre.description p {
   margin-bottom: 0.25rem;

@@ -1,4 +1,5 @@
 import {display_toast} from '../toaster.js'
+import { renderMarkdownServer } from '/static/js/markdown_render.js'
 const { ref, onMounted } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -7,11 +8,18 @@ export default {
 	},
 	setup(props) {
 		const computer_assistate_report = ref("")
-		const md = window.markdownit()			// Library to Parse and display markdown
-		md.use(mermaidMarkdown.default)			// Use mermaid library
+		const rendered_report = ref("")
 		const is_loading = ref(false)
 		const is_exporting = ref(false)
 		const markdown_view = ref(false)
+
+		async function renderReport(markdown) {
+			if (!markdown || markdown === 'running') {
+				rendered_report.value = ''
+				return
+			}
+			rendered_report.value = await renderMarkdownServer({ markdown })
+		}
 
 		async function get_computer_assistate_report(){
 			is_loading.value = true
@@ -19,9 +27,11 @@ export default {
 			if(await res.status == 200){
 				let loc = await res.json()
 				computer_assistate_report.value = loc["report"]
+				await renderReport(computer_assistate_report.value)
 			}else{
 				await display_toast(res, true)
 				computer_assistate_report.value = ""
+				rendered_report.value = ""
 			}
 			is_loading.value = false
 		}
@@ -38,6 +48,7 @@ export default {
 			}else{
 				await display_toast(res)
 				computer_assistate_report.value = ""
+				rendered_report.value = ""
 				await get_computer_assistate_report()
 			}
 			is_loading.value = false
@@ -47,6 +58,7 @@ export default {
 
 		async function generate_computer_assistate_report(){
 			computer_assistate_report.value = ""
+			rendered_report.value = ""
 			is_loading.value = true
 			const res = await fetch('/case/' + props.cases_info.case.id + '/run_computer_assistate_report')
 			
@@ -101,8 +113,8 @@ export default {
 		})
 
 		return {
-			md,
 			computer_assistate_report,
+			rendered_report,
 			is_loading,
 			is_exporting,
 			markdown_view,
@@ -181,7 +193,7 @@ export default {
 				<div v-if="markdown_view">
 					<pre class="description">[[computer_assistate_report]]</pre>
 				</div>
-				<div v-else v-html="md.render(computer_assistate_report)"></div>
+				<div v-else v-html="rendered_report"></div>
 			</template>	
 		</div>
     `

@@ -23,3 +23,6 @@ matrix-nio[e2e]
 misp-modules[minimal]
 redis
 psycopg2-binary
+markdown
+bleach
+tinycss2

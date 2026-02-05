@@ -5,7 +5,6 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 
 <title>Edit case #{{ case_id }} - {{ config.APP_NAME }}</title>
@@ -74,7 +73,7 @@
                 <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
                 <div style="display: flex">
                     <div class="note-editor" id="editor"></div>
-                    <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                    <div class="markdown-render" v-html="rendered_preview"></div>
                     <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
                 </div>
             </div>
@@ -91,15 +90,24 @@
 <script type="module">
     const { createApp, ref, onMounted} = Vue
     import {message_list} from '/static/js/toaster.js'
+    import { renderMarkdownServer } from '/static/js/markdown_render.js'
     const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
     
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
             let editor
-            const md = window.markdownit()
             const description_content = `{{description | safe}}`
             const note_editor_render = ref(description_content)
+            const rendered_preview = ref("")
+
+            async function renderPreview() {
+                if (!note_editor_render.value) {
+                    rendered_preview.value = ""
+                    return
+                }
+                rendered_preview.value = await renderMarkdownServer({ markdown: note_editor_render.value })
+            }
             
             onMounted(() => {
                 const targetElement = document.getElementById('editor')
@@ -109,17 +117,19 @@
                         extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
                             if (v.docChanged) {
                                 note_editor_render.value = editor.state.doc.toString()
+                                renderPreview()
                             }
                         })],
                         parent: targetElement
                     })
                 }
+                renderPreview()
             })
 
             return {
                 message_list,
                 note_editor_render,
-                md
+                rendered_preview
             }
         }
     }).mount('#main-container')

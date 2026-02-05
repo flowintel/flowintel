@@ -5,9 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -35,7 +33,7 @@
 Content:
 <div style="display: flex;">
     <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; width: 50%" id="editor"></div>
-    <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+    <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="rendered_preview"></div>
 </div>
 
 <button class="btn btn-primary mt-3" @click="submit">Submit</button>
@@ -46,6 +44,7 @@ Content:
 <script type="module">
     const { createApp, onMounted, ref} = Vue
     import {message_list, display_toast} from '/static/js/toaster.js'
+    import { renderMarkdownServer } from '/static/js/markdown_render.js'
     const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
     createApp({
@@ -53,9 +52,15 @@ Content:
         setup() {
             let editor
             const note_editor_render = ref("")
+            const rendered_preview = ref("")
 
-            const md = window.markdownit()			// Library to Parse and display markdown
-		    md.use(mermaidMarkdown.default)			// Use mermaid library
+            async function renderPreview() {
+                if (!note_editor_render.value) {
+                    rendered_preview.value = ""
+                    return
+                }
+                rendered_preview.value = await renderMarkdownServer({ markdown: note_editor_render.value })
+            }
 
             async function submit() {
                 $("#title-error").text("")
@@ -96,18 +101,19 @@ Content:
                             extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
                                 if (v.docChanged) {
                                     note_editor_render.value = editor.state.doc.toString()
+                                    renderPreview()
                                 }
                             })],
                             parent: targetElement
                         })
                 }
-                md.mermaid.init()
+                renderPreview()
             })
 
             return {
                 message_list,
-                md,
                 note_editor_render,
+                rendered_preview,
                 submit
             }
         }
