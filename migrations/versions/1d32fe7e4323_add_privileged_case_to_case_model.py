@@ -27,8 +27,8 @@ def upgrade():
         if 'privileged_case' not in columns:
             batch_op.add_column(sa.Column('privileged_case', sa.Boolean(), nullable=True))
     
-    # Set default value for existing rows (SQLite compatible)
-    op.execute('UPDATE "case" SET privileged_case = 0 WHERE privileged_case IS NULL')
+    # Set default value for existing rows (PostgreSQL and SQLite compatible)
+    op.execute('UPDATE "case" SET privileged_case = FALSE WHERE privileged_case IS NULL')
 
 
 def downgrade():

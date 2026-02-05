@@ -8,6 +8,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from conf.config import config as Config
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 
 import redis
 
@@ -25,6 +27,33 @@ def create_app():
     app.config.from_object(Config[config_name])
 
     Config[config_name].init_app(app)
+    
+    if not app.debug and not app.testing:
+        logs_folder = os.path.join(os.getcwd(), "logs")
+        if not os.path.isdir(logs_folder):
+            os.mkdir(logs_folder)
+        
+        log_file = app.config.get('LOG_FILE', 'record.log')
+        file_handler = RotatingFileHandler(
+            f"{logs_folder}/{log_file}", 
+            mode='a', 
+            maxBytes=10*1024*1024,
+            backupCount=5
+        )
+        
+        log_formatter = logging.Formatter(
+            '%(asctime)s - %(message)s', 
+            datefmt='%d/%b/%Y %H:%M:%S'
+        )
+        file_handler.setFormatter(log_formatter)
+        file_handler.setLevel(logging.INFO)
+        
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        
+        root_logger = logging.getLogger()
+        root_logger.addHandler(file_handler)
+        root_logger.setLevel(logging.INFO)
 
     # ProxyFix for reverse proxy deployments
     if app.config.get('BEHIND_PROXY', False):

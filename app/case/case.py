@@ -44,6 +44,7 @@ def index():
 
 @case_blueprint.route("/create_case", methods=['GET', 'POST'])
 @login_required
+@editor_required
 def create_case():
     """Create a case"""
     form = CaseForm()

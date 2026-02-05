@@ -17,9 +17,11 @@
         <div class="row align-items-center">
             <div class="col-auto d-flex align-items-center">
                 <h5 class="mb-0"><i class="fa-solid fa-folder-open me-2"></i>Cases</h5>
+                {% if not current_user.read_only() %}
                 <a type="button" class="btn btn-primary btn-sm ms-3" href="/case/create_case" title="Create new case">
                     <i class="fa-solid fa-plus fa-sm"></i>
                 </a>
+                {% endif %}
             </div>
 
             <div class="col-auto">

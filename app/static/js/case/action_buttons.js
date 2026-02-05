@@ -196,62 +196,64 @@ export default {
                 Actions
             </button>
             <ul class="dropdown-menu">
-                <template v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)">
+                <template v-if="cases_info">
                     <li>
                         <a class="dropdown-item" :href="'/case/'+cases_info.case.id+'/download'" type="button" title="Download the case in json">
                             <span class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i></span> Download
                         </a>
                     </li>
-                    <li>
-                        <a class="dropdown-item" 
-                           :href="'/case/'+cases_info.case.id+'/recurring'" 
-                           type="button" 
-                           title="Recurring Case"
-                           :class="{'disabled': !canModifyCase}"
-                           :aria-disabled="!canModifyCase"
-                           @click="!canModifyCase ? $event.preventDefault() : null">
-                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-clock"></i></span> Recurring
-                        </a>
-                    </li>
-                    <li>
-                        <button type="button" 
-                                class="dropdown-item" 
-                                title="Merge this case into an other one" 
-                                @click="merge_case_modal()"
-                                :disabled="!canModifyCase">
-                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-merge"></i></span> Merge
-                        </button>
-                    </li>
-                    <li>
-                        <button type="button" 
-                                class="dropdown-item" 
-                                title="Fork this case" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#fork_case_modal"
-                                :disabled="!canModifyCase">
-                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
-                        </button>
-                    </li>
-                    <li>
-                        <button type="button" 
-                                class="dropdown-item" 
-                                title="Create a template from the case" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#template_case_modal"
-                                :disabled="!canModifyCase">
-                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-book-bookmark"></i></span> Template
-                        </button>
-                    </li>
-                    <li>
-                        <button type="button" 
-                                class="dropdown-item" 
-                                title="Delete the case" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#delete_case_modal"
-                                :disabled="!canModifyCase">
-                            <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
-                        </button>
-                    </li>
+                    <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                        <li>
+                            <a class="dropdown-item" 
+                               :href="'/case/'+cases_info.case.id+'/recurring'" 
+                               type="button" 
+                               title="Recurring Case"
+                               :class="{'disabled': !canModifyCase}"
+                               :aria-disabled="!canModifyCase"
+                               @click="!canModifyCase ? $event.preventDefault() : null">
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-clock"></i></span> Recurring
+                            </a>
+                        </li>
+                        <li>
+                            <button type="button" 
+                                    class="dropdown-item" 
+                                    title="Merge this case into an other one" 
+                                    @click="merge_case_modal()"
+                                    :disabled="!canModifyCase">
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-merge"></i></span> Merge
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" 
+                                    class="dropdown-item" 
+                                    title="Fork this case" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#fork_case_modal"
+                                    :disabled="!canModifyCase">
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" 
+                                    class="dropdown-item" 
+                                    title="Create a template from the case" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#template_case_modal"
+                                    :disabled="!canModifyCase">
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-book-bookmark"></i></span> Template
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" 
+                                    class="dropdown-item" 
+                                    title="Delete the case" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#delete_case_modal"
+                                    :disabled="!canModifyCase">
+                                <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
+                            </button>
+                        </li>
+                    </template>
                 </template>
             </ul>
         </div>
