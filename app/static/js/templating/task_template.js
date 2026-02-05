@@ -381,6 +381,19 @@ export default {
                 </div>
                 <div v-else></div>
             </div>
+			<div class="d-flex w-100 justify-content-between">
+				<div style="display: flex;" v-if="template.galaxies">
+					<template v-for="galaxy in template.galaxies">
+						<div :title="'Description:\\n' + galaxy.description">
+							<span class="cluster">
+								<span v-html="mapIcon(galaxy.icon)"></span>
+								[[galaxy.name]]
+							</span>
+						</div>
+					</template>
+				</div>
+				<div v-else></div>
+			</div>
             <div class="d-flex w-100 justify-content-between">
                 <div v-if="template.clusters">
                     <template v-for="cluster in template.clusters">
@@ -399,15 +412,15 @@ export default {
 					<i>[[template.notes.length]] Notes</i>
 				</span>
 			</div>
-		<div class="mt-1 card card-body" v-if="template.subtasks.length" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
-			<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
-			<template v-for="subtask in template.subtasks">
-				<div v-if="!subtask.completed" style="display: flex;">
-					<div class="subtask-tree"></div>
-					[[subtask.description]]
-				</div>
-			</template>
-		</div>
+			<div class="mt-1 card card-body" v-if="template.subtasks.length" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
+				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
+				<template v-for="subtask in template.subtasks">
+					<div v-if="!subtask.completed" style="display: flex;">
+						<div class="subtask-tree"></div>
+						[[subtask.description]]
+					</div>
+				</template>
+			</div>
         </a>
         <div v-if="!template.current_user_permission.read_only">
 			<div>

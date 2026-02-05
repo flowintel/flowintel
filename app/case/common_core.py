@@ -299,6 +299,12 @@ def get_task_clusters(tid):
             Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id)\
                 .filter_by(task_id=tid).all()]
 
+def get_task_galaxies(tid):
+    """Return a list of galaxies present in a task"""
+    return [galaxy for galaxy in \
+            Galaxy.query.join(Task_Galaxy, Task_Galaxy.galaxy_id==Galaxy.id)\
+                .filter_by(task_id=tid).all()]
+
 def get_task_clusters_name(task_id):
     """Return a list of clusters name present in a task"""
     return [cluster.name for cluster in \
@@ -698,6 +704,17 @@ def check_tag(tag_list):
             return tag
     return True
 
+def check_galaxy(galaxy_list):
+    """Check if a list of galaxies exist"""
+    for galaxy in galaxy_list:
+        if isUUID(galaxy):
+            if not Galaxy.query.filter_by(uuid=galaxy).first():
+                return galaxy
+        else:
+            if not Galaxy.query.filter_by(name=galaxy).first():
+                return galaxy
+    return True
+
 def check_cluster(cluster_list):
     """Check if a list of clusters exist by uuid"""
     for cluster in cluster_list:
@@ -786,6 +803,15 @@ def create_task_from_template(template_id, cid, current_user=None):
         db.session.add(task_tag)
         db.session.commit()
 
+    for t_t in Task_Template_Galaxy.query.filter_by(template_id=template.id).all():
+        task_tag = Task_Galaxy(
+            task_id=task.id,
+            galaxy_id=t_t.galaxy_id
+        )
+        db.session.add(task_tag)
+        db.session.commit()
+
+    ## Task Galaxy Tags
     for t_t in Task_Template_Galaxy_Tags.query.filter_by(template_id=template.id).all():
         task_tag = Task_Galaxy_Tags(
             task_id=task.id,

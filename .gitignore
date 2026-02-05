@@ -3,9 +3,11 @@
 
 # Ignore SQLite database files
 *.sqlite
+instance/*
 
 # Ignore history directory contents
 history/*
+history_test/*
 
 # Ignore uploads directory contents
 uploads/*

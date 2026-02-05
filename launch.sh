@@ -73,7 +73,7 @@ function killscript {
 function taxo_galaxy_update {
     prepare_app_run
     export FLASKENV="development"
-    python3 app.py -tg
+    python3 app.py -utg
 }
 
 function misp_module_update {

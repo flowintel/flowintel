@@ -382,6 +382,19 @@ export default {
                 <small v-else><i>No deadline</i></small>
             </div>
 			<div class="d-flex w-100 justify-content-between">
+				<div style="display: flex;" v-if="task.galaxies">
+					<template v-for="galaxy in task.galaxies">
+						<div :title="'Description:\\n' + galaxy.description">
+							<span class="cluster">
+								<span v-html="mapIcon(galaxy.icon)"></span>
+								[[galaxy.name]]
+							</span>
+						</div>
+					</template>
+				</div>
+				<div v-else></div>
+			</div>
+			<div class="d-flex w-100 justify-content-between">
 				<div style="display: flex;" v-if="task.clusters">
 					<template v-for="cluster in task.clusters">
 						<div :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + cluster.meta">

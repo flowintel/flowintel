@@ -870,6 +870,7 @@ class CreateTask(Resource):
         "deadline_time": "Time(%H-%M)",
         "tags": "list of tags from taxonomies",
         "clusters": "list of tags from galaxies",
+        "galaxies": "list of galaxies name",
         "identifier": "Dictionnary with connector as key and identifier as value",
         "custom_tags" : "List of custom tags created on the instance",
         "time_required": "Time required to realize the task"

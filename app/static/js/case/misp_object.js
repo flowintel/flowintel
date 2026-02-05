@@ -1,6 +1,5 @@
 import {display_toast, create_message} from '../toaster.js'
 import AddObjectAttributes from './AddObjectAttributes.js'
-import ObjectConnectors from './ObjectConnectors.js'
 const { ref, onMounted, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -11,7 +10,6 @@ export default {
     emits: ['modif_misp_objects'],
     components: {
         AddObjectAttributes,
-        ObjectConnectors
     },
 	setup(props, {emit}) {
         const case_misp_objects = ref([])
@@ -448,9 +446,6 @@ export default {
             <i :class="compactView ? 'fa-solid fa-expand' : 'fa-solid fa-compress'"></i>
             <span class="d-none d-sm-inline ms-1">[[ compactView ? 'Detailed' : 'Compact' ]]</span>
         </button>
-        <button class="btn btn-outline-primary" style="float: right;" data-bs-toggle="modal" data-bs-target="#modal-send-to">
-            <i class="fa-solid fa-link"></i> MISP Connectors
-        </button>
     </div>
     <div class="row">
         <div v-for="misp_object, key_obj in case_misp_objects" class="accordion col-6 p-1" :id="'accordion-'+key_obj">
@@ -644,8 +639,6 @@ export default {
 
         </div>
     </div>
-
-    <ObjectConnectors/>
 
     <!-- Modal Add object -->
     <div class="modal fade" id="modal-add-object" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">

@@ -359,6 +359,14 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
                 )
                 db.session.add(task_tag)
                 db.session.commit()
+
+            for t_t in Task_Template_Galaxy.query.filter_by(template_id=task.id).all():
+                task_cluster = Task_Galaxy(
+                    task_id=t.id,
+                    galaxy_id=t_t.galaxy_id
+                )
+                db.session.add(task_cluster)
+                db.session.commit()
             
             ## Task Clusters
             for t_t in Task_Template_Galaxy_Tags.query.filter_by(template_id=task.id).all():
