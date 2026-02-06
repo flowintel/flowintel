@@ -768,6 +768,22 @@ AUDIT_LOG_PREFIX = os.getenv('AUDIT_LOG_PREFIX', 'AUDIT')
 
 All user actions are logged to this file. The audit log prefix helps when filtering logs. Logs are written to the `logs/` directory within your Flowintel installation.
 
+**Reverse proxy settings**
+
+When running Flowintel behind a reverse proxy, Flask needs to know how to extract the real client IP address and other request details from HTTP headers that the proxy adds. Without this configuration, Flask will only see connections coming from `127.0.0.1` and won't be able to determine the actual client IP, protocol (HTTP vs HTTPS), or hostname.
+
+Start by enabling proxy support with `BEHIND_PROXY`. This tells Flask to use Werkzeug's `ProxyFix` middleware, which reads the `X-Forwarded-*` headers that NGINX adds to each request.
+
+The `PROXY_X_FOR` setting controls how many proxy servers are between your users and Flowintel. If you're running NGINX directly on the same server as Flowintel, set this to `1`. If users connect through a corporate proxy first and then reach your NGINX server, set it to `2`.
+
+```python
+BEHIND_PROXY = os.getenv('BEHIND_PROXY', 'false').lower() == 'true'
+PROXY_X_FOR = int(os.getenv('PROXY_X_FOR', 1))       # Number of proxies to trust
+PROXY_X_PROTO = int(os.getenv('PROXY_X_PROTO', 1))   # Trust X-Forwarded-Proto
+PROXY_X_HOST = int(os.getenv('PROXY_X_HOST', 1))     # Trust X-Forwarded-Host
+PROXY_X_PREFIX = int(os.getenv('PROXY_X_PREFIX', 0)) # Trust X-Forwarded-Prefix
+```
+
 #### Development vs production settings
 
 The main differences between environments:
@@ -779,6 +795,7 @@ The main differences between environments:
 | SECRET_KEY | Can use default for testing | Must be unique and strong |
 | FLASK_URL | Can use 0.0.0.0 for testing | Should be 127.0.0.1 (behind NGINX) |
 | Error display | Full stack traces shown | Generic error pages |
+| BEHIND_PROXY | Direct access to Flask | Access via NGINX |
 
 Never run production with `DEBUG = True`. This exposes sensitive information and creates security vulnerabilities.
 
@@ -793,7 +810,7 @@ The configuration already supports environment variables through `os.getenv()`. 
 Set variables before starting Flowintel:
 
 ```bash
-export DB_PASSWORD='your_secure_password'
+export DB_PASSWORD='your_secure_password_here'
 export SECRET_KEY='your_secret_key'
 export FLASKENV='production'
 ```
@@ -811,7 +828,7 @@ Add your configuration:
 ```bash
 # Database settings
 DB_USER=flowintel
-DB_PASSWORD=your_secure_password
+DB_PASSWORD=your_secure_password_here
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=flowintel
