@@ -18,6 +18,7 @@ pymispgalaxies
 git+https://github.com/DavidCruciani/pandoc-mermaid-filter
 jsonschema
 pymisp
+python-dotenv
 matrix-nio
 matrix-nio[e2e]
 misp-modules[minimal]
