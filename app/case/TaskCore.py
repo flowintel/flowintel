@@ -6,7 +6,7 @@ from .. import db
 from ..db_class.db import (
     Cluster, Custom_Tags, File, Note, Status, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
-    Task_Tags, Task_Url_Tool, Task_User, User, Galaxy
+    Task_Tags, Task_Url_Tool, Task_External_Reference, Task_User, User, Galaxy
 )
 from ..utils.utils import create_specific_dir, isUUID
 
@@ -757,6 +757,42 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
             task = CommonModel.get_task(tid)
             self.update_task_time_modification(task, current_user, f"Url/Tool '{url_tool.name}' edited for '{task.title}'")
+            return True
+        return False
+    
+    def get_external_reference(self, erid):
+        return Task_External_Reference.query.get(erid)
+
+    def delete_external_reference(self, external_ref, current_user):
+        task = CommonModel.get_task(external_ref.task_id)
+        url = external_ref.url
+        
+        db.session.delete(external_ref)
+        db.session.commit()
+        
+        self.update_task_time_modification(task, current_user, f"External reference '{url}' deleted for '{task.title}'")
+        return True
+
+    def create_external_reference(self, tid, url, current_user):
+        external_ref = Task_External_Reference(
+            url=url,
+            task_id=tid
+        )
+        db.session.add(external_ref)
+        db.session.commit()
+
+        task = CommonModel.get_task(tid)
+        self.update_task_time_modification(task, current_user, f"External reference '{external_ref.url}' created for '{task.title}'")
+        return external_ref
+
+    def edit_external_reference(self, tid, erid, url, current_user):
+        external_ref = self.get_external_reference(erid)
+        if external_ref and external_ref.task_id == int(tid):
+            external_ref.url = url
+            db.session.commit()
+
+            task = CommonModel.get_task(tid)
+            self.update_task_time_modification(task, current_user, f"External reference '{external_ref.url}' edited for '{task.title}'")
             return True
         return False
     
