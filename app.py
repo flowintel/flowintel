@@ -45,7 +45,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--init_db", help="Initialise the db if it not exist", action="store_true")
 parser.add_argument("-r", "--recreate_db", help="Delete and initialise the db", action="store_true")
 parser.add_argument("-d", "--delete_db", help="Delete the db", action="store_true")
-parser.add_argument("-tg", "--taxo_galaxies", help="Add or update taxonomies and galaxies", action="store_true")
+parser.add_argument("-tg", "--taxo_galaxies", help="Add taxonomies and galaxies", action="store_true")
+parser.add_argument("-utg", "--update_taxo_galaxies", help="Update taxonomies and galaxies", action="store_true")
 parser.add_argument("-mm", "--misp_modules", help="Add or update misp-modules", action="store_true")
 parser.add_argument("-py", "--pymisp", help="Update pymisp misp objects", action="store_true")
 parser.add_argument("-td", "--test_data", help="Create default test cases", action="store_true")
@@ -88,6 +89,10 @@ elif args.taxo_galaxies:
     with app.app_context():
         create_taxonomies(True)
         create_galaxies(True)
+elif args.update_taxo_galaxies:
+    with app.app_context():
+        create_taxonomies(False)
+        create_galaxies(False)
 elif args.misp_modules:
     with app.app_context():
         create_modules_db()

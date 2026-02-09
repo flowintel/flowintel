@@ -1119,97 +1119,12 @@ def delete_attribute(cid, oid, aid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/<cid>/misp_object_connectors", methods=['GET'])
-@login_required
-def misp_object_connectors(cid):
-    """Get MISP object connectors"""
-    case = CommonModel.get_case(cid)
-    if case:
-        if not check_user_private_case(case):
-            flowintel_log("audit", 403, "Get MISP object connectors of a case: Private case: Permission denied", User=current_user.email, CaseId=cid)
-            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
-        instance_list = list()
-        for object_connector in CaseModel.get_misp_object_connectors(cid):
-            instance_list.append({
-                "object_instance_id": object_connector.id,
-                "details": CommonModel.get_instance_with_icon(object_connector.instance_id),
-                "identifier": object_connector.identifier
-            })
-        return instance_list, 200
-    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
-
-
 @case_blueprint.route("/misp_connectors", methods=['GET'])
 @login_required
 def misp_connectors():
     """Return list of misp connectors"""
     return {"misp_connectors": CaseModel.get_misp_connector_by_user(current_user.id)}, 200
 
-
-@case_blueprint.route("/<cid>/add_misp_object_connector", methods=['POST'])
-@login_required
-@editor_required
-def add_misp_object_connector(cid):
-    """Add MISP Connector"""
-    if CommonModel.get_case(cid):
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "connectors" in request.json:
-                if CaseModel.add_misp_object_connector(cid, request.json, current_user):
-                    flowintel_log("audit", 200, "Add MISP object connector", User=current_user.email, CaseId=cid)
-                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
-            return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
-    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
-
-@case_blueprint.route("/<cid>/misp_object_connectors/<iid>/remove_connector", methods=['GET'])
-@login_required
-@editor_required
-def remove_misp_connector(cid, iid):
-    """Remove MISP Connector"""
-    if CommonModel.get_case(cid):
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.remove_misp_connector(cid, iid, current_user):
-                flowintel_log("audit", 200, "Remove MISP object connector", User=current_user.email, CaseId=cid)
-                return {"message": "Connector removed successfully", "toast_class": "success-subtle"}, 200
-            return {"message": "Error removing connector", "toast_class": "danger-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
-    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
-
-
-@case_blueprint.route("/<cid>/misp_object_connectors/<iid>/edit_connector", methods=['POST'])
-@login_required
-@editor_required
-def edit_misp_connector(cid, iid):
-    """Edit MISP Connector"""
-    if CommonModel.get_case(cid):
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "identifier" in request.json:
-                if CaseModel.edit_misp_connector(iid, request.json):
-                    flowintel_log("audit", 200, "Edit MISP object connector", User=current_user.email, CaseId=cid)
-                    return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
-                return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
-            return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
-    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
-
-
-@case_blueprint.route("/<cid>/misp_object_connectors/<iid>/call_module_misp", methods=['GET'])
-@login_required
-@editor_required
-def call_module_misp(cid, iid):
-    """Remove MISP Connector"""
-    case = CommonModel.get_case(cid)
-    if case:
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            res = CaseModel.call_module_misp(iid, case, current_user)
-            if res:
-                res["toast_class"] = "danger-subtle"
-                return jsonify(res), 400
-            flowintel_log("audit", 200, "Call module on MISP object connector", User=current_user.email, CaseId=cid)
-            return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
-    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/nb_objects", methods=['GET'])
 @login_required

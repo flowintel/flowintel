@@ -532,6 +532,13 @@ def get_galaxies_task(tid):
                     galaxies.append(loc_g.to_json())
                 index = clusters.index(cluster)
                 clusters[index] = cluster.to_json()
+        
+        # Galaxy without cluster
+        loc_galax = CommonModel.get_task_galaxies(tid)
+        for loc_g in loc_galax:
+            if not loc_g.to_json() in galaxies:
+                galaxies.append(loc_g.to_json())
+
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "task Not found", 'toast_class': "danger-subtle"}, 404
 

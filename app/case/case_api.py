@@ -135,6 +135,7 @@ class EditCase(Resource):
 
                     if "message" not in verif_dict:
                         CaseModel.edit(verif_dict, cid, current_user)
+                        CaseModel.edit_tags(verif_dict, cid, current_user)
                         return {"message": f"Case {cid} edited"}, 200
 
                     return verif_dict, 400
@@ -794,6 +795,7 @@ class CreateTask(Resource):
         "deadline_time": "Time(%H-%M)",
         "tags": "list of tags from taxonomies",
         "clusters": "list of tags from galaxies",
+        "galaxies": "list of galaxies name",
         "identifier": "Dictionnary with connector as key and identifier as value",
         "custom_tags" : "List of custom tags created on the instance",
         "time_required": "Time required to realize the task"

@@ -94,6 +94,37 @@
         {% endblock %}
 
         <script src="{{ url_for('static',filename='js/sidebar.js') }}"></script>
+
+        <script>
+            // Wrap markdown-it factory so every instance escapes HTML inside ```mermaid``` blocks.
+            (function(){
+                if(!window.markdownit) return
+                try{
+                    const orig = window.markdownit
+                    if(window.__markdownit_mermaid_sanitized) return
+                    window.markdownit = function(){
+                        const inst = orig.apply(this, arguments)
+                        try{
+                            if(!inst.__mermaid_render_sanitized){
+                                const origRender = inst.render.bind(inst)
+                                inst.render = function(src, env){
+                                    if(!src || typeof src !== 'string') return origRender(src, env)
+                                    const sanitized = src.replace(/```mermaid([\s\S]*?)```/g, function(match, inner){
+                                        const content = inner.replace(/^\n/, '')
+                                        const escaped = content.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                                        return '```mermaid\n' + escaped + '\n```'
+                                    })
+                                    return origRender(sanitized, env)
+                                }
+                                inst.__mermaid_render_sanitized = true
+                            }
+                        }catch(e){}
+                        return inst
+                    }
+                    window.__markdownit_mermaid_sanitized = true
+                }catch(e){}
+            })();
+        </script>
         
         <script>
             $( document ).ready(function() {

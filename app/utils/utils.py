@@ -105,6 +105,16 @@ def get_module_type():
         type_list.append(dir)
     return type_list
 
+def get_module_type_with_desc():
+    """Get module by type. Enumerate directory of modules."""
+    type_list = list()
+    for dir in os.listdir(MODULE_PATH):
+        with open(os.path.join(MODULE_PATH, dir, 'description'), 'r') as desc_file:
+            module_description = desc_file.read().strip()
+        loc = {"type": dir, "description": module_description}
+        type_list.append(loc)
+    return type_list
+
 @lru_cache
 def get_modules_list():
     """Get modules available"""

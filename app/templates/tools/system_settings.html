@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="case-core-style" style="border-radius: 0">
+    <h5 class="mb-0"><i class="fa-solid fa-gears me-2"></i>System Settings</h5>
+</div>
+<hr class="fading-line-2 mb-4 mt-4">
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-server me-2"></i>System</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">Environment</td>
+                                <td>
+                                    <span class="badge {% if system_info.flaskenv == 'production' %}bg-success{% elif system_info.flaskenv == 'development' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.flaskenv }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Session Type</td>
+                                <td>{{ system_info.session_type or 'Not configured' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Debug Mode</td>
+                                <td>
+                                    <span class="badge {% if system_info.debug %}bg-danger{% else %}bg-success{% endif %}">
+                                        {{ system_info.debug }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-sliders me-2"></i>Configuration</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">Max Upload Size</td>
+                                <td>
+                                    {% if system_info.file_upload_max_size %}
+                                        {{ (system_info.file_upload_max_size / 1024 / 1024) | round(2) }} MB
+                                    {% else %}
+                                        Not configured
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Org View Restriction</td>
+                                <td>
+                                    <span class="badge {% if system_info.limit_user_view_to_org %}bg-info{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.limit_user_view_to_org }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-database me-2"></i>Database</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">Type</td>
+                                <td>
+                                    <span class="badge {% if system_info.db_type == 'PostgreSQL' %}bg-primary{% elif system_info.db_type == 'MySQL/MariaDB' %}bg-info{% elif system_info.db_type == 'SQLite' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.db_type }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% if system_info.db_name %}
+                            <tr>
+                                <td class="fw-bold">Name</td>
+                                <td><code>{{ system_info.db_name }}</code></td>
+                            </tr>
+                            {% endif %}
+                            {% if system_info.db_host %}
+                            <tr>
+                                <td class="fw-bold">Host</td>
+                                <td><code>{{ system_info.db_host }}</code></td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fa-solid fa-circle-info me-2"></i>
+                This page displays read-only configuration. To modify settings, edit <code>conf/config.py</code> or set environment variables and restart the application.
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

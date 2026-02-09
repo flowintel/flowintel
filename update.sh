@@ -81,7 +81,7 @@ git submodule update --remote
 
 pip install -U pytaxonomies pymispgalaxies pymisp
 
-python3 app.py -tg
+python3 app.py -utg
 python3 app.py -py
 
 echo ""

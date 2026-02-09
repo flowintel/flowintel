@@ -4,12 +4,16 @@ def prepare_tags(request):
     tag_list = request.form.getlist("tags_select")
     cluster_list = request.form.getlist("clusters_select")
     custom_tags_list = request.form.getlist("custom_select")
+    galaxy_list = request.form.getlist("galaxies_select")
     if isinstance(CommonModel.check_tag(tag_list), bool):
-        if isinstance(CommonModel.check_cluster(cluster_list), bool):
-            return {
-                "tags": tag_list,
-                "clusters": cluster_list,
-                "custom_tags": custom_tags_list,
-            }
-        return "cluster error"
+        if isinstance(CommonModel.check_galaxy(galaxy_list), bool):
+            if isinstance(CommonModel.check_cluster(cluster_list), bool):
+                return {
+                    "tags": tag_list,
+                    "clusters": cluster_list,
+                    "custom_tags": custom_tags_list,
+                    "galaxies": galaxy_list,
+                }
+            return "cluster error"
+        return "galaxy error"
     return "tag error"

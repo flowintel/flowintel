@@ -46,6 +46,24 @@ class User(UserMixin, db.Model):
     def is_pure_org_admin(self):
         return self.is_org_admin() and not self.is_admin()
 
+    def is_case_admin(self):
+        r = Role.query.get(self.role_id)
+        if r and r.case_admin:
+            return True
+        return False
+
+    def is_queue_admin(self):
+        r = Role.query.get(self.role_id)
+        if r and r.queue_admin:
+            return True
+        return False
+
+    def is_queuer(self):
+        r = Role.query.get(self.role_id)
+        if r and r.queuer:
+            return True
+        return False
+
     @property
     def password(self):
         raise AttributeError('`password` is not a readable attribute')
@@ -238,6 +256,8 @@ class Task(db.Model):
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id==self.id)\
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
+        json_dict["galaxies"] = [galax.to_json() for galax in Galaxy.query.join(Task_Galaxy, Task_Galaxy.task_id==self.id)\
+                                                    .where(Galaxy.id==Task_Galaxy.galaxy_id).all()]
         json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Task_Connector_Instance, Task_Connector_Instance.instance_id==Connector_Instance.id)\
                                                         .where(Task_Connector_Instance.task_id==self.id).all()]
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
@@ -367,6 +387,9 @@ class Role(db.Model):
     admin = db.Column(db.Boolean, default=False)
     read_only = db.Column(db.Boolean, default=False)
     org_admin = db.Column(db.Boolean, default=False)
+    case_admin = db.Column(db.Boolean, default=False)
+    queue_admin = db.Column(db.Boolean, default=False)
+    queuer = db.Column(db.Boolean, default=False)
 
     def to_json(self):
         return {
@@ -375,7 +398,10 @@ class Role(db.Model):
             "description": self.description,
             "admin": self.admin,
             "read_only": self.read_only,
-            "org_admin": self.org_admin
+            "org_admin": self.org_admin,
+            "case_admin": self.case_admin,
+            "queue_admin": self.queue_admin,
+            "queuer": self.queuer
         }
 
 class File(db.Model):
@@ -544,6 +570,8 @@ class Task_Template(db.Model):
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
+        json_dict["galaxies"] = [galax.to_json() for galax in Galaxy.query.join(Task_Template_Galaxy, Task_Template_Galaxy.template_id==self.id)\
+                                                    .where(Galaxy.id==Task_Template_Galaxy.galaxy_id).all()]
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Task_Template_Custom_Tags, Task_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Task_Template_Custom_Tags.task_template_id==self.id).all()]
 
@@ -773,9 +801,19 @@ class Task_Galaxy_Tags(db.Model):
     cluster_id = db.Column(db.Integer, index=True)
     task_id = db.Column(db.Integer, index=True)
 
+class Task_Galaxy(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    galaxy_id = db.Column(db.Integer, index=True)
+    task_id = db.Column(db.Integer, index=True)
+
 class Case_Template_Galaxy_Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     cluster_id = db.Column(db.Integer, index=True)
+    template_id = db.Column(db.Integer, index=True)
+
+class Task_Template_Galaxy(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    galaxy_id = db.Column(db.Integer, index=True)
     template_id = db.Column(db.Integer, index=True)
 
 class Task_Template_Galaxy_Tags(db.Model):
@@ -1088,22 +1126,6 @@ class Misp_Attribute(db.Model):
 
         return json_dict
 
-class Case_Misp_Object_Connector_Instance(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    case_id = db.Column(db.Integer, index=True)
-    instance_id = db.Column(db.Integer, index=True)
-    identifier = db.Column(db.String)
-
-    def to_json(self):
-        json_dict = {
-            "id": self.id,
-            "case_id": self.case_id,
-            "instance_id": self.instance_id,
-            "identifier": self.identifier
-        }
-
-        return json_dict
-        
 class Misp_Object_Instance_Uuid(db.Model):
     # UUID of an object on a misp instance
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

@@ -93,6 +93,13 @@
         {% endif %}
     </div>
 
+    {% if config.SHOW_GDPR_NOTICE %}
+    <div class="alert alert-info d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
+        <i class="fa-solid fa-info-circle me-2"></i>
+        <span>{{ config.GDPR_NOTICE }}</span>
+    </div>
+    {% endif %}
+
     <!-- Description (collapsible) -->
     {% if case.description %}
     <div class="case-description-section">
@@ -121,17 +128,19 @@
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-notes" @click="active_tab('notes')"><i class="fa-solid fa-note-sticky fa-sm me-1"></i>Notes</button>
+            <button class="nav-link" id="tab-notes" @click="active_tab('notes')">
+                <i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title fs-6">Notes</span>
+            </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-misp-objects" @click="active_tab('misp-objects')">
-                <i class="fa-solid fa-cubes fa-sm me-1"></i>MISP-objects 
+                <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title fs-6">MISP-objects </span> 
                 <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
             </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-connectors" @click="active_tab('connectors')">
-                <i class="fa-solid fa-plug fa-sm me-1"></i>Connectors
+                <i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title fs-6">Connectors </span>
                 <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_connectors_list.length]]</span>
             </button>
         </li>
@@ -145,7 +154,9 @@
             <button class="nav-link" id="tab-history" @click="active_tab('history')"><i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i>History</button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-info" @click="active_tab('info')"><i class="fa-solid fa-circle-info fa-sm me-1"></i>Info</button>
+            <button class="nav-link" id="tab-info" @click="active_tab('info')">
+                <i class="fa-solid fa-circle-info fa-sm me-1"></i><span class="section-title fs-6">Info</span>
+            </button>
         </li>
     </ul>
 
@@ -619,7 +630,7 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, nextTick, onMounted } = Vue
+        const { createApp, ref, computed, nextTick, onMounted, watch } = Vue
         import case_tasks from '/static/js/case/case_tasks.js'
         import hedgedoc_template from '/static/js/case/hedgedoc_template.js'
         import action_buttons from '/static/js/case/action_buttons.js'
@@ -696,6 +707,14 @@
                 const all_notes = ref("")
                 let editor
                 const note_editor_render = ref("")
+                // Re-run mermaid on live-preview updates (editing mode)
+                watch(note_editor_render, async () => {
+                    await nextTick()
+                    try{
+                        // run mermaid only inside the preview container
+                        md.mermaid.run({ querySelector: '.markdown-render .mermaid' })
+                    }catch(e){}
+                })
                 const edit_mode = ref(false)
 
                 const md = window.markdownit()			// Library to Parse and display markdown

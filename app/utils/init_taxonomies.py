@@ -82,9 +82,7 @@ def create_tag(taxonomy: Taxonomy, taxo_id: int, taxonomies: Taxonomies):
             create_tag_db(p, loc_tag, taxonomy, taxonomies, taxo_id)
 
 
-def create_taxonomies(install=False):
-    print("[+] Create/Update Taxonomies...")
-    taxonomies = get_taxonomies()
+def create_taxonomies_core(taxonomies, install=False):
     for taxonomy in list(taxonomies.keys()):
         t = Taxonomy.query.filter_by(name=taxonomy).first()
         if not t:
@@ -111,7 +109,7 @@ def create_taxonomies(install=False):
                     t.uuid = taxonomies.get(taxonomy).taxonomy["uuid"]
                     db.session.commit()
 
-                if not int(t.version) == taxonomies.get(taxonomy).version:
+                if not t.version == taxonomies.get(taxonomy).version:
                     create_tag(taxonomy, t.id, taxonomies)
 
                     t.version = taxonomies.get(taxonomy).version
@@ -121,10 +119,25 @@ def create_taxonomies(install=False):
                 for tag in taxonomies.get(taxonomy).machinetags():
                     delete_double_tag(tag)
 
+def create_taxonomies(install=False):
+    if install:
+        print("[+] Installing taxonomies...")
+    else:   
+        print("[+] Updating taxonomies...")
+    taxonomies = get_taxonomies()
+    print("[*] Load built-in taxonomies...")
+    create_taxonomies_core(taxonomies, install)
 
-def create_galaxies(install=False):
-    print("[+] Create/Update Galaxies...")
-    galaxies, clusters = get_galaxies()
+    custom_taxonomies_path = os.path.join(os.getcwd(), 'modules/custom_taxonomies')
+    if not os.path.exists(custom_taxonomies_path):
+        return
+    for custom_taxonomy in os.listdir(custom_taxonomies_path):
+        print(f"[*] Load custom taxonomy: modules/custom_taxonomies/{custom_taxonomy}...")
+        custom_taxonomies = Taxonomies(manifest_path=os.path.join(custom_taxonomies_path, custom_taxonomy, 'MANIFEST.json'))
+        create_taxonomies_core(custom_taxonomies, install)
+
+
+def create_galaxies_core(galaxies, clusters, install=False):
     for galaxy in list(galaxies.keys()):
         current_galaxy = galaxies.get(galaxy)
         galaxy_db = Galaxy.query.filter_by(uuid=current_galaxy.uuid).first()
@@ -182,6 +195,35 @@ def create_galaxies(install=False):
                 cluster_db.meta = meta
                 db.session.commit()
 
+def create_galaxies(install=False):
+    if install:
+        print("[+] Installing Galaxies...")
+    else:
+        print("[+] Updating Galaxies...")
+    galaxies, clusters = get_galaxies()
+    print("[*] Load built-in galaxies...")
+    create_galaxies_core(galaxies, clusters, install)
+
+    custom_galaxies_path = os.path.join(os.getcwd(), 'modules/custom_galaxies')
+    if not os.path.exists(custom_galaxies_path):
+        return
+    
+    for custom_galaxy in os.listdir(custom_galaxies_path):
+        print(f"[*] Load custom galaxy: modules/custom_galaxies/{custom_galaxy}...")
+        custom_galaxies_list = []
+        root_dir_galaxies = os.path.join(custom_galaxies_path, custom_galaxy, 'galaxies')
+        for galaxy_file in glob.glob(os.path.join(root_dir_galaxies, '*.json')):
+            with open(galaxy_file, 'r') as f:
+                custom_galaxies_list.append(json.load(f))
+
+        custom_clusters_list = []
+        root_dir_clusters = os.path.join(custom_galaxies_path, custom_galaxy, 'clusters')
+        for galaxy_file in glob.glob(os.path.join(root_dir_clusters, '*.json')):
+            with open(galaxy_file, 'r') as f:
+                custom_clusters_list.append(json.load(f))
+
+        custom_galaxies, custom_clusters = Galaxies(galaxies=custom_galaxies_list), Clusters(clusters=custom_clusters_list)
+        create_galaxies_core(custom_galaxies, custom_clusters, install)
 
 
 def generate_palette_from_string(s, items):

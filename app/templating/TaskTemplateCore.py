@@ -3,9 +3,11 @@ import datetime
 from typing import List
 from sqlalchemy import and_, desc
 
+from app.utils.utils import isUUID
+
 from .. import db
 from ..db_class.db import (
-    Case_Task_Template, Task_Template, Note_Template, Task_Template_Url_Tool, Subtask_Template,
+    Case_Task_Template, Galaxy, Task_Template, Note_Template, Task_Template_Galaxy, Task_Template_Url_Tool, Subtask_Template,
     Task_Template_Tags, Task_Template_Galaxy_Tags, Task_Template_Custom_Tags,
     Tags, Cluster, Custom_Tags
 )
@@ -67,6 +69,14 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
     def delete_tag(self, tag, class_id) -> None:
         task_tag = CommonModel.get_task_template_tags_both(class_id, tag.id)
         Task_Template_Tags.query.filter_by(id=task_tag.id).delete()
+        db.session.commit()
+
+    def add_galaxy(self, galaxy, class_id) -> None:
+        task_galaxy = Task_Template_Galaxy(
+            galaxy_id=galaxy.id,
+            template_id=class_id
+        )
+        db.session.add(task_galaxy)
         db.session.commit()
 
     def add_cluster(self, cluster, class_id) -> str:
@@ -148,10 +158,30 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
             
             self.add_tag(tag, template.id)
 
+        # keep track of clusters explicitly selected by the user
+        selected_clusters = []
         for cluster in form_dict["clusters"]:
             cluster = CommonModel.get_cluster_by_name(cluster)
-            
             self.add_cluster(cluster, template.id)
+            selected_clusters.append(cluster)
+
+        # Attach galaxies: for each galaxy selected, if no cluster from this galaxy
+        # was explicitly selected, attach all clusters of that galaxy to the task
+        for galaxy_name in form_dict.get("galaxies", []):
+            # find galaxy by name
+            galaxy = Galaxy.query.filter_by(name=galaxy_name).first()
+            if not galaxy:
+                continue
+            # check whether any selected cluster belongs to this galaxy
+            has_selected_cluster = False
+            for sc in selected_clusters:
+                if sc and sc.galaxy_id == galaxy.id:
+                    has_selected_cluster = True
+                    break
+            if has_selected_cluster:
+                continue
+            # no clusters chosen for this galaxy: attach galaxy to task
+            self.add_galaxy(galaxy, template.id)
 
         for custom_tag_name in form_dict["custom_tags"]:
             custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
@@ -169,6 +199,51 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         
         self._edit(form_dict, tid)
 
+        # Handle galaxy-level markers: use Task_Template_Galaxy table to store galaxy markers
+        # Build set of galaxy ids requested
+        requested_galaxies = form_dict.get("galaxies", [])
+
+        # Convert selected clusters to cluster objects
+        selected_clusters = []
+        for c_name in form_dict.get("clusters", []):
+            if isUUID(c_name):
+                c = Cluster.query.filter_by(uuid=c_name).first()
+            else:
+                c = CommonModel.get_cluster_by_name(c_name)
+            if c:
+                selected_clusters.append(c)
+
+        # Existing markers for this task
+        existing_markers = Task_Template_Galaxy.query.filter_by(template_id=tid).all()
+        existing_galaxy_ids = {m.galaxy_id for m in existing_markers}
+
+        # Ensure markers for requested galaxies
+        requested_galaxy_ids = set()
+        for g_name in requested_galaxies:
+            if isUUID(g_name):
+                galaxy = Galaxy.query.filter_by(uuid=g_name).first()
+            else:
+                galaxy = Galaxy.query.filter_by(name=g_name).first()
+            if not galaxy:
+                continue
+            requested_galaxy_ids.add(galaxy.id)
+            # Check if any selected cluster belongs to this galaxy
+            has_selected_cluster = any(sc.galaxy_id == galaxy.id for sc in selected_clusters)
+            if has_selected_cluster:
+                # remove existing marker if any
+                if galaxy.id in existing_galaxy_ids:
+                    Task_Template_Galaxy.query.filter_by(template_id=tid, galaxy_id=galaxy.id).delete()
+            else:
+                # ensure marker exists
+                if galaxy.id not in existing_galaxy_ids:
+                    marker = Task_Template_Galaxy(galaxy_id=galaxy.id, template_id=tid)
+                    db.session.add(marker)
+
+        # Remove markers that are no longer requested
+        for m in existing_markers:
+            if m.galaxy_id not in requested_galaxy_ids:
+                Task_Template_Galaxy.query.filter_by(id=m.id).delete()
+
         CommonModel.update_last_modif_task(template.id)
 
         db.session.commit()
@@ -182,6 +257,7 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         Task_Template_Tags.query.filter_by(task_id=tid).delete()
         Task_Template_Galaxy_Tags.query.filter_by(template_id=tid).delete()
         Task_Template_Custom_Tags.query.filter_by(task_template_id=tid).delete()
+        Task_Template_Galaxy.query.filter_by(template_id=tid).delete()
         Note_Template.query.filter_by(template_id=tid)
         template = CommonModel.get_task_template(tid)
         db.session.delete(template)

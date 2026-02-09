@@ -5,7 +5,7 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/markdown-it.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 
 {{ super() }}
@@ -50,9 +50,11 @@
             :type_object="'task_template'"
             @st="(msg) => selected_tags=selected_tags.concat(msg)"
             @sc="(msg) => selected_clusters=selected_clusters.concat(msg)"
+            @sg="(msg) => selected_galaxies=selected_galaxies.concat(msg)"
             @sct="(msg) => selected_custom_tags=selected_custom_tags.concat(msg)"
             @delete_st="(msg) => selected_tags.splice(msg, 1)"
             @delete_sc="(msg) => selected_clusters.splice(msg, 1)"
+            @delete_sg="(msg) => selected_galaxies.splice(msg, 1)"
             @delete_sct="(msg) => selected_custom_tags.splice(msg, 1)"
         >
         </edition_select>
@@ -79,6 +81,7 @@
         setup() {
             const selected_tags = ref([])
             const selected_clusters = ref([])
+            const selected_galaxies = ref([])
             const selected_custom_tags = ref([])
 
             let editor
@@ -98,6 +101,10 @@
                     });
                     $.each(selected_custom_tags.value, function(i, v){
                         var input = $("<input>").attr({"type":"hidden","name":"custom_select"}).val(v.name);
+                        $('#form').append(input);    
+                    });
+                    $.each(selected_galaxies.value, function(i, v){
+                        var input = $("<input>").attr({"type":"hidden","name":"galaxies_select"}).val(v.uuid);
                         $('#form').append(input);    
                     });
                     return true;
@@ -124,6 +131,7 @@
 
                 selected_tags,
                 selected_clusters,
+                selected_galaxies,
                 selected_custom_tags,
 
                 note_editor_render,

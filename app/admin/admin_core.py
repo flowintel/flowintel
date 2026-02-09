@@ -159,7 +159,7 @@ def delete_default_org(user_org_id):
     for user in org.users:
         cp += 1
     if org.default_org and not cp > 0:
-        delete_org_core(org)
+        delete_org_core(org.id)
         return True
     return False
 
@@ -210,10 +210,10 @@ def admin_edit_user_core(form_dict, id):
         org = get_org(prev_user_org_id)
         if not org.default_org:
             org = create_default_org(user)
-        org_change = str(org.id)
+        org_change = org.id
     else:
-        org_change = form_dict["org"]
-        if not get_org(form_dict["org"]).id == prev_user_org_id:
+        org_change = int(form_dict["org"])
+        if not get_org(org_change).id == prev_user_org_id:
             flag = True
 
     user.first_name=form_dict["first_name"]
@@ -223,7 +223,7 @@ def admin_edit_user_core(form_dict, id):
     user.matrix_id = form_dict["matrix_id"] or None  # Convert empty string to None to avoid UNIQUE constraint issues
     if "password" in form_dict and form_dict["password"]:
         user.password=form_dict["password"]
-    user.role_id = form_dict["role"]
+    user.role_id = int(form_dict["role"])
     user.org_id = org_change
 
     db.session.commit()
@@ -268,7 +268,10 @@ def add_role_core(form_dict):
         description = form_dict["description"],
         admin = form_dict.get("admin", False),
         read_only = form_dict.get("read_only", False),
-        org_admin = form_dict.get("org_admin", False)
+        org_admin = form_dict.get("org_admin", False),
+        case_admin = form_dict.get("case_admin", False),
+        queue_admin = form_dict.get("queue_admin", False),
+        queuer = form_dict.get("queuer", False)
     )
     db.session.add(role)
     db.session.commit()
@@ -298,6 +301,9 @@ def edit_role_core(role_id, data):
         role.admin = data.get("admin", False)
         role.read_only = data.get("read_only", False)
         role.org_admin = data.get("org_admin", False)
+        role.case_admin = data.get("case_admin", False)
+        role.queue_admin = data.get("queue_admin", False)
+        role.queuer = data.get("queuer", False)
         db.session.commit()
         return True
     return False

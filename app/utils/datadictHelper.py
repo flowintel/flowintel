@@ -16,6 +16,13 @@ def creation_verification_tags_connectors(data_dict):
     else:
         data_dict["clusters"] = []
 
+    if "galaxies" in data_dict:
+        loc = CommonModel.check_galaxy(data_dict["galaxies"])
+        if not isinstance(loc, bool):
+            return {"message": f"Galaxy '{loc}' doesn't exist"}
+    else:
+        data_dict["galaxies"] = []
+
     if "custom_tags" in data_dict:
         loc = CommonModel.check_custom_tags(data_dict["custom_tags"])
         if not isinstance(loc, bool):

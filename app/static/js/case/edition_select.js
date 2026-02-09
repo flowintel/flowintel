@@ -5,7 +5,7 @@ const { ref, nextTick, onMounted } = Vue
 export default {
     delimiters: ['[[', ']]'],
     props:{type_object: String},
-	emits: ['st', 'sc', 'sct', "delete_st", "delete_sc", "delete_sct"],
+	emits: ['st', 'sc', 'sct', 'sg', "delete_st", "delete_sc", "delete_sg", "delete_sct"],
 	setup(props, {emit}) {
 		const taxonomies = ref([])
         const galaxies = ref([])
@@ -139,6 +139,7 @@ export default {
                 selected_clusters.value = loc["clusters"]
                 selected_galaxies.value = loc["galaxies"]
                 emit('sc', loc["clusters"])
+                emit('sg', loc["galaxies"])
             }
             if(selected_galaxies.value.length > 0){
                 let loc_list_name = []
@@ -188,6 +189,8 @@ export default {
                 }
             }
             selected_galaxies.value.splice(loc, 1)
+            emit("delete_sg", loc)
+
             let loc_list_name = []
             $.each(selected_galaxies.value, function (index, value) {
                 loc_list_name.push(value.name)
@@ -301,6 +304,7 @@ export default {
                     if(galaxies.value[c].name == loc_name){
                         if(!selected_galaxies.value.includes(galaxies.value[c]) ){
                             selected_galaxies.value.push(galaxies.value[c])
+                            emit("sg", galaxies.value[c])
                             break
                         }
                     }

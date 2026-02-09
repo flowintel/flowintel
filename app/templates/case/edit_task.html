@@ -68,9 +68,11 @@
             :type_object="'task'"
             @st="(msg) => selected_tags=selected_tags.concat(msg)"
             @sc="(msg) => selected_clusters=selected_clusters.concat(msg)"
+            @sg="(msg) => selected_galaxies=selected_galaxies.concat(msg)"
             @sct="(msg) => selected_custom_tags=selected_custom_tags.concat(msg)"
             @delete_st="(msg) => selected_tags.splice(msg, 1)"
             @delete_sc="(msg) => selected_clusters.splice(msg, 1)"
+            @delete_sg="(msg) => selected_galaxies.splice(msg, 1)"
             @delete_sct="(msg) => selected_custom_tags.splice(msg, 1)"
         >
         </edition_select>
@@ -97,6 +99,7 @@
         setup() {
             const selected_tags = ref([])
             const selected_clusters = ref([])
+            const selected_galaxies = ref([])
             const selected_custom_tags = ref([])
 
             let editor
@@ -130,6 +133,10 @@
                     var input = $("<input>").attr({"type":"hidden","name":"custom_select"}).val(v.name);
                     $('#form').append(input);    
                 });
+                $.each(selected_galaxies.value, function(i, v){
+                    var input = $("<input>").attr({"type":"hidden","name":"galaxies_select"}).val(v.uuid);
+                    $('#form').append(input);    
+                });
                 
                 // Submit the form
                 document.getElementById('form').submit();
@@ -160,6 +167,7 @@
 
                 selected_tags,
                 selected_clusters,
+                selected_galaxies,
                 selected_custom_tags,
 
                 note_editor_render,

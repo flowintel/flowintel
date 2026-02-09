@@ -54,8 +54,6 @@ A more detailed documentation can be found here: [https://flowintel.github.io/fl
 
 There is also a recorded training [available on YouTube](https://www.youtube.com/watch?v=Dx03GqW1SN0) 
 
-
-
 ## Using vite
 
 To build assets using vite:
@@ -65,7 +63,22 @@ cd app/assets
 npm run build:static
 ```
 
+## Adding Custom Taxonomies/Galaxies
 
+If you would like to add your own galaxies and taxonomies to Flowintel, add it to:
+
+- `flowintel/modules/custom_taxonomies/`
+
+- `flowintel/modules/custom_galaxies/`
+
+Just keep in mind that for taxonomies a `MANIFEST.json` is required and for galaxies two folders `clusters` and `galaxies`
+
+See: [misp-galaxy](https://github.com/MISP/misp-galaxy), [misp-taxonomies](https://github.com/MISP/misp-taxonomies)
+
+## Roadmap
+
+Overview of features currently under development.
+https://github.com/orgs/flowintel/projects/5
 
 ## License
 
