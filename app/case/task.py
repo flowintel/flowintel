@@ -1,7 +1,10 @@
 import ast
+import os
+import uuid
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 
-from app.db_class.db import Case
+from app.db_class.db import Case, Note
+from app import db
 from .form import TaskEditForm, TaskForm
 from flask_login import login_required, current_user
 from .CaseCore import CaseModel
@@ -11,6 +14,8 @@ from ..decorators import editor_required
 from ..utils.utils import form_to_dict, validate_file_size
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
+from ..utils.file_converter import convert_file_to_note_content
+from .TaskCore import FILE_FOLDER
 
 task_blueprint = Blueprint(
     'task',
@@ -340,6 +345,50 @@ def delete_file(tid, fid):
         flowintel_log("audit", 403, "Delete task file: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "File not found", "toast_class": "danger-subtle"}, 404
+
+
+@task_blueprint.route("/task/<tid>/convert_file_to_note/<fid>", methods=['POST'])
+@login_required
+@editor_required
+def convert_file_to_note(tid, fid):
+    """Convert a file to a task note"""
+    task = CommonModel.get_task(tid)
+    file = CommonModel.get_file(fid)
+    
+    if not file or file not in task.files:
+        return {"message": "File not found", "toast_class": "danger-subtle"}, 404
+    
+    if not (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Convert file to note: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    
+    file_name = file.name
+    file_extension = os.path.splitext(file_name)[1].lower().lstrip('.')
+    
+    if file_extension not in ['txt', 'csv', 'json']:
+        return {"message": "Only TXT, CSV, and JSON files can be converted", "toast_class": "warning-subtle"}, 400
+    
+    file_path = os.path.join(FILE_FOLDER, file.uuid)    
+    success, content = convert_file_to_note_content(file_path, file_extension, file_name)
+    
+    if not success:
+        flowintel_log("audit", 400, "File conversion failed", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid, FileName=file_name, Error=content)
+        return {"message": f"Conversion failed: {content}", "toast_class": "danger-subtle"}, 400
+    
+    note = Note(
+        uuid=str(uuid.uuid4()),
+        note=content,
+        task_id=task.id,
+        task_order_id=task.nb_notes + 1
+    )
+    task.nb_notes += 1
+    db.session.add(note)
+    db.session.commit()
+    
+    TaskModel.update_task_time_modification(task, current_user, f"Note created from file '{file_name}'")
+    
+    flowintel_log("audit", 200, "File converted to note", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid, FileName=file_name, NoteId=note.id)
+    return {"message": f"File '{file_name}' converted to note successfully", "toast_class": "success-subtle", "note": note.to_json()}, 200
 
 
 @task_blueprint.route("/<cid>/add_files/<tid>", methods=['POST'])
