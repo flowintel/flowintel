@@ -69,9 +69,14 @@
                                     </a>
                                 </div>
                                 <div>
-                                    <button class="btn btn-danger btn-sm" type="button" title="Delete the org" data-bs-toggle="modal" :data-bs-target="'#delete_org_modal_'+org.id">
-                                        <i class="fa-solid fa-trash fa-fw"></i>
-                                    </button>
+                                    <span :title="getDeleteTooltip(org)">
+                                        <button class="btn btn-danger btn-sm" type="button" 
+                                            :disabled="org.owns_cases || org.has_users"
+                                            data-bs-toggle="modal" 
+                                            :data-bs-target="(org.owns_cases || org.has_users) ? '' : '#delete_org_modal_'+org.id">
+                                            <i class="fa-solid fa-trash fa-fw"></i>
+                                        </button>
+                                    </span>
                                 </div>
                             </div>
                             <div class="modal fade" :id="'delete_org_modal_'+org.id" tabindex="-1" aria-labelledby="delete_org_modal" aria-hidden="true">
@@ -218,6 +223,16 @@
                     const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
                 }
 
+                function getDeleteTooltip(org) {
+                    if (!org.has_users && !org.owns_cases) {
+                        return 'Delete the org'
+                    }
+                    const reasons = []
+                    if (org.has_users) reasons.push('users')
+                    if (org.owns_cases) reasons.push('cases')
+                    return `Cannot delete: This organisation has ${reasons.join(' and ')}`
+                }
+
                 async function delete_org(org){
                     const res = await fetch('/admin/delete_org/'+org.id, {
                         method: 'POST',
@@ -237,10 +252,16 @@
                         method: 'POST',
                         headers: { "X-CSRFToken": $("#csrf_token").val() }
                     })
-                    if(await res.status == 200){
+                    if(res.status == 200){
                         let index = users_table.value[org_id].indexOf(user)
                         if(index > -1)
                             users_table.value[org_id].splice(index, 1)
+                        
+                        const org = orgs_list.value.orgs.find(o => o.id === org_id)
+                        if(org && users_table.value[org_id].length === 0) {
+                            org.has_users = false
+                        }
+                        
                         $("#delete_user_modal_"+user.id).modal("hide")
                     }
                     display_toast(res)
@@ -296,7 +317,8 @@
                     current_page,
                     fetchOrgs,
                     onInput,
-                    visiblePages
+                    visiblePages,
+                    getDeleteTooltip
                 }
             }
         }).mount('#main-container')
