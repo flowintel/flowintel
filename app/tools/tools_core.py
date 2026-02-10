@@ -624,3 +624,63 @@ def search_attr_with_value(attr_value: str, current_user: User) -> list:
             list_case.append(case.to_json())
             seen_case_ids.add(case.id)
     return list_case
+
+
+#######################
+# Community Statistics #
+#######################
+
+def get_community_stats():
+    """Get community statistics for organizations and users"""
+    # Total counts
+    total_orgs = Org.query.count()
+    total_users = User.query.count()
+    
+    # Users per organization
+    users_per_org = db.session.query(
+        Org.name.label('org_name'),
+        db.func.count(User.id).label('count')
+    ).join(User, User.org_id == Org.id)\
+     .group_by(Org.id, Org.name)\
+     .order_by(db.func.count(User.id).desc())\
+     .all()
+    
+    # Users per role
+    users_per_role = db.session.query(
+        Role.name.label('role_name'),
+        db.func.count(User.id).label('count')
+    ).join(User, User.role_id == Role.id)\
+     .group_by(Role.id, Role.name)\
+     .order_by(db.func.count(User.id).desc())\
+     .all()
+    
+    # Open cases per organization (owner)
+    cases_per_org = db.session.query(
+        Org.name.label('org_name'),
+        db.func.count(Case.id).label('count')
+    ).join(Case, Case.owner_org_id == Org.id)\
+     .filter(Case.completed == False)\
+     .group_by(Org.id, Org.name)\
+     .order_by(db.func.count(Case.id).desc())\
+     .all()
+    
+    # Open tasks per user
+    tasks_per_user = db.session.query(
+        User.first_name,
+        User.last_name,
+        db.func.count(Task.id).label('count')
+    ).join(Task_User, Task_User.user_id == User.id)\
+     .join(Task, Task.id == Task_User.task_id)\
+     .filter(Task.completed == False)\
+     .group_by(User.id, User.first_name, User.last_name)\
+     .order_by(db.func.count(Task.id).desc())\
+     .all()
+    
+    return {
+        "total_orgs": total_orgs,
+        "total_users": total_users,
+        "users_per_org": [{"org_name": row.org_name, "count": row.count} for row in users_per_org],
+        "users_per_role": [{"role_name": row.role_name, "count": row.count} for row in users_per_role],
+        "cases_per_org": [{"org_name": row.org_name, "count": row.count} for row in cases_per_org],
+        "tasks_per_user": [{"user_name": f"{row.first_name} {row.last_name}", "count": row.count} for row in tasks_per_user]
+    }

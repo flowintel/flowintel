@@ -110,6 +110,12 @@ def get_case_by_tags():
         return res
     return {}
 
+@tools_blueprint.route("/community_stats")
+@login_required
+def community_stats():
+    res = ToolsModel.get_community_stats()
+    return res
+
 
 
 #################
