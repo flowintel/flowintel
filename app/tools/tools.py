@@ -113,8 +113,10 @@ def get_case_by_tags():
 @tools_blueprint.route("/community_stats")
 @login_required
 def community_stats():
-    res = ToolsModel.get_community_stats()
-    return res
+    if current_user.is_admin():
+        res = ToolsModel.get_community_stats()
+        return res
+    return {}
 
 
 

@@ -27,11 +27,15 @@
         {% if current_user.is_admin() %}
             <button class="nav-link" id="tab-admin" @click="active_tab('admin')">Admin</button>
         {%else%}
-            <button class="nav-link disabled" id="tab-admin" @click="active_tab('admin')">Admin</button>
+            <button class="nav-link disabled" id="tab-admin" @click="active_tab('admin')"><i class="fa-solid fa-lock me-1"></i>Admin</button>
         {%endif%}
     </li>
     <li class="nav-item">
-        <button class="nav-link" id="tab-community" @click="active_tab('community')">Community</button>
+        {% if current_user.is_admin() %}
+            <button class="nav-link" id="tab-community" @click="active_tab('community')">Community</button>
+        {%else%}
+            <button class="nav-link disabled" id="tab-community" @click="active_tab('community')"><i class="fa-solid fa-lock me-1"></i>Community</button>
+        {%endif%}
     </li>
 </ul>
 
