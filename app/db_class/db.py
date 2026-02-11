@@ -368,13 +368,23 @@ class Org(db.Model):
     users = db.relationship('User', backref='Org', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     default_org = db.Column(db.Boolean, default=True)
 
+    def owns_cases(self):
+        return Case.query.filter_by(owner_org_id=self.id).count() > 0
+
+    def has_users(self):
+        return self.users.count() > 0
+
     def to_json(self):
+        owns_cases = self.owns_cases()
+        has_users = self.has_users()
         return {
             "id": self.id, 
             "name": self.name, 
             "description": self.description,
             "uuid": self.uuid,
-            "default_org": self.default_org
+            "default_org": self.default_org,
+            "owns_cases": owns_cases,
+            "has_users": has_users
         }
 
 
