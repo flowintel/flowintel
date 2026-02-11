@@ -80,17 +80,14 @@ def test_edit_other_user_case_to_privileged(client):
                            content_type='application/json',
                            headers={"X-API-KEY": "admin_api_key"},
                            json={"title": "Test Case admin"}
-                        )\n    assert response.status_code == 201
+                        )
+    assert response.status_code == 201
     case_id = response.json["case_id"]
-    
-    # Get case admin user's org dynamically
-    caseadmin_user = User.query.filter_by(api_key="caseadmin_api_key").first()
-    caseadmin_org_id = caseadmin_user.org_id
     
     response = client.post(f"/api/case/{case_id}/add_org", 
                            content_type='application/json',
                            headers={"X-API-KEY": "admin_api_key"},
-                           json={"oid": str(caseadmin_org_id)}
+                           json={"oid": '5'}
                         )
     assert response.status_code == 200
     

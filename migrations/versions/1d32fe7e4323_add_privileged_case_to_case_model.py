@@ -1,7 +1,7 @@
 """Add privileged_case to Case model
 
 Revision ID: 1d32fe7e4323
-Revises: case_admin_001
+Revises: 233237ff2760
 Create Date: 2026-02-02 12:17:52.850335
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '1d32fe7e4323'
-down_revision = 'case_admin_001'
+down_revision = '233237ff2760'
 branch_labels = None
 depends_on = None
 
