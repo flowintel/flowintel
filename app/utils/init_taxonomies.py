@@ -132,6 +132,8 @@ def create_taxonomies(install=False):
     if not os.path.exists(custom_taxonomies_path):
         return
     for custom_taxonomy in os.listdir(custom_taxonomies_path):
+        if not os.path.isdir(os.path.join(custom_taxonomies_path, custom_taxonomy)):
+            continue
         print(f"[*] Load custom taxonomy: modules/custom_taxonomies/{custom_taxonomy}...")
         custom_taxonomies = Taxonomies(manifest_path=os.path.join(custom_taxonomies_path, custom_taxonomy, 'MANIFEST.json'))
         create_taxonomies_core(custom_taxonomies, install)
