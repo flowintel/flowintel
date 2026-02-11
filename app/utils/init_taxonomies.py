@@ -211,6 +211,8 @@ def create_galaxies(install=False):
         return
     
     for custom_galaxy in os.listdir(custom_galaxies_path):
+        if not os.path.isdir(os.path.join(custom_galaxies_path, custom_galaxy)):
+            continue
         print(f"[*] Load custom galaxy: modules/custom_galaxies/{custom_galaxy}...")
         custom_galaxies_list = []
         root_dir_galaxies = os.path.join(custom_galaxies_path, custom_galaxy, 'galaxies')
