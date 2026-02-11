@@ -206,12 +206,13 @@ export default {
         <fieldset class="analyzer-select-case">
             <legend class="analyzer-select-case">
                 <i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes</span> 
-				<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                	<button class="btn btn-outline-primary btn-sm me-1" title="Add notes" @click="add_notes_task()" style="margin-bottom: 1px; border-radius: 10px">
+				<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+                	<button class="btn btn-outline-primary btn-sm ms-3 me-1" title="Add notes" @click="add_notes_task()" style="margin-bottom: 1px; border-radius: 10px">
 						<i class="fa-solid fa-plus fa-fw"></i>
 					</button>
 				</template>
-                <a class="btn btn-outline-primary btn-sm" :href="'/analyzer/misp-modules?case_id='+task.case_id+'&task_id='+task.id" 
+                <a v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin" 
+                   class="btn btn-outline-primary btn-sm" :href="'/analyzer/misp-modules?case_id='+task.case_id+'&task_id='+task.id" 
 					style="margin-bottom: 1px;border-radius: 10px" title="Analyze notes">
                     <i class="fa-solid fa-magnifying-glass fa-fw"></i>
                 </a>
@@ -219,15 +220,15 @@ export default {
             <!-- Task contains notes -->
             <div v-if="task.notes.length">
                 <template v-for="task_note, key in task.notes">
-                    <h5>#[[key+1]]</h5>
                     <!-- Note is not empty -->
                     <template v-if="task_note.note">
                         <!-- Edit existing note -->
                         <template v-if="edit_mode == task_note.id">
-                            <div>
-                                <button class="btn btn-primary" @click="modif_note(task, task_note.id, key)" type="button" :id="'note_'+task.id">
+                            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                <h5 style="margin: 0; margin-right: 10px;">#[[key+1]]</h5>
+                                <button class="btn btn-primary btn-sm" @click="modif_note(task, task_note.id, key)" type="button" :id="'note_'+task.id">
                                     <div hidden>[[task.title]]</div>
-                                    Save
+                                    <small><i class="fa-solid fa-floppy-disk"></i></small> Save
                                 </button>
                             </div>
                             <div style="display: flex;">
@@ -237,53 +238,58 @@ export default {
                         </template>
                         <!-- Render an existing note -->
                         <template v-else>
-                            <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                                <button class="btn btn-primary btn-sm" @click="edit_note(task, task_note.id, key)" :id="'note_'+task.id" style="margin-bottom: 3px;">
-                                    <div hidden>[[task.title]]</div>
-                                    <small><i class="fa-solid fa-pen"></i></small> Edit
-                                </button>
-                                <div class="btn-group">
-                                    <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="margin-bottom: 3px;margin-left:3px">
-                                        <small><i class="fa-solid fa-download"></i></small> Export
+                            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                <h5 style="margin: 0; margin-right: 10px;">#[[key+1]]</h5>
+                                <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+                                    <button class="btn btn-primary btn-sm" @click="edit_note(task, task_note.id, key)" :id="'note_'+task.id">
+                                        <div hidden>[[task.title]]</div>
+                                        <small><i class="fa-solid fa-pen"></i></small> Edit
                                     </button>
-                                    <ul class="dropdown-menu">
-                                        <li>
-                                            <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'pdf', task_note.id)" title="Export markdown as pdf">PDF</button>
-                                            <button v-else class="btn btn-link" disabled>
-                                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                                <span role="status">Loading...</span>
-                                            </button>
-                                        </li>
-                                        <li>
-                                            <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'docx', task_note.id)" title="Export markdown as docx">DOCX</button>
-                                            <button v-else class="btn btn-link" disabled>
-                                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                                <span role="status">Loading...</span>
-                                            </button>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-bottom: 3px;margin-left:3px">
-                                    <small><i class="fa-solid fa-trash"></i></small> Delete
-                                </button>
-
-                            </template> 
+                                    <div class="btn-group" style="margin-left: 3px;">
+                                        <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <small><i class="fa-solid fa-download"></i></small> Export
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'pdf', task_note.id)" title="Export markdown as pdf">PDF</button>
+                                                <button v-else class="btn btn-link" disabled>
+                                                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                                    <span role="status">Loading...</span>
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(task, 'docx', task_note.id)" title="Export markdown as docx">DOCX</button>
+                                                <button v-else class="btn btn-link" disabled>
+                                                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                                    <span role="status">Loading...</span>
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-left: 3px;">
+                                        <small><i class="fa-solid fa-trash"></i></small> Delete
+                                    </button>
+                                </template>
+                            </div>
                             <p class="markdown-render-result" v-html="md.render(task_note.note)"></p>
                         </template>
                     </template>
                     <!-- Note is empty -->
                     <template v-else>
-                        <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                            <div>
-                                <button class="btn btn-primary btn-sm" @click="modif_note(task, task_note.id, key)" type="button" :id="'note_'+task.id" style="margin-bottom: 3px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <h5 style="margin: 0; margin-right: 10px;">#[[key+1]]</h5>
+                            <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+                                <button class="btn btn-primary btn-sm" @click="modif_note(task, task_note.id, key)" type="button" :id="'note_'+task.id">
                                     <div hidden>[[task.title]]</div>
 									<small><i class="fa-solid fa-plus fa-fw"></i></small>
                                     Create
                                 </button>
-                                <button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-bottom: 3px; margin-left:3px">
+                                <button class="btn btn-danger btn-sm" @click="delete_note(task, task_note.id, key)" style="margin-left: 3px;">
                                     <small><i class="fa-solid fa-trash fa-fw"></i></small> Delete
                                 </button>
-                            </div>
+                            </template>
+                        </div>
+                        <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
                             <div style="display: flex;">
                                 <div class="note-editor" :id="'editor_'+key+'_'+task.id"></div>
                                 <div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
@@ -295,11 +301,11 @@ export default {
             </div>
             <!-- Task doesn't contains notes -->
             <div v-else>
-                <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
                     <div>
-                        <button class="btn btn-primary btn-sm" @click="modif_note(task, -1, 0)" type="button" :id="'note_'+task.id" style="margin-bottom: 3px;">
+                        <button class="btn btn-primary btn-sm" @click="modif_note(task, -1, 0)" type="button" :id="'note_'+task.id">
                             <div hidden>[[task.title]]</div>
-                            Create
+                            <small><i class="fa-solid fa-plus fa-fw"></i></small> Create
                         </button>
                     </div>
                     <div style="display: flex;">

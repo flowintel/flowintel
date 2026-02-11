@@ -364,5 +364,35 @@ def create_user_test():
     user.org_id = org.id
     db.session.commit()
 
+    # CaseAdmin user - Editor with case_admin privilege
+    caseadmin_role = Role.query.filter_by(name="CaseAdmin").first()
+    if not caseadmin_role:
+        caseadmin_role = Role(
+            name="CaseAdmin",
+            description="Editor with case admin privileges",
+            admin=False,
+            read_only=False,
+            org_admin=False,
+            case_admin=True
+        )
+        db.session.add(caseadmin_role)
+        db.session.commit()
+
+    user = User(
+        first_name="caseadmin",
+        last_name="caseadmin",
+        email="caseadmin@caseadmin.caseadmin",
+        password="caseadmin",
+        role_id=caseadmin_role.id,
+        api_key="caseadmin_api_key"
+    )
+    db.session.add(user)
+    db.session.commit()
+    
+    # Org
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
     # Status
     create_status()
