@@ -40,6 +40,7 @@
                                         <i v-if="role.case_admin" class="fa-solid fa-briefcase ms-1" title="Also Case Admin"></i>
                                         <i v-if="role.queue_admin" class="fa-solid fa-clipboard-check ms-1" title="Also Queue Admin"></i>
                                         <i v-if="role.queuer" class="fa-solid fa-list-check ms-1" title="Also Queuer"></i>
+                                        <i v-if="role.audit_viewer" class="fa-solid fa-file-lines ms-1" title="Also Audit Viewer"></i>
                                     </span>
                                 </h5>
                             </div>
@@ -147,17 +148,26 @@
                                         </table>
                                     </div>
 
+                                    <!-- Audit & Logging -->
+                                    <div class="mb-2">
+                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-file-lines me-1"></i>Audit & Logging</small>
+                                        <table class="table table-sm table-bordered mb-0 mt-1">
+                                            <tbody>
+                                                <tr>
+                                                    <td title="Allows users to view audit logs">Audit Viewer</td>
+                                                    <td style="width: 100px; text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.audit_viewer" @change="handleAuditViewerChange" :disabled="is_system_role(role.id)">
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
                                     <!-- Future Permissions -->
                                     <div>
                                         <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-clock me-1"></i>Coming soon</small>
                                         <table class="table table-sm table-bordered mb-0 mt-1">
                                             <tbody>
-                                                <tr class="text-muted">
-                                                    <td title="Allows users to view logs">Audit Viewer <small class="fst-italic">(planned)</small></td>
-                                                    <td style="width: 100px; text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" disabled>
-                                                    </td>
-                                                </tr>
                                                 <tr class="text-muted">
                                                     <td title="Allows users to edit case or task templates">Template Editor <small class="fst-italic">(planned)</small></td>
                                                     <td style="text-align: center;">
@@ -329,7 +339,8 @@
                     org_admin: false,
                     case_admin: false,
                     queue_admin: false,
-                    queuer: false
+                    queuer: false,
+                    audit_viewer: false
                 })
                 const system_roles = [1, 2, 3]
 
@@ -393,7 +404,8 @@
                             org_admin: edit_data.value.org_admin,
                             case_admin: edit_data.value.case_admin,
                             queue_admin: edit_data.value.queue_admin,
-                            queuer: edit_data.value.queuer
+                            queuer: edit_data.value.queuer,
+                            audit_viewer: edit_data.value.audit_viewer
                         })
                     })
                     if(await res.status == 200){
@@ -405,6 +417,7 @@
                         role.case_admin = edit_data.value.case_admin
                         role.queue_admin = edit_data.value.queue_admin
                         role.queuer = edit_data.value.queuer
+                        role.audit_viewer = edit_data.value.audit_viewer
                         editing_role.value = null
                     }
                     display_toast(res)
@@ -420,6 +433,7 @@
                     edit_data.value.case_admin = role.case_admin || false
                     edit_data.value.queue_admin = role.queue_admin || false
                     edit_data.value.queuer = role.queuer || false
+                    edit_data.value.audit_viewer = role.audit_viewer || false
                 }
 
                 function cancel_edit() {
@@ -432,6 +446,7 @@
                     edit_data.value.case_admin = false
                     edit_data.value.queue_admin = false
                     edit_data.value.queuer = false
+                    edit_data.value.audit_viewer = false
                 }
 
                 function handleAdminChange() {
@@ -447,6 +462,7 @@
                         edit_data.value.case_admin = false
                         edit_data.value.queue_admin = false
                         edit_data.value.queuer = false
+                        edit_data.value.audit_viewer = false
                     }
                 }
 
@@ -477,6 +493,12 @@
 
                 function handleQueuerChange() {
                     if (edit_data.value.queuer) {
+                        edit_data.value.read_only = false
+                    }
+                }
+
+                function handleAuditViewerChange() {
+                    if (edit_data.value.audit_viewer) {
                         edit_data.value.read_only = false
                     }
                 }
@@ -524,6 +546,7 @@
                     handleCaseAdminChange,
                     handleQueueAdminChange,
                     handleQueuerChange,
+                    handleAuditViewerChange,
                     is_editor
                 }
             }
