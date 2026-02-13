@@ -243,7 +243,7 @@ def add_role():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_role_core(form_dict)
-        flowintel_log("audit", 200, "Role added", RoleName=form.name.data, Admin=form.admin.data, ReadOnly=form.read_only.data, OrgAdmin=form.org_admin.data, CaseAdmin=form.case_admin.data, QueueAdmin=form.queue_admin.data, Queuer=form.queuer.data)
+        flowintel_log("audit", 200, "Role added", RoleName=form.name.data, Admin=form.admin.data, ReadOnly=form.read_only.data, OrgAdmin=form.org_admin.data, CaseAdmin=form.case_admin.data, QueueAdmin=form.queue_admin.data, Queuer=form.queuer.data, AuditViewer=form.audit_viewer.data)
         return redirect(url_for('admin.roles'))
     return render_template("admin/add_edit_role.html", form=form, edit_mode=False)
 

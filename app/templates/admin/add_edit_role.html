@@ -153,16 +153,28 @@
                         </table>
                     </div>
 
+                    <div class="mb-2">
+                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-file-lines me-1"></i>Audit & Logging</small>
+                        <table class="table table-sm table-bordered mb-0 mt-1">
+                            <tbody>
+                                <tr>
+                                    <td title="Allows users to view history and audit logs">Audit Viewer</td>
+                                    <td style="width: 100px; text-align: center;">
+                                        {% if is_system_role %}
+                                            {{form.audit_viewer(id="audit_viewer_checkbox", class_="form-check-input", disabled=true)}}
+                                        {% else %}
+                                            {{form.audit_viewer(id="audit_viewer_checkbox", class_="form-check-input")}}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
                     <div>
                         <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-clock me-1"></i>Coming soon</small>
                         <table class="table table-sm table-bordered mb-0 mt-1">
                             <tbody>
-                                <tr class="text-muted">
-                                    <td title="Allows users to view logs">Audit Viewer <small class="fst-italic">(planned)</small></td>
-                                    <td style="width: 100px; text-align: center;">
-                                        <input type="checkbox" class="form-check-input" disabled>
-                                    </td>
-                                </tr>
                                 <tr class="text-muted">
                                     <td title="Allows users to edit case or task templates">Template Editor <small class="fst-italic">(planned)</small></td>
                                     <td style="text-align: center;">
@@ -206,8 +218,9 @@
             const caseAdminCheckbox = document.getElementById('case_admin_checkbox');
             const queueAdminCheckbox = document.getElementById('queue_admin_checkbox');
             const queuerCheckbox = document.getElementById('queuer_checkbox');
+            const auditViewerCheckbox = document.getElementById('audit_viewer_checkbox');
             
-            if (adminCheckbox && readOnlyCheckbox && editorCheckbox && orgAdminCheckbox && caseAdminCheckbox && queueAdminCheckbox && queuerCheckbox) {
+            if (adminCheckbox && readOnlyCheckbox && editorCheckbox && orgAdminCheckbox && caseAdminCheckbox && queueAdminCheckbox && queuerCheckbox && auditViewerCheckbox) {
                 function updateEditorState() {
                     editorCheckbox.checked = !adminCheckbox.checked && !readOnlyCheckbox.checked;
                 }
@@ -228,6 +241,7 @@
                         caseAdminCheckbox.checked = false;
                         queueAdminCheckbox.checked = false;
                         queuerCheckbox.checked = false;
+                        auditViewerCheckbox.checked = false;
                     }
                     updateEditorState();
                 });
@@ -241,7 +255,7 @@
                 });
                 
                 // Additional permissions force Editor role
-                [orgAdminCheckbox, caseAdminCheckbox, queueAdminCheckbox, queuerCheckbox].forEach(function(checkbox) {
+                [orgAdminCheckbox, caseAdminCheckbox, queueAdminCheckbox, queuerCheckbox, auditViewerCheckbox].forEach(function(checkbox) {
                     checkbox.addEventListener('change', function() {
                         if (this.checked) {
                             readOnlyCheckbox.checked = false;
