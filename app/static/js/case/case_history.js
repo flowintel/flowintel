@@ -4,7 +4,8 @@ const { ref, nextTick } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
-		case_id: Number
+		case_id: Number,
+		can_view_history: Boolean
 	},
 	setup(props) {
         const history = ref()
@@ -114,7 +115,10 @@ export default {
                 
             }
         }
-        fetch_history()
+        
+        if (props.can_view_history) {
+            fetch_history()
+        }
 
 
         async function fetch_audit_logs(){
@@ -218,7 +222,10 @@ export default {
                 
             }
         }
-        fetch_audit_logs()
+        
+        if (props.can_view_history) {
+            fetch_audit_logs()
+        }
 
 
         async function fetch_case_misp_object(){
@@ -231,7 +238,10 @@ export default {
                 case_misp_objects.value = loc["misp-object"]
             }
         }
-        fetch_case_misp_object()
+        
+        if (props.can_view_history) {
+            fetch_case_misp_object()
+        }
 
         function prepare_misp_timeline(){
             // Check if there are MISP objects
@@ -341,6 +351,7 @@ export default {
             audit_history,
             main_tab,
             case_misp_objects,
+            can_view_history: props.can_view_history,
 
             active_tab
 		}
@@ -348,18 +359,49 @@ export default {
 	template: `
     <ul class="nav nav-tabs" style="margin-bottom: 10px;">
         <li class="nav-item">
-            <button class="nav-link active" id="tab-history-case" aria-current="page" @click="active_tab('history-case')">Case</button>
+            <button 
+                class="nav-link active" 
+                id="tab-history-case" 
+                aria-current="page" 
+                @click="can_view_history ? active_tab('history-case') : null"
+                :disabled="!can_view_history"
+                :title="can_view_history ? 'View case history' : 'Requires Admin, Case Admin, or Audit Viewer permission'"
+                :style="!can_view_history ? 'cursor: not-allowed; opacity: 0.6;' : ''">
+                <i v-if="!can_view_history" class="fa-solid fa-lock me-1"></i>Case
+            </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-history-misp" @click="active_tab('history-misp')">MISP</button>
+            <button 
+                class="nav-link" 
+                id="tab-history-misp" 
+                @click="can_view_history ? active_tab('history-misp') : null"
+                :disabled="!can_view_history"
+                :title="can_view_history ? 'View MISP timeline' : 'Requires Admin, Case Admin, or Audit Viewer permission'"
+                :style="!can_view_history ? 'cursor: not-allowed; opacity: 0.6;' : ''">
+                <i v-if="!can_view_history" class="fa-solid fa-lock me-1"></i>MISP
+            </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-history-audit" @click="active_tab('history-audit')">Audit</button>
+            <button 
+                class="nav-link" 
+                id="tab-history-audit" 
+                @click="can_view_history ? active_tab('history-audit') : null"
+                :disabled="!can_view_history"
+                :title="can_view_history ? 'View audit logs' : 'Requires Admin, Case Admin, or Audit Viewer permission'"
+                :style="!can_view_history ? 'cursor: not-allowed; opacity: 0.6;' : ''">
+                <i v-if="!can_view_history" class="fa-solid fa-lock me-1"></i>Audit
+            </button>
         </li>
     </ul>
 
     <template v-if="main_tab == 'history-case'">
-        <template v-if="history">
+        <template v-if="!can_view_history">
+            <div class="alert alert-warning" role="alert">
+                <i class="fa-solid fa-lock me-2"></i>
+                <strong>Access Restricted:</strong> You need Admin, Case Admin, or Audit Viewer permission to view case history.
+            </div>
+        </template>
+        <template v-else-if="history">
             <div class="btn-group">
                 <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <small><i class="fa-solid fa-download fa-fw"></i></small> Export
@@ -416,7 +458,13 @@ export default {
 
     </template>
     <template v-else-if="main_tab == 'history-misp'">
-        <template v-if="case_misp_objects && case_misp_objects.length > 0">
+        <template v-if="!can_view_history">
+            <div class="alert alert-warning" role="alert">
+                <i class="fa-solid fa-lock me-2"></i>
+                <strong>Access Restricted:</strong> You need Admin, Case Admin, or Audit Viewer permission to view MISP timeline.
+            </div>
+        </template>
+        <template v-else-if="case_misp_objects && case_misp_objects.length > 0">
             <div id="timeline-embed" style="width: 100%; height: 60vh;"></div>
         </template>
         <template v-else>
@@ -424,7 +472,13 @@ export default {
         </template>
     </template>
     <template v-else-if="main_tab == 'history-audit'">
-        <template v-if="audit_history && Object.keys(audit_history).length > 0">
+        <template v-if="!can_view_history">
+            <div class="alert alert-warning" role="alert">
+                <i class="fa-solid fa-lock me-2"></i>
+                <strong>Access Restricted:</strong> You need Admin, Case Admin, or Audit Viewer permission to view audit logs.
+            </div>
+        </template>
+        <template v-else-if="audit_history && Object.keys(audit_history).length > 0">
             <div class="btn-group">
                 <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <small><i class="fa-solid fa-download fa-fw"></i></small> Export
