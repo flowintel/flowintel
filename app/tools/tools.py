@@ -5,6 +5,9 @@ from ..decorators import editor_required, admin_required
 from ..utils.utils import get_modules_list
 from ..utils.logger import flowintel_log
 import os
+import platform
+import getpass
+from pathlib import Path
 
 tools_blueprint = Blueprint(
     'tools',
@@ -323,10 +326,32 @@ def system_settings():
     db_name = getattr(config_class, 'db_name', None)
     db_host = getattr(config_class, 'db_host', None)
     
+    installation_path = str(Path(__file__).parent.parent.parent)
+    
+    process_user = getpass.getuser()
+    try:
+        process_uid = os.getuid()
+    except AttributeError:
+        process_uid = None
+    
+    os_name = platform.system()
+    os_release = platform.release()
+    python_version = platform.python_version()
+    
     system_info = {
         'flaskenv': flaskenv,
         'session_type': current_app.config.get('SESSION_TYPE'),
         'debug': current_app.config.get('DEBUG', False),
+        'flask_url': getattr(config_class, 'FLASK_URL', None),
+        'flask_port': getattr(config_class, 'FLASK_PORT', None),
+        'misp_module': getattr(config_class, 'MISP_MODULE', None),
+        'log_file': getattr(config_class, 'LOG_FILE', None),
+        'installation_path': installation_path,
+        'os_name': os_name,
+        'os_release': os_release,
+        'python_version': python_version,
+        'process_user': process_user,
+        'process_uid': process_uid,
         'db_type': db_type,
         'db_name': db_name,
         'db_host': db_host,
