@@ -193,3 +193,19 @@
 </div>
 
 {% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp } = Vue
+    import { message_list } from '/static/js/toaster.js'
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            return {
+                message_list
+            }
+        }
+    }).mount('#main-container')
+</script>
+{% endblock %}
