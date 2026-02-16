@@ -1,7 +1,7 @@
 """Add case_id to File model for case file attachments
 
 Revision ID: 33e4650639fd
-Revises: 29a27d426ed3
+Revises: 7d4459c0a46f
 Create Date: 2026-01-29 10:00:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '33e4650639fd'
-down_revision = '29a27d426ed3'
+down_revision = '7d4459c0a46f'
 branch_labels = None
 depends_on = None
 
