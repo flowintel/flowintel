@@ -1,7 +1,7 @@
 """Add Task_External_Reference table
 
 Revision ID: 8e8ade3bbb4a
-Revises: 233237ff2760
+Revises: 33e4650639fd
 Create Date: 2026-02-09 18:57:19.084504
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '8e8ade3bbb4a'
-down_revision = '233237ff2760'
+down_revision = '33e4650639fd'
 branch_labels = None
 depends_on = None
 
