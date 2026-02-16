@@ -24,6 +24,35 @@
         </div>
     </div>
 </div>
+
+<!-- Task Statistics Dashboard -->
+<div v-if="task_stats && task_stats.total > 0" class="case-core-style mb-4" style="background: linear-gradient(135deg, #1f3763 0%, #456297 100%); border-radius: 8px; color: white;">
+    <div class="p-3">
+        <div class="d-flex flex-wrap gap-3">
+            <a @click.prevent="scrollToTasks" href="#" class="badge bg-light text-dark px-3 py-2 text-decoration-none" style="cursor: pointer;">
+                <i class="fa-solid fa-list-check me-1"></i>
+                <strong>[[ task_stats.total ]]</strong> total [[ task_stats.total === 1 ? 'task' : 'tasks' ]]
+            </a>
+            <a v-if="task_stats.overdue > 0" @click.prevent="scrollToTasks" href="#" class="badge bg-danger text-white px-3 py-2 text-decoration-none" style="cursor: pointer;">
+                <i class="fa-solid fa-clock-rotate-left me-1"></i>
+                <strong>[[ task_stats.overdue ]]</strong> overdue
+            </a>
+            <span v-else class="badge bg-success text-white px-3 py-2">
+                <i class="fa-solid fa-check me-1"></i>
+                Nothing overdue
+            </span>
+            <a v-if="task_stats.due_this_week > 0" @click.prevent="scrollToTasks" href="#" class="badge bg-warning text-dark px-3 py-2 text-decoration-none" style="cursor: pointer;">
+                <i class="fa-solid fa-calendar-week me-1"></i>
+                <strong>[[ task_stats.due_this_week ]]</strong> due this week
+            </a>
+            <span v-else class="badge bg-light text-dark px-3 py-2">
+                <i class="fa-solid fa-calendar-check me-1"></i>
+                Nothing due this week
+            </span>
+        </div>
+    </div>
+</div>
+
 <hr class="fading-line-2 mb-4 mt-4">
 
 <!-- pagination -->
@@ -114,10 +143,11 @@
                             <div v-else>
                                 <i>No user assigned</i>
                             </div>
-                            <small v-if="task.deadline" :title="task.deadline">
-                                <i>Deadline [[dayjs.utc(task.deadline).endOf().fromNow()]]</i>
+                            <small v-if="task.deadline" :title="task.deadline" :class="getDeadlineInfo(task.deadline).cssClass">
+                                <i class="fa-solid fa-calendar-days me-1"></i>
+                                <strong>[[ getDeadlineInfo(task.deadline).text ]]</strong>
                             </small>
-                            <small v-else><i>No deadline</i></small>
+                            <small v-else style="color: #6c757d;"><i class="fa-solid fa-calendar-xmark me-1"></i>No deadline</small>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
                             <div style="display: flex;" v-if="task.galaxies">
@@ -199,35 +229,82 @@
                 const status_info = ref(null)
                 const current_page = ref(1)
                 const current_filter = ref("")
+                const task_stats = ref(null)
 
-                const expandedTasks = ref({});
+                const expandedTasks = ref({})
                 const md = window.markdownit()
 
+                function getDeadlineInfo(deadline) {
+                    const now = dayjs.utc()
+                    const taskDeadline = dayjs.utc(deadline)
+                    const daysUntil = taskDeadline.diff(now, 'day')
+                    
+                    if (daysUntil < 0) {
+                        return {
+                            cssClass: 'text-danger fw-bold',
+                            text: `OVERDUE (${taskDeadline.fromNow()})`
+                        }
+                    }
+                    
+                    if (daysUntil === 0) {
+                        return {
+                            cssClass: 'text-warning fw-bold',
+                            text: 'DUE TODAY'
+                        }
+                    }
+                    
+                    if (daysUntil === 1) {
+                        return {
+                            cssClass: 'text-warning fw-bold',
+                            text: 'Due Tomorrow'
+                        }
+                    }
+                    
+                    if (daysUntil <= 7) {
+                        return {
+                            cssClass: 'text-warning',
+                            text: `Due in ${daysUntil} days`
+                        }
+                    }
+                    
+                    return {
+                        cssClass: 'text-muted',
+                        text: `Due ${taskDeadline.fromNow()}`
+                    }
+                }
+
+                function scrollToTasks() {
+                    const firstTask = document.querySelector('.list-group')
+                    if (firstTask) {
+                        firstTask.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }
+                }
+
                 async function fetchAssignedTask(page) {
-                    let url
-                    if(current_filter.value)
-                        url = `/my_assignment/sort_tasks?status=true&page=${page}&filter=${current_filter.value}`
-                    else
-                        url = '/my_assignment/sort_tasks?status=true&page='+page
+                    const filter = current_filter.value
+                    const url = filter 
+                        ? `/my_assignment/sort_tasks?status=true&page=${page}&filter=${filter}`
+                        : `/my_assignment/sort_tasks?status=true&page=${page}`
 
                     current_page.value = page
                     tasks_list.value = null
+                    
                     const res = await fetch(url)
-                    let loc = await res.json()
-                    tasks_list.value = loc
+                    const data = await res.json()
+                    
+                    tasks_list.value = data
+                    task_stats.value = data.stats
                 }
 
                 async function fetchStatus() {
-                    status_info.value = null
-                    const res = await fetch(
-                        '/case/get_status'
-                    )
+                    const res = await fetch('/case/get_status')
                     status_info.value = await res.json()
                 }
 
-                function emit_result(tasks){
+                function emit_result(tasks) {
                     tasks_list.value.nb_pages = tasks.nb_pages
                     tasks_list.value.tasks = tasks.tasks
+                    task_stats.value = tasks.stats
                     current_page.value = 1
                 }
                 
@@ -239,36 +316,43 @@
                     const pages = []
                     const total = tasks_list.value.nb_pages
                     const current = current_page.value
+                    
                     if (total <= 7) {
-                        for (let i = 1; i <= total; i++) pages.push(i)
-                    } else {
-                        if (current <= 4) {
-                            pages.push(1, 2, 3, 4, 5, '...', total-1, total)
-                        } else if (current >= total - 3) {
-                            console.log("Over total-3");
-                            pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-                        } else {
-                            pages.push(1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total)
+                        for (let i = 1; i <= total; i++) {
+                            pages.push(i)
                         }
+                        return pages
                     }
-                    return pages
+                    
+                    if (current <= 4) {
+                        return [1, 2, 3, 4, 5, '...', total-1, total]
+                    }
+                    
+                    if (current >= total - 3) {
+                        return [1, '...', total - 4, total - 3, total - 2, total - 1, total]
+                    }
+                    
+                    return [1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total]
                 })
 
                 return {
                     tasks_list,
                     status_info,
+                    task_stats,
                     dayjs,
                     fetchAssignedTask,
                     current_page,
                     emit_result,
                     current_filter,
-                    message_list, // Avoid warning
+                    message_list,
                     getTextColor,
                     truncateText,
                     mapIcon,
                     expandedTasks,
                     md,
-                    visiblePages
+                    visiblePages,
+                    getDeadlineInfo,
+                    scrollToTasks
                 }
             }
         }).mount('#main-container')

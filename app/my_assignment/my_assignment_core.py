@@ -2,6 +2,7 @@ from ..db_class.db import Subtask, Task, Task_User, User
 from sqlalchemy import desc
 from ..case import common_core as CommonModel
 from ..case.TaskCore import TaskModel
+from datetime import datetime, timedelta
 
 def get_user(uid):
     return User.query.get(uid)
@@ -35,3 +36,22 @@ def get_task_info(tasks_list, user):
             tasks_by_case[case.title] = []
         tasks_by_case[case.title].append(final_task)
     return tasks_by_case
+
+
+def calculate_task_stats(user):
+    base_query = Task.query.join(Task_User, Task_User.task_id==Task.id)\
+                           .filter(Task_User.user_id==user.id, Task.completed==False)
+    
+    total = base_query.count()
+    
+    now = datetime.utcnow()
+    overdue = base_query.filter(Task.deadline < now).count()
+    
+    week_from_now = now + timedelta(days=7)
+    due_this_week = base_query.filter(Task.deadline >= now, Task.deadline <= week_from_now).count()
+    
+    return {
+        'total': total,
+        'overdue': overdue,
+        'due_this_week': due_this_week
+    }
