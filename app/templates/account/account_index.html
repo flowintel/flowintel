@@ -69,11 +69,17 @@
                                     {% if role.org_admin %}
                                         <i class="fa-solid fa-users ms-1" title="Org Admin"></i>
                                     {% endif %}
+                                    {% if role.case_admin %}
+                                        <i class="fa-solid fa-briefcase ms-1" title="Case Admin"></i>
+                                    {% endif %}
                                     {% if role.queue_admin %}
                                         <i class="fa-solid fa-list-check ms-1" title="Queue Admin"></i>
                                     {% endif %}
                                     {% if role.queuer %}
                                         <i class="fa-solid fa-inbox ms-1" title="Queuer"></i>
+                                    {% endif %}
+                                    {% if role.audit_viewer %}
+                                        <i class="fa-solid fa-file-lines ms-1" title="Audit Viewer"></i>
                                     {% endif %}
                                 </span>
                             {% endif %}

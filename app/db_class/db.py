@@ -64,6 +64,12 @@ class User(UserMixin, db.Model):
             return True
         return False
 
+    def is_audit_viewer(self):
+        r = Role.query.get(self.role_id)
+        if r and r.audit_viewer:
+            return True
+        return False
+
     @property
     def password(self):
         raise AttributeError('`password` is not a readable attribute')
@@ -429,6 +435,7 @@ class Role(db.Model):
     case_admin = db.Column(db.Boolean, default=False)
     queue_admin = db.Column(db.Boolean, default=False)
     queuer = db.Column(db.Boolean, default=False)
+    audit_viewer = db.Column(db.Boolean, default=False)
 
     def to_json(self):
         return {
@@ -440,7 +447,8 @@ class Role(db.Model):
             "org_admin": self.org_admin,
             "case_admin": self.case_admin,
             "queue_admin": self.queue_admin,
-            "queuer": self.queuer
+            "queuer": self.queuer,
+            "audit_viewer": self.audit_viewer
         }
 
 class File(db.Model):

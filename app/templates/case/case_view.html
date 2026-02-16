@@ -247,7 +247,7 @@
         </template>
 
         <template v-else-if="main_tab == 'history'">
-            <case_history :case_id="cases_info.case.id"></case_history>
+            <case_history :case_id="cases_info.case.id" :can_view_history="{{ 'true' if current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer() else 'false' }}"></case_history>
         </template>
 
         <template v-else-if="main_tab == 'notes'">
