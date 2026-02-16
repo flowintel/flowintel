@@ -7,7 +7,7 @@ from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
-from ..db_class.db import Case, Task_Template, Case_Template
+from ..db_class.db import Case, Task_Template, Case_Template, File
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
@@ -291,10 +291,15 @@ def get_case_info(cid):
         permission = CommonModel.get_role(current_user).to_json()
         present_in_case = CommonModel.get_present_in_case(cid, current_user)
 
+        try:
+            files_list = [f.to_json() for f in case.files]
+        except Exception:
+            files_list = []
+
         case_json = case.to_json()
         case_json["misp_icon"] = "fe377a79-1950-407a-a02f-c5e1d990ca60"
 
-        return jsonify({"case": case_json, "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json()}), 200
+        return jsonify({"case": case_json, "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json(), "files": files_list}), 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -1379,4 +1384,77 @@ def remove_note_template(cid):
             return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400
         flowintel_log("audit", 403, "Remove case note template: Action not allowed", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/add_files", methods=['POST'])
+@login_required
+@editor_required
+def add_files(cid):
+    """Add files to a case"""
+    from ..utils.utils import validate_file_size
+    
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            files_list = request.files
+            if files_list:
+                # Validate file sizes before processing
+                for file_key in files_list:
+                    file_obj = files_list[file_key]
+                    if file_obj.filename:
+                        is_valid, error_msg, file_size_mb = validate_file_size(file_obj)
+                        if not is_valid:
+                            flowintel_log("audit", 400, "Add files to case: File size too large", User=current_user.email, CaseId=cid, FileName=file_obj.filename, FileSizeMB=file_size_mb)
+                            return {"message": error_msg, "toast_class": "danger-subtle"}, 400
+                
+                created_files = CaseModel.add_file_core(case, files_list, current_user)
+                if created_files:
+                    files_count = len(created_files)
+                    total_size = sum(f.file_size for f in created_files)
+                    file_names = ", ".join([f.name for f in created_files])
+                    flowintel_log("audit", 200, "Files added to case", User=current_user.email, CaseId=cid, FilesCount=files_count, TotalSize=total_size, FileNames=file_names)
+                    return {"message": f"{files_count} file(s) uploaded successfully", "toast_class": "success-subtle"}, 200
+                return {"message": "Error uploading files", "toast_class": "danger-subtle"}, 400
+            return {"message": "No files provided", "toast_class": "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Add files to case: Permission denied", User=current_user.email, CaseId=cid)
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/download_case_file/<fid>", methods=['GET'])
+@login_required
+def download_case_file(cid, fid):
+    """Download a file from a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            file = File.query.get(fid)
+            if file and file.case_id == int(cid):
+                flowintel_log("audit", 200, "File downloaded from case", User=current_user.email, CaseId=cid, FileId=fid, FileName=file.name)
+                return CaseModel.download_file(file)
+            return {"message": "File not found", "toast_class": "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Download file from case: Permission denied", User=current_user.email, CaseId=cid, FileId=fid)
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/delete_case_file/<fid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_case_file(cid, fid):
+    """Delete a file from a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            file = File.query.get(fid)
+            if file and file.case_id == int(cid):
+                file_name = file.name
+                if CaseModel.delete_file(file, case, current_user):
+                    flowintel_log("audit", 200, "File deleted from case", User=current_user.email, CaseId=cid, FileId=fid, FileName=file_name)
+                    return {"message": "File deleted", "toast_class": "success-subtle"}, 200
+                return {"message": "Error deleting file", "toast_class": "danger-subtle"}, 400
+            return {"message": "File not found", "toast_class": "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Delete file from case: Permission denied", User=current_user.email, CaseId=cid, FileId=fid)
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404

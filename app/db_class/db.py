@@ -8,6 +8,7 @@ from flask_login import  UserMixin, AnonymousUserMixin
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 CASCADE_DELETE_ORPHAN = "all, delete-orphan"
 FK_TASK_ID = 'task.id'
+FK_CASE_ID = 'case.id'
 FK_TASK_TEMPLATE_ID = 'task__template.id'
 
 
@@ -105,6 +106,7 @@ class Case(db.Model):
     last_modif = db.Column(db.DateTime, index=True)
     finish_date = db.Column(db.DateTime, index=True)
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    files = db.relationship('File', backref='case', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN, foreign_keys='File.case_id')
     status_id = db.Column(db.Integer, index=True)
     completed = db.Column(db.Boolean, default=False)
     owner_org_id = db.Column(db.Integer, index=True)
@@ -220,7 +222,7 @@ class Task(db.Model):
     completed = db.Column(db.Boolean, default=False)
     notif_deadline_id = db.Column(db.Integer, index=True)
     case_order_id = db.Column(db.Integer, index=True)
-    files = db.relationship('File', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    files = db.relationship('File', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN, foreign_keys='File.task_id')
     nb_notes = db.Column(db.Integer, index=True)
     subtasks = db.relationship('Subtask', backref='Task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     time_required = db.Column(db.String)
@@ -417,7 +419,8 @@ class Role(db.Model):
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True)
-    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"), nullable=True)
+    case_id = db.Column(db.Integer, db.ForeignKey(FK_CASE_ID, ondelete="CASCADE"), nullable=True)
     uuid = db.Column(db.String(36), index=True, unique=True)
     upload_date = db.Column(db.DateTime, nullable=True)
     file_size = db.Column(db.Integer, nullable=True)
@@ -427,6 +430,7 @@ class File(db.Model):
             "id": self.id, 
             "name": self.name,
             "task_id": self.task_id,
+            "case_id": self.case_id,
             "uuid": self.uuid,
             "upload_date": self.upload_date.strftime('%Y-%m-%d %H:%M:%S') if self.upload_date else "Unknown",
             "file_size": self.file_size if self.file_size is not None else "Unknown",
