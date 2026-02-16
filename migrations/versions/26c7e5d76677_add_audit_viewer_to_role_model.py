@@ -1,7 +1,7 @@
 """Add audit_viewer to Role model
 
 Revision ID: 26c7e5d76677
-Revises: 7d4459c0a46f
+Revises: 8e8ade3bbb4a
 Create Date: 2026-02-13 22:49:33.477122
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '26c7e5d76677'
-down_revision = '7d4459c0a46f'
+down_revision = '8e8ade3bbb4a'
 branch_labels = None
 depends_on = None
 
