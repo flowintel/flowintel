@@ -36,6 +36,53 @@
                                     </span>
                                 </td>
                             </tr>
+                            <tr>
+                                <td class="fw-bold">Flask URL</td>
+                                <td><code>{{ system_info.flask_url or 'Not configured' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Flask Port</td>
+                                <td><code>{{ system_info.flask_port or 'Not configured' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">MISP Module</td>
+                                <td><code>{{ system_info.misp_module or 'Not configured' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Log File</td>
+                                <td><code>{{ system_info.log_file or 'Not configured' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Installation Path</td>
+                                <td><code style="font-size: 0.85em;">{{ system_info.installation_path }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Operating System</td>
+                                <td>
+                                    <span class="badge {% if system_info.os_name == 'Linux' %}bg-success{% elif system_info.os_name == 'Darwin' %}bg-info{% elif system_info.os_name == 'Windows' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.os_name }}
+                                    </span>
+                                    <small class="text-muted ms-1">{{ system_info.os_release }}</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Python Version</td>
+                                <td><code>{{ system_info.python_version }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Running As</td>
+                                <td>
+                                    <code>{{ system_info.process_user }}</code>
+                                    {% if system_info.process_uid is not none %}
+                                        <small class="text-muted">(UID: {{ system_info.process_uid }})</small>
+                                    {% endif %}
+                                    {% if system_info.process_user == 'root' or system_info.process_uid == 0 %}
+                                        <span class="badge bg-warning text-dark ms-2" title="Running as root is not recommended for production">
+                                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Root
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -145,4 +192,20 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp } = Vue
+    import { message_list } from '/static/js/toaster.js'
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            return {
+                message_list
+            }
+        }
+    }).mount('#main-container')
+</script>
 {% endblock %}
