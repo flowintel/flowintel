@@ -212,6 +212,7 @@ class Task(db.Model):
     title = db.Column(db.String)
     description = db.Column(db.String, nullable=True)
     urls_tools = db.relationship('Task_Url_Tool', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    external_references = db.relationship('Task_External_Reference', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     notes = db.relationship('Note', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
@@ -245,6 +246,7 @@ class Task(db.Model):
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["urls_tools"] = [url_tool.to_json() for url_tool in self.urls_tools]
+        json_dict["external_references"] = [ext_ref.to_json() for ext_ref in self.external_references]
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
         else:
@@ -286,6 +288,7 @@ class Task(db.Model):
         
         json_dict["subtasks"] = [subtask.download() for subtask in self.subtasks]
         json_dict["urls_tools"] = [url_tool.download() for url_tool in self.urls_tools]
+        json_dict["external_references"] = [ext_ref.download() for ext_ref in self.external_references]
 
         return json_dict
     
@@ -360,6 +363,30 @@ class Task_Url_Tool(db.Model):
         json_dict = {
             "name": self.name,
             "task_uuid": Task.query.get(self.task_id).uuid,
+            "uuid": self.uuid
+        }
+        return json_dict
+
+class Task_External_Reference(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
+    url = db.Column(db.String, index=True)
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "url": self.url,
+            "task_id": self.task_id,
+            "task_uuid": self.task.uuid,
+            "uuid": self.uuid
+        }
+        return json_dict
+
+    def download(self):
+        json_dict = {
+            "url": self.url,
+            "task_uuid": self.task.uuid,
             "uuid": self.uuid
         }
         return json_dict

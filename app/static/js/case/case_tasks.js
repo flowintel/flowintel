@@ -2,6 +2,7 @@ import { display_toast } from '/static/js/toaster.js'
 import tabMain from './TaskComponent/tab-main.js'
 import tabNote from './TaskComponent/tab-note.js'
 import tabFile from './TaskComponent/tab-file.js'
+import tabExternalRef from './TaskComponent/tab-external-ref.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
@@ -23,6 +24,7 @@ export default {
 		tabMain,
 		tabNote,
 		tabFile,
+		tabExternalRef,
 		tabInfo,
 		caseconnectors
 	},
@@ -182,6 +184,7 @@ export default {
 					document.getElementById("tab-task-main-" + props.task.id).classList.add("active")
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
@@ -191,6 +194,7 @@ export default {
 					document.getElementById("tab-task-notes-" + props.task.id).classList.add("active")
 					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
@@ -204,6 +208,17 @@ export default {
 					document.getElementById("tab-task-files-" + props.task.id).classList.add("active")
 					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
+				}
+			} else if (tab_name == 'external-ref') {
+				selected_tab.value = 'external-ref'
+				if (!document.getElementById("tab-task-external-ref-" + props.task.id).classList.contains("active")) {
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
@@ -216,6 +231,7 @@ export default {
 					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
 			}
@@ -226,6 +242,7 @@ export default {
 					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 
 				}
@@ -492,6 +509,11 @@ export default {
 					</button>
 				</li>
 				<li class="nav-item">
+					<button class="nav-link" :id="'tab-task-external-ref-'+task.id" @click="select_tab_task('external-ref')">
+					<i class="fa-solid fa-link fa-sm me-1"></i><span class="section-title">External references<template v-if="task.external_references && task.external_references.length"> ([[ task.external_references.length ]])</template></span>
+					</button>
+				</li>
+				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-info-'+task.id" @click="select_tab_task('info')">
 						<i class="fa-solid fa-circle-info fa-sm me-1"></i><span class="section-title">Info</span>
 					</button>
@@ -532,6 +554,10 @@ export default {
 
 			<template v-else-if="selected_tab == 'files'">
 				<tabFile :cases_info="cases_info" :task="task"></tabFile>
+			</template>
+
+			<template v-else-if="selected_tab == 'external-ref'">
+				<tabExternalRef :cases_info="cases_info" :task="task"></tabExternalRef>
 			</template>
 
 			<template v-else-if="selected_tab == 'info'">

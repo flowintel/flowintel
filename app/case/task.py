@@ -1,8 +1,8 @@
 import ast
-
 import os
 import uuid
 
+from datetime import datetime
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 
 from app.db_class.db import Case, User, db, Note
@@ -13,7 +13,7 @@ from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from ..decorators import editor_required
-from ..utils.utils import form_to_dict, validate_file_size
+from ..utils.utils import form_to_dict, validate_file_size, query_post_query
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
 from ..utils.file_converter import convert_file_to_note_content
@@ -830,6 +830,137 @@ def delete_url_tool(cid, tid, utid):
                 return {"message": "Url/Tool deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200 
             return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
         flowintel_log("audit", 403, "Delete URL/Tool from task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, UrlToolId=utid)
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+######################
+# External reference #
+######################
+@task_blueprint.route("/<cid>/task/<tid>/create_external_reference", methods=['POST'])
+@login_required
+@editor_required
+def create_external_reference(cid, tid):
+    """Create a new External Reference"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "url" in request.json:
+                external_ref = TaskModel.create_external_reference(tid, request.json["url"], current_user)
+                if external_ref:
+                    flowintel_log("audit", 200, "External reference created for task", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=external_ref.id, URL=external_ref.url)
+                    return {"message": "External reference created", "id": external_ref.id, 'toast_class': "success-subtle", "icon": "fas fa-plus"}, 200 
+                return {"message": "Error creating external reference", 'toast_class': "danger-subtle"}, 400
+            return {"message": "Need to pass 'url'", 'toast_class': "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Create external reference for task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/task/<tid>/edit_external_reference/<erid>", methods=['POST'])
+@login_required
+@editor_required
+def edit_external_reference(cid, tid, erid):
+    """Edit an External Reference"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "url" in request.json:
+                if TaskModel.edit_external_reference(tid, erid, request.json["url"], current_user):
+                    flowintel_log("audit", 200, "External reference edited for task", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid, URL=request.json["url"])
+                    return {"message": "External reference edited", 'toast_class': "success-subtle"}, 200 
+                return {"message": "External reference not found", 'toast_class': "danger-subtle"}, 404
+            return {"message": "Need to pass 'url'", 'toast_class': "warning-subtle"}, 400
+        flowintel_log("audit", 403, "Edit external reference for task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid)
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/task/<tid>/delete_external_reference/<erid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_external_reference(cid, tid, erid):
+    """Delete an External Reference"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            external_ref = TaskModel.get_external_reference(erid)
+            if not external_ref or external_ref.task_id != int(tid):
+                return {"message": "External reference not found", 'toast_class': "danger-subtle"}, 404
+            
+            external_ref_url = external_ref.url
+            TaskModel.delete_external_reference(external_ref, current_user)
+            flowintel_log("audit", 200, "External reference deleted from task", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid, URL=external_ref_url)
+            return {"message": "External reference deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200
+        flowintel_log("audit", 403, "Delete external reference from task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid)
+        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/task/<tid>/convert_external_reference_to_note/<erid>", methods=['POST'])
+@login_required
+@editor_required
+def convert_external_reference_to_note(cid, tid, erid):
+    """Convert an external reference URL to a task note"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            external_ref = TaskModel.get_external_reference(erid)
+            if not external_ref or external_ref.task_id != int(tid):
+                return {"message": "External reference not found", 'toast_class': "danger-subtle"}, 404
+            
+            module_data = {
+                "module": "html_to_markdown",
+                "url": external_ref.url
+            }
+            result = query_post_query(module_data)
+            
+            if "error" in result:
+                error_msg = result["error"]
+                flowintel_log("audit", 400, "External reference conversion failed", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid, URL=external_ref.url, Error=error_msg)
+                return {"message": f"Conversion failed: {error_msg}", "toast_class": "danger-subtle"}, 400
+            
+            if "message" in result and result.get("toast_class") == "danger-subtle":
+                error_msg = result["message"]
+                flowintel_log("audit", 400, "External reference conversion failed", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid, URL=external_ref.url, Error=error_msg)
+                return {"message": f"Conversion failed: {error_msg}", "toast_class": "danger-subtle"}, 400
+            
+            if "results" not in result or not result["results"]:
+                flowintel_log("audit", 400, "External reference conversion failed", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid, URL=external_ref.url, Error="No results returned")
+                return {"message": "Conversion failed: No results returned from module", "toast_class": "danger-subtle"}, 400
+            
+            content = result["results"][0].get("values", [""])[0] if result["results"] else ""
+            
+            if not content:
+                flowintel_log("audit", 400, "External reference conversion failed", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid, URL=external_ref.url, Error="Empty content")
+                return {"message": "Conversion failed: Empty content returned", "toast_class": "danger-subtle"}, 400
+            
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            header = f"""## Imported from {external_ref.url}
+
+*Converted on {timestamp}*
+
+---
+
+"""
+            final_content = header + content
+            
+            # Create the note
+            note = Note(
+                uuid=str(uuid.uuid4()),
+                note=final_content,
+                task_id=task.id,
+                task_order_id=task.nb_notes + 1
+            )
+            task.nb_notes += 1
+            db.session.add(note)
+            db.session.commit()
+            
+            TaskModel.update_task_time_modification(task, current_user, f"Note created from external reference '{external_ref.url}'")
+            
+            flowintel_log("audit", 200, "External reference converted to note", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid, URL=external_ref.url, NoteId=note.id)
+            return {"message": "External reference converted to note successfully", "toast_class": "success-subtle", "note": note.to_json()}, 200
+        flowintel_log("audit", 403, "Convert external reference to note: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
