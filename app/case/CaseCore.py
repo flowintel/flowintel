@@ -6,10 +6,9 @@ import uuid
 import datetime
 import json
 from flask_login import current_user
+from flask import send_file, current_app
 import pymisp
 import requests
-
-from flask import send_file
 
 from sqlalchemy import desc, and_
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,6 +18,7 @@ from app.utils import misp_object_helper
 
 from .. import db
 from ..db_class.db import *
+from ..utils.logger import flowintel_log
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
 from . import common_core as CommonModel
@@ -67,12 +67,19 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
 
     def create_case(self, form_dict, user):
+        privileged_case = form_dict.get("privileged_case", False)
+        if current_app.config.get('ENFORCE_PRIVILEGED_CASE', False):
+            if not privileged_case:
+                flowintel_log("warning", 200, f"ENFORCE_PRIVILEGED_CASE enabled - forcing privileged case", User=user.email)
+            privileged_case = True
+        
         if "template_select" in form_dict and not 0 in form_dict["template_select"]:
             for template in form_dict["template_select"]:
                 if Case_Template.query.get(template):
-                    case = CaseTemplateModel.create_case_from_template(template, form_dict["title_template"], user)
+                    case = CaseTemplateModel.create_case_from_template(template, form_dict["title_template"], user, privileged_case)
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
+            
             case = Case(
                 title=form_dict["title"].strip(),
                 description=form_dict["description"],
@@ -84,6 +91,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 owner_org_id=user.org_id,
                 time_required=form_dict["time_required"],
                 is_private=form_dict["is_private"],
+                privileged_case=privileged_case,
                 ticket_id=form_dict["ticket_id"]
             )
             db.session.add(case)
@@ -274,10 +282,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
         case.title = form_dict["title"]
-        case.description=form_dict["description"]
-        case.deadline=deadline
-        case.time_required=form_dict["time_required"]
+        case.description = form_dict["description"]
+        case.deadline = deadline
+        case.time_required = form_dict["time_required"]
         case.is_private = form_dict["is_private"]
+        case.privileged_case = form_dict["privileged_case"]
         case.ticket_id = form_dict["ticket_id"]
         
         CommonModel.update_last_modif(case.id)

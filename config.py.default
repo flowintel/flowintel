@@ -84,6 +84,15 @@ class Config:
     LIMIT_USER_VIEW_TO_ORG = False
 
     # =============================================================================
+    # TASK STATUS IDS
+    # =============================================================================
+    # Task status identifiers for workflow management
+    # These IDs must match the status entries in your database
+    TASK_REQUESTED = 7   # Task requested by Queuer in privileged case, pending approval
+    TASK_APPROVED = 8    # Task approved by Admin/CaseAdmin/QueueAdmin
+    TASK_REJECTED = 5    # Task rejected by Admin/CaseAdmin/QueueAdmin
+
+    # =============================================================================
     # INITIAL USER ACCOUNTS
     # =============================================================================
     # These users are created on first installation.

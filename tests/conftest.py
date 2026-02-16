@@ -5,7 +5,7 @@ from app import create_app, db
 from app.utils.init_db import create_user_test
 import pytest
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def app():
     os.environ.setdefault("FLASKENV", "testing")
     app = create_app()
@@ -21,6 +21,11 @@ def app():
         create_user_test()
 
     yield app
+    
+    # Cleanup after test
+    with app.app_context():
+        db.session.remove()
+        db.drop_all()
 
 @pytest.fixture()
 def client(app):

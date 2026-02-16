@@ -18,6 +18,7 @@ analyzer_blueprint = Blueprint(
 
 @analyzer_blueprint.route("/misp-modules", methods=['GET'])
 @login_required
+@editor_required
 def index():
     """Analyzer index page"""
     case_id = ""
@@ -33,6 +34,7 @@ def index():
 
 @analyzer_blueprint.route("/misp-modules/result_to_case", methods=['GET', 'POST'])
 @login_required
+@editor_required
 def result_to_case():
     """Enrich notes from previous selection"""
     session["note_selected"] = request.form["note_selected"]

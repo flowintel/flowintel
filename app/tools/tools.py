@@ -110,6 +110,14 @@ def get_case_by_tags():
         return res
     return {}
 
+@tools_blueprint.route("/community_stats")
+@login_required
+def community_stats():
+    if current_user.is_admin():
+        res = ToolsModel.get_community_stats()
+        return res
+    return {}
+
 
 
 #################
@@ -323,7 +331,11 @@ def system_settings():
         'db_name': db_name,
         'db_host': db_host,
         'file_upload_max_size': current_app.config.get('FILE_UPLOAD_MAX_SIZE'),
-        'limit_user_view_to_org': current_app.config.get('LIMIT_USER_VIEW_TO_ORG')
+        'limit_user_view_to_org': current_app.config.get('LIMIT_USER_VIEW_TO_ORG'),
+        'enforce_privileged_case': current_app.config.get('ENFORCE_PRIVILEGED_CASE', False),
+        'task_requested': current_app.config.get('TASK_REQUESTED', 7),
+        'task_approved': current_app.config.get('TASK_APPROVED', 8),
+        'task_rejected': current_app.config.get('TASK_REJECTED', 9)
     }
     
     return render_template('tools/system_settings.html', system_info=system_info)

@@ -117,7 +117,8 @@ class Case(db.Model):
     notes = db.Column(db.String, nullable=True)
     hedgedoc_url = db.Column(db.String, nullable=True)
     time_required = db.Column(db.String)
-    is_private = db.Column(db.Boolean, default=False)
+    is_private = db.Column(db.Boolean, default=False, index=True)
+    privileged_case = db.Column(db.Boolean, default=False, index=True)
     ticket_id = db.Column(db.String)
     is_updated_from_misp = db.Column(db.Boolean, default=False)
     computer_assistate_report = db.Column(db.String)
@@ -140,6 +141,7 @@ class Case(db.Model):
             "hedgedoc_url": self.hedgedoc_url,
             "time_required": self.time_required,
             "is_private": self.is_private,
+            "privileged_case": self.privileged_case,
             "ticket_id": self.ticket_id,
             "is_updated_from_misp": self.is_updated_from_misp,
             "computer_assistate_report": self.computer_assistate_report
@@ -370,13 +372,23 @@ class Org(db.Model):
     users = db.relationship('User', backref='Org', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     default_org = db.Column(db.Boolean, default=True)
 
+    def owns_cases(self):
+        return Case.query.filter_by(owner_org_id=self.id).count() > 0
+
+    def has_users(self):
+        return self.users.count() > 0
+
     def to_json(self):
+        owns_cases = self.owns_cases()
+        has_users = self.has_users()
         return {
             "id": self.id, 
             "name": self.name, 
             "description": self.description,
             "uuid": self.uuid,
-            "default_org": self.default_org
+            "default_org": self.default_org,
+            "owns_cases": owns_cases,
+            "has_users": has_users
         }
 
 

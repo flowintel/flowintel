@@ -34,6 +34,9 @@
                     <i v-if="cases_info.case.is_private" class="fa-solid fa-lock"></i>
                     <i v-else class="fa-solid fa-globe"></i>
                 </span>
+                <span v-if="cases_info && cases_info.case.privileged_case" class="case-visibility-badge" title="Privileged case - four-eye-review workflow">
+                    <i class="fa-solid fa-user-shield" style="color: #dc3545;"></i>
+                </span>
                 <span v-if="status_info" :class="'badge rounded-pill text-bg-' + status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
                     [[ status_info.status[{{case.status_id}} -1].name ]]
                 </span>
@@ -339,7 +342,7 @@
         </template>
 
         <template v-else-if="main_tab == 'misp-objects'">
-            <misp_object :case_id="{{case.id}}" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
+            <misp_object :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
         </template>
 
         <template v-else-if="main_tab == 'connectors'">
@@ -617,11 +620,13 @@
         </template>
     </div>
 
+    {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
     <span id="createTask" title="Create a new task">
         <a href="/case/{{case.id}}/create_task" class="btn btn-outline-primary" style="border-radius: 50px;">
             <i class="fa-solid fa-plus"></i>
         </a>
     </span>
+    {%endif%}
 </div>
 {% endblock %}
 
@@ -1418,7 +1423,10 @@
                         }
                     };
 
-                    new Sortable(document.getElementById('list-container'), options);
+                    const listContainer = document.getElementById('list-container');
+                    if (listContainer) {
+                        new Sortable(listContainer, options);
+                    }
                 })
 
                 
