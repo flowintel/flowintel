@@ -326,12 +326,25 @@ def edit_org(id):
 @admin_required
 def delete_org(oid):
     """Delete the org"""
-    if AdminModel.get_org(oid):
-        if AdminModel.delete_org_core(oid):
-            flowintel_log("audit", 200, "Org deleted", OrgId=oid)
-            return {"message":"Org deleted", "toast_class": "success-subtle"}, 200
-        return {"message":"Error Org deleted", "toast_class": "danger-subtle"}, 400
-    return {"message":"Org not found", "toast_class": "danger-subtle"}, 404
+    org = AdminModel.get_org(oid)
+    if not org:
+        return {"message":"Org not found", "toast_class": "danger-subtle"}, 404
+    
+    reasons = []
+    if org.has_users():
+        reasons.append("has users")
+    if org.owns_cases():
+        reasons.append("owns cases")
+    
+    if reasons:
+        reason_str = " and ".join(reasons)
+        flowintel_log("audit", 403, "Org deletion prevented: " + reason_str, OrgId=oid, OrgName=org.name)
+        return {"message": "Cannot delete organisation that " + reason_str, "toast_class": "danger-subtle"}, 403
+    
+    if AdminModel.delete_org_core(oid):
+        flowintel_log("audit", 200, "Org deleted", OrgId=oid)
+        return {"message":"Org deleted", "toast_class": "success-subtle"}, 200
+    return {"message":"Error deleting org", "toast_class": "danger-subtle"}, 400
 
 
 @admin_blueprint.route("/get_orgs", methods=['GET','POST'])

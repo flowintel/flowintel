@@ -2,6 +2,7 @@ import os
 from typing import List
 import uuid
 import datetime
+from flask import current_app
 from .. import db
 from ..db_class.db import (
     Cluster, Custom_Tags, File, Note, Status, Subtask, Tags, Task,
@@ -214,12 +215,16 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def create_task(self, form_dict, cid, current_user):
         """Add a task to the DB"""
         if "template_select" in form_dict and 0 not in form_dict["template_select"]:
-            task = CommonModel.create_task_from_template(form_dict["template_select"], cid)
+            task = CommonModel.create_task_from_template(form_dict["template_select"], cid, current_user)
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
             case = CommonModel.get_case(cid)
             case.nb_tasks = case.nb_tasks or 0
+
+            status_id = 1
+            if case.privileged_case and current_user.is_queuer() and not current_user.is_admin() and not current_user.is_case_admin() and not current_user.is_queue_admin():
+                status_id = current_app.config['TASK_REQUESTED']
 
             task = Task(
                 uuid=str(uuid.uuid4()),
@@ -229,7 +234,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
                 deadline=deadline,
                 case_id=cid,
-                status_id=1,
+                status_id=status_id,
                 case_order_id=self.get_nb_open_tasks(case)+1,
                 completed=form_dict.get("completed", False),
                 nb_notes=0,
@@ -276,6 +281,23 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
                 if custom_tag:
                     self.add_custom_tag(custom_tag, task.id)
+
+            # Auto-assign queuer to task if they created it in a privileged case with Requested status
+            if status_id == current_app.config['TASK_REQUESTED']:
+                task_user = Task_User(
+                    task_id=task.id,
+                    user_id=current_user.id
+                )
+                db.session.add(task_user)
+                db.session.commit()
+                
+                # Notify users who can approve the task (Admin, Case Admin, Queue Admin in owner org)
+                NotifModel.create_notification_for_approvers(
+                    message=f"New task '{task.id}-{task.title}' requested by {current_user.first_name} {current_user.last_name} in case '{case.id}-{case.title}'. You can approve or reject this task.",
+                    case_id=cid,
+                    org_id=case.owner_org_id,
+                    html_icon="fa-solid fa-circle-exclamation"
+                )
 
         CommonModel.update_last_modif(cid)
 
@@ -346,6 +368,17 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         db.session.commit()
 
         self.update_task_time_modification(task, current_user, f"Task '{task.title}' edited")
+    
+    def can_edit_requested_task(self, current_user):
+        """Check if user can edit a task in Requested or Rejected status"""
+        return current_user.is_admin() or current_user.is_case_admin() or current_user.is_queue_admin()
+    
+    def is_task_restricted(self, task):
+        """Check if task is in a restricted status (Requested or Rejected) in a privileged case"""
+        case = CommonModel.get_case(task.case_id)
+        if not case:
+            return False
+        return case.privileged_case and task.status_id in (current_app.config['TASK_REQUESTED'], current_app.config['TASK_REJECTED'])
 
 
     def add_file_core(self, task, files_list, current_user):
@@ -358,12 +391,14 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 uuid_loc = str(uuid.uuid4())
                 filename = secure_filename(files_list[file].filename)
                 try:
-                    file_data = request.files[file].read()
+                    files_list[file].seek(0)
+                    file_data = files_list[file].read()
                     file_size = len(file_data)
                     with open(os.path.join(FILE_FOLDER, uuid_loc), "wb") as write_file:
                         write_file.write(file_data)
                 except Exception as e:
-                    print(e)
+                    from ..utils.logger import flowintel_log
+                    flowintel_log("error", 500, f"Error uploading file to task: {str(e)}", User=current_user.email, TaskId=task.id, FileName=filename)
                     return None
 
                 file_type = files_list[file].content_type if files_list[file].content_type else filename.rsplit('.', 1)[-1] if '.' in filename else 'unknown'
@@ -493,8 +528,50 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def change_task_status(self, status, task, current_user):
         """Return the status of a task"""
+        old_status_id = task.status_id
         task.status_id = status
         self.update_task_time_modification(task, current_user, f"Status changed for task '{task.title}'")
+        
+        case = CommonModel.get_case(task.case_id)
+        if case and case.privileged_case:
+            if status == current_app.config['TASK_APPROVED'] and old_status_id == current_app.config['TASK_REQUESTED']:
+                approval_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been approved by an administrator"
+                
+                NotifModel.create_notification_for_approvers(
+                    message=approval_msg,
+                    case_id=task.case_id,
+                    org_id=case.owner_org_id,
+                    html_icon="fa-solid fa-circle-check"
+                )
+                
+                task_users = Task_User.query.filter_by(task_id=task.id).all()
+                for task_user in task_users:
+                    NotifModel.create_notification_user(
+                        message=approval_msg,
+                        case_id=task.case_id,
+                        user_id=task_user.user_id,
+                        html_icon="fa-solid fa-circle-check"
+                    )
+            
+            elif status == current_app.config['TASK_REJECTED'] and old_status_id == current_app.config['TASK_REQUESTED']:
+                rejection_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been rejected by an administrator"
+                
+                NotifModel.create_notification_for_approvers(
+                    message=rejection_msg,
+                    case_id=task.case_id,
+                    org_id=case.owner_org_id,
+                    html_icon="fa-solid fa-circle-xmark"
+                )
+                
+                task_users = Task_User.query.filter_by(task_id=task.id).all()
+                for task_user in task_users:
+                    NotifModel.create_notification_user(
+                        message=rejection_msg,
+                        case_id=task.case_id,
+                        user_id=task_user.user_id,
+                        html_icon="fa-solid fa-circle-xmark"
+                    )
+        
         return True
 
 
@@ -531,6 +608,12 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             final_task["is_current_user_assigned"] = is_current_user_assigned
             final_task["files"] = file_list
             final_task["case_title"] = case.title
+            
+            # Set can_edit flag - for Requested/Rejected tasks, only Admin/CaseAdmin/QueueAdmin can edit
+            if self.is_task_restricted(task):
+                final_task["can_edit"] = self.can_edit_requested_task(user)
+            else:
+                final_task["can_edit"] = not user.read_only()
 
             final_task["subtasks"] = []
             cp_open=0

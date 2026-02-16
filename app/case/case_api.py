@@ -1,11 +1,12 @@
 from flask import request
 
-from app.db_class.db import Case, User
+from app.db_class.db import Case, User, File
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..utils import utils
+from ..utils.logger import flowintel_log
 
 from flask_restx import Namespace, Resource
 from ..decorators import api_required, editor_required
@@ -61,6 +62,7 @@ class CreateCase(Resource):
         "custom_tags" : "List of custom tags created on the instance",
         "time_required": "Time required to realize the case",
         "is_private": "Specify if a case is private or not. By default a case is public",
+        "privileged_case": "Specify if a case is privileged (four-eye-review workflow). Only Admin or Case Admin can set this. By default False",
         "ticket_id": "Id of a ticket related to the case"
     })
     def post(self):
@@ -70,7 +72,15 @@ class CreateCase(Resource):
             verif_dict = CaseModelApi.verif_create_case_task(request.json)
 
             if "message" not in verif_dict:
+                # Only Admin or Case Admin can create privileged cases
+                if verif_dict["privileged_case"]:
+                    from ..decorators import check_privileged_case_permission
+                    error = check_privileged_case_permission(user, operation="creation")
+                    if error:
+                        return error
+                
                 case = CaseModel.create_case(verif_dict, user)
+                flowintel_log("audit", 201, "Case created", User=user.email, CaseId=case.id, CaseTitle=case.title, IsPrivate=case.is_private, IsPrivileged=case.privileged_case)
                 return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
@@ -102,6 +112,7 @@ class CreateCaseEvent(Resource):
 
             if "message" not in verif_dict:
                 case = CaseModel.create_case_with_event(verif_dict, user)
+                flowintel_log("audit", 201, "Case created with event", User=user.email, CaseId=case.id, CaseTitle=case.title, IsPrivate=case.is_private, IsPrivileged=case.privileged_case)
                 return {"message": f"Case created, id: {case.id}", "case_id": case.id}, 201
 
             return verif_dict, 400
@@ -120,6 +131,7 @@ class EditCase(Resource):
                      "clusters": "list of tags from galaxies",
                      "custom_tags" : "List of custom tags created on the instance",
                      "is_private": "Specify if a case is private or not. By default a case is public",
+                     "privileged_case": "Specify if a case is privileged (four-eye-review workflow). Only Admin or Case Admin can modify this",
                      "ticket_id": "Id of a ticket related to the case"
                     })
     def post(self, cid):
@@ -131,11 +143,19 @@ class EditCase(Resource):
             
             if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
                 if request.json:
+                    if "privileged_case" in request.json:
+                        if request.json["privileged_case"] != case.privileged_case:
+                            from ..decorators import check_privileged_case_permission
+                            error = check_privileged_case_permission(current_user, operation="modification")
+                            if error:
+                                return error
+                    
                     verif_dict = CaseModelApi.verif_edit_case(request.json, cid)
 
                     if "message" not in verif_dict:
                         CaseModel.edit(verif_dict, cid, current_user)
-                        CaseModel.edit_tags(verif_dict, cid, current_user)
+                        case = CommonModel.get_case(cid)
+                        flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid, CaseTitle=case.title, IsPrivate=verif_dict["is_private"], IsPrivileged=verif_dict["privileged_case"])
                         return {"message": f"Case {cid} edited"}, 200
 
                     return verif_dict, 400
@@ -151,17 +171,24 @@ class ForkCase(Resource):
         "case_title_fork": "Required. Title for the case"
     })
     def post(self, cid):
+        from ..decorators import check_privileged_case_permission
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
             
+            if case.privileged_case:
+                error = check_privileged_case_permission(current_user, operation="forking")
+                if error:
+                    return error
+            
             if request.json:
                 if "case_title_fork" in request.json:
                     new_case = CaseModel.fork_case_core(cid, request.json["case_title_fork"], current_user)
                     if type(new_case) == dict:
                         return new_case, 400
+                    flowintel_log("audit", 200, "Case forked", User=current_user.email, OriginalCaseId=cid, NewCaseId=new_case.id)
                     return {"new_case_id": new_case.id}, 201
                 return {"message": "Need to pass 'case_title_fork'"}, 400
             return {"message": "Please give data"}, 400
@@ -172,18 +199,26 @@ class ForkCase(Resource):
 class MergeCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid, ocid):
+        from ..decorators import check_privileged_case_permission
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
             
+            if case.privileged_case:
+                error = check_privileged_case_permission(current_user, operation="merging")
+                if error:
+                    return error
+            
             merging_case = CommonModel.get_case(ocid)
             if merging_case and not check_user_private_case(merging_case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
             
             if CaseModel.merge_case_core(case, merging_case, current_user):
+                flowintel_log("audit", 200, "Case merged", User=current_user.email, SourceCaseId=cid, TargetCaseId=ocid)
                 CaseModel.delete_case(cid, current_user)
+                flowintel_log("audit", 200, "Case deleted (merged)", User=current_user.email, CaseId=cid)
                 return {"message": "Case is merged"}, 200
             return {"message": "Error Merging"}, 400
         return {"message": "Case not found"}, 404
@@ -228,11 +263,24 @@ class GetCaseTitle(Resource):
 class CompleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
+        from ..decorators import check_privileged_case_permission
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             case = CommonModel.get_case(cid)
             if case:
+                if case.privileged_case:
+                    operation = "revival" if case.completed else "completion"
+                    error = check_privileged_case_permission(current_user, operation=operation)
+                    if error:
+                        return error
+                
+                was_completed = case.completed
+                
                 if CaseModel.complete_case(cid, current_user):
+                    if was_completed:
+                        flowintel_log("audit", 200, "Case revived", User=current_user.email, CaseId=cid, CaseTitle=case.title)
+                    else:
+                        flowintel_log("audit", 200, "Case completed", User=current_user.email, CaseId=cid, CaseTitle=case.title)
                     return {"message": f"Case {cid} completed"}, 200
                 return {"message": f"Error case {cid} completed"}, 400
             return {"message": "Case not found"}, 404
@@ -243,11 +291,21 @@ class CompleteCase(Resource):
 class DeleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
+        from ..decorators import check_privileged_case_permission
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.delete_case(cid, current_user):
-                return {"message": "Case deleted"}, 200
-            return {"message": "Error case deleted"}, 400
+            case = CommonModel.get_case(cid)
+            if case:
+                if case.privileged_case:
+                    error = check_privileged_case_permission(current_user, operation="deletion")
+                    if error:
+                        return error
+                
+                if CaseModel.delete_case(cid, current_user):
+                    flowintel_log("audit", 200, "Case deleted", User=current_user.email, CaseId=cid)
+                    return {"message": "Case deleted"}, 200
+                return {"message": "Error case deleted"}, 400
+            return {"message": "Case not found"}, 404
         return {"message": "Permission denied"}, 403
     
 @case_ns.route('/<cid>/add_org', methods=['POST'])
@@ -314,15 +372,23 @@ class CreateTemplate(Resource):
     method_decorators = [editor_required, api_required]
     @case_ns.doc(params={"title_template": "Title for the template that will be create"})
     def post(self, cid):
+        from ..decorators import check_privileged_case_permission
         if "title_template" in request.json:
             case = CommonModel.get_case(cid)
             if case:
                 current_user = utils.get_user_from_api(request.headers)
                 if not check_user_private_case(case, request.headers, current_user):
                     return {"message": "Permission denied"}, 403
+                
+                if case.privileged_case:
+                    error = check_privileged_case_permission(current_user, operation="template creation")
+                    if error:
+                        return error
+                
                 new_template = CaseModel.create_template_from_case(cid, request.json["title_template"], current_user)
                 if type(new_template) == dict:
                     return new_template
+                flowintel_log("audit", 200, "Template created from case", User=current_user.email, CaseId=cid, TemplateId=new_template.id)
                 return {"template_id": new_template.id}, 201
             return {"message": "Case not found"}, 404
         return {"message": "'title_template' is missing"}, 400
@@ -340,16 +406,25 @@ class RecurringCase(Resource):
         "remove": "Boolean"
     })
     def post(self, cid):
+        from ..decorators import check_privileged_case_permission
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if request.json:
-                verif_dict = CaseModelApi.verif_set_recurring(request.json)
+            case = CommonModel.get_case(cid)
+            if case:
+                if case.privileged_case:
+                    error = check_privileged_case_permission(current_user, operation="recurring configuration")
+                    if error:
+                        return error
+                
+                if request.json:
+                    verif_dict = CaseModelApi.verif_set_recurring(request.json)
 
-                if "message" not in verif_dict:
-                    CaseModel.change_recurring(verif_dict, cid, current_user)
-                    return {"message": "Recurring changed"}, 200
-                return verif_dict
-            return {"message": "Please give data"}, 400
+                    if "message" not in verif_dict:
+                        CaseModel.change_recurring(verif_dict, cid, current_user)
+                        return {"message": "Recurring changed"}, 200
+                    return verif_dict
+                return {"message": "Please give data"}, 400
+            return {"message": "Case not found"}, 404
         return {"message": "Permission denied"}, 403
 
 
@@ -1027,5 +1102,110 @@ class AppendNoteCase(Resource):
                         return {"message": f"Note for Case {cid} edited"}, 200
                     return {"message": f"Error Note for Case {cid} edited"}, 400
                 return {"message": "Key 'note' not found"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
+
+
+@case_ns.route('/<cid>/files')
+@case_ns.doc(description='Get list of files for a case', params={"cid": "id of a case"})
+class GetCaseFiles(Resource):
+    method_decorators = [api_required]
+    def get(self, cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            if not check_user_private_case(case, request.headers):
+                return {"message": "Permission denied"}, 403
+            
+            try:
+                file_list = [file.to_json() for file in case.files]
+            except Exception:
+                file_list = []
+            return {"files": file_list}, 200
+        return {"message": "Case not found"}, 404
+
+
+@case_ns.route('/<cid>/upload_file')
+@case_ns.doc(description='Upload a file to a case')
+class UploadCaseFile(Resource):
+    method_decorators = [editor_required, api_required]
+    @case_ns.doc(params={})
+    def post(self, cid):
+        from ..utils.utils import validate_file_size
+        from ..utils.logger import flowintel_log
+        
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                files_list = request.files
+                has_files = any(files_list[key].filename for key in files_list)
+                if has_files:
+                    # Validate file sizes before processing
+                    for file_key in files_list:
+                        file_obj = files_list[file_key]
+                        if file_obj.filename:
+                            is_valid, error_msg, file_size_mb = validate_file_size(file_obj)
+                            if not is_valid:
+                                flowintel_log("audit", 400, "API: Add files to case: File size too large", User=current_user.email, CaseId=cid, FileName=file_obj.filename, FileSizeMB=file_size_mb)
+                                return {"message": error_msg}, 400
+                    
+                    # Reset 
+                    for file_key in files_list:
+                        if files_list[file_key].filename:
+                            files_list[file_key].seek(0)
+                    
+                    created_files = CaseModel.add_file_core(case, files_list, current_user)
+                    if created_files:
+                        file_details = [f"{f.name} ({f.file_size} bytes, {f.file_type})" for f in created_files]
+                        flowintel_log("audit", 200, "API: Files added to case", User=current_user.email, CaseId=cid, FilesCount=len(created_files), Files="; ".join(file_details))
+                        return {"message": "File(s) added"}, 200
+                    return {"message": "Error adding file(s)"}, 400
+                return {"message": "No files provided"}, 400
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
+
+
+@case_ns.route('/<cid>/download_file/<fid>')
+@case_ns.doc(description='Download a file from a case', params={"cid": "id of a case", "fid": "id of a file"})
+class DownloadCaseFile(Resource):
+    method_decorators = [api_required]
+    def get(self, cid, fid):
+        from ..utils.logger import flowintel_log
+        
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                file = File.query.get(fid)
+                if file and file.case_id == int(cid):
+                    flowintel_log("audit", 200, "API: File downloaded from case", User=current_user.email, CaseId=cid, FileId=fid, FileName=file.name)
+                    return CaseModel.download_file(file)
+                return {"message": "File not found"}, 404
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
+
+
+@case_ns.route('/<cid>/delete_file/<fid>')
+@case_ns.doc(description='Delete a file from a case', params={"cid": "id of a case", "fid": "id of a file"})
+class DeleteCaseFile(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid, fid):
+        from ..utils.logger import flowintel_log
+        
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                file = File.query.get(fid)
+                if file and file.case_id == int(cid):
+                    file_name = file.name
+                    file_size = file.file_size if file.file_size else 0
+                    file_type = file.file_type if file.file_type else "unknown"
+                    
+                    if CaseModel.delete_file(file, case, current_user):
+                        flowintel_log("audit", 200, "API: Case file deleted", User=current_user.email, CaseId=cid, FileId=fid, FileName=file_name, FileSize=f"{file_size} bytes", FileType=file_type)
+                        return {"message": "File deleted"}, 200
+                    return {"message": "Error deleting file"}, 400
+                return {"message": "File not found"}, 404
             return {"message": "Permission denied"}, 403
         return {"message": "Case not found"}, 404
