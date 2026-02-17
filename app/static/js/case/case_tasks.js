@@ -369,7 +369,7 @@ export default {
 				</div>
 			</div>
 			<div class="d-flex w-100 justify-content-between">
-				<div style="display: flex; margin-bottom: 7px" v-if="task.tags">
+				<div style="display: flex;" v-if="task.tags">
 					<template v-for="tag in task.tags">
 						<div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
 							<i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
@@ -378,6 +378,33 @@ export default {
 					</template>
 				</div>
 				<div v-else></div>
+			</div>
+
+			<div class="mb-2">
+				<div class="d-flex w-100 justify-content-between">
+					<div style="display: flex;" v-if="task.galaxies">
+						<template v-for="galaxy in task.galaxies">
+							<div :title="'Description:\\n' + galaxy.description">
+								<span class="cluster">
+									<span v-html="mapIcon(galaxy.icon)"></span>
+									[[galaxy.name]]
+								</span>
+							</div>
+						</template>
+					</div>
+					<div v-else></div>
+				</div>
+				<div class="d-flex w-100 justify-content-between">
+					<div style="display: flex;" v-if="task.clusters">
+						<template v-for="cluster in task.clusters">
+							<div :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + cluster.meta">
+								<span v-html="mapIcon(cluster.icon)"></span>
+								[[cluster.tag]]
+							</div>
+						</template>
+					</div>
+					<div v-else></div>
+				</div>
 			</div>
 
 			<div class="d-flex w-100 justify-content-between">
@@ -398,30 +425,6 @@ export default {
                 <small v-if="task.deadline" :title="'Deadline: ' + task.deadline"><i><i class="fa-solid fa-hourglass-start"></i> [[endOf(task.deadline)]]</i></small>
                 <small v-else><i>No deadline</i></small>
             </div>
-			<div class="d-flex w-100 justify-content-between">
-				<div style="display: flex;" v-if="task.galaxies">
-					<template v-for="galaxy in task.galaxies">
-						<div :title="'Description:\\n' + galaxy.description">
-							<span class="cluster">
-								<span v-html="mapIcon(galaxy.icon)"></span>
-								[[galaxy.name]]
-							</span>
-						</div>
-					</template>
-				</div>
-				<div v-else></div>
-			</div>
-			<div class="d-flex w-100 justify-content-between">
-				<div style="display: flex;" v-if="task.clusters">
-					<template v-for="cluster in task.clusters">
-						<div :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + cluster.meta">
-							<span v-html="mapIcon(cluster.icon)"></span>
-							[[cluster.tag]]
-						</div>
-					</template>
-				</div>
-				<div v-else></div>
-			</div>
 			<div class="d-flex w-100 mt-2 justify-content-between">
 				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
 					<i>[[task.files.length]] Files</i>
