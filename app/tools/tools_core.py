@@ -631,12 +631,12 @@ def search_attr_with_value(attr_value: str, current_user: User) -> list:
 #######################
 
 def get_community_stats():
-    """Get community statistics for organizations and users"""
+    """Get community statistics for organisations and users"""
     # Total counts
     total_orgs = Org.query.count()
     total_users = User.query.count()
     
-    # Users per organization
+    # Users per organisation
     users_per_org = db.session.query(
         Org.name.label('org_name'),
         db.func.count(User.id).label('count')
@@ -654,7 +654,7 @@ def get_community_stats():
      .order_by(db.func.count(User.id).desc())\
      .all()
     
-    # Open cases per organization (owner)
+    # Open cases per organisation (owner)
     cases_per_org = db.session.query(
         Org.name.label('org_name'),
         db.func.count(Case.id).label('count')
