@@ -24,6 +24,15 @@ def get_instance(iid):
     """Return an instance of a connector"""
     return Connector_Instance.query.get(iid)
 
+
+def instance_has_links(instance_id):
+    """Return True if instance is linked to a case or task."""
+    case_link = Case_Connector_Instance.query.filter_by(instance_id=instance_id).first()
+    if case_link:
+        return True
+    task_link = Task_Connector_Instance.query.filter_by(instance_id=instance_id).first()
+    return task_link is not None
+
 def get_user_instance_by_instance(instance_id):
     """Return a user instance by instance id"""
     return User_Connector_Instance.query.filter_by(instance_id=instance_id).first()
@@ -40,14 +49,69 @@ def get_icons():
     return Connector_Icon.query.all()
 
 
+def connector_has_instances(connector_id):
+    """Return True if connector has any instances."""
+    return Connector_Instance.query.filter_by(connector_id=connector_id).count() > 0
+
+
+def connector_has_linked_instances(connector_id):
+    """Return True if any instance is linked to a case or task."""
+    case_link = db.session.query(Case_Connector_Instance.id).join(
+        Connector_Instance,
+        Case_Connector_Instance.instance_id == Connector_Instance.id
+    ).filter(Connector_Instance.connector_id == connector_id).first()
+    if case_link:
+        return True
+
+    task_link = db.session.query(Task_Connector_Instance.id).join(
+        Connector_Instance,
+        Task_Connector_Instance.instance_id == Connector_Instance.id
+    ).filter(Connector_Instance.connector_id == connector_id).first()
+    return task_link is not None
+
+
+def get_connectors_flags(connector_ids):
+    """Return sets of connector ids with instances and with linked instances."""
+    if not connector_ids:
+        return set(), set()
+
+    connectors_with_instances = {
+        cid for (cid,) in db.session.query(Connector_Instance.connector_id)
+        .filter(Connector_Instance.connector_id.in_(connector_ids))
+        .distinct()
+        .all()
+    }
+
+    case_linked = {
+        cid for (cid,) in db.session.query(Connector_Instance.connector_id)
+        .join(Case_Connector_Instance, Case_Connector_Instance.instance_id == Connector_Instance.id)
+        .filter(Connector_Instance.connector_id.in_(connector_ids))
+        .distinct()
+        .all()
+    }
+    task_linked = {
+        cid for (cid,) in db.session.query(Connector_Instance.connector_id)
+        .join(Task_Connector_Instance, Task_Connector_Instance.instance_id == Connector_Instance.id)
+        .filter(Connector_Instance.connector_id.in_(connector_ids))
+        .distinct()
+        .all()
+    }
+    connectors_with_links = case_linked.union(task_linked)
+    return connectors_with_instances, connectors_with_links
+
+
 def get_connectors_page(page, name=None):
     """Return connectors by page, optionally filtered by case-insensitive partial name match.
 
     Returns a list of connector dicts (same shape as `/get_connectors`).
     """
     nb = 25
+    connectors = get_connectors()
+    connector_ids = [connector.id for connector in connectors]
+    connectors_with_instances, connectors_with_links = get_connectors_flags(connector_ids)
+
     connectors_list = []
-    for connector in get_connectors():
+    for connector in connectors:
         connector_loc = connector.to_json()
         icon_loc = get_icon(connector.icon_id)
         if icon_loc:
@@ -57,6 +121,8 @@ def get_connectors_page(page, name=None):
         else:
             connector_loc["icon_filename"] = None
             connector_loc["icon_uuid"] = None
+        connector_loc["has_instances"] = connector.id in connectors_with_instances
+        connector_loc["has_linked_instances"] = connector.id in connectors_with_links
         connectors_list.append(connector_loc)
 
     if name:
@@ -176,7 +242,7 @@ def add_connector_instance_core(cid, form_dict, user_id):
     )
     db.session.add(user_connector)
     db.session.commit()
-    return True
+    return connector
 
 
 def add_icon_file(icon):
@@ -320,3 +386,33 @@ def delete_icon_core(iid):
         return True
     else:
         return False
+
+
+def check_misp_connectivity(instance):
+    """Check connectivity to a MISP instance"""
+    # Check if API key is set
+    if not instance.global_api_key:
+        return {
+            "success": False,
+            "message": "API key is not configured for this instance",
+            "is_api_key_missing": True
+        }
+    
+    try:
+        from pymisp import PyMISP
+        import urllib3
+        urllib3.disable_warnings()
+        
+        # Initialize MISP connection - if this succeeds, connectivity is verified
+        misp = PyMISP(instance.url, instance.global_api_key, ssl=False, timeout=20)
+        
+        return {
+            "success": True,
+            "message": "Successfully connected to MISP instance"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error connecting to MISP: {str(e)}"
+        }
