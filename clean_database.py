@@ -73,7 +73,7 @@ def clean_database():
     
     try:        
         # 1. Delete case-related junction tables and related data
-        print("  - Removing case organizations...")
+        print("  - Removing case organisations...")
         Case_Org.query.delete()
         
         print("  - Removing task assignments...")

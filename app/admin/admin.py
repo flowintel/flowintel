@@ -49,7 +49,7 @@ def add_user():
     if current_user.is_pure_org_admin():
         user_org = AdminModel.get_org(current_user.org_id)
         if not user_org:
-            flash("Your organization could not be found. Please contact an administrator.", "error")
+            flash("Your organisation could not be found. Please contact an administrator.", "error")
             return redirect(url_for('admin.users'))
         form.org.choices = [(user_org.id, user_org.name)]
         form.org.data = str(user_org.id)
@@ -57,14 +57,14 @@ def add_user():
         orgs = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
         form.org.choices = sorted(orgs, key=lambda x: x[1].lower())
         form.org.choices.insert(0, ("None", "New org"))
-        # Set default organization to current user's organization
+        # Set default organisation to current user's organisation
         if current_user.org_id:
             form.org.data = str(current_user.org_id)
 
     if form.validate_on_submit():
         if current_user.is_pure_org_admin():
             if form.org.data != str(current_user.org_id):
-                flash("You can only add users to your own organization.", "error")
+                flash("You can only add users to your own organisation.", "error")
                 return render_template("admin/add_user.html", form=form, edit_mode=False)
             
             selected_role = Role.query.get(form.role.data)
@@ -98,7 +98,7 @@ def edit_user(uid):
     
     if current_user.is_pure_org_admin():
         if user_modif.org_id != current_user.org_id:
-            flash("You can only edit users from your own organization.", "error")
+            flash("You can only edit users from your own organisation.", "error")
             return redirect(url_for('admin.users'))
     elif not current_user.is_admin():
         flash("You do not have permission to edit users.", "error")
@@ -132,10 +132,10 @@ def edit_user(uid):
     if form.validate_on_submit():
         if current_user.is_pure_org_admin():
             if user_modif.org_id != current_user.org_id:
-                flash("You can only edit users from your own organization.", "error")
+                flash("You can only edit users from your own organisation.", "error")
                 return redirect(url_for('admin.users'))
             if form.org.data != str(current_user.org_id):
-                flash("You cannot change the organization of users.", "error")
+                flash("You cannot change the organisation of users.", "error")
                 return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
             
             selected_role = Role.query.get(form.role.data)
@@ -181,7 +181,7 @@ def delete_user(uid):
     
     if current_user.is_pure_org_admin():
         if user.org_id != current_user.org_id:
-            return {"message":"You can only delete users from your own organization", "toast_class": "danger-subtle"}, 403
+            return {"message":"You can only delete users from your own organisation", "toast_class": "danger-subtle"}, 403
     elif not current_user.is_admin():
         return {"message":"You do not have permission to delete users", "toast_class": "danger-subtle"}, 403
     
