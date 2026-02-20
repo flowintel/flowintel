@@ -884,7 +884,7 @@ Flowintel uses Entra ID group membership to assign roles. Create the following s
 
 | Entra ID group | Flowintel role | Notes |
 |---|---|---|
-| `FlowintelAdmin` | Editor | Admins receive a notification to promote this user manually |
+| `FlowintelAdmin` | Editor | Account is created as **Editor**; all admins receive a notification to promote the user to Admin manually |
 | `FlowintelEditor` | Editor | Standard analyst access |
 | `FlowintelCaseAdmin` | CaseAdmin | Can manage cases and approve tasks |
 | `FlowintelQueueAdmin` | QueueAdmin | Can manage queues and approve tasks |
@@ -934,6 +934,7 @@ The `ENTRA_REDIRECT_URL` must exactly match the redirect URI registered in the A
 
 - The **Sign in with Microsoft** button appears on the login page when `ENTRA_ID_ENABLED=true`
 - A Flowintel account is created automatically on first SSO login
+- Users whose highest-priority group is `FlowintelAdmin` are provisioned as **Editor**; all Flowintel admins receive an in-app notification to promote the user to Admin if appropriate
 - SSO accounts cannot use the local password reset flow; password management is handled by the organisation's Microsoft account
 - SSO accounts cannot change their login
 - Administrators can still edit SSO users (change role, organisation) but cannot set a local password for them
