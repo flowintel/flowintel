@@ -453,7 +453,7 @@ def delete_case(cid):
     template = CommonModel.get_case_template(cid)
     if template:
         if TemplateModel.delete_case(cid):
-            flowintel_log("audit", 200, "Case template deleted", User=current_user.email, TemplateId=cid, TemplateTitle=template.title)
+            flowintel_log("audit", 200, "Case template deleted", User=current_user.email, TemplateId=cid, Title=template.title)
             return {"message":"Case Template deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error Case Template deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"Template not found", "toast_class": "danger-subtle"}, 404

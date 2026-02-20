@@ -239,7 +239,7 @@ def delete_note_template(nid):
     note = ToolsModel.get_note_template(nid)
     if note:
         if ToolsModel.delete_note_template(nid):
-            flowintel_log("audit", 200, "Note template deleted", User=current_user.email, NoteTemplateId=nid, NoteTemplateTitle=note.title)
+            flowintel_log("audit", 200, "Note template deleted", User=current_user.email, NoteTemplateId=nid, Title=note.title)
             return {"message": "Note template deleted", "toast_class": "success-subtle"}, 200
     return {"message": "Error deleting note template", "toast_class": "danger-subtle"}, 400
 
