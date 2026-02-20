@@ -856,6 +856,89 @@ chmod 600 .env
 
 The `.env` file approach keeps sensitive data out of version control and makes it easier to manage different environments. Add `.env` to your `.gitignore` file if you're tracking the installation with git.
 
+### Microsoft Entra ID SSO (optional)
+
+Flowintel supports single sign-on via Microsoft Entra ID (formerly Azure AD). When enabled, users can sign in with their Microsoft account instead of a local password. Local accounts still work alongside SSO.
+
+#### Azure portal setup
+
+Before configuring Flowintel, register an application in the Azure portal:
+
+1. Go to **Microsoft Entra ID → App registrations → New registration**
+2. Set the **Name** to something like `Flowintel`
+3. Set **Supported account types** to *Accounts in this organizational directory only*
+4. Add a **Redirect URI** (Web platform):
+   ```
+   https://your-flowintel-host/account/entra/callback
+   ```
+5. After registration, note the **Directory (tenant) ID** and **Application (client) ID** from the Overview page
+6. Under **Certificates & secrets → New client secret**, create a secret and note its value immediately (it is only shown once)
+7. Under **API permissions**, add:
+   - `Microsoft Graph → Delegated → User.Read` (usually present by default)
+   - `Microsoft Graph → Delegated → GroupMember.Read.All`
+   - Click **Grant admin consent**
+
+#### Entra ID group setup
+
+Flowintel uses Entra ID group membership to assign roles. Create the following security groups in your Entra ID tenant, then add users to the appropriate group:
+
+| Entra ID group | Flowintel role | Notes |
+|---|---|---|
+| `FlowintelAdmin` | Editor | Account is created as **Editor**; all admins receive a notification to promote the user to Admin manually |
+| `FlowintelEditor` | Editor | Standard analyst access |
+| `FlowintelCaseAdmin` | CaseAdmin | Can manage cases and approve tasks |
+| `FlowintelQueueAdmin` | QueueAdmin | Can manage queues and approve tasks |
+| `FlowintelQueuer` | Queuer | Can submit tasks for approval in privileged cases |
+| `FlowintelReadOnly` | Read Only | View-only access |
+
+When a user signs in for the first time, Flowintel checks their group memberships in the order listed above. The first matching group determines their role. Users not in any of these groups are denied access.
+
+If a user is a member of multiple groups (for example both `FlowintelQueueAdmin` and `FlowintelReadOnly`), the higher-priority group wins. `FlowintelReadOnly` is checked last so it only applies when none of the more specific groups match.
+
+The group names are configurable; see the environment variables below if you want to use different names.
+
+Role synchronisation runs on every login for SSO accounts. If a user's Entra ID group membership changes, their Flowintel role is updated at next login. Note that manually promoting an SSO user to a higher role in Flowintel will be overwritten at their next login if their group membership has not also changed.
+
+#### Flowintel configuration
+
+Add the following to your `.env` file (or set the equivalent environment variables):
+
+```bash
+ENTRA_ID_ENABLED=true
+ENTRA_TENANT_ID=<your-directory-tenant-id>
+ENTRA_CLIENT_ID=<your-application-client-id>
+ENTRA_CLIENT_SECRET=<your-client-secret>
+ENTRA_REDIRECT_URL=https://your-flowintel-host/account/entra/callback
+```
+
+The group and role name mappings can be customised if your Entra ID groups are named differently:
+
+```bash
+# Entra ID group names (defaults shown)
+ENTRA_GROUP_ADMIN=FlowintelAdmin
+ENTRA_GROUP_EDITOR=FlowintelEditor
+ENTRA_GROUP_READONLY=FlowintelReadOnly
+ENTRA_GROUP_CASE_ADMIN=FlowintelCaseAdmin
+ENTRA_GROUP_QUEUE_ADMIN=FlowintelQueueAdmin
+ENTRA_GROUP_QUEUER=FlowintelQueuer
+
+# Flowintel role names for the custom roles (defaults shown)
+ENTRA_ROLE_CASE_ADMIN=CaseAdmin
+ENTRA_ROLE_QUEUE_ADMIN=QueueAdmin
+ENTRA_ROLE_QUEUER=Queuer
+```
+
+The `ENTRA_REDIRECT_URL` must exactly match the redirect URI registered in the Azure portal, including the scheme (`https://`). If Flowintel runs behind a reverse proxy, make sure this URL reflects the public-facing address rather than the internal `127.0.0.1` address.
+
+#### SSO behaviour
+
+- The **Sign in with Microsoft** button appears on the login page when `ENTRA_ID_ENABLED=true`
+- A Flowintel account is created automatically on first SSO login
+- Users whose highest-priority group is `FlowintelAdmin` are provisioned as **Editor**; all Flowintel admins receive an in-app notification to promote the user to Admin if appropriate
+- SSO accounts cannot use the local password reset flow; password management is handled by the organisation's Microsoft account
+- SSO accounts cannot change their login
+- Administrators can still edit SSO users (change role, organisation) but cannot set a local password for them
+
 ### Module configuration
 
 The `conf/config_module.py` file contains settings for optional features. In most setups, you won't need to modify this file. The default settings work for standard installations.

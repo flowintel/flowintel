@@ -39,13 +39,17 @@
                 </div>
                 <div class="col">
                     {{form.email.label(class_="col-form-label")}}
-                    {% if not edit_mode %}
+                    {% if not edit_mode and not is_sso %}
                         <span style="color:red">*</span>
                     {% endif %}
-                    {{form.email(class_="form-control")}}
-                    {% if form.email.errors %}
-                        <div style="color: red;">{{form.email.errors[0] | safe}}</div>
-                    {%endif%}
+                    {% if is_sso %}
+                        <div class="form-control-plaintext">{{ form.email.data }}</div>
+                    {% else %}
+                        {{form.email(class_="form-control")}}
+                        {% if form.email.errors %}
+                            <div style="color: red;">{{form.email.errors[0] | safe}}</div>
+                        {%endif%}
+                    {% endif %}
                 </div>
             </div>
             <div class="row">
@@ -59,13 +63,20 @@
             </div>            
             <div class="row mt-3">
                 <div class="col">
+                    {% if is_sso %}
+                    <div class="alert alert-info py-2 mb-0">
+                        <i class="fa-solid fa-shield-halved me-1"></i>
+                        This account is managed via <strong>Microsoft Entra ID</strong>. Password management is handled externally.
+                    </div>
+                    {% else %}
                     <div class="form-check">
                         {{form.change_password(class_="form-check-input", id="changePasswordCheckbox")}}
                         {{form.change_password.label(class_="form-check-label", for="changePasswordCheckbox")}}
                     </div>
+                    {% endif %}
                 </div>
             </div>            
-            <div class="row" id="password-fields" style="display: none;">
+            <div class="row" id="password-fields" {% if is_sso %}style="display: none;" data-edit-mode="sso"{% else %}style="display: none;" data-edit-mode="true"{% endif %}>
                 <div class="col">
                     <label for="password" class="col-form-label">{{ form.password.label }}</label>
                     <div class="position-relative">
@@ -192,6 +203,8 @@
         const checkbox = document.getElementById('changePasswordCheckbox')
         const passwordFields = document.getElementById('password-fields')
         
+        if (!checkbox) return
+
         checkbox.addEventListener('change', function() {
             if (this.checked) {
                 passwordFields.style.display = ''

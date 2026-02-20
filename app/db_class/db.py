@@ -24,6 +24,7 @@ class User(UserMixin, db.Model):
     api_key = db.Column(db.String(60), index=True)
     org_id = db.Column(db.Integer, db.ForeignKey('org.id', ondelete="CASCADE"))
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    auth_provider = db.Column(db.String(32), default='local', nullable=False, server_default='local')
 
     def is_admin(self):
         r = Role.query.get(self.role_id)
@@ -91,7 +92,8 @@ class User(UserMixin, db.Model):
             "org_id": self.org_id, 
             "role_id": self.role_id,
             "matrix_id": self.matrix_id,
-            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL)
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
+            "auth_provider": self.auth_provider
         }
 
 class AnonymousUser(AnonymousUserMixin):
