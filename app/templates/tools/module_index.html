@@ -9,7 +9,7 @@
         <div class="row align-items-center">
             <div class="col-auto d-flex align-items-center">
                 <h5 class="mb-0"><i class="fa-solid fa-puzzle-piece me-2"></i>Modules</h5>
-                <i class="fa fa-question ms-2" title="List of modules usable" style="font-size: small;"></i>
+                <i class="fa fa-question ms-2" title="List of available modules" style="font-size: small;"></i>
             </div>
         </div>
     </div>
@@ -30,8 +30,27 @@
             <tr v-for="module, key in modules_list">
                 <td>[[key]]</td>
                 <td><pre class="description">[[ module.config.description ]]</pre></td>
-                <td>[[ module.config.case_task ]]</td>
-                <td>[[ module.type ]]</td>
+                <td>
+                    <span v-if="module.config.case_task === 'case'" class="badge text-bg-primary">
+                        <i class="fa-solid fa-folder me-1"></i>Case
+                    </span>
+                    <span v-else-if="module.config.case_task === 'task'" class="badge text-bg-success">
+                        <i class="fa-solid fa-list-check me-1"></i>Task
+                    </span>
+                    <span v-else class="badge text-bg-secondary">[[ module.config.case_task ]]</span>
+                </td>
+                <td>
+                    <span v-if="module.type === 'notify_user'">
+                        <i class="fa-solid fa-bell me-1"></i>Notify user
+                    </span>
+                    <span v-else-if="module.type === 'send_to'">
+                        <i class="fa-solid fa-paper-plane me-1"></i>Send to
+                    </span>
+                    <span v-else-if="module.type === 'receive_from'">
+                        <i class="fa-solid fa-inbox me-1"></i>Receive from
+                    </span>
+                    <span v-else>[[ module.type ]]</span>
+                </td>
             </tr>
         </tbody>
     </table>
