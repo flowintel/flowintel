@@ -43,7 +43,29 @@ def add_custom_tag_core(form_dict):
     )
     db.session.add(custom_tag)
     db.session.commit()
-    return True
+    return custom_tag
+
+def is_custom_tag_in_use(ctid):
+    """Check if a custom tag is used in any case or task"""
+    case_count = Case_Custom_Tags.query.filter_by(custom_tag_id=ctid).count()
+    task_count = Task_Custom_Tags.query.filter_by(custom_tag_id=ctid).count()
+    case_template_count = Case_Template_Custom_Tags.query.filter_by(custom_tag_id=ctid).count()
+    task_template_count = Task_Template_Custom_Tags.query.filter_by(custom_tag_id=ctid).count()
+    return (case_count + task_count + case_template_count + task_template_count) > 0
+
+def get_cases_using_custom_tag(ctid):
+    """Get all cases using a specific custom tag"""
+    from ..db_class.db import Case
+    cases = Case.query.join(Case_Custom_Tags, Case_Custom_Tags.case_id==Case.id)\
+        .filter(Case_Custom_Tags.custom_tag_id==ctid).all()
+    return [{"id": case.id, "title": case.title, "description": case.description} for case in cases]
+
+def get_tasks_using_custom_tag(ctid):
+    """Get all tasks using a specific custom tag"""
+    from ..db_class.db import Task
+    tasks = Task.query.join(Task_Custom_Tags, Task_Custom_Tags.task_id==Task.id)\
+        .filter(Task_Custom_Tags.custom_tag_id==ctid).all()
+    return [{"id": task.id, "title": task.title, "case_id": task.case_id} for task in tasks]
 
 def delete_custom_tag(ctid):
     """Delete a custom tag from db"""
