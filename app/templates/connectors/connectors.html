@@ -50,16 +50,25 @@
                                 </a>
                             </div>
                             <div>
-                                <button class="btn btn-danger btn-sm" type="button" title="Delete the case" data-bs-toggle="modal" :data-bs-target="'#delete_connector_modal'+connector.id">
-                                   <i class="fa-solid fa-trash fa-fw"></i>
-                                </button>
+                                <span
+                                    :title="hasInstances(connector) ? 'Cannot delete connector with instances or linked to cases/tasks' : 'Delete the connector'"
+                                    style="display: inline-block;"
+                                >
+                                    <button 
+                                        class="btn btn-danger btn-sm" 
+                                        type="button" 
+                                        :disabled="hasInstances(connector)"
+                                        @click="deleteConnectorClick(connector)">
+                                       <i class="fa-solid fa-trash fa-fw"></i>
+                                    </button>
+                                </span>
                             </div>
                         </div>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Modal delete case -->
+            <!-- Modal delete connector -->
             <div class="modal fade" :id="'delete_connector_modal'+connector.id" tabindex="-1" :aria-labelledby="'delete_connector_modal'+connector.id" aria-hidden="true">
                 <div class="modal-dialog modal-sm">
                     <div class="modal-content" v-if="connector">
@@ -78,11 +87,13 @@
 
             <div class="collapse" :id="'collapse'+connector.id" style="margin-bottom: 20px;">
                 <div class="card card-body" :id="'card-body_'+connector.id" style="background-color: whitesmoke;">
+                    {% if current_user.is_admin() %}
                     <span>
                         <a class="btn btn-outline-success" :href="'/connectors/'+connector.id+'/add_instance'" type="button" style="margin-bottom: 10px;">
                             Add an instance
                         </a>
                     </span>
+                    {% endif %}
                     <template v-if="instances_table">
                         <template v-if="instances_table[connector.id]">
                             <table>
@@ -104,12 +115,26 @@
                                         <td><i>api key set</i></td>
                                         
                                         <td>
+                                            {% if current_user.is_admin() %}
                                             <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
-                                            <button class="btn btn-danger btn-sm" type="button" title="Delete the instance" data-bs-toggle="modal" :data-bs-target="'#delete_instance_modal_'+instance.id">
-                                                <i class="fa-solid fa-trash"></i>
+                                            {% endif %}
+                                            <button v-if="connector.name.toLowerCase() === 'misp'" class="btn btn-info btn-sm" type="button" title="Check connectivity" @click="check_misp_connectivity(connector.id, instance.id)">
+                                                <i class="fa-solid fa-plug"></i>
                                             </button>
+                                            {% if current_user.is_admin() %}
+                                            <span
+                                                :title="instance.has_links ? 'Cannot delete instance linked to cases/tasks' : 'Delete the instance'"
+                                                style="display: inline-block;"
+                                            >
+                                                <button class="btn btn-danger btn-sm" type="button"
+                                                    :disabled="instance.has_links"
+                                                    @click="!instance.has_links && openInstanceDeleteModal(instance.id)">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </span>
+                                            {% endif %}
                                         </td>
                                     </tr>
 
@@ -175,7 +200,9 @@
                     const res = await fetch(url)
                     let loc = await res.json()
                     connectors_list.value = loc
+
                     await fetchNbPage()
+                    
                 }
                 fetchConnectors(1)
 
@@ -202,15 +229,55 @@
                     display_toast(res)
                 }
 
+                function deleteConnectorClick(connector) {
+                    // Only open modal if connector has no instances
+                    if (!hasInstances(connector)) {
+                        var myModalEl = document.getElementById('delete_connector_modal'+connector.id);
+                        var modal = new bootstrap.Modal(myModalEl)
+                        modal.show();
+                    }
+                }
+
+                function openInstanceDeleteModal(instance_id) {
+                    var myModalEl = document.getElementById('delete_instance_modal_'+instance_id);
+                    var modal = new bootstrap.Modal(myModalEl)
+                    modal.show();
+                }
+
                 async function delete_instance(instance, connector_id){
                     const res = await fetch('/connectors/'+connector_id+'/delete_instance/'+instance.id)
-                    if(await res.status == 200){
+                    const data = await res.json()
+                    if(res.status == 200){
                         let index = instances_table.value[connector_id].indexOf(instance)
                         if(index > -1)
                             instances_table.value[connector_id].splice(index, 1)
                         $("#delete_instance_modal_"+instance.id).modal("hide")
+                        const connector = connectors_list.value?.connectors?.find(c => c.id === connector_id)
+                        if (connector && data.connector_flags) {
+                            connector.has_instances = data.connector_flags.has_instances
+                            connector.has_linked_instances = data.connector_flags.has_linked_instances
+                        }
                     }
-                    display_toast(res)
+                    const toast_res = new Response(JSON.stringify({
+                        message: data.message,
+                        toast_class: data.toast_class
+                    }), { status: res.status })
+                    display_toast(toast_res)
+                }
+                async function check_misp_connectivity(connector_id, instance_id){
+                    const res = await fetch('/connectors/'+connector_id+'/check_connectivity/'+instance_id)
+                    const data = await res.json()
+                    
+                    // Create a toast response object
+                    const toast_res = new Response(JSON.stringify({
+                        message: data.message,
+                        toast_class: data.success ? 'success-subtle' : (data.is_api_key_missing ? 'warning-subtle' : 'danger-subtle')
+                    }), { status: res.status })
+                    display_toast(toast_res)
+                }
+
+                function hasInstances(connector) {
+                    return !!(connector && (connector.has_instances || connector.has_linked_instances))
                 }
 
                 function onInput(e){
@@ -235,7 +302,11 @@
                     search_query,
                     extend_collapse,
                     delete_connector,
+                    deleteConnectorClick,
                     delete_instance,
+                    openInstanceDeleteModal,
+                    check_misp_connectivity,
+                    hasInstances,
                     onInput
                 }
             }
