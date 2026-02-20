@@ -99,6 +99,12 @@ def edit_user(uid):
         return redirect(url_for('admin.users'))
     
     from_notification = request.args.get('from_notif', 'false') == 'true'
+    from_notif_entra  = request.args.get('from_notif_for_entra_id', 'false') == 'true'
+    # Auto-detect: if this is a generic notification link but the user is SSO-managed,
+    # treat it as an Entra ID promotion notification, not a password-reset notification.
+    if from_notification and user_modif.auth_provider == 'entra':
+        from_notif_entra  = True
+        from_notification = False
     
     form = AdminEditUserFrom()
     form.user_id.data = uid
@@ -127,16 +133,16 @@ def edit_user(uid):
                 return redirect(url_for('admin.users'))
             if form.org.data != str(current_user.org_id):
                 flash("You cannot change the organization of users.", "error")
-                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
+                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification, from_notif_entra=from_notif_entra, is_sso=(user_modif.auth_provider != 'local'))
             
             selected_role = Role.query.get(form.role.data)
             if selected_role and selected_role.admin:
                 flash("You cannot assign Admin role to users.", "error")
-                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
+                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification, from_notif_entra=from_notif_entra, is_sso=(user_modif.auth_provider != 'local'))
         
         form_dict = form_to_dict(form)
-        # Only include password if change_password is checked
-        password_was_changed = form.change_password.data
+        # Strip password fields for SSO accounts; never allow a password change via this form.
+        password_was_changed = form.change_password.data and user_modif.auth_provider == 'local'
         if not password_was_changed:
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
@@ -156,7 +162,7 @@ def edit_user(uid):
         form.email.data = user_modif.email
         form.matrix_id.data = user_modif.matrix_id
 
-    return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
+    return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification, from_notif_entra=from_notif_entra, is_sso=(user_modif.auth_provider != 'local'))
 
 
 @admin_blueprint.route("/delete_user/<uid>", methods=['POST'])

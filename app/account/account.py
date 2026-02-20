@@ -9,12 +9,14 @@ from flask_login import (
     logout_user,
 )
 from . import account_core as AccountModel
+from . import entra_core as EntraModel
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel
 import logging
 import time
 import secrets
+from urllib.parse import urlparse
 
 from wtforms.validators import Email, ValidationError
 
@@ -107,12 +109,13 @@ def edit_user():
 
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
-        # Only include password if change_password is checked
-        if not form.change_password.data:
+        is_sso = current_user.auth_provider != 'local'
+        # Only include password if change_password is checked, and never for SSO accounts
+        if not form.change_password.data or is_sso:
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
         flowintel_log("audit", 200, "User edited", User=current_user.email, UserId=current_user.id)
-        AccountModel.edit_user_core(form_dict, current_user.id)
+        AccountModel.edit_user_core(form_dict, current_user.id, is_sso=is_sso)
         return redirect("/account")
     else:
         form.first_name.data = current_user.first_name
@@ -121,7 +124,7 @@ def edit_user():
         form.email.data = current_user.email
         form.matrix_id.data = current_user.matrix_id
 
-    return render_template("account/edit_user.html", form=form)
+    return render_template("account/edit_user.html", form=form, is_sso=(current_user.auth_provider != 'local'))
 
 
 @account_blueprint.route("/change_api_key", methods=['POST'])
@@ -215,6 +218,14 @@ def request_password_reset():
         user = User.query.filter_by(email=email).first()
         
         if user:
+            # SSO-managed accounts cannot reset their password here
+            if user.auth_provider != 'local':
+                flowintel_log("audit", 400, "Password reset blocked for SSO user", Email=email, IP=get_client_ip())
+                flash('This account uses Microsoft Entra ID for authentication. Password management is handled by your organisation.', 'warning')
+                session.pop('password_reset_token', None)
+                session.pop('password_reset_token_time', None)
+                session.pop('failed_login_email', None)
+                return redirect(url_for('account.login'))
             flowintel_log("audit", 200, "Password reset requested", User=email, UserId=user.id, IP=get_client_ip())
             
             NotifModel.create_notification_for_admins(
@@ -234,6 +245,70 @@ def request_password_reset():
         return redirect(url_for('account.login'))
     
     return render_template('account/request_password_reset.html', form=form)
+
+@account_blueprint.route('/entra/login')
+def entra_login():
+    """Redirect user to Microsoft Entra ID for authentication."""
+    if not current_app.config.get('ENTRA_ID_ENABLED'):
+        abort(404)
+
+    state = secrets.token_urlsafe(16)
+    session['entra_state'] = state
+    redirect_uri = current_app.config.get('ENTRA_REDIRECT_URL') or url_for('account.entra_callback', _external=True)
+    auth_url = EntraModel.get_auth_url(redirect_uri, state=state)
+    return redirect(auth_url)
+
+
+@account_blueprint.route('/entra/callback')
+def entra_callback():
+    """Handle the OAuth2 redirect from Microsoft Entra ID."""
+    if not current_app.config.get('ENTRA_ID_ENABLED'):
+        abort(404)
+
+    # CSRF state check
+    if request.args.get('state') != session.pop('entra_state', None):
+        flash('Authentication failed: state mismatch.', 'error')
+        flowintel_log("audit", 403, "Entra ID login failed - state mismatch", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    if 'error' in request.args:
+        error_desc = str(request.args.get('error_description', request.args.get('error', 'unknown error')))[:200]
+        flash(f'Microsoft authentication error: {error_desc}', 'error')
+        flowintel_log("audit", 401, "Entra ID login error", Error=request.args.get('error'), IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    code = request.args.get('code')
+    if not code:
+        flash('Authentication failed: no authorization code received.', 'error')
+        return redirect(url_for('account.login'))
+
+    redirect_uri = current_app.config.get('ENTRA_REDIRECT_URL') or url_for('account.entra_callback', _external=True)
+    result = EntraModel.acquire_token_by_code(code, redirect_uri)
+
+    if 'error' in result:
+        error_desc = str(result.get('error_description', result.get('error', 'unknown error')))[:200]
+        flash(f'Microsoft authentication error: {error_desc}', 'error')
+        flowintel_log("audit", 401, "Entra ID token exchange failed", Error=result.get('error'), IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    user, error = EntraModel.get_or_create_sso_user(
+        result.get('id_token_claims', {}),
+        result.get('access_token'),
+    )
+
+    if not user:
+        flash(f'Access denied: {error}', 'error')
+        flowintel_log("audit", 403, "Entra ID login denied", Reason=error, IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    login_user(user)
+    flowintel_log("audit", 200, "Entra ID login successful", Email=user.email)
+    flash('Logged in via Microsoft Entra ID.', 'success')
+    next_url = request.args.get('next') or '/'
+    if urlparse(next_url).netloc or urlparse(next_url).scheme:
+        next_url = '/'
+    return redirect(next_url)
+
 
 @account_blueprint.route('/logout')
 @login_required
