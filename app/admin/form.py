@@ -117,6 +117,9 @@ class CreateRoleForm(FlaskForm):
     queue_admin = BooleanField('Queue Admin', default=False)
     queuer = BooleanField('Queuer', default=False)
     audit_viewer = BooleanField('Audit Viewer', default=False)
+    template_editor = BooleanField('Template Editor', default=False)
+    misp_editor = BooleanField('MISP Editor', default=False)
+    importer = BooleanField('Importer', default=False)
     role_id = HiddenField()
 
     submit = SubmitField('Create')

@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from .TemplateCase import TemplateModel
 from . import common_template_core as CommonModel
 from .TaskTemplateCore import TaskModel
-from ..decorators import editor_required
+from ..decorators import editor_required, template_editor_required
 from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
 from ..utils.utils import form_to_dict
 from ..utils.formHelper import prepare_tags
@@ -39,7 +39,7 @@ def task_template_view():
 
 @templating_blueprint.route("/create_case", methods=['GET','POST'])
 @login_required
-@editor_required
+@template_editor_required
 def create_case_template():
     """Create a case Template"""
     form = CaseTemplateForm()
@@ -54,6 +54,7 @@ def create_case_template():
             form_dict.update(res)
             form_dict["description"] = request.form.get("description")
             template = TemplateModel.create_case(form_dict)
+            flowintel_log("audit", 201, "Case template created", User=current_user.email, TemplateId=template.id, Title=template.title)
             flash("Template created", "success")
             return redirect(f"/templating/case/{template.id}")
         return render_template("templating/create_case_template.html", form=form)
@@ -62,7 +63,7 @@ def create_case_template():
 
 @templating_blueprint.route("/create_task", methods=['GET','POST'])
 @login_required
-@editor_required
+@template_editor_required
 def create_task_template():
     """Create a task Template"""
     form = TaskTemplateForm()
@@ -73,7 +74,8 @@ def create_task_template():
             form_dict = form_to_dict(form)
             form_dict.update(res)
             form_dict["description"] = request.form.get("description")
-            TaskModel.add_task_template_core(form_dict)
+            template = TaskModel.add_task_template_core(form_dict)
+            flowintel_log("audit", 201, "Task template created", User=current_user.email, TemplateId=template.id, Title=template.title)
             flash("Template created", "success")
             return redirect(f"/templating/tasks")
         return render_template("templating/create_task_template.html", form=form)
@@ -98,7 +100,7 @@ def get_case_template(cid):
 
 @templating_blueprint.route("/case/<cid>/add_task", methods=['GET','POST'])
 @login_required
-@editor_required
+@template_editor_required
 def add_task_case(cid):
     """Add a task Template"""
     form = TaskTemplateForm()
@@ -121,7 +123,7 @@ def add_task_case(cid):
 
 @templating_blueprint.route("/edit_case/<cid>", methods=['GET','POST'])
 @login_required
-@editor_required
+@template_editor_required
 def edit_case(cid):
     """Edit a case Template"""
     template = CommonModel.get_case_template(cid)
@@ -132,6 +134,7 @@ def edit_case(cid):
             form_dict = form_to_dict(form)
             form_dict["description"] = request.form.get("description")
             TemplateModel.edit(form_dict, cid)
+            flowintel_log("audit", 200, "Case template edited", User=current_user.email, TemplateId=cid, Title=form_dict.get("title"))
             flash("Template edited", "success")
             return redirect(f"/templating/case/{cid}")
         else:
@@ -143,7 +146,7 @@ def edit_case(cid):
 
 @templating_blueprint.route("/case/edit_tags/<cid>", methods=['GET','POST'])
 @login_required
-@editor_required
+@template_editor_required
 def edit_case_tags(cid):
     """Edit the case"""
     if CommonModel.get_case_template(cid):
@@ -158,6 +161,7 @@ def edit_case_tags(cid):
                     "custom_tags": custom_tags_list
                 }
                 TemplateModel.edit_tags(loc_dict, cid)
+                flowintel_log("audit", 200, "Case template tags edited", User=current_user.email, TemplateId=cid)
                 return {"message": "Tags edited", "toast_class": "success-subtle"}, 200
             return {"message": "Error with Clusters", "toast_class": "warning-subtle"}, 400
         return {"message": "Error with Tags", "toast_class": "warning-subtle"}, 400
@@ -166,10 +170,11 @@ def edit_case_tags(cid):
 
 @templating_blueprint.route("/edit_task/<tid>", methods=['GET','POST'])
 @login_required
-@editor_required
+@template_editor_required
 def edit_task(tid):
     """Edit a task Template"""
     template = CommonModel.get_task_template(tid)
+    case_id = request.args.get('case_id')
     if template:
         form = TaskTemplateEditForm()
         form.template_id.data = tid
@@ -180,20 +185,22 @@ def edit_task(tid):
                 form_dict.update(res)
                 form_dict["description"] = request.form.get("description")
                 TaskModel.edit_task_template(form_dict, tid)
+                flowintel_log("audit", 200, "Task template edited", User=current_user.email, TemplateId=tid, Title=form_dict.get("title"))
                 flash("Template edited", "success")
+                if case_id:
+                    return redirect(f"/templating/case/{case_id}")
                 return redirect(f"/templating/tasks")
-            return render_template("templating/edit_task_template.html", form=form, description=template.description)
+            return render_template("templating/edit_task_template.html", form=form, description=template.description, case_id=case_id)
         else:
             form.title.data = template.title
             form.time_required.data = template.time_required
 
-        return render_template("templating/edit_task_template.html", form=form, description=template.description)
+        return render_template("templating/edit_task_template.html", form=form, description=template.description, case_id=case_id)
     return render_template("404.html")
 
 
 @templating_blueprint.route("/get_all_case_templates", methods=['GET'])
 @login_required
-@editor_required
 def get_all_case_templates():
     """Get all case templates"""
     templates = CommonModel.get_all_case_templates()
@@ -207,7 +214,6 @@ def get_all_case_templates():
 
 @templating_blueprint.route("/get_page_case_templates", methods=['GET'])
 @login_required
-@editor_required
 def get_page_case_templates():
     """Get a page of case templates"""
     page = request.args.get('page', 1, type=int)
@@ -257,7 +263,6 @@ def get_page_case_templates():
 
 @templating_blueprint.route("/get_case_template/<cid>", methods=['GET'])
 @login_required
-@editor_required
 def get_template(cid):
     """Get a case template"""
     template = CommonModel.get_case_template(cid)
@@ -289,7 +294,7 @@ def get_case_template_connector_instances(tid):
 
 @templating_blueprint.route("/<tid>/add_connector", methods=['POST'])
 @login_required
-@editor_required
+@template_editor_required
 def add_connector(tid):
     """Add connector instance to template"""
     if CommonModel.get_case_template(tid):
@@ -302,7 +307,7 @@ def add_connector(tid):
 
 @templating_blueprint.route("/connectors/<ctid>/remove_connector", methods=['GET'])
 @login_required
-@editor_required
+@template_editor_required
 def remove_connector(ctid):
     """Remove connector instance from template"""
     if CommonModel.remove_connector_instance_from_case_template(ctid):
@@ -312,7 +317,7 @@ def remove_connector(ctid):
 
 @templating_blueprint.route("/connectors/<ctid>/edit_connector", methods=['POST'])
 @login_required
-@editor_required
+@template_editor_required
 def edit_connector(ctid):
     """Edit connector instance of template"""
     if "identifier" in request.json:
@@ -328,7 +333,6 @@ def edit_connector(ctid):
 
 @templating_blueprint.route("/get_task_template/<tid>", methods=['GET'])
 @login_required
-@editor_required
 def get_task_template(tid):
     """Get a task template"""
     template = CommonModel.get_task_template(tid)
@@ -339,7 +343,6 @@ def get_task_template(tid):
 
 @templating_blueprint.route("/get_all_task_templates", methods=['GET'])
 @login_required
-@editor_required
 def get_all_task_templates():
     """Get all task templates"""
     templates = CommonModel.get_all_task_templates()
@@ -353,7 +356,6 @@ def get_all_task_templates():
 
 @templating_blueprint.route("/get_page_task_templates", methods=['GET'])
 @login_required
-@editor_required
 def get_page_task_templates():
     """Get a page of task template"""
     page = request.args.get('page', 1, type=int)
@@ -404,7 +406,6 @@ def get_page_task_templates():
 
 @templating_blueprint.route("/get_task_by_case/<cid>", methods=['GET'])
 @login_required
-@editor_required
 def get_task_by_case(cid):
     """Get a task template by a case template"""
     templates = CommonModel.get_task_by_case(cid)
@@ -420,7 +421,7 @@ def get_task_by_case(cid):
 
 @templating_blueprint.route("/case/<cid>/remove_task/<tid>", methods=['GET'])
 @login_required
-@editor_required
+@template_editor_required
 def remove_task(cid, tid):
     """Remove a task template form a case template"""
     if CommonModel.get_task_template(tid):
@@ -432,11 +433,13 @@ def remove_task(cid, tid):
 
 @templating_blueprint.route("/delete_task/<tid>", methods=['GET'])
 @login_required
-@editor_required
+@template_editor_required
 def delete_task(tid):
     """Delete a task template"""
-    if CommonModel.get_task_template(tid):
+    template = CommonModel.get_task_template(tid)
+    if template:
         if TaskModel.delete_task_template(tid):
+            flowintel_log("audit", 200, "Task template deleted", User=current_user.email, TemplateId=tid, TemplateTitle=template.title)
             return {"message":"Task Template deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error Task Template deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
@@ -444,11 +447,13 @@ def delete_task(tid):
 
 @templating_blueprint.route("/delete_case/<cid>", methods=['GET'])
 @login_required
-@editor_required
+@template_editor_required
 def delete_case(cid):
     """Delete a case template"""
-    if CommonModel.get_case_template(cid):
+    template = CommonModel.get_case_template(cid)
+    if template:
         if TemplateModel.delete_case(cid):
+            flowintel_log("audit", 200, "Case template deleted", User=current_user.email, TemplateId=cid, Title=template.title)
             return {"message":"Case Template deleted", "toast_class": "success-subtle"}, 200
         return {"message":"Error Case Template deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
@@ -483,12 +488,13 @@ def download_case(cid):
 
 @templating_blueprint.route("/case/<cid>/modif_note_case", methods=['POST'])
 @login_required
-@editor_required
+@template_editor_required
 def modif_note_case(cid):
     """Modify note of the task"""
     if CommonModel.get_case_template(cid):
         notes = request.json["notes"]
         if TemplateModel.modif_note_core(cid, notes):
+            flowintel_log("audit", 200, "Case template note modified", User=current_user.email, TemplateId=cid, NoteLength=len(notes) if notes else 0)
             return {"message": "Notes modified", "toast_class": "success-subtle"}, 200
         return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -496,7 +502,7 @@ def modif_note_case(cid):
 
 @templating_blueprint.route("/task/<tid>/create_note", methods=['GET'])
 @login_required
-@editor_required
+@template_editor_required
 def task_create_note(tid):
     """Create a new note for the template"""
     res_note = TaskModel.create_note(tid)
@@ -506,7 +512,7 @@ def task_create_note(tid):
 
 @templating_blueprint.route("/task/<tid>/delete_note", methods=['GET'])
 @login_required
-@editor_required
+@template_editor_required
 def task_delete_note(tid):
     """Create a new note for the template"""
     if CommonModel.get_task_template(tid):
@@ -532,7 +538,7 @@ def task_get_note(tid):
 
 @templating_blueprint.route("/task/<tid>/modif_note", methods=['POST'])
 @login_required
-@editor_required
+@template_editor_required
 def task_modif_note(tid):
     """Modify note of the task"""
     if CommonModel.get_task_template(tid):
@@ -540,6 +546,7 @@ def task_modif_note(tid):
         if "note_id" in request.args:
             res_note = TaskModel.modif_note_core(tid, notes, request.args.get("note_id"))
             if res_note:
+                flowintel_log("audit", 200, "Task template note modified", User=current_user.email, TemplateId=tid, NoteId=request.args.get("note_id"))
                 return {"note": res_note.to_json(), "message": "Note added", "toast_class": "success-subtle"}, 200
             return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
         return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
@@ -592,7 +599,7 @@ def get_galaxies_task(tid):
 
 @templating_blueprint.route("/case/<cid>/change_order/<tid>", methods=['GET', 'POST'])
 @login_required
-@editor_required
+@template_editor_required
 def change_order(cid, tid):
     """Change the order of tasks"""
     case = CommonModel.get_case_template(cid)
@@ -631,7 +638,7 @@ def get_custom_tags_task(cid):
 
 @templating_blueprint.route("/task/<tid>/create_subtask", methods=['POST'])
 @login_required
-@editor_required
+@template_editor_required
 def create_subtask(tid):
     """Create a subtask for a task template"""
     task = CommonModel.get_task_template(tid)
@@ -647,7 +654,7 @@ def create_subtask(tid):
 
 @templating_blueprint.route("/task/<tid>/edit_subtask/<sid>", methods=['POST'])
 @login_required
-@editor_required
+@template_editor_required
 def edit_subtask(tid, sid):
     """Edit a subtask of a task template"""
     task = CommonModel.get_task_template(tid)
@@ -662,7 +669,7 @@ def edit_subtask(tid, sid):
 
 @templating_blueprint.route("/task/<tid>/delete_subtask/<sid>", methods=['GET'])
 @login_required
-@editor_required
+@template_editor_required
 def delete_subtask(tid, sid):
     """Delete a subtask of a task template"""
     task = CommonModel.get_task_template(tid)
@@ -681,7 +688,7 @@ def delete_subtask(tid, sid):
 
 @templating_blueprint.route("/task/<tid>/create_url_tool", methods=['POST'])
 @login_required
-@editor_required
+@template_editor_required
 def create_url_tool(tid):
     """Create a new Url/Tool"""
     task = CommonModel.get_task_template(tid)
@@ -696,7 +703,7 @@ def create_url_tool(tid):
 
 @templating_blueprint.route("/task/<tid>/edit_url_tool/<utid>", methods=['POST'])
 @login_required
-@editor_required
+@template_editor_required
 def edit_url_tool(tid, utid):
     """Edit a Url/Tool"""
     task = CommonModel.get_task_template(tid)
@@ -710,7 +717,7 @@ def edit_url_tool(tid, utid):
 
 @templating_blueprint.route("/task/<tid>/delete_url_tool/<utid>", methods=['GET'])
 @login_required
-@editor_required
+@template_editor_required
 def delete_url_tool(tid, utid):
     """Delete a Url/Tool"""
     task = CommonModel.get_task_template(tid)

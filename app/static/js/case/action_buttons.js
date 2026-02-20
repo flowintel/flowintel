@@ -9,6 +9,7 @@ export default {
 	},
 	setup(props) {
         const selected_merge = ref({})
+    const can_manage_templates = window.can_manage_templates || false
 
         const canModifyCase = computed(() => {
             return canModifyPrivilegedCase(props.cases_info)
@@ -130,6 +131,9 @@ export default {
         }
 
         async function create_template(case_id){
+            if (!can_manage_templates) {
+                return
+            }
             if(await fetch_case_template_title($("#case_title_template").val())){
                 $("#collapseTemplateBody").append(
                     $("<span>").text("Already exist").css("color", 'red')
@@ -156,6 +160,7 @@ export default {
 		return {
             selected_merge,
             canModifyCase,
+            can_manage_templates,
             delete_case,
 			complete_case,
             fork_case,
@@ -239,7 +244,8 @@ export default {
                                     title="Create a template from the case" 
                                     data-bs-toggle="modal" 
                                     data-bs-target="#template_case_modal"
-                                    :disabled="!canModifyCase">
+                                    :disabled="!canModifyCase"
+                                    v-if="can_manage_templates">
                                 <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-book-bookmark"></i></span> Template
                             </button>
                         </li>
@@ -321,15 +327,15 @@ export default {
         </div>
 
         <!-- Modal template case -->
-        <div class="modal fade" id="template_case_modal" tabindex="-1" aria-labelledby="template_case_modal" aria-hidden="true">
+        <div class="modal fade" id="template_case_modal" tabindex="-1" aria-labelledby="template_case_modal" aria-hidden="true" v-if="can_manage_templates">
             <div class="modal-dialog modal-md">
                 <div class="modal-content" v-if="cases_info">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="template_case_modal">Template for '[[cases_info.case.title]]'</h1>
+                        <h1 class="modal-title fs-5" id="template_case_modal">Create a case template for '[[cases_info.case.title]]'</h1>
                         <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <input id="case_title_template" placeholder="Case title"/>
+                        <input id="case_title_template" placeholder="Case template title"/>
                         <div id="collapseTemplateBody"></div>
                     </div>
                     <div class="modal-footer">

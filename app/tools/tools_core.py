@@ -549,7 +549,7 @@ def create_note_template(request_json: dict, current_user: int) -> Note_Template
     list_params = extract_variables(content)
     n = Note_Template_Model(
         title=request_json["title"],
-        description=request_json["description"],
+        description=request_json.get("description", ""),
         content = content,
         version = 1,
         params={"list": list_params},

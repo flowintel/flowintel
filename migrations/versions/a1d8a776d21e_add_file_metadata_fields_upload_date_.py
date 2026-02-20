@@ -30,8 +30,15 @@ def upgrade():
         if 'file_type' not in file_columns:
             batch_op.add_column(sa.Column('file_type', sa.String(length=100), nullable=True))
         
-        if 'case_id' in file_columns:
-            batch_op.drop_constraint(batch_op.f('fk_file_case_id'), type_='foreignkey')
+    # Drop case_id column and its constraint in separate batch if it exists
+    if 'case_id' in file_columns:
+        with op.batch_alter_table('file', schema=None) as batch_op:
+            # Get foreign key constraints
+            fks = inspector.get_foreign_keys('file')
+            for fk in fks:
+                if fk['constrained_columns'] == ['case_id'] and fk.get('name'):
+                    batch_op.drop_constraint(fk['name'], type_='foreignkey')
+                    break
             batch_op.drop_column('case_id')
 
     # ### end Alembic commands ###
