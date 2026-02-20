@@ -66,11 +66,7 @@ Content:
                 if(!title){
                     $("#title-error").text("Need to pass a title")
                 }
-                if(!description){
-                    $("#description-error").text("Need to pass a description")
-                }
-
-                if(!title || !description){
+                if(!title){
                     return
                 }
 
@@ -78,7 +74,7 @@ Content:
                     '/tools/create_note_template',{
                         headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                         method: "POST",
-                        body: JSON.stringify({"title": title, "description": description, "content": note_editor_render.value})
+                        body: JSON.stringify({"title": title, "description": description || "", "content": note_editor_render.value})
                     }
                 )
                 if(await res_msg.status == 201){

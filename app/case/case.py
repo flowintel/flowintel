@@ -8,7 +8,7 @@ from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from ..db_class.db import Case, Task_Template, Case_Template, File
-from ..decorators import editor_required
+from ..decorators import editor_required, template_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
@@ -561,7 +561,7 @@ def check_case_title_exist():
 
 @case_blueprint.route("/<cid>/create_template", methods=['POST'])
 @login_required
-@editor_required
+@template_editor_required
 def create_template(cid):
     """Create a case template from a case"""
     case = CommonModel.get_case(cid)

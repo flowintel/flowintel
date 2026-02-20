@@ -7,7 +7,11 @@ export default {
 	props: {
 		note_template: Object,
 		key_loop: Number,
-		notes_list: Array
+		notes_list: Array,
+		can_edit: {
+			type: Boolean,
+			default: true
+		}
 	},
 	setup(props) {
 		const is_mounted = ref(false)
@@ -136,7 +140,7 @@ export default {
 			</div>
         </a>
 		
-        <div>
+		<div v-if="can_edit">
 			<div>
 				<a class="btn btn-primary" :href="'/tools/edit_note_template_view/'+note_template.id" type="button" title="Edit the note template">
 					<i class="fa-solid fa-pen-to-square fa-fw"></i>
@@ -148,11 +152,11 @@ export default {
 					<i class="fa-solid fa-trash fa-fw"></i>
 				</button>
 			</div>
-        </div>
+		</div>
 	</div>
 
 	<!-- Modal delete note template -->
-	<div class="modal fade" :id="'delete_note_template_modal_'+note_template.id" tabindex="-1" aria-labelledby="delete_note_template_modal" aria-hidden="true">
+	<div v-if="can_edit" class="modal fade" :id="'delete_note_template_modal_'+note_template.id" tabindex="-1" aria-labelledby="delete_note_template_modal" aria-hidden="true">
 		<div class="modal-dialog">
 			<div class="modal-content">
 				<div class="modal-header">
@@ -177,13 +181,13 @@ export default {
 				<fieldset class="analyzer-select-case">
 					<legend class="analyzer-select-case">
 						<i class="fa-solid fa-file-lines fa-sm me-1"></i><span class="section-title">Content</span>
-					<button v-if="!edit_mode" class="btn btn-primary btn-sm" @click="edit_mode = true; init_editor()" title="Edit content" style="float: right; margin-left: 10px;">
+					<button v-if="can_edit && !edit_mode" class="btn btn-primary btn-sm" @click="edit_mode = true; init_editor()" title="Edit content" style="float: right; margin-left: 10px;">
 							<i class="fa-solid fa-pen"></i>
 						</button>
-					<button v-else class="btn btn-success btn-sm" @click="save_content()" title="Save content" style="float: right; margin-left: 10px;">
+					<button v-else-if="can_edit" class="btn btn-success btn-sm" @click="save_content()" title="Save content" style="float: right; margin-left: 10px;">
 						<i class="fa-solid fa-check"></i>
 					</button>
-					<button v-if="edit_mode" class="btn btn-secondary btn-sm" @click="edit_mode = false" title="Cancel" style="float: right; margin-left: 10px;">
+					<button v-if="can_edit && edit_mode" class="btn btn-secondary btn-sm" @click="edit_mode = false" title="Cancel" style="float: right; margin-left: 10px;">
 							<i class="fa-solid fa-times"></i>
 						</button>
 					</legend>

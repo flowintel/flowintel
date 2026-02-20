@@ -13,16 +13,28 @@
 {%endblock%}
 
 {% block content %}
+{% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
 
 <div class="case-core-style" style="border-radius: 0; margin-bottom: 10px;">
     <div class="row align-items-center">
         <div class="col-auto d-flex align-items-center">
             <h5 class="mb-0"><i class="fa-solid fa-note-sticky me-2"></i>Note Templates</h5>
-            <a type="button" class="btn btn-primary btn-sm ms-3" href="/tools/create_note_template_view" title="Add new note template">
-                <i class="fa-solid fa-plus fa-sm"></i>
-            </a>
+            {% if can_manage_templates %}
+                <a type="button" class="btn btn-primary btn-sm ms-3" href="/tools/create_note_template_view" title="Add new note template">
+                    <i class="fa-solid fa-plus fa-sm"></i>
+                </a>
+            {% else %}
+                <button type="button" class="btn btn-primary btn-sm ms-3" disabled title="You do not have permission to create templates">
+                    <i class="fa-solid fa-plus fa-sm"></i>
+                </button>
+            {% endif %}
         </div>
     </div>
+    {% if not can_manage_templates %}
+        <div class="alert alert-warning py-1 px-2 mt-2 mb-0" role="alert">
+            You do not have the Template Editor permissions and are not allowed to create or edit templates.
+        </div>
+    {% endif %}
 </div>
 <hr class="fading-line">
 
@@ -51,7 +63,7 @@
     <template v-else>
         <template v-for="note_loc, key in notes_list.notes" :key="note_loc.id">
             <div class="list-group" style="margin-bottom: 20px;">
-                <note_template_component :note_template="note_loc" :key_loop="key" :notes_list="notes_list.notes"></note_template_component>
+                <note_template_component :note_template="note_loc" :key_loop="key" :notes_list="notes_list.notes" :can_edit="{{ 'true' if can_manage_templates else 'false' }}"></note_template_component>
             </div>
         </template>
     </template>
