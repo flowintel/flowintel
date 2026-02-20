@@ -189,11 +189,11 @@
         <template v-if="main_tab == 'main'">
             <div class="row">
                 <div class="col">
-                    <tags_edition v-if="cases_info" :current_case="cases_info.case" :type_object="'case'"></tags_edition>
+                    <tags_edition v-if="cases_info" :current_case="cases_info.case" :type_object="'case'" :can_edit="can_edit_case"></tags_edition>
 
                     <div class="case-tags-style mt-2" v-if="cases_info">
                         <div class="justify-content-center" style="float: right">
-                            <button class="btn btn-primary btn-sm me-1" title="New link" data-bs-toggle="modal" data-bs-target="#add_new_link">
+                            <button v-if="can_edit_case" class="btn btn-primary btn-sm me-1" title="New link" data-bs-toggle="modal" data-bs-target="#add_new_link">
                                 <i class="fa-solid fa-paperclip fa-sm"></i>+
                             </button>
                             <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
@@ -1429,7 +1429,18 @@
                     }
                 })
 
-                
+                const can_edit_case = computed(() => {
+                    if (!cases_info.value) return false
+                    const permission = cases_info.value.permission
+                    const present_in_case = cases_info.value.present_in_case
+
+                    if (permission && permission.read_only) return false
+                    if (permission && permission.admin) return true                    
+                    if (present_in_case) return true
+                    
+                    return false
+                })
+
                 
     
                 return {
@@ -1443,6 +1454,7 @@
                     tasks_tab,
                     is_exporting,
                     nb_misp_objects,
+                    can_edit_case,
                     onInput,
                     sort_by_filter,
                     active_tab,

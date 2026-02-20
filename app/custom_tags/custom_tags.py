@@ -21,17 +21,22 @@ custom_tags_blueprint = Blueprint(
 @custom_tags_blueprint.route("/", methods=['GET', 'POST'])
 @login_required
 def index():
-    """List all cases"""
+    """Custom tags index page"""
     return render_template("custom_tags/custom_tags_index.html")
 
 @custom_tags_blueprint.route("/add", methods=['GET', 'POST'])
 @login_required
 @editor_required
 def add_custom_tag():
-    """List all cases"""
+    """Add a new custom tag"""
+    from ..utils.logger import flowintel_log
     form = AddCustomTagForm()
-    if form.validate_on_submit() and CustomCore.add_custom_tag_core(form_to_dict(form)):
-        return redirect("/custom_tags/")
+    if form.validate_on_submit():
+        form_dict = form_to_dict(form)
+        custom_tag = CustomCore.add_custom_tag_core(form_dict)
+        if custom_tag:
+            flowintel_log("audit", 201, "Custom tag created", User=current_user.email, CustomTagId=custom_tag.id, CustomTagName=custom_tag.name)
+            return redirect("/custom_tags/")
     return render_template("custom_tags/add_custom_tag.html", form=form)
 
 
@@ -40,19 +45,37 @@ def add_custom_tag():
 def list():
     """List all custom tags"""
     q = request.args.get('q', None, type=str)
-    tags = [c_t.to_json() for c_t in CustomCore.get_custom_tags()]
+    tags = []
+    for c_t in CustomCore.get_custom_tags():
+        tag_json = c_t.to_json()
+        tag_json['in_use'] = CustomCore.is_custom_tag_in_use(c_t.id)
+        tags.append(tag_json)
     if q:
         ql = q.lower()
         tags = [t for t in tags if ql in t.get('name','').lower()]
     return tags
+
+@custom_tags_blueprint.route("/<ctid>/usage", methods=['GET'])
+@login_required
+def get_custom_tag_usage(ctid):
+    """Get cases and tasks using a specific custom tag"""
+    if CustomCore.get_custom_tag(ctid):
+        cases = CustomCore.get_cases_using_custom_tag(ctid)
+        tasks = CustomCore.get_tasks_using_custom_tag(ctid)
+        return {"cases": cases, "tasks": tasks}, 200
+    return {"message": "Custom tag not found", 'toast_class': "danger-subtle"}, 404
 
 @custom_tags_blueprint.route("/<ctid>/delete_custom_tag", methods=['GET', 'POST'])
 @login_required
 @editor_required
 def delete_custom_tag(ctid):
     """Delete a custom tag"""
-    if CustomCore.get_custom_tag(ctid):
+    from ..utils.logger import flowintel_log
+    custom_tag = CustomCore.get_custom_tag(ctid)
+    if custom_tag:
+        tag_name = custom_tag.name
         if CustomCore.delete_custom_tag(ctid):
+            flowintel_log("audit", 200, "Custom tag deleted", User=current_user.email, CustomTagId=ctid, CustomTagName=tag_name)
             return {"message": "Custom tag deleted", "toast_class": "success-subtle"}, 200
         return {"message": "Error custom tag deleted", 'toast_class': "danger-subtle"}, 400
     return {"message": "Custom tag not found", 'toast_class': "danger-subtle"}, 404
@@ -75,7 +98,7 @@ def change_status():
 @editor_required
 def change_config():
     """Change configuration for a custom tag"""
-    print(request.json)
+    from ..utils.logger import flowintel_log
     if "custom_tag_id" in request.json["result_dict"] and request.json["result_dict"]["custom_tag_id"]:
         if "custom_tag_name" in request.json["result_dict"] and request.json["result_dict"]["custom_tag_name"]:
             if "custom_tag_color" in request.json["result_dict"] and request.json["result_dict"]["custom_tag_color"]:
@@ -84,6 +107,7 @@ def change_config():
                     
                 res = CustomCore.change_config_core(request.json["result_dict"])
                 if res:
+                    flowintel_log("audit", 200, "Custom tag edited", User=current_user.email, CustomTagId=request.json["result_dict"]["custom_tag_id"], CustomTagName=request.json["result_dict"]["custom_tag_name"])
                     return {'message': 'Config changed', 'toast_class': "success-subtle"}, 200
                 return {'message': 'Something went wrong', 'toast_class': "danger-subtle"}, 400                    
             return {'message': 'Need to pass "custom_tag_color"', 'toast_class': "warning-subtle"}, 400

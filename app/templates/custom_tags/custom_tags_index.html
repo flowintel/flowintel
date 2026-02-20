@@ -9,75 +9,176 @@
         <div class="row align-items-center">
             <div class="col-auto d-flex align-items-center">
                 <h5 class="mb-0"><i class="fa-solid fa-user-tag me-2"></i>Custom tags</h5>
-                <a class="btn btn-primary btn-sm ms-3" href="/custom_tags/add" title="Add a new custom tag"><i class="fa-solid fa-plus fa-sm"></i></a>
+                {% if not current_user.read_only() %}
+                    <a class="btn btn-primary btn-sm ms-3" href="/custom_tags/add" title="Add a new custom tag"><i class="fa-solid fa-plus fa-sm"></i></a>
+                {% endif %}
+            </div>
+
+            <div class="col input-group w-auto">
+                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Custom tags' />
             </div>
         </div>
     </div>
     
-    <hr class="fading-line-2 mb-4 mt-4">
+    <hr class="fading-line-2 mt-4 mb-4">
 
-    <div style="width:50%; transform: translate(50%, 0);">
-        <div>
-            <input type="search" @input="onInput" placeholder="Search Custom tags" autofocus class="form-control" style="border-radius: 5px;" />
-        </div>
+    <div class="case-core-style">
+        <template v-if="custom_tag_config">
+            <template v-for="custom_tag in custom_tag_config">
+                <div class="list-group" style="margin-bottom: 10px;">
+                    <div style="display:flex;" :style="{'border-top-left-radius': '15px', 'border-top-right-radius': '15px', 'border-bottom-left-radius': custom_tag.show_usage ? '0' : '15px', 'border-bottom-right-radius': custom_tag.show_usage ? '0' : '15px'}">
+                        <a class="list-group-item list-group-item-action case-index-list" @click="toggle_usage(custom_tag)" style="cursor: pointer;" :style="{'border-bottom-left-radius': custom_tag.show_usage ? '0' : '15px', 'border-bottom': custom_tag.show_usage ? 'none' : '1px solid rgba(0,0,0,0.125)'}">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
+                                    <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;" :class="{'fa-angle-down': custom_tag.show_usage}"></i>[[custom_tag.name]]
+                                </h5>
+                                <div class="d-flex align-items-center">
+                                    <input v-if="custom_tag.is_active || custom_tag.is_active == null" type="checkbox" class="form-check-input me-2" checked @click.stop="change_status(custom_tag)" title="Active">
+                                    <input v-else type="checkbox" class="form-check-input me-2" @click.stop="change_status(custom_tag)" title="Inactive">
+                                    <span class="badge" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">
+                                        <i v-if="custom_tag.icon" :class="custom_tag.icon + ' me-1'"></i>[[custom_tag.name]]
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between mt-2">
+                                <small class="text-muted">Color: [[custom_tag.color]]</small>
+                                <small v-if="custom_tag.icon" class="text-muted">Icon: [[custom_tag.icon]]</small>
+                            </div>
+                        </a>
+                        {% if not current_user.read_only() %}
+                            <div :style="{'border-bottom': custom_tag.show_usage ? 'none' : '1px solid rgba(0,0,0,0.125)'}">
+                                <div>
+                                    <button class="btn btn-primary" type="button" title="Edit the custom tag" @click="edit_custom_tag(custom_tag)">
+                                        <i class="fa-solid fa-pen-to-square fa-fw"></i>
+                                    </button>
+                                </div>
+                                <div>
+                                    <button v-if="custom_tag.in_use" class="btn btn-danger" type="button" title="Custom tag is in use and cannot be deleted" disabled>
+                                        <i class="fa-solid fa-trash fa-fw"></i>
+                                    </button>
+                                    <button v-else class="btn btn-danger" type="button" title="Delete the custom tag" data-bs-toggle="modal" :data-bs-target="'#delete_custom_tag_modal_'+custom_tag.id">
+                                        <i class="fa-solid fa-trash fa-fw"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div v-if="custom_tag.show_usage" class="list-group-item" style="padding: 15px; background-color: #f8f9fa; border-top: none; border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
+                        <div v-if="custom_tag.loading_usage" class="text-center">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <div v-else>
+                            <div v-if="custom_tag.usage_data && (custom_tag.usage_data.cases.length > 0 || custom_tag.usage_data.tasks.length > 0)">
+                                <div v-if="custom_tag.usage_data.cases.length > 0" class="mb-3">
+                                    <h6 class="mb-2"><i class="fa-solid fa-briefcase me-2"></i>Cases ([[custom_tag.usage_data.cases.length]])</h6>
+                                    <ul class="list-group list-group-flush">
+                                        <li v-for="case_item in custom_tag.usage_data.cases" class="list-group-item" style="background-color: transparent; border: none; padding-left: 0;">
+                                            <a :href="'/case/'+case_item.id" target="_blank" class="text-decoration-none">
+                                                <i class="fa-solid fa-external-link-alt fa-sm me-1"></i>
+                                                <strong>[[case_item.title]]</strong>
+                                            </a>
+                                            <small v-if="case_item.description" class="d-block text-muted ms-3">[[case_item.description]]</small>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div v-if="custom_tag.usage_data.tasks.length > 0">
+                                    <h6 class="mb-2"><i class="fa-solid fa-tasks me-2"></i>Tasks ([[custom_tag.usage_data.tasks.length]])</h6>
+                                    <ul class="list-group list-group-flush">
+                                        <li v-for="task_item in custom_tag.usage_data.tasks" class="list-group-item" style="background-color: transparent; border: none; padding-left: 0;">
+                                            <a :href="'/case/'+task_item.case_id+'?task_id='+task_item.id" target="_blank" class="text-decoration-none">
+                                                <i class="fa-solid fa-external-link-alt fa-sm me-1"></i>
+                                                [[task_item.title]]
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div v-else class="text-muted text-center">
+                                <i class="fa-solid fa-info-circle me-1"></i>This custom tag is not currently used in any cases or tasks.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Modal delete custom tag -->
+                {% if not current_user.read_only() %}
+                    <div class="modal fade" :id="'delete_custom_tag_modal_'+custom_tag.id" tabindex="-1" aria-labelledby="delete_custom_tag_modal" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="delete_custom_tag_modal">Delete '[[custom_tag.name]]' ?</h1>
+                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-danger" @click="delete_custom_tag(custom_tag.id)" data-bs-dismiss="modal">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </template>
+        </template>
     </div>
-    <br>
 
-    <div class="row" style="margin-bottom: 100px;">
-        <div class="col" style="flex: 0 0 50%">
-            <div class="list-group">
-                <div v-for="custom_tag in custom_tag_config" style="display:flex; ">
-                    <input v-if="custom_tag.is_active || custom_tag.is_active == null" type="checkbox" style="margin-right: 5px;" checked @click="change_status(custom_tag)">
-                    <input v-else type="checkbox" style="margin-right: 5px;" @click="change_status(custom_tag)">
-                    <a class="list-group-item list-group-item-action" style="border-radius: 10px;" @click="display_config(custom_tag)">
-                        [[custom_tag.name]]
-                    </a>
+    <!-- Edit Modal -->
+    {% if not current_user.read_only() %}
+        <div class="modal fade" id="edit_custom_tag_modal" tabindex="-1" aria-labelledby="edit_custom_tag_modal_label" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="edit_custom_tag_modal_label">Edit Custom Tag</h1>
+                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit-name" class="form-label">Name:</label>
+                            <input type="text" class="form-control" id="edit-name" v-model="edit_tag.name">
+                            <span style="color: brown" id="error-name"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-color" class="form-label">Color:</label>
+                            <input type="color" class="form-control" id="edit-color" v-model="edit_tag.color">
+                            <span style="color: brown" id="error-color"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-icon" class="form-label">Icon:</label>
+                            <input type="text" class="form-control" id="edit-icon" v-model="edit_tag.icon" placeholder="e.g., fa-solid fa-star">
+                            <span style="color: brown" id="error-icon"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Preview:</label>
+                            <div>
+                                <span class="badge" :style="{'background-color': edit_tag.color, 'color': getTextColor(edit_tag.color)}">
+                                    <i v-if="edit_tag.icon" :class="edit_tag.icon + ' me-1'"></i>[[edit_tag.name]]
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" @click="save_custom_tag()">Save changes</button>
+                    </div>
                 </div>
             </div>
         </div>
-        <!-- Right panel -->
-        <div v-if="Object.keys(current_config).length" class="side-panel-config">
-            <div class="round-button" title="close" style="margin-top: 3px;">
-                <div class="round-button-circle">
-                    <a @click="close_panel()" class="round-button">x</a>
-                </div>
-            </div>
-            <br>
-            <h4>[[ current_config.custom_tag_name ]]</h4>
-            <div class="mb-3">
-                <label :for="'form-name-'+current_config.custom_tag_id" class="form-label">Name: </label>
-                <input type="text" class="form-control" :id="'form-name-'+current_config.custom_tag_id" :value="current_config.custom_tag_name">
-                <span style="color: brown" :id="'error-name-'+current_config.custom_tag_id"></span>
-            </div>
-            <div class="mb-3">
-                <label :for="'form-color-'+current_config.custom_tag_id" class="form-label">Color: </label>
-                <input type="color" class="form-control" :id="'form-color-'+current_config.custom_tag_id" :value="current_config.custom_tag_color">
-                <span style="color: brown" :id="'error-color-'+current_config.custom_tag_id"></span>
-            </div>
-            <div class="mb-3">
-                <label :for="'form-icon-'+current_config.custom_tag_id" class="form-label">Icon: </label>
-                <input type="text" class="form-control" :id="'form-icon-'+current_config.custom_tag_id" :value="current_config.custom_tag_icon">
-                <span style="color: brown" :id="'error-icon-'+current_config.custom_tag_id"></span>
-            </div>
-            <button class="btn btn-primary" @click="change_config()">Save</button>
-            <button class="btn btn-danger" @click="delete_custom_tag()" style="margin-left: 5px;">Delete</button>
-        </div>
-    </div>
+    {% endif %}
 {% endblock %}
-
-
 {% block script %}
     <script type="module">
-        const { createApp, ref, onMounted, nextTick } = Vue
+        const { createApp, ref } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
 
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
-                const custom_tag_config = ref({})
-                const current_config = ref({})
+                const custom_tag_config = ref([])
+                const edit_tag = ref({id: null, name: '', color: '#000000', icon: ''})
                 const search_query = ref('')
                 let searchTimer = null
+                let editModal = null
 
                 async function query_custom_tags(q=''){
                     let url = "/custom_tags/list"
@@ -88,69 +189,9 @@
                 }
                 query_custom_tags()
 
-                async function display_config(custom_tag){
-                    current_config.value = {}
-                    current_config.value["custom_tag_id"] = custom_tag.id
-                    current_config.value["custom_tag_name"] = custom_tag.name
-                    current_config.value["custom_tag_color"] = custom_tag.color
-                    current_config.value["custom_tag_icon"] = custom_tag.icon
-                }
-
-                function close_panel(){
-                    current_config.value = {}
-                }
-
-                async function change_config(){
-                    $("#error-name-"+current_config.value["custom_tag_id"]).text("")
-                    $("#error-color-"+current_config.value["custom_tag_id"]).text("")
-                    $("#error-icon-"+current_config.value["custom_tag_id"]).text("")
-                    let result_dict = {}
-                    result_dict["custom_tag_id"] = current_config.value["custom_tag_id"]
-
-                    let loc_name = $("#form-name-"+current_config.value["custom_tag_id"]).val()
-                    if(!loc_name){
-                        $("#error-name-"+current_config.value["custom_tag_id"]).text('Cannot be empty')
-                        return
-                    }
-                    let loc_color = $("#form-color-"+current_config.value["custom_tag_id"]).val()
-                    if(!loc_color){
-                        $("#error-color-"+current_config.value["custom_tag_id"]).text('Cannot be empty')
-                        return
-                    }
-                    let loc_icon = $("#form-icon-"+current_config.value["custom_tag_id"]).val()
-
-                    // Update result_dict and current_config
-                    result_dict["custom_tag_name"] = loc_name
-                    current_config.value["custom_tag_name"] = loc_name
-
-                    result_dict["custom_tag_color"] = loc_color
-                    current_config.value["custom_tag_color"] = loc_color
-
-                    result_dict["custom_tag_icon"] = loc_icon
-                    current_config.value["custom_tag_icon"] = loc_icon
-                    
-                    // Update list of custom tags with new value for current custom tag
-                    for(let i in custom_tag_config.value){
-                        if(custom_tag_config.value[i].id == current_config.value["custom_tag_id"] ){
-                            custom_tag_config.value[i].name = loc_name
-                            custom_tag_config.value[i].color = loc_color
-                            custom_tag_config.value[i].icon = loc_icon
-                        }
-                    }
-
-                    const res = await fetch('/custom_tags/change_config',{
-                                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                        method: "POST",
-                                        body: JSON.stringify({
-                                            result_dict
-                                        })
-                                    })
-                    display_toast(res)
-                }
-
                 async function change_status(custom_tag){
                     let res = await fetch("/custom_tags/change_status?custom_tag_id="+custom_tag.id)
-                    if(await res.status_code == 200){
+                    if(res.status == 200){
                         custom_tag.is_active = !custom_tag.is_active
                     }
                     display_toast(res)
@@ -162,34 +203,111 @@
                     searchTimer = setTimeout(() => query_custom_tags(search_query.value), 300)
                 }
 
-                async function delete_custom_tag(){
-                    let loc_id = current_config.value["custom_tag_id"]
-                    let res = await fetch("/custom_tags/"+loc_id+"/delete_custom_tag")
-                    if(await res.status_code == 200){
-                        current_config.value = {}
-                        let index 
-                        for(let i in custom_tag_config.value){
-                            if(custom_tag_config.value[i].id == loc_id){
-                                index = i
+                function edit_custom_tag(custom_tag){
+                    edit_tag.value = {
+                        id: custom_tag.id,
+                        name: custom_tag.name,
+                        color: custom_tag.color,
+                        icon: custom_tag.icon || ''
+                    }
+                    if(!editModal) {
+                        editModal = new bootstrap.Modal(document.getElementById('edit_custom_tag_modal'))
+                    }
+                    editModal.show()
+                }
+
+                async function save_custom_tag(){
+                    $("#error-name").text("")
+                    $("#error-color").text("")
+                    $("#error-icon").text("")
+                    
+                    if(!edit_tag.value.name){
+                        $("#error-name").text('Cannot be empty')
+                        return
+                    }
+                    if(!edit_tag.value.color){
+                        $("#error-color").text('Cannot be empty')
+                        return
+                    }
+
+                    let result_dict = {
+                        custom_tag_id: edit_tag.value.id,
+                        custom_tag_name: edit_tag.value.name,
+                        custom_tag_color: edit_tag.value.color,
+                        custom_tag_icon: edit_tag.value.icon
+                    }
+
+                    const res = await fetch('/custom_tags/change_config',{
+                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                        method: "POST",
+                        body: JSON.stringify({result_dict})
+                    })
+                    
+                    if(res.status == 200){
+                        for(let tag of custom_tag_config.value){
+                            if(tag.id == edit_tag.value.id){
+                                tag.name = edit_tag.value.name
+                                tag.color = edit_tag.value.color
+                                tag.icon = edit_tag.value.icon
                                 break
                             }
                         }
-                        delete custom_tag_config.value[index]
+                        editModal.hide()
                     }
                     display_toast(res)
                 }
 
+                async function delete_custom_tag(tag_id){
+                    let res = await fetch("/custom_tags/"+tag_id+"/delete_custom_tag")
+                    if(res.status == 200){
+                        custom_tag_config.value = custom_tag_config.value.filter(t => t.id !== tag_id)
+                    }
+                    display_toast(res)
+                }
+
+                function getTextColor(bgColor) {
+                    if (!bgColor) return '#000000'
+                    const color = bgColor.charAt(0) === '#' ? bgColor.substring(1, 7) : bgColor
+                    const r = parseInt(color.substring(0, 2), 16)
+                    const g = parseInt(color.substring(2, 4), 16)
+                    const b = parseInt(color.substring(4, 6), 16)
+                    return (((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186) ? '#000000' : '#FFFFFF'
+                }
+
+                async function toggle_usage(custom_tag) {
+                    custom_tag.show_usage = !custom_tag.show_usage
+                    
+                    if (custom_tag.show_usage && !custom_tag.usage_data) {
+                        custom_tag.loading_usage = true
+                        
+                        try {
+                            const res = await fetch('/custom_tags/' + custom_tag.id + '/usage')
+                            if (res.status == 200) {
+                                custom_tag.usage_data = await res.json()
+                            } else {
+                                custom_tag.usage_data = { cases: [], tasks: [] }
+                                display_toast(res)
+                            }
+                        } catch (error) {
+                            console.error('Error fetching usage data:', error)
+                            custom_tag.usage_data = { cases: [], tasks: [] }
+                        } finally {
+                            custom_tag.loading_usage = false
+                        }
+                    }
+                }
 
                 return {
                     message_list,
                     custom_tag_config,
-                    current_config,
-                    display_config,
-                    close_panel,
-                    change_config,
+                    edit_tag,
+                    edit_custom_tag,
+                    save_custom_tag,
                     change_status,
                     onInput,
-                    delete_custom_tag
+                    delete_custom_tag,
+                    getTextColor,
+                    toggle_usage
                 }
             }
         }).mount('#main-container')
