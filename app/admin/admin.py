@@ -40,9 +40,11 @@ def add_user():
     form = RegistrationForm()
 
     if current_user.is_pure_org_admin():
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not role.admin]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles() if not role.admin]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     else:
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles()]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     
     if current_user.is_pure_org_admin():
         user_org = AdminModel.get_org(current_user.org_id)
@@ -52,8 +54,12 @@ def add_user():
         form.org.choices = [(user_org.id, user_org.name)]
         form.org.data = str(user_org.id)
     else:
-        form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
+        orgs = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
+        form.org.choices = sorted(orgs, key=lambda x: x[1].lower())
         form.org.choices.insert(0, ("None", "New org"))
+        # Set default organization to current user's organization
+        if current_user.org_id:
+            form.org.data = str(current_user.org_id)
 
     if form.validate_on_submit():
         if current_user.is_pure_org_admin():
@@ -104,9 +110,11 @@ def edit_user(uid):
     form.user_id.data = uid
     
     if current_user.is_pure_org_admin():
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id and not role.admin]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id and not role.admin]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     else:
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     
     role_temp = AdminModel.get_role(user_modif.role_id)
     if not (current_user.is_pure_org_admin() and role_temp.admin):
@@ -116,7 +124,8 @@ def edit_user(uid):
         user_org = AdminModel.get_org(current_user.org_id)
         form.org.choices = [(user_org.id, user_org.name)]
     else:
-        form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs() if not user_modif.org_id == org.id]
+        orgs = [(org.id, org.name) for org in AdminModel.get_all_orgs() if not user_modif.org_id == org.id]
+        form.org.choices = sorted(orgs, key=lambda x: x[1].lower())
         org_temp = AdminModel.get_org(user_modif.org_id)
         form.org.choices.insert(0, (org_temp.id, org_temp.name))
 
