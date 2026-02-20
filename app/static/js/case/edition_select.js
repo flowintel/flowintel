@@ -1,7 +1,7 @@
 import {display_toast} from '../toaster.js'
 import {message_list} from '/static/js/toaster.js'
 import {getTextColor, mapIcon} from '/static/js/utils.js'
-const { ref, nextTick, onMounted } = Vue
+const { ref, nextTick, onMounted, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
     props:{type_object: String},
@@ -249,6 +249,68 @@ export default {
             selected_custom_tags.value.splice(loc, 1)
             emit("delete_sct", loc)
         }
+        
+        // Disable already-selected options in dropdowns
+        function updateTagsDropdown() {
+            const selected_names = selected_tags.value.map(tag => tag.name)
+            $('#tags_select option').each(function() {
+                const $option = $(this)
+                $option.prop('disabled', selected_names.includes($option.val()))
+            })
+        }
+
+        function updateClustersDropdown() {
+            const selected_uuids = selected_clusters.value.map(cluster => cluster.uuid)
+            $('#clusters_select option').each(function() {
+                const $option = $(this)
+                $option.prop('disabled', selected_uuids.includes($option.val()))
+            })
+        }
+
+        function updateGalaxiesDropdown() {
+            const selected_names = selected_galaxies.value.map(galaxy => galaxy.name)
+            $('#galaxies_select option').each(function() {
+                const $option = $(this)
+                $option.prop('disabled', selected_names.includes($option.val()))
+            })
+        }
+
+        function updateCustomTagsDropdown() {
+            const selected_names = selected_custom_tags.value.map(tag => tag.name)
+            $('#custom_select option').each(function() {
+                const $option = $(this)
+                $option.prop('disabled', selected_names.includes($option.val()))
+            })
+        }
+
+        // Watch for changes in selected items and update dropdowns
+        watch(selected_tags, () => {
+            nextTick(() => updateTagsDropdown())
+        }, { deep: true })
+
+        watch(selected_clusters, () => {
+            nextTick(() => updateClustersDropdown())
+        }, { deep: true })
+
+        watch(selected_galaxies, () => {
+            nextTick(() => updateGalaxiesDropdown())
+        }, { deep: true })
+
+        watch(selected_custom_tags, () => {
+            nextTick(() => updateCustomTagsDropdown())
+        }, { deep: true })
+
+        watch(tags_list, () => {
+            nextTick(() => updateTagsDropdown())
+        }, { deep: true })
+
+        watch(cluster_list, () => {
+            nextTick(() => updateClustersDropdown())
+        }, { deep: true })
+        
+        watch(custom_tags, () => {
+            nextTick(() => updateCustomTagsDropdown())
+        }, { deep: true })
         
 
         onMounted(() => {
