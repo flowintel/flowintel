@@ -410,6 +410,62 @@ def get_case_by_tags(current_user):
             "task_clusters": chart_dict_constructor(dict_task_cluster_tag)}
 
 
+def get_tag_galaxy_top_stats(current_user, limit=10):
+    cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
+
+    case_tag_map = {}
+    case_cluster_map = {}
+    task_tag_map = {}
+    task_cluster_map = {}
+
+    for case in cases:
+        case_info = {"id": case.id, "title": case.title}
+
+        for c in Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(case_id=case.id).all():
+            e = case_tag_map.setdefault(c.name, {"count": 0, "cases": []})
+            e["count"] += 1
+            e["cases"].append(case_info)
+
+        for t in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=case.id).all():
+            e = case_tag_map.setdefault(t.name, {"count": 0, "cases": []})
+            e["count"] += 1
+            e["cases"].append(case_info)
+
+        for cl in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id).filter_by(case_id=case.id).all():
+            e = case_cluster_map.setdefault(cl.tag, {"count": 0, "cases": [], "name": cl.name})
+            e["count"] += 1
+            e["cases"].append(case_info)
+
+        for task in case.tasks:
+            task_info = {"id": task.id, "title": task.title, "case_id": task.case_id}
+
+            for c in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(task_id=task.id).all():
+                e = task_tag_map.setdefault(c.name, {"count": 0, "tasks": []})
+                e["count"] += 1
+                e["tasks"].append(task_info)
+
+            for t in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=task.id).all():
+                e = task_tag_map.setdefault(t.name, {"count": 0, "tasks": []})
+                e["count"] += 1
+                e["tasks"].append(task_info)
+
+            for cl in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id).filter_by(task_id=task.id).all():
+                e = task_cluster_map.setdefault(cl.tag, {"count": 0, "tasks": [], "name": cl.name})
+                e["count"] += 1
+                e["tasks"].append(task_info)
+
+    def top_n(d):
+        rows = sorted(d.items(), key=lambda x: x[1]["count"], reverse=True)[:limit]
+        return [{"tag": k, **v} for k, v in rows]
+
+    return {
+        "case_tags": top_n(case_tag_map),
+        "case_clusters": top_n(case_cluster_map),
+        "task_tags": top_n(task_tag_map),
+        "task_clusters": top_n(task_cluster_map),
+    }
+
+
 ########################
 # Case from MISP Event #
 ########################

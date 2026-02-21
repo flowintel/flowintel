@@ -113,6 +113,12 @@ def get_case_by_tags():
         return res
     return {}
 
+@tools_blueprint.route("/tag_galaxy_stats")
+@login_required
+def get_tag_galaxy_stats():
+    res = ToolsModel.get_tag_galaxy_top_stats(current_user)
+    return res
+
 @tools_blueprint.route("/community_stats")
 @login_required
 def community_stats():
