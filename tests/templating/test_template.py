@@ -427,7 +427,7 @@ def test_editor_remove_task_from_case_forbidden(client):
 def test_editor_can_view_case_templates(client):
     """Editor should be able to view case templates"""
     create_case_template(client)
-    not
+    
     response = client.get("/api/templating/case/1", headers={"X-API-KEY": EDITOR_API_KEY})
     assert response.status_code == 200
 

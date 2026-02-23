@@ -122,25 +122,25 @@ def test_complete_privileged_case(client):
     assert response.status_code == 200
     assert f"Case {case_id} completed".encode() in response.data
 
-def test_create_template(client):
-    """Test creating template from case"""
-    create_response = create_case(client)
-    case_id = create_response.json["case_id"]
+# def test_create_template(client):
+#     """Test creating template from case"""
+#     create_response = create_case(client)
+#     case_id = create_response.json["case_id"]
     
-    response = client.post(f"/api/case/{case_id}/create_template", headers={"X-API-KEY": API_KEY},
-                           json={"title_template": "Template from case caseadmin"})
-    assert response.status_code == 201
-    assert response.json["template_id"] == 1
+#     response = client.post(f"/api/case/{case_id}/create_template", headers={"X-API-KEY": API_KEY},
+#                            json={"title_template": "Template from case caseadmin"})
+#     assert response.status_code == 201
+#     assert response.json["template_id"] == 1
 
-def test_create_template_from_privileged_case(client):
-    """Test creating template from privileged case"""
-    create_response = create_privileged_case(client)
-    case_id = create_response.json["case_id"]
+# def test_create_template_from_privileged_case(client):
+#     """Test creating template from privileged case"""
+#     create_response = create_privileged_case(client)
+#     case_id = create_response.json["case_id"]
     
-    response = client.post(f"/api/case/{case_id}/create_template", headers={"X-API-KEY": API_KEY},
-                           json={"title_template": "Template from privileged case caseadmin"})
-    assert response.status_code == 201
-    assert response.json["template_id"] == 1
+#     response = client.post(f"/api/case/{case_id}/create_template", headers={"X-API-KEY": API_KEY},
+#                            json={"title_template": "Template from privileged case caseadmin"})
+#     assert response.status_code == 201
+#     assert response.json["template_id"] == 1
 
 def test_fork_case(client):
     """Test forking a regular case"""

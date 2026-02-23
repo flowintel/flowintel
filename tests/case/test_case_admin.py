@@ -293,7 +293,7 @@ def test_add_org_case_wrong_org(client):
     response = client.post(f"/api/case/{case_id}/add_org", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
-                           json={"oid": "6"}
+                           json={"oid": "9999"}
                         )
     assert response.status_code == 404
 
