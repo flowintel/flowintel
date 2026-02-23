@@ -24,6 +24,9 @@
         <button class="nav-link" id="tab-task" @click="active_tab('task')">Tasks</button>
     </li>
     <li class="nav-item">
+        <button class="nav-link" id="tab-tags" @click="active_tab('tags')">Tags &amp; Galaxies</button>
+    </li>
+    <li class="nav-item">
         {% if current_user.is_admin() %}
             <button class="nav-link" id="tab-admin" @click="active_tab('admin')">Admin</button>
         {%else%}
@@ -194,6 +197,139 @@
     </div>
 
 </template>
+<template v-else-if="main_tab == 'tags'">
+
+    <div class="row mb-4">
+        <div class="col-12 col-xl-6">
+            <div class="card card-body">
+                <h5><i class="fa-solid fa-tag me-2"></i>Top tags on Cases</h5>
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
+                    <tbody>
+                        <tr v-for="(row, idx) in tag_stats.case_tags" :key="'ct-'+idx"
+                            style="cursor:pointer"
+                            :class="selected_case_tag === row ? 'table-active' : ''"
+                            @click="selected_case_tag = (selected_case_tag === row ? null : row)">
+                            <td>[[ idx + 1 ]]</td>
+                            <td>[[ row.tag ]]</td>
+                            <td><span class="badge text-bg-primary">[[ row.count ]]</span></td>
+                        </tr>
+                        <tr v-if="!tag_stats.case_tags || tag_stats.case_tags.length === 0">
+                            <td colspan="3" class="text-muted">No tags found</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div v-if="selected_case_tag" class="mt-3 border-top pt-2">
+                    <small class="text-muted">Cases tagged <strong>[[ selected_case_tag.tag ]]</strong></small>
+                    <ul class="list-unstyled mt-1 mb-0">
+                        <li v-for="c in selected_case_tag.cases" :key="c.id">
+                            <a :href="'/case/' + c.id">[[ c.title ]]</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card card-body">
+                <h5><i class="fa-solid fa-tag me-2"></i>Top tags on Tasks</h5>
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
+                    <tbody>
+                        <tr v-for="(row, idx) in tag_stats.task_tags" :key="'tt-'+idx"
+                            style="cursor:pointer"
+                            :class="selected_task_tag === row ? 'table-active' : ''"
+                            @click="selected_task_tag = (selected_task_tag === row ? null : row)">
+                            <td>[[ idx + 1 ]]</td>
+                            <td>[[ row.tag ]]</td>
+                            <td><span class="badge text-bg-success">[[ row.count ]]</span></td>
+                        </tr>
+                        <tr v-if="!tag_stats.task_tags || tag_stats.task_tags.length === 0">
+                            <td colspan="3" class="text-muted">No tags found</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div v-if="selected_task_tag" class="mt-3 border-top pt-2">
+                    <small class="text-muted">Tasks tagged <strong>[[ selected_task_tag.tag ]]</strong></small>
+                    <ul class="list-unstyled mt-1 mb-0">
+                        <li v-for="t in selected_task_tag.tasks" :key="t.id">
+                            <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12 col-xl-6">
+            <div class="card card-body">
+                <h5><i class="fa-solid fa-spider me-2"></i>Top galaxy clusters on Cases</h5>
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
+                    <tbody>
+                        <tr v-for="(row, idx) in tag_stats.case_clusters" :key="'cc-'+idx"
+                            style="cursor:pointer"
+                            :class="selected_case_cluster === row ? 'table-active' : ''"
+                            @click="selected_case_cluster = (selected_case_cluster === row ? null : row)">
+                            <td>[[ idx + 1 ]]</td>
+                            <td>
+                                <span :title="row.tag">[[ row.name || row.tag ]]</span>
+                                <small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small>
+                            </td>
+                            <td><span class="badge text-bg-warning text-dark">[[ row.count ]]</span></td>
+                        </tr>
+                        <tr v-if="!tag_stats.case_clusters || tag_stats.case_clusters.length === 0">
+                            <td colspan="3" class="text-muted">No galaxy clusters found</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div v-if="selected_case_cluster" class="mt-3 border-top pt-2">
+                    <small class="text-muted">Cases with cluster <strong>[[ selected_case_cluster.name || selected_case_cluster.tag ]]</strong></small>
+                    <ul class="list-unstyled mt-1 mb-0">
+                        <li v-for="c in selected_case_cluster.cases" :key="c.id">
+                            <a :href="'/case/' + c.id">[[ c.title ]]</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card card-body">
+                <h5><i class="fa-solid fa-spider me-2"></i>Top galaxy clusters on Tasks</h5>
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
+                    <tbody>
+                        <tr v-for="(row, idx) in tag_stats.task_clusters" :key="'tc-'+idx"
+                            style="cursor:pointer"
+                            :class="selected_task_cluster === row ? 'table-active' : ''"
+                            @click="selected_task_cluster = (selected_task_cluster === row ? null : row)">
+                            <td>[[ idx + 1 ]]</td>
+                            <td>
+                                <span :title="row.tag">[[ row.name || row.tag ]]</span>
+                                <small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small>
+                            </td>
+                            <td><span class="badge text-bg-info text-dark">[[ row.count ]]</span></td>
+                        </tr>
+                        <tr v-if="!tag_stats.task_clusters || tag_stats.task_clusters.length === 0">
+                            <td colspan="3" class="text-muted">No galaxy clusters found</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div v-if="selected_task_cluster" class="mt-3 border-top pt-2">
+                    <small class="text-muted">Tasks with cluster <strong>[[ selected_task_cluster.name || selected_task_cluster.tag ]]</strong></small>
+                    <ul class="list-unstyled mt-1 mb-0">
+                        <li v-for="t in selected_task_cluster.tasks" :key="t.id">
+                            <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</template>
 <template v-else-if="main_tab == 'community'">
     <div class="card card-body">
         <div class="row">
@@ -259,6 +395,11 @@
             const community_stat = ref({})
             const main_tab = ref("case")
             const case_tags_stats = ref([])
+            const tag_stats = ref({})
+            const selected_case_tag = ref(null)
+            const selected_task_tag = ref(null)
+            const selected_case_cluster = ref(null)
+            const selected_task_cluster = ref(null)
 
             async function active_tab(tab_name){
                 if(tab_name == 'case'){
@@ -266,6 +407,7 @@
                     if ( !document.getElementById("tab-case").classList.contains("active") ){
                         document.getElementById("tab-case").classList.add("active")
                         document.getElementById("tab-task").classList.remove("active")
+                        document.getElementById("tab-tags").classList.remove("active")
                         document.getElementById("tab-admin").classList.remove("active")
                         document.getElementById("tab-community").classList.remove("active")
 
@@ -278,10 +420,24 @@
                         document.getElementById("tab-task").classList.add("active")
                         document.getElementById("tab-case").classList.remove("active")
                         document.getElementById("tab-admin").classList.remove("active")
+                        document.getElementById("tab-tags").classList.remove("active")
                         document.getElementById("tab-community").classList.remove("active")
 
                         await nextTick()
                         init_chart_task()
+                    }
+                }else if(tab_name == 'tags'){
+                    main_tab.value = 'tags'
+                    if ( !document.getElementById("tab-tags").classList.contains("active") ){
+                        document.getElementById("tab-tags").classList.add("active")
+                        document.getElementById("tab-case").classList.remove("active")
+                        document.getElementById("tab-task").classList.remove("active")
+                        document.getElementById("tab-admin").classList.remove("active")
+                        document.getElementById("tab-community").classList.remove("active")
+                        selected_case_tag.value = null
+                        selected_task_tag.value = null
+                        selected_case_cluster.value = null
+                        selected_task_cluster.value = null
                     }
                 }else if(tab_name == 'admin'){
                     main_tab.value = 'admin'
@@ -289,6 +445,7 @@
                         document.getElementById("tab-admin").classList.add("active")
                         document.getElementById("tab-case").classList.remove("active")
                         document.getElementById("tab-task").classList.remove("active")
+                        document.getElementById("tab-tags").classList.remove("active")
                         document.getElementById("tab-community").classList.remove("active")
                         
                         await nextTick()
@@ -308,6 +465,7 @@
                         document.getElementById("tab-community").classList.add("active")
                         document.getElementById("tab-case").classList.remove("active")
                         document.getElementById("tab-task").classList.remove("active")
+                        document.getElementById("tab-tags").classList.remove("active")
                         document.getElementById("tab-admin").classList.remove("active")
                         
                         await nextTick()
@@ -535,10 +693,19 @@
                 }
             }
 
+            async function fetch_tag_galaxy_stats() {
+                const res = await fetch('/tools/tag_galaxy_stats')
+                if (res.status == 200) {
+                    let loc = await res.json()
+                    tag_stats.value = loc
+                }
+            }
+
             onMounted(() => {
                 fetch_case_stat()
                 fetch_admin_stat()
                 fetch_community_stat()
+                fetch_tag_galaxy_stats()
             })
 
             return {
@@ -548,6 +715,11 @@
                 community_stat,
                 main_tab,
                 case_tags_stats,
+                tag_stats,
+                selected_case_tag,
+                selected_task_tag,
+                selected_case_cluster,
+                selected_task_cluster,
 
                 active_tab
             }
