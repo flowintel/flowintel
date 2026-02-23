@@ -8,7 +8,11 @@ export default {
         all_connectors_list: Object,
         is_case: Boolean,
         object_id: Number,
-        cases_info: Object
+        cases_info: Object,
+        can_edit: {
+            type: Boolean,
+            default: true
+        }
     },
     emits: ['case_connectors', 'task_connectors'],
     setup(props, {emit}) {
@@ -166,7 +170,7 @@ export default {
     `,
     template: `
         <div class="card card-body">
-            <div>
+            <div v-if="can_edit">
                 <button class="btn btn-outline-primary" data-bs-toggle="modal" :data-bs-target="'#modal-add-connectors-'+modal_indentifier">
                     <i class="fa-solid fa-plus"></i>
                 </button>
@@ -205,8 +209,10 @@ export default {
                         <td v-else><i>None</i></td>
 
                         <td>
-                            <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)"> <i class="fa-solid fa-pen-to-square"></i> </button>
-                            <button class="btn btn-outline-danger" @click="remove_connector(instance.template_instance_id)"> <i class="fa-solid fa-trash"></i> </button>
+                            <template v-if="can_edit">
+                                <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)"> <i class="fa-solid fa-pen-to-square"></i> </button>
+                                <button class="btn btn-outline-danger" @click="remove_connector(instance.template_instance_id)"> <i class="fa-solid fa-trash"></i> </button>
+                            </template>
                         </td>
                     </tr>
                 </tbody>
@@ -214,7 +220,7 @@ export default {
         </div>
 
         <!-- Add Connectors -->
-        <div class="modal fade" :id="'modal-add-connectors-'+modal_indentifier" tabindex="-1" aria-labelledby="AddConnectorsLabel" aria-hidden="true">
+        <div v-if="can_edit" class="modal fade" :id="'modal-add-connectors-'+modal_indentifier" tabindex="-1" aria-labelledby="AddConnectorsLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -252,7 +258,7 @@ export default {
 
 
         <!-- Edit Connectors -->
-        <div class="modal fade" :id="'modal-edit-connectors-'+modal_indentifier" tabindex="-1" aria-labelledby="EditConnectorsLabel" aria-hidden="true">
+        <div v-if="can_edit" class="modal fade" :id="'modal-edit-connectors-'+modal_indentifier" tabindex="-1" aria-labelledby="EditConnectorsLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">

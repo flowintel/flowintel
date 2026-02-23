@@ -8,11 +8,17 @@
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/Sortable.min.js') }}"></script>
+<script>
+    {% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
+    window.can_manage_templates = {{ 'true' if can_manage_templates else 'false' }};
+    window.is_admin = {{ 'true' if current_user.is_admin() else 'false' }};
+</script>
 
 {{ super() }}
 {%endblock%}
 
 {% block content %}
+{% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
 <template v-if="case_template">
     <div class="case-header-card">
         <div class="case-header-top">
@@ -38,21 +44,25 @@
                                 <span class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i></span> Download
                             </a>
                         </li>
-                        <li>
-                            <a class="dropdown-item" href="/templating/edit_case/{{case_id}}" type="button" title="Edit the case template">
-                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-pen-to-square"></i></span> Edit
-                            </a>
-                        </li>
+                        {% if can_manage_templates %}
+                            <li>
+                                <a class="dropdown-item" href="/templating/edit_case/{{case_id}}" type="button" title="Edit the case template">
+                                    <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-pen-to-square"></i></span> Edit
+                                </a>
+                            </li>
+                        {% endif %}
                         <li>
                             <button type="button" class="dropdown-item" title="Create a case from this template" data-bs-toggle="modal" data-bs-target="#fork_case_modal">
                                 <span class="btn btn-primary btn-sm"><i class="fa-solid fa-file"></i></span> Create case
                             </button>
                         </li>
-                        <li>
-                            <button type="button" class="dropdown-item" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
-                                <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
-                            </button>
-                        </li>
+                        {% if can_manage_templates %}
+                            <li>
+                                <button type="button" class="dropdown-item" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
+                                    <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
+                                </button>
+                            </li>
+                        {% endif %}
                     </ul>
                 </div>
             </div>
@@ -163,13 +173,13 @@
             <template v-if="selected_tab == 'main'">
                 <div class="row">
                     <div class="col-6">
-                        <tags_edition :current_case="case_template" :type_object="'case_template'"></tags_edition>
+                        <tags_edition :current_case="case_template" :type_object="'case_template'" :can_edit="{{ 'true' if can_manage_templates else 'false' }}"></tags_edition>
                     </div>
                 </div>
             </template>
             <template v-else-if="selected_tab == 'note'">
                 <div v-if="case_template.notes">
-                    <template v-if="edit_mode">
+                    <template v-if="edit_mode && {{ 'true' if can_manage_templates else 'false' }}">
                         <button class="btn btn-primary" @click="save_note_case()">Save</button>
                         <div style="display: flex;">
                             <div class="note-editor" id="editor"></div>
@@ -177,16 +187,22 @@
                         </div>
                     </template>
                     <template v-else>
-                        <button class="btn btn-primary btn-sm" @click="edit_note()">Edit</button>
+                        {% if can_manage_templates %}
+                            <button class="btn btn-primary btn-sm" @click="edit_note()">Edit</button>
+                        {% endif %}
                         <div v-html="md.render(case_template.notes)" class="markdown-render-result container-fluid"></div>
                     </template>
                 </div>
                 <template v-else>
-                    <button class="btn btn-primary" @click="save_note_case()">Save</button>
-                    <div style="display: flex;">
-                        <div class="note-editor" id="editor"></div>
-                        <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
-                    </div>
+                    {% if can_manage_templates %}
+                        <button class="btn btn-primary" @click="save_note_case()">Save</button>
+                        <div style="display: flex;">
+                            <div class="note-editor" id="editor"></div>
+                            <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                        </div>
+                    {% else %}
+                        <i>No notes</i>
+                    {% endif %}
                 </template>
             </template>
 
@@ -197,6 +213,7 @@
                     :is_case="true"
                     :object_id="case_template.id"
                     :cases_info="case_template"
+                    :can_edit="{{ 'true' if can_manage_templates else 'false' }}"
                     @case_connectors="(msg) => fetch_case_template_connectors()"
                     @task_connectors="">
                 </templateconnectors>
@@ -221,9 +238,11 @@
         <div class="row align-items-center">
             <div class="col-auto d-flex align-items-center">
                 <h5 class="mb-0"><i class="fa-solid fa-list-check me-2"></i>Tasks</h5>
-                <a href="/templating/case/{{case_id}}/add_task" class="btn btn-primary btn-sm ms-3" title="Add new task">
-                    <i class="fa-solid fa-plus fa-sm"></i>
-                </a>
+                {% if can_manage_templates %}
+                    <a href="/templating/case/{{case_id}}/add_task" class="btn btn-primary btn-sm ms-3" title="Add new task">
+                        <i class="fa-solid fa-plus fa-sm"></i>
+                    </a>
+                {% endif %}
             </div>
         </div>
 
@@ -476,62 +495,64 @@
                     fetch_connectors()
                     await fetchTasks()
 
-                    const options = {
-                        animation: 150,
-                        handle: '.list-group-item', // Only drag by header
-                        ghostClass: 'dragging-ghost',  // class applied to the clone while dragging
-                        onEnd: async function(evt) {
-                            let task
-                            for(let i in tasks_list.value){
-                                if (tasks_list.value[i].id == evt.item.id.split("-")[1]){
-                                    task = tasks_list.value[i]
-                                    break
-                                }
-                            }
-                            if(evt.newIndex != evt.oldIndex){
-                                const dataToSend = {"new-index": evt.newIndex}
-
-                                // Send via fetch to backend
-                                const res = await fetch('/templating/case/'+case_template.value.id+'/change_order/'+evt.item.id.split("-")[1], {
-                                    method: 'POST',
-                                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                    body: JSON.stringify(dataToSend)
-                                })
-                                if(await res.status == 200){
-                                    // let task = tasks_list.value.tasks.find(t => t.id === evt.item.id.split("-")[1]);
-                                    
-                                    // Sort tasks by case_order_id ascending
-                                    let tasks = tasks_list.value
-
-                                    // Find the task whose case_order_id matches new-index + 1
-                                    const newIndex = evt.newIndex
-                                    const target_task = tasks.find(t => t.case_order_id === newIndex + 1);
-
-                                    const moving_task = task;
-
-                                    // Find target index in the sorted array
-                                    const target_index = tasks.indexOf(target_task);
-
-                                    // Remove moving_task from array
-                                    const movingIndex = tasks.indexOf(moving_task);
-                                    if (movingIndex !== -1) {
-                                    tasks.splice(movingIndex, 1);
+                    if ({{ 'true' if can_manage_templates else 'false' }}) {
+                        const options = {
+                            animation: 150,
+                            handle: '.list-group-item', // Only drag by header
+                            ghostClass: 'dragging-ghost',  // class applied to the clone while dragging
+                            onEnd: async function(evt) {
+                                let task
+                                for(let i in tasks_list.value){
+                                    if (tasks_list.value[i].id == evt.item.id.split("-")[1]){
+                                        task = tasks_list.value[i]
+                                        break
                                     }
-
-                                    // Insert moving_task before target_index
-                                    tasks.splice(target_index, 0, moving_task);
-
-                                    // Reassign case_order_id starting at 1
-                                    tasks.forEach((t, i) => {
-                                        t.case_order_id = i + 1;
-                                    });
                                 }
-                                display_toast(res)
-                            }
-                        }
-                    };
+                                if(evt.newIndex != evt.oldIndex){
+                                    const dataToSend = {"new-index": evt.newIndex}
 
-                    new Sortable(document.getElementById('list-container'), options);
+                                    // Send via fetch to backend
+                                    const res = await fetch('/templating/case/'+case_template.value.id+'/change_order/'+evt.item.id.split("-")[1], {
+                                        method: 'POST',
+                                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                                        body: JSON.stringify(dataToSend)
+                                    })
+                                    if(await res.status == 200){
+                                        // let task = tasks_list.value.tasks.find(t => t.id === evt.item.id.split("-")[1]);
+                                        
+                                        // Sort tasks by case_order_id ascending
+                                        let tasks = tasks_list.value
+
+                                        // Find the task whose case_order_id matches new-index + 1
+                                        const newIndex = evt.newIndex
+                                        const target_task = tasks.find(t => t.case_order_id === newIndex + 1);
+
+                                        const moving_task = task;
+
+                                        // Find target index in the sorted array
+                                        const target_index = tasks.indexOf(target_task);
+
+                                        // Remove moving_task from array
+                                        const movingIndex = tasks.indexOf(moving_task);
+                                        if (movingIndex !== -1) {
+                                        tasks.splice(movingIndex, 1);
+                                        }
+
+                                        // Insert moving_task before target_index
+                                        tasks.splice(target_index, 0, moving_task);
+
+                                        // Reassign case_order_id starting at 1
+                                        tasks.forEach((t, i) => {
+                                            t.case_order_id = i + 1;
+                                        });
+                                    }
+                                    display_toast(res)
+                                }
+                            }
+                        };
+
+                        new Sortable(document.getElementById('list-container'), options);
+                    }
 
                     $("#id-nb-connectors").removeClass("d-none")
                 })

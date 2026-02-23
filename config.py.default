@@ -77,7 +77,7 @@ class Config:
     # System roles that cannot be deleted (admin, user, bot)
     SYSTEM_ROLES = [1, 2, 3]
     
-    # Limit user view to own organization
+    # Limit user view to own organisation
     # When True: Users can only see other users within their own organisation
     # When False: All users can see all other users
     # Administrators always see all users regardless of this setting.

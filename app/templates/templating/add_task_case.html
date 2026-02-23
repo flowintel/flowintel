@@ -57,7 +57,7 @@
             <div v-if="custom_tags" class="col-6">
                 <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
                     <template v-for="c_t, key in custom_tags">
-                        <option :value="[[c_t.id]]">[[c_t.name]]</option>
+                        <option :value="[[c_t.id]]" :disabled="!c_t.is_active">[[c_t.name]]</option>
                     </template>
                 </select>
             </div>
@@ -68,7 +68,7 @@
                 <template v-if="taxonomies">
                     <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
                         <template v-for="taxonomy, key in taxonomies">
-                            <option :value="[[taxonomy.name]]">[[taxonomy.name]]</option>
+                            <option :value="[[taxonomy]]">[[taxonomy]]</option>
                         </template>
                     </select>
                 </template>

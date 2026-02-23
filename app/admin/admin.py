@@ -40,25 +40,31 @@ def add_user():
     form = RegistrationForm()
 
     if current_user.is_pure_org_admin():
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not role.admin]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles() if not role.admin]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     else:
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles()]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     
     if current_user.is_pure_org_admin():
         user_org = AdminModel.get_org(current_user.org_id)
         if not user_org:
-            flash("Your organization could not be found. Please contact an administrator.", "error")
+            flash("Your organisation could not be found. Please contact an administrator.", "error")
             return redirect(url_for('admin.users'))
         form.org.choices = [(user_org.id, user_org.name)]
         form.org.data = str(user_org.id)
     else:
-        form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
+        orgs = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
+        form.org.choices = sorted(orgs, key=lambda x: x[1].lower())
         form.org.choices.insert(0, ("None", "New org"))
+        # Set default organisation to current user's organisation
+        if current_user.org_id:
+            form.org.data = str(current_user.org_id)
 
     if form.validate_on_submit():
         if current_user.is_pure_org_admin():
             if form.org.data != str(current_user.org_id):
-                flash("You can only add users to your own organization.", "error")
+                flash("You can only add users to your own organisation.", "error")
                 return render_template("admin/add_user.html", form=form, edit_mode=False)
             
             selected_role = Role.query.get(form.role.data)
@@ -92,7 +98,7 @@ def edit_user(uid):
     
     if current_user.is_pure_org_admin():
         if user_modif.org_id != current_user.org_id:
-            flash("You can only edit users from your own organization.", "error")
+            flash("You can only edit users from your own organisation.", "error")
             return redirect(url_for('admin.users'))
     elif not current_user.is_admin():
         flash("You do not have permission to edit users.", "error")
@@ -110,9 +116,11 @@ def edit_user(uid):
     form.user_id.data = uid
     
     if current_user.is_pure_org_admin():
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id and not role.admin]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id and not role.admin]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     else:
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     
     role_temp = AdminModel.get_role(user_modif.role_id)
     if not (current_user.is_pure_org_admin() and role_temp.admin):
@@ -122,14 +130,15 @@ def edit_user(uid):
         user_org = AdminModel.get_org(current_user.org_id)
         form.org.choices = [(user_org.id, user_org.name)]
     else:
-        form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs() if not user_modif.org_id == org.id]
+        orgs = [(org.id, org.name) for org in AdminModel.get_all_orgs() if not user_modif.org_id == org.id]
+        form.org.choices = sorted(orgs, key=lambda x: x[1].lower())
         org_temp = AdminModel.get_org(user_modif.org_id)
         form.org.choices.insert(0, (org_temp.id, org_temp.name))
 
     if form.validate_on_submit():
         if current_user.is_pure_org_admin():
             if user_modif.org_id != current_user.org_id:
-                flash("You can only edit users from your own organization.", "error")
+                flash("You can only edit users from your own organisation.", "error")
                 return redirect(url_for('admin.users'))
             if form.org.data != str(current_user.org_id):
                 flash("You cannot change the organization of users.", "error")
@@ -178,7 +187,7 @@ def delete_user(uid):
     
     if current_user.is_pure_org_admin():
         if user.org_id != current_user.org_id:
-            return {"message":"You can only delete users from your own organization", "toast_class": "danger-subtle"}, 403
+            return {"message":"You can only delete users from your own organisation", "toast_class": "danger-subtle"}, 403
     elif not current_user.is_admin():
         return {"message":"You do not have permission to delete users", "toast_class": "danger-subtle"}, 403
     
@@ -249,7 +258,7 @@ def add_role():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_role_core(form_dict)
-        flowintel_log("audit", 200, "Role added", RoleName=form.name.data, Admin=form.admin.data, ReadOnly=form.read_only.data, OrgAdmin=form.org_admin.data, CaseAdmin=form.case_admin.data, QueueAdmin=form.queue_admin.data, Queuer=form.queuer.data, AuditViewer=form.audit_viewer.data)
+        flowintel_log("audit", 201, "Role added", RoleName=form.name.data)
         return redirect(url_for('admin.roles'))
     return render_template("admin/add_edit_role.html", form=form, edit_mode=False)
 
@@ -266,7 +275,7 @@ def edit_role(id):
     data = request.get_json()
     if AdminModel.edit_role_core(id, data):
         role_name = data.get('name', 'N/A')
-        flowintel_log("audit", 200, "Role edited", RoleId=id, RoleName=role_name, Description=data.get('description'), Admin=data.get('admin'), ReadOnly=data.get('read_only'), OrgAdmin=data.get('org_admin'), CaseAdmin=data.get('case_admin'), QueueAdmin=data.get('queue_admin'), Queuer=data.get('queuer'))
+        flowintel_log("audit", 200, "Role edited", RoleId=id, RoleName=role_name)
         return {"message": "Role updated", "toast_class": "success-subtle"}, 200
     return {"message": "Error updating role", "toast_class": "danger-subtle"}, 400
 

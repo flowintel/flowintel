@@ -1,7 +1,7 @@
 import {display_toast} from '../toaster.js'
 import {message_list} from '/static/js/toaster.js'
 import {getTextColor, mapIcon} from '/static/js/utils.js'
-const { ref, nextTick, onMounted } = Vue
+const { ref, nextTick, onMounted, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
     props:{type_object: String},
@@ -250,6 +250,71 @@ export default {
             emit("delete_sct", loc)
         }
         
+        // Disable already-selected options in dropdowns
+        function updateTagsDropdown() {
+            const selected_names = selected_tags.value.map(tag => tag.name)
+            $('#tags_select option').each(function() {
+                const $option = $(this)
+                $option.prop('disabled', selected_names.includes($option.val()))
+            })
+        }
+
+        function updateClustersDropdown() {
+            const selected_uuids = selected_clusters.value.map(cluster => cluster.uuid)
+            $('#clusters_select option').each(function() {
+                const $option = $(this)
+                $option.prop('disabled', selected_uuids.includes($option.val()))
+            })
+        }
+
+        function updateGalaxiesDropdown() {
+            const selected_names = selected_galaxies.value.map(galaxy => galaxy.name)
+            $('#galaxies_select option').each(function() {
+                const $option = $(this)
+                $option.prop('disabled', selected_names.includes($option.val()))
+            })
+        }
+
+        function updateCustomTagsDropdown() {
+            const selected_names = selected_custom_tags.value.map(tag => tag.name)
+            $('#custom_select option').each(function() {
+                const $option = $(this)
+                const tag_name = $option.val()
+                const tag = custom_tags.value.find(t => t.name === tag_name)
+                // Disable if selected OR if not active
+                $option.prop('disabled', selected_names.includes(tag_name) || (tag && !tag.is_active))
+            })
+        }
+
+        // Watch for changes in selected items and update dropdowns
+        watch(selected_tags, () => {
+            nextTick(() => updateTagsDropdown())
+        }, { deep: true })
+
+        watch(selected_clusters, () => {
+            nextTick(() => updateClustersDropdown())
+        }, { deep: true })
+
+        watch(selected_galaxies, () => {
+            nextTick(() => updateGalaxiesDropdown())
+        }, { deep: true })
+
+        watch(selected_custom_tags, () => {
+            nextTick(() => updateCustomTagsDropdown())
+        }, { deep: true })
+
+        watch(tags_list, () => {
+            nextTick(() => updateTagsDropdown())
+        }, { deep: true })
+
+        watch(cluster_list, () => {
+            nextTick(() => updateClustersDropdown())
+        }, { deep: true })
+        
+        watch(custom_tags, () => {
+            nextTick(() => updateCustomTagsDropdown())
+        }, { deep: true })
+        
 
         onMounted(() => {
             $('.select2-select').select2({
@@ -257,11 +322,13 @@ export default {
                 closeOnSelect: false
             })
 
-            $('#taxonomies_select').on('select2:select', function (e) {
-                let loc_name = $(this).select2('data').map(item => item.id)                    
+            $('#taxonomies_select').on('select2:selecting', function (e) {
+                e.preventDefault()
                 
-                if(!selected_taxo.value.includes(loc_name[0]) ){
-                    selected_taxo.value.push(loc_name[0])
+                let loc_name = e.params.args.data.id
+                
+                if(!selected_taxo.value.includes(loc_name) ){
+                    selected_taxo.value.push(loc_name)
 
                     let loc_list_name = []
                     $.each(selected_taxo.value, function (index, value) {                        
@@ -269,15 +336,16 @@ export default {
                     });
                     fetch_tags(loc_list_name)
                 }
-                $('#taxonomies_select').val('').change()
             })
 
-            $('#tags_select').on('select2:select', function (e) {
-                let loc_name = $(this).select2('data').map(item => item.id)
+            $('#tags_select').on('select2:selecting', function (e) {
+                e.preventDefault()
+                
+                let loc_name = e.params.args.data.id
                 let flag = false
                 
                 for(let i in selected_tags.value){
-                    if(selected_tags.value[i].name == loc_name[0]){
+                    if(selected_tags.value[i].name == loc_name){
                         flag = true
                         break
                     }
@@ -285,7 +353,7 @@ export default {
                 if(!flag){
                     for( let c in tags_list.value){
                         for (let k in tags_list.value[c]){
-                            if(tags_list.value[c][k].name == loc_name[0]){
+                            if(tags_list.value[c][k].name == loc_name){
                                 selected_tags.value.push(tags_list.value[c][k])
                                 emit("st", tags_list.value[c][k])
                                 break
@@ -293,12 +361,12 @@ export default {
                         }
                     }
                 }
-                
-                $('#tags_select').val('').change()
             })
 
-            $('#galaxies_select').on('select2:select', function (e) {
-                let loc_name = $(this).select2('data').map(item => item.id)                    
+            $('#galaxies_select').on('select2:selecting', function (e) {
+                e.preventDefault()
+                
+                let loc_name = e.params.args.data.id
                 
                 for( let c in galaxies.value){
                     if(galaxies.value[c].name == loc_name){
@@ -314,12 +382,12 @@ export default {
                     loc_list_name.push(value.name)
                 });
                 fetch_cluster(loc_list_name)
-
-                $('#galaxies_select').val('').change()
             })
 
-            $('#clusters_select').on('select2:select', function (e) {
-                let loc_uuid = $(this).select2('data').map(item => item.id)
+            $('#clusters_select').on('select2:selecting', function (e) {
+                e.preventDefault()
+                
+                let loc_uuid = e.params.args.data.id
                 
                 for( let c in cluster_list.value){
                     for (let k in cluster_list.value[c]){
@@ -332,11 +400,12 @@ export default {
                         }
                     }
                 }
-                $('#clusters_select').val('').change()
             })
 
-            $('#custom_select').on('select2:select', function (e) {
-                let loc_name = $(this).select2('data').map(item => item.id)
+            $('#custom_select').on('select2:selecting', function (e) {
+                e.preventDefault()
+                
+                let loc_name = e.params.args.data.id
 
                 for( let c in custom_tags.value){
                     if(custom_tags.value[c].name == loc_name){
@@ -347,8 +416,6 @@ export default {
                         }
                     }
                 }
-                
-                $('#custom_select').val('').change()
             })
         })
 
@@ -382,7 +449,7 @@ export default {
             <h5>Custom Tags</h5>
             <select data-placeholder="Custom Tags" class="select2-select form-control" multiple id="custom_select" >
                 <template v-for="c_t in custom_tags">
-                    <option :value="[[c_t.name]]">[[c_t.name]]</option>
+                    <option :value="[[c_t.name]]" :disabled="!c_t.is_active">[[c_t.name]]</option>
                 </template>
             </select>
         </div>

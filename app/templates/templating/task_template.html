@@ -7,18 +7,31 @@
 <script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+<script>
+    // Pass permissions to Vue components via window object
+    {% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
+    window.can_manage_templates = {{ 'true' if can_manage_templates else 'false' }};
+    window.is_admin = {{ 'true' if current_user.is_admin() else 'false' }};
+</script>
 
 {{ super() }}
 {%endblock%}
 
 {% block content %}
+    {% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
     <div class="case-core-style" style="border-radius: 0;">
         <div class="row align-items-center">
             <div class="col-auto d-flex align-items-center">
                 <h5 class="mb-0"><i class="fa-solid fa-list-check me-2"></i>Task Templates</h5>
-                <a class="btn btn-primary btn-sm ms-3" href="/templating/create_task" title="Add new task template">
-                    <i class="fa-solid fa-plus fa-sm"></i>
-                </a>
+                {% if can_manage_templates %}
+                    <a class="btn btn-primary btn-sm ms-3" href="/templating/create_task" title="Add new task template">
+                        <i class="fa-solid fa-plus fa-sm"></i>
+                    </a>
+                {% else %}
+                    <button class="btn btn-primary btn-sm ms-3" type="button" disabled title="You do not have permission to create templates">
+                        <i class="fa-solid fa-plus fa-sm"></i>
+                    </button>
+                {% endif %}
             </div>
 
             <!-- Search bar -->
@@ -30,6 +43,11 @@
             </div>
             <!-- Search bar -->
         </div>
+        {% if not can_manage_templates %}
+            <div class="alert alert-warning py-1 px-2 mt-2 mb-0" role="alert">
+                You do not have the Template Editor permissions and are not allowed to create or edit templates.
+            </div>
+        {% endif %}
     </div>
 
     <br>

@@ -394,5 +394,36 @@ def create_user_test():
     user.org_id = org.id
     db.session.commit()
 
+    # TemplateEditor user - Editor with template_editor privilege
+    template_editor_role = Role.query.filter_by(name="TemplateEditor").first()
+    if not template_editor_role:
+        template_editor_role = Role(
+            name="TemplateEditor",
+            description="Editor with template management privileges",
+            admin=False,
+            read_only=False,
+            org_admin=False,
+            case_admin=False,
+            template_editor=True
+        )
+        db.session.add(template_editor_role)
+        db.session.commit()
+
+    user = User(
+        first_name="templateeditor",
+        last_name="templateeditor",
+        email="templateeditor@templateeditor.templateeditor",
+        password="templateeditor",
+        role_id=template_editor_role.id,
+        api_key="template_editor_api_key"
+    )
+    db.session.add(user)
+    db.session.commit()
+    
+    # Org
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
     # Status
     create_status()

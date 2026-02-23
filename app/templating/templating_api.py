@@ -7,7 +7,7 @@ from ..utils import utils
 from ..case.common_core import get_instance_with_icon
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required
+from ..decorators import api_required, editor_required, template_editor_required
 
 
 templating_ns = Namespace("templating", description="Endpoints to manage templates")
@@ -54,7 +54,7 @@ class GetCaseTitle(Resource):
 @templating_ns.route('/create_case')
 @templating_ns.doc(description='Create a new case template')
 class CreateCaseTemaplte(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
             "title": "Required. Title for the template",
             "description": "Description of the template",
@@ -75,7 +75,7 @@ class CreateCaseTemaplte(Resource):
 @templating_ns.route('/edit_case/<cid>')
 @templating_ns.doc(description='Edit a case template', params={'cid': 'id of a case template'})
 class EditCaseTemaplte(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
             "title": "Title for the template",
             "description": "Description of the template",
@@ -96,7 +96,7 @@ class EditCaseTemaplte(Resource):
 @templating_ns.route('/case/<cid>/add_tasks')
 @templating_ns.doc(description='Add a task template to a case template', params={'cid': 'id of a case template'})
 class AddTaskCase(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
         "tasks": "List of id of tasks template"
         })
@@ -116,7 +116,7 @@ class AddTaskCase(Resource):
 @templating_ns.route('/case/<cid>/remove_task/<tid>')
 @templating_ns.doc(description='Delete a case template', params={'cid': 'id of a case template', 'tid': 'id of the task template'})
 class RemoveTaskCaseTemplate(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     def get(self, cid, tid):
         if CommonModel.get_case_template(cid):
             if CommonModel.get_task_template(tid):
@@ -130,7 +130,7 @@ class RemoveTaskCaseTemplate(Resource):
 @templating_ns.route('/delete_case/<cid>')
 @templating_ns.doc(description='Delete a case template', params={'cid': 'id of a case template'})
 class DeleteCaseTemplate(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     def get(self, cid):
         if CommonModel.get_case_template(cid):
             if TemplateModel.delete_case(cid):
@@ -217,7 +217,7 @@ class GetCaseTemplateConnectorInstance(Resource):
 @templating_ns.route("/add_connector/<int:cid>")
 @templating_ns.doc(description='Add connector instances to a case', params={'cid': 'id of a case template'})
 class AddConnector(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
         "connectors": "Required. List of connectors instance. Dict with 'id' and 'identifier' as keys."
     })
@@ -233,7 +233,7 @@ class AddConnector(Resource):
 @templating_ns.route("/<int:cid>/edit_connector/<int:ciid>")
 @templating_ns.doc(description='Edit connector instance', params={'cid': 'id of a case template', 'ciid': 'id of an instance'})
 class EditConnector(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
         "identifier": "Required. Identifier used by modules to identify where to send data."
     })
@@ -252,7 +252,7 @@ class EditConnector(Resource):
 @templating_ns.route("<int:cid>/remove_connector/<int:ciid>")
 @templating_ns.doc(description='Add connector instances to a case', params={'cid': 'id of a case template', 'ciid': 'id of an instance'})
 class RemoveConnector(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [template_editor_required, api_required]
     def delete(self, cid, ciid):
         if CommonModel.get_case_template(cid):
             loc = CommonModel.get_case_template_connector_instance(cid, ciid)
@@ -308,7 +308,7 @@ class GetTaskTemplateByCase(Resource):
 @templating_ns.route('/create_task')
 @templating_ns.doc(description='Create new task template')
 class CreateTaskTemaplte(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
             "title": "Required. Title for the template",
             "description": "Description of the template",
@@ -330,7 +330,7 @@ class CreateTaskTemaplte(Resource):
 @templating_ns.route('/edit_task/<tid>')
 @templating_ns.doc(description='Edit new case template', params={'tid': 'id of a task template'})
 class EditCaseTemaplte(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
             "title": "Title for the template",
             "description": "Description of the template",
@@ -352,7 +352,7 @@ class EditCaseTemaplte(Resource):
 @templating_ns.route('/delete_task/<tid>')
 @templating_ns.doc(description='Delete a task template')
 class DeleteTaskTemplate(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     def get(self, tid):
         if CommonModel.get_task_template(tid):
             if TaskModel.delete_task_template(tid):
@@ -425,7 +425,7 @@ class MoveTaskDown(Resource):
 @templating_ns.route('/case/<cid>/change_order/<tid>', methods=["POST"])
 @templating_ns.doc(description='Change the order of the task', params={"cid": "id of a case", "tid": "id of a task"})
 class ChangeOrder(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [template_editor_required, api_required]
     def post(self, cid, tid):
         case = CommonModel.get_case_template(cid)
         if case:
@@ -447,7 +447,7 @@ class ChangeOrder(Resource):
 @templating_ns.route('/task/<tid>/create_subtask', methods=['POST'])
 @templating_ns.doc(description='Create a subtask')
 class CreateSubtask(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
         'description': 'Required. Description of the subtask'
     })
@@ -464,7 +464,7 @@ class CreateSubtask(Resource):
 @templating_ns.route('/task/<tid>/edit_subtask/<sid>', methods=['POST'])
 @templating_ns.doc(description='Edit a subtask')
 class EditSubtask(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
         'description': 'Required. Description of the subtask'
     })
@@ -503,7 +503,7 @@ class GetSubtask(Resource):
 @templating_ns.route('/task/<tid>/delete_subtask/<sid>', methods=['GET'])
 @templating_ns.doc(description='Delete a subtask')
 class DeleteSubtask(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     def get(self, tid, sid):
         task = CommonModel.get_task_template(tid)
         if task:
@@ -521,7 +521,7 @@ class DeleteSubtask(Resource):
 @templating_ns.route('/task/<tid>/create_url_tool', methods=['POST'])
 @templating_ns.doc(description='Create a Url/Tool')
 class CreateUrlTool(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
         'name': 'Required. name of the url or tool'
     })
@@ -538,7 +538,7 @@ class CreateUrlTool(Resource):
 @templating_ns.route('/<tid>/edit_url_tool/<sid>', methods=['POST'])
 @templating_ns.doc(description='Edit a Url/Tool')
 class EditUrlTool(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     @templating_ns.doc(params={
         'name': 'Required. name of the url or tool'
     })
@@ -577,7 +577,7 @@ class GetUrlTool(Resource):
 @templating_ns.route('/<tid>/delete_url_tool/<utid>', methods=['GET'])
 @templating_ns.doc(description='Delete a Url/Tool')
 class DeleteUrlTool(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     def get(self, tid, utid):
         task = CommonModel.get_task_template(tid)
         if task:

@@ -9,7 +9,7 @@ from ..utils import utils
 from ..utils.logger import flowintel_log
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required
+from ..decorators import api_required, editor_required, template_editor_required
 
 case_ns = Namespace("case", description="Endpoints to manage cases")
 
@@ -369,7 +369,7 @@ class History(Resource):
 @case_ns.route('/<cid>/create_template', methods=["POST"])
 @case_ns.doc(description='Create a template form case', params={'cid': 'id of a case'})
 class CreateTemplate(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [template_editor_required, api_required]
     @case_ns.doc(params={"title_template": "Title for the template that will be create"})
     def post(self, cid):
         from ..decorators import check_privileged_case_permission
