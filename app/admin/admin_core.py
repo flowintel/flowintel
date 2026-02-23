@@ -11,7 +11,7 @@ def get_all_users():
     return User.query.all()
 
 def get_users_by_org(org_id):
-    """Return all users filtered by organization"""
+    """Return all users filtered by organisation"""
     return User.query.filter_by(org_id=org_id).all()
 
 def get_users_page(page, org_id=None, lastname=None):

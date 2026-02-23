@@ -44,10 +44,10 @@ def verif_add_user(data_dict, api_user=None):
             if not Org.query.get(org_id):
                 return {"message": f"Organisation with ID {org_id} not found"}
             
-            # Org admins can only create users in their own organization
+            # Org admins can only create users in their own organisation
             if api_user and api_user.is_org_admin() and not api_user.is_admin():
                 if org_id != api_user.org_id:
-                    return {"message": "OrgAdmin can only add users to their own organization"}
+                    return {"message": "OrgAdmin can only add users to their own organisation"}
             
             data_dict["org"] = org_id
         except ValueError:
@@ -98,7 +98,7 @@ def verif_edit_user(data_dict, user_id, api_user=None):
             
             if api_user and api_user.is_pure_org_admin():
                 if org_id != api_user.org_id:
-                    return {"message": "OrgAdmin cannot move users to different organization"}
+                    return {"message": "OrgAdmin cannot move users to different organisation"}
             
             data_dict["org"] = org_id
         except ValueError:
