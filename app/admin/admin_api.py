@@ -132,10 +132,10 @@ class EditUser(Resource):
             
             if api_user.is_pure_org_admin():
                 if user_to_edit.org_id != api_user.org_id:
-                    return {"message": "OrgAdmin can only edit users from their own organization"}, 403
+                    return {"message": "OrgAdmin can only edit users from their own organisation"}, 403
                 
                 if 'org' in request.json and int(request.json['org']) != api_user.org_id:
-                    return {"message": "OrgAdmin cannot move users to different organization"}, 403
+                    return {"message": "OrgAdmin cannot move users to different organisation"}, 403
             
             verif_dict = AdminModelApi.verif_edit_user(request.json, id, api_user)
             if "message" not in verif_dict:
@@ -165,7 +165,7 @@ class DeleteUser(Resource):
         
         if api_user.is_pure_org_admin():
             if user_to_delete.org_id != api_user.org_id:
-                return {"message": "OrgAdmin can only delete users from their own organization"}, 403
+                return {"message": "OrgAdmin can only delete users from their own organisation"}, 403
         
         if AdminModel.delete_user_core(id):
             flowintel_log("audit", 200, "User deleted via API", User=user_to_delete.email, UserId=id, By=api_user.email)

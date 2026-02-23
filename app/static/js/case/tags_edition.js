@@ -7,7 +7,14 @@ export default {
     props: {
         current_case: Object,
         type_object: String,
+<<<<<<< improvement/uc-19_update_custom_tags
         can_edit: Boolean
+=======
+        can_edit: {
+            type: Boolean,
+            default: true
+        }
+>>>>>>> main
     },
     components: {
         edition_select
@@ -112,7 +119,7 @@ export default {
     
 
     <!-- Modal -->
-    <div class="modal fade" id="ModalEditTags" tabindex="-1" aria-labelledby="ModalEditTags" aria-hidden="true">
+    <div v-if="can_edit" class="modal fade" id="ModalEditTags" tabindex="-1" aria-labelledby="ModalEditTags" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">

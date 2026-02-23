@@ -16,6 +16,11 @@
 
 <script src="{{ url_for('static',filename='js/vendor/Sortable.min.js') }}"></script>
 
+<script>
+    {% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
+    window.can_manage_templates = {{ 'true' if can_manage_templates else 'false' }};
+</script>
+
 <title>View case #{{ case.id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
 {%endblock%}

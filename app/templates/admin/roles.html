@@ -41,6 +41,9 @@
                                         <i v-if="role.queue_admin" class="fa-solid fa-clipboard-check ms-1" title="Also Queue Admin"></i>
                                         <i v-if="role.queuer" class="fa-solid fa-list-check ms-1" title="Also Queuer"></i>
                                         <i v-if="role.audit_viewer" class="fa-solid fa-file-lines ms-1" title="Also Audit Viewer"></i>
+                                        <i v-if="role.template_editor" class="fa-solid fa-folder ms-1" title="Also Template Editor"></i>
+                                        <i v-if="role.misp_editor" class="fa-solid fa-share-nodes ms-1" title="Also MISP Editor"></i>
+                                        <i v-if="role.importer" class="fa-solid fa-file-import ms-1" title="Also Importer"></i>
                                     </span>
                                 </h5>
                             </div>
@@ -163,27 +166,26 @@
                                         </table>
                                     </div>
 
-                                    <!-- Future Permissions -->
                                     <div>
-                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-clock me-1"></i>Coming soon</small>
+                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-gear me-1"></i>Editor Tools</small>
                                         <table class="table table-sm table-bordered mb-0 mt-1">
                                             <tbody>
-                                                <tr class="text-muted">
-                                                    <td title="Allows users to edit case or task templates">Template Editor <small class="fst-italic">(planned)</small></td>
-                                                    <td style="text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" disabled>
+                                                <tr>
+                                                    <td title="Allows users to manage case, task or note templates">Template Editor</td>
+                                                    <td style="width: 100px; text-align: center;">
+                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.template_editor" @change="handleTemplateEditorChange" :disabled="is_system_role(role.id)">
                                                     </td>
                                                 </tr>
-                                                <tr class="text-muted">
-                                                    <td title="Allows users to sync data with MISP">MISP Editor <small class="fst-italic">(planned)</small></td>
+                                                <tr>
+                                                    <td title="Allows users to sync data with MISP and manage MISP objects and connectors">MISP Editor</td>
                                                     <td style="text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" disabled>
+                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.misp_editor" @change="handleMispEditorChange" :disabled="is_system_role(role.id)">
                                                     </td>
                                                 </tr>
-                                                <tr class="text-muted">
-                                                    <td title="Allows users to import data">Importer <small class="fst-italic">(planned)</small></td>
+                                                <tr>
+                                                    <td title="Allows users to import data via the analyser / MISP module">Importer</td>
                                                     <td style="text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" disabled>
+                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.importer" @change="handleImporterChange" :disabled="is_system_role(role.id)">
                                                     </td>
                                                 </tr>
                                             </tbody>
@@ -340,7 +342,10 @@
                     case_admin: false,
                     queue_admin: false,
                     queuer: false,
-                    audit_viewer: false
+                    audit_viewer: false,
+                    template_editor: false,
+                    misp_editor: false,
+                    importer: false
                 })
                 const system_roles = [1, 2, 3]
 
@@ -405,7 +410,10 @@
                             case_admin: edit_data.value.case_admin,
                             queue_admin: edit_data.value.queue_admin,
                             queuer: edit_data.value.queuer,
-                            audit_viewer: edit_data.value.audit_viewer
+                            audit_viewer: edit_data.value.audit_viewer,
+                            template_editor: edit_data.value.template_editor,
+                            misp_editor: edit_data.value.misp_editor,
+                            importer: edit_data.value.importer
                         })
                     })
                     if(await res.status == 200){
@@ -418,6 +426,9 @@
                         role.queue_admin = edit_data.value.queue_admin
                         role.queuer = edit_data.value.queuer
                         role.audit_viewer = edit_data.value.audit_viewer
+                        role.template_editor = edit_data.value.template_editor
+                        role.misp_editor = edit_data.value.misp_editor
+                        role.importer = edit_data.value.importer
                         editing_role.value = null
                     }
                     display_toast(res)
@@ -434,6 +445,9 @@
                     edit_data.value.queue_admin = role.queue_admin || false
                     edit_data.value.queuer = role.queuer || false
                     edit_data.value.audit_viewer = role.audit_viewer || false
+                    edit_data.value.template_editor = role.template_editor || false
+                    edit_data.value.misp_editor = role.misp_editor || false
+                    edit_data.value.importer = role.importer || false
                 }
 
                 function cancel_edit() {
@@ -447,6 +461,9 @@
                     edit_data.value.queue_admin = false
                     edit_data.value.queuer = false
                     edit_data.value.audit_viewer = false
+                    edit_data.value.template_editor = false
+                    edit_data.value.misp_editor = false
+                    edit_data.value.importer = false
                 }
 
                 function handleAdminChange() {
@@ -463,6 +480,9 @@
                         edit_data.value.queue_admin = false
                         edit_data.value.queuer = false
                         edit_data.value.audit_viewer = false
+                        edit_data.value.template_editor = false
+                        edit_data.value.misp_editor = false
+                        edit_data.value.importer = false
                     }
                 }
 
@@ -499,6 +519,24 @@
 
                 function handleAuditViewerChange() {
                     if (edit_data.value.audit_viewer) {
+                        edit_data.value.read_only = false
+                    }
+                }
+
+                function handleTemplateEditorChange() {
+                    if (edit_data.value.template_editor) {
+                        edit_data.value.read_only = false
+                    }
+                }
+
+                function handleMispEditorChange() {
+                    if (edit_data.value.misp_editor) {
+                        edit_data.value.read_only = false
+                    }
+                }
+
+                function handleImporterChange() {
+                    if (edit_data.value.importer) {
                         edit_data.value.read_only = false
                     }
                 }
@@ -547,6 +585,9 @@
                     handleQueueAdminChange,
                     handleQueuerChange,
                     handleAuditViewerChange,
+                    handleTemplateEditorChange,
+                    handleMispEditorChange,
+                    handleImporterChange,
                     is_editor
                 }
             }

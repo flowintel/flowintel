@@ -70,6 +70,24 @@ class User(UserMixin, db.Model):
             return True
         return False
 
+    def is_template_editor(self):
+        r = Role.query.get(self.role_id)
+        if r and r.template_editor:
+            return True
+        return False
+
+    def is_misp_editor(self):
+        r = Role.query.get(self.role_id)
+        if r and r.misp_editor:
+            return True
+        return False
+
+    def is_importer(self):
+        r = Role.query.get(self.role_id)
+        if r and r.importer:
+            return True
+        return False
+
     @property
     def password(self):
         raise AttributeError('`password` is not a readable attribute')
@@ -436,6 +454,9 @@ class Role(db.Model):
     queue_admin = db.Column(db.Boolean, default=False)
     queuer = db.Column(db.Boolean, default=False)
     audit_viewer = db.Column(db.Boolean, default=False)
+    template_editor = db.Column(db.Boolean, nullable=False, default=False)
+    misp_editor = db.Column(db.Boolean, nullable=False, default=False)
+    importer = db.Column(db.Boolean, nullable=False, default=False)
 
     def to_json(self):
         return {
@@ -448,7 +469,10 @@ class Role(db.Model):
             "case_admin": self.case_admin,
             "queue_admin": self.queue_admin,
             "queuer": self.queuer,
-            "audit_viewer": self.audit_viewer
+            "audit_viewer": self.audit_viewer,
+            "template_editor": self.template_editor,
+            "misp_editor": self.misp_editor,
+            "importer": self.importer
         }
 
 class File(db.Model):

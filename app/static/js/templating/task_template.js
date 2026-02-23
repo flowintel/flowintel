@@ -16,64 +16,74 @@ export default {
 		case_id: Number
 	},
 	setup(props) {
+		const can_manage_templates = window.can_manage_templates || false
+		
 		// Needed for TaskUrlTool component
 		const cases_info = {
-			"permission": { "read_only": false },
+			"permission": { 
+				"read_only": !can_manage_templates, 
+				"admin": window.is_admin || false 
+			},
 			"present_in_case": true
 		}
 
 		const expandedTasks = ref({});
+		const is_mounted = ref(false)
+		const edit_mode = ref(-1)
+		const note_editor_render = ref([])
+		const editor_list = ref({})
+		const md = window.markdownit()
+		md.use(mermaidMarkdown.default)
 
 		Vue.onMounted(async () => {
 			if (props.template.notes.length) {
 				for (let i in props.template.notes) {
 					const targetElement = document.getElementById('editor_' + i + '_' + props.template.id)
+					if (targetElement) {
+						let editor = new EditorView({
+							doc: "\n\n",
+							extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
+								if (v.docChanged) {
+									note_editor_render.value[i] = editor.state.doc.toString()
+								}
+							})],
+							parent: targetElement
+						})
+						editor_list.value[i] = editor
+					}
+				}
+			} else {
+				const targetElement = document.getElementById('editor_0_' + props.template.id)
+				if (targetElement) {
 					let editor = new EditorView({
 						doc: "\n\n",
 						extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
-								note_editor_render.value[i] = editor.state.doc.toString()
+								note_editor_render.value[0] = editor.state.doc.toString()
 							}
 						})],
 						parent: targetElement
 					})
-					editor_list[i] = editor
+					editor_list.value[0] = editor
 				}
-			} else {
-				const targetElement = document.getElementById('editor_0_' + props.template.id)
-				let editor = new EditorView({
-					doc: "\n\n",
-					extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
-						if (v.docChanged) {
-							note_editor_render.value[0] = editor.state.doc.toString()
-						}
-					})],
-					parent: targetElement
-				})
-				editor_list[0] = editor
 			}
 
 			const allCollapses = document.getElementById('collapse' + props.template.id)
-			allCollapses.addEventListener('shown.bs.collapse', event => {
-				md.mermaid.init()
-			})
+			if (allCollapses) {
+				allCollapses.addEventListener('shown.bs.collapse', event => {
+					md.mermaid.init()
+				})
+			}
 			is_mounted.value = true
 		})
 		Vue.onUpdated(async () => {
 			// do not initialize mermaid before the page is mounted
-			if (is_mounted)
+			if (is_mounted.value)
 				md.mermaid.init()
 		})
 
-		const is_mounted = ref(false)
-		const edit_mode = ref(-1)
-
-		const note_editor_render = ref([])
-		let editor_list = []
-		const md = window.markdownit()
-		md.use(mermaidMarkdown.default)
-
-		if (props.template.notes.length) {
+		// Initialize reactive refs and note data
+		if (props.template.notes && props.template.notes.length) {
 			for (let i in props.template.notes) {
 				note_editor_render.value[i] = props.template.notes[i].note		// If this template has notes
 			}
@@ -161,11 +171,11 @@ export default {
 				})],
 				parent: targetElement
 			})
-			editor_list[key] = editor
+			editor_list.value[key] = editor
 		}
 
 		async function modif_note(template, note_id, key) {
-			let notes_loc = editor_list[key].state.doc.toString()
+			let notes_loc = editor_list.value[key] && editor_list.value[key].state.doc.toString()
 			if (notes_loc.trim().length == 0) {
 				notes_loc = notes_loc.trim()
 			}
@@ -201,7 +211,7 @@ export default {
 							})],
 							parent: targetElement
 						})
-						editor_list[key] = editor
+						editor_list.value[key] = editor
 					}
 				}
 			} else {
@@ -293,6 +303,7 @@ export default {
 		}
 
 		return {
+			can_manage_templates,
 			note_editor_render,
 			md,
 			getTextColor,
@@ -422,14 +433,14 @@ export default {
 				</template>
 			</div>
         </a>
-        <div v-if="!template.current_user_permission.read_only">
+		<div v-if="can_manage_templates">
 			<div>
-				<a class="btn btn-primary" :href="'/templating/edit_task/'+template.id" type="button" title="Edit the task template">
+				<a class="btn btn-primary" :href="case_id ? '/templating/edit_task/' + template.id + '?case_id=' + case_id : '/templating/edit_task/' + template.id" type="button" title="Edit the task template">
 					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
 			</div>
 			<div>
-            	<button v-if="task_in_case" class="btn btn-warning" @click="remove_task(template, templates_list)" title="Remove the task template from the case">
+            	<button v-if="task_in_case" class="btn btn-warning" @click="remove_task(template, templates_list)" title="Remove the task from the case template">
 					<i class="fa-solid fa-trash fa-fw"></i>
 				</button>
 			</div>
@@ -482,17 +493,21 @@ export default {
 				<fieldset class="analyzer-select-case">
 					<legend class="analyzer-select-case">
 						<i class="fa-solid fa-list fa-sm me-1"></i><span class="section-title">Subtasks</span>
-						<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" :data-bs-target="'#create_subtask_'+template.id" style="float: right; margin-left:3px;">
-							<i class="fa-solid fa-plus"></i>
-						</button>
+						<template v-if="can_manage_templates">
+							<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" :data-bs-target="'#create_subtask_'+template.id" style="float: right; margin-left:3px;">
+								<i class="fa-solid fa-plus"></i>
+							</button>
+						</template>
 					</legend>
 					<template v-for="subtask in template.subtasks">
 						<div>
 							[[subtask.description]]
-							<button @click="delete_subtask(template, subtask.id)" class="btn btn-danger btn-sm" style="float: right;" ><i class="fa-solid fa-trash"></i></button>
-							<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" :data-bs-target="'#edit_subtask_'+subtask.id" style="float: right;">
-								<i class="fa-solid fa-pen-to-square"></i>
-							</button>
+							<template v-if="can_manage_templates">
+								<button @click="delete_subtask(template, subtask.id)" class="btn btn-danger btn-sm" style="float: right;" ><i class="fa-solid fa-trash"></i></button>
+								<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" :data-bs-target="'#edit_subtask_'+subtask.id" style="float: right;">
+									<i class="fa-solid fa-pen-to-square"></i>
+								</button>
+							</template>
 						</div>
 						<hr>
 						<!-- Modal edit subtask -->
@@ -538,7 +553,7 @@ export default {
 				</div>
 			</div>
 			<hr>
-			<div>
+			<div v-if="can_manage_templates">
 				<fieldset class="analyzer-select-case">
 					<legend class="analyzer-select-case">
 						<i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes</span>
@@ -563,7 +578,7 @@ export default {
 									</div>
 								</template>
 								<template v-else>
-									<template v-if="!template.current_user_permission.read_only || template.current_user_permission.admin">
+									<template v-if="can_manage_templates">
 										<button class="btn btn-primary btn-sm" @click="edit_note(template, template_note.id, key)" type="button" :id="'note_'+template.id">
 											<div hidden>[[template.title]]</div>
 											<small><i class="fa-solid fa-pen"></i></small> Edit
@@ -576,7 +591,7 @@ export default {
 								</template>
 							</div>
 							<div v-else>
-								<template v-if="!template.current_user_permission.read_only || template.current_user_permission.admin">
+								<template v-if="can_manage_templates">
 									<div>
 										<button class="btn btn-primary btn-sm" @click="modif_note(template, template_note.id, key)" type="button" :id="'note_'+template.id">
 											<div hidden>[[template.title]]</div>
@@ -595,7 +610,7 @@ export default {
 						</template>
 					</div>
 					<div v-else>
-						<template v-if="!template.current_user_permission.read_only || template.current_user_permission.admin">
+						<template v-if="can_manage_templates">
 							<div>
 								<button class="btn btn-primary btn-sm" @click="modif_note(template, -1, 0)" type="button" :id="'note_'+template.id" style="margin-bottom: 3px;">
 									<div hidden>[[template.title]]</div>
@@ -605,6 +620,21 @@ export default {
 							<div style="display: flex;">
 								<div class="note-editor" :id="'editor_0_'+template.id"></div>
 								<div  class="markdown-render" v-html="md.render(note_editor_render[0])"></div>
+							</div>
+						</template>
+					</div>
+				</fieldset>
+			</div>
+			<div v-else>
+				<fieldset class="analyzer-select-case">
+					<legend class="analyzer-select-case">
+						<i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes</span>
+					</legend>
+					<div v-if="template.notes.length">
+						<template v-for="template_note, key in template.notes">
+							<h5>#[[key+1]]</h5>
+							<div v-if="template_note.note">
+								<p class="markdown-render-result" v-html="md.render(template_note.note)"></p>
 							</div>
 						</template>
 					</div>
