@@ -7,14 +7,10 @@ export default {
     props: {
         current_case: Object,
         type_object: String,
-<<<<<<< improvement/uc-19_update_custom_tags
-        can_edit: Boolean
-=======
         can_edit: {
             type: Boolean,
             default: true
         }
->>>>>>> main
     },
     components: {
         edition_select
