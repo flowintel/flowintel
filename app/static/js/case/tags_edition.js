@@ -6,7 +6,11 @@ export default {
     delimiters: ['[[', ']]'],
     props: {
         current_case: Object,
-        type_object: String
+        type_object: String,
+        can_edit: {
+            type: Boolean,
+            default: true
+        }
     },
     components: {
         edition_select
@@ -74,7 +78,7 @@ export default {
     },
     template: `
     <div class="case-tags-style">
-        <button type="button" class="btn btn-outline-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#ModalEditTags">
+        <button v-if="can_edit" type="button" class="btn btn-outline-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#ModalEditTags">
             <i class="fa-solid fa-pen fa-sm"></i>
         </button>
         <h6 class="section-title mb-0"><i class="fa-solid fa-tags fa-sm me-2"></i>Tags</h6>
@@ -111,7 +115,7 @@ export default {
     
 
     <!-- Modal -->
-    <div class="modal fade" id="ModalEditTags" tabindex="-1" aria-labelledby="ModalEditTags" aria-hidden="true">
+    <div v-if="can_edit" class="modal fade" id="ModalEditTags" tabindex="-1" aria-labelledby="ModalEditTags" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">

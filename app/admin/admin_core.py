@@ -272,7 +272,10 @@ def add_role_core(form_dict):
         case_admin = form_dict.get("case_admin", False),
         queue_admin = form_dict.get("queue_admin", False),
         queuer = form_dict.get("queuer", False),
-        audit_viewer = form_dict.get("audit_viewer", False)
+        audit_viewer = form_dict.get("audit_viewer", False),
+        template_editor = form_dict.get("template_editor", False),
+        misp_editor = form_dict.get("misp_editor", False),
+        importer = form_dict.get("importer", False)
     )
     db.session.add(role)
     db.session.commit()
@@ -306,6 +309,9 @@ def edit_role_core(role_id, data):
         role.queue_admin = data.get("queue_admin", False)
         role.queuer = data.get("queuer", False)
         role.audit_viewer = data.get("audit_viewer", False)
+        role.template_editor = data.get("template_editor", False)
+        role.misp_editor = data.get("misp_editor", False)
+        role.importer = data.get("importer", False)
         db.session.commit()
         return True
     return False
