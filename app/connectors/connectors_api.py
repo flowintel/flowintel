@@ -94,7 +94,9 @@ class AddInstance(Resource):
                 verif_dict = ConnectorModelApi.verif_add_instance(request.json)
                 if not "message" in verif_dict:
                     instance = ConnectorModel.add_connector_instance_core(cid, verif_dict, utils.get_user_from_api(request.headers).id)
-                    return {"message": f"Instance created", "connector_id": instance.id}, 200
+                    if instance:
+                        return {"message": "Instance created", "connector_id": instance.id}, 200
+                    return {"message": "Error creating instance"}, 400
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
         return {"message": "Connector not found"}, 404
