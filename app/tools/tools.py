@@ -52,6 +52,7 @@ def importer():
 @tools_blueprint.route("/module")
 @login_required
 def module():
+    flowintel_log("audit", 200, "Module list viewed", User=current_user.email)
     return render_template("tools/module_index.html")
 
 
@@ -65,6 +66,7 @@ def get_modules():
 @login_required
 def reload():
     get_modules_list()
+    flowintel_log("audit", 200, "Modules reloaded", User=current_user.email)
     return {"message": "Modules reloaded", "toast_class": "success-subtle"}, 200
 
 
