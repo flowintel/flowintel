@@ -108,7 +108,7 @@
                             <tr>
                                 <td class="fw-bold">Org View Restriction</td>
                                 <td>
-                                    <span class="badge {% if system_info.limit_user_view_to_org %}bg-info{% else %}bg-secondary{% endif %}">
+                                    <span class="badge {% if system_info.limit_user_view_to_org %}bg-success{% else %}bg-secondary{% endif %}">
                                         {{ system_info.limit_user_view_to_org }}
                                     </span>
                                 </td>
@@ -118,6 +118,14 @@
                                 <td>
                                     <span class="badge {% if system_info.enforce_privileged_case %}bg-warning{% else %}bg-secondary{% endif %}">
                                         {{ system_info.enforce_privileged_case }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Entra ID SSO</td>
+                                <td>
+                                    <span class="badge {% if system_info.entra_id_enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.entra_id_enabled }}
                                     </span>
                                 </td>
                             </tr>

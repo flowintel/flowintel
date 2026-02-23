@@ -49,6 +49,24 @@ class Config:
     # Privileged case enforcement
     ENFORCE_PRIVILEGED_CASE = os.getenv('ENFORCE_PRIVILEGED_CASE', 'false').lower() == 'true'
 
+    # Microsoft Entra ID (Azure AD) SSO configuration
+    ENTRA_ID_ENABLED = os.getenv('ENTRA_ID_ENABLED', 'false').lower() == 'true'
+    ENTRA_TENANT_ID = os.getenv('ENTRA_TENANT_ID', '')           # Directory (tenant) ID
+    ENTRA_CLIENT_ID = os.getenv('ENTRA_CLIENT_ID', '')           # Application (client) ID
+    ENTRA_CLIENT_SECRET = os.getenv('ENTRA_CLIENT_SECRET', '')   # Client secret value
+    # Entra ID group names that map to Flowintel roles
+    # FlowintelAdmin members → provisioned as Editor, admins are notified to promote manually
+    ENTRA_GROUP_ADMIN = os.getenv('ENTRA_GROUP_ADMIN', 'FlowintelAdmin')
+    ENTRA_GROUP_EDITOR = os.getenv('ENTRA_GROUP_EDITOR', 'FlowintelEditor')
+    ENTRA_GROUP_READONLY = os.getenv('ENTRA_GROUP_READONLY', 'FlowintelReadOnly')
+    ENTRA_GROUP_CASE_ADMIN  = os.getenv('ENTRA_GROUP_CASE_ADMIN',  'FlowintelCaseAdmin')
+    ENTRA_ROLE_CASE_ADMIN   = os.getenv('ENTRA_ROLE_CASE_ADMIN',   'CaseAdmin')
+    ENTRA_GROUP_QUEUE_ADMIN = os.getenv('ENTRA_GROUP_QUEUE_ADMIN', 'FlowintelQueueAdmin')
+    ENTRA_ROLE_QUEUE_ADMIN  = os.getenv('ENTRA_ROLE_QUEUE_ADMIN',  'QueueAdmin')
+    ENTRA_GROUP_QUEUER      = os.getenv('ENTRA_GROUP_QUEUER',      'FlowintelQueuer')
+    ENTRA_ROLE_QUEUER       = os.getenv('ENTRA_ROLE_QUEUER',       'Queuer')
+    ENTRA_REDIRECT_URL = os.getenv('ENTRA_REDIRECT_URL', 'http://localhost:7006/account/entra/callback')
+
     # Initial users configuration
     INIT_ADMIN_USER = {
         "first_name": "admin",

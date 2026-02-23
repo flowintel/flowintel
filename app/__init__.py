@@ -55,6 +55,19 @@ def create_app():
         root_logger.addHandler(file_handler)
         root_logger.setLevel(logging.INFO)
 
+    # Warn early if Entra ID is enabled but credentials are missing.
+    if app.config.get('ENTRA_ID_ENABLED'):
+        _missing_entra = [
+            k for k in ('ENTRA_TENANT_ID', 'ENTRA_CLIENT_ID', 'ENTRA_CLIENT_SECRET')
+            if not app.config.get(k)
+        ]
+        if _missing_entra:
+            app.logger.warning(
+                "ENTRA_ID_ENABLED is True but the following settings are missing "
+                "or empty: %s — Entra ID login will not work until these are "
+                "configured.", ', '.join(_missing_entra)
+            )
+
     # ProxyFix for reverse proxy deployments
     if app.config.get('BEHIND_PROXY', False):
         app.wsgi_app = ProxyFix(

@@ -20,7 +20,7 @@ def get_org(id):
 
 
 
-def edit_user_core(form_dict, id):
+def edit_user_core(form_dict, id, is_sso=False):
     """Edit the user to the DB"""
 
     matrix_id = form_dict["matrix_id"]
@@ -32,7 +32,9 @@ def edit_user_core(form_dict, id):
     user.first_name=form_dict["first_name"]
     user.last_name=form_dict["last_name"]
     user.nickname=form_dict["nickname"]
-    user.email=form_dict["email"]
+    # SSO accounts have their identity managed by Entra ID; disallow email changes.
+    if not is_sso:
+        user.email=form_dict["email"]
     user.matrix_id=matrix_id
     if "password" in form_dict and form_dict["password"]:
         user.password=form_dict["password"]

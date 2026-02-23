@@ -24,3 +24,5 @@ matrix-nio[e2e]
 misp-modules[minimal]
 redis
 psycopg2-binary
+msal
+requests
