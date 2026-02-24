@@ -14,11 +14,11 @@ caseSchema = {
             "type": "array", 
             "items": {"type": "object"},
         },
-        "tags":{
+        "tags:":{
             "type": "array",
             "items": {"type": "string"},
         },
-        "clusters":{
+        "clusters:":{
             "type": "array",
             "items": {"type": "object"},
         },
@@ -46,11 +46,11 @@ taskSchema = {
             "type": "array", 
             "items": {"type": "object"},
         },
-        "tags":{
+        "tags:":{
             "type": "array",
             "items": {"type": "string"}
         },
-        "clusters":{
+        "clusters:":{
             "type": "array",
             "items": {"type": "object"},
         },
@@ -68,8 +68,8 @@ mispObjectSchema = {
     "properties": {
         "template_uuid": {"type": "string"},
         "name": {"type": "string"},
-        "creation_date": {"type": "string"},
-        "last_modif": {"type": "string"},
+        "creation_date:": {"type": "string"},
+        "last_modif:": {"type": "string"},
         "attributes": {
             "type": "array",
             "items": {"type": "object"}
@@ -83,13 +83,13 @@ mispAttrSchema = {
         "value": {"type": "string"},
         "type": {"type": "string"},
         "object_relation": {"type": "string"},
-        "first_seen": {"type": "string"},
-        "last_seen": {"type": "string"},
-        "comment": {"type": "string"},
-        "ids_flag": {"type": "boolean"},
-        "creation_date": {"type": "string"},
-        "last_modif": {"type": "string"},
-        "disable_correlation": {"type": "boolean"}
+        "first_seen:": {"type": "string"},
+        "last_seen:": {"type": "string"},
+        "comment:": {"type": "string"},
+        "ids_flag:": {"type": "boolean"},
+        "creation_date:": {"type": "string"},
+        "last_modif:": {"type": "string"},
+        "disable_correlation:": {"type": "boolean"}
     }
 }
 
@@ -106,11 +106,11 @@ caseTemplateSchema = {
             "type": "array", 
             "items": {"type": "object"},
         },
-        "tags":{
+        "tags:":{
             "type": "array",
             "items": {"type": "string"},
         },
-        "clusters":{
+        "clusters:":{
             "type": "array",
             "items": {"type": "object"},
         },
@@ -133,11 +133,11 @@ taskTemplateSchema = {
             "type": "array", 
             "items": {"type": "object"},
         },
-        "tags":{
+        "tags:":{
             "type": "array",
             "items": {"type": "string"}
         },
-        "clusters":{
+        "clusters:":{
             "type": "array",
             "items": {"type": "object"},
         },

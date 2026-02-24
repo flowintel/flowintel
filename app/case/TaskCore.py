@@ -246,7 +246,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             case.nb_tasks += 1
             db.session.commit()
 
-            for tags in form_dict["tags"]:
+            for tags in form_dict.get("tags", []):
                 tag = CommonModel.get_tag(tags)
                 
                 self.add_tag(tag, task.id)
@@ -254,7 +254,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
             # keep track of clusters explicitly selected by the user
             selected_clusters = []
-            for clusters in form_dict["clusters"]:
+            for clusters in form_dict.get("clusters", []):
                 cluster = CommonModel.get_cluster_by_name(clusters)
                 self.add_cluster(cluster, task.id)
                 selected_clusters.append(cluster)
@@ -277,7 +277,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 # no clusters chosen for this galaxy: attach galaxy to task
                 self.add_galaxy(galaxy, task.id)
 
-            for custom_tag_name in form_dict["custom_tags"]:
+            for custom_tag_name in form_dict.get("custom_tags", []):
                 custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
                 if custom_tag:
                     self.add_custom_tag(custom_tag, task.id)

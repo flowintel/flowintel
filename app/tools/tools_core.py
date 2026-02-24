@@ -69,12 +69,12 @@ def case_creation_from_importer(case, current_user):
         case["uuid"] = str(uuid.uuid4())
 
     # tags
-    for tag in case["tags"]:
+    for tag in case.get("tags", []):
         if not utils.check_tag(tag):
             return {"message": f"Case '{case['title']}': tag '{tag}' doesn't exist"}
     
     # Clusters
-    for i in range(0, len(case["clusters"])):
+    for i in range(0, len(case.get("clusters", []))):
         case["clusters"][i] = case["clusters"][i]["name"]
 
     case["custom_tags"] = []
@@ -100,12 +100,12 @@ def case_creation_from_importer(case, current_user):
             task["deadline_date"] = ""
             task["deadline_time"] = ""
 
-        for tag in task["tags"]:
+        for tag in task.get("tags", []):
             if not utils.check_tag(tag):
                 return {"message": f"Task '{task['title']}': tag '{tag}' doesn't exist"}
             
         # Clusters
-        for i in range(0, len(task["clusters"])):
+        for i in range(0, len(task.get("clusters", []))):
             task["clusters"][i] = task["clusters"][i]["name"]
         
         task["custom_tags"] = []
@@ -122,20 +122,17 @@ def case_creation_from_importer(case, current_user):
     ## Task creation
     for task in case["tasks"]:
         task_created = TaskModel.create_task(task, case_created.id, current_user)
-        if task["notes"]:
-            for note in task["notes"]:
-                loc_note = TaskModel.create_note(task_created.id, current_user)
-                TaskModel.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
+        for note in task.get("notes", []):
+            loc_note = TaskModel.create_note(task_created.id, current_user)
+            TaskModel.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
         
-        if task["subtasks"]:
-            for subtask in task["subtasks"]:
-                TaskModel.create_subtask(task_created.id, subtask["description"], current_user)
+        for subtask in task.get("subtasks", []):
+            TaskModel.create_subtask(task_created.id, subtask["description"], current_user)
         
-        if task["urls_tools"]:
-            for urls_tools in task["urls_tools"]:
-                TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
+        for urls_tools in task.get("urls_tools", []):
+            TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
 
-    for misp_object in case["misp-objects"]:
+    for misp_object in case.get("misp-objects", []):
         misp_object["object-template"] = {"name": misp_object["name"], "uuid": misp_object["template_uuid"]}
         CaseModel.create_misp_object(case_created.id, misp_object, current_user)
 

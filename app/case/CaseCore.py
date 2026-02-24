@@ -97,17 +97,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             db.session.add(case)
             db.session.commit()
 
-            for tags in form_dict["tags"]:
+            for tags in form_dict.get("tags", []):
                 tag = CommonModel.get_tag(tags)
                 
                 self.add_tag(tag, case.id)
-            
-            for clusters in form_dict["clusters"]:
+            for clusters in form_dict.get("clusters", []):
                 cluster = CommonModel.get_cluster_by_name(clusters)
-                
-                self.add_cluster(cluster, case.id)
+                if cluster:
+                    self.add_cluster(cluster, case.id)
+            
 
-            for custom_tag_name in form_dict["custom_tags"]:
+            for custom_tag_name in form_dict.get("custom_tags", []):
                 custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
                 if custom_tag:
                     self.add_custom_tag(custom_tag, case.id)
@@ -1330,15 +1330,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 last_seen = None
                 ids_flag = False
                 disable_correlation = False
-                if attribute["first_seen"]:
+                if "first_seen" in attribute and attribute["first_seen"]:
                     first_seen = datetime.datetime.strptime(attribute["first_seen"], DATETIME_FORMAT)
-                if attribute["last_seen"]:
+                if "last_seen" in attribute and attribute["last_seen"]:
                     last_seen = datetime.datetime.strptime(attribute["last_seen"], DATETIME_FORMAT)
 
-                if attribute["ids_flag"] and attribute["ids_flag"] == 'true':
+                if "ids_flag" in attribute and attribute["ids_flag"] and attribute["ids_flag"] == 'true':
                     ids_flag = True
 
-                if attribute["disable_correlation"] and attribute["disable_correlation"] == 'true':
+                if "disable_correlation" in attribute and attribute["disable_correlation"] and attribute["disable_correlation"] == 'true':
                     disable_correlation = True
 
                 attr = Misp_Attribute(
@@ -1348,7 +1348,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     object_relation=attribute["object_relation"],
                     first_seen=first_seen,
                     last_seen=last_seen,
-                    comment=attribute["comment"],
+                    comment=attribute.get("comment", ""),
                     ids_flag=ids_flag,
                     disable_correlation=disable_correlation,
                     creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
