@@ -73,9 +73,8 @@ class AddIconForm(FlaskForm):
             raise ValidationError("Name Already Exist")
         
     def validate_icon_upload(self, field):
-        if field.data.filename:
-            if not re.search(u'\\.jpg|\\.jpeg|\\.png$', field.data.filename):
-                raise ValidationError("Extenstion not supported")
+        if field.data.filename and not re.search(r'\.jpg|\.jpeg|\.png$', field.data.filename):
+            raise ValidationError("Extenstion not supported")
             
 
 class EditIconForm(FlaskForm):
@@ -91,6 +90,5 @@ class EditIconForm(FlaskForm):
             raise ValidationError("Name Already Exist")
         
     def validate_icon_upload(self, field):
-        if field.data.filename:
-            if not re.search(u'\\.jpg|\\.jpeg|\\.png$', field.data.filename):
-                raise ValidationError("Extenstion not supported")
+        if field.data.filename and not re.search(r'\.jpg|\.jpeg|\.png$', field.data.filename):
+            raise ValidationError("Extenstion not supported")

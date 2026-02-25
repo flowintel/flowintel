@@ -616,7 +616,7 @@ def create_note_template(request_json: dict, current_user: int) -> Note_Template
     return n
 
 
-def edit_content_note_template(note_id: int, request_json: dict) -> bool:
+def edit_content_note_template(note_id: int, request_json: dict) -> dict:
     content = request_json["content"]
     list_params = extract_variables(content)
     note_template = get_note_template(note_id)
@@ -630,7 +630,7 @@ def edit_content_note_template(note_id: int, request_json: dict) -> bool:
     db.session.commit()
     return {"version": note_template.version}
 
-def edit_note_template(note_id: int, request_json: dict) -> bool:
+def edit_note_template(note_id: int, request_json: dict) -> dict:
     note_template = get_note_template(note_id)
 
     note_template.title = request_json["title"]

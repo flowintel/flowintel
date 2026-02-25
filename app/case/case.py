@@ -126,10 +126,10 @@ def edit_case(cid):
 def edit_case_tags(cid):
     """Edit the case"""
     if CommonModel.get_case(cid):
+        tag_list = request.json["tags_select"]
+        cluster_list = request.json["clusters_select"]
+        custom_tags_list = request.json["custom_select"]
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            tag_list = request.json["tags_select"]
-            cluster_list = request.json["clusters_select"]
-            custom_tags_list = request.json["custom_select"]
             if isinstance(CommonModel.check_tag(tag_list), bool):
                 if isinstance(CommonModel.check_cluster(cluster_list), bool):
                     loc_dict = {
@@ -1218,10 +1218,9 @@ def add_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "connectors" in request.json:
-                if CaseModel.add_connector(cid, request.json, current_user):
-                    flowintel_log("audit", 200, "Connector added to case", User=current_user.email, CaseId=cid)
-                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            if "connectors" in request.json and CaseModel.add_connector(cid, request.json, current_user):
+                flowintel_log("audit", 200, "Connector added to case", User=current_user.email, CaseId=cid)
+                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
         flowintel_log("audit", 403, "Add connector to case: Action not allowed", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
