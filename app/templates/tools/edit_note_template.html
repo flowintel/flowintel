@@ -57,10 +57,11 @@
                     })
                 })
 
-                if (await res.status == 200) {
+                if (res.status == 200) {
                     window.location.href = '/tools/note_template_index'
+                } else {
+                    display_toast(res)
                 }
-                display_toast(res)
             }
 
             return {
