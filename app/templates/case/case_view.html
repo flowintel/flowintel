@@ -286,7 +286,13 @@
                         </div>
                         <div class="container-fluid" style="display: flex; width:90%">
                             <div class="note-editor" id="editor"></div>
-                            <div class="markdown-render" v-html="rendered_note_preview"></div>
+                            <div class="markdown-render">
+                                <div v-if="preview_loading" class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span>Rendering preview…</span>
+                                </div>
+                                <div v-else v-html="rendered_note_preview"></div>
+                            </div>
                         </div>
                     </template>
                     <template v-else>
@@ -316,7 +322,11 @@
                                 </ul>
                             </div>
                         </div>
-                        <div v-html="rendered_case_note" class="markdown-render-result container-fluid"></div>
+                        <div v-if="notes_loading" class="d-flex align-items-center gap-2 mb-2">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Rendering notes…</span>
+                        </div>
+                        <div v-else v-html="rendered_case_note" class="markdown-render-result container-fluid"></div>
                     </template>
                 </div>
                 <div v-else class="d-flex">
@@ -609,7 +619,11 @@
                 </div>
             </template>
             <template v-else-if="tasks_tab == 'tasks-notes'">
-                <template v-for="notes in all_notes_html">
+                <div v-if="all_notes_loading" class="d-flex align-items-center gap-2 mb-2">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Rendering task notes…</span>
+                </div>
+                <template v-else v-for="notes in all_notes_html">
                     <div class="all-tasks-notes" v-html="notes"></div>
                 </template>
             </template>
@@ -718,6 +732,9 @@
                 const rendered_case_note = ref("")
                 const rendered_note_preview = ref("")
                 const rendered_description = ref("")
+                const notes_loading = ref(false)
+                const all_notes_loading = ref(false)
+                const preview_loading = ref(false)
                 let previewTimer = null
                 watch(note_editor_render, async (value) => {
                     if (previewTimer){
@@ -943,34 +960,41 @@
                 }
 
                 async function fetch_all_notes(){
-                    const res = await fetch(`/case/${cases_info.value.case.id}/rendered_all_notes`)
-                    if (await res.status === 200){
-                        let loc = await res.json()
-                        all_notes_html.value = loc["notes"] || []
-                    } else {
-                        display_toast(res)
+                    all_notes_loading.value = true
+                    try {
+                        const res = await fetch(`/case/${cases_info.value.case.id}/rendered_all_notes`)
+                        if (await res.status === 200){
+                            let loc = await res.json()
+                            all_notes_html.value = loc["notes"] || []
+                        } else {
+                            display_toast(res)
+                        }
+                    } finally {
+                        all_notes_loading.value = false
                     }
                 }
 
                 async function fetch_rendered_notes(){
-                    const res = await fetch(`/case/${cases_info.value.case.id}/rendered_notes`)
-                    if (await res.status === 200){
-                        const loc = await res.json()
-                        rendered_case_note.value = loc["html"]
-                    } else {
-                        display_toast(res)
+                    notes_loading.value = true
+                    try {
+                        const res = await fetch(`/case/${cases_info.value.case.id}/rendered_notes`)
+                        if (await res.status === 200){
+                            const loc = await res.json()
+                            rendered_case_note.value = loc["html"]
+                        } else {
+                            display_toast(res)
+                        }
+                    } finally {
+                        notes_loading.value = false
                     }
                 }
 
                 async function render_preview(markdownText){
-                    const res = await fetch('/case/render_markdown_preview', {
-                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                        method: "POST",
-                        body: JSON.stringify({"note": markdownText || ""})
-                    })
-                    if (await res.status === 200){
-                        const loc = await res.json()
-                        rendered_note_preview.value = loc["html"]
+                    preview_loading.value = true
+                    try {
+                        rendered_note_preview.value = await renderMarkdownServer(markdownText || "")
+                    } finally {
+                        preview_loading.value = false
                     }
                 }
 
@@ -1523,7 +1547,8 @@
 
                     get_completion_pourcentage,
                     get_completion_color,
-                    is_open_cases
+                    is_open_cases,
+                    notes_loading
                 }
             }
         }).mount('#main-container')
