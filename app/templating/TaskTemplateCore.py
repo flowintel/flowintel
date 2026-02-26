@@ -258,7 +258,7 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         Task_Template_Galaxy_Tags.query.filter_by(template_id=tid).delete()
         Task_Template_Custom_Tags.query.filter_by(task_template_id=tid).delete()
         Task_Template_Galaxy.query.filter_by(template_id=tid).delete()
-        Note_Template.query.filter_by(template_id=tid)
+        Note_Template.query.filter_by(template_id=tid).delete()
         template = CommonModel.get_task_template(tid)
         db.session.delete(template)
         db.session.commit()

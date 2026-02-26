@@ -142,7 +142,7 @@ class DeleteCaseTemplate(Resource):
 @templating_ns.route('/create_case_from_template/<cid>')
 @templating_ns.doc(description='Create a case from a case template', params={'cid': 'id of a case template'})
 class CreateCaseFromTemplate(Resource):
-    method_decorators = [api_required]
+    method_decorators = [editor_required, api_required]
     @templating_ns.doc(params={
         "title": "Title of the case to create"
         })

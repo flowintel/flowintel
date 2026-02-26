@@ -3,7 +3,6 @@ from app.db_class.db import Case, Case_Template, Connector_Instance, User, User_
 
 
 def validate_case_from_misp(request_json: dict, current_user: User):
-    print(request_json)
     if "case_title" not in request_json or not request_json["case_title"]:
         return {"message": "Please give a title"}
     elif Case.query.filter_by(title=request_json["case_title"]).first():

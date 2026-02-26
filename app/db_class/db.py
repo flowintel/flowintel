@@ -373,7 +373,7 @@ class Task_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     name = db.Column(db.String, index=True)
-    uuid = db.Column(db.String(36), index=True, default=str(uuid.uuid4()))
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
 
     def to_json(self):
         json_dict = {
@@ -1240,7 +1240,7 @@ class Misp_Attribute_Instance_Uuid(db.Model):
 
 class Note_Template_Model(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    uuid = db.Column(db.String(36), index=True, default=str(uuid.uuid4()))
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
     author = db.Column(db.Integer, index=True)
     title = db.Column(db.String)
     description = db.Column(db.String)

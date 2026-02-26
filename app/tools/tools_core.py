@@ -140,7 +140,7 @@ def case_creation_from_importer(case, current_user):
 def case_template_creation_from_importer(template):
     if not utils.validate_importer_json(template, jsonschema_flowintel.caseTemplateSchema):
         return {"message": f"Case template '{template['title']}' format not okay"}
-    for task in template["tasks_template"]:
+    for task in template.get("tasks_template", []):
         if not utils.validate_importer_json(task, jsonschema_flowintel.taskTemplateSchema):
             return {"message": f"Task Template '{task['title']}' format not okay"}
         
@@ -174,7 +174,7 @@ def case_template_creation_from_importer(template):
     #######################
 
     ## Task format is valid
-    for task in template["tasks_template"]:
+    for task in template.get("tasks_template", []):
         if Task.query.filter_by(uuid=task["uuid"]).first():
             task["uuid"] = str(uuid.uuid4())
 
@@ -199,7 +199,7 @@ def case_template_creation_from_importer(template):
         TemplateModel.modif_note_core(case_created.id, template["notes"])
 
     ## Task creation
-    for task in template["tasks_template"]:
+    for task in template.get("tasks_template", []):
         task_created = TaskTemplateModel.add_task_template_core(task)
         TemplateModel.add_task_case_template({"tasks": [task_created.id]}, case_created.id)
         if task["notes"]:

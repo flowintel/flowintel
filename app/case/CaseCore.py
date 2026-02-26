@@ -1227,7 +1227,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
 
         case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
+        if not case_instance:
+            return {"message": "Connector instance not found"}
+
         loc_instance = CommonModel.get_instance(case_instance.instance_id)
+        if not loc_instance:
+            return {"message": "Connector instance not found"}
 
         user_instance = CommonModel.get_user_instance_both(user.id, loc_instance.id)
 
@@ -1236,6 +1241,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             instance["api_key"] = loc_instance.global_api_key
         elif user_instance:
             instance["api_key"] = user_instance.api_key
+        else:
+            return {"message": "No API key configured for this connector"}
         instance["identifier"] = case_instance.identifier
 
         case["objects"] = self.get_misp_object_instance(case["id"], instance["id"])
@@ -1253,15 +1260,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         ###########
         # RESULTS #
         ###########
-        if not case_instance:
-            cc_instance = Case_Connector_Instance(
-                case_id=case["id"],
-                instance_id=instance["id"],
-                identifier=event_uuid
-            )
-            db.session.add(cc_instance)
-            db.session.commit()
-        elif not case_instance.identifier == event_uuid:
+        if case_instance.identifier != event_uuid:
             case_instance.identifier = event_uuid
             db.session.commit()
         

@@ -98,13 +98,15 @@ export default {
 			}
 
 			let loc = undefined
-			if ($("#input_select").val() != "None") {
-				loc = $("#input_select").val()
+			const input_val = $("#input_select").val()
+			if (input_val && input_val != "None") {
+				loc = input_val
 			}
 
 			let loc_modules = undefined
-			if ($("#modules_select").val().length) {
-				loc_modules = $("#modules_select").val()
+			const modules_val = $("#modules_select").val()
+			if (modules_val && modules_val.length) {
+				loc_modules = modules_val
 			}
 
 

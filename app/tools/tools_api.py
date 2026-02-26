@@ -2,7 +2,7 @@ from flask import request
 from . import tools_core as ToolModel
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required
+from ..decorators import api_required, editor_required, template_editor_required
 
 from ..utils import utils
 
@@ -15,7 +15,7 @@ importer_ns = Namespace("importer", description="Endpoints to manage importer")
 @importer_ns.route('/case')
 @importer_ns.doc(description='Import a case. JSON is required')
 class ImportCase(Resource):
-    method_decorators = [api_required]
+    method_decorators = [editor_required, api_required]
     def post(self):
         if request.json:
             current_user = utils.get_user_api(request.headers["X-API-KEY"])
@@ -29,25 +29,26 @@ class ImportCase(Resource):
                 if res:
                     return res
             return {"message": "All created"}
+        return {"message": "Please give data"}, 400
         
     
 @importer_ns.route('/template')
 @importer_ns.doc(description='Import a case template. JSON is required')
 class ImportCaseTemplate(Resource):
-    method_decorators = [api_required]
+    method_decorators = [template_editor_required, api_required]
     def post(self):
         if request.json:
-            current_user = utils.get_user_api(request.headers["X-API-KEY"])
             if type(request.json) == list:
                 for case in request.json:
-                    res = ToolModel.case_template_creation_from_importer(case, current_user)
+                    res = ToolModel.case_template_creation_from_importer(case)
                     if res:
                         return res
             else:
-                res = ToolModel.case_template_creation_from_importer(request.json, current_user)
+                res = ToolModel.case_template_creation_from_importer(request.json)
                 if res:
                     return res
             return {"message": "All created"}
+        return {"message": "Please give data"}, 400
         
 
 
