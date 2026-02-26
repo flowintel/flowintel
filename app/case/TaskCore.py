@@ -401,7 +401,12 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                     flowintel_log("error", 500, f"Error uploading file to task: {str(e)}", User=current_user.email, TaskId=task.id, FileName=filename)
                     return None
 
-                file_type = files_list[file].content_type if files_list[file].content_type else filename.rsplit('.', 1)[-1] if '.' in filename else 'unknown'
+                if files_list[file].content_type:
+                    file_type = files_list[file].content_type
+                elif '.' in filename:
+                    file_type = filename.rsplit('.', 1)[-1]
+                else:
+                    file_type = 'unknown'
 
                 f = File(
                     name=filename,

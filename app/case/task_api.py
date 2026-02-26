@@ -219,9 +219,8 @@ class GetNoteTask(Resource):
         if task:
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-                if "note_id" in request.args:
-                    if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
-                        return {"message": "Note deleted"}, 200
+                if "note_id" in request.args and TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
+                    return {"message": "Note deleted"}, 200
                 return {"message": "Need to pass a note id"}, 400
             return {"message": "Permission denied"}, 403
         return {"message": "Task not found"}, 404

@@ -477,7 +477,12 @@ def get_audit_logs(case_id):
                             
                             # Extract the audit message (between "AUDIT: STATUS - " and " User:")
                             message_match = re.search(r'AUDIT:\s*\d+\s*-\s*([^.]+\.)', line)
-                            message = message_match.group(1).strip() if message_match else line.split('AUDIT:')[1].strip() if 'AUDIT:' in line else ""
+                            if message_match:
+                                message = message_match.group(1).strip()
+                            elif 'AUDIT:' in line:
+                                message = line.split('AUDIT:')[1].strip()
+                            else:
+                                message = ""
                             
                             # Create formatted entry similar to case history
                             # Format: [YYYY-MM-DD HH:MM](User): Message
@@ -488,11 +493,11 @@ def get_audit_logs(case_id):
                             
                             formatted_entry = f"[{formatted_timestamp}]({user}): {message}"
                             audit_logs.append(formatted_entry)
-                    except Exception as parse_error:
+                    except Exception:
                         continue
         
         return audit_logs
-    except Exception as e:
+    except Exception:
         return []
 
 
@@ -513,7 +518,7 @@ def download_audit_logs(case):
             f.write(log_content)
         
         return send_file(temp_file_path, as_attachment=True, download_name=f"{case.title}_audit_logs.txt")
-    except Exception as e:
+    except Exception:
         return {"message": "Error generating audit logs file", "toast_class": "danger-subtle"}, 500
 
 
@@ -526,7 +531,7 @@ def download_audit_logs_md(case):
         
         loc_rep = _format_logs_as_markdown(case, audit_logs, title="Audit Logs")
         return loc_rep, 200, {'Content-Disposition': f'attachment; filename={case.title}_audit_logs.md'}
-    except Exception as e:
+    except Exception:
         return {"message": "Error generating audit logs markdown", "toast_class": "danger-subtle"}, 500
 
     
