@@ -63,9 +63,9 @@
                     <div id="type_description" class="small text-muted mt-2">[[ description ]]</div>
                 </div>
             </div>
-            <div class="mb-3">
-                <label for="is_global_connector" class="col-form-label"><i class="fa-solid fa-globe me-1"></i>Global connector:</label>
-                {{form.is_global_connector(class_="form-check-input mx-2")}}
+            <div class="mb-3" title="By Checking this box this instance will be available for all users. Only Admins can edit global instances.">
+                <i class="fa-solid fa-globe me-1"></i>{{form.is_global_connector.label(class_="col-form-label")}}:
+                {{form.is_global_connector(class_="mx-2")}}
                 {% if form.is_global_connector.errors %}
                     <div class="text-danger small">{{form.is_global_connector.errors[0] | safe}}</div>
                 {%endif%}
