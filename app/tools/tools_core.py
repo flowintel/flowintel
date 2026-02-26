@@ -623,6 +623,7 @@ def edit_content_note_template(note_id: int, request_json: dict) -> dict:
     note_template = get_note_template(note_id)
 
     note_template.content = content
+    note_template.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
 
     existing_params = set(note_template.params.get("list", []) if note_template.params else [])
     if set(list_params) != existing_params:
@@ -637,6 +638,7 @@ def edit_note_template(note_id: int, request_json: dict) -> dict:
 
     note_template.title = request_json["title"]
     note_template.description = request_json["description"]
+    note_template.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
 
     db.session.commit()
     return {"version": note_template.version or 1}
