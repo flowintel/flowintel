@@ -1125,10 +1125,9 @@ def add_connector(tid):
             flowintel_log("audit", 403, "Add connector denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
             return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
         
-        if "connectors" in request.json:
-            if TaskModel.add_connector(tid, request.json, current_user):
-                flowintel_log("audit", 200, "Connector added to task", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+        if "connectors" in request.json and TaskModel.add_connector(tid, request.json, current_user):
+            flowintel_log("audit", 200, "Connector added to task", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+            return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
     if not task:
         return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404

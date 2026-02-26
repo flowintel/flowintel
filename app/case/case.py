@@ -126,10 +126,10 @@ def edit_case(cid):
 def edit_case_tags(cid):
     """Edit the case"""
     if CommonModel.get_case(cid):
+        tag_list = request.json["tags_select"]
+        cluster_list = request.json["clusters_select"]
+        custom_tags_list = request.json["custom_select"]
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            tag_list = request.json["tags_select"]
-            cluster_list = request.json["clusters_select"]
-            custom_tags_list = request.json["custom_select"]
             if isinstance(CommonModel.check_tag(tag_list), bool):
                 if isinstance(CommonModel.check_cluster(cluster_list), bool):
                     loc_dict = {
@@ -850,8 +850,6 @@ def status_computer_assistate_report(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Get status computer assisted report: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        if not CaseModel.check_exist_task(case.uuid):
-            return {"message": "There's no generation going for this case", "toast_class": "warning-subtle"}, 400
         if CaseModel.get_status_computer_assistate_report(case.uuid):
             flowintel_log("audit", 200, "Get status computer assisted report", User=current_user.email, CaseId=cid)
             return {"report_status": "running"}, 200
@@ -1218,10 +1216,9 @@ def add_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "connectors" in request.json:
-                if CaseModel.add_connector(cid, request.json, current_user):
-                    flowintel_log("audit", 200, "Connector added to case", User=current_user.email, CaseId=cid)
-                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            if "connectors" in request.json and CaseModel.add_connector(cid, request.json, current_user):
+                flowintel_log("audit", 200, "Connector added to case", User=current_user.email, CaseId=cid)
+                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
         flowintel_log("audit", 403, "Add connector to case: Action not allowed", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403

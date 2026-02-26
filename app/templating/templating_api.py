@@ -223,9 +223,8 @@ class AddConnector(Resource):
     })
     def post(self, cid):
         if CommonModel.get_case_template(cid):
-            if "connectors" in request.json:
-                if CommonModel.add_connector_instances_to_case_template(cid, request.json['connectors']):
-                    return {"message": "Connector added successfully"}, 200
+            if "connectors" in request.json and CommonModel.add_connector_instances_to_case_template(cid, request.json['connectors']):
+                return {"message": "Connector added successfully"}, 200
             return {"message": "Need to pass 'connectors'"}, 400
         return {"message": "Case template not found"}, 404
     
@@ -241,9 +240,8 @@ class EditConnector(Resource):
         if CommonModel.get_case_template(cid):
             if "identifier" in request.json:
                 loc = CommonModel.get_case_template_connector_instance(cid, ciid)
-                if loc:
-                    if CommonModel.edit_connector_instances_of_case_template(loc.id, request.json['identifier']):
-                        return {"message": "Connector edited successfully"}, 200
+                if loc and CommonModel.edit_connector_instances_of_case_template(loc.id, request.json['identifier']):
+                    return {"message": "Connector edited successfully"}, 200
                 return {"message": "Connector instance not found"}, 404
             return {"message": "Need to pass 'identifier'"}, 400
         return {"message": "Case template not found"}, 404
