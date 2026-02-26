@@ -33,8 +33,6 @@ export default {
 		const edit_mode = ref(-1)
 		const note_editor_render = ref([])
 		const editor_list = ref({})
-		const md = window.markdownit()
-		md.use(mermaidMarkdown.default)
 
 		const rendered_description_full = ref('')
 		const rendered_description_trunc = ref('')

@@ -235,6 +235,35 @@ def _sanitize_svg(svg_text: str) -> str:
     )
 
 
+def _clean_mermaid_error(raw: str) -> str:
+    """Strip file-system paths and stack traces from mermaid-cli error output.
+
+    Keeps the first meaningful error description (e.g. the parse-error block or
+    the ``UnknownDiagramError`` line) and drops everything after the stack trace
+    begins.
+    """
+    # Remove the outer wrapper added by MermaidCLIRenderer.render()
+    raw = re.sub(r"^Mermaid rendering failed:\s*", "", raw).strip()
+
+    # Drop lines that look like stack frames (contain file-system / URL paths)
+    cleaned_lines: list[str] = []
+    for line in raw.splitlines():
+        # Stack-trace line: starts with optional whitespace + "at " or contains
+        # file:/// / absolute unix/windows paths pointing to node_modules etc.
+        if re.match(r"^\s+at\s+", line):
+            break
+        if re.search(r"(file:///|/home/|/usr/|/node_modules/|\\node_modules\\|[A-Z]:\\)", line):
+            break
+        cleaned_lines.append(line)
+
+    result = "\n".join(cleaned_lines).strip()
+
+    # If a "for text:" trailer is left dangling at the end, remove it
+    result = re.sub(r"\s+for text:\s*$", "", result)
+
+    return result or raw  # fallback to original if everything was stripped
+
+
 def _ensure_svg_style(svg_text: str, extra_css: str) -> str:
     """Insert or append extra CSS into the first <style> block of the SVG, or create one.
 
@@ -309,7 +338,8 @@ def render_markdown_with_mermaid(markdown_text: str, output_format: str = "svg")
             b64 = base64.b64encode(png_bytes).decode("ascii")
             return f"\n<img class=\"mermaid-graph\" src=\"data:image/png;base64,{b64}\" alt=\"Mermaid diagram\" loading=\"lazy\"/>\n"
         except Exception as exc:  # noqa: BLE001 - surface error to the caller
-            safe_error = bleach.clean(str(exc))
+            clean_error = _clean_mermaid_error(str(exc))
+            safe_error = bleach.clean(clean_error)
             return f"<pre class=\"mermaid-error\">Mermaid render error: {safe_error}</pre>"
 
     processed = MERMAID_BLOCK_RE.sub(replace_mermaid, markdown_text)

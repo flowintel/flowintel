@@ -296,7 +296,7 @@
                         </div>
                     </template>
                     <template v-else>
-                        <div>
+                        <div v-if="!notes_loading">
                             <button class="btn btn-primary mb-2" @click="edit_note()">
                                 <small><i class="fa-solid fa-pen fa-fw"></i></small> Edit
                             </button>
@@ -322,7 +322,7 @@
                                 </ul>
                             </div>
                         </div>
-                        <div v-if="notes_loading" class="d-flex align-items-center gap-2 mb-2">
+                        <div v-if="notes_loading" class="d-flex align-items-center gap-2 mb-2 markdown-render-result container-fluid">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                             <span>Rendering notes…</span>
                         </div>
@@ -740,7 +740,7 @@
                     if (previewTimer){
                         clearTimeout(previewTimer)
                     }
-                    previewTimer = setTimeout(() => render_preview(value), 250)
+                    previewTimer = setTimeout(() => render_preview(value), 1000)
                 })
                 const edit_mode = ref(false)
                 const case_for_link = ref([])
@@ -1548,7 +1548,8 @@
                     get_completion_pourcentage,
                     get_completion_color,
                     is_open_cases,
-                    notes_loading
+                    notes_loading,
+                    preview_loading
                 }
             }
         }).mount('#main-container')
