@@ -1,10 +1,11 @@
 import ast
 import json
+import os
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 from flask_login import login_required, current_user
 
 from .form import CaseForm, CaseEditForm, RecurringForm
-from .CaseCore import CaseModel
+from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from ..db_class.db import Case, Task_Template, Case_Template, File
@@ -12,6 +13,7 @@ from ..decorators import editor_required, template_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
+from ..utils.file_converter import convert_file_to_note_content
 
 case_blueprint = Blueprint(
     'case',
@@ -1458,3 +1460,39 @@ def delete_case_file(cid, fid):
         flowintel_log("audit", 403, "Delete file from case: Permission denied", User=current_user.email, CaseId=cid, FileId=fid)
         return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/convert_case_file_to_note/<fid>", methods=['POST'])
+@login_required
+@editor_required
+def convert_case_file_to_note(cid, fid):
+    """Convert a file attached to a case into a case note"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Convert case file to note: Permission denied", User=current_user.email, CaseId=cid, FileId=fid)
+        return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+    file = CommonModel.get_file(fid)
+    if not file or file.case_id != int(cid):
+        return {"message": "File not found", "toast_class": "danger-subtle"}, 404
+
+    file_extension = os.path.splitext(file.name)[1].lower().lstrip('.')
+    if file_extension not in ['txt', 'csv', 'json']:
+        return {"message": "Only TXT, CSV, and JSON files can be converted", "toast_class": "warning-subtle"}, 400
+
+    file_path = os.path.join(FILE_FOLDER, file.uuid)
+    success, content = convert_file_to_note_content(file_path, file_extension, file.name)
+
+    if not success:
+        flowintel_log("audit", 400, "Case file conversion failed", User=current_user.email, CaseId=cid, FileId=fid, FileName=file.name, Error=content)
+        return {"message": f"Conversion failed: {content}", "toast_class": "danger-subtle"}, 400
+
+    existing_notes = case.notes or ""
+    new_notes = (existing_notes + "\n\n" + content).strip()
+    if not CaseModel.modify_note_core(cid, current_user, new_notes):
+        return {"message": "Error saving note", "toast_class": "danger-subtle"}, 400
+    flowintel_log("audit", 200, "Case file converted to note", User=current_user.email, CaseId=cid, FileId=fid, FileName=file.name)
+    return {"message": f"File '{file.name}' converted to note successfully", "toast_class": "success-subtle", "notes": new_notes}, 200
