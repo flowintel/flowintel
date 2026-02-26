@@ -178,6 +178,23 @@
                         <div class="d-flex w-100 justify-content-between">
                             <h4 class="mb-1">[[ template.id ]]- [[ template.title ]]</h4>
                         </div>
+                        <div class="case-meta-grid" style="margin-bottom: 4px;">
+                            <div class="case-meta-item" v-if="template.last_modif" :title="'Modified: ' + template.last_modif">
+                                <i class="fa-solid fa-clock-rotate-left fa-fw"></i>
+                                <span class="meta-label">Modified</span>
+                                <span class="meta-value">[[ dayjs.utc(template.last_modif).fromNow() ]]</span>
+                            </div>
+                            <div class="case-meta-item" v-if="template.uuid" :title="template.uuid">
+                                <i class="fa-solid fa-fingerprint fa-fw"></i>
+                                <span class="meta-label">UUID</span>
+                                <span class="meta-value" style="font-family: monospace; font-size: 0.8em;">[[ template.uuid ]]</span>
+                            </div>
+                            <div class="case-meta-item" v-if="template.version">
+                                <i class="fa-solid fa-code-branch fa-fw"></i>
+                                <span class="meta-label">Version</span>
+                                <span class="meta-value">v[[ template.version ]]</span>
+                            </div>
+                        </div>
                         <div class="d-flex w-100 justify-content-between">
                             <template v-if="template.description">
                                 <template v-if="template.description.length > 300">
@@ -322,6 +339,7 @@
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
                 const md = window.markdownit()
+                const dayjs = window.dayjs
 
                 const expandedCases = ref({})
 
@@ -506,6 +524,7 @@
                     mapIcon,
                     truncateText,
                     md,
+                    dayjs,
                     expandedCases,
 
                     templates_list,
