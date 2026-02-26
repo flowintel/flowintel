@@ -477,7 +477,12 @@ def get_audit_logs(case_id):
                             
                             # Extract the audit message (between "AUDIT: STATUS - " and " User:")
                             message_match = re.search(r'AUDIT:\s*\d+\s*-\s*([^.]+\.)', line)
-                            message = message_match.group(1).strip() if message_match else line.split('AUDIT:')[1].strip() if 'AUDIT:' in line else ""
+                            if message_match:
+                                message = message_match.group(1).strip()
+                            elif 'AUDIT:' in line:
+                                message = line.split('AUDIT:')[1].strip()
+                            else:
+                                message = ""
                             
                             # Create formatted entry similar to case history
                             # Format: [YYYY-MM-DD HH:MM](User): Message
@@ -488,11 +493,11 @@ def get_audit_logs(case_id):
                             
                             formatted_entry = f"[{formatted_timestamp}]({user}): {message}"
                             audit_logs.append(formatted_entry)
-                    except Exception as parse_error:
+                    except Exception:
                         continue
         
         return audit_logs
-    except Exception as e:
+    except Exception:
         return []
 
 
@@ -513,7 +518,7 @@ def download_audit_logs(case):
             f.write(log_content)
         
         return send_file(temp_file_path, as_attachment=True, download_name=f"{case.title}_audit_logs.txt")
-    except Exception as e:
+    except Exception:
         return {"message": "Error generating audit logs file", "toast_class": "danger-subtle"}, 500
 
 
@@ -526,7 +531,7 @@ def download_audit_logs_md(case):
         
         loc_rep = _format_logs_as_markdown(case, audit_logs, title="Audit Logs")
         return loc_rep, 200, {'Content-Disposition': f'attachment; filename={case.title}_audit_logs.md'}
-    except Exception as e:
+    except Exception:
         return {"message": "Error generating audit logs markdown", "toast_class": "danger-subtle"}, 500
 
     
@@ -748,8 +753,9 @@ def check_custom_tags(tags_list):
     return True
 
 
-def create_task_from_template(template_id, cid):
+def create_task_from_template(template_id, cid, current_user=None):
     """Create a task from a task template"""
+    from flask import current_app
     template = Task_Template.query.get(template_id)
     case = get_case(cid)
     nb_tasks = 1
@@ -757,6 +763,11 @@ def create_task_from_template(template_id, cid):
         nb_tasks = case.nb_tasks+1
     else:
         case.nb_tasks = 0
+    
+    status_id = 1
+    if current_user and case.privileged_case and current_user.is_queuer() and not current_user.is_admin() and not current_user.is_case_admin() and not current_user.is_queue_admin():
+        status_id = current_app.config['TASK_REQUESTED']
+    
     task = Task(
         uuid=str(uuid.uuid4()),
         title=template.title,
@@ -764,7 +775,7 @@ def create_task_from_template(template_id, cid):
         creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
         last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
         case_id=cid,
-        status_id=1,
+        status_id=status_id,
         case_order_id=nb_tasks,
         nb_notes=0
     )
@@ -831,6 +842,22 @@ def create_task_from_template(template_id, cid):
         )
         db.session.add(subtask)
         db.session.commit()
+
+    if current_user and status_id == current_app.config['TASK_REQUESTED']:
+        from ..notification import notification_core as NotifModel
+        task_user = Task_User(
+            task_id=task.id,
+            user_id=current_user.id
+        )
+        db.session.add(task_user)
+        db.session.commit()
+        
+        NotifModel.create_notification_for_approvers(
+            message=f"New task '{task.id}-{task.title}' requested by {current_user.first_name} {current_user.last_name} in case '{case.id}-{case.title}'. You can approve or reject this task.",
+            case_id=cid,
+            org_id=case.owner_org_id,
+            html_icon="fa-solid fa-circle-exclamation"
+        )
 
     return task
 

@@ -14,6 +14,11 @@
 
 <script src="{{ url_for('static',filename='js/vendor/Sortable.min.js') }}"></script>
 
+<script>
+    {% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
+    window.can_manage_templates = {{ 'true' if can_manage_templates else 'false' }};
+</script>
+
 <title>View case #{{ case.id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
 {%endblock%}
@@ -31,6 +36,9 @@
                 <span v-if="cases_info" class="case-visibility-badge" :title="cases_info.case.is_private ? 'Private case - only org members can see' : 'Public case - anyone can view'">
                     <i v-if="cases_info.case.is_private" class="fa-solid fa-lock"></i>
                     <i v-else class="fa-solid fa-globe"></i>
+                </span>
+                <span v-if="cases_info && cases_info.case.privileged_case" class="case-visibility-badge" title="Privileged case - four-eye-review workflow">
+                    <i class="fa-solid fa-user-shield" style="color: #dc3545;"></i>
                 </span>
                 <span v-if="status_info" :class="'badge rounded-pill text-bg-' + status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
                     [[ status_info.status[{{case.status_id}} -1].name ]]
@@ -143,9 +151,13 @@
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-history" @click="active_tab('history')">
-                <i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i><span class="section-title fs-6">History</span>
+            <button class="nav-link" id="tab-files" @click="active_tab('files')">
+                <i class="fa-solid fa-file fa-sm me-1"></i>Files
+                <span class="badge text-bg-secondary" v-if="case_files_list.length > 0">[[case_files_list.length]]</span>
             </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-history" @click="active_tab('history')"><i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i>History</button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-info" @click="active_tab('info')">
@@ -180,11 +192,11 @@
         <template v-if="main_tab == 'main'">
             <div class="row">
                 <div class="col">
-                    <tags_edition v-if="cases_info" :current_case="cases_info.case" :type_object="'case'"></tags_edition>
+                    <tags_edition v-if="cases_info" :current_case="cases_info.case" :type_object="'case'" :can_edit="can_edit_case"></tags_edition>
 
                     <div class="case-tags-style mt-2" v-if="cases_info">
                         <div class="justify-content-center" style="float: right">
-                            <button class="btn btn-primary btn-sm me-1" title="New link" data-bs-toggle="modal" data-bs-target="#add_new_link">
+                            <button v-if="can_edit_case" class="btn btn-primary btn-sm me-1" title="New link" data-bs-toggle="modal" data-bs-target="#add_new_link">
                                 <i class="fa-solid fa-paperclip fa-sm"></i>+
                             </button>
                             <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
@@ -238,7 +250,7 @@
         </template>
 
         <template v-else-if="main_tab == 'history'">
-            <case_history :case_id="cases_info.case.id"></case_history>
+            <case_history :case_id="cases_info.case.id" :can_view_history="{{ 'true' if current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer() else 'false' }}"></case_history>
         </template>
 
         <template v-else-if="main_tab == 'notes'">
@@ -333,7 +345,7 @@
         </template>
 
         <template v-else-if="main_tab == 'misp-objects'">
-            <misp_object :case_id="{{case.id}}" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
+            <misp_object :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
         </template>
 
         <template v-else-if="main_tab == 'connectors'">
@@ -348,6 +360,17 @@
                     @case_connectors="(msg) => fetch_case_connectors()"
                     @task_connectors="">
                 </caseconnectors>
+            </div>
+        </template>
+
+        <template v-else-if="main_tab == 'files'">
+            <div v-if="cases_info">
+                <casefiles
+                    :case_id="cases_info.case.id"
+                    :case_files_list="case_files_list"
+                    :cases_info="cases_info"
+                    @files_change="(msg) => fetch_case_files()">
+                </casefiles>
             </div>
         </template>
 
@@ -599,11 +622,13 @@
         </template>
     </div>
 
+    {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
     <span id="createTask" title="Create a new task">
         <a href="/case/{{case.id}}/create_task" class="btn btn-outline-primary" style="border-radius: 50px;">
             <i class="fa-solid fa-plus"></i>
         </a>
     </span>
+    {%endif%}
 </div>
 {% endblock %}
 
@@ -620,6 +645,7 @@
         import manage_orgs from '/static/js/case/manage_orgs.js'
         import misp_object from '/static/js/case/misp_object.js'
         import caseconnectors from '/static/js/case/CaseConnectors.js'
+        import casefiles from '/static/js/case/CaseFiles.js'
         import case_history from '/static/js/case/case_history.js'
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
@@ -638,6 +664,7 @@
                 manage_orgs,
                 misp_object,
                 caseconnectors,
+                casefiles,
                 case_history,
                 note_from_template,
                 computer_assistate_template
@@ -680,6 +707,8 @@
                 const modules = ref()
                 const task_modules = ref()
 
+                const case_files_list = ref([])
+
                 const nb_misp_objects = ref(0)
 
                 const open_closed = ref({})
@@ -717,6 +746,15 @@
                     }else{
                         let loc = await res.json()
                         case_connectors_list.value = loc["case_connectors"]
+                    }
+                }
+                async function fetch_case_files(){
+                    const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/get_case_info")
+                    if(await res.status==404 ){
+                        display_toast(res)
+                    }else{
+                        let loc = await res.json()
+                        case_files_list.value = loc["files"]
                     }
                 }
                 async function fetch_connectors(){
@@ -946,6 +984,7 @@
                             document.getElementById("tab-misp-objects").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
+                            document.getElementById("tab-files").classList.remove("active")
                             await nextTick()
 
                             initialize_select2()
@@ -959,6 +998,7 @@
                             document.getElementById("tab-misp-objects").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
+                            document.getElementById("tab-files").classList.remove("active")
                         }
                     }else if(tab_name == 'notes'){
                         let loc_tab = main_tab.value 
@@ -970,6 +1010,7 @@
                             document.getElementById("tab-misp-objects").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
+                            document.getElementById("tab-files").classList.remove("active")
                         }
                         await fetch_rendered_notes()
                         await nextTick()
@@ -987,6 +1028,7 @@
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
+                            document.getElementById("tab-files").classList.remove("active")
                         }
                         await nextTick()
                     }else if(tab_name == 'connectors'){
@@ -998,6 +1040,19 @@
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-misp-objects").classList.remove("active")
+                            document.getElementById("tab-files").classList.remove("active")
+                        }
+                        await nextTick()
+                    }else if(tab_name == 'files'){
+                        main_tab.value = 'files'
+                        if ( !document.getElementById("tab-files").classList.contains("active") ){
+                            document.getElementById("tab-files").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-notes").classList.remove("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                            document.getElementById("tab-info").classList.remove("active")
+                            document.getElementById("tab-misp-objects").classList.remove("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
                         }
                         await nextTick()
                     }else if(tab_name == 'info'){
@@ -1009,6 +1064,7 @@
                             document.getElementById("tab-notes").classList.remove("active")
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
+                            document.getElementById("tab-files").classList.remove("active")
                         }
                     }
                 }
@@ -1290,6 +1346,7 @@
                     initialize_select2()
                     autosave_case_note()
                     fetch_case_connectors()
+                    fetch_case_files()
 
                     $('.new-link-ajax').select2({
                         ajax: {
@@ -1394,10 +1451,24 @@
                         }
                     };
 
-                    new Sortable(document.getElementById('list-container'), options);
+                    const listContainer = document.getElementById('list-container');
+                    if (listContainer) {
+                        new Sortable(listContainer, options);
+                    }
                 })
 
-                
+                const can_edit_case = computed(() => {
+                    if (!cases_info.value) return false
+                    const permission = cases_info.value.permission
+                    const present_in_case = cases_info.value.present_in_case
+
+                    if (permission && permission.read_only) return false
+                    if (permission && permission.admin) return true                    
+                    if (present_in_case) return true
+                    
+                    return false
+                })
+
                 
     
                 return {
@@ -1411,6 +1482,7 @@
                     tasks_tab,
                     is_exporting,
                     nb_misp_objects,
+                    can_edit_case,
                     onInput,
                     sort_by_filter,
                     active_tab,
@@ -1436,10 +1508,12 @@
                     all_connectors_list,
                     modules,
                     task_modules,
+                    case_files_list,
                     save_note_case,
                     edit_note,
                     export_notes,
                     fetch_case_connectors,
+                    fetch_case_files,
 
                     change_status_sort,
                     change_switch_check,

@@ -190,7 +190,7 @@ def validate_importer_json(json_data, jsonschema_flowintel):
     try:
         jsonschema.validate(instance=json_data, schema=jsonschema_flowintel)
     except jsonschema.exceptions.ValidationError as err:
-        print(err)
+        print("JSON validation error: ", err)
         return False
     return True
 

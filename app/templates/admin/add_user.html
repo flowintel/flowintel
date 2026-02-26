@@ -22,6 +22,13 @@
         </div>
     {% endif %}
 
+    {% if edit_mode and from_notif_entra %}
+        <div class="alert alert-primary mt-3 mb-0" role="alert">
+            <i class="fa-solid fa-user-shield me-2"></i>
+            <strong>Entra ID promotion request:</strong> This user signed in via Microsoft Entra ID and is a member of the admin group. Review their role and promote if appropriate.
+        </div>
+    {% endif %}
+
     <hr class="fading-line-2 mb-4 mt-4">
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -87,15 +94,22 @@
         {% if edit_mode %}
         <div class="row mt-3">
             <div class="col">
+                {% if is_sso %}
+                <div class="alert alert-info py-2 mb-0">
+                    <i class="fa-solid fa-shield-halved me-1"></i>
+                    This account is managed via <strong>Microsoft Entra ID</strong>. Password management is handled externally and cannot be changed here.
+                </div>
+                {% else %}
                 <div class="form-check">
                     {{form.change_password(class_="form-check-input", id="changePasswordCheckbox")}}
                     {{form.change_password.label(class_="form-check-label", for="changePasswordCheckbox")}}
                 </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}
         
-        <div class="row" id="password-fields" {% if edit_mode %}style="display: none;" data-edit-mode="true"{% else %}data-edit-mode="false"{% endif %}>
+        <div class="row" id="password-fields" {% if edit_mode and not is_sso %}style="display: none;" data-edit-mode="true"{% elif is_sso %}style="display: none;" data-edit-mode="sso"{% else %}data-edit-mode="false"{% endif %}>
             <div class="col">
                 <label for="password" class="col-form-label">{{ form.password.label }}</label>  
                 {% if not edit_mode %}
@@ -207,7 +221,11 @@
             const passwords_match = computed(() => password.value === password2.value)
 
             const can_submit = computed(() => {
-                const edit_mode = document.getElementById('password-fields').dataset.editMode === 'true'
+                const edit_mode_val = document.getElementById('password-fields').dataset.editMode
+                if (edit_mode_val === 'sso') {
+                    return true  // SSO users: no password validation needed, always allow save
+                }
+                const edit_mode = edit_mode_val === 'true'
                 if (!edit_mode) {
                     return is_valid.value && passwords_match.value
                 } else {

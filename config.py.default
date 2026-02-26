@@ -77,11 +77,20 @@ class Config:
     # System roles that cannot be deleted (admin, user, bot)
     SYSTEM_ROLES = [1, 2, 3]
     
-    # Limit user view to own organization
+    # Limit user view to own organisation
     # When True: Users can only see other users within their own organisation
     # When False: All users can see all other users
     # Administrators always see all users regardless of this setting.
     LIMIT_USER_VIEW_TO_ORG = False
+
+    # =============================================================================
+    # TASK STATUS IDS
+    # =============================================================================
+    # Task status identifiers for workflow management
+    # These IDs must match the status entries in your database
+    TASK_REQUESTED = 7   # Task requested by Queuer in privileged case, pending approval
+    TASK_APPROVED = 8    # Task approved by Admin/CaseAdmin/QueueAdmin
+    TASK_REJECTED = 5    # Task rejected by Admin/CaseAdmin/QueueAdmin
 
     # =============================================================================
     # INITIAL USER ACCOUNTS

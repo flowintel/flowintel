@@ -35,7 +35,7 @@ def create_org_as_admin(client):
 ###########
 
 def test_create_user_in_own_org(client):
-    """OrgAdmin should be able to create users in their own organization"""
+    """OrgAdmin should be able to create users in their own organisation"""
     org_id = get_orgadmin_org_id(client)
     email = f"user{int(time.time() * 1000000)}@test.test"
     response = client.post("/api/admin/add_user", 
@@ -47,7 +47,7 @@ def test_create_user_in_own_org(client):
     assert "User created" in response.json["message"]
 
 def test_create_user_in_different_org(client):
-    """OrgAdmin should NOT be able to create users in other organizations"""
+    """OrgAdmin should NOT be able to create users in other organisations"""
     with client.application.app_context():
         admin_user = get_user_api("admin_api_key")
         different_org_id = admin_user.org_id
@@ -59,7 +59,7 @@ def test_create_user_in_different_org(client):
                            json={"first_name": "test", "last_name": "test", "email": email, "password": "test", "role": 2, "org": different_org_id}
                         )
     assert response.status_code == 400
-    assert b"OrgAdmin can only add users to their own organization" in response.data
+    assert b"OrgAdmin can only add users to their own organisation" in response.data
 
 def test_create_user_with_admin_role(client):
     """OrgAdmin should NOT be able to assign Admin role"""
@@ -101,7 +101,7 @@ def test_create_user_existing_email(client):
     assert b"Email already exists" in response.data
 
 def test_edit_user_in_own_org(client):
-    """OrgAdmin should be able to edit users in their own organization"""
+    """OrgAdmin should be able to edit users in their own organisation"""
     create_response = create_user_as_admin(client)
     user_id = create_response.json["id"]
     
@@ -118,7 +118,7 @@ def test_edit_user_in_own_org(client):
     assert response.json["last_name"] == "modified"
 
 def test_edit_user_in_different_org(client):
-    """OrgAdmin should NOT be able to edit users from other organizations"""
+    """OrgAdmin should NOT be able to edit users from other organisations"""
     with client.application.app_context():
         admin_user = get_user_api("admin_api_key")
         admin_user_id = admin_user.id
@@ -129,7 +129,7 @@ def test_edit_user_in_different_org(client):
                            json={"last_name": "hacked"}
                         )
     assert response.status_code == 403
-    assert b"OrgAdmin can only edit users from their own organization" in response.data
+    assert b"OrgAdmin can only edit users from their own organisation" in response.data
 
 def test_edit_user_assign_admin_role(client):
     """OrgAdmin should NOT be able to assign Admin role when editing"""
@@ -145,7 +145,7 @@ def test_edit_user_assign_admin_role(client):
     assert b"OrgAdmin cannot assign Admin role" in response.data
 
 def test_edit_user_move_to_different_org(client):
-    """OrgAdmin should NOT be able to move users to different organization"""
+    """OrgAdmin should NOT be able to move users to different organisation"""
     create_response = create_user_as_admin(client)
     user_id = create_response.json["id"]
     
@@ -159,10 +159,10 @@ def test_edit_user_move_to_different_org(client):
                            json={"org": different_org_id}
                         )
     assert response.status_code == 403
-    assert b"OrgAdmin cannot move users to different organization" in response.data
+    assert b"OrgAdmin cannot move users to different organisation" in response.data
 
 def test_delete_user_in_own_org(client):
-    """OrgAdmin should be able to delete users in their own organization"""
+    """OrgAdmin should be able to delete users in their own organisation"""
     create_response = create_user_as_admin(client)
     user_id = create_response.json["id"]
     
@@ -171,14 +171,14 @@ def test_delete_user_in_own_org(client):
     assert b"User deleted" in response.data
 
 def test_delete_user_in_different_org(client):
-    """OrgAdmin should NOT be able to delete users from other organizations"""
+    """OrgAdmin should NOT be able to delete users from other organisations"""
     with client.application.app_context():
         admin_user = get_user_api("admin_api_key")
         admin_user_id = admin_user.id
     
     response = client.get(f"/api/admin/delete_user/{admin_user_id}", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 403
-    assert b"OrgAdmin can only delete users from their own organization" in response.data
+    assert b"OrgAdmin can only delete users from their own organisation" in response.data
 
 def test_delete_self(client):
     """OrgAdmin should NOT be able to delete their own account"""
@@ -228,7 +228,7 @@ def test_delete_org_forbidden(client):
 ###############
 
 def test_get_users_limited_to_org(client):
-    """OrgAdmin should only see users from their own organization when LIMIT_USER_VIEW_TO_ORG is enabled"""
+    """OrgAdmin should only see users from their own organisation when LIMIT_USER_VIEW_TO_ORG is enabled"""
     # This test assumes LIMIT_USER_VIEW_TO_ORG config is True
     org_id = get_orgadmin_org_id(client)
     response = client.get("/api/admin/users", headers={"X-API-KEY": API_KEY})
@@ -241,7 +241,7 @@ def test_get_users_limited_to_org(client):
         assert user["org_id"] == org_id
 
 def test_get_specific_user_in_own_org(client):
-    """OrgAdmin should be able to get details of users in their own organization"""
+    """OrgAdmin should be able to get details of users in their own organisation"""
     with client.application.app_context():
         user = get_user_api(API_KEY)
         user_id = user.id

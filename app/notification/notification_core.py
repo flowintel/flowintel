@@ -118,6 +118,39 @@ def create_notification_user(message, case_id, user_id, html_icon):
     return notif
 
 
+def create_notification_for_approvers(message, case_id, org_id, html_icon):
+    """Create notification for users who can approve tasks (Admin, Case Admin, Queue Admin) in the owner org."""
+    org = Org.query.get(org_id)
+    if not org:
+        return False
+    
+    approver_roles = Role.query.filter(
+        (Role.admin == True) | 
+        (Role.case_admin == True) | 
+        (Role.queue_admin == True)
+    ).all()
+    
+    if not approver_roles:
+        return False
+    
+    approver_role_ids = [role.id for role in approver_roles]
+    
+    for user in org.users:
+        if user.role_id in approver_role_ids:
+            notif = Notification(
+                message=message,
+                is_read=False,
+                user_id=user.id,
+                case_id=str(case_id),
+                creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+                html_icon=html_icon
+            )
+            db.session.add(notif)
+    
+    db.session.commit()
+    return True
+
+
 def case_task_deadline_notif(case_or_task, msg, html_icon, now, current_user, flag_task=False):
     if case_or_task.deadline:
         notif_deadline = None

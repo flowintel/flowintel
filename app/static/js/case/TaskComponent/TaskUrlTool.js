@@ -111,7 +111,7 @@ export default {
         <fieldset class="analyzer-select-case">
             <legend class="analyzer-select-case">
                 <i class="fa-solid fa-screwdriver-wrench fa-sm me-1"></i><span class="section-title">Urls/Tools</span>
-				<template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+				<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
 					<button class="btn btn-primary btn-sm" title="Add new url/tool" data-bs-toggle="modal" :data-bs-target="'#create_url_tool_'+task.id" style="float: right; margin-left:3px;">
 						<i class="fa-solid fa-plus"></i>
 					</button>

@@ -56,6 +56,16 @@ def home_stats():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+def open_closed(case):
+    cp_open = 0
+    cp_closed = 0
+    for task in case.tasks:
+        if task.completed:
+            cp_closed += 1
+        else:
+            cp_open += 1
+    return cp_open, cp_closed
+
 @home_blueprint.route("/last_case")
 @login_required
 def last_case():
@@ -67,11 +77,16 @@ def last_case():
         if cp < 10:
             if case.is_private:
                 if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
-                    last_case.append(case.to_json())
+                    loc_case = case.to_json()
+                    loc_case["open_tasks"], loc_case["closed_tasks"] = open_closed(case)
+                    last_case.append(loc_case)
                     cp += 1
             else:
-                last_case.append(case.to_json())
+                loc_case = case.to_json()
+                loc_case["open_tasks"], loc_case["closed_tasks"] = open_closed(case)
+                last_case.append(loc_case)
                 cp += 1
+            case.to_json()
     return {"cases": last_case}, 200
 
 

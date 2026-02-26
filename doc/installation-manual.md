@@ -768,6 +768,22 @@ AUDIT_LOG_PREFIX = os.getenv('AUDIT_LOG_PREFIX', 'AUDIT')
 
 All user actions are logged to this file. The audit log prefix helps when filtering logs. Logs are written to the `logs/` directory within your Flowintel installation.
 
+**Reverse proxy settings**
+
+When running Flowintel behind a reverse proxy, Flask needs to know how to extract the real client IP address and other request details from HTTP headers that the proxy adds. Without this configuration, Flask will only see connections coming from `127.0.0.1` and won't be able to determine the actual client IP, protocol (HTTP vs HTTPS), or hostname.
+
+Start by enabling proxy support with `BEHIND_PROXY`. This tells Flask to use Werkzeug's `ProxyFix` middleware, which reads the `X-Forwarded-*` headers that NGINX adds to each request.
+
+The `PROXY_X_FOR` setting controls how many proxy servers are between your users and Flowintel. If you're running NGINX directly on the same server as Flowintel, set this to `1`. If users connect through a corporate proxy first and then reach your NGINX server, set it to `2`.
+
+```python
+BEHIND_PROXY = os.getenv('BEHIND_PROXY', 'false').lower() == 'true'
+PROXY_X_FOR = int(os.getenv('PROXY_X_FOR', 1))       # Number of proxies to trust
+PROXY_X_PROTO = int(os.getenv('PROXY_X_PROTO', 1))   # Trust X-Forwarded-Proto
+PROXY_X_HOST = int(os.getenv('PROXY_X_HOST', 1))     # Trust X-Forwarded-Host
+PROXY_X_PREFIX = int(os.getenv('PROXY_X_PREFIX', 0)) # Trust X-Forwarded-Prefix
+```
+
 #### Development vs production settings
 
 The main differences between environments:
@@ -779,6 +795,7 @@ The main differences between environments:
 | SECRET_KEY | Can use default for testing | Must be unique and strong |
 | FLASK_URL | Can use 0.0.0.0 for testing | Should be 127.0.0.1 (behind NGINX) |
 | Error display | Full stack traces shown | Generic error pages |
+| BEHIND_PROXY | Direct access to Flask | Access via NGINX |
 
 Never run production with `DEBUG = True`. This exposes sensitive information and creates security vulnerabilities.
 
@@ -793,7 +810,7 @@ The configuration already supports environment variables through `os.getenv()`. 
 Set variables before starting Flowintel:
 
 ```bash
-export DB_PASSWORD='your_secure_password'
+export DB_PASSWORD='your_secure_password_here'
 export SECRET_KEY='your_secret_key'
 export FLASKENV='production'
 ```
@@ -811,7 +828,7 @@ Add your configuration:
 ```bash
 # Database settings
 DB_USER=flowintel
-DB_PASSWORD=your_secure_password
+DB_PASSWORD=your_secure_password_here
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=flowintel
@@ -838,6 +855,89 @@ chmod 600 .env
 ```
 
 The `.env` file approach keeps sensitive data out of version control and makes it easier to manage different environments. Add `.env` to your `.gitignore` file if you're tracking the installation with git.
+
+### Microsoft Entra ID SSO (optional)
+
+Flowintel supports single sign-on via Microsoft Entra ID (formerly Azure AD). When enabled, users can sign in with their Microsoft account instead of a local password. Local accounts still work alongside SSO.
+
+#### Azure portal setup
+
+Before configuring Flowintel, register an application in the Azure portal:
+
+1. Go to **Microsoft Entra ID → App registrations → New registration**
+2. Set the **Name** to something like `Flowintel`
+3. Set **Supported account types** to *Accounts in this organizational directory only*
+4. Add a **Redirect URI** (Web platform):
+   ```
+   https://your-flowintel-host/account/entra/callback
+   ```
+5. After registration, note the **Directory (tenant) ID** and **Application (client) ID** from the Overview page
+6. Under **Certificates & secrets → New client secret**, create a secret and note its value immediately (it is only shown once)
+7. Under **API permissions**, add:
+   - `Microsoft Graph → Delegated → User.Read` (usually present by default)
+   - `Microsoft Graph → Delegated → GroupMember.Read.All`
+   - Click **Grant admin consent**
+
+#### Entra ID group setup
+
+Flowintel uses Entra ID group membership to assign roles. Create the following security groups in your Entra ID tenant, then add users to the appropriate group:
+
+| Entra ID group | Flowintel role | Notes |
+|---|---|---|
+| `FlowintelAdmin` | Editor | Account is created as **Editor**; all admins receive a notification to promote the user to Admin manually |
+| `FlowintelEditor` | Editor | Standard analyst access |
+| `FlowintelCaseAdmin` | CaseAdmin | Can manage cases and approve tasks |
+| `FlowintelQueueAdmin` | QueueAdmin | Can manage queues and approve tasks |
+| `FlowintelQueuer` | Queuer | Can submit tasks for approval in privileged cases |
+| `FlowintelReadOnly` | Read Only | View-only access |
+
+When a user signs in for the first time, Flowintel checks their group memberships in the order listed above. The first matching group determines their role. Users not in any of these groups are denied access.
+
+If a user is a member of multiple groups (for example both `FlowintelQueueAdmin` and `FlowintelReadOnly`), the higher-priority group wins. `FlowintelReadOnly` is checked last so it only applies when none of the more specific groups match.
+
+The group names are configurable; see the environment variables below if you want to use different names.
+
+Role synchronisation runs on every login for SSO accounts. If a user's Entra ID group membership changes, their Flowintel role is updated at next login. Note that manually promoting an SSO user to a higher role in Flowintel will be overwritten at their next login if their group membership has not also changed.
+
+#### Flowintel configuration
+
+Add the following to your `.env` file (or set the equivalent environment variables):
+
+```bash
+ENTRA_ID_ENABLED=true
+ENTRA_TENANT_ID=<your-directory-tenant-id>
+ENTRA_CLIENT_ID=<your-application-client-id>
+ENTRA_CLIENT_SECRET=<your-client-secret>
+ENTRA_REDIRECT_URL=https://your-flowintel-host/account/entra/callback
+```
+
+The group and role name mappings can be customised if your Entra ID groups are named differently:
+
+```bash
+# Entra ID group names (defaults shown)
+ENTRA_GROUP_ADMIN=FlowintelAdmin
+ENTRA_GROUP_EDITOR=FlowintelEditor
+ENTRA_GROUP_READONLY=FlowintelReadOnly
+ENTRA_GROUP_CASE_ADMIN=FlowintelCaseAdmin
+ENTRA_GROUP_QUEUE_ADMIN=FlowintelQueueAdmin
+ENTRA_GROUP_QUEUER=FlowintelQueuer
+
+# Flowintel role names for the custom roles (defaults shown)
+ENTRA_ROLE_CASE_ADMIN=CaseAdmin
+ENTRA_ROLE_QUEUE_ADMIN=QueueAdmin
+ENTRA_ROLE_QUEUER=Queuer
+```
+
+The `ENTRA_REDIRECT_URL` must exactly match the redirect URI registered in the Azure portal, including the scheme (`https://`). If Flowintel runs behind a reverse proxy, make sure this URL reflects the public-facing address rather than the internal `127.0.0.1` address.
+
+#### SSO behaviour
+
+- The **Sign in with Microsoft** button appears on the login page when `ENTRA_ID_ENABLED=true`
+- A Flowintel account is created automatically on first SSO login
+- Users whose highest-priority group is `FlowintelAdmin` are provisioned as **Editor**; all Flowintel admins receive an in-app notification to promote the user to Admin if appropriate
+- SSO accounts cannot use the local password reset flow; password management is handled by the organisation's Microsoft account
+- SSO accounts cannot change their login
+- Administrators can still edit SSO users (change role, organisation) but cannot set a local password for them
 
 ### Module configuration
 

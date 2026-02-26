@@ -61,6 +61,11 @@ def verif_create_case_task(data_dict):
     elif not isinstance(data_dict["is_private"], bool):
         return {"message": "'is_private' need a bool"}
     
+    if "privileged_case" not in data_dict:
+        data_dict["privileged_case"] = False
+    elif not isinstance(data_dict["privileged_case"], bool):
+        return {"message": "'privileged_case' needs a bool"}
+    
     if "ticket_id" not in data_dict or not data_dict["ticket_id"]:
         data_dict["ticket_id"] = ""
 
@@ -108,8 +113,11 @@ def verif_edit_case(data_dict, case_id):
     elif Case.query.filter_by(title=data_dict["title"]).first():
         return {"message": "Title already exist"}
     
-    if "is_private" not in data_dict or not data_dict["is_private"]:
+    if "is_private" not in data_dict:
         data_dict["is_private"] = case.is_private
+
+    if "privileged_case" not in data_dict:
+        data_dict["privileged_case"] = case.privileged_case
 
     if "ticket_id" not in data_dict or not data_dict["ticket_id"]:
         data_dict["ticket_id"] = case.ticket_id

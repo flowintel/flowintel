@@ -2,6 +2,7 @@ import { display_toast } from '/static/js/toaster.js'
 import tabMain from './TaskComponent/tab-main.js'
 import tabNote from './TaskComponent/tab-note.js'
 import tabFile from './TaskComponent/tab-file.js'
+import tabExternalRef from './TaskComponent/tab-external-ref.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
@@ -23,6 +24,7 @@ export default {
 		tabMain,
 		tabNote,
 		tabFile,
+		tabExternalRef,
 		tabInfo,
 		caseconnectors
 	},
@@ -190,6 +192,7 @@ export default {
 					document.getElementById("tab-task-main-" + props.task.id).classList.add("active")
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
@@ -199,6 +202,7 @@ export default {
 					document.getElementById("tab-task-notes-" + props.task.id).classList.add("active")
 					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
@@ -209,6 +213,17 @@ export default {
 					document.getElementById("tab-task-files-" + props.task.id).classList.add("active")
 					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
+				}
+			} else if (tab_name == 'external-ref') {
+				selected_tab.value = 'external-ref'
+				if (!document.getElementById("tab-task-external-ref-" + props.task.id).classList.contains("active")) {
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.add("active")
+					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
@@ -221,6 +236,7 @@ export default {
 					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
 			}
@@ -231,6 +247,7 @@ export default {
 					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
+					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 
 				}
@@ -363,7 +380,7 @@ export default {
 				</div>
 			</div>
 			<div class="d-flex w-100 justify-content-between">
-				<div style="display: flex; margin-bottom: 7px" v-if="task.tags">
+				<div style="display: flex;" v-if="task.tags">
 					<template v-for="tag in task.tags">
 						<div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
 							<i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
@@ -372,6 +389,33 @@ export default {
 					</template>
 				</div>
 				<div v-else></div>
+			</div>
+
+			<div class="mb-2">
+				<div class="d-flex w-100 justify-content-between">
+					<div style="display: flex;" v-if="task.galaxies">
+						<template v-for="galaxy in task.galaxies">
+							<div :title="'Description:\\n' + galaxy.description">
+								<span class="cluster">
+									<span v-html="mapIcon(galaxy.icon)"></span>
+									[[galaxy.name]]
+								</span>
+							</div>
+						</template>
+					</div>
+					<div v-else></div>
+				</div>
+				<div class="d-flex w-100 justify-content-between">
+					<div style="display: flex;" v-if="task.clusters">
+						<template v-for="cluster in task.clusters">
+							<div :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + cluster.meta">
+								<span v-html="mapIcon(cluster.icon)"></span>
+								[[cluster.tag]]
+							</div>
+						</template>
+					</div>
+					<div v-else></div>
+				</div>
 			</div>
 
 			<div class="d-flex w-100 justify-content-between">
@@ -392,30 +436,6 @@ export default {
                 <small v-if="task.deadline" :title="'Deadline: ' + task.deadline"><i><i class="fa-solid fa-hourglass-start"></i> [[endOf(task.deadline)]]</i></small>
                 <small v-else><i>No deadline</i></small>
             </div>
-			<div class="d-flex w-100 justify-content-between">
-				<div style="display: flex;" v-if="task.galaxies">
-					<template v-for="galaxy in task.galaxies">
-						<div :title="'Description:\\n' + galaxy.description">
-							<span class="cluster">
-								<span v-html="mapIcon(galaxy.icon)"></span>
-								[[galaxy.name]]
-							</span>
-						</div>
-					</template>
-				</div>
-				<div v-else></div>
-			</div>
-			<div class="d-flex w-100 justify-content-between">
-				<div style="display: flex;" v-if="task.clusters">
-					<template v-for="cluster in task.clusters">
-						<div :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + cluster.meta">
-							<span v-html="mapIcon(cluster.icon)"></span>
-							[[cluster.tag]]
-						</div>
-					</template>
-				</div>
-				<div v-else></div>
-			</div>
 			<div class="d-flex w-100 mt-2 justify-content-between">
 				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
 					<i>[[task.files.length]] Files</i>
@@ -437,25 +457,40 @@ export default {
 				</template>
 			</div>
 		</a>
-		<div v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+		<div v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
 			<div>
-				<button v-if="task.completed" class="btn btn-secondary"  @click="complete_task(task)" title="Revive the task">
+				<button v-if="task.completed" 
+						class="btn btn-secondary"
+						@click="complete_task(task)" 
+						title="Revive the task">
 					<i class="fa-solid fa-backward fa-fw"></i>
 				</button>
-				<button v-else class="btn btn-success" @click="complete_task(task)" title="Complete the task">
+				<button v-else 
+						class="btn btn-success"
+						@click="complete_task(task)" 
+						title="Complete the task">
 					<i class="fa-solid fa-check fa-fw"></i>
 				</button>
 			</div>
 			<div>
-				<button v-if="!task.is_current_user_assigned" class="btn btn-secondary" @click="take_task(task, cases_info.current_user)" title="Be assigned to the task">
+				<button v-if="!task.is_current_user_assigned" 
+						class="btn btn-secondary"
+						@click="take_task(task, cases_info.current_user)" 
+						title="Be assigned to the task">
 					<i class="fa-solid fa-hand fa-fw"></i>
 				</button>
-				<button v-else class="btn btn-secondary" @click="remove_assign_task(task, cases_info.current_user)" title="Remove the assignment">
+				<button v-else 
+						class="btn btn-secondary"
+						@click="remove_assign_task(task, cases_info.current_user)" 
+						title="Remove the assignment">
 					<i class="fa-solid fa-handshake-slash fa-fw"></i>
 				</button>
 			</div>
 			<div>
-				<a class="btn btn-primary" :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" type="button" title="Edit the task">
+				<a class="btn btn-primary" 
+				   :href="'/case/'+cases_info.case.id+'/edit_task/'+task.id" 
+				   type="button" 
+				   title="Edit the task">
 					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
 			</div>
@@ -485,6 +520,11 @@ export default {
 				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-files-'+task.id" @click="select_tab_task('files')">
 					<i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title">Files<template v-if="task.files.length"> ([[ task.files.length ]])</template></span>
+					</button>
+				</li>
+				<li class="nav-item">
+					<button class="nav-link" :id="'tab-task-external-ref-'+task.id" @click="select_tab_task('external-ref')">
+					<i class="fa-solid fa-link fa-sm me-1"></i><span class="section-title">External references<template v-if="task.external_references && task.external_references.length"> ([[ task.external_references.length ]])</template></span>
 					</button>
 				</li>
 				<li class="nav-item">
@@ -527,6 +567,10 @@ export default {
 
 			<template v-else-if="selected_tab == 'files'">
 				<tabFile :cases_info="cases_info" :task="task"></tabFile>
+			</template>
+
+			<template v-else-if="selected_tab == 'external-ref'">
+				<tabExternalRef :cases_info="cases_info" :task="task"></tabExternalRef>
 			</template>
 
 			<template v-else-if="selected_tab == 'info'">

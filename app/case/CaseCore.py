@@ -1,15 +1,14 @@
 import os
 import re
-from threading import Thread
+import subprocess
 from typing import List
 import uuid
 import datetime
 import json
 from flask_login import current_user
+from flask import send_file, current_app
 import pymisp
 import requests
-
-from flask import send_file
 
 from sqlalchemy import desc, and_
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,6 +18,7 @@ from app.utils import misp_object_helper
 
 from .. import db
 from ..db_class.db import *
+from ..utils.logger import flowintel_log
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
 from . import common_core as CommonModel
@@ -27,6 +27,9 @@ from ..utils.utils import get_modules_list
 from ..utils.markdown_renderer import sanitize_markdown_input
 
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
+
 from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 
@@ -36,6 +39,7 @@ from  ..connectors import connectors_core as ConnectorModel
 from flask import current_app
 
 import conf.config_module as ConfigModule
+import sys
 
 class CaseCore(CommonAbstract, FilteringAbstract):
     def __init__(self):
@@ -65,12 +69,19 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
 
     def create_case(self, form_dict, user):
+        privileged_case = form_dict.get("privileged_case", False)
+        if current_app.config.get('ENFORCE_PRIVILEGED_CASE', False):
+            if not privileged_case:
+                flowintel_log("warning", 200, f"ENFORCE_PRIVILEGED_CASE enabled - forcing privileged case", User=user.email)
+            privileged_case = True
+        
         if "template_select" in form_dict and not 0 in form_dict["template_select"]:
             for template in form_dict["template_select"]:
                 if Case_Template.query.get(template):
-                    case = CaseTemplateModel.create_case_from_template(template, form_dict["title_template"], user)
+                    case = CaseTemplateModel.create_case_from_template(template, form_dict["title_template"], user, privileged_case)
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
+            
             case = Case(
                 title=form_dict["title"].strip(),
                 description=form_dict["description"],
@@ -82,22 +93,23 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 owner_org_id=user.org_id,
                 time_required=form_dict["time_required"],
                 is_private=form_dict["is_private"],
+                privileged_case=privileged_case,
                 ticket_id=form_dict["ticket_id"]
             )
             db.session.add(case)
             db.session.commit()
 
-            for tags in form_dict["tags"]:
+            for tags in form_dict.get("tags", []):
                 tag = CommonModel.get_tag(tags)
                 
                 self.add_tag(tag, case.id)
-            
-            for clusters in form_dict["clusters"]:
+            for clusters in form_dict.get("clusters", []):
                 cluster = CommonModel.get_cluster_by_name(clusters)
-                
-                self.add_cluster(cluster, case.id)
+                if cluster:
+                    self.add_cluster(cluster, case.id)
+            
 
-            for custom_tag_name in form_dict["custom_tags"]:
+            for custom_tag_name in form_dict.get("custom_tags", []):
                 custom_tag = CustomModel.get_custom_tag_by_name(custom_tag_name)
                 if custom_tag:
                     self.add_custom_tag(custom_tag, case.id)
@@ -272,10 +284,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
         case.title = form_dict["title"]
-        case.description=form_dict["description"]
-        case.deadline=deadline
-        case.time_required=form_dict["time_required"]
+        case.description = form_dict["description"]
+        case.deadline = deadline
+        case.time_required = form_dict["time_required"]
         case.is_private = form_dict["is_private"]
+        case.privileged_case = form_dict["privileged_case"]
         case.ticket_id = form_dict["ticket_id"]
         
         CommonModel.update_last_modif(case.id)
@@ -953,38 +966,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return False
     
 
-    def run_chat(self, loc_app, case, message):
-        print("Starting Ollama chat...")
-        url = f"{ConfigModule.OLLAMA_URL}/api/generate"
-
-        headers = {"Content-Type": "application/json"}  # Find token in browser (Network tab)
-
-        if ConfigModule.OLLAMA_KEY:
-            headers["Authorization"] = f"Bearer {ConfigModule.OLLAMA_KEY}"
-
-        payload = {
-            "model": ConfigModule.OLLAMA_MODEL,
-            "prompt": message,
-            "stream": False
-        }
-
-        try:
-            response = requests.post(url, json=payload, headers=headers, timeout=600)
-        except requests.exceptions.ConnectionError:
-            return {"message": "Error connecting to Ollama server. Try again...", "toast_class": "danger-subtle"}, 400
-        except Exception as e:
-            print(e)
-            return {"message": "Error during request to Ollama server. Try again...", "toast_class": "danger-subtle"}, 400
-
-        with loc_app.app_context():
-            case = db.session.merge(case)
-            case.computer_assistate_report = response.json()["response"]
-            db.session.commit()
-
-            del self.TasksAI[case.uuid]
-        
-        return True
-    
     def generate_computer_assistate_report(self, case: Case, current_user: User):
         """Generate a report from all informations find in the case"""
 
@@ -1005,23 +986,85 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         
         asking_input = "Give me a report using:"
 
-        worker = Thread(target=self.run_chat, args=[current_app._get_current_object(), case, f'{asking_input} {json.dumps(return_dict)}'])
-        self.TasksAI[case.uuid] = worker
+        message = f"{asking_input} {json.dumps(return_dict)}"
 
-        worker.daemon = True
-        worker.start()
+        url = f"{ConfigModule.OLLAMA_URL}/api/generate"
+        headers = {"Content-Type": "application/json"}
+        if ConfigModule.OLLAMA_KEY:
+            headers["Authorization"] = f"Bearer {ConfigModule.OLLAMA_KEY}"
+
+        payload = {
+            "model": ConfigModule.OLLAMA_MODEL,
+            "prompt": message,
+            "stream": False,
+        }
+
+        cmd = [
+            sys.executable,
+            "-c",
+            "import json,requests,sys;" \
+            "url=sys.argv[1];payload=json.loads(sys.argv[2]);headers=json.loads(sys.argv[3]);" \
+            "resp=requests.post(url,json=payload,headers=headers,timeout=600);" \
+            "resp.raise_for_status();" \
+            "print(resp.text)",
+            url,
+            json.dumps(payload),
+            json.dumps(headers),
+        ]
+
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        self.TasksAI[case.uuid] = {"proc": process, "case_id": case.id}
 
         CommonModel.update_last_modif(case.id)
         CommonModel.save_history(case.uuid, current_user, f"AI report generated and added to notes")
         return {"message": "AI report generation started", "toast_class": "success-subtle"}, 200
     
-    def check_exist_task(self, case_uuid):
-        if case_uuid in self.TasksAI:
+    def _finalize_task_if_done(self, case_uuid):
+        task_entry = self.TasksAI.get(case_uuid)
+        if not task_entry:
+            return False
+
+        proc = task_entry["proc"]
+        if proc.poll() is None:
             return True
+
+        stdout, stderr = proc.communicate()
+        stderr_text = stderr.strip() if stderr else ""
+        stdout_text = stdout.strip() if stdout else ""
+
+        with current_app.app_context():
+            case = Case.query.get(task_entry["case_id"])
+            if case:
+                if proc.returncode != 0 or stderr_text:
+                    print(f"Ollama subprocess error for case {case_uuid}: {stderr_text}")
+                    error_msg = stderr_text if stderr_text else "Unknown error"
+                    case.computer_assistate_report = f"Error generating AI report: {error_msg}"
+                else:
+                    content = stdout_text
+                    if not content:
+                        case.computer_assistate_report = "Error generating AI report: Empty response"
+                    else:
+                        try:
+                            parsed = json.loads(content)
+                            case.computer_assistate_report = parsed.get("response", content)
+                        except json.JSONDecodeError:
+                            case.computer_assistate_report = content
+                db.session.commit()
+
+        del self.TasksAI[case_uuid]
         return False
+
+    def check_exist_task(self, case_uuid):
+        return self._finalize_task_if_done(case_uuid)
+
     def get_status_computer_assistate_report(self, case_uuid):
-        task = self.TasksAI.get(case_uuid)
-        return task.is_alive()
+        return self._finalize_task_if_done(case_uuid)
 
     def download_history(self, case):
         """Download a history"""
@@ -1321,15 +1364,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 last_seen = None
                 ids_flag = False
                 disable_correlation = False
-                if attribute["first_seen"]:
+                if "first_seen" in attribute and attribute["first_seen"]:
                     first_seen = datetime.datetime.strptime(attribute["first_seen"], DATETIME_FORMAT)
-                if attribute["last_seen"]:
+                if "last_seen" in attribute and attribute["last_seen"]:
                     last_seen = datetime.datetime.strptime(attribute["last_seen"], DATETIME_FORMAT)
 
-                if attribute["ids_flag"] and attribute["ids_flag"] == 'true':
+                if "ids_flag" in attribute and attribute["ids_flag"] and attribute["ids_flag"] == 'true':
                     ids_flag = True
 
-                if attribute["disable_correlation"] and attribute["disable_correlation"] == 'true':
+                if "disable_correlation" in attribute and attribute["disable_correlation"] and attribute["disable_correlation"] == 'true':
                     disable_correlation = True
 
                 attr = Misp_Attribute(
@@ -1339,7 +1382,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     object_relation=attribute["object_relation"],
                     first_seen=first_seen,
                     last_seen=last_seen,
-                    comment=attribute["comment"],
+                    comment=attribute.get("comment", ""),
                     ids_flag=ids_flag,
                     disable_correlation=disable_correlation,
                     creation_date = datetime.datetime.now(tz=datetime.timezone.utc),
@@ -1665,5 +1708,72 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             db.session.commit()
             return True
         return False
+
+    def add_file_core(self, case, files_list, current_user):
+        """Upload a new file to a case"""
+        from ..utils.utils import create_specific_dir
+        from werkzeug.utils import secure_filename
+        
+        create_specific_dir(UPLOAD_FOLDER)
+        create_specific_dir(FILE_FOLDER)
+        created_files = []
+        for file in files_list:
+            if files_list[file].filename:
+                uuid_loc = str(uuid.uuid4())
+                filename = secure_filename(files_list[file].filename)
+                try:
+                    files_list[file].seek(0)
+                    file_data = files_list[file].read()
+                    file_size = len(file_data)
+                    with open(os.path.join(FILE_FOLDER, uuid_loc), "wb") as write_file:
+                        write_file.write(file_data)
+                except Exception as e:
+                    from ..utils.logger import flowintel_log
+                    flowintel_log("error", 500, f"Error uploading file to case: {str(e)}", User=current_user.email, CaseId=case.id, FileName=filename)
+                    return None
+
+                if files_list[file].content_type:
+                    file_type = files_list[file].content_type
+                elif '.' in filename:
+                    file_type = filename.rsplit('.', 1)[-1]
+                else:
+                    file_type = 'unknown'
+
+                f = File(
+                    name=filename,
+                    case_id=case.id,
+                    uuid=uuid_loc,
+                    upload_date=datetime.datetime.now(tz=datetime.timezone.utc),
+                    file_size=file_size,
+                    file_type=file_type
+                )
+                db.session.add(f)
+                created_files.append(f)
+        
+        if created_files:
+            CommonModel.save_history(case.uuid, current_user, f"File added for case '{case.title}'")
+            CommonModel.update_last_modif(case.id)
+        return created_files
+
+    def download_file(self, file):
+        """Download a file"""
+        return send_file(os.path.join(FILE_FOLDER, file.uuid), as_attachment=True, download_name=file.name)
+
+    def delete_file(self, file, case, current_user):
+        """Delete a file"""
+        try:
+            os.remove(os.path.join(FILE_FOLDER, file.uuid))
+        except OSError:
+            return False
+
+        db.session.delete(file)
+        db.session.commit()
+        
+        CommonModel.save_history(case.uuid, current_user, f"File '{file.name}' deleted from case '{case.title}'")
+        CommonModel.update_last_modif(case.id)
+
+        CommonModel.save_history(case.uuid, current_user, f"File deleted for case '{case.title}'")
+        CommonModel.update_last_modif(case.id)
+        return True
 
 CaseModel = CaseCore()

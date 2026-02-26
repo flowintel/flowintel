@@ -20,6 +20,9 @@ def verif_add_custom_tag(request_json):
 
 def verif_edit_custom_tag(request_json, custom_tag_id):
     custom_tag = CustomModel.get_custom_tag(custom_tag_id)
+    if not custom_tag:
+        return {"message": "Custom tag not found"}
+    
     if "name" not in request_json or not request_json["name"] or request_json["name"] == custom_tag.name:
         request_json["name"] = custom_tag.name
     elif Custom_Tags.query.filter_by(name=request_json["name"]).first():
@@ -36,11 +39,11 @@ def verif_edit_custom_tag(request_json, custom_tag_id):
     
     request_json["custom_tag_color"] = request_json["color"]
     
-    if "icon" not in request_json or not request_json["icon"] or request_json["icon"] == custom_tag.icon:
+    if "icon" not in request_json:
         request_json["icon"] = custom_tag.icon
-    else:
+    elif not request_json["icon"]:
         request_json["icon"] = ""
-
+    
     request_json["custom_tag_icon"] = request_json["icon"]
 
     request_json["custom_tag_id"] = custom_tag_id

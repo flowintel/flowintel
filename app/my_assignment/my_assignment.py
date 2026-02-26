@@ -19,14 +19,29 @@ def my_assignment():
 
 
 def is_it_true(value):
-  return value.lower() == 'true'
+    return value.lower() == 'true'
+
+
 @my_assignment_blueprint.route("/sort_tasks", methods=['GET'])
 @login_required
 def my_assignment_sort_tasks():
-    """Sort Task by living one"""
+    """Sort tasks and optionally calculate statistics"""
     page = request.args.get('page', 1, type=int)
-    status = request.args.get('status', default=False, type=is_it_true)
-    status = not status
+    show_completed = request.args.get('status', default=False, type=is_it_true)
+    completed = not show_completed
     filter_value = request.args.get('filter', type=str)
-    tasks_list = AssignModel.my_assignment_sort(user=current_user, completed=status, page=page, filter=filter_value)
-    return {"tasks": AssignModel.get_task_info(tasks_list, current_user), "nb_pages": tasks_list.pages}
+    
+    tasks_list = AssignModel.my_assignment_sort(
+        user=current_user, 
+        completed=completed, 
+        page=page, 
+        filter=filter_value
+    )
+    
+    stats = AssignModel.calculate_task_stats(current_user) if not completed else None
+    
+    return {
+        "tasks": AssignModel.get_task_info(tasks_list, current_user), 
+        "nb_pages": tasks_list.pages,
+        "stats": stats
+    }

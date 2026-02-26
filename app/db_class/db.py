@@ -8,6 +8,7 @@ from flask_login import  UserMixin, AnonymousUserMixin
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 CASCADE_DELETE_ORPHAN = "all, delete-orphan"
 FK_TASK_ID = 'task.id'
+FK_CASE_ID = 'case.id'
 FK_TASK_TEMPLATE_ID = 'task__template.id'
 
 
@@ -23,6 +24,7 @@ class User(UserMixin, db.Model):
     api_key = db.Column(db.String(60), index=True)
     org_id = db.Column(db.Integer, db.ForeignKey('org.id', ondelete="CASCADE"))
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    auth_provider = db.Column(db.String(32), default='local', nullable=False, server_default='local')
 
     def is_admin(self):
         r = Role.query.get(self.role_id)
@@ -63,6 +65,30 @@ class User(UserMixin, db.Model):
             return True
         return False
 
+    def is_audit_viewer(self):
+        r = Role.query.get(self.role_id)
+        if r and r.audit_viewer:
+            return True
+        return False
+
+    def is_template_editor(self):
+        r = Role.query.get(self.role_id)
+        if r and r.template_editor:
+            return True
+        return False
+
+    def is_misp_editor(self):
+        r = Role.query.get(self.role_id)
+        if r and r.misp_editor:
+            return True
+        return False
+
+    def is_importer(self):
+        r = Role.query.get(self.role_id)
+        if r and r.importer:
+            return True
+        return False
+
     @property
     def password(self):
         raise AttributeError('`password` is not a readable attribute')
@@ -84,7 +110,8 @@ class User(UserMixin, db.Model):
             "org_id": self.org_id, 
             "role_id": self.role_id,
             "matrix_id": self.matrix_id,
-            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL)
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
+            "auth_provider": self.auth_provider
         }
 
 class AnonymousUser(AnonymousUserMixin):
@@ -105,6 +132,7 @@ class Case(db.Model):
     last_modif = db.Column(db.DateTime, index=True)
     finish_date = db.Column(db.DateTime, index=True)
     tasks = db.relationship('Task', backref='case', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    files = db.relationship('File', backref='case', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN, foreign_keys='File.case_id')
     status_id = db.Column(db.Integer, index=True)
     completed = db.Column(db.Boolean, default=False)
     owner_org_id = db.Column(db.Integer, index=True)
@@ -115,7 +143,8 @@ class Case(db.Model):
     notes = db.Column(db.String, nullable=True)
     hedgedoc_url = db.Column(db.String, nullable=True)
     time_required = db.Column(db.String)
-    is_private = db.Column(db.Boolean, default=False)
+    is_private = db.Column(db.Boolean, default=False, index=True)
+    privileged_case = db.Column(db.Boolean, default=False, index=True)
     ticket_id = db.Column(db.String)
     is_updated_from_misp = db.Column(db.Boolean, default=False)
     computer_assistate_report = db.Column(db.String)
@@ -138,6 +167,7 @@ class Case(db.Model):
             "hedgedoc_url": self.hedgedoc_url,
             "time_required": self.time_required,
             "is_private": self.is_private,
+            "privileged_case": self.privileged_case,
             "ticket_id": self.ticket_id,
             "is_updated_from_misp": self.is_updated_from_misp,
             "computer_assistate_report": self.computer_assistate_report
@@ -208,6 +238,7 @@ class Task(db.Model):
     title = db.Column(db.String)
     description = db.Column(db.String, nullable=True)
     urls_tools = db.relationship('Task_Url_Tool', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    external_references = db.relationship('Task_External_Reference', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     notes = db.relationship('Note', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
@@ -218,7 +249,7 @@ class Task(db.Model):
     completed = db.Column(db.Boolean, default=False)
     notif_deadline_id = db.Column(db.Integer, index=True)
     case_order_id = db.Column(db.Integer, index=True)
-    files = db.relationship('File', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    files = db.relationship('File', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN, foreign_keys='File.task_id')
     nb_notes = db.Column(db.Integer, index=True)
     subtasks = db.relationship('Subtask', backref='Task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     time_required = db.Column(db.String)
@@ -241,6 +272,7 @@ class Task(db.Model):
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["urls_tools"] = [url_tool.to_json() for url_tool in self.urls_tools]
+        json_dict["external_references"] = [ext_ref.to_json() for ext_ref in self.external_references]
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
         else:
@@ -282,6 +314,7 @@ class Task(db.Model):
         
         json_dict["subtasks"] = [subtask.download() for subtask in self.subtasks]
         json_dict["urls_tools"] = [url_tool.download() for url_tool in self.urls_tools]
+        json_dict["external_references"] = [ext_ref.download() for ext_ref in self.external_references]
 
         return json_dict
     
@@ -360,6 +393,30 @@ class Task_Url_Tool(db.Model):
         }
         return json_dict
 
+class Task_External_Reference(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
+    url = db.Column(db.String, index=True)
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "url": self.url,
+            "task_id": self.task_id,
+            "task_uuid": self.task.uuid,
+            "uuid": self.uuid
+        }
+        return json_dict
+
+    def download(self):
+        json_dict = {
+            "url": self.url,
+            "task_uuid": self.task.uuid,
+            "uuid": self.uuid
+        }
+        return json_dict
+
 class Org(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True)
@@ -368,13 +425,23 @@ class Org(db.Model):
     users = db.relationship('User', backref='Org', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     default_org = db.Column(db.Boolean, default=True)
 
+    def owns_cases(self):
+        return Case.query.filter_by(owner_org_id=self.id).count() > 0
+
+    def has_users(self):
+        return self.users.count() > 0
+
     def to_json(self):
+        owns_cases = self.owns_cases()
+        has_users = self.has_users()
         return {
             "id": self.id, 
             "name": self.name, 
             "description": self.description,
             "uuid": self.uuid,
-            "default_org": self.default_org
+            "default_org": self.default_org,
+            "owns_cases": owns_cases,
+            "has_users": has_users
         }
 
 
@@ -388,6 +455,10 @@ class Role(db.Model):
     case_admin = db.Column(db.Boolean, default=False)
     queue_admin = db.Column(db.Boolean, default=False)
     queuer = db.Column(db.Boolean, default=False)
+    audit_viewer = db.Column(db.Boolean, default=False)
+    template_editor = db.Column(db.Boolean, nullable=False, default=False)
+    misp_editor = db.Column(db.Boolean, nullable=False, default=False)
+    importer = db.Column(db.Boolean, nullable=False, default=False)
 
     def to_json(self):
         return {
@@ -399,13 +470,18 @@ class Role(db.Model):
             "org_admin": self.org_admin,
             "case_admin": self.case_admin,
             "queue_admin": self.queue_admin,
-            "queuer": self.queuer
+            "queuer": self.queuer,
+            "audit_viewer": self.audit_viewer,
+            "template_editor": self.template_editor,
+            "misp_editor": self.misp_editor,
+            "importer": self.importer
         }
 
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True)
-    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"), nullable=True)
+    case_id = db.Column(db.Integer, db.ForeignKey(FK_CASE_ID, ondelete="CASCADE"), nullable=True)
     uuid = db.Column(db.String(36), index=True, unique=True)
     upload_date = db.Column(db.DateTime, nullable=True)
     file_size = db.Column(db.Integer, nullable=True)
@@ -415,6 +491,7 @@ class File(db.Model):
             "id": self.id, 
             "name": self.name,
             "task_id": self.task_id,
+            "case_id": self.case_id,
             "uuid": self.uuid,
             "upload_date": self.upload_date.strftime('%Y-%m-%d %H:%M:%S') if self.upload_date else "Unknown",
             "file_size": self.file_size if self.file_size is not None else "Unknown",

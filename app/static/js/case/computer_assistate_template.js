@@ -1,6 +1,6 @@
 import {display_toast} from '../toaster.js'
 import { renderMarkdownServer } from '/static/js/markdown_render.js'
-const { ref, onMounted } = Vue
+const { ref, onMounted, onUnmounted } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
@@ -12,6 +12,14 @@ export default {
 		const is_loading = ref(false)
 		const is_exporting = ref(false)
 		const markdown_view = ref(false)
+		const status_timer = ref(null)
+
+		function clear_status_timer(){
+			if(status_timer.value){
+				clearTimeout(status_timer.value)
+				status_timer.value = null
+			}
+		}
 
 		async function renderReport(markdown) {
 			if (!markdown || markdown === 'running') {
@@ -41,14 +49,20 @@ export default {
 			const res = await fetch('/case/' + props.cases_info.case.id + '/status_computer_assistate_report')
 			if(await res.status == 200){
 				let loc = await res.json()
-				if (loc["report_status"] == "done")
+				if (loc["report_status"] == "done"){
+					clear_status_timer()
 					await get_computer_assistate_report()
-				else
+				}
+				else{
 					computer_assistate_report.value = 'running'
+					clear_status_timer()
+					status_timer.value = setTimeout(() => {get_status_computer_assistate_report()}, 10000)
+				}
 			}else{
 				await display_toast(res)
 				computer_assistate_report.value = ""
 				rendered_report.value = ""
+				clear_status_timer()
 				await get_computer_assistate_report()
 			}
 			is_loading.value = false
@@ -64,8 +78,11 @@ export default {
 			
 			if(res.status == 200){
 				computer_assistate_report.value = "running"
+				clear_status_timer()
+				status_timer.value = setTimeout(() => {get_status_computer_assistate_report()}, 10000)
 			}else{
 				computer_assistate_report.value = ""
+				clear_status_timer()
 			}
 			await display_toast(res, true)
 			is_loading.value = false
@@ -112,12 +129,17 @@ export default {
 			get_status_computer_assistate_report()
 		})
 
+		onUnmounted(() => {
+			clear_status_timer()
+		})
+
 		return {
 			computer_assistate_report,
 			rendered_report,
 			is_loading,
 			is_exporting,
 			markdown_view,
+			status_timer,
 			get_computer_assistate_report,
 			generate_computer_assistate_report,
 			get_status_computer_assistate_report,

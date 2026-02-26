@@ -8,6 +8,7 @@ from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm
 from . import connectors_core as ConnectorModel
 from ..decorators import admin_required
 from ..utils.utils import form_to_dict, get_module_type_with_desc
+from ..utils.logger import flowintel_log
 
 connector_blueprint = Blueprint(
     'connector',
@@ -36,12 +37,18 @@ def icons():
 def get_connectors():
     """List all connectors"""
     connectors_list = list()
-    for connector in ConnectorModel.get_connectors():
+    connectors = ConnectorModel.get_connectors()
+    connector_ids = [connector.id for connector in connectors]
+    connectors_with_instances, connectors_with_links = ConnectorModel.get_connectors_flags(connector_ids)
+
+    for connector in connectors:
         connector_loc = connector.to_json()
         icon_loc = ConnectorModel.get_icon(connector.icon_id)
         icon_file = ConnectorModel.get_icon_file(icon_loc.file_icon_id)
         connector_loc["icon_filename"] = icon_file.name
         connector_loc["icon_uuid"] = icon_file.uuid
+        connector_loc["has_instances"] = connector.id in connectors_with_instances
+        connector_loc["has_linked_instances"] = connector.id in connectors_with_links
         connectors_list.append(connector_loc)
     return {"connectors": connectors_list}, 200
 
@@ -116,9 +123,12 @@ def get_instances(cid):
                 loc_instance = instance.to_json()
                 if ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
                     loc_instance["is_user_global_api"] = True
+                loc_instance["has_links"] = ConnectorModel.instance_has_links(instance.id)
                 instance_list.append(loc_instance)
             elif ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
-                instance_list.append(instance.to_json())
+                loc_instance = instance.to_json()
+                loc_instance["has_links"] = ConnectorModel.instance_has_links(instance.id)
+                instance_list.append(loc_instance)
         return {"instances": instance_list}, 200
     return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
 
@@ -142,13 +152,28 @@ def add_connector():
 
 @connector_blueprint.route("/<cid>/add_instance", methods=['GET','POST'])
 @login_required
+@admin_required
 def add_instance(cid):
     """Add an instance"""
     if ConnectorModel.get_connector(cid):
         form = AddConnectorInstanceForm()
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
-            if ConnectorModel.add_connector_instance_core(cid, form_dict, current_user.id):
+            instance = ConnectorModel.add_connector_instance_core(cid, form_dict, current_user.id)
+            if instance:
+                connector = ConnectorModel.get_connector(cid)
+                flowintel_log(
+                    "audit",
+                    200,
+                    "Connector instance created",
+                    Connector=connector.name if connector else "Unknown",
+                    ConnectorId=cid,
+                    Instance=instance.name,
+                    InstanceId=instance.id,
+                    InstanceUrl=instance.url,
+                    InstanceType=instance.type,
+                    By=current_user.email
+                )
                 return redirect("/connectors")
             return render_template("connectors/add_instance.html", form=form, edit_mode=False)
         return render_template("connectors/add_instance.html", form=form, edit_mode=False)
@@ -201,6 +226,7 @@ def edit_connector(cid):
 
 @connector_blueprint.route("/<cid>/edit_instance/<iid>", methods=['GET','POST'])
 @login_required
+@admin_required
 def edit_instance(cid, iid):
     """Edit an instance"""
     if ConnectorModel.get_connector(cid):
@@ -212,6 +238,21 @@ def edit_instance(cid, iid):
             form_dict = form_to_dict(form)
             if not ConnectorModel.edit_connector_instance_core(iid, form_dict):
                 flash("Error editing connector")
+            else:
+                connector = ConnectorModel.get_connector(cid)
+                updated_instance = ConnectorModel.get_instance(iid)
+                flowintel_log(
+                    "audit",
+                    200,
+                    "Connector instance edited",
+                    Connector=connector.name if connector else "Unknown",
+                    ConnectorId=cid,
+                    Instance=updated_instance.name if updated_instance else "Unknown",
+                    InstanceId=iid,
+                    InstanceUrl=updated_instance.url if updated_instance else None,
+                    InstanceType=updated_instance.type if updated_instance else None,
+                    By=current_user.email
+                )
             return redirect("/connectors")
         else:
             form.name.data = loc_instance.name
@@ -258,15 +299,60 @@ def delete_connector(cid):
 
 @connector_blueprint.route("/<cid>/delete_instance/<iid>", methods=['GET','POST'])
 @login_required
+@admin_required
 def delete_instance(cid, iid):
     """Delete the instance"""
     if ConnectorModel.get_connector(cid):
-        if ConnectorModel.get_instance(iid):
+        instance = ConnectorModel.get_instance(iid)
+        if instance:
+            if ConnectorModel.instance_has_links(iid):
+                return {"message":"Instance is linked to a case or task", "toast_class": "warning-subtle"}, 400
             if ConnectorModel.delete_connector_instance_core(iid):
-                return {"message":"Instance deleted", "toast_class": "success-subtle"}, 200
+                connector = ConnectorModel.get_connector(cid)
+                flowintel_log(
+                    "audit",
+                    200,
+                    "Connector instance deleted",
+                    Connector=connector.name if connector else "Unknown",
+                    ConnectorId=cid,
+                    Instance=instance.name,
+                    InstanceId=iid,
+                    InstanceUrl=instance.url,
+                    InstanceType=instance.type,
+                    By=current_user.email
+                )
+                return {
+                    "message":"Instance deleted",
+                    "toast_class": "success-subtle",
+                    "connector_flags": {
+                        "has_instances": ConnectorModel.connector_has_instances(cid),
+                        "has_linked_instances": ConnectorModel.connector_has_linked_instances(cid)
+                    }
+                }, 200
             return {"message":"Error connector deleted", "toast_class": "danger-subtle"}, 400
         return {"message":"Instance not found", "toast_class": "danger-subtle"}, 404
     return {"message":"Connector not found", "toast_class": "danger-subtle"}, 404
+
+
+@connector_blueprint.route("/<cid>/check_connectivity/<iid>", methods=['GET'])
+@login_required
+def check_connectivity(cid, iid):
+    """Check connectivity to a connector instance (MISP)"""
+    connector = ConnectorModel.get_connector(cid)
+    if not connector:
+        return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+    
+    instance = ConnectorModel.get_instance(iid)
+    if not instance:
+        return {"message": "Instance not found", "toast_class": "danger-subtle"}, 404
+    
+    # Only MISP connectors
+    if connector.name.lower() != "misp":
+        return {"message": "Connectivity check not supported for this connector type", "toast_class": "warning-subtle"}, 400
+    
+    result = ConnectorModel.check_misp_connectivity(instance)
+    status_code = 200 if result["success"] else 400
+    return result, status_code
 
 
 @connector_blueprint.route("/delete_icon/<iid>", methods=['GET','POST'])

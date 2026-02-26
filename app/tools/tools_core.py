@@ -69,12 +69,12 @@ def case_creation_from_importer(case, current_user):
         case["uuid"] = str(uuid.uuid4())
 
     # tags
-    for tag in case["tags"]:
+    for tag in case.get("tags", []):
         if not utils.check_tag(tag):
             return {"message": f"Case '{case['title']}': tag '{tag}' doesn't exist"}
     
     # Clusters
-    for i in range(0, len(case["clusters"])):
+    for i in range(0, len(case.get("clusters", []))):
         case["clusters"][i] = case["clusters"][i]["name"]
 
     case["custom_tags"] = []
@@ -100,12 +100,12 @@ def case_creation_from_importer(case, current_user):
             task["deadline_date"] = ""
             task["deadline_time"] = ""
 
-        for tag in task["tags"]:
+        for tag in task.get("tags", []):
             if not utils.check_tag(tag):
                 return {"message": f"Task '{task['title']}': tag '{tag}' doesn't exist"}
             
         # Clusters
-        for i in range(0, len(task["clusters"])):
+        for i in range(0, len(task.get("clusters", []))):
             task["clusters"][i] = task["clusters"][i]["name"]
         
         task["custom_tags"] = []
@@ -122,20 +122,17 @@ def case_creation_from_importer(case, current_user):
     ## Task creation
     for task in case["tasks"]:
         task_created = TaskModel.create_task(task, case_created.id, current_user)
-        if task["notes"]:
-            for note in task["notes"]:
-                loc_note = TaskModel.create_note(task_created.id, current_user)
-                TaskModel.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
+        for note in task.get("notes", []):
+            loc_note = TaskModel.create_note(task_created.id, current_user)
+            TaskModel.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
         
-        if task["subtasks"]:
-            for subtask in task["subtasks"]:
-                TaskModel.create_subtask(task_created.id, subtask["description"], current_user)
+        for subtask in task.get("subtasks", []):
+            TaskModel.create_subtask(task_created.id, subtask["description"], current_user)
         
-        if task["urls_tools"]:
-            for urls_tools in task["urls_tools"]:
-                TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
+        for urls_tools in task.get("urls_tools", []):
+            TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
 
-    for misp_object in case["misp-objects"]:
+    for misp_object in case.get("misp-objects", []):
         misp_object["object-template"] = {"name": misp_object["name"], "uuid": misp_object["template_uuid"]}
         CaseModel.create_misp_object(case_created.id, misp_object, current_user)
 
@@ -410,6 +407,62 @@ def get_case_by_tags(current_user):
             "task_clusters": chart_dict_constructor(dict_task_cluster_tag)}
 
 
+def get_tag_galaxy_top_stats(current_user, limit=10):
+    cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
+
+    case_tag_map = {}
+    case_cluster_map = {}
+    task_tag_map = {}
+    task_cluster_map = {}
+
+    for case in cases:
+        case_info = {"id": case.id, "title": case.title}
+
+        for c in Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(case_id=case.id).all():
+            e = case_tag_map.setdefault(c.name, {"count": 0, "cases": []})
+            e["count"] += 1
+            e["cases"].append(case_info)
+
+        for t in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=case.id).all():
+            e = case_tag_map.setdefault(t.name, {"count": 0, "cases": []})
+            e["count"] += 1
+            e["cases"].append(case_info)
+
+        for cl in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.cluster_id==Cluster.id).filter_by(case_id=case.id).all():
+            e = case_cluster_map.setdefault(cl.tag, {"count": 0, "cases": [], "name": cl.name})
+            e["count"] += 1
+            e["cases"].append(case_info)
+
+        for task in case.tasks:
+            task_info = {"id": task.id, "title": task.title, "case_id": task.case_id}
+
+            for c in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(task_id=task.id).all():
+                e = task_tag_map.setdefault(c.name, {"count": 0, "tasks": []})
+                e["count"] += 1
+                e["tasks"].append(task_info)
+
+            for t in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=task.id).all():
+                e = task_tag_map.setdefault(t.name, {"count": 0, "tasks": []})
+                e["count"] += 1
+                e["tasks"].append(task_info)
+
+            for cl in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.cluster_id==Cluster.id).filter_by(task_id=task.id).all():
+                e = task_cluster_map.setdefault(cl.tag, {"count": 0, "tasks": [], "name": cl.name})
+                e["count"] += 1
+                e["tasks"].append(task_info)
+
+    def top_n(d):
+        rows = sorted(d.items(), key=lambda x: x[1]["count"], reverse=True)[:limit]
+        return [{"tag": k, **v} for k, v in rows]
+
+    return {
+        "case_tags": top_n(case_tag_map),
+        "case_clusters": top_n(case_cluster_map),
+        "task_tags": top_n(task_tag_map),
+        "task_clusters": top_n(task_cluster_map),
+    }
+
+
 ########################
 # Case from MISP Event #
 ########################
@@ -549,7 +602,7 @@ def create_note_template(request_json: dict, current_user: int) -> Note_Template
     list_params = extract_variables(content)
     n = Note_Template_Model(
         title=request_json["title"],
-        description=request_json["description"],
+        description=request_json.get("description", ""),
         content = content,
         version = 1,
         params={"list": list_params},
@@ -563,7 +616,7 @@ def create_note_template(request_json: dict, current_user: int) -> Note_Template
     return n
 
 
-def edit_content_note_template(note_id: int, request_json: dict) -> bool:
+def edit_content_note_template(note_id: int, request_json: dict) -> dict:
     content = request_json["content"]
     list_params = extract_variables(content)
     note_template = get_note_template(note_id)
@@ -577,7 +630,7 @@ def edit_content_note_template(note_id: int, request_json: dict) -> bool:
     db.session.commit()
     return {"version": note_template.version}
 
-def edit_note_template(note_id: int, request_json: dict) -> bool:
+def edit_note_template(note_id: int, request_json: dict) -> dict:
     note_template = get_note_template(note_id)
 
     note_template.title = request_json["title"]
@@ -624,3 +677,63 @@ def search_attr_with_value(attr_value: str, current_user: User) -> list:
             list_case.append(case.to_json())
             seen_case_ids.add(case.id)
     return list_case
+
+
+#######################
+# Community Statistics #
+#######################
+
+def get_community_stats():
+    """Get community statistics for organisations and users"""
+    # Total counts
+    total_orgs = Org.query.count()
+    total_users = User.query.count()
+    
+    # Users per organisation
+    users_per_org = db.session.query(
+        Org.name.label('org_name'),
+        db.func.count(User.id).label('count')
+    ).join(User, User.org_id == Org.id)\
+     .group_by(Org.id, Org.name)\
+     .order_by(db.func.count(User.id).desc())\
+     .all()
+    
+    # Users per role
+    users_per_role = db.session.query(
+        Role.name.label('role_name'),
+        db.func.count(User.id).label('count')
+    ).join(User, User.role_id == Role.id)\
+     .group_by(Role.id, Role.name)\
+     .order_by(db.func.count(User.id).desc())\
+     .all()
+    
+    # Open cases per organisation (owner)
+    cases_per_org = db.session.query(
+        Org.name.label('org_name'),
+        db.func.count(Case.id).label('count')
+    ).join(Case, Case.owner_org_id == Org.id)\
+     .filter(Case.completed == False)\
+     .group_by(Org.id, Org.name)\
+     .order_by(db.func.count(Case.id).desc())\
+     .all()
+    
+    # Open tasks per user
+    tasks_per_user = db.session.query(
+        User.first_name,
+        User.last_name,
+        db.func.count(Task.id).label('count')
+    ).join(Task_User, Task_User.user_id == User.id)\
+     .join(Task, Task.id == Task_User.task_id)\
+     .filter(Task.completed == False)\
+     .group_by(User.id, User.first_name, User.last_name)\
+     .order_by(db.func.count(Task.id).desc())\
+     .all()
+    
+    return {
+        "total_orgs": total_orgs,
+        "total_users": total_users,
+        "users_per_org": [{"org_name": row.org_name, "count": row.count} for row in users_per_org],
+        "users_per_role": [{"role_name": row.role_name, "count": row.count} for row in users_per_role],
+        "cases_per_org": [{"org_name": row.org_name, "count": row.count} for row in cases_per_org],
+        "tasks_per_user": [{"user_name": f"{row.first_name} {row.last_name}", "count": row.count} for row in tasks_per_user]
+    }

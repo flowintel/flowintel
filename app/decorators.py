@@ -32,6 +32,16 @@ def permission_required(perm):
                         abort(403)
                 elif current_user.read_only():
                     abort(403)
+            elif perm == "template_editor":
+                if request.path.startswith("/api/"):
+                    api_key = request.headers.get("X-API-KEY")
+                    if not api_key:
+                        abort(403)
+                    user = get_user_api(api_key)
+                    if not user or not (user.is_admin() or user.is_template_editor()):
+                        abort(403)
+                elif not (current_user.is_admin() or current_user.is_template_editor()):
+                    abort(403)
             return f(*args, **kwargs)
 
         return decorated_function
@@ -63,5 +73,17 @@ def admin_or_org_admin_required(f):
 def editor_required(f):
     return permission_required("read_only")(f)
 
+def template_editor_required(f):
+    return permission_required("template_editor")(f)
+
 def api_required(f):
     return verification_required()(f)
+
+
+def check_privileged_case_permission(user, operation="access"):
+    from .utils.logger import flowintel_log
+    
+    if not (user.is_admin() or user.is_case_admin()):
+        flowintel_log("audit", 403, f"Privileged case {operation} denied", User=user.email)
+        return {"message": "Insufficient permissions"}, 403
+    return None

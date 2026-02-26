@@ -11,7 +11,7 @@ def get_all_users():
     return User.query.all()
 
 def get_users_by_org(org_id):
-    """Return all users filtered by organization"""
+    """Return all users filtered by organisation"""
     return User.query.filter_by(org_id=org_id).all()
 
 def get_users_page(page, org_id=None, lastname=None):
@@ -221,7 +221,7 @@ def admin_edit_user_core(form_dict, id):
     user.nickname=form_dict["nickname"] or None
     user.email=form_dict["email"]
     user.matrix_id = form_dict["matrix_id"] or None  # Convert empty string to None to avoid UNIQUE constraint issues
-    if "password" in form_dict and form_dict["password"]:
+    if "password" in form_dict and form_dict["password"] and user.auth_provider == 'local':
         user.password=form_dict["password"]
     user.role_id = int(form_dict["role"])
     user.org_id = org_change
@@ -271,7 +271,11 @@ def add_role_core(form_dict):
         org_admin = form_dict.get("org_admin", False),
         case_admin = form_dict.get("case_admin", False),
         queue_admin = form_dict.get("queue_admin", False),
-        queuer = form_dict.get("queuer", False)
+        queuer = form_dict.get("queuer", False),
+        audit_viewer = form_dict.get("audit_viewer", False),
+        template_editor = form_dict.get("template_editor", False),
+        misp_editor = form_dict.get("misp_editor", False),
+        importer = form_dict.get("importer", False)
     )
     db.session.add(role)
     db.session.commit()
@@ -304,6 +308,10 @@ def edit_role_core(role_id, data):
         role.case_admin = data.get("case_admin", False)
         role.queue_admin = data.get("queue_admin", False)
         role.queuer = data.get("queuer", False)
+        role.audit_viewer = data.get("audit_viewer", False)
+        role.template_editor = data.get("template_editor", False)
+        role.misp_editor = data.get("misp_editor", False)
+        role.importer = data.get("importer", False)
         db.session.commit()
         return True
     return False

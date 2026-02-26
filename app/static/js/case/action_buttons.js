@@ -1,5 +1,6 @@
 import {display_toast} from '../toaster.js'
-const { ref } = Vue
+import {canModifyPrivilegedCase} from './helpers.js'
+const { ref, computed } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
@@ -8,6 +9,11 @@ export default {
 	},
 	setup(props) {
         const selected_merge = ref({})
+    const can_manage_templates = window.can_manage_templates || false
+
+        const canModifyCase = computed(() => {
+            return canModifyPrivilegedCase(props.cases_info)
+        })
 
         async function delete_case(case_id){
             const res = await fetch('/case/' + case_id.toString() + '/delete')
@@ -125,6 +131,9 @@ export default {
         }
 
         async function create_template(case_id){
+            if (!can_manage_templates) {
+                return
+            }
             if(await fetch_case_template_title($("#case_title_template").val())){
                 $("#collapseTemplateBody").append(
                     $("<span>").text("Already exist").css("color", 'red')
@@ -150,6 +159,8 @@ export default {
 
 		return {
             selected_merge,
+            canModifyCase,
+            can_manage_templates,
             delete_case,
 			complete_case,
             fork_case,
@@ -160,12 +171,26 @@ export default {
     },
 	template: `
         <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="margin-right:10px;">
-            <button v-if="cases_info.case.completed" class="btn btn-secondary" @click="complete_case(cases_info.case)" title="Revive the case" style="margin-right:10px">
-                <i class="fa-solid fa-backward"></i>
-            </button>
-            <button v-else class="btn btn-success" @click="complete_case(cases_info.case)" title="Complete the case" style="margin-right:10px">
-                <i class="fa-solid fa-check"></i>
-            </button>
+            <span v-if="cases_info.case.completed" 
+                  :title="!canModifyCase ? 'You cannot revive a privileged case' : 'Revive the case'"
+                  style="margin-right:10px; display:inline-block;">
+                <button class="btn btn-secondary" 
+                        @click="complete_case(cases_info.case)" 
+                        :disabled="!canModifyCase"
+                        style="pointer-events: auto;">
+                    <i class="fa-solid fa-backward"></i>
+                </button>
+            </span>
+            <span v-else 
+                  :title="!canModifyCase ? 'You cannot complete a privileged case' : 'Complete the case'"
+                  style="margin-right:10px; display:inline-block;">
+                <button class="btn btn-success" 
+                        @click="complete_case(cases_info.case)" 
+                        :disabled="!canModifyCase"
+                        style="pointer-events: auto;">
+                    <i class="fa-solid fa-check"></i>
+                </button>
+            </span>
 
             <a class="btn btn-primary" :href="'/case/edit/'+cases_info.case.id" type="button" title="Edit the case">
                 <i class="fa-solid fa-pen-to-square"></i>
@@ -176,37 +201,65 @@ export default {
                 Actions
             </button>
             <ul class="dropdown-menu">
-                <template v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)">
+                <template v-if="cases_info">
                     <li>
                         <a class="dropdown-item" :href="'/case/'+cases_info.case.id+'/download'" type="button" title="Download the case in json">
                             <span class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i></span> Download
                         </a>
                     </li>
-                    <li>
-                        <a class="dropdown-item" :href="'/case/'+cases_info.case.id+'/recurring'" type="button" title="Recurring Case">
-                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-clock"></i></span> Recurring
-                        </a>
-                    </li>
-                    <li>
-                        <button type="button" class="dropdown-item" title="Merge this case into an other one" @click="merge_case_modal()">
-                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-merge"></i></span> Merge
-                        </button>
-                    </li>
-                    <li>
-                        <button type="button" class="dropdown-item" title="Fork this case" data-bs-toggle="modal" data-bs-target="#fork_case_modal">
-                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
-                        </button>
-                    </li>
-                    <li>
-                        <button type="button" class="dropdown-item" title="Create a template from the case" data-bs-toggle="modal" data-bs-target="#template_case_modal">
-                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-book-bookmark"></i></span> Template
-                        </button>
-                    </li>
-                    <li>
-                        <button type="button" class="dropdown-item" title="Delete the case" data-bs-toggle="modal" data-bs-target="#delete_case_modal">
-                            <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
-                        </button>
-                    </li>
+                    <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                        <li>
+                            <a class="dropdown-item" 
+                               :href="'/case/'+cases_info.case.id+'/recurring'" 
+                               type="button" 
+                               title="Recurring Case"
+                               :class="{'disabled': !canModifyCase}"
+                               :aria-disabled="!canModifyCase"
+                               @click="!canModifyCase ? $event.preventDefault() : null">
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-clock"></i></span> Recurring
+                            </a>
+                        </li>
+                        <li>
+                            <button type="button" 
+                                    class="dropdown-item" 
+                                    title="Merge this case into an other one" 
+                                    @click="merge_case_modal()"
+                                    :disabled="!canModifyCase">
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-merge"></i></span> Merge
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" 
+                                    class="dropdown-item" 
+                                    title="Fork this case" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#fork_case_modal"
+                                    :disabled="!canModifyCase">
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" 
+                                    class="dropdown-item" 
+                                    title="Create a template from the case" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#template_case_modal"
+                                    :disabled="!canModifyCase"
+                                    v-if="can_manage_templates">
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-book-bookmark"></i></span> Template
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" 
+                                    class="dropdown-item" 
+                                    title="Delete the case" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#delete_case_modal"
+                                    :disabled="!canModifyCase">
+                                <span class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></span> Delete
+                            </button>
+                        </li>
+                    </template>
                 </template>
             </ul>
         </div>
@@ -274,15 +327,15 @@ export default {
         </div>
 
         <!-- Modal template case -->
-        <div class="modal fade" id="template_case_modal" tabindex="-1" aria-labelledby="template_case_modal" aria-hidden="true">
+        <div class="modal fade" id="template_case_modal" tabindex="-1" aria-labelledby="template_case_modal" aria-hidden="true" v-if="can_manage_templates">
             <div class="modal-dialog modal-md">
                 <div class="modal-content" v-if="cases_info">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="template_case_modal">Template for '[[cases_info.case.title]]'</h1>
+                        <h1 class="modal-title fs-5" id="template_case_modal">Create a case template for '[[cases_info.case.title]]'</h1>
                         <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <input id="case_title_template" placeholder="Case title"/>
+                        <input id="case_title_template" placeholder="Case template title"/>
                         <div id="collapseTemplateBody"></div>
                     </div>
                     <div class="modal-footer">

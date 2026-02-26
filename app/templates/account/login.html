@@ -105,6 +105,20 @@
 
             {{form.submit(class='btn btn-light w-100')}}
 
+            {% if config.ENTRA_ID_ENABLED %}
+            <div class="mt-3">
+                <a href="{{ url_for('account.entra_login') }}" class="btn btn-outline-light w-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 21 21" style="margin-right:6px;vertical-align:text-bottom">
+                        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                    </svg>
+                    Sign in with Microsoft
+                </a>
+            </div>
+            {% endif %}
+
             {% if show_reset_link %}
             <div class="mt-3" style="text-align: center;">
                 <a href="{{ url_for('account.request_password_reset') }}" style="color: #ccddff;">Request password reset from administrator</a>

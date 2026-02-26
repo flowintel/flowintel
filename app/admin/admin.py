@@ -40,25 +40,31 @@ def add_user():
     form = RegistrationForm()
 
     if current_user.is_pure_org_admin():
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not role.admin]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles() if not role.admin]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     else:
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles()]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles()]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     
     if current_user.is_pure_org_admin():
         user_org = AdminModel.get_org(current_user.org_id)
         if not user_org:
-            flash("Your organization could not be found. Please contact an administrator.", "error")
+            flash("Your organisation could not be found. Please contact an administrator.", "error")
             return redirect(url_for('admin.users'))
         form.org.choices = [(user_org.id, user_org.name)]
         form.org.data = str(user_org.id)
     else:
-        form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
+        orgs = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
+        form.org.choices = sorted(orgs, key=lambda x: x[1].lower())
         form.org.choices.insert(0, ("None", "New org"))
+        # Set default organisation to current user's organisation
+        if current_user.org_id:
+            form.org.data = str(current_user.org_id)
 
     if form.validate_on_submit():
         if current_user.is_pure_org_admin():
             if form.org.data != str(current_user.org_id):
-                flash("You can only add users to your own organization.", "error")
+                flash("You can only add users to your own organisation.", "error")
                 return render_template("admin/add_user.html", form=form, edit_mode=False)
             
             selected_role = Role.query.get(form.role.data)
@@ -92,21 +98,29 @@ def edit_user(uid):
     
     if current_user.is_pure_org_admin():
         if user_modif.org_id != current_user.org_id:
-            flash("You can only edit users from your own organization.", "error")
+            flash("You can only edit users from your own organisation.", "error")
             return redirect(url_for('admin.users'))
     elif not current_user.is_admin():
         flash("You do not have permission to edit users.", "error")
         return redirect(url_for('admin.users'))
     
     from_notification = request.args.get('from_notif', 'false') == 'true'
+    from_notif_entra  = request.args.get('from_notif_for_entra_id', 'false') == 'true'
+    # Auto-detect: if this is a generic notification link but the user is SSO-managed,
+    # treat it as an Entra ID promotion notification, not a password-reset notification.
+    if from_notification and user_modif.auth_provider == 'entra':
+        from_notif_entra  = True
+        from_notification = False
     
     form = AdminEditUserFrom()
     form.user_id.data = uid
     
     if current_user.is_pure_org_admin():
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id and not role.admin]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id and not role.admin]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     else:
-        form.role.choices = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
+        roles = [(role.id, role.name) for role in AdminModel.get_all_roles() if not user_modif.role_id == role.id]
+        form.role.choices = sorted(roles, key=lambda x: x[1].lower())
     
     role_temp = AdminModel.get_role(user_modif.role_id)
     if not (current_user.is_pure_org_admin() and role_temp.admin):
@@ -116,27 +130,28 @@ def edit_user(uid):
         user_org = AdminModel.get_org(current_user.org_id)
         form.org.choices = [(user_org.id, user_org.name)]
     else:
-        form.org.choices = [(org.id, org.name) for org in AdminModel.get_all_orgs() if not user_modif.org_id == org.id]
+        orgs = [(org.id, org.name) for org in AdminModel.get_all_orgs() if not user_modif.org_id == org.id]
+        form.org.choices = sorted(orgs, key=lambda x: x[1].lower())
         org_temp = AdminModel.get_org(user_modif.org_id)
         form.org.choices.insert(0, (org_temp.id, org_temp.name))
 
     if form.validate_on_submit():
         if current_user.is_pure_org_admin():
             if user_modif.org_id != current_user.org_id:
-                flash("You can only edit users from your own organization.", "error")
+                flash("You can only edit users from your own organisation.", "error")
                 return redirect(url_for('admin.users'))
             if form.org.data != str(current_user.org_id):
                 flash("You cannot change the organization of users.", "error")
-                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
+                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification, from_notif_entra=from_notif_entra, is_sso=(user_modif.auth_provider != 'local'))
             
             selected_role = Role.query.get(form.role.data)
             if selected_role and selected_role.admin:
                 flash("You cannot assign Admin role to users.", "error")
-                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
+                return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification, from_notif_entra=from_notif_entra, is_sso=(user_modif.auth_provider != 'local'))
         
         form_dict = form_to_dict(form)
-        # Only include password if change_password is checked
-        password_was_changed = form.change_password.data
+        # Strip password fields for SSO accounts; never allow a password change via this form.
+        password_was_changed = form.change_password.data and user_modif.auth_provider == 'local'
         if not password_was_changed:
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
@@ -156,7 +171,7 @@ def edit_user(uid):
         form.email.data = user_modif.email
         form.matrix_id.data = user_modif.matrix_id
 
-    return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification)
+    return render_template("admin/add_user.html", form=form, edit_mode=True, from_notification=from_notification, from_notif_entra=from_notif_entra, is_sso=(user_modif.auth_provider != 'local'))
 
 
 @admin_blueprint.route("/delete_user/<uid>", methods=['POST'])
@@ -172,7 +187,7 @@ def delete_user(uid):
     
     if current_user.is_pure_org_admin():
         if user.org_id != current_user.org_id:
-            return {"message":"You can only delete users from your own organization", "toast_class": "danger-subtle"}, 403
+            return {"message":"You can only delete users from your own organisation", "toast_class": "danger-subtle"}, 403
     elif not current_user.is_admin():
         return {"message":"You do not have permission to delete users", "toast_class": "danger-subtle"}, 403
     
@@ -243,7 +258,7 @@ def add_role():
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         AdminModel.add_role_core(form_dict)
-        flowintel_log("audit", 200, "Role added", RoleName=form.name.data, Admin=form.admin.data, ReadOnly=form.read_only.data, OrgAdmin=form.org_admin.data, CaseAdmin=form.case_admin.data, QueueAdmin=form.queue_admin.data, Queuer=form.queuer.data)
+        flowintel_log("audit", 201, "Role added", RoleName=form.name.data)
         return redirect(url_for('admin.roles'))
     return render_template("admin/add_edit_role.html", form=form, edit_mode=False)
 
@@ -260,7 +275,7 @@ def edit_role(id):
     data = request.get_json()
     if AdminModel.edit_role_core(id, data):
         role_name = data.get('name', 'N/A')
-        flowintel_log("audit", 200, "Role edited", RoleId=id, RoleName=role_name, Description=data.get('description'), Admin=data.get('admin'), ReadOnly=data.get('read_only'), OrgAdmin=data.get('org_admin'), CaseAdmin=data.get('case_admin'), QueueAdmin=data.get('queue_admin'), Queuer=data.get('queuer'))
+        flowintel_log("audit", 200, "Role edited", RoleId=id, RoleName=role_name)
         return {"message": "Role updated", "toast_class": "success-subtle"}, 200
     return {"message": "Error updating role", "toast_class": "danger-subtle"}, 400
 
@@ -326,12 +341,25 @@ def edit_org(id):
 @admin_required
 def delete_org(oid):
     """Delete the org"""
-    if AdminModel.get_org(oid):
-        if AdminModel.delete_org_core(oid):
-            flowintel_log("audit", 200, "Org deleted", OrgId=oid)
-            return {"message":"Org deleted", "toast_class": "success-subtle"}, 200
-        return {"message":"Error Org deleted", "toast_class": "danger-subtle"}, 400
-    return {"message":"Org not found", "toast_class": "danger-subtle"}, 404
+    org = AdminModel.get_org(oid)
+    if not org:
+        return {"message":"Org not found", "toast_class": "danger-subtle"}, 404
+    
+    reasons = []
+    if org.has_users():
+        reasons.append("has users")
+    if org.owns_cases():
+        reasons.append("owns cases")
+    
+    if reasons:
+        reason_str = " and ".join(reasons)
+        flowintel_log("audit", 403, "Org deletion prevented: " + reason_str, OrgId=oid, OrgName=org.name)
+        return {"message": "Cannot delete organisation that " + reason_str, "toast_class": "danger-subtle"}, 403
+    
+    if AdminModel.delete_org_core(oid):
+        flowintel_log("audit", 200, "Org deleted", OrgId=oid)
+        return {"message":"Org deleted", "toast_class": "success-subtle"}, 200
+    return {"message":"Error deleting org", "toast_class": "danger-subtle"}, 400
 
 
 @admin_blueprint.route("/get_orgs", methods=['GET','POST'])

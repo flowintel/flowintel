@@ -21,11 +21,13 @@ def version():
 
 
 api = Api(api_blueprint,
-    title='flowintel API', 
-    description='API to manage a case management instance.', 
+    title='Flowintel API', 
+    description="<a href='https://github.com/flowintel/flowintel' rel='noreferrer' target='_blank'>"
+    "<img src='/static/image/flowintel.png' width='200px' /></a><br />"
+    'API to query Flowintel.',
     version=version(), 
-    default='GenericAPI', 
-    default_label='Generic flowintel API', 
+    license="GNU Affero General Public License version 3",
+    license_url="https://www.gnu.org/licenses/agpl-3.0.html",
     doc='/',
     security="apikey",
     authorizations=authorizations
