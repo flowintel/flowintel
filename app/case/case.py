@@ -850,8 +850,6 @@ def status_computer_assistate_report(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Get status computer assisted report: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        if not CaseModel.check_exist_task(case.uuid):
-            return {"message": "There's no generation going for this case", "toast_class": "warning-subtle"}, 400
         if CaseModel.get_status_computer_assistate_report(case.uuid):
             flowintel_log("audit", 200, "Get status computer assisted report", User=current_user.email, CaseId=cid)
             return {"report_status": "running"}, 200
