@@ -10,6 +10,7 @@ export default {
 	setup(props) {
         const selected_merge = ref({})
     const can_manage_templates = window.can_manage_templates || false
+    const is_admin = window.is_admin || false
 
         const canModifyCase = computed(() => {
             return canModifyPrivilegedCase(props.cases_info)
@@ -161,6 +162,7 @@ export default {
             selected_merge,
             canModifyCase,
             can_manage_templates,
+            is_admin,
             delete_case,
 			complete_case,
             fork_case,
@@ -205,6 +207,11 @@ export default {
                     <li>
                         <a class="dropdown-item" :href="'/case/'+cases_info.case.id+'/download'" type="button" title="Download the case in json">
                             <span class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i></span> Download
+                        </a>
+                    </li>
+                    <li v-if="is_admin">
+                        <a class="dropdown-item" :href="'/case/'+cases_info.case.id+'/report'" type="button" title="Create a case report">
+                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-file-lines"></i></span> Create case report
                         </a>
                     </li>
                     <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">

@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+
+{% block head %}
+{{ super() }}
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/html2pdf.bundle.min.js') }}"></script>
+<style>
+#report-rendered { white-space: normal !important; }
+#report-rendered li > p { margin: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex align-items-center mb-3 gap-3">
+        <a href="/case/{{ case.id }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left fa-sm me-1"></i>Back
+        </a>
+        <h4 class="mb-0">Case report — {{ case.title }}</h4>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Report options</h5>
+
+            <div class="row g-3">
+                <!-- Case -->
+                <div class="col-12 col-lg-4">
+                    <p class="fw-semibold mb-2">Case</p>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-metadata" checked>
+                        <label class="form-check-label" for="opt-metadata">Case information</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-title" checked>
+                        <label class="form-check-label" for="opt-title">Title</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-description" checked>
+                        <label class="form-check-label" for="opt-description">Description</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-tasks" checked>
+                        <label class="form-check-label" for="opt-tasks">Tasks</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-files" checked>
+                        <label class="form-check-label" for="opt-files">Files <small class="text-muted">(case and tasks)</small></label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-notes">
+                        <label class="form-check-label" for="opt-notes">Notes</label>
+                    </div>
+                </div>
+
+                <!-- Context -->
+                <div class="col-12 col-lg-4">
+                    <p class="fw-semibold mb-2">Context</p>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-tags" checked>
+                        <label class="form-check-label" for="opt-tags">Tags and galaxies <small class="text-muted">(case and tasks)</small></label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-objects" checked>
+                        <label class="form-check-label" for="opt-objects">Objects</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-taxonomies">
+                        <label class="form-check-label" for="opt-taxonomies">Taxonomies <small class="text-muted">(appendix)</small></label>
+                    </div>
+                </div>
+
+                <!-- Audit -->
+                <div class="col-12 col-lg-4">
+                    <p class="fw-semibold mb-2">Audit</p>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-audit">
+                        <label class="form-check-label" for="opt-audit">Audit logs</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-timeline">
+                        <label class="form-check-label" for="opt-timeline">Timeline</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button class="btn btn-primary" id="btn-generate">
+                    <i class="fa-solid fa-file-lines me-1"></i>Generate report
+                </button>
+                <span id="generate-spinner" class="ms-2 d-none">
+                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                    Generating…
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div id="report-output" class="d-none">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h5 class="mb-0">Generated report</h5>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-outline-danger btn-sm" id="btn-download-pdf" disabled title="Download report as PDF">
+                    <i class="fa-solid fa-file-pdf me-1"></i>Download as PDF
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" id="btn-attach-pdf" disabled title="Attach report as PDF to this case">
+                    <i class="fa-solid fa-paperclip me-1"></i>Attach to case as PDF
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" id="btn-toggle-raw">
+                    <i class="fa-solid fa-code me-1"></i>Show raw Markdown
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" id="btn-copy" title="Copy to clipboard">
+                    <i class="fa-solid fa-copy me-1"></i>Copy
+                </button>
+            </div>
+        </div>
+        <!-- Rendered HTML view (default) -->
+        <div id="report-rendered" class="border rounded p-3 bg-white markdown-render"
+             style="width:100%; max-height: 70vh; overflow-y: auto;"></div>
+        <!-- Raw Markdown view (hidden by default) -->
+        <div id="report-raw" class="border rounded p-3 bg-white d-none"
+             style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem; max-height: 70vh; overflow-y: auto;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    import { message_list } from '/static/js/toaster.js'
+    const { createApp } = Vue
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            return { message_list }
+        }
+    }).mount('#main-container')
+
+    // Vue has now re-rendered #main-container — attach listeners to the fresh DOM
+    const CASE_ID = {{ case.id }};
+    const md = window.markdownit({ html: true })
+
+    let rawMarkdown = ''
+    let showingRaw = false
+
+    document.getElementById("btn-generate").addEventListener("click", async function () {
+        const options = {
+            include_metadata:    document.getElementById("opt-metadata").checked,
+            include_title:       document.getElementById("opt-title").checked,
+            include_description: document.getElementById("opt-description").checked,
+            include_tasks:       document.getElementById("opt-tasks").checked,
+            include_files:       document.getElementById("opt-files").checked,
+            include_notes:       document.getElementById("opt-notes").checked,
+            include_tags:        document.getElementById("opt-tags").checked,
+            include_objects:     document.getElementById("opt-objects").checked,
+            include_taxonomies:  document.getElementById("opt-taxonomies").checked,
+            include_audit:       document.getElementById("opt-audit").checked,
+            include_timeline:    document.getElementById("opt-timeline").checked,
+        };
+
+        this.disabled = true;
+        document.getElementById("generate-spinner").classList.remove("d-none");
+        document.getElementById("report-output").classList.add("d-none");
+
+        try {
+            const res = await fetch(`/case/${CASE_ID}/report/generate`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": $("#csrf_token").val()
+                },
+                body: JSON.stringify(options)
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                message_list.value.push({ message: data.message || "Failed to generate report.", toast_class: "danger-subtle" });
+                return;
+            }
+
+            rawMarkdown = data.report;
+            showingRaw = false;
+            document.getElementById("btn-download-pdf").removeAttribute("disabled");
+            document.getElementById("btn-attach-pdf").removeAttribute("disabled");
+
+            // Render HTML by default
+            document.getElementById("report-rendered").innerHTML = md.render(rawMarkdown);
+            document.getElementById("report-raw").textContent = rawMarkdown;
+            document.getElementById("report-rendered").classList.remove("d-none");
+            document.getElementById("report-raw").classList.add("d-none");
+            document.getElementById("btn-toggle-raw").innerHTML = '<i class="fa-solid fa-code me-1"></i>Show raw Markdown';
+
+            document.getElementById("report-output").classList.remove("d-none");
+            document.getElementById("report-output").scrollIntoView({ behavior: "smooth" });
+        } catch (e) {
+            message_list.value.push({ message: "An error occurred while generating the report.", toast_class: "danger-subtle" });
+        } finally {
+            this.disabled = false;
+            document.getElementById("generate-spinner").classList.add("d-none");
+        }
+    });
+
+    document.getElementById("btn-toggle-raw").addEventListener("click", function () {
+        showingRaw = !showingRaw;
+        if (showingRaw) {
+            document.getElementById("report-rendered").classList.add("d-none");
+            document.getElementById("report-raw").classList.remove("d-none");
+            this.innerHTML = '<i class="fa-solid fa-eye me-1"></i>Show rendered';
+        } else {
+            document.getElementById("report-raw").classList.add("d-none");
+            document.getElementById("report-rendered").classList.remove("d-none");
+            this.innerHTML = '<i class="fa-solid fa-code me-1"></i>Show raw Markdown';
+        }
+    });
+
+    document.getElementById("btn-copy").addEventListener("click", function () {
+        const text = rawMarkdown
+        if (!text) return
+        navigator.clipboard.writeText(text).then(() => {
+            this.innerHTML = '<i class="fa-solid fa-check me-1"></i>Copied';
+            setTimeout(() => { this.innerHTML = '<i class="fa-solid fa-copy me-1"></i>Copy'; }, 2000);
+        }).catch(() => {
+            // fallback for non-HTTPS contexts
+            const ta = document.createElement('textarea')
+            ta.value = text
+            ta.style.position = 'fixed'
+            ta.style.opacity = '0'
+            document.body.appendChild(ta)
+            ta.select()
+            document.execCommand('copy')
+            document.body.removeChild(ta)
+            this.innerHTML = '<i class="fa-solid fa-check me-1"></i>Copied';
+            setTimeout(() => { this.innerHTML = '<i class="fa-solid fa-copy me-1"></i>Copy'; }, 2000);
+        });
+    });
+
+    document.getElementById("btn-download-pdf").addEventListener("click", function () {
+        if (!rawMarkdown) return;
+        const el = document.getElementById("report-rendered");
+        const btn = this;
+
+        // Remove scroll constraints so html2canvas captures the full content
+        const prevMaxHeight = el.style.maxHeight;
+        const prevOverflow  = el.style.overflowY;
+        el.style.maxHeight = 'none';
+        el.style.overflowY = 'visible';
+
+        const opt = {
+            margin:      [12, 12, 12, 12],
+            filename:    `case-${CASE_ID}-report.pdf`,
+            image:       { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
+            jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Generating…';
+        html2pdf().set(opt).from(el).save().then(() => {
+            el.style.maxHeight = prevMaxHeight;
+            el.style.overflowY  = prevOverflow;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-file-pdf me-1"></i>Download as PDF';
+        }).catch(() => {
+            el.style.maxHeight = prevMaxHeight;
+            el.style.overflowY  = prevOverflow;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-file-pdf me-1"></i>Download as PDF';
+            message_list.value.push({ message: 'An error occurred while generating the PDF.', toast_class: 'danger-subtle' });
+        });
+    });
+
+    document.getElementById("btn-attach-pdf").addEventListener("click", async function () {
+        if (!rawMarkdown) return;
+        const el = document.getElementById("report-rendered");
+        const btn = this;
+
+        const prevMaxHeight = el.style.maxHeight;
+        const prevOverflow  = el.style.overflowY;
+        el.style.maxHeight = 'none';
+        el.style.overflowY = 'visible';
+
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const filename = `case-report-${dateStr}.pdf`;
+        const opt = {
+            margin:      [12, 12, 12, 12],
+            filename:    filename,
+            image:       { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
+            jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Generating PDF…';
+
+        try {
+            const pdfBlob = await html2pdf().set(opt).from(el).output('blob');
+            el.style.maxHeight = prevMaxHeight;
+            el.style.overflowY  = prevOverflow;
+
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Attaching…';
+
+            const fd = new FormData();
+            fd.append('file', pdfBlob, filename);
+
+            const res = await fetch(`/case/${CASE_ID}/report/attach_pdf`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': $("#csrf_token").val() },
+                body: fd
+            });
+            const data = await res.json();
+            message_list.value.push({ message: data.message, toast_class: data.toast_class || (res.ok ? 'success-subtle' : 'danger-subtle') });
+        } catch (e) {
+            el.style.maxHeight = prevMaxHeight;
+            el.style.overflowY  = prevOverflow;
+            message_list.value.push({ message: 'An error occurred while generating or attaching the PDF.', toast_class: 'danger-subtle' });
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paperclip me-1"></i>Attach to case as PDF';
+        }
+    });
+</script>
+{% endblock %}

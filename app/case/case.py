@@ -1,14 +1,16 @@
 import ast
+import datetime
 import json
-from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
+import os
+from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app, abort
 from flask_login import login_required, current_user
 
 from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
-from ..db_class.db import Case, Task_Template, Case_Template, File
-from ..decorators import editor_required, template_editor_required
+from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User
+from ..decorators import editor_required, template_editor_required, admin_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
@@ -1458,3 +1460,371 @@ def delete_case_file(cid, fid):
         flowintel_log("audit", 403, "Delete file from case: Permission denied", User=current_user.email, CaseId=cid, FileId=fid)
         return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+
+########
+# Report
+########
+
+@case_blueprint.route("/<cid>/report", methods=['GET'])
+@login_required
+@admin_required
+def case_report(cid):
+    """Render the report builder page for a case"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        abort(404)
+    return render_template("case/case_report.html", case=case)
+
+
+@case_blueprint.route("/<cid>/report/generate", methods=['POST'])
+@login_required
+@admin_required
+def case_report_generate(cid):
+    """Generate and return the Markdown report text for a case"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found"}, 404
+
+    def _text_color(hex_color):
+        h = (hex_color or '#888888').lstrip('#')
+        try:
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        except ValueError:
+            return 'white'
+        return 'white' if (299 * r + 587 * g + 114 * b) / 1000 < 128 else 'black'
+
+    def _tag_badge(name, color):
+        tc = _text_color(color or '#888888')
+        bg = color or '#888888'
+        return f'<span class="tag" style="background-color:{bg};color:{tc};">{name}</span>'
+
+    def _cluster_badge(label):
+        return f'<span class="cluster">{label}</span>'
+
+    opts = request.json or {}
+    tasks = case.tasks.all()
+
+    try:
+        ver_path = os.path.join(current_app.root_path, '..', 'version')
+        with open(ver_path) as _vf:
+            _version = _vf.read().strip()
+    except Exception:
+        _version = 'unknown'
+
+    lines = []
+    lines.append("# Case report")
+    lines.append("")
+
+    main_logo = current_app.config.get('MAIN_LOGO', '')
+    topright_logo = current_app.config.get('TOPRIGHT_LOGO', '')
+    logo_html = ''
+    if main_logo:
+        logo_html += f'<img src="{main_logo}" style="height:50px; margin-right:10px;">'
+    if topright_logo:
+        logo_html += f'<img src="{topright_logo}" style="height:50px; float:right;">'
+    if logo_html:
+        lines.append(logo_html)
+        lines.append("")
+
+    if opts.get("include_metadata", True):
+        lines.append("---")
+        lines.append("")
+        lines.append("## Case information")
+
+        lines.append(f"- **Case ID:** {case.id}")
+
+        created = case.creation_date.strftime('%Y-%m-%d %H:%M') if case.creation_date else "—"
+        lines.append(f"- **Date created:** {created}")
+
+        owner_org = CommonModel.get_org(case.owner_org_id)
+        lines.append(f"- **Owner:** {owner_org.name if owner_org else '—'}")
+
+        orgs = CommonModel.get_orgs_in_case(case.id)
+        if orgs:
+            lines.append("- **Organisations:** " + ", ".join(o.name for o in orgs if o))
+        else:
+            lines.append("- **Organisations:** —")
+
+        linked = Case.query.join(Case_Link_Case, Case_Link_Case.case_id_2 == Case.id)\
+                            .filter(Case_Link_Case.case_id_1 == case.id).all()
+        if linked:
+            lines.append("- **Linked cases:** " + ", ".join(f"{lc.title} (#{lc.id})" for lc in linked))
+        else:
+            lines.append("- **Linked cases:** —")
+
+        flags = []
+        if case.privileged_case:
+            flags.append("Privileged")
+        if case.is_private:
+            flags.append("Private")
+        if flags:
+            lines.append("- **Flags:** " + ", ".join(flags))
+
+        if case.deadline:
+            lines.append(f"- **Deadline:** {case.deadline.strftime('%Y-%m-%d %H:%M')}")
+        if case.time_required:
+            lines.append(f"- **Time required:** {case.time_required}")
+        if case.ticket_id:
+            lines.append(f"- **Ticket ID:** {case.ticket_id}")
+
+        case_connectors = CommonModel.get_case_connectors_name(cid)
+        if case_connectors:
+            lines.append("- **Connectors:** " + ", ".join(case_connectors))
+
+        total = len(tasks)
+        done = sum(1 for t in tasks if t.completed)
+        pct = int(done / total * 100) if total > 0 else 0
+        lines.append(f"- **Completion:** {done}/{total} tasks ({pct}%)")
+
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+        user_label = f"{current_user.first_name} {current_user.last_name} ({current_user.email})"
+        lines.append(f"- **Report generated on:** {now} by {user_label}")
+
+        url = f"http://{current_app.config.get('FLASK_URL', '127.0.0.1')}:{current_app.config.get('FLASK_PORT', 7006)}"
+        lines.append(f"- **Instance URL:** {url}")
+        lines.append(f"- **Instance version:** {_version}")
+
+        lines.append("")
+
+    if opts.get("include_title", True):
+        lines.append("---")
+        lines.append("")
+        lines.append(f"## Case: {case.title}")
+        lines.append("")
+
+    if opts.get("include_description", True):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Description")
+        desc = (case.description or "—").replace("```", "")
+        lines.append("```")
+        lines.extend(desc.splitlines())
+        lines.append("```")
+        lines.append("")
+
+    if opts.get("include_tasks", True):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Tasks")
+        if tasks:
+            for task in tasks:
+                status_mark = "✓" if task.completed else "○"
+                lines.append(f"#### [{status_mark}] {task.title}")
+                if task.description:
+                    lines.append(task.description)
+                lines.append("")
+
+                task_status = CommonModel.get_status(task.status_id)
+                lines.append(f"- **Status:** {task_status.name if task_status else '—'}")
+
+                user_ids = [tu.user_id for tu in Task_User.query.filter_by(task_id=task.id).all()]
+                if user_ids:
+                    owners = User.query.filter(User.id.in_(user_ids)).all()
+                    owner_str = ", ".join(f"{u.first_name} {u.last_name} ({u.email})" for u in owners)
+                    lines.append(f"- **Owner(s):** {owner_str}")
+                else:
+                    lines.append("- **Owner(s):** —")
+
+                if task.deadline:
+                    lines.append(f"- **Deadline:** {task.deadline.strftime('%Y-%m-%d %H:%M')}")
+                if task.time_required:
+                    lines.append(f"- **Time required:** {task.time_required}")
+
+                task_tags_json = CommonModel.get_task_tags_json(task.id)
+                task_clusters = CommonModel.get_task_clusters(task.id)
+                task_galaxies = CommonModel.get_task_galaxies(task.id)
+
+                if task_tags_json:
+                    badges = " ".join(_tag_badge(t['name'], t['color']) for t in task_tags_json)
+                    lines.append(f"- **Tags:** {badges}")
+                if task_clusters:
+                    badges = " ".join(_cluster_badge(c.tag) for c in task_clusters)
+                    lines.append(f"- **Galaxy clusters:** {badges}")
+                if task_galaxies:
+                    lines.append("- **Galaxies:** " + ", ".join(g.name for g in task_galaxies))
+
+                subtasks = task.subtasks.all()
+                if subtasks:
+                    lines.append("- **Subtasks:**")
+                    for st in subtasks:
+                        tick = "✓" if st.completed else "○"
+                        lines.append(f"  - [{tick}] {st.description}")
+
+                urls_tools = task.urls_tools.all()
+                if urls_tools:
+                    lines.append("- **URL/Tools:** " + ", ".join(ut.name for ut in urls_tools))
+
+                ext_refs = task.external_references.all()
+                if ext_refs:
+                    lines.append("- **External references:** " + ", ".join(er.url for er in ext_refs))
+
+                task_connectors = CommonModel.get_task_connectors_name(task.id)
+                if task_connectors:
+                    lines.append("- **Connectors:** " + ", ".join(task_connectors))
+
+                lines.append("")
+        else:
+            lines.append("No tasks.")
+            lines.append("")
+
+    if opts.get("include_notes", False):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Notes")
+        lines.append("")
+        has_notes = False
+
+        if case.notes:
+            has_notes = True
+            lines.append("#### Case note")
+            lines.append("")
+            lines.append("```")
+            lines.extend(line.replace("```", "") for line in case.notes.splitlines())
+            lines.append("```")
+            lines.append("")
+
+        task_note_sections = CaseModel.get_all_notes(case)
+        if task_note_sections:
+            has_notes = True
+            lines.append("#### Task notes")
+            lines.append("")
+            for section in task_note_sections:
+                lines.append("```")
+                lines.extend(line.replace("```", "") for line in section.splitlines())
+                lines.append("```")
+                lines.append("")
+
+        if not has_notes:
+            lines.append("No notes.")
+            lines.append("")
+
+    if opts.get("include_files", True):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Files")
+        lines.append("")
+
+        task_ids = [t.id for t in tasks]
+        case_files = File.query.filter_by(case_id=case.id, task_id=None).all()
+        task_files = File.query.filter(File.task_id.in_(task_ids)).all() if task_ids else []
+        all_files = case_files + task_files
+
+        if all_files:
+            task_map = {t.id: t.title for t in tasks}
+            lines.append("| Filename | Size | Type | Attached to |")
+            lines.append("|---|---|---|---|")
+            for f in all_files:
+                size = f"{f.file_size:,} B" if f.file_size is not None else "Unknown"
+                ftype = f.file_type or "Unknown"
+                attached = "Case" if not f.task_id else f"Task: {task_map.get(f.task_id, 'Unknown')}"
+                lines.append(f"| {f.name} | {size} | {ftype} | {attached} |")
+        else:
+            lines.append("No files.")
+        lines.append("")
+
+    case_tags_json = CommonModel.get_case_tags_json(cid)
+
+    if opts.get("include_tags", True):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Tags and galaxies")
+
+        if case_tags_json:
+            badges = " ".join(_tag_badge(t['name'], t['color']) for t in case_tags_json)
+            lines.append(f"**Tags:** {badges}")
+
+        custom_tags = CommonModel.get_case_custom_tags(case.id)
+        if custom_tags:
+            badges = " ".join(_tag_badge(ct.name, ct.color) for ct in custom_tags)
+            lines.append(f"**Custom tags:** {badges}")
+
+        clusters = CommonModel.get_case_clusters(cid)
+        if clusters:
+            badges = " ".join(_cluster_badge(c.tag) for c in clusters)
+            lines.append(f"**Galaxy clusters:** {badges}")
+
+        lines.append("")
+
+    if opts.get("include_objects", True):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Objects")
+        objects = CaseModel.get_misp_object_by_case(cid)
+        if objects:
+            for obj in objects:
+                lines.append(f"#### {obj.name}")
+                for attr in obj.attributes:
+                    lines.append(f"  - {attr.object_relation}: {attr.value}")
+        else:
+            lines.append("No objects.")
+        lines.append("")
+
+    if opts.get("include_taxonomies", False):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Appendix — Taxonomies")
+        seen_taxo = {}
+        for t in case_tags_json:
+            name = t['name']
+            taxo_name = name.split(":")[0] if ":" in name else name
+            seen_taxo.setdefault(taxo_name, []).append(t)
+        if seen_taxo:
+            for taxo, tag_objs in sorted(seen_taxo.items()):
+                lines.append(f"#### {taxo}")
+                for t in tag_objs:
+                    badge = _tag_badge(t['name'], t['color'])
+                    lines.append(f"  - {badge}")
+        else:
+            lines.append("No taxonomy tags.")
+        lines.append("")
+
+    if opts.get("include_audit", False):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Audit logs")
+        audit = CommonModel.get_audit_logs(case.id)
+        if audit:
+            for entry in audit:
+                lines.append(f"- {entry}")
+        else:
+            lines.append("No audit logs found.")
+        lines.append("")
+
+    if opts.get("include_timeline", False):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Timeline")
+        history = CommonModel.get_history(case.uuid)
+        if history:
+            for entry in history:
+                lines.append(f"- {entry}")
+        else:
+            lines.append("No history recorded.")
+        lines.append("")
+
+    flowintel_log("audit", 200, "Case report generated",
+                  User=current_user.email, CaseId=cid,
+                  Options=", ".join(k for k, v in opts.items() if v))
+    return {"report": "\n".join(lines)}
+
+
+@case_blueprint.route("/<cid>/report/attach_pdf", methods=['POST'])
+@login_required
+@admin_required
+def case_report_attach_pdf(cid):
+    """Save the generated PDF report as a file attached to the case"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+    if 'file' not in request.files or not request.files['file'].filename:
+        return {"message": "No PDF provided", "toast_class": "warning-subtle"}, 400
+
+    created_files = CaseModel.add_file_core(case, request.files, current_user)
+    if created_files:
+        fname = created_files[0].name
+        flowintel_log("audit", 200, "Case report attached as PDF",
+                      User=current_user.email, CaseId=cid, FileName=fname)
+        return {"message": f"Report '{fname}' attached to case", "toast_class": "success-subtle"}, 200
+    return {"message": "Failed to attach PDF", "toast_class": "danger-subtle"}, 400
