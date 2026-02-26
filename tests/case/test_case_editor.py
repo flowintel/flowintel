@@ -61,15 +61,13 @@ def test_complete_case(client):
     assert response.status_code == 200
     assert f"Case {case_id} completed".encode() in response.data
 
-# def test_create_template(client):
-#     create_response = create_case(client)
-#     case_id = create_response.json["case_id"]
-    
-#     response = client.post(f"/api/case/{case_id}/create_template", headers={"X-API-KEY": API_KEY},
-#                            json={"title_template": "Template from case editor"})
-#     assert response.status_code == 201
-#     assert response.json["template_id"] == 1
+def test_create_template(client):
+    create_response = create_case(client)
+    case_id = create_response.json["case_id"]
 
+    response = client.post(f"/api/case/{case_id}/create_template", headers={"X-API-KEY": API_KEY},
+                           json={"title_template": "Template from case editor"})
+    assert response.status_code == 403
 
 def test_case_recurring_once(client):
     create_response = create_case(client)
