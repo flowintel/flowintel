@@ -83,6 +83,7 @@ class EditTake(Resource):
 
                     if "message" not in verif_dict:
                         TaskModel.edit_task_core(verif_dict, tid, current_user)
+                        flowintel_log("audit", 200, "Task edited", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                         return {"message": f"Task {tid} edited"}, 200
 
                     return verif_dict, 400
@@ -123,6 +124,7 @@ class CompleteTask(Resource):
                     return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
                 
                 if TaskModel.complete_task(tid, current_user):
+                    flowintel_log("audit", 200, "Task completed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                     return {"message": f"Task {tid} completed"}, 200
                 return {"message": f"Error task {tid} completed"}, 400
             return {"message": "Permission denied"}, 403
@@ -180,6 +182,7 @@ class ModifNoteTask(Resource):
                         res = TaskModel.modif_note_core(tid, current_user, request.json["note"], request.json["note_id"])
                         if type(res) == dict:
                             return res, 400
+                        flowintel_log("audit", 200, "Task note modified", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                         return {"message": f"Note for task {tid} edited"}, 200
                     return {"message": "Need to pass a note"}, 400
                 return {"message": "Need to pass a note id"}, 400
@@ -204,6 +207,7 @@ class CreateNoteTask(Resource):
                     res = TaskModel.modif_note_core(tid, current_user, request.json["note"], '-1')
                     if type(res) == dict:
                         return res, 400
+                    flowintel_log("audit", 200, "Task note created", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                     return {"message": f"Note for task {tid} edited"}, 200
                 return {"message": "Need to pass a note"}, 400
             return {"message": "Permission denied"}, 403
@@ -221,6 +225,7 @@ class GetNoteTask(Resource):
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if "note_id" in request.args:
                     if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
+                        flowintel_log("audit", 200, "Task note deleted", User=current_user.email, CaseId=task.case_id, TaskId=tid, NoteId=request.args.get("note_id"))
                         return {"message": "Note deleted"}, 200
                 return {"message": "Need to pass a note id"}, 400
             return {"message": "Permission denied"}, 403
@@ -241,6 +246,7 @@ class AssignTask(Resource):
                     return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
                 
                 if TaskModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
+                    flowintel_log("audit", 200, "User assigned to task", User=current_user.email, CaseId=task.case_id, TaskId=tid, AssignedUser=current_user.email)
                     return {"message": f"Task Take"}, 200
                 return {"message": f"Error Task Take"}, 400
             return {"message": "Permission denied"}, 403
@@ -261,6 +267,7 @@ class RemoveOrgCase(Resource):
                     return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
                 
                 if TaskModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
+                    flowintel_log("audit", 200, "User removed from task assignment", User=current_user.email, CaseId=task.case_id, TaskId=tid, RemovedUser=current_user.email)
                     return {"message": f"Removed from assignment"}, 200
                 return {"message": f"Error Removed from assignment"}, 400
             return {"message": "Permission denied"}, 403
@@ -280,6 +287,7 @@ class AssignUsers(Resource):
                 users_list = request.json["users_id"]
                 for user in users_list:
                     TaskModel.assign_task(tid, user=user, current_user=current_user, flag_current_user=False)
+                flowintel_log("audit", 200, "Users assigned to task", User=current_user.email, CaseId=task.case_id, TaskId=tid, AssignedUsers=str(users_list))
                 return {"message": "Users Assigned"}, 200
             return {"message": "Permission denied"}, 403
         return {"message": "Task not found"}, 404
@@ -297,6 +305,7 @@ class RemoveAssignUser(Resource):
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 user_id = request.json["user_id"]
                 if TaskModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
+                    flowintel_log("audit", 200, "User removed from task assignment", User=current_user.email, CaseId=task.case_id, TaskId=tid, RemovedUserId=user_id)
                     return {"message": "User Removed from assignment"}, 200
                 return {"message": "Error removing user from assignment"}, 400
             return {"message": "Permission denied"}, 403
@@ -321,6 +330,7 @@ class ChangeStatus(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.change_task_status(request.json["status_id"], task, current_user):
+                    flowintel_log("audit", 200, "Task status changed", User=current_user.email, CaseId=task.case_id, TaskId=tid, StatusId=request.json["status_id"])
                     return {"message": "Status changed"}, 200
                 return {"message": "Error chnaging status"}, 400
             return {"message": "Permission denied"}, 403
@@ -570,6 +580,7 @@ class CreateSubtask(Resource):
                 if "description" in request.json:
                     subtask = TaskModel.create_subtask(tid, request.json["description"], current_user)
                     if subtask:
+                        flowintel_log("audit", 201, "Subtask created", User=current_user.email, CaseId=task.case_id, TaskId=tid, SubtaskId=subtask.id, SubtaskDescription=subtask.description)
                         return {"message": f"Subtask created, id: {subtask.id}", "subtask_id": subtask.id}, 201 
                 return {"message": "Need to pass 'description'"}, 400
             return {"message": "Permission denied"}, 403
@@ -590,6 +601,7 @@ class EditSubtask(Resource):
                 if "description" in request.json:
                     subtask = TaskModel.edit_subtask(tid, sid, request.json["description"], current_user)
                     if subtask:
+                        flowintel_log("audit", 200, "Subtask edited", User=current_user.email, CaseId=task.case_id, TaskId=tid, SubtaskId=sid, SubtaskDescription=request.json["description"])
                         return {"message": f"Subtask edited"}, 200 
                 return {"message": "Need to pass 'description'"}, 400
             return {"message": "Permission denied"}, 403
@@ -673,6 +685,7 @@ class CreateUrlTool(Resource):
                 if "name" in request.json:
                     url_tool = TaskModel.create_url_tool(tid, request.json["name"], current_user)
                     if url_tool:
+                        flowintel_log("audit", 201, "URL/Tool created for task", User=current_user.email, CaseId=task.case_id, TaskId=tid, UrlToolId=url_tool.id, UrlToolName=url_tool.name)
                         return {"message": f"Url/Tool created, id: {url_tool.id}", "url_tool_id": url_tool.id}, 201 
                 return {"message": "Need to pass 'name'"}, 400
             return {"message": "Permission denied"}, 403
@@ -693,6 +706,7 @@ class EditUrlTool(Resource):
                 if "name" in request.json:
                     url_tool = TaskModel.edit_url_tool(tid, sid, request.json["name"], current_user)
                     if url_tool:
+                        flowintel_log("audit", 200, "URL/Tool edited for task", User=current_user.email, CaseId=task.case_id, TaskId=tid, UrlToolId=sid, UrlToolName=request.json["name"])
                         return {"message": f"Url/Tool edited"}, 200 
                 return {"message": "Need to pass 'name'"}, 400
             return {"message": "Permission denied"}, 403
@@ -736,6 +750,7 @@ class DeleteUrlTool(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.delete_url_tool(tid, utid, current_user):
+                    flowintel_log("audit", 200, "URL/Tool deleted from task", User=current_user.email, CaseId=task.case_id, TaskId=tid, UrlToolId=utid)
                     return {"message": "Url/Tool deleted"}, 200
                 return {"message": "Url/Tool not found"}, 404
             return {"message": "Permission denied"}, 403
