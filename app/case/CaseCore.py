@@ -102,9 +102,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 tag = CommonModel.get_tag(tags)
                 
                 self.add_tag(tag, case.id)
-            for clusters in form_dict.get("clusters", []):
-                cluster = CommonModel.get_cluster_by_name(clusters)
-                if cluster:
+            seen_cluster_ids = set()
+            for cluster_name in form_dict.get("clusters", []):
+                cluster = CommonModel.get_cluster_by_name(cluster_name)
+                if cluster and cluster.id not in seen_cluster_ids:
+                    seen_cluster_ids.add(cluster.id)
                     self.add_cluster(cluster, case.id)
             
 

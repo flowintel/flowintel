@@ -699,13 +699,14 @@ def get_galaxies_case(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         clusters = CommonModel.get_case_clusters(cid)
         galaxies = []
+        seen_galaxy_ids = set()
         if clusters:
-            for cluster in clusters:
+            for i, cluster in enumerate(clusters):
                 loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
-                if not loc_g in galaxies:
+                if loc_g.id not in seen_galaxy_ids:
+                    seen_galaxy_ids.add(loc_g.id)
                     galaxies.append(loc_g.to_json())
-                index = clusters.index(cluster)
-                clusters[index] = cluster.to_json()
+                clusters[i] = cluster.to_json()
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
