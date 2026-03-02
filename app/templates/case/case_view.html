@@ -371,7 +371,8 @@
                     :case_id="cases_info.case.id"
                     :case_files_list="case_files_list"
                     :cases_info="cases_info"
-                    @files_change="(msg) => fetch_case_files()">
+                    @files_change="(msg) => fetch_case_files()"
+                    @note_change="(notes) => { cases_info.case.notes = notes }">
                 </casefiles>
             </div>
         </template>
