@@ -194,7 +194,7 @@ class GetOrgs(Resource):
         org = AdminModel.get_org(oid)
         if org:
             return org.to_json(), 200
-        return {"message", "Org not found"}, 404
+        return {"message": "Org not found"}, 404
 
 
 @admin_ns.route('/add_org')

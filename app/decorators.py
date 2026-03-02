@@ -13,22 +13,31 @@ def permission_required(perm):
         def decorated_function(*args, **kwargs):
             if perm == "admin":
                 if request.path.startswith("/api/"):
-                    user = get_user_api(request.headers["X-API-KEY"])
-                    if not user.is_admin():
+                    api_key = request.headers.get("X-API-KEY")
+                    if not api_key:
+                        abort(403)
+                    user = get_user_api(api_key)
+                    if not user or not user.is_admin():
                         abort(403)
                 elif not current_user.is_admin():
                     abort(403)
             elif perm == "admin_or_org_admin":
                 if request.path.startswith("/api/"):
-                    user = get_user_api(request.headers["X-API-KEY"])
-                    if not (user.is_admin() or user.is_org_admin()):
+                    api_key = request.headers.get("X-API-KEY")
+                    if not api_key:
+                        abort(403)
+                    user = get_user_api(api_key)
+                    if not user or not (user.is_admin() or user.is_org_admin()):
                         abort(403)
                 elif not (current_user.is_admin() or current_user.is_org_admin()):
                     abort(403)
             elif perm == "read_only":
                 if request.path.startswith("/api/"):
-                    user = get_user_api(request.headers["X-API-KEY"])
-                    if user.read_only():
+                    api_key = request.headers.get("X-API-KEY")
+                    if not api_key:
+                        abort(403)
+                    user = get_user_api(api_key)
+                    if not user or user.read_only():
                         abort(403)
                 elif current_user.read_only():
                     abort(403)

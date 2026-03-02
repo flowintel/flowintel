@@ -373,7 +373,7 @@ class Task_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     name = db.Column(db.String, index=True)
-    uuid = db.Column(db.String(36), index=True, default=str(uuid.uuid4()))
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
 
     def to_json(self):
         json_dict = {
