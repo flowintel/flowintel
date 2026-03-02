@@ -1733,9 +1733,9 @@ def case_report_generate(cid):
             badges = " ".join(_tag_badge(t['name'], t['color']) for t in case_tags_json)
             lines.append(f"**Tags:** {badges}")
 
-        custom_tags = CommonModel.get_case_custom_tags(case.id)
+        custom_tags = CommonModel.get_case_custom_tags_json(case.id)
         if custom_tags:
-            badges = " ".join(_tag_badge(ct.name, ct.color) for ct in custom_tags)
+            badges = " ".join(_tag_badge(ct['name'], ct['color']) for ct in custom_tags)
             lines.append(f"**Custom tags:** {badges}")
 
         clusters = CommonModel.get_case_clusters(cid)
