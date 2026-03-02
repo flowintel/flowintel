@@ -601,6 +601,7 @@ def create_note_template(request_json: dict, current_user: int) -> Note_Template
     content = request_json["content"]
     list_params = extract_variables(content)
     n = Note_Template_Model(
+        uuid=str(uuid.uuid4()),
         title=request_json["title"],
         description=request_json.get("description", ""),
         content = content,
@@ -622,24 +623,25 @@ def edit_content_note_template(note_id: int, request_json: dict) -> dict:
     note_template = get_note_template(note_id)
 
     note_template.content = content
-    note_template.params = {"list": list_params}
-    
-    # Increment version on every save
-    note_template.version = (note_template.version or 0) + 1
+    note_template.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+
+    existing_params = set(note_template.params.get("list", []) if note_template.params else [])
+    if set(list_params) != existing_params:
+        note_template.version = (note_template.version or 1) + 1
+        note_template.params = {"list": list_params}
 
     db.session.commit()
-    return {"version": note_template.version}
+    return {"version": note_template.version or 1}
 
 def edit_note_template(note_id: int, request_json: dict) -> dict:
     note_template = get_note_template(note_id)
 
     note_template.title = request_json["title"]
     note_template.description = request_json["description"]
-    # Increment version on save
-    note_template.version = (note_template.version or 0) + 1
+    note_template.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
 
     db.session.commit()
-    return {"version": note_template.version}
+    return {"version": note_template.version or 1}
 
 def delete_note_template(note_id: int) -> bool:
     note_template = get_note_template(note_id)
