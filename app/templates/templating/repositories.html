@@ -1,0 +1,641 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="case-core-style" style="border-radius: 0">
+    <div class="row align-items-center">
+        <div class="col-auto d-flex align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-code-branch me-2"></i>Central repository of templates</h5>
+            <button class="btn btn-primary btn-sm ms-3" type="button"
+                    title="Add a repository" data-bs-toggle="modal" data-bs-target="#repoFormModal"
+                    @click="openAdd">
+                <i class="fa-solid fa-plus fa-sm"></i>
+            </button>
+            <button class="btn btn-outline-secondary btn-sm ms-2" type="button"
+                    title="What does manifest.json look like?" data-bs-toggle="modal" data-bs-target="#manifestModal">
+                <i class="fa-solid fa-file-code fa-sm me-1"></i>manifest.json
+            </button>
+        </div>
+        <div class="col input-group w-auto">
+            <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
+            <input autocomplete="off" @input="onInput" type="search"
+                   class="form-control form-control-sm rounded"
+                   placeholder="Search by name or URL" />
+        </div>
+    </div>
+</div>
+
+<hr class="fading-line-2 mt-4 mb-4">
+
+<div class="case-core-style">
+    <div v-if="loading" class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading…</span>
+        </div>
+    </div>
+
+    <div v-else-if="filtered.length === 0" class="text-muted text-center py-4">
+        <i class="fa-solid fa-circle-info me-1"></i>No repositories configured yet.
+    </div>
+
+    <template v-else>
+        <div v-for="repo in filtered" :key="repo.id" class="list-group mb-3">
+
+            <!-- Header row -->
+            <div style="display: flex;"
+                 :style="{
+                     'border-top-left-radius':     '15px',
+                     'border-top-right-radius':    '15px',
+                     'border-bottom-left-radius':  expanded.has(repo.id) ? '0' : '15px',
+                     'border-bottom-right-radius': expanded.has(repo.id) ? '0' : '15px'
+                 }">
+
+                <!-- Clickable summary -->
+                <a class="list-group-item list-group-item-action case-index-list"
+                   style="cursor: pointer;"
+                   :style="{
+                       'border-bottom-left-radius': expanded.has(repo.id) ? '0' : '15px',
+                       'border-bottom':             expanded.has(repo.id) ? 'none' : ''
+                   }"
+                   @click="toggleExpand(repo)">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <h5 class="mb-1 fw-semibold" style="color: #2c3e50;">
+                            <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"
+                               :class="{'fa-angle-down': expanded.has(repo.id)}"></i>
+                            [[repo.name]]
+                            <span v-if="connectivity[repo.id] === 'ok'"
+                                  class="badge bg-success-subtle text-success border border-success-subtle ms-2 fw-normal small">
+                                <i class="fa-solid fa-circle-check me-1"></i>manifest.json valid
+                            </span>
+                            <span v-else-if="connectivity[repo.id] === 'error'"
+                                  class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2 fw-normal small">
+                                <i class="fa-solid fa-circle-xmark me-1"></i>manifest.json invalid
+                            </span>
+                            <span v-else-if="connectivity[repo.id] === 'checking'" class="ms-2">
+                                <span class="spinner-border spinner-border-sm text-secondary align-middle" role="status"></span>
+                            </span>
+                        </h5>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3 mt-1">
+                        <small class="text-muted">
+                            <i class="fa-solid fa-link fa-xs me-1"></i>
+                            <span class="text-truncate" style="max-width: 350px; display: inline-block; vertical-align: bottom;">[[repo.url]]</span>
+                        </small>
+                        <small v-if="repo.description" class="text-muted">
+                            <i class="fa-solid fa-align-left fa-xs me-1"></i>[[repo.description]]
+                        </small>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3 mt-1">
+                        <small v-if="repo.uuid" class="text-muted">
+                            <i class="fa-solid fa-fingerprint fa-xs me-1"></i><code class="small">[[repo.uuid]]</code>
+                        </small>
+                        <small v-if="repo.version != null" class="text-muted">
+                            <i class="fa-solid fa-tag fa-xs me-1"></i>v[[repo.version]]
+                        </small>
+                        <small class="text-muted">
+                            <i class="fa-solid fa-calendar fa-xs me-1"></i>Added [[repo.creation_date]]
+                        </small>
+                    </div>
+                </a>
+
+                <!-- Action buttons -->
+                <div class="d-flex flex-column"
+                     :style="{
+                         'border-bottom':              expanded.has(repo.id) ? 'none' : '',
+                         'border-bottom-right-radius': expanded.has(repo.id) ? '0' : '15px'
+                     }">
+                    <button class="btn btn-outline-secondary btn-sm flex-fill"
+                            :title="connectivity[repo.id] === 'ok'      ? 'manifest.json valid — click to recheck' :
+                                    connectivity[repo.id] === 'error'   ? 'Check failed — click to recheck' :
+                                    'Check manifest.json'"
+                            :disabled="connectivity[repo.id] === 'checking'"
+                            @click.stop="checkConnectivity(repo)">
+                        <span v-if="connectivity[repo.id] === 'checking'"
+                              class="spinner-border spinner-border-sm" role="status"></span>
+                        <i v-else class="fa-solid fa-tower-broadcast fa-fw"></i>
+                    </button>
+                    <button class="btn btn-outline-info btn-sm flex-fill"
+                            title="Refresh remote — fetch latest templates from the repository"
+                            :disabled="refreshing[repo.id]"
+                            @click.stop="refreshRemote(repo)">
+                        <span v-if="refreshing[repo.id]"
+                              class="spinner-border spinner-border-sm" role="status"></span>
+                        <i v-else class="fa-solid fa-arrows-rotate fa-fw"></i>
+                    </button>
+                    <button class="btn btn-primary btn-sm flex-fill"
+                            title="Edit repository"
+                            data-bs-toggle="modal" data-bs-target="#repoFormModal"
+                            @click.stop="openEdit(repo)">
+                        <i class="fa-solid fa-pen-to-square fa-fw"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm flex-fill"
+                            title="Delete repository"
+                            data-bs-toggle="modal" :data-bs-target="'#deleteModal_'+repo.id"
+                            @click.stop>
+                        <i class="fa-solid fa-trash fa-fw"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Accordion body -->
+            <div v-if="expanded.has(repo.id)"
+                 class="list-group-item"
+                 style="border-top: none; border-bottom-left-radius: 15px; border-bottom-right-radius: 15px; background-color: #f8f9fa; padding: 20px;">
+                <div class="row g-4">
+
+                    <!-- Case templates -->
+                    <div class="col-12 col-md-6">
+                        <h6 class="fw-semibold mb-3">
+                            <i class="fa-solid fa-folder-open me-2 text-primary"></i>Case templates
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-normal ms-1">[[dummyCaseTemplates.length]]</span>
+                        </h6>
+                        <div class="list-group list-group-flush border rounded overflow-hidden">
+                            <div v-for="tpl in dummyCaseTemplates" :key="tpl.uuid"
+                                 class="list-group-item bg-white px-3 py-2"
+                                 :class="{'border-start border-warning border-3': tpl.localNewer}">
+                                <div class="d-flex align-items-start justify-content-between gap-2">
+                                    <div class="overflow-hidden">
+                                        <div class="fw-semibold small text-truncate">[[tpl.name]]</div>
+                                        <div class="text-muted d-flex align-items-center gap-2 flex-wrap" style="font-size:0.7rem;">
+                                            <code class="text-truncate" style="max-width:180px;">[[tpl.uuid]]</code>
+                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-normal" style="font-size:0.65rem;">
+                                                <i class="fa-solid fa-cloud fa-xs me-1"></i>v[[tpl.version]]
+                                            </span>
+                                            <span v-if="tpl.local"
+                                                  class="badge fw-normal"
+                                                  :class="tpl.localNewer ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-success-subtle text-success border border-success-subtle'"
+                                                  style="font-size:0.65rem;">
+                                                <i class="fa-solid fa-hard-drive fa-xs me-1"></i>v[[tpl.localVersion]]
+                                            </span>
+                                        </div>
+                                        <div v-if="tpl.localNewer" class="mt-1 d-flex align-items-center gap-1" style="font-size:0.7rem;">
+                                            <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+                                            <span class="text-warning-emphasis">Local copy (v[[tpl.localVersion]]) is newer than remote (v[[tpl.version]]). Refreshing will overwrite it.</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                        <span v-if="tpl.localNewer"
+                                              class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-normal"
+                                              style="font-size:0.65rem;">
+                                            <i class="fa-solid fa-arrow-up fa-xs me-1"></i>Local newer
+                                        </span>
+                                        <span v-else-if="tpl.local"
+                                              class="badge bg-success-subtle text-success border border-success-subtle fw-normal"
+                                              style="font-size:0.65rem;">
+                                            <i class="fa-solid fa-circle-check me-1"></i>Local
+                                        </span>
+                                        <span v-else
+                                              class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-normal"
+                                              style="font-size:0.65rem;">
+                                            <i class="fa-solid fa-circle-xmark me-1"></i>Not local
+                                        </span>
+                                        <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                title="View remote template">
+                                            <i class="fa-solid fa-eye fa-xs"></i>
+                                        </button>
+                                        <button v-if="tpl.localNewer"
+                                                class="btn btn-outline-warning btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                :title="'Refresh from remote — your local v' + tpl.localVersion + ' will be overwritten by v' + tpl.version">
+                                            <i class="fa-solid fa-arrows-rotate fa-xs"></i>
+                                        </button>
+                                        <button v-else-if="tpl.local"
+                                                class="btn btn-outline-primary btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                title="Refresh local copy">
+                                            <i class="fa-solid fa-arrows-rotate fa-xs"></i>
+                                        </button>
+                                        <button v-else
+                                                class="btn btn-outline-success btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                title="Import from remote">
+                                            <i class="fa-solid fa-cloud-arrow-down fa-xs me-1"></i>Import
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Task templates -->
+                    <div class="col-12 col-md-6">
+                        <h6 class="fw-semibold mb-3">
+                            <i class="fa-solid fa-list-check me-2 text-primary"></i>Task templates
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-normal ms-1">[[dummyTaskTemplates.length]]</span>
+                        </h6>
+                        <div class="list-group list-group-flush border rounded overflow-hidden">
+                            <div v-for="tpl in dummyTaskTemplates" :key="tpl.uuid"
+                                 class="list-group-item bg-white px-3 py-2"
+                                 :class="{'border-start border-warning border-3': tpl.localNewer}">
+                                <div class="d-flex align-items-start justify-content-between gap-2">
+                                    <div class="overflow-hidden">
+                                        <div class="fw-semibold small text-truncate">[[tpl.name]]</div>
+                                        <div class="text-muted d-flex align-items-center gap-2 flex-wrap" style="font-size:0.7rem;">
+                                            <code class="text-truncate" style="max-width:180px;">[[tpl.uuid]]</code>
+                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-normal" style="font-size:0.65rem;">
+                                                <i class="fa-solid fa-cloud fa-xs me-1"></i>v[[tpl.version]]
+                                            </span>
+                                            <span v-if="tpl.local"
+                                                  class="badge fw-normal"
+                                                  :class="tpl.localNewer ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-success-subtle text-success border border-success-subtle'"
+                                                  style="font-size:0.65rem;">
+                                                <i class="fa-solid fa-hard-drive fa-xs me-1"></i>v[[tpl.localVersion]]
+                                            </span>
+                                        </div>
+                                        <div v-if="tpl.localNewer" class="mt-1 d-flex align-items-center gap-1" style="font-size:0.7rem;">
+                                            <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+                                            <span class="text-warning-emphasis">Local copy (v[[tpl.localVersion]]) is newer than remote (v[[tpl.version]]). Refreshing will overwrite it.</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                        <span v-if="tpl.localNewer"
+                                              class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-normal"
+                                              style="font-size:0.65rem;">
+                                            <i class="fa-solid fa-arrow-up fa-xs me-1"></i>Local newer
+                                        </span>
+                                        <span v-else-if="tpl.local"
+                                              class="badge bg-success-subtle text-success border border-success-subtle fw-normal"
+                                              style="font-size:0.65rem;">
+                                            <i class="fa-solid fa-circle-check me-1"></i>Local
+                                        </span>
+                                        <span v-else
+                                              class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-normal"
+                                              style="font-size:0.65rem;">
+                                            <i class="fa-solid fa-circle-xmark me-1"></i>Not local
+                                        </span>
+                                        <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                title="View remote template">
+                                            <i class="fa-solid fa-eye fa-xs"></i>
+                                        </button>
+                                        <button v-if="tpl.localNewer"
+                                                class="btn btn-outline-warning btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                :title="'Refresh from remote — your local v' + tpl.localVersion + ' will be overwritten by v' + tpl.version">
+                                            <i class="fa-solid fa-arrows-rotate fa-xs"></i>
+                                        </button>
+                                        <button v-else-if="tpl.local"
+                                                class="btn btn-outline-primary btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                title="Refresh local copy">
+                                            <i class="fa-solid fa-arrows-rotate fa-xs"></i>
+                                        </button>
+                                        <button v-else
+                                                class="btn btn-outline-success btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                title="Import from remote">
+                                            <i class="fa-solid fa-cloud-arrow-down fa-xs me-1"></i>Import
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </template>
+
+    <!-- Delete confirmation modals (keyed off full repos list so they survive search filtering) -->
+    <template v-if="!loading" v-for="repo in repos" :key="'del_'+repo.id">
+        <div class="modal fade" :id="'deleteModal_'+repo.id" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fa-solid fa-triangle-exclamation text-danger me-2"></i>
+                            Delete repository?
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        Are you sure you want to delete <strong>[[repo.name]]</strong>?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" @click="deleteRepo(repo)">
+                            <i class="fa-solid fa-trash me-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+<!-- Add / Edit modal -->
+<div class="modal fade" id="repoFormModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-code-branch me-2"></i>
+                    [[ editTarget ? 'Edit repository' : 'Add repository' ]]
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="repo-name">
+                        Name <span class="text-danger">*</span>
+                    </label>
+                    <input id="repo-name" type="text" class="form-control" v-model="form.name"
+                           placeholder="e.g. Flowintel community templates" maxlength="256" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="repo-url">
+                        URL <span class="text-danger">*</span>
+                    </label>
+                    <input id="repo-url" type="url" class="form-control" v-model="form.url"
+                           placeholder="https://github.com/org/repo" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="repo-manifest-url">Manifest URL</label>
+                    <div class="input-group">
+                        <button class="btn btn-outline-secondary" type="button" @click="convertToRaw" title="Convert repository URL to raw manifest URL (GitHub / GitLab)">
+                            <i class="fa-solid fa-wand-magic-sparkles fa-sm me-1"></i>Convert to raw
+                        </button>
+                        <input id="repo-manifest-url" type="url" class="form-control" v-model="form.manifest_url"
+                               placeholder="https://raw.githubusercontent.com/…/manifest.json" />
+                    </div>
+                    <div class="form-text">
+                        Direct URL to the raw <code>manifest.json</code> file in the repository.
+                        Click <em>Convert to raw</em> to auto-fill from the repository URL above.
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="repo-uuid">UUID</label>
+                    <input id="repo-uuid" type="text" class="form-control bg-light"
+                           :value="editTarget ? editTarget.uuid : ''"
+                           readonly
+                           :placeholder="editTarget ? '' : 'Will be fetched from the repository manifest'" />
+                    <div class="form-text">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        The UUID is read from the <code>manifest.json</code> file in the remote repository and cannot be set manually.
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label fw-semibold" for="repo-desc">Description</label>
+                    <textarea id="repo-desc" class="form-control" rows="3"
+                              v-model="form.description"
+                              placeholder="Short description of this repository"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" :disabled="saving" @click="saveRepo">
+                    <span v-if="saving" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    [[ editTarget ? 'Save changes' : 'Add repository' ]]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manifest info modal -->
+<div class="modal fade" id="manifestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-file-code me-2"></i>manifest.json &mdash; repository manifest format
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Each remote repository must contain a <code>manifest.json</code> file at its root.
+                    Flowintel reads this file when you add or refresh a repository.
+                </p>
+                <pre class="rounded p-3 mb-0" style="background:#f6f8fa; font-size:0.85rem; border: 1px solid #dee2e6;">{{ manifest_json | safe }}</pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, ref, computed, onMounted, reactive } = Vue
+    import { message_list } from '/static/js/toaster.js'
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const repos       = ref([])
+            const loading     = ref(true)
+            const saving      = ref(false)
+            const searchQuery = ref('')
+            const editTarget  = ref(null)
+            const form        = ref({ name: '', url: '', description: '', manifest_url: '' })
+
+            // ── Placeholder template data (replaced by actual remote data after refresh) ─────
+            const dummyCaseTemplates = [
+                { uuid: 'a1b2c3d4-0001-4000-8000-000000000001', name: 'Phishing Investigation',  version: '1.2.0', local: true,  localVersion: '1.2.0', localNewer: false },
+                { uuid: 'a1b2c3d4-0002-4000-8000-000000000002', name: 'Ransomware Response',      version: '2.0.1', local: false, localVersion: null,    localNewer: false },
+                { uuid: 'a1b2c3d4-0003-4000-8000-000000000003', name: 'Insider Threat Analysis',  version: '1.0.3', local: true,  localVersion: '1.1.0', localNewer: true  },
+                { uuid: 'a1b2c3d4-0004-4000-8000-000000000004', name: 'Data Breach Assessment',   version: '1.1.0', local: false, localVersion: null,    localNewer: false },
+                { uuid: 'a1b2c3d4-0005-4000-8000-000000000005', name: 'Supply Chain Attack',      version: '1.0.0', local: true,  localVersion: '1.2.1', localNewer: true  },
+                { uuid: 'a1b2c3d4-0006-4000-8000-000000000006', name: 'Cloud Misconfiguration',   version: '2.0.0', local: true,  localVersion: '2.0.0', localNewer: false },
+            ]
+            const dummyTaskTemplates = [
+                { uuid: 'b2c3d4e5-0001-4000-8000-000000000001', name: 'Initial Triage',            version: '1.0.0', local: true,  localVersion: '1.0.0', localNewer: false },
+                { uuid: 'b2c3d4e5-0002-4000-8000-000000000002', name: 'Evidence Collection',       version: '1.3.2', local: false, localVersion: null,    localNewer: false },
+                { uuid: 'b2c3d4e5-0003-4000-8000-000000000003', name: 'Stakeholder Notification',  version: '2.1.0', local: true,  localVersion: '2.3.0', localNewer: true  },
+                { uuid: 'b2c3d4e5-0004-4000-8000-000000000004', name: 'Post-Incident Review',      version: '1.0.5', local: false, localVersion: null,    localNewer: false },
+                { uuid: 'b2c3d4e5-0005-4000-8000-000000000005', name: 'Malware Analysis',          version: '1.1.0', local: true,  localVersion: '1.1.0', localNewer: false },
+            ]
+
+            // connectivity[repo.id]: undefined | 'checking' | 'ok' | 'error'
+            const connectivity = reactive({})
+            // refreshing[repo.id]: boolean
+            const refreshing   = reactive({})
+            // expanded: Set of repo IDs whose accordion is open
+            const expanded     = ref(new Set())
+
+            // ── Filtered list ────────────────────────────────────────────────
+            const filtered = computed(() => {
+                const q = searchQuery.value.trim().toLowerCase()
+                if (!q) return repos.value
+                return repos.value.filter(r =>
+                    r.name.toLowerCase().includes(q) ||
+                    r.url.toLowerCase().includes(q) ||
+                    (r.description || '').toLowerCase().includes(q)
+                )
+            })
+
+            // ── Load ─────────────────────────────────────────────────────────
+            async function fetchRepos() {
+                loading.value = true
+                try {
+                    const res  = await fetch('/templating/repositories/list')
+                    const data = await res.json()
+                    repos.value = data.repositories
+                } finally {
+                    loading.value = false
+                }
+            }
+
+            // ── Accordion ────────────────────────────────────────────────────
+            function toggleExpand(repo) {
+                const s = new Set(expanded.value)
+                s.has(repo.id) ? s.delete(repo.id) : s.add(repo.id)
+                expanded.value = s
+            }
+
+            // ── Connectivity check ────────────────────────────────────────────
+            async function checkConnectivity(repo) {
+                connectivity[repo.id] = 'checking'
+                try {
+                    const res  = await fetch(`/templating/repositories/${repo.id}/check`)
+                    const data = await res.json()
+                    if (!data.reachable) {
+                        connectivity[repo.id] = 'error'
+                        const detail = data.status_code ? ` (HTTP ${data.status_code})` : (data.error ? `: ${data.error}` : '')
+                        message_list.value.push({ message: `${repo.name} — Unreachable${detail}`, toast_class: 'danger-subtle' })
+                    } else if (!data.valid) {
+                        connectivity[repo.id] = 'error'
+                        const reason = data.error || (data.missing_keys?.length ? `missing fields: ${data.missing_keys.join(', ')}` : 'invalid manifest')
+                        message_list.value.push({ message: `${repo.name} — manifest.json invalid (${reason})`, toast_class: 'warning-subtle' })
+                    } else {
+                        connectivity[repo.id] = 'ok'
+                        const url_shown = data.manifest_url ? ` (${data.manifest_url})` : ''
+                        let version_info = ''
+                        if (data.remote_version != null) {
+                            if (data.local_version == null) {
+                                version_info = ` — remote v${data.remote_version} (not synced yet, click refresh)`
+                            } else if (data.remote_version > data.local_version) {
+                                version_info = ` — update available: v${data.local_version} → v${data.remote_version}`
+                            } else {
+                                version_info = ` — v${data.remote_version} (up to date)`
+                            }
+                        }
+                        message_list.value.push({ message: `${repo.name} — manifest.json valid${version_info}${url_shown}`, toast_class: 'success-subtle' })
+                    }
+                } catch (e) {
+                    connectivity[repo.id] = 'error'
+                    message_list.value.push({ message: `Could not reach ${repo.name}`, toast_class: 'danger-subtle' })
+                }
+            }
+
+            // ── Refresh remote ────────────────────────────────────────────────
+            async function refreshRemote(repo) {
+                refreshing[repo.id] = true
+                try {
+                    const res  = await fetch(`/templating/repositories/${repo.id}/refresh`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': $('#csrf_token').val() }
+                    })
+                    const data = await res.json()
+                    if (res.ok && data.repository) {
+                        const idx = repos.value.findIndex(r => r.id === repo.id)
+                        if (idx !== -1) repos.value.splice(idx, 1, data.repository)
+                    }
+                    message_list.value.push({ message: data.message, toast_class: data.toast_class })
+                } finally {
+                    refreshing[repo.id] = false
+                }
+            }
+
+            // ── Add / Edit modal ──────────────────────────────────────────────
+            // ── Convert repo URL to raw manifest URL ─────────────────────────────
+            function convertToRaw() {
+                const raw = form.value.url.trim().replace(/\/$/, '')
+                if (!raw) return
+                try {
+                    const u = new URL(raw)
+                    if (u.hostname === 'github.com') {
+                        form.value.manifest_url = `https://raw.githubusercontent.com${u.pathname}/refs/heads/main/manifest.json`
+                    } else {
+                        form.value.manifest_url = `${u.origin}${u.pathname}/-/raw/main/manifest.json`
+                    }
+                } catch {
+                    // url not valid yet — ignore
+                }
+            }
+
+            function openAdd() {
+                editTarget.value = null
+                form.value = { name: '', url: '', description: '', manifest_url: '' }
+            }
+
+            function openEdit(repo) {
+                editTarget.value = repo
+                form.value = { name: repo.name, url: repo.url, description: repo.description || '', manifest_url: repo.manifest_url || '' }
+            }
+
+            async function saveRepo() {
+                const name = form.value.name.trim()
+                const url  = form.value.url.trim()
+                if (!name || !url) {
+                    message_list.value.push({ message: 'Name and URL are required.', toast_class: 'warning-subtle' })
+                    return
+                }
+                saving.value = true
+                try {
+                    const payload  = { name, url, description: form.value.description.trim() || null, manifest_url: form.value.manifest_url.trim() || null }
+                    const endpoint = editTarget.value
+                        ? `/templating/repositories/${editTarget.value.id}/edit`
+                        : '/templating/repositories/add'
+                    const res  = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': $('#csrf_token').val() },
+                        body: JSON.stringify(payload)
+                    })
+                    const data = await res.json()
+                    if (res.ok) {
+                        if (editTarget.value) {
+                            const idx = repos.value.findIndex(r => r.id === editTarget.value.id)
+                            if (idx !== -1) repos.value.splice(idx, 1, data.repository)
+                        } else {
+                            repos.value.push(data.repository)
+                            repos.value.sort((a, b) => a.name.localeCompare(b.name))
+                        }
+                        bootstrap.Modal.getInstance(document.getElementById('repoFormModal')).hide()
+                    }
+                    message_list.value.push({ message: data.message, toast_class: data.toast_class })
+                } finally {
+                    saving.value = false
+                }
+            }
+
+            // ── Delete ────────────────────────────────────────────────────────
+            async function deleteRepo(repo) {
+                const res  = await fetch(`/templating/repositories/${repo.id}/delete`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': $('#csrf_token').val() }
+                })
+                const data = await res.json()
+                if (res.ok) {
+                    const idx = repos.value.findIndex(r => r.id === repo.id)
+                    if (idx !== -1) repos.value.splice(idx, 1)
+                    const modal = bootstrap.Modal.getInstance(document.getElementById(`deleteModal_${repo.id}`))
+                    if (modal) modal.hide()
+                }
+                message_list.value.push({ message: data.message, toast_class: data.toast_class })
+            }
+
+            // ── Search ────────────────────────────────────────────────────────
+            function onInput(e) { searchQuery.value = e.target.value }
+
+            onMounted(fetchRepos)
+
+            return {
+                message_list,
+                repos, filtered, loading, saving,
+                form, editTarget,
+                connectivity, refreshing, expanded,
+                dummyCaseTemplates, dummyTaskTemplates,
+                toggleExpand, checkConnectivity, refreshRemote, convertToRaw,
+                openAdd, openEdit, saveRepo, deleteRepo,
+                onInput
+            }
+        }
+    }).mount('#main-container')
+</script>
+{% endblock %}

@@ -1274,6 +1274,30 @@ class Note_Template_Model(db.Model):
 
         return json_dict
 
+
+class Template_Repository(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True, unique=True, default=lambda: str(uuid.uuid4()))
+    name = db.Column(db.String(256), index=True)
+    description = db.Column(db.String)
+    url = db.Column(db.String(512))
+    manifest_url = db.Column(db.String(512))
+    version = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "uuid": self.uuid,
+            "name": self.name,
+            "description": self.description,
+            "url": self.url,
+            "manifest_url": self.manifest_url,
+            "version": self.version,
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
+        }
+
+
 class Case_Note_Template_Model(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)

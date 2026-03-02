@@ -1,5 +1,7 @@
 import ast
-from flask import Blueprint, render_template, redirect, jsonify, request, flash
+import json
+import requests
+from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 from flask_login import login_required, current_user
 from .TemplateCase import TemplateModel
 from . import common_template_core as CommonModel
@@ -11,6 +13,8 @@ from ..utils.formHelper import prepare_tags
 from ..case import common_core as CommonCaseModel
 from ..case.common_core import get_instance_with_icon
 from ..utils.logger import flowintel_log
+from ..db_class.db import Template_Repository
+from .. import db
 
 templating_blueprint = Blueprint(
     'templating',
@@ -725,3 +729,198 @@ def delete_url_tool(tid, utid):
             return {"message": "Url/Tool deleted", 'toast_class': "success-subtle", "icon": "fas fa-trash"}, 200 
         return {"message": "Url/Tool not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+##########
+# Repositories
+##########
+
+@templating_blueprint.route("/repositories/<int:rid>/check", methods=['GET'])
+@login_required
+@template_editor_required
+def repository_check(rid):
+    """Fetch the remote manifest.json and validate its structure."""
+    repo = Template_Repository.query.get(rid)
+    if not repo:
+        return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
+
+    manifest_url = repo.manifest_url
+    if not manifest_url:
+        return {"reachable": False, "error": "No manifest URL configured for this repository"}, 200
+    try:
+        r = requests.get(manifest_url, timeout=8, allow_redirects=True)
+    except Exception as exc:
+        flowintel_log("audit", 200, "Template repository connectivity check failed",
+                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, Error=str(exc))
+        return {"reachable": False, "error": str(exc)}, 200
+
+    if r.status_code >= 400:
+        flowintel_log("audit", 200, "Template repository connectivity check failed",
+                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, StatusCode=r.status_code)
+        return {"reachable": False, "status_code": r.status_code}, 200
+
+    try:
+        manifest = r.json()
+    except Exception:
+        flowintel_log("audit", 200, "Template repository manifest not valid JSON",
+                      User=current_user.email, RepositoryId=repo.id, Name=repo.name)
+        return {"reachable": True, "valid": False, "error": "manifest.json is not valid JSON"}, 200
+
+    required_keys = {"name", "description", "uuid", "version"}
+    missing = required_keys - set(manifest.keys())
+    valid = not missing
+    flowintel_log("audit", 200, "Template repository connectivity check",
+                  User=current_user.email, RepositoryId=repo.id, Name=repo.name, Valid=valid)
+    return {
+        "reachable": True, "valid": valid, "missing_keys": sorted(missing),
+        "manifest": manifest, "manifest_url": manifest_url,
+        "local_version": repo.version, "remote_version": manifest.get("version"),
+    }, 200
+
+
+@templating_blueprint.route("/repositories/<int:rid>/refresh", methods=['POST'])
+@login_required
+@template_editor_required
+def repository_refresh(rid):
+    repo = Template_Repository.query.get(rid)
+    if not repo:
+        return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
+
+    manifest_url = repo.manifest_url
+    if not manifest_url:
+        return {"message": "No manifest URL configured for this repository", "toast_class": "warning-subtle"}, 200
+
+    try:
+        r = requests.get(manifest_url, timeout=8, allow_redirects=True)
+        r.raise_for_status()
+        manifest = r.json()
+    except Exception as exc:
+        flowintel_log("audit", 200, "Template repository refresh failed",
+                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, Error=str(exc))
+        return {"message": f"Could not fetch manifest.json: {exc}", "toast_class": "danger-subtle"}, 200
+
+    required_keys = {"name", "description", "uuid", "version"}
+    missing = required_keys - set(manifest.keys())
+    if missing:
+        flowintel_log("audit", 200, "Template repository refresh failed — invalid manifest",
+                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, MissingKeys=sorted(missing))
+        return {"message": f"manifest.json is missing required fields: {', '.join(sorted(missing))}", "toast_class": "warning-subtle"}, 200
+
+    # Diff old values against the incoming manifest
+    new_name = (manifest["name"] or "").strip() or repo.name
+    new_description = (manifest["description"] or "").strip() or None
+    new_version = manifest.get("version")
+
+    changes = []
+    if new_name != repo.name:
+        changes.append(f'name: "{repo.name}" → "{new_name}"')
+        repo.name = new_name
+    if new_description != repo.description:
+        old_desc = repo.description or "(none)"
+        new_desc = new_description or "(none)"
+        changes.append(f'description: "{old_desc}" → "{new_desc}"')
+        repo.description = new_description
+    if new_version != repo.version:
+        changes.append(f'version: {repo.version} → {new_version}')
+        repo.version = new_version
+
+    if not changes:
+        flowintel_log("audit", 200, "Template repository refresh — already up to date",
+                      User=current_user.email, RepositoryId=repo.id, Name=repo.name)
+        return {"message": f"'{repo.name}' is already up to date", "toast_class": "success-subtle",
+                "repository": repo.to_json()}, 200
+
+    db.session.commit()
+    change_summary = ", ".join(changes)
+    flowintel_log("audit", 200, "Template repository refreshed from remote manifest",
+                  User=current_user.email, RepositoryId=repo.id, Name=repo.name, Changes=change_summary)
+    return {"message": f"'{repo.name}' updated — {change_summary}", "toast_class": "success-subtle",
+            "repository": repo.to_json()}, 200
+
+
+@templating_blueprint.route("/repositories", methods=['GET'])
+@login_required
+@template_editor_required
+def repositories_index():
+    """View all central template repositories."""
+    manifest_json = json.dumps(current_app.config.get("REPOSITORY_MANIFEST", {}), indent=4)
+    return render_template("templating/repositories.html", manifest_json=manifest_json)
+
+
+@templating_blueprint.route("/repositories/list", methods=['GET'])
+@login_required
+@template_editor_required
+def repositories_list():
+    """Return all repositories as JSON."""
+    repos = Template_Repository.query.order_by(Template_Repository.name).all()
+    return {"repositories": [r.to_json() for r in repos]}, 200
+
+
+@templating_blueprint.route("/repositories/add", methods=['POST'])
+@login_required
+@template_editor_required
+def repository_add():
+    """Create a new template repository."""
+    data = request.json or {}
+    name = (data.get("name") or "").strip()
+    url = (data.get("url") or "").strip()
+    if not name or not url:
+        return {"message": "Name and URL are required", "toast_class": "warning-subtle"}, 400
+
+    repo = Template_Repository(
+        name=name,
+        description=(data.get("description") or "").strip() or None,
+        url=url,
+        manifest_url=(data.get("manifest_url") or "").strip() or None,
+        version=data.get("version") if isinstance(data.get("version"), int) else None,
+    )
+    db.session.add(repo)
+    db.session.commit()
+    flowintel_log("audit", 201, "Template repository added",
+                  User=current_user.email, RepositoryId=repo.id, Name=name)
+    return {"message": f"Repository '{name}' added", "toast_class": "success-subtle",
+            "repository": repo.to_json()}, 201
+
+
+@templating_blueprint.route("/repositories/<int:rid>/edit", methods=['POST'])
+@login_required
+@template_editor_required
+def repository_edit(rid):
+    """Edit an existing template repository."""
+    repo = Template_Repository.query.get(rid)
+    if not repo:
+        return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
+
+    data = request.json or {}
+    name = (data.get("name") or "").strip()
+    url = (data.get("url") or "").strip()
+    if not name or not url:
+        return {"message": "Name and URL are required", "toast_class": "warning-subtle"}, 400
+
+    repo.name = name
+    repo.description = (data.get("description") or "").strip() or None
+    repo.url = url
+    repo.manifest_url = (data.get("manifest_url") or "").strip() or None
+    repo.version = data.get("version") if isinstance(data.get("version"), int) else repo.version
+    db.session.commit()
+    flowintel_log("audit", 200, "Template repository edited",
+                  User=current_user.email, RepositoryId=repo.id, Name=name)
+    return {"message": f"Repository '{name}' edited", "toast_class": "success-subtle",
+            "repository": repo.to_json()}, 200
+
+
+@templating_blueprint.route("/repositories/<int:rid>/delete", methods=['POST'])
+@login_required
+@template_editor_required
+def repository_delete(rid):
+    """Delete a template repository."""
+    repo = Template_Repository.query.get(rid)
+    if not repo:
+        return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
+
+    name = repo.name
+    db.session.delete(repo)
+    db.session.commit()
+    flowintel_log("audit", 200, "Template repository deleted",
+                  User=current_user.email, RepositoryId=rid, Name=name)
+    return {"message": f"Repository '{name}' deleted", "toast_class": "success-subtle"}, 200
