@@ -34,6 +34,7 @@ export default {
 		const editor_list = ref({})
 		const md = window.markdownit()
 		md.use(mermaidMarkdown.default)
+		const dayjs = window.dayjs
 
 		Vue.onMounted(async () => {
 			if (props.template.notes.length) {
@@ -306,6 +307,7 @@ export default {
 			can_manage_templates,
 			note_editor_render,
 			md,
+			dayjs,
 			getTextColor,
 			mapIcon,
 			truncateText,
@@ -337,6 +339,23 @@ export default {
 		>        
             <div class="d-flex w-100 justify-content-between">
                 <h5 class="mb-1"><i class="fa-solid fa-clipboard-list fa-sm me-2"></i>[[ key_loop+1 ]]-[[ template.title ]]</h5>
+            </div>
+            <div class="case-meta-grid" style="margin-bottom: 4px;">
+                <div class="case-meta-item" v-if="template.last_modif" :title="'Modified: ' + template.last_modif">
+                    <i class="fa-solid fa-clock-rotate-left fa-fw"></i>
+                    <span class="meta-label">Modified</span>
+                    <span class="meta-value">[[ dayjs.utc(template.last_modif).fromNow() ]]</span>
+                </div>
+                <div class="case-meta-item" v-if="template.uuid" :title="template.uuid">
+                    <i class="fa-solid fa-fingerprint fa-fw"></i>
+                    <span class="meta-label">UUID</span>
+                    <span class="meta-value" style="font-family: monospace; font-size: 0.8em;">[[template.uuid]]</span>
+                </div>
+                <div class="case-meta-item" v-if="template.version">
+                    <i class="fa-solid fa-code-branch fa-fw"></i>
+                    <span class="meta-label">Version</span>
+                    <span class="meta-value">v[[template.version]]</span>
+                </div>
             </div>
             <div class="d-flex w-100 justify-content-between">
                 <template v-if="template.description">

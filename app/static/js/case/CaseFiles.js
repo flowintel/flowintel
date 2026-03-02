@@ -7,7 +7,7 @@ export default {
 		case_files_list: Array,
 		cases_info: Object
 	},
-	emits: ['files_change'],
+	emits: ['files_change', 'note_change'],
 	setup(props, { emit }) {
 		async function add_file() {
 			// Add file to the case
@@ -47,9 +47,27 @@ export default {
 			await display_toast(res)
 		}
 
+		async function convert_to_note(file) {
+			if (!confirm('Convert "' + file.name + '" to a case note?')) {
+				return
+			}
+			const res = await fetch('/case/' + props.case_id + '/convert_case_file_to_note/' + file.id, {
+				headers: { "X-CSRFToken": $("#csrf_token").val() },
+				method: "POST"
+			})
+			if (res.status == 200) {
+				let loc = await res.clone().json()
+				if (loc.notes !== undefined) {
+					emit('note_change', loc.notes)
+				}
+			}
+			await display_toast(res)
+		}
+
 		return {
 			add_file,
-			delete_file
+			delete_file,
+			convert_to_note
 		}
 	},
 	template: `
@@ -83,6 +101,15 @@ export default {
                             <td><template v-if="file.file_size !== 'Unknown'">[[ (file.file_size / 1024).toFixed(2) ]] KB</template><template v-else>Unknown</template></td>
                             <td>[[ file.file_type ]]</td>
                             <td v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                                <button v-if="file.name.toLowerCase().endsWith('.txt') || file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.json')"
+                                        class="btn btn-primary btn-sm me-1"
+                                        @click="convert_to_note(file)"
+                                        title="Attempt to convert TXT, CSV or JSON to a case note">
+                                    <i class="fa-solid fa-file-export"></i>
+                                </button>
+                                <span v-else class="btn btn-sm me-1" style="visibility: hidden;">
+                                    <i class="fa-solid fa-file-export"></i>
+                                </span>
                                 <button class="btn btn-danger btn-sm" @click="delete_file(file)" title="Delete file">
                                     <i class="fa-solid fa-trash"></i>
                                 </button>

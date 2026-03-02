@@ -646,18 +646,20 @@ def get_galaxies_task(tid):
         
         clusters = CommonModel.get_task_clusters(tid)
         galaxies = []
+        seen_galaxy_ids = set()
         if clusters:
-            for cluster in clusters:
+            for i, cluster in enumerate(clusters):
                 loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
-                if not loc_g in galaxies:
+                if loc_g.id not in seen_galaxy_ids:
+                    seen_galaxy_ids.add(loc_g.id)
                     galaxies.append(loc_g.to_json())
-                index = clusters.index(cluster)
-                clusters[index] = cluster.to_json()
+                clusters[i] = cluster.to_json()
         
         # Galaxy without cluster
         loc_galax = CommonModel.get_task_galaxies(tid)
         for loc_g in loc_galax:
-            if not loc_g.to_json() in galaxies:
+            if loc_g.id not in seen_galaxy_ids:
+                seen_galaxy_ids.add(loc_g.id)
                 galaxies.append(loc_g.to_json())
 
         return {"clusters": clusters, "galaxies": galaxies}
@@ -1125,10 +1127,9 @@ def add_connector(tid):
             flowintel_log("audit", 403, "Add connector denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
             return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
         
-        if "connectors" in request.json:
-            if TaskModel.add_connector(tid, request.json, current_user):
-                flowintel_log("audit", 200, "Connector added to task", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+        if "connectors" in request.json and TaskModel.add_connector(tid, request.json, current_user):
+            flowintel_log("audit", 200, "Connector added to task", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+            return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
     if not task:
         return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404

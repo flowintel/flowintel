@@ -21,6 +21,8 @@ export default {
 		const md = window.markdownit()
 		md.use(mermaidMarkdown.default)
 
+		const dayjs = window.dayjs
+
 		let content_editor = null
 
 		onMounted(async () => {
@@ -88,7 +90,7 @@ export default {
 			})
 
 			if (await res.status == 200) {
-				let loc = await res.json()
+				let loc = await res.clone().json()
 				props.note_template.content = content_text
 				props.note_template.version = loc.version
 				edit_mode.value = false
@@ -104,6 +106,7 @@ export default {
 
 		return {
 			md,
+			dayjs,
 			temp_content,
 			edit_mode,
 			delete_note_template,
@@ -130,13 +133,22 @@ export default {
 				<pre class="description">[[ note_template.description ]]</pre>
 			</div>
 
-			<div class="d-flex w-100 justify-content-between mt-2">
-				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
-					<i>Version: [[note_template.version]]</i>
-				</span>
-				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
-					<i>UUID: [[note_template.uuid]]</i>
-				</span>
+			<div class="case-meta-grid" style="margin-bottom: 4px;">
+				<div class="case-meta-item" v-if="note_template.last_modif" :title="'Modified: ' + note_template.last_modif">
+					<i class="fa-solid fa-clock-rotate-left fa-fw"></i>
+					<span class="meta-label">Modified</span>
+					<span class="meta-value">[[ dayjs.utc(note_template.last_modif).fromNow() ]]</span>
+				</div>
+				<div class="case-meta-item" v-if="note_template.uuid" :title="note_template.uuid">
+					<i class="fa-solid fa-fingerprint fa-fw"></i>
+					<span class="meta-label">UUID</span>
+					<span class="meta-value" style="font-family: monospace; font-size: 0.8em;">[[note_template.uuid]]</span>
+				</div>
+				<div class="case-meta-item" v-if="note_template.version">
+					<i class="fa-solid fa-code-branch fa-fw"></i>
+					<span class="meta-label">Version</span>
+					<span class="meta-value">v[[note_template.version]]</span>
+				</div>
 			</div>
         </a>
 		

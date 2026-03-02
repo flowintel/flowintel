@@ -39,7 +39,8 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
             description=form_dict["description"],
             uuid=str(uuid.uuid4()),
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
-            time_required=form_dict["time_required"]
+            time_required=form_dict["time_required"],
+            version=1
         )
         db.session.add(case_template)
         db.session.commit()
@@ -154,6 +155,7 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
         template.title=form_dict["title"]
         template.description=form_dict["description"]
         template.time_required = form_dict["time_required"]
+        template.version = (template.version or 1) + 1
 
         self.update_case_time_modification(template)
 

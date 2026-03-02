@@ -13,7 +13,7 @@ def is_text_file(file_path):
             # Read first 1024 bytes as text
             f.read(1024)
         return True
-    except (UnicodeDecodeError, UnicodeError):
+    except UnicodeError:
         return False
 
 
@@ -90,7 +90,7 @@ def convert_json_to_note(content):
                         markdown += escape_markdown(str(value)) + ' | '
                 else:
                     markdown += escape_markdown(str(item)) + ' | '
-                    for i in range(len(all_keys) - 1):
+                    for _ in range(len(all_keys) - 1):
                         markdown += ' | '
                 markdown += '\n'
             

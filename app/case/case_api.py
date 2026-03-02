@@ -326,6 +326,7 @@ class AddOrgCase(Resource):
             if org:
                 if not CommonModel.get_org_in_case(org.id, cid):
                     if CaseModel.add_orgs_case({"org_id": [org.id]}, cid, current_user):
+                        flowintel_log("audit", 200, "Orgs added to case", User=current_user.email, CaseId=cid, OrgId=org.id)
                         return {"message": f"Org added to case {cid}"}, 200
                     return {"message": f"Error Org added to case {cid}"}, 400
                 return {"message": "Org already in case"}, 400
@@ -345,6 +346,7 @@ class RemoveOrgCase(Resource):
             if org:
                 if CommonModel.get_org_in_case(org.id, cid):
                     if CaseModel.remove_org_case(cid, org.id, current_user):
+                        flowintel_log("audit", 200, "Org removed from case", User=current_user.email, CaseId=cid, OrgId=oid)
                         return {"message": f"Org deleted from case {cid}"}, 200
                     return {"message": f"Error Org deleted from case {cid}"}, 400
                 return {"message": "Org not in case"}, 404
@@ -421,6 +423,7 @@ class RecurringCase(Resource):
 
                     if "message" not in verif_dict:
                         CaseModel.change_recurring(verif_dict, cid, current_user)
+                        flowintel_log("audit", 200, "Recurring set for case", User=current_user.email, CaseId=cid)
                         return {"message": "Recurring changed"}, 200
                     return verif_dict
                 return {"message": "Please give data"}, 400
@@ -458,6 +461,7 @@ class ChangeStatusCase(Resource):
                 current_user = utils.get_user_from_api(request.headers)
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     CaseModel.change_status_core(request.json["status_id"], case, current_user)
+                    flowintel_log("audit", 200, "Case status changed", User=current_user.email, CaseId=cid, StatusId=request.json["status_id"])
                     return {"message": "Status changed"}, 200
                 return {"message": "Permission denied"}, 403
             return {"message": "Case doesn't exist"}, 404
@@ -883,6 +887,7 @@ class CreateTask(Resource):
 
                 if "message" not in verif_dict:
                     task = TaskModel.create_task(verif_dict, cid, current_user)
+                    flowintel_log("audit", 201, "Task created", User=current_user.email, CaseId=cid, TaskId=task.id, TaskTitle=task.title)
                     return {"message": f"Task {task.id} created for case id: {cid}", "task_id": task.id}, 201
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
@@ -902,6 +907,7 @@ class ChangeOrder(Resource):
                     if 'new-index' in request.json:
                         request.json['new-index'] = request.json['new-index']-1
                         if TaskModel.change_order(case, task, request.json):
+                            flowintel_log("audit", 200, "Task order changed", User=current_user.email, CaseId=cid, TaskId=tid)
                             return {"message": "Order changed"}, 200
                         return {"message": "New index is not one of an other task"}, 400
                     return {"message": "'new-index' need to be passed"}, 400

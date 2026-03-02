@@ -148,7 +148,8 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
             uuid=str(uuid.uuid4()),
             nb_notes=0,
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
-            time_required=form_dict["time_required"]
+            time_required=form_dict["time_required"],
+            version=1
         )
         db.session.add(template)
         db.session.commit()
@@ -196,6 +197,7 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         template.title=form_dict["title"]
         template.description=form_dict["description"]
         template.time_required = form_dict["time_required"]
+        template.version = (template.version or 1) + 1
         
         self._edit(form_dict, tid)
 
@@ -258,7 +260,7 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         Task_Template_Galaxy_Tags.query.filter_by(template_id=tid).delete()
         Task_Template_Custom_Tags.query.filter_by(task_template_id=tid).delete()
         Task_Template_Galaxy.query.filter_by(template_id=tid).delete()
-        Note_Template.query.filter_by(template_id=tid)
+        Note_Template.query.filter_by(template_id=tid).delete()
         template = CommonModel.get_task_template(tid)
         db.session.delete(template)
         db.session.commit()

@@ -85,6 +85,16 @@
                     <span class="meta-label">Time required</span>
                     <span class="meta-value">[[case_template.time_required]]</span>
                 </div>
+                <div class="case-meta-item" v-if="case_template.uuid" :title="case_template.uuid">
+                    <i class="fa-solid fa-fingerprint fa-fw"></i>
+                    <span class="meta-label">UUID</span>
+                    <span class="meta-value" style="font-family: monospace; font-size: 0.8em;">[[case_template.uuid]]</span>
+                </div>
+                <div class="case-meta-item" v-if="case_template.version">
+                    <i class="fa-solid fa-code-branch fa-fw"></i>
+                    <span class="meta-label">Version</span>
+                    <span class="meta-value">v[[ case_template.version ]]</span>
+                </div>
             </div>
         </div>
 

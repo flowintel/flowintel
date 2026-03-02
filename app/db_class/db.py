@@ -373,7 +373,7 @@ class Task_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     name = db.Column(db.String, index=True)
-    uuid = db.Column(db.String(36), index=True, default=str(uuid.uuid4()))
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
 
     def to_json(self):
         json_dict = {
@@ -579,6 +579,7 @@ class Case_Template(db.Model):
     last_modif = db.Column(db.DateTime, index=True)
     time_required = db.Column(db.String)
     notes = db.Column(db.String, nullable=True)
+    version = db.Column(db.Integer, default=1)
 
     def to_json(self):
         json_dict =  {
@@ -588,7 +589,8 @@ class Case_Template(db.Model):
             "description": self.description,
             "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "time_required": self.time_required,
-            "notes": self.notes
+            "notes": self.notes,
+            "version": self.version or 1
         }
 
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
@@ -606,7 +608,8 @@ class Case_Template(db.Model):
             "title": self.title,
             "description": self.description,
             "time_required": self.time_required,
-            "notes": self.notes
+            "notes": self.notes,
+            "version": self.version or 1
         }
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
@@ -627,6 +630,7 @@ class Task_Template(db.Model):
     last_modif = db.Column(db.DateTime, index=True)
     subtasks = db.relationship('Subtask_Template', backref='task_template', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     time_required = db.Column(db.String)
+    version = db.Column(db.Integer, default=1)
 
     def to_json(self):
         json_dict =  {
@@ -636,7 +640,8 @@ class Task_Template(db.Model):
             "description": self.description,
             "nb_notes": self.nb_notes,
             "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
-            "time_required": self.time_required
+            "time_required": self.time_required,
+            "version": self.version or 1
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["urls_tools"] = [url_tool.to_json() for url_tool in self.urls_tools]
@@ -655,7 +660,8 @@ class Task_Template(db.Model):
             "uuid": self.uuid,
             "title": self.title,
             "description": self.description,
-            "time_required": self.time_required
+            "time_required": self.time_required,
+            "version": self.version or 1
         }
         json_dict["notes"] = [note.download() for note in self.notes]
         json_dict["subtasks"] = [subtask.download() for subtask in self.subtasks]
@@ -1240,7 +1246,7 @@ class Misp_Attribute_Instance_Uuid(db.Model):
 
 class Note_Template_Model(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    uuid = db.Column(db.String(36), index=True, default=str(uuid.uuid4()))
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
     author = db.Column(db.Integer, index=True)
     title = db.Column(db.String)
     description = db.Column(db.String)
@@ -1260,7 +1266,7 @@ class Note_Template_Model(db.Model):
             "title": self.title,
             "description": self.description,
             "content": self.content,
-            "version": self.version,
+            "version": self.version or 1,
             "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
             "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "params": self.params

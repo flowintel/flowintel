@@ -298,9 +298,8 @@ def get_case_template_connector_instances(tid):
 def add_connector(tid):
     """Add connector instance to template"""
     if CommonModel.get_case_template(tid):
-        if "connector_instances" in request.json:
-            if CommonModel.add_connector_instances_to_case_template(tid, request.json['connector_instances']):
-                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+        if "connector_instances" in request.json and CommonModel.add_connector_instances_to_case_template(tid, request.json['connector_instances']):
+            return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 

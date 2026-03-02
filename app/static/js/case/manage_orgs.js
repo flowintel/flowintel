@@ -112,7 +112,7 @@ export default {
                     </div>
                 </template>
                 <div class="d-flex align-items-center">
-                    <h6 class="section-title mb-0"><i class="fa-solid fa-building fa-sm me-2"></i>Organizations</h6>
+                    <h6 class="section-title mb-0"><i class="fa-solid fa-building fa-sm me-2"></i>Organisations</h6>
                     <span class="badge text-bg-secondary ms-2">[[cases_info.orgs_in_case.length]]</span>
                 </div>
 

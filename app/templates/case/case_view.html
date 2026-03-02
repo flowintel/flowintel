@@ -155,12 +155,14 @@
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-files" @click="active_tab('files')">
-                <i class="fa-solid fa-file fa-sm me-1"></i>Files
+                <i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title fs-6">Files</span>
                 <span class="badge text-bg-secondary" v-if="case_files_list.length > 0">[[case_files_list.length]]</span>
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-history" @click="active_tab('history')"><i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i>History</button>
+            <button class="nav-link" id="tab-history" @click="active_tab('history')">
+                <i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i><span class="section-title fs-6">History</span>
+            </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-info" @click="active_tab('info')">
@@ -176,7 +178,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="add_new_link_modal">Add New link</h1>
+                    <h1 class="modal-title fs-5" id="add_new_link_modal">Add new linked case</h1>
                     <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -372,7 +374,8 @@
                     :case_id="cases_info.case.id"
                     :case_files_list="case_files_list"
                     :cases_info="cases_info"
-                    @files_change="(msg) => fetch_case_files()">
+                    @files_change="(msg) => fetch_case_files()"
+                    @note_change="(notes) => { cases_info.case.notes = notes }">
                 </casefiles>
             </div>
         </template>

@@ -140,7 +140,7 @@ def case_creation_from_importer(case, current_user):
 def case_template_creation_from_importer(template):
     if not utils.validate_importer_json(template, jsonschema_flowintel.caseTemplateSchema):
         return {"message": f"Case template '{template['title']}' format not okay"}
-    for task in template["tasks_template"]:
+    for task in template.get("tasks_template", []):
         if not utils.validate_importer_json(task, jsonschema_flowintel.taskTemplateSchema):
             return {"message": f"Task Template '{task['title']}' format not okay"}
         
@@ -174,7 +174,7 @@ def case_template_creation_from_importer(template):
     #######################
 
     ## Task format is valid
-    for task in template["tasks_template"]:
+    for task in template.get("tasks_template", []):
         if Task.query.filter_by(uuid=task["uuid"]).first():
             task["uuid"] = str(uuid.uuid4())
 
@@ -199,7 +199,7 @@ def case_template_creation_from_importer(template):
         TemplateModel.modif_note_core(case_created.id, template["notes"])
 
     ## Task creation
-    for task in template["tasks_template"]:
+    for task in template.get("tasks_template", []):
         task_created = TaskTemplateModel.add_task_template_core(task)
         TemplateModel.add_task_case_template({"tasks": [task_created.id]}, case_created.id)
         if task["notes"]:
@@ -601,6 +601,7 @@ def create_note_template(request_json: dict, current_user: int) -> Note_Template
     content = request_json["content"]
     list_params = extract_variables(content)
     n = Note_Template_Model(
+        uuid=str(uuid.uuid4()),
         title=request_json["title"],
         description=request_json.get("description", ""),
         content = content,
@@ -616,30 +617,31 @@ def create_note_template(request_json: dict, current_user: int) -> Note_Template
     return n
 
 
-def edit_content_note_template(note_id: int, request_json: dict) -> bool:
+def edit_content_note_template(note_id: int, request_json: dict) -> dict:
     content = request_json["content"]
     list_params = extract_variables(content)
     note_template = get_note_template(note_id)
 
     note_template.content = content
-    note_template.params = {"list": list_params}
-    
-    # Increment version on every save
-    note_template.version = (note_template.version or 0) + 1
+    note_template.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+
+    existing_params = set(note_template.params.get("list", []) if note_template.params else [])
+    if set(list_params) != existing_params:
+        note_template.version = (note_template.version or 1) + 1
+        note_template.params = {"list": list_params}
 
     db.session.commit()
-    return {"version": note_template.version}
+    return {"version": note_template.version or 1}
 
-def edit_note_template(note_id: int, request_json: dict) -> bool:
+def edit_note_template(note_id: int, request_json: dict) -> dict:
     note_template = get_note_template(note_id)
 
     note_template.title = request_json["title"]
     note_template.description = request_json["description"]
-    # Increment version on save
-    note_template.version = (note_template.version or 0) + 1
+    note_template.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
 
     db.session.commit()
-    return {"version": note_template.version}
+    return {"version": note_template.version or 1}
 
 def delete_note_template(note_id: int) -> bool:
     note_template = get_note_template(note_id)

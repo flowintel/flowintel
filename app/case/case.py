@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, redirect, jsonify, request, flash,
 from flask_login import login_required, current_user
 
 from .form import CaseForm, CaseEditForm, RecurringForm
-from .CaseCore import CaseModel
+from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User
@@ -14,6 +14,7 @@ from ..decorators import editor_required, template_editor_required, admin_requir
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
+from ..utils.file_converter import convert_file_to_note_content
 
 case_blueprint = Blueprint(
     'case',
@@ -128,10 +129,10 @@ def edit_case(cid):
 def edit_case_tags(cid):
     """Edit the case"""
     if CommonModel.get_case(cid):
+        tag_list = request.json["tags_select"]
+        cluster_list = request.json["clusters_select"]
+        custom_tags_list = request.json["custom_select"]
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            tag_list = request.json["tags_select"]
-            cluster_list = request.json["clusters_select"]
-            custom_tags_list = request.json["custom_select"]
             if isinstance(CommonModel.check_tag(tag_list), bool):
                 if isinstance(CommonModel.check_cluster(cluster_list), bool):
                     loc_dict = {
@@ -699,13 +700,14 @@ def get_galaxies_case(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         clusters = CommonModel.get_case_clusters(cid)
         galaxies = []
+        seen_galaxy_ids = set()
         if clusters:
-            for cluster in clusters:
+            for i, cluster in enumerate(clusters):
                 loc_g = CommonModel.get_galaxy(cluster.galaxy_id)
-                if not loc_g in galaxies:
+                if loc_g.id not in seen_galaxy_ids:
+                    seen_galaxy_ids.add(loc_g.id)
                     galaxies.append(loc_g.to_json())
-                index = clusters.index(cluster)
-                clusters[index] = cluster.to_json()
+                clusters[i] = cluster.to_json()
         return {"clusters": clusters, "galaxies": galaxies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -852,8 +854,6 @@ def status_computer_assistate_report(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Get status computer assisted report: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        if not CaseModel.check_exist_task(case.uuid):
-            return {"message": "There's no generation going for this case", "toast_class": "warning-subtle"}, 400
         if CaseModel.get_status_computer_assistate_report(case.uuid):
             flowintel_log("audit", 200, "Get status computer assisted report", User=current_user.email, CaseId=cid)
             return {"report_status": "running"}, 200
@@ -1220,10 +1220,9 @@ def add_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if "connectors" in request.json:
-                if CaseModel.add_connector(cid, request.json, current_user):
-                    flowintel_log("audit", 200, "Connector added to case", User=current_user.email, CaseId=cid)
-                    return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
+            if "connectors" in request.json and CaseModel.add_connector(cid, request.json, current_user):
+                flowintel_log("audit", 200, "Connector added to case", User=current_user.email, CaseId=cid)
+                return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
             return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
         flowintel_log("audit", 403, "Add connector to case: Action not allowed", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -1828,3 +1827,38 @@ def case_report_attach_pdf(cid):
                       User=current_user.email, CaseId=cid, FileName=fname)
         return {"message": f"Report '{fname}' attached to case", "toast_class": "success-subtle"}, 200
     return {"message": "Failed to attach PDF", "toast_class": "danger-subtle"}, 400
+  
+@case_blueprint.route("/<cid>/convert_case_file_to_note/<fid>", methods=['POST'])
+@login_required
+@editor_required
+def convert_case_file_to_note(cid, fid):
+    """Convert a file attached to a case into a case note"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Convert case file to note: Permission denied", User=current_user.email, CaseId=cid, FileId=fid)
+        return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+    file = CommonModel.get_file(fid)
+    if not file or file.case_id != int(cid):
+        return {"message": "File not found", "toast_class": "danger-subtle"}, 404
+
+    file_extension = os.path.splitext(file.name)[1].lower().lstrip('.')
+    if file_extension not in ['txt', 'csv', 'json']:
+        return {"message": "Only TXT, CSV, and JSON files can be converted", "toast_class": "warning-subtle"}, 400
+
+    file_path = os.path.join(FILE_FOLDER, file.uuid)
+    success, content = convert_file_to_note_content(file_path, file_extension, file.name)
+
+    if not success:
+        flowintel_log("audit", 400, "Case file conversion failed", User=current_user.email, CaseId=cid, FileId=fid, FileName=file.name, Error=content)
+        return {"message": f"Conversion failed: {content}", "toast_class": "danger-subtle"}, 400
+
+    existing_notes = case.notes or ""
+    new_notes = (existing_notes + "\n\n" + content).strip()
+    if not CaseModel.modify_note_core(cid, current_user, new_notes):
+        return {"message": "Error saving note", "toast_class": "danger-subtle"}, 400
+    flowintel_log("audit", 200, "Case file converted to note", User=current_user.email, CaseId=cid, FileId=fid, FileName=file.name)
+    return {"message": f"File '{file.name}' converted to note successfully", "toast_class": "success-subtle", "notes": new_notes}, 200

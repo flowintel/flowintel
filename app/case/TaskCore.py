@@ -401,7 +401,12 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                     flowintel_log("error", 500, f"Error uploading file to task: {str(e)}", User=current_user.email, TaskId=task.id, FileName=filename)
                     return None
 
-                file_type = files_list[file].content_type if files_list[file].content_type else filename.rsplit('.', 1)[-1] if '.' in filename else 'unknown'
+                if files_list[file].content_type:
+                    file_type = files_list[file].content_type
+                elif '.' in filename:
+                    file_type = filename.rsplit('.', 1)[-1]
+                else:
+                    file_type = 'unknown'
 
                 f = File(
                     name=filename,
@@ -756,12 +761,22 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
 
         task_instance = CommonModel.get_task_connectors_by_id(task_instance_id)
-        instance = CommonModel.get_instance(task_instance.instance_id)
-        user_instance = CommonModel.get_user_instance_both(user.id, instance.id)
+        if not task_instance:
+            return {"message": "Connector instance not found"}
 
-        instance = instance.to_json()
-        if user_instance:
+        loc_instance = CommonModel.get_instance(task_instance.instance_id)
+        if not loc_instance:
+            return {"message": "Connector instance not found"}
+
+        user_instance = CommonModel.get_user_instance_both(user.id, loc_instance.id)
+
+        instance = loc_instance.to_json()
+        if loc_instance.global_api_key:
+            instance["api_key"] = loc_instance.global_api_key
+        elif user_instance:
             instance["api_key"] = user_instance.api_key
+        else:
+            return {"message": "No API key configured for this connector"}
         instance["identifier"] = task_instance.identifier
 
         #######
@@ -777,16 +792,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         # RESULTS #
         ###########
 
-        if not task_instance:
-            tc_instance = Task_Connector_Instance(
-                task_id=task["id"],
-                instance_id=instance["id"],
-                identifier=event_uuid
-            )
-            db.session.add(tc_instance)
-            db.session.commit()
-
-        elif not task_instance.identifier == event_uuid:
+        if task_instance.identifier != event_uuid:
             task_instance.identifier = event_uuid
             db.session.commit()
 
