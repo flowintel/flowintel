@@ -1,6 +1,8 @@
 import ast
+import datetime
 import json
 import requests
+from urllib.parse import urlparse
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 from flask_login import login_required, current_user
 from .TemplateCase import TemplateModel
@@ -13,7 +15,7 @@ from ..utils.formHelper import prepare_tags
 from ..case import common_core as CommonCaseModel
 from ..case.common_core import get_instance_with_icon
 from ..utils.logger import flowintel_log
-from ..db_class.db import Template_Repository
+from ..db_class.db import Template_Repository, Template_Repository_Entry, Case_Template, Task_Template, Case_Task_Template
 from .. import db
 
 templating_blueprint = Blueprint(
@@ -827,15 +829,470 @@ def repository_refresh(rid):
     if not changes:
         flowintel_log("audit", 200, "Template repository refresh — already up to date",
                       User=current_user.email, RepositoryId=repo.id, Name=repo.name)
-        return {"message": f"'{repo.name}' is already up to date", "toast_class": "success-subtle",
-                "repository": repo.to_json()}, 200
+        entries_list, scan_error = _scan_remote_entries(repo)
+        case_count = sum(1 for e in entries_list if e["type"] == "case")
+        task_count = sum(1 for e in entries_list if e["type"] == "task")
+        scan_note = f" — {case_count} case, {task_count} task template(s) found" if entries_list else ""
+        return {"message": f"'{repo.name}' is already up to date{scan_note}", "toast_class": "success-subtle",
+                "repository": repo.to_json(),
+                "entries": _annotate_local_grouped(entries_list),
+                }, 200
 
     db.session.commit()
     change_summary = ", ".join(changes)
+
+    # Scan remote directories for template entries
+    entries_list, scan_error = _scan_remote_entries(repo)
+    case_count = sum(1 for e in entries_list if e["type"] == "case")
+    task_count = sum(1 for e in entries_list if e["type"] == "task")
+    scan_note = f" — {case_count} case, {task_count} task template(s) found" if entries_list else ""
+    if scan_error:
+        scan_note = f" (template scan skipped: {scan_error})"
+
     flowintel_log("audit", 200, "Template repository refreshed from remote manifest",
                   User=current_user.email, RepositoryId=repo.id, Name=repo.name, Changes=change_summary)
-    return {"message": f"'{repo.name}' updated — {change_summary}", "toast_class": "success-subtle",
-            "repository": repo.to_json()}, 200
+    return {"message": f"'{repo.name}' updated — {change_summary}{scan_note}", "toast_class": "success-subtle",
+            "repository": repo.to_json(),
+            "entries": _annotate_local_grouped(entries_list),
+            }, 200
+
+
+
+# ── Remote template scanning helpers ────────────────────────────────────────
+
+def _annotate_local(entries_list):
+    """
+    Enriches each entry dict with local copy information:
+      local        – True if a matching UUID exists locally
+      localVersion – the local template's version (or None)
+      localNewer   – True when the local copy is ahead of the remote
+    """
+    case_uuids = {e["uuid"] for e in entries_list if e.get("type") == "case"}
+    task_uuids = {e["uuid"] for e in entries_list if e.get("type") == "task"}
+
+    local_cases = {}
+    if case_uuids:
+        for ct in Case_Template.query.filter(Case_Template.uuid.in_(case_uuids)).all():
+            local_cases[ct.uuid] = ct.version or 1
+
+    local_tasks = {}
+    if task_uuids:
+        for tt in Task_Template.query.filter(Task_Template.uuid.in_(task_uuids)).all():
+            local_tasks[tt.uuid] = tt.version or 1
+
+    for entry in entries_list:
+        t = entry.get("type")
+        uuid = entry.get("uuid", "")
+        local_ver = local_cases.get(uuid) if t == "case" else local_tasks.get(uuid) if t == "task" else None
+        entry["local"] = local_ver is not None
+        entry["localVersion"] = local_ver
+        entry["localNewer"] = bool(local_ver and entry.get("version") and local_ver > entry["version"])
+    return entries_list
+
+
+def _annotate_local_grouped(entries_list):
+    """Annotate and return entries split into {case: [...], task: [...]} dict."""
+    annotated = _annotate_local(entries_list)
+    return {
+        "case": [e for e in annotated if e["type"] == "case"],
+        "task": [e for e in annotated if e["type"] == "task"],
+    }
+
+
+def _parse_github_manifest_url(manifest_url):
+    """Return (owner, repo, branch) from a raw.githubusercontent.com URL, or None."""
+    u = urlparse(manifest_url)
+    if u.hostname != "raw.githubusercontent.com":
+        return None
+    parts = u.path.strip("/").split("/")
+    # /owner/repo/refs/heads/branch/...  OR  /owner/repo/branch/...
+    if len(parts) >= 5 and parts[2] == "refs" and parts[3] == "heads":
+        return parts[0], parts[1], parts[4]
+    if len(parts) >= 3:
+        return parts[0], parts[1], parts[2]
+    return None
+
+
+def _scan_remote_entries(repo):
+    """
+    Scan the remote GitHub repository for case/ and task/ template files.
+    Returns (entries_json_list, error_string_or_None).
+    """
+    parsed = _parse_github_manifest_url(repo.manifest_url or "")
+    if not parsed:
+        return [], "Cannot derive GitHub API URL from the stored manifest URL"
+    owner, repo_name, branch = parsed
+    api_base = f"https://api.github.com/repos/{owner}/{repo_name}/contents"
+
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    upserted = []
+
+    for tpl_type in ("case", "task"):
+        try:
+            r = requests.get(f"{api_base}/{tpl_type}?ref={branch}", timeout=10,
+                             headers={"Accept": "application/vnd.github+json"})
+        except Exception as exc:
+            continue  # directory may not exist yet — skip silently
+
+        if r.status_code == 404:
+            continue  # directory not present — skip
+        if r.status_code >= 400:
+            continue
+
+        for item in r.json():
+            if item.get("type") != "file" or not item["name"].endswith(".json"):
+                continue
+            download_url = item.get("download_url", "")
+            remote_sha = item.get("sha", "")
+
+            # Fetch the actual template JSON
+            try:
+                tr = requests.get(download_url, timeout=10)
+                tr.raise_for_status()
+                tpl = tr.json()
+            except Exception:
+                continue
+
+            uuid_ = tpl.get("uuid", "")
+            version_ = tpl.get("version")
+            title_ = (tpl.get("title") or tpl.get("name") or item["name"].replace(".json", "")).strip()
+            description_ = (tpl.get("description") or "")[:500]
+
+            if not uuid_:
+                continue
+
+            # Upsert standalone entry (parent_case_uuid=None)
+            entry = Template_Repository_Entry.query.filter_by(
+                repository_id=repo.id, uuid=uuid_, type=tpl_type, parent_case_uuid=None
+            ).first()
+            if entry is None:
+                entry = Template_Repository_Entry(
+                    repository_id=repo.id, uuid=uuid_, type=tpl_type, parent_case_uuid=None
+                )
+                db.session.add(entry)
+            entry.title = title_
+            entry.version = version_
+            entry.description = description_
+            entry.download_url = download_url
+            entry.remote_sha = remote_sha
+            entry.last_synced = now
+            upserted.append(entry)
+
+            # For case templates, also extract embedded task templates
+            if tpl_type == "case":
+                for task in tpl.get("tasks_template", []):
+                    t_uuid = task.get("uuid", "")
+                    if not t_uuid:
+                        continue
+                    t_title = (task.get("title") or task.get("name") or "").strip()
+                    t_version = task.get("version")
+                    t_description = (task.get("description") or "")[:500]
+                    task_entry = Template_Repository_Entry.query.filter_by(
+                        repository_id=repo.id, uuid=t_uuid, type="task",
+                        parent_case_uuid=uuid_
+                    ).first()
+                    if task_entry is None:
+                        task_entry = Template_Repository_Entry(
+                            repository_id=repo.id, uuid=t_uuid, type="task",
+                            parent_case_uuid=uuid_
+                        )
+                        db.session.add(task_entry)
+                    task_entry.title = t_title
+                    task_entry.version = t_version
+                    task_entry.description = t_description
+                    task_entry.download_url = None  # embedded tasks have no standalone file
+                    task_entry.remote_sha = None
+                    task_entry.parent_case_title = title_
+                    task_entry.last_synced = now
+                    upserted.append(task_entry)
+
+    db.session.commit()
+    return [e.to_json() for e in upserted], None
+
+
+
+
+def _norm(v):
+    """Normalise a value for diff comparison: strip whitespace, treat empty string as None."""
+    if v is None:
+        return None
+    if isinstance(v, str):
+        s = v.strip()
+        return s if s else None
+    return v
+
+
+def _display(v):
+    """Convert a value to a displayable string for the diff table."""
+    if v is None:
+        return None
+    return str(v)
+
+
+@templating_blueprint.route("/repositories/<int:rid>/entries/<int:eid>/diff", methods=["GET"])
+@login_required
+@template_editor_required
+def repository_entry_diff(rid, eid):
+    """Compare a remote template entry against the local copy field-by-field."""
+    entry = Template_Repository_Entry.query.filter_by(id=eid, repository_id=rid).first()
+    if not entry:
+        return {"message": "Entry not found", "toast_class": "danger-subtle"}, 404
+
+    # ── Fetch remote data ──────────────────────────────────────────────────────
+    if entry.parent_case_uuid:
+        # Embedded task — use the metadata stored in the DB (no standalone file)
+        remote = {
+            "title": entry.title,
+            "description": entry.description,
+            "version": entry.version,
+            "time_required": None,
+        }
+    else:
+        if not entry.download_url:
+            return {"message": "No download URL for this entry.", "toast_class": "warning-subtle"}, 200
+        try:
+            r = requests.get(entry.download_url, timeout=10)
+            r.raise_for_status()
+            remote = r.json()
+        except Exception as exc:
+            return {"message": f"Could not fetch remote template: {exc}", "toast_class": "danger-subtle"}, 200
+
+    # ── Build field list depending on type ────────────────────────────────────
+    if entry.type == "case":
+        local_obj = Case_Template.query.filter_by(uuid=entry.uuid).first()
+        if not local_obj:
+            return {"local_exists": False, "has_diff": None, "fields": []}, 200
+
+        local_task_count = Case_Task_Template.query.filter_by(case_id=local_obj.id).count()
+        remote_tasks = remote.get("tasks_template", [])
+        remote_task_count = len(remote_tasks) if isinstance(remote_tasks, list) else 0
+
+        remote_notes = remote.get("notes")
+        if isinstance(remote_notes, list):
+            remote_notes = None  # list-form notes can't be meaningfully compared to a string
+
+        raw_fields = [
+            ("title",         local_obj.title,           remote.get("title")),
+            ("description",   local_obj.description,     remote.get("description")),
+            ("version",       local_obj.version,         remote.get("version")),
+            ("time_required", local_obj.time_required,   remote.get("time_required")),
+            ("notes",         local_obj.notes,           remote_notes),
+            ("tasks_count",   local_task_count,          remote_task_count),
+        ]
+
+    elif entry.type == "task":
+        local_obj = Task_Template.query.filter_by(uuid=entry.uuid).first()
+        if not local_obj:
+            return {"local_exists": False, "has_diff": None, "fields": []}, 200
+
+        raw_fields = [
+            ("title",         local_obj.title,          remote.get("title")),
+            ("description",   local_obj.description,    remote.get("description")),
+            ("version",       local_obj.version,        remote.get("version")),
+            ("time_required", local_obj.time_required,  remote.get("time_required")),
+        ]
+    else:
+        return {"message": f"Unknown entry type: {entry.type}", "toast_class": "warning-subtle"}, 200
+
+    # ── Compare ────────────────────────────────────────────────────────────────
+    fields = []
+    for field_name, local_val, remote_val in raw_fields:
+        match = _norm(local_val) == _norm(remote_val)
+        fields.append({
+            "field":  field_name,
+            "match":  match,
+            "local":  _display(local_val),
+            "remote": _display(remote_val),
+        })
+
+    has_diff = any(not f["match"] for f in fields)
+    return {"local_exists": True, "has_diff": has_diff, "fields": fields}, 200
+
+
+@templating_blueprint.route("/repositories/<int:rid>/entries/<int:eid>/raw", methods=["GET"])
+@login_required
+@template_editor_required
+def repository_entry_raw(rid, eid):
+    """Proxy the remote template JSON for viewing in the browser."""
+    entry = Template_Repository_Entry.query.filter_by(id=eid, repository_id=rid).first()
+    if not entry:
+        return {"message": "Entry not found", "toast_class": "danger-subtle"}, 404
+
+    # Embedded tasks don't have their own file — return stored fields as synthetic JSON
+    if entry.parent_case_uuid:
+        return {
+            "uuid": entry.uuid,
+            "title": entry.title,
+            "version": entry.version,
+            "description": entry.description,
+            "_note": f"This task is embedded inside case template {entry.parent_case_uuid}. "
+                     "Only stored metadata is shown here."
+        }, 200
+
+    if not entry.download_url:
+        return {"message": "No download URL available for this entry.", "toast_class": "warning-subtle"}, 200
+    try:
+        r = requests.get(entry.download_url, timeout=10)
+        r.raise_for_status()
+        return r.json(), 200
+    except Exception as exc:
+        return {"message": f"Could not fetch template: {exc}", "toast_class": "danger-subtle"}, 200
+
+
+@templating_blueprint.route("/repositories/<int:rid>/entries/<int:eid>/import", methods=["POST"])
+@login_required
+@template_editor_required
+def repository_entry_import(rid, eid):
+    """Import a remote template entry into local Case_Template / Task_Template."""
+    repo = Template_Repository.query.get(rid)
+    if not repo:
+        return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
+
+    entry = Template_Repository_Entry.query.filter_by(id=eid, repository_id=rid).first()
+    if not entry:
+        return {"message": "Template entry not found", "toast_class": "danger-subtle"}, 404
+
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+    if entry.type == "task":
+        # Embedded tasks use stored metadata; standalone tasks re-fetch their JSON
+        if entry.parent_case_uuid:
+            tpl_title       = entry.title or ""
+            tpl_description = entry.description or ""
+            tpl_version     = entry.version or 1
+            tpl_time        = None
+        else:
+            if not entry.download_url:
+                return {"message": "No download URL for this entry.", "toast_class": "warning-subtle"}, 200
+            try:
+                r = requests.get(entry.download_url, timeout=10)
+                r.raise_for_status()
+                tpl = r.json()
+            except Exception as exc:
+                return {"message": f"Could not fetch template: {exc}", "toast_class": "danger-subtle"}, 200
+            tpl_title       = tpl.get("title", "")
+            tpl_description = tpl.get("description", "")
+            tpl_version     = tpl.get("version", 1)
+            tpl_time        = tpl.get("time_required")
+
+        local = Task_Template.query.filter_by(uuid=entry.uuid).first()
+        created = local is None
+        if local is None:
+            local = Task_Template(
+                uuid=entry.uuid,
+                title=tpl_title,
+                description=tpl_description,
+                nb_notes=0,
+                last_modif=now,
+                time_required=tpl_time,
+                version=tpl_version,
+            )
+            db.session.add(local)
+        else:
+            local.title        = tpl_title
+            local.description  = tpl_description
+            if not entry.parent_case_uuid:
+                local.time_required = tpl_time
+            local.version      = tpl_version
+            local.last_modif   = now
+        db.session.commit()
+        action = "imported" if created else "updated"
+        msg = f"Task template \"{local.title}\" {action} successfully."
+
+    elif entry.type == "case":
+        if not entry.download_url:
+            return {"message": "No download URL for this entry.", "toast_class": "warning-subtle"}, 200
+        try:
+            r = requests.get(entry.download_url, timeout=10)
+            r.raise_for_status()
+            tpl = r.json()
+        except Exception as exc:
+            return {"message": f"Could not fetch template: {exc}", "toast_class": "danger-subtle"}, 200
+
+        local_case = Case_Template.query.filter_by(uuid=entry.uuid).first()
+        created = local_case is None
+        if local_case is None:
+            local_case = Case_Template(
+                uuid=entry.uuid,
+                title=tpl.get("title", ""),
+                description=tpl.get("description", ""),
+                last_modif=now,
+                time_required=tpl.get("time_required"),
+                notes=tpl.get("notes") if isinstance(tpl.get("notes"), str) else None,
+                version=tpl.get("version", 1),
+            )
+            db.session.add(local_case)
+            db.session.flush()  # assign local_case.id without committing
+        else:
+            local_case.title        = tpl.get("title", local_case.title)
+            local_case.description  = tpl.get("description", local_case.description)
+            local_case.time_required = tpl.get("time_required", local_case.time_required)
+            local_case.notes        = tpl.get("notes") if isinstance(tpl.get("notes"), str) else local_case.notes
+            local_case.version      = tpl.get("version", local_case.version)
+            local_case.last_modif   = now
+
+        # Upsert embedded tasks and link to the case
+        task_count = 0
+        for task_data in tpl.get("tasks_template", []):
+            t_uuid = task_data.get("uuid", "")
+            if not t_uuid:
+                continue
+            local_task = Task_Template.query.filter_by(uuid=t_uuid).first()
+            if local_task is None:
+                local_task = Task_Template(
+                    uuid=t_uuid,
+                    title=task_data.get("title", ""),
+                    description=task_data.get("description", ""),
+                    nb_notes=0,
+                    last_modif=now,
+                    time_required=task_data.get("time_required"),
+                    version=task_data.get("version", 1),
+                )
+                db.session.add(local_task)
+                db.session.flush()  # assign local_task.id without committing
+            else:
+                local_task.title        = task_data.get("title", local_task.title)
+                local_task.description  = task_data.get("description", local_task.description)
+                local_task.time_required = task_data.get("time_required", local_task.time_required)
+                local_task.version      = task_data.get("version", local_task.version)
+                local_task.last_modif   = now
+
+            if not Case_Task_Template.query.filter_by(case_id=local_case.id, task_id=local_task.id).first():
+                order = Case_Task_Template.query.filter_by(case_id=local_case.id).count() + 1
+                db.session.add(Case_Task_Template(case_id=local_case.id, task_id=local_task.id, case_order_id=order))
+            task_count += 1
+
+        db.session.commit()
+        action = "imported" if created else "updated"
+        msg = f"Case template \"{local_case.title}\" {action} with {task_count} task(s)."
+    else:
+        return {"message": f"Unknown entry type: {entry.type}", "toast_class": "warning-subtle"}, 200
+
+    flowintel_log("audit", 200, "Template imported from central repository",
+                  User=current_user.email, RepositoryId=rid, EntryId=eid, Type=entry.type)
+
+    # Return fresh annotated entries so badges update immediately
+    all_entries = Template_Repository_Entry.query.filter_by(repository_id=rid).order_by(
+        Template_Repository_Entry.type, Template_Repository_Entry.title
+    ).all()
+    return {
+        "message": msg,
+        "toast_class": "success-subtle",
+        "entries": _annotate_local_grouped([e.to_json() for e in all_entries]),
+    }, 200
+
+
+@templating_blueprint.route("/repositories/<int:rid>/entries", methods=["GET"])
+@login_required
+@template_editor_required
+def repository_entries(rid):
+    repo = Template_Repository.query.get(rid)
+    if not repo:
+        return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
+    entries = Template_Repository_Entry.query.filter_by(repository_id=rid).order_by(
+        Template_Repository_Entry.type, Template_Repository_Entry.title
+    ).all()
+    return _annotate_local_grouped([e.to_json() for e in entries]), 200
 
 
 @templating_blueprint.route("/repositories", methods=['GET'])

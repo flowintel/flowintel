@@ -146,15 +146,21 @@
                     <div class="col-12 col-md-6">
                         <h6 class="fw-semibold mb-3">
                             <i class="fa-solid fa-folder-open me-2 text-primary"></i>Case templates
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-normal ms-1">[[dummyCaseTemplates.length]]</span>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-normal ms-1">[[( entries[repo.id]?.case ?? []).length]]</span>
                         </h6>
                         <div class="list-group list-group-flush border rounded overflow-hidden">
-                            <div v-for="tpl in dummyCaseTemplates" :key="tpl.uuid"
+                            <div v-if="entries[repo.id]?.loading" class="list-group-item text-center text-muted py-3" style="font-size:0.8rem;">
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading templates…
+                            </div>
+                            <div v-else-if="!(entries[repo.id]?.case ?? []).length" class="list-group-item text-muted text-center py-3" style="font-size:0.8rem;">
+                                <i class="fa-solid fa-folder-open fa-sm me-1"></i>No case templates found — click <i class="fa-solid fa-arrows-rotate fa-xs"></i> to scan
+                            </div>
+                            <div v-for="tpl in (entries[repo.id]?.case ?? [])" :key="tpl.uuid"
                                  class="list-group-item bg-white px-3 py-2"
                                  :class="{'border-start border-warning border-3': tpl.localNewer}">
                                 <div class="d-flex align-items-start justify-content-between gap-2">
                                     <div class="overflow-hidden">
-                                        <div class="fw-semibold small text-truncate">[[tpl.name]]</div>
+                                        <div class="fw-semibold small text-truncate">[[tpl.title]]</div>
                                         <div class="text-muted d-flex align-items-center gap-2 flex-wrap" style="font-size:0.7rem;">
                                             <code class="text-truncate" style="max-width:180px;">[[tpl.uuid]]</code>
                                             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-normal" style="font-size:0.65rem;">
@@ -190,26 +196,45 @@
                                         </span>
                                         <button class="btn btn-outline-secondary btn-sm py-0 px-2"
                                                 style="font-size:0.72rem;"
-                                                title="View remote template">
+                                                title="View remote template"
+                                                @click.stop="viewEntry(tpl, repo)">
                                             <i class="fa-solid fa-eye fa-xs"></i>
+                                        </button>
+                                        <button v-if="tpl.local"
+                                                class="btn btn-outline-secondary btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                title="Compare local vs remote"
+                                                :disabled="diffing[tpl.id]"
+                                                @click.stop="diffEntry(tpl, repo)">
+                                            <span v-if="diffing[tpl.id]" class="spinner-border spinner-border-sm" role="status"></span>
+                                            <i v-else class="fa-solid fa-code-compare fa-xs"></i>
                                         </button>
                                         <button v-if="tpl.localNewer"
                                                 class="btn btn-outline-warning btn-sm py-0 px-2"
                                                 style="font-size:0.72rem;"
-                                                :title="'Refresh from remote — your local v' + tpl.localVersion + ' will be overwritten by v' + tpl.version">
-                                            <i class="fa-solid fa-arrows-rotate fa-xs"></i>
+                                                :title="'Refresh from remote — your local v' + tpl.localVersion + ' will be overwritten by v' + tpl.version"
+                                                :disabled="importing[tpl.id]"
+                                                @click.stop="importEntry(tpl, repo)">
+                                            <span v-if="importing[tpl.id]" class="spinner-border spinner-border-sm" role="status"></span>
+                                            <i v-else class="fa-solid fa-arrows-rotate fa-xs"></i>
                                         </button>
                                         <button v-else-if="tpl.local"
                                                 class="btn btn-outline-primary btn-sm py-0 px-2"
                                                 style="font-size:0.72rem;"
-                                                title="Refresh local copy">
-                                            <i class="fa-solid fa-arrows-rotate fa-xs"></i>
+                                                title="Refresh local copy"
+                                                :disabled="importing[tpl.id]"
+                                                @click.stop="importEntry(tpl, repo)">
+                                            <span v-if="importing[tpl.id]" class="spinner-border spinner-border-sm" role="status"></span>
+                                            <i v-else class="fa-solid fa-arrows-rotate fa-xs"></i>
                                         </button>
                                         <button v-else
                                                 class="btn btn-outline-success btn-sm py-0 px-2"
                                                 style="font-size:0.72rem;"
-                                                title="Import from remote">
-                                            <i class="fa-solid fa-cloud-arrow-down fa-xs me-1"></i>Import
+                                                title="Import from remote"
+                                                :disabled="importing[tpl.id]"
+                                                @click.stop="importEntry(tpl, repo)">
+                                            <span v-if="importing[tpl.id]" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                            <i v-else class="fa-solid fa-cloud-arrow-down fa-xs me-1"></i>Import
                                         </button>
                                     </div>
                                 </div>
@@ -221,19 +246,31 @@
                     <div class="col-12 col-md-6">
                         <h6 class="fw-semibold mb-3">
                             <i class="fa-solid fa-list-check me-2 text-primary"></i>Task templates
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-normal ms-1">[[dummyTaskTemplates.length]]</span>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-normal ms-1">[[( entries[repo.id]?.task ?? []).length]]</span>
                         </h6>
                         <div class="list-group list-group-flush border rounded overflow-hidden">
-                            <div v-for="tpl in dummyTaskTemplates" :key="tpl.uuid"
+                            <div v-if="entries[repo.id]?.loading" class="list-group-item text-center text-muted py-3" style="font-size:0.8rem;">
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading templates…
+                            </div>
+                            <div v-else-if="!(entries[repo.id]?.task ?? []).length" class="list-group-item text-muted text-center py-3" style="font-size:0.8rem;">
+                                <i class="fa-solid fa-list-check fa-sm me-1"></i>No task templates found — click <i class="fa-solid fa-arrows-rotate fa-xs"></i> to scan
+                            </div>
+                            <div v-for="tpl in (entries[repo.id]?.task ?? [])" :key="tpl.uuid + '_' + (tpl.parent_case_uuid || '')"
                                  class="list-group-item bg-white px-3 py-2"
                                  :class="{'border-start border-warning border-3': tpl.localNewer}">
                                 <div class="d-flex align-items-start justify-content-between gap-2">
                                     <div class="overflow-hidden">
-                                        <div class="fw-semibold small text-truncate">[[tpl.name]]</div>
+                                        <div class="fw-semibold small text-truncate">[[tpl.title]]</div>
                                         <div class="text-muted d-flex align-items-center gap-2 flex-wrap" style="font-size:0.7rem;">
                                             <code class="text-truncate" style="max-width:180px;">[[tpl.uuid]]</code>
                                             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-normal" style="font-size:0.65rem;">
                                                 <i class="fa-solid fa-cloud fa-xs me-1"></i>v[[tpl.version]]
+                                            </span>
+                                            <span v-if="tpl.parent_case_uuid"
+                                                  class="badge bg-info-subtle text-info border border-info-subtle fw-normal"
+                                                  style="font-size:0.65rem;"
+                                                  :title="'Embedded in case: ' + tpl.parent_case_title">
+                                                <i class="fa-solid fa-folder-open fa-xs me-1"></i>[[tpl.parent_case_title]]
                                             </span>
                                             <span v-if="tpl.local"
                                                   class="badge fw-normal"
@@ -265,26 +302,45 @@
                                         </span>
                                         <button class="btn btn-outline-secondary btn-sm py-0 px-2"
                                                 style="font-size:0.72rem;"
-                                                title="View remote template">
+                                                title="View remote template"
+                                                @click.stop="viewEntry(tpl, repo)">
                                             <i class="fa-solid fa-eye fa-xs"></i>
+                                        </button>
+                                        <button v-if="tpl.local"
+                                                class="btn btn-outline-secondary btn-sm py-0 px-2"
+                                                style="font-size:0.72rem;"
+                                                title="Compare local vs remote"
+                                                :disabled="diffing[tpl.id]"
+                                                @click.stop="diffEntry(tpl, repo)">
+                                            <span v-if="diffing[tpl.id]" class="spinner-border spinner-border-sm" role="status"></span>
+                                            <i v-else class="fa-solid fa-code-compare fa-xs"></i>
                                         </button>
                                         <button v-if="tpl.localNewer"
                                                 class="btn btn-outline-warning btn-sm py-0 px-2"
                                                 style="font-size:0.72rem;"
-                                                :title="'Refresh from remote — your local v' + tpl.localVersion + ' will be overwritten by v' + tpl.version">
-                                            <i class="fa-solid fa-arrows-rotate fa-xs"></i>
+                                                :title="'Refresh from remote — your local v' + tpl.localVersion + ' will be overwritten by v' + tpl.version"
+                                                :disabled="importing[tpl.id]"
+                                                @click.stop="importEntry(tpl, repo)">
+                                            <span v-if="importing[tpl.id]" class="spinner-border spinner-border-sm" role="status"></span>
+                                            <i v-else class="fa-solid fa-arrows-rotate fa-xs"></i>
                                         </button>
                                         <button v-else-if="tpl.local"
                                                 class="btn btn-outline-primary btn-sm py-0 px-2"
                                                 style="font-size:0.72rem;"
-                                                title="Refresh local copy">
-                                            <i class="fa-solid fa-arrows-rotate fa-xs"></i>
+                                                title="Refresh local copy"
+                                                :disabled="importing[tpl.id]"
+                                                @click.stop="importEntry(tpl, repo)">
+                                            <span v-if="importing[tpl.id]" class="spinner-border spinner-border-sm" role="status"></span>
+                                            <i v-else class="fa-solid fa-arrows-rotate fa-xs"></i>
                                         </button>
                                         <button v-else
                                                 class="btn btn-outline-success btn-sm py-0 px-2"
                                                 style="font-size:0.72rem;"
-                                                title="Import from remote">
-                                            <i class="fa-solid fa-cloud-arrow-down fa-xs me-1"></i>Import
+                                                title="Import from remote"
+                                                :disabled="importing[tpl.id]"
+                                                @click.stop="importEntry(tpl, repo)">
+                                            <span v-if="importing[tpl.id]" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                            <i v-else class="fa-solid fa-cloud-arrow-down fa-xs me-1"></i>Import
                                         </button>
                                     </div>
                                 </div>
@@ -394,6 +450,80 @@
     </div>
 </div>
 
+<!-- Local vs Remote diff modal -->
+<div class="modal fade" id="diffEntryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-code-compare me-2"></i>
+                    Local vs Remote — <span id="diffEntryModal-title"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="diffEntryModal-spinner" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading…</span>
+                    </div>
+                </div>
+                <div id="diffEntryModal-error" class="d-none alert alert-danger"></div>
+                <div id="diffEntryModal-body" class="d-none">
+                    <div id="diffEntryModal-summary" class="mb-3"></div>
+                    <table class="table table-sm table-bordered align-middle" style="font-size:0.82rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:18%">Field</th>
+                                <th style="width:4%"></th>
+                                <th>Local</th>
+                                <th>Remote</th>
+                            </tr>
+                        </thead>
+                        <tbody id="diffEntryModal-tbody"></tbody>
+                    </table>
+                    <p class="text-muted small mb-0">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        Content comparison normalises whitespace. Use <em>Import</em> to overwrite the local copy with the remote version.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remote template view modal -->
+<div class="modal fade" id="viewEntryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-eye me-2"></i>
+                    <span id="viewEntryModal-title">Remote template</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="viewEntryModal-spinner" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading…</span>
+                    </div>
+                </div>
+                <div id="viewEntryModal-error" class="d-none alert alert-danger m-3"></div>
+                <pre id="viewEntryModal-pre"
+                     class="d-none m-0 p-4"
+                     style="background:#f6f8fa; font-size:0.82rem; border:none; border-radius:0;
+                            white-space:pre; overflow-x:auto;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Manifest info modal -->
 <div class="modal fade" id="manifestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -434,22 +564,27 @@
             const editTarget  = ref(null)
             const form        = ref({ name: '', url: '', description: '', manifest_url: '' })
 
-            // ── Placeholder template data (replaced by actual remote data after refresh) ─────
-            const dummyCaseTemplates = [
-                { uuid: 'a1b2c3d4-0001-4000-8000-000000000001', name: 'Phishing Investigation',  version: '1.2.0', local: true,  localVersion: '1.2.0', localNewer: false },
-                { uuid: 'a1b2c3d4-0002-4000-8000-000000000002', name: 'Ransomware Response',      version: '2.0.1', local: false, localVersion: null,    localNewer: false },
-                { uuid: 'a1b2c3d4-0003-4000-8000-000000000003', name: 'Insider Threat Analysis',  version: '1.0.3', local: true,  localVersion: '1.1.0', localNewer: true  },
-                { uuid: 'a1b2c3d4-0004-4000-8000-000000000004', name: 'Data Breach Assessment',   version: '1.1.0', local: false, localVersion: null,    localNewer: false },
-                { uuid: 'a1b2c3d4-0005-4000-8000-000000000005', name: 'Supply Chain Attack',      version: '1.0.0', local: true,  localVersion: '1.2.1', localNewer: true  },
-                { uuid: 'a1b2c3d4-0006-4000-8000-000000000006', name: 'Cloud Misconfiguration',   version: '2.0.0', local: true,  localVersion: '2.0.0', localNewer: false },
-            ]
-            const dummyTaskTemplates = [
-                { uuid: 'b2c3d4e5-0001-4000-8000-000000000001', name: 'Initial Triage',            version: '1.0.0', local: true,  localVersion: '1.0.0', localNewer: false },
-                { uuid: 'b2c3d4e5-0002-4000-8000-000000000002', name: 'Evidence Collection',       version: '1.3.2', local: false, localVersion: null,    localNewer: false },
-                { uuid: 'b2c3d4e5-0003-4000-8000-000000000003', name: 'Stakeholder Notification',  version: '2.1.0', local: true,  localVersion: '2.3.0', localNewer: true  },
-                { uuid: 'b2c3d4e5-0004-4000-8000-000000000004', name: 'Post-Incident Review',      version: '1.0.5', local: false, localVersion: null,    localNewer: false },
-                { uuid: 'b2c3d4e5-0005-4000-8000-000000000005', name: 'Malware Analysis',          version: '1.1.0', local: true,  localVersion: '1.1.0', localNewer: false },
-            ]
+            // entries[repo.id] = { case: [...], task: [...], loading: false }
+            const entries = reactive({})
+            // importing[entry.id] = true while an import request is in-flight
+            const importing = reactive({})
+            // diffing[entry.id] = true while a diff request is in-flight
+            const diffing = reactive({})
+
+            async function fetchEntries(repo) {
+                if (!entries[repo.id]) entries[repo.id] = { case: [], task: [], loading: false }
+                entries[repo.id].loading = true
+                try {
+                    const res  = await fetch(`/templating/repositories/${repo.id}/entries`)
+                    const data = await res.json()
+                    if (res.ok) {
+                        entries[repo.id].case = data.case || []
+                        entries[repo.id].task = data.task || []
+                    }
+                } finally {
+                    entries[repo.id].loading = false
+                }
+            }
 
             // connectivity[repo.id]: undefined | 'checking' | 'ok' | 'error'
             const connectivity = reactive({})
@@ -484,7 +619,12 @@
             // ── Accordion ────────────────────────────────────────────────────
             function toggleExpand(repo) {
                 const s = new Set(expanded.value)
-                s.has(repo.id) ? s.delete(repo.id) : s.add(repo.id)
+                if (s.has(repo.id)) {
+                    s.delete(repo.id)
+                } else {
+                    s.add(repo.id)
+                    fetchEntries(repo)
+                }
                 expanded.value = s
             }
 
@@ -536,13 +676,178 @@
                         const idx = repos.value.findIndex(r => r.id === repo.id)
                         if (idx !== -1) repos.value.splice(idx, 1, data.repository)
                     }
+                    if (res.ok && data.entries) {
+                        entries[repo.id] = { case: data.entries.case || [], task: data.entries.task || [], loading: false }
+                    }
                     message_list.value.push({ message: data.message, toast_class: data.toast_class })
                 } finally {
                     refreshing[repo.id] = false
                 }
             }
 
-            // ── Add / Edit modal ──────────────────────────────────────────────
+            // ── Diff entry (local vs remote) ─────────────────────────────────
+            async function diffEntry(tpl, repo) {
+                if (diffing[tpl.id]) return
+                diffing[tpl.id] = true
+
+                // Pre-open modal in loading state
+                const titleEl   = document.getElementById('diffEntryModal-title')
+                const spinnerEl = document.getElementById('diffEntryModal-spinner')
+                const errorEl   = document.getElementById('diffEntryModal-error')
+                const bodyEl    = document.getElementById('diffEntryModal-body')
+                const summaryEl = document.getElementById('diffEntryModal-summary')
+                const tbodyEl   = document.getElementById('diffEntryModal-tbody')
+
+                titleEl.textContent = tpl.title || ''
+                spinnerEl.classList.remove('d-none')
+                errorEl.classList.add('d-none')
+                bodyEl.classList.add('d-none')
+                tbodyEl.innerHTML = ''
+
+                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('diffEntryModal'))
+                modal.show()
+
+                try {
+                    const res  = await fetch(`/templating/repositories/${repo.id}/entries/${tpl.id}/diff`)
+                    const data = await res.json()
+                    spinnerEl.classList.add('d-none')
+
+                    if (!res.ok || data.toast_class === 'danger-subtle') {
+                        errorEl.textContent = data.message || 'Failed to load diff.'
+                        errorEl.classList.remove('d-none')
+                        return
+                    }
+
+                    if (!data.local_exists) {
+                        errorEl.textContent = 'No local copy found — import the template first.'
+                        errorEl.classList.remove('d-none')
+                        return
+                    }
+
+                    // Summary banner
+                    if (data.has_diff) {
+                        summaryEl.innerHTML = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">' +
+                            '<i class="fa-solid fa-triangle-exclamation me-1"></i>Differences found</span>'
+                    } else {
+                        summaryEl.innerHTML = '<span class="badge bg-success-subtle text-success border border-success-subtle">' +
+                            '<i class="fa-solid fa-circle-check me-1"></i>Local copy matches remote</span>'
+                    }
+
+                    // Field rows
+                    const FIELD_LABELS = {
+                        title: 'Title', description: 'Description',
+                        version: 'Version', time_required: 'Time required',
+                        notes: 'Notes', tasks_count: 'Task count'
+                    }
+
+                    function cellHtml(val) {
+                        if (val === null || val === undefined) return '<span class="text-muted fst-italic">—</span>'
+                        const s = String(val)
+                        if (s.length > 300) {
+                            const short = s.slice(0, 300).replace(/</g, '&lt;')
+                            const full  = s.replace(/</g, '&lt;')
+                            return `<span class="cell-short">${short}<span class="text-muted">…</span>` +
+                                   `<a href="#" class="ms-1 small text-primary show-more-link" data-full="${encodeURIComponent(full)}">[show more]</a></span>` +
+                                   `<span class="cell-full d-none" style="white-space:pre-wrap;">${full}</span>`
+                        }
+                        return `<span style="white-space:pre-wrap;">${s.replace(/</g, '&lt;')}</span>`
+                    }
+
+                    for (const row of data.fields) {
+                        const tr = document.createElement('tr')
+                        if (!row.match) tr.classList.add('table-warning')
+
+                        const icon = row.match
+                            ? '<i class="fa-solid fa-circle-check text-success"></i>'
+                            : '<i class="fa-solid fa-circle-exclamation text-warning"></i>'
+
+                        const label = FIELD_LABELS[row.field] || row.field
+
+                        tr.innerHTML = `<td class="fw-semibold text-nowrap">${label}</td>` +
+                                       `<td class="text-center">${icon}</td>` +
+                                       `<td>${cellHtml(row.local)}</td>` +
+                                       `<td>${cellHtml(row.remote)}</td>`
+                        tbodyEl.appendChild(tr)
+                    }
+
+                    // Wire "show more" toggle links
+                    tbodyEl.querySelectorAll('.show-more-link').forEach(link => {
+                        link.addEventListener('click', e => {
+                            e.preventDefault()
+                            const short = link.closest('.cell-short')
+                            const full  = short.nextElementSibling
+                            short.classList.add('d-none')
+                            full.classList.remove('d-none')
+                        })
+                    })
+
+                    bodyEl.classList.remove('d-none')
+                } catch(e) {
+                    spinnerEl.classList.add('d-none')
+                    errorEl.textContent = 'Network error: ' + e
+                    errorEl.classList.remove('d-none')
+                } finally {
+                    diffing[tpl.id] = false
+                }
+            }
+
+            // ── Import entry ─────────────────────────────────────────────────────
+            async function importEntry(tpl, repo) {
+                if (importing[tpl.id]) return
+                importing[tpl.id] = true
+                try {
+                    const res  = await fetch(`/templating/repositories/${repo.id}/entries/${tpl.id}/import`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': $('#csrf_token').val() }
+                    })
+                    const data = await res.json()
+                    if (res.ok && data.entries) {
+                        entries[repo.id] = { case: data.entries.case || [], task: data.entries.task || [], loading: false }
+                    }
+                    message_list.value.push({ message: data.message, toast_class: data.toast_class })
+                } catch (e) {
+                    message_list.value.push({ message: 'Import failed: ' + e, toast_class: 'danger-subtle' })
+                } finally {
+                    importing[tpl.id] = false
+                }
+            }
+
+            // ── View remote template ──────────────────────────────────────────
+            async function viewEntry(tpl, repo) {
+                // Reset modal state
+                const titleEl   = document.getElementById('viewEntryModal-title')
+                const spinnerEl = document.getElementById('viewEntryModal-spinner')
+                const errorEl   = document.getElementById('viewEntryModal-error')
+                const preEl     = document.getElementById('viewEntryModal-pre')
+                titleEl.textContent = tpl.title || 'Remote template'
+                spinnerEl.classList.remove('d-none')
+                errorEl.classList.add('d-none')
+                preEl.classList.add('d-none')
+                preEl.textContent = ''
+
+                // Open modal
+                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('viewEntryModal'))
+                modal.show()
+
+                try {
+                    const res  = await fetch(`/templating/repositories/${repo.id}/entries/${tpl.id}/raw`)
+                    const data = await res.json()
+                    spinnerEl.classList.add('d-none')
+                    if (!res.ok || data.toast_class === 'danger-subtle') {
+                        errorEl.textContent = data.message || 'Failed to load template.'
+                        errorEl.classList.remove('d-none')
+                    } else {
+                        preEl.textContent = JSON.stringify(data, null, 2)
+                        preEl.classList.remove('d-none')
+                    }
+                } catch (e) {
+                    spinnerEl.classList.add('d-none')
+                    errorEl.textContent = 'Network error: ' + e
+                    errorEl.classList.remove('d-none')
+                }
+            }
+
+            // ── Add / Edit modal ──────────────────────────────────────────────────
             // ── Convert repo URL to raw manifest URL ─────────────────────────────
             function convertToRaw() {
                 const raw = form.value.url.trim().replace(/\/$/, '')
@@ -630,9 +935,10 @@
                 repos, filtered, loading, saving,
                 form, editTarget,
                 connectivity, refreshing, expanded,
-                dummyCaseTemplates, dummyTaskTemplates,
+                entries, fetchEntries, importing, diffing,
                 toggleExpand, checkConnectivity, refreshRemote, convertToRaw,
                 openAdd, openEdit, saveRepo, deleteRepo,
+                importEntry, viewEntry, diffEntry,
                 onInput
             }
         }
