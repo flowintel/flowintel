@@ -500,10 +500,31 @@ export default {
                                                     <i class="fa-solid fa-link-slash text-muted" title="Correlation disabled"></i>
                                                 </template>
                                                 <template v-else>
-                                                    <template v-for="cid, key in attribute.correlation_list">
-                                                        <a :href="'/case/'+cid">[[cid]]</a>
-                                                        <template v-if="key != attribute.correlation_list.length-1">,</template>
-                                                    </template>
+                                                    <span>
+                                                        <template v-for="(cid, idx) in attribute.correlation_list">
+                                                            <template v-if="idx < 4">
+                                                                <a :href="'/case/'+cid" class="badge bg-light text-dark me-1" title="Open case [[cid]]">Case [[cid]]</a>
+                                                            </template>
+                                                        </template>
+
+                                                        <template v-if="attribute.correlation_list.length > 4">
+                                                            <button class="btn btn-link p-0 ms-1" type="button"
+                                                                data-bs-toggle="collapse"
+                                                                :data-bs-target="'#corr-'+misp_object.object_id+'-'+attribute.id"
+                                                                aria-expanded="false"
+                                                                :aria-controls="'corr-'+misp_object.object_id+'-'+attribute.id">
+                                                                [[ attribute.correlation_list.length - 4 ]] more
+                                                            </button>
+
+                                                            <div class="collapse mt-1" :id="'corr-'+misp_object.object_id+'-'+attribute.id">
+                                                                <template v-for="(cid, idx) in attribute.correlation_list">
+                                                                    <template v-if="idx >= 4">
+                                                                        <a :href="'/case/'+cid" class="badge bg-light text-dark me-1" title="Open case [[cid]]">Case [[cid]]</a>
+                                                                    </template>
+                                                                </template>
+                                                            </div>
+                                                        </template>
+                                                    </span>
                                                 </template>
                                             </td>
                                             <td v-show="!compactView">
