@@ -1282,7 +1282,7 @@ class Template_Repository(db.Model):
     name = db.Column(db.String(256), index=True)
     description = db.Column(db.String)
     url = db.Column(db.String(512))
-    manifest_url = db.Column(db.String(512))
+    local_path = db.Column(db.String(512))
     version = db.Column(db.Integer)
     creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
@@ -1293,7 +1293,7 @@ class Template_Repository(db.Model):
             "name": self.name,
             "description": self.description,
             "url": self.url,
-            "manifest_url": self.manifest_url,
+            "local_path": self.local_path,
             "version": self.version,
             "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
         }

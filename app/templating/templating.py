@@ -1,8 +1,8 @@
 import ast
 import datetime
+import hashlib
 import json
-import requests
-from urllib.parse import urlparse
+import os
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 from flask_login import login_required, current_user
 from .TemplateCase import TemplateModel
@@ -741,42 +741,39 @@ def delete_url_tool(tid, utid):
 @login_required
 @template_editor_required
 def repository_check(rid):
-    """Fetch the remote manifest.json and validate its structure."""
+    """Verify the local cloned repository exists and contains a valid manifest.json."""
     repo = Template_Repository.query.get(rid)
     if not repo:
         return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
 
-    manifest_url = repo.manifest_url
-    if not manifest_url:
-        return {"reachable": False, "error": "No manifest URL configured for this repository"}, 200
+    if not repo.local_path:
+        return {"reachable": False, "error": "No local path configured for this repository"}, 200
+
+    base = _repo_base_path(repo.local_path)
+    if not os.path.isdir(base):
+        flowintel_log("audit", 200, "Template repository check — path not found",
+                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, Path=repo.local_path)
+        return {"reachable": False, "error": f"Directory not found: {repo.local_path}"}, 200
+
+    manifest_path = os.path.join(base, "manifest.json")
+    if not os.path.isfile(manifest_path):
+        return {"reachable": True, "valid": False, "error": "manifest.json not found in the repository"}, 200
+
     try:
-        r = requests.get(manifest_url, timeout=8, allow_redirects=True)
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
     except Exception as exc:
-        flowintel_log("audit", 200, "Template repository connectivity check failed",
-                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, Error=str(exc))
-        return {"reachable": False, "error": str(exc)}, 200
-
-    if r.status_code >= 400:
-        flowintel_log("audit", 200, "Template repository connectivity check failed",
-                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, StatusCode=r.status_code)
-        return {"reachable": False, "status_code": r.status_code}, 200
-
-    try:
-        manifest = r.json()
-    except Exception:
-        flowintel_log("audit", 200, "Template repository manifest not valid JSON",
-                      User=current_user.email, RepositoryId=repo.id, Name=repo.name)
-        return {"reachable": True, "valid": False, "error": "manifest.json is not valid JSON"}, 200
+        return {"reachable": True, "valid": False, "error": f"manifest.json is not valid JSON: {exc}"}, 200
 
     required_keys = {"name", "description", "uuid", "version"}
     missing = required_keys - set(manifest.keys())
     valid = not missing
-    flowintel_log("audit", 200, "Template repository connectivity check",
+    flowintel_log("audit", 200, "Template repository check",
                   User=current_user.email, RepositoryId=repo.id, Name=repo.name, Valid=valid)
     return {
         "reachable": True, "valid": valid, "missing_keys": sorted(missing),
-        "manifest": manifest, "manifest_url": manifest_url,
-        "local_version": repo.version, "remote_version": manifest.get("version"),
+        "manifest": manifest, "local_path": repo.local_path,
+        "local_version": repo.version, "manifest_version": manifest.get("version"),
     }, 200
 
 
@@ -788,18 +785,23 @@ def repository_refresh(rid):
     if not repo:
         return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
 
-    manifest_url = repo.manifest_url
-    if not manifest_url:
-        return {"message": "No manifest URL configured for this repository", "toast_class": "warning-subtle"}, 200
+    if not repo.local_path:
+        return {"message": "No local path configured for this repository", "toast_class": "warning-subtle"}, 200
+
+    base = _repo_base_path(repo.local_path)
+    manifest_path = os.path.join(base, "manifest.json")
+    if not os.path.isfile(manifest_path):
+        flowintel_log("audit", 200, "Template repository refresh failed — manifest.json not found",
+                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, Path=repo.local_path)
+        return {"message": f"manifest.json not found at: {repo.local_path}", "toast_class": "danger-subtle"}, 200
 
     try:
-        r = requests.get(manifest_url, timeout=8, allow_redirects=True)
-        r.raise_for_status()
-        manifest = r.json()
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
     except Exception as exc:
-        flowintel_log("audit", 200, "Template repository refresh failed",
+        flowintel_log("audit", 200, "Template repository refresh failed — invalid manifest",
                       User=current_user.email, RepositoryId=repo.id, Name=repo.name, Error=str(exc))
-        return {"message": f"Could not fetch manifest.json: {exc}", "toast_class": "danger-subtle"}, 200
+        return {"message": f"Could not read manifest.json: {exc}", "toast_class": "danger-subtle"}, 200
 
     required_keys = {"name", "description", "uuid", "version"}
     missing = required_keys - set(manifest.keys())
@@ -808,48 +810,43 @@ def repository_refresh(rid):
                       User=current_user.email, RepositoryId=repo.id, Name=repo.name, MissingKeys=sorted(missing))
         return {"message": f"manifest.json is missing required fields: {', '.join(sorted(missing))}", "toast_class": "warning-subtle"}, 200
 
-    # Diff old values against the incoming manifest
     new_name = (manifest["name"] or "").strip() or repo.name
     new_description = (manifest["description"] or "").strip() or None
     new_version = manifest.get("version")
 
-    changes = []
+    field_changes = []
     if new_name != repo.name:
-        changes.append(f'name: "{repo.name}" → "{new_name}"')
+        field_changes.append(f'name: "{repo.name}" → "{new_name}"')
         repo.name = new_name
     if new_description != repo.description:
         old_desc = repo.description or "(none)"
         new_desc = new_description or "(none)"
-        changes.append(f'description: "{old_desc}" → "{new_desc}"')
+        field_changes.append(f'description: "{old_desc}" → "{new_desc}"')
         repo.description = new_description
     if new_version != repo.version:
-        changes.append(f'version: {repo.version} → {new_version}')
+        field_changes.append(f'version: {repo.version} → {new_version}')
         repo.version = new_version
 
-    if not changes:
+    if field_changes:
+        db.session.commit()
+
+    entries_list, scan_error = _scan_local_entries(repo)
+    case_count = sum(1 for e in entries_list if e["type"] == "case")
+    task_count = sum(1 for e in entries_list if e["type"] == "task")
+    scan_note = f" — {case_count} case, {task_count} task template(s) found" if entries_list else ""
+    if scan_error:
+        scan_note = f" (scan error: {scan_error})"
+
+    if not field_changes:
         flowintel_log("audit", 200, "Template repository refresh — already up to date",
                       User=current_user.email, RepositoryId=repo.id, Name=repo.name)
-        entries_list, scan_error = _scan_remote_entries(repo)
-        case_count = sum(1 for e in entries_list if e["type"] == "case")
-        task_count = sum(1 for e in entries_list if e["type"] == "task")
-        scan_note = f" — {case_count} case, {task_count} task template(s) found" if entries_list else ""
         return {"message": f"'{repo.name}' is already up to date{scan_note}", "toast_class": "success-subtle",
                 "repository": repo.to_json(),
                 "entries": _annotate_local_grouped(entries_list),
                 }, 200
 
-    db.session.commit()
-    change_summary = ", ".join(changes)
-
-    # Scan remote directories for template entries
-    entries_list, scan_error = _scan_remote_entries(repo)
-    case_count = sum(1 for e in entries_list if e["type"] == "case")
-    task_count = sum(1 for e in entries_list if e["type"] == "task")
-    scan_note = f" — {case_count} case, {task_count} task template(s) found" if entries_list else ""
-    if scan_error:
-        scan_note = f" (template scan skipped: {scan_error})"
-
-    flowintel_log("audit", 200, "Template repository refreshed from remote manifest",
+    change_summary = ", ".join(field_changes)
+    flowintel_log("audit", 200, "Template repository refreshed",
                   User=current_user.email, RepositoryId=repo.id, Name=repo.name, Changes=change_summary)
     return {"message": f"'{repo.name}' updated — {change_summary}{scan_note}", "toast_class": "success-subtle",
             "repository": repo.to_json(),
@@ -899,69 +896,85 @@ def _annotate_local_grouped(entries_list):
     }
 
 
-def _parse_github_manifest_url(manifest_url):
-    """Return (owner, repo, branch) from a raw.githubusercontent.com URL, or None."""
-    u = urlparse(manifest_url)
-    if u.hostname != "raw.githubusercontent.com":
-        return None
-    parts = u.path.strip("/").split("/")
-    # /owner/repo/refs/heads/branch/...  OR  /owner/repo/branch/...
-    if len(parts) >= 5 and parts[2] == "refs" and parts[3] == "heads":
-        return parts[0], parts[1], parts[4]
-    if len(parts) >= 3:
-        return parts[0], parts[1], parts[2]
-    return None
 
 
-def _scan_remote_entries(repo):
+def _repo_base_path(local_path):
+    """Resolve a repository's local_path to an absolute filesystem path.
+
+    Relative paths are resolved from the project root (parent of the Flask app package).
     """
-    Scan the remote GitHub repository for case/ and task/ template files.
+    if os.path.isabs(local_path):
+        return local_path
+    project_root = os.path.dirname(current_app.root_path)
+    return os.path.normpath(os.path.join(project_root, local_path))
+
+
+def _read_entry_file(repo, entry):
+    """Read and parse the JSON template file for a given entry from the local cloned repo.
+
+    Returns (data_dict, None) on success, or (None, error_message) on failure.
+    """
+    if not entry.download_url:
+        return None, "No file path recorded for this entry"
+    if not repo or not repo.local_path:
+        return None, "Repository has no local path configured"
+    base = _repo_base_path(repo.local_path)
+    filepath = os.path.normpath(os.path.join(base, entry.download_url))
+    # Guard against path traversal
+    if not filepath.startswith(base + os.sep) and filepath != base:
+        return None, "Invalid file path"
+    if not os.path.isfile(filepath):
+        return None, f"File not found: {entry.download_url}"
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f), None
+    except Exception as exc:
+        return None, f"Could not read template file: {exc}"
+
+
+def _scan_local_entries(repo):
+    """Scan the local cloned repository for case/ and task/ template files.
+
+    Walks case/ and task/ subdirectories, parses each .json file, and upserts
+    the corresponding Template_Repository_Entry rows.
     Returns (entries_json_list, error_string_or_None).
     """
-    parsed = _parse_github_manifest_url(repo.manifest_url or "")
-    if not parsed:
-        return [], "Cannot derive GitHub API URL from the stored manifest URL"
-    owner, repo_name, branch = parsed
-    api_base = f"https://api.github.com/repos/{owner}/{repo_name}/contents"
+    if not repo.local_path:
+        return [], "No local path configured for this repository"
+    base = _repo_base_path(repo.local_path)
+    if not os.path.isdir(base):
+        return [], f"Local path not found: {repo.local_path}"
 
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     upserted = []
 
     for tpl_type in ("case", "task"):
-        try:
-            r = requests.get(f"{api_base}/{tpl_type}?ref={branch}", timeout=10,
-                             headers={"Accept": "application/vnd.github+json"})
-        except Exception as exc:
-            continue  # directory may not exist yet — skip silently
-
-        if r.status_code == 404:
-            continue  # directory not present — skip
-        if r.status_code >= 400:
+        type_dir = os.path.join(base, tpl_type)
+        if not os.path.isdir(type_dir):
             continue
 
-        for item in r.json():
-            if item.get("type") != "file" or not item["name"].endswith(".json"):
+        for filename in sorted(os.listdir(type_dir)):
+            if not filename.endswith(".json"):
                 continue
-            download_url = item.get("download_url", "")
-            remote_sha = item.get("sha", "")
-
-            # Fetch the actual template JSON
+            filepath = os.path.join(type_dir, filename)
             try:
-                tr = requests.get(download_url, timeout=10)
-                tr.raise_for_status()
-                tpl = tr.json()
+                with open(filepath, "r", encoding="utf-8") as f:
+                    tpl = json.load(f)
             except Exception:
                 continue
 
             uuid_ = tpl.get("uuid", "")
-            version_ = tpl.get("version")
-            title_ = (tpl.get("title") or tpl.get("name") or item["name"].replace(".json", "")).strip()
-            description_ = (tpl.get("description") or "")[:500]
-
             if not uuid_:
                 continue
 
-            # Upsert standalone entry (parent_case_uuid=None)
+            title_ = (tpl.get("title") or tpl.get("name") or filename.replace(".json", "")).strip()
+            description_ = (tpl.get("description") or "")[:500]
+            version_ = tpl.get("version")
+            relative_path = f"{tpl_type}/{filename}"
+
+            with open(filepath, "rb") as f:
+                file_sha = hashlib.sha1(f.read()).hexdigest()
+
             entry = Template_Repository_Entry.query.filter_by(
                 repository_id=repo.id, uuid=uuid_, type=tpl_type, parent_case_uuid=None
             ).first()
@@ -973,12 +986,11 @@ def _scan_remote_entries(repo):
             entry.title = title_
             entry.version = version_
             entry.description = description_
-            entry.download_url = download_url
-            entry.remote_sha = remote_sha
+            entry.download_url = relative_path
+            entry.remote_sha = file_sha
             entry.last_synced = now
             upserted.append(entry)
 
-            # For case templates, also extract embedded task templates
             if tpl_type == "case":
                 for task in tpl.get("tasks_template", []):
                     t_uuid = task.get("uuid", "")
@@ -1048,14 +1060,10 @@ def repository_entry_diff(rid, eid):
             "time_required": None,
         }
     else:
-        if not entry.download_url:
-            return {"message": "No download URL for this entry.", "toast_class": "warning-subtle"}, 200
-        try:
-            r = requests.get(entry.download_url, timeout=10)
-            r.raise_for_status()
-            remote = r.json()
-        except Exception as exc:
-            return {"message": f"Could not fetch remote template: {exc}", "toast_class": "danger-subtle"}, 200
+        repo = Template_Repository.query.get(rid)
+        remote, err = _read_entry_file(repo, entry)
+        if err:
+            return {"message": err, "toast_class": "danger-subtle"}, 200
 
     # ── Build field list depending on type ────────────────────────────────────
     if entry.type == "case":
@@ -1129,14 +1137,11 @@ def repository_entry_raw(rid, eid):
                      "Only stored metadata is shown here."
         }, 200
 
-    if not entry.download_url:
-        return {"message": "No download URL available for this entry.", "toast_class": "warning-subtle"}, 200
-    try:
-        r = requests.get(entry.download_url, timeout=10)
-        r.raise_for_status()
-        return r.json(), 200
-    except Exception as exc:
-        return {"message": f"Could not fetch template: {exc}", "toast_class": "danger-subtle"}, 200
+    repo = Template_Repository.query.get(rid)
+    data, err = _read_entry_file(repo, entry)
+    if err:
+        return {"message": err, "toast_class": "danger-subtle"}, 200
+    return data, 200
 
 
 @templating_blueprint.route("/repositories/<int:rid>/entries/<int:eid>/import", methods=["POST"])
@@ -1162,14 +1167,9 @@ def repository_entry_import(rid, eid):
             tpl_version     = entry.version or 1
             tpl_time        = None
         else:
-            if not entry.download_url:
-                return {"message": "No download URL for this entry.", "toast_class": "warning-subtle"}, 200
-            try:
-                r = requests.get(entry.download_url, timeout=10)
-                r.raise_for_status()
-                tpl = r.json()
-            except Exception as exc:
-                return {"message": f"Could not fetch template: {exc}", "toast_class": "danger-subtle"}, 200
+            tpl, err = _read_entry_file(repo, entry)
+            if err:
+                return {"message": err, "toast_class": "danger-subtle"}, 200
             tpl_title       = tpl.get("title", "")
             tpl_description = tpl.get("description", "")
             tpl_version     = tpl.get("version", 1)
@@ -1200,14 +1200,9 @@ def repository_entry_import(rid, eid):
         msg = f"Task template \"{local.title}\" {action} successfully."
 
     elif entry.type == "case":
-        if not entry.download_url:
-            return {"message": "No download URL for this entry.", "toast_class": "warning-subtle"}, 200
-        try:
-            r = requests.get(entry.download_url, timeout=10)
-            r.raise_for_status()
-            tpl = r.json()
-        except Exception as exc:
-            return {"message": f"Could not fetch template: {exc}", "toast_class": "danger-subtle"}, 200
+        tpl, err = _read_entry_file(repo, entry)
+        if err:
+            return {"message": err, "toast_class": "danger-subtle"}, 200
 
         local_case = Case_Template.query.filter_by(uuid=entry.uuid).first()
         created = local_case is None
@@ -1320,16 +1315,15 @@ def repository_add():
     """Create a new template repository."""
     data = request.json or {}
     name = (data.get("name") or "").strip()
-    url = (data.get("url") or "").strip()
-    if not name or not url:
-        return {"message": "Name and URL are required", "toast_class": "warning-subtle"}, 400
+    local_path = (data.get("local_path") or "").strip()
+    if not name or not local_path:
+        return {"message": "Name and local path are required", "toast_class": "warning-subtle"}, 400
 
     repo = Template_Repository(
         name=name,
         description=(data.get("description") or "").strip() or None,
-        url=url,
-        manifest_url=(data.get("manifest_url") or "").strip() or None,
-        version=data.get("version") if isinstance(data.get("version"), int) else None,
+        url=(data.get("url") or "").strip() or None,
+        local_path=local_path,
     )
     db.session.add(repo)
     db.session.commit()
@@ -1350,15 +1344,14 @@ def repository_edit(rid):
 
     data = request.json or {}
     name = (data.get("name") or "").strip()
-    url = (data.get("url") or "").strip()
-    if not name or not url:
-        return {"message": "Name and URL are required", "toast_class": "warning-subtle"}, 400
+    local_path = (data.get("local_path") or "").strip()
+    if not name or not local_path:
+        return {"message": "Name and local path are required", "toast_class": "warning-subtle"}, 400
 
     repo.name = name
     repo.description = (data.get("description") or "").strip() or None
-    repo.url = url
-    repo.manifest_url = (data.get("manifest_url") or "").strip() or None
-    repo.version = data.get("version") if isinstance(data.get("version"), int) else repo.version
+    repo.url = (data.get("url") or "").strip() or None
+    repo.local_path = local_path
     db.session.commit()
     flowintel_log("audit", 200, "Template repository edited",
                   User=current_user.email, RepositoryId=repo.id, Name=name)

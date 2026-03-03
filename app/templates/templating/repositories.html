@@ -402,23 +402,20 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold" for="repo-url">
-                        URL <span class="text-danger">*</span>
+                        URL
                     </label>
                     <input id="repo-url" type="url" class="form-control" v-model="form.url"
                            placeholder="https://github.com/org/repo" />
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold" for="repo-manifest-url">Manifest URL</label>
-                    <div class="input-group">
-                        <button class="btn btn-outline-secondary" type="button" @click="convertToRaw" title="Convert repository URL to raw manifest URL (GitHub / GitLab)">
-                            <i class="fa-solid fa-wand-magic-sparkles fa-sm me-1"></i>Convert to raw
-                        </button>
-                        <input id="repo-manifest-url" type="url" class="form-control" v-model="form.manifest_url"
-                               placeholder="https://raw.githubusercontent.com/…/manifest.json" />
-                    </div>
+                    <label class="form-label fw-semibold" for="repo-local-path">
+                        Local path <span class="text-danger">*</span>
+                    </label>
+                    <input id="repo-local-path" type="text" class="form-control" v-model="form.local_path"
+                           placeholder="modules/repositories/flowintel-templates" />
                     <div class="form-text">
-                        Direct URL to the raw <code>manifest.json</code> file in the repository.
-                        Click <em>Convert to raw</em> to auto-fill from the repository URL above.
+                        Path to the cloned repository on this server — relative to the Flowintel root or absolute.
+                        Clone first: <code>git clone &lt;URL&gt; modules/repositories/&lt;name&gt;</code>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -429,7 +426,7 @@
                            :placeholder="editTarget ? '' : 'Will be fetched from the repository manifest'" />
                     <div class="form-text">
                         <i class="fa-solid fa-circle-info me-1"></i>
-                        The UUID is read from the <code>manifest.json</code> file in the remote repository and cannot be set manually.
+                        The UUID is read from <code>manifest.json</code> when the repository is first checked and cannot be set manually.
                     </div>
                 </div>
                 <div class="mb-1">
@@ -562,7 +559,7 @@
             const saving      = ref(false)
             const searchQuery = ref('')
             const editTarget  = ref(null)
-            const form        = ref({ name: '', url: '', description: '', manifest_url: '' })
+            const form        = ref({ name: '', url: '', description: '', local_path: '' })
 
             // entries[repo.id] = { case: [...], task: [...], loading: false }
             const entries = reactive({})
@@ -599,7 +596,7 @@
                 if (!q) return repos.value
                 return repos.value.filter(r =>
                     r.name.toLowerCase().includes(q) ||
-                    r.url.toLowerCase().includes(q) ||
+                    (r.url || '').toLowerCase().includes(q) ||
                     (r.description || '').toLowerCase().includes(q)
                 )
             })
@@ -644,18 +641,17 @@
                         message_list.value.push({ message: `${repo.name} — manifest.json invalid (${reason})`, toast_class: 'warning-subtle' })
                     } else {
                         connectivity[repo.id] = 'ok'
-                        const url_shown = data.manifest_url ? ` (${data.manifest_url})` : ''
                         let version_info = ''
-                        if (data.remote_version != null) {
+                        if (data.manifest_version != null) {
                             if (data.local_version == null) {
-                                version_info = ` — remote v${data.remote_version} (not synced yet, click refresh)`
-                            } else if (data.remote_version > data.local_version) {
-                                version_info = ` — update available: v${data.local_version} → v${data.remote_version}`
+                                version_info = ` — manifest v${data.manifest_version} (not synced yet, click refresh)`
+                            } else if (data.manifest_version > data.local_version) {
+                                version_info = ` — update available: v${data.local_version} → v${data.manifest_version}`
                             } else {
-                                version_info = ` — v${data.remote_version} (up to date)`
+                                version_info = ` — v${data.manifest_version} (up to date)`
                             }
                         }
-                        message_list.value.push({ message: `${repo.name} — manifest.json valid${version_info}${url_shown}`, toast_class: 'success-subtle' })
+                        message_list.value.push({ message: `${repo.name} — manifest.json valid${version_info}`, toast_class: 'success-subtle' })
                     }
                 } catch (e) {
                     connectivity[repo.id] = 'error'
@@ -847,43 +843,27 @@
                 }
             }
 
-            // ── Add / Edit modal ──────────────────────────────────────────────────
-            // ── Convert repo URL to raw manifest URL ─────────────────────────────
-            function convertToRaw() {
-                const raw = form.value.url.trim().replace(/\/$/, '')
-                if (!raw) return
-                try {
-                    const u = new URL(raw)
-                    if (u.hostname === 'github.com') {
-                        form.value.manifest_url = `https://raw.githubusercontent.com${u.pathname}/refs/heads/main/manifest.json`
-                    } else {
-                        form.value.manifest_url = `${u.origin}${u.pathname}/-/raw/main/manifest.json`
-                    }
-                } catch {
-                    // url not valid yet — ignore
-                }
-            }
-
+            // ── Add / Edit modal ─────────────────────────────────────────────────
             function openAdd() {
                 editTarget.value = null
-                form.value = { name: '', url: '', description: '', manifest_url: '' }
+                form.value = { name: '', url: '', description: '', local_path: '' }
             }
 
             function openEdit(repo) {
                 editTarget.value = repo
-                form.value = { name: repo.name, url: repo.url, description: repo.description || '', manifest_url: repo.manifest_url || '' }
+                form.value = { name: repo.name, url: repo.url || '', description: repo.description || '', local_path: repo.local_path || '' }
             }
 
             async function saveRepo() {
-                const name = form.value.name.trim()
-                const url  = form.value.url.trim()
-                if (!name || !url) {
-                    message_list.value.push({ message: 'Name and URL are required.', toast_class: 'warning-subtle' })
+                const name       = form.value.name.trim()
+                const local_path = form.value.local_path.trim()
+                if (!name || !local_path) {
+                    message_list.value.push({ message: 'Name and local path are required.', toast_class: 'warning-subtle' })
                     return
                 }
                 saving.value = true
                 try {
-                    const payload  = { name, url, description: form.value.description.trim() || null, manifest_url: form.value.manifest_url.trim() || null }
+                    const payload  = { name, url: form.value.url.trim() || null, description: form.value.description.trim() || null, local_path }
                     const endpoint = editTarget.value
                         ? `/templating/repositories/${editTarget.value.id}/edit`
                         : '/templating/repositories/add'
@@ -936,7 +916,7 @@
                 form, editTarget,
                 connectivity, refreshing, expanded,
                 entries, fetchEntries, importing, diffing,
-                toggleExpand, checkConnectivity, refreshRemote, convertToRaw,
+                toggleExpand, checkConnectivity, refreshRemote,
                 openAdd, openEdit, saveRepo, deleteRepo,
                 importEntry, viewEntry, diffEntry,
                 onInput
