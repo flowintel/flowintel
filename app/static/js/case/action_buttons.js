@@ -9,6 +9,7 @@ export default {
 	},
 	setup(props) {
         const selected_merge = ref({})
+        const selected_merge_input = ref("")
     const can_manage_templates = window.can_manage_templates || false
     const is_admin = window.is_admin || false
 
@@ -74,9 +75,14 @@ export default {
         }
 
         async function merge_case() {
-            const res = await fetch('/case/' + props.cases_info.case.id + '/merge/' + selected_merge.value.id)
+            let ocid = selected_merge_input.value && selected_merge_input.value.trim() ? selected_merge_input.value.trim() : (selected_merge.value.id || "")
+            if(!ocid){
+                display_toast({message: "No target case selected", toast_class: "warning-subtle"})
+                return
+            }
+            const res = await fetch('/case/' + props.cases_info.case.id + '/merge/' + ocid)
             if(await res.status == 200)
-                return window.location.href = "/case/" + selected_merge.value.id
+                return window.location.href = "/case/" + ocid
             display_toast(res)
         }
 
@@ -109,9 +115,32 @@ export default {
                 dropdownParent: $('#merge_case_modal')
             });
 
+            // when user types an id/uuid in the input, try to fetch the case preview
+            $('#merge_case_input').on('input', async function () {
+                const val = $(this).val().trim()
+                selected_merge_input.value = val
+                if(!val){
+                    selected_merge.value = {}
+                    return
+                }
+                try{
+                    const res = await fetch('/case/get_case/' + encodeURIComponent(val))
+                    if(await res.status == 200){
+                        const data = await res.json()
+                        selected_merge.value = data
+                    }else{
+                        selected_merge.value = {}
+                    }
+                }catch(e){
+                    selected_merge.value = {}
+                }
+            })
+
             $('.merge-case-ajax').on('change.select2', function (e) {
                 // selected_taxo.value = $(this).select2('data').map(item => item.id);
                 selected_merge.value = $(this).select2('data')[0]
+                selected_merge_input.value = ''
+                $('#merge_case_input').val('')
             })
 
             $('.merge-case-ajax').on('select2:open', function () {
@@ -319,7 +348,8 @@ export default {
                         <div class="alert alert-danger" role="alert">
                             <i class="fa-solid fa-triangle-exclamation"></i> This will delete this Case !
                         </div>
-                        <select class="merge-case-ajax" name="merge_into" data-placeholder="Merge into"></select>
+                        <input id="merge_case_input" placeholder="Enter case id or uuid (optional)" class="form-control mb-2" />
+                        <select class="merge-case-ajax" name="merge_into" data-placeholder="Or search case by title"></select>
                         <div class="case-core-style mt-3" v-if="Object.keys(selected_merge).length">
                             <b>Case Description:</b><br>
                             <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[selected_merge.description]]</p>
