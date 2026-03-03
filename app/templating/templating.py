@@ -814,6 +814,7 @@ def repository_refresh(rid):
     new_name = (manifest["name"] or "").strip() or repo.name
     new_description = (manifest["description"] or "").strip() or None
     new_version = manifest.get("version")
+    new_uuid = (manifest.get("uuid") or "").strip() or None
 
     changed = False
     if new_name != repo.name:
@@ -824,6 +825,9 @@ def repository_refresh(rid):
         changed = True
     if new_version != repo.version:
         repo.version = new_version
+        changed = True
+    if new_uuid and new_uuid != repo.uuid:
+        repo.uuid = new_uuid
         changed = True
 
     if changed:
