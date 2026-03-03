@@ -814,20 +814,18 @@ def repository_refresh(rid):
     new_description = (manifest["description"] or "").strip() or None
     new_version = manifest.get("version")
 
-    field_changes = []
+    changed = False
     if new_name != repo.name:
-        field_changes.append(f'name: "{repo.name}" → "{new_name}"')
         repo.name = new_name
+        changed = True
     if new_description != repo.description:
-        old_desc = repo.description or "(none)"
-        new_desc = new_description or "(none)"
-        field_changes.append(f'description: "{old_desc}" → "{new_desc}"')
         repo.description = new_description
+        changed = True
     if new_version != repo.version:
-        field_changes.append(f'version: {repo.version} → {new_version}')
         repo.version = new_version
+        changed = True
 
-    if field_changes:
+    if changed:
         db.session.commit()
 
     entries_list, scan_error = _scan_local_entries(repo)
@@ -837,7 +835,7 @@ def repository_refresh(rid):
     if scan_error:
         scan_note = f" (scan error: {scan_error})"
 
-    if not field_changes:
+    if not changed:
         flowintel_log("audit", 200, "Template repository refresh — already up to date",
                       User=current_user.email, RepositoryId=repo.id, Name=repo.name)
         return {"message": f"'{repo.name}' is already up to date{scan_note}", "toast_class": "success-subtle",
@@ -845,17 +843,13 @@ def repository_refresh(rid):
                 "entries": _annotate_local_grouped(entries_list),
                 }, 200
 
-    change_summary = ", ".join(field_changes)
     flowintel_log("audit", 200, "Template repository refreshed",
-                  User=current_user.email, RepositoryId=repo.id, Name=repo.name, Changes=change_summary)
-    return {"message": f"'{repo.name}' updated — {change_summary}{scan_note}", "toast_class": "success-subtle",
+                  User=current_user.email, RepositoryId=repo.id, Name=repo.name)
+    return {"message": f"'{repo.name}' updated{scan_note}", "toast_class": "success-subtle",
             "repository": repo.to_json(),
             "entries": _annotate_local_grouped(entries_list),
             }, 200
 
-
-
-# ── Remote template scanning helpers ────────────────────────────────────────
 
 def _annotate_local(entries_list):
     """
@@ -894,8 +888,6 @@ def _annotate_local_grouped(entries_list):
         "case": [e for e in annotated if e["type"] == "case"],
         "task": [e for e in annotated if e["type"] == "task"],
     }
-
-
 
 
 def _repo_base_path(local_path):
@@ -1022,8 +1014,6 @@ def _scan_local_entries(repo):
     return [e.to_json() for e in upserted], None
 
 
-
-
 def _norm(v):
     """Normalise a value for diff comparison: strip whitespace, treat empty string as None."""
     if v is None:
@@ -1032,13 +1022,6 @@ def _norm(v):
         s = v.strip()
         return s if s else None
     return v
-
-
-def _display(v):
-    """Convert a value to a displayable string for the diff table."""
-    if v is None:
-        return None
-    return str(v)
 
 
 @templating_blueprint.route("/repositories/<int:rid>/entries/<int:eid>/diff", methods=["GET"])
@@ -1050,22 +1033,32 @@ def repository_entry_diff(rid, eid):
     if not entry:
         return {"message": "Entry not found", "toast_class": "danger-subtle"}, 404
 
-    # ── Fetch remote data ──────────────────────────────────────────────────────
+    repo = Template_Repository.query.get(rid)
     if entry.parent_case_uuid:
-        # Embedded task — use the metadata stored in the DB (no standalone file)
+        # Embedded task — read its data from the parent case file so all fields,
+        # including time_required, reflect the actual remote values.
         remote = {
             "title": entry.title,
             "description": entry.description,
             "version": entry.version,
             "time_required": None,
         }
+        parent_entry = Template_Repository_Entry.query.filter_by(
+            repository_id=rid, uuid=entry.parent_case_uuid,
+            type="case", parent_case_uuid=None,
+        ).first()
+        if parent_entry:
+            case_tpl, case_err = _read_entry_file(repo, parent_entry)
+            if not case_err:
+                for td in case_tpl.get("tasks_template", []):
+                    if td.get("uuid") == entry.uuid:
+                        remote["time_required"] = td.get("time_required")
+                        break
     else:
-        repo = Template_Repository.query.get(rid)
         remote, err = _read_entry_file(repo, entry)
         if err:
             return {"message": err, "toast_class": "danger-subtle"}, 200
 
-    # ── Build field list depending on type ────────────────────────────────────
     if entry.type == "case":
         local_obj = Case_Template.query.filter_by(uuid=entry.uuid).first()
         if not local_obj:
@@ -1102,15 +1095,14 @@ def repository_entry_diff(rid, eid):
     else:
         return {"message": f"Unknown entry type: {entry.type}", "toast_class": "warning-subtle"}, 200
 
-    # ── Compare ────────────────────────────────────────────────────────────────
     fields = []
     for field_name, local_val, remote_val in raw_fields:
         match = _norm(local_val) == _norm(remote_val)
         fields.append({
             "field":  field_name,
             "match":  match,
-            "local":  _display(local_val),
-            "remote": _display(remote_val),
+            "local":  str(local_val) if local_val is not None else None,
+            "remote": str(remote_val) if remote_val is not None else None,
         })
 
     has_diff = any(not f["match"] for f in fields)
@@ -1179,7 +1171,7 @@ def repository_entry_import(rid, eid):
                             break
             if task_data_remote:
                 tpl_title       = (task_data_remote.get("title") or task_data_remote.get("name") or entry.title or "").strip()
-                tpl_description = task_data_remote.get("description") or entry.description or ""
+                tpl_description = task_data_remote.get("description") or ""
                 tpl_version     = task_data_remote.get("version") or entry.version or 1
                 tpl_time        = task_data_remote.get("time_required")
             else:
@@ -1239,11 +1231,11 @@ def repository_entry_import(rid, eid):
             db.session.add(local_case)
             db.session.flush()  # assign local_case.id without committing
         else:
-            local_case.title        = tpl.get("title", local_case.title)
-            local_case.description  = tpl.get("description", local_case.description)
-            local_case.time_required = tpl.get("time_required")  # always overwrite — remote is authoritative
+            local_case.title        = tpl.get("title") or local_case.title
+            local_case.description  = tpl.get("description")
+            local_case.time_required = tpl.get("time_required")
             local_case.notes        = tpl.get("notes") if isinstance(tpl.get("notes"), str) else local_case.notes
-            local_case.version      = tpl.get("version", local_case.version)
+            local_case.version      = tpl.get("version") or local_case.version
             local_case.last_modif   = now
 
         # Upsert embedded tasks and link to the case
@@ -1266,10 +1258,10 @@ def repository_entry_import(rid, eid):
                 db.session.add(local_task)
                 db.session.flush()  # assign local_task.id without committing
             else:
-                local_task.title        = task_data.get("title", local_task.title)
-                local_task.description  = task_data.get("description", local_task.description)
-                local_task.time_required = task_data.get("time_required")  # always overwrite — remote is authoritative
-                local_task.version      = task_data.get("version", local_task.version)
+                local_task.title        = task_data.get("title") or local_task.title
+                local_task.description  = task_data.get("description")
+                local_task.time_required = task_data.get("time_required")
+                local_task.version      = task_data.get("version") or local_task.version
                 local_task.last_modif   = now
 
             if not Case_Task_Template.query.filter_by(case_id=local_case.id, task_id=local_task.id).first():
@@ -1346,9 +1338,8 @@ def repositories_scan():
         name = entry
         if has_manifest:
             try:
-                import json as _json
                 with open(os.path.join(full, 'manifest.json'), 'r', encoding='utf-8') as f:
-                    mf = _json.load(f)
+                    mf = json.load(f)
                 name = mf.get('name') or entry
             except Exception:
                 pass

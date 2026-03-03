@@ -154,7 +154,7 @@
                         </h5>
                     </div>
                     <div class="d-flex flex-wrap gap-3 mt-1">
-                        <small class="text-muted">
+                        <small v-if="repo.url" class="text-muted">
                             <i class="fa-solid fa-link fa-xs me-1"></i>
                             <span class="text-truncate" style="max-width: 350px; display: inline-block; vertical-align: bottom;">[[repo.url]]</span>
                         </small>
