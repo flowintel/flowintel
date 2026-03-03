@@ -49,6 +49,8 @@ button#scan:hover {
 
 <div id="searchbox">
     <input type="text" id="search-value" v-model="attribute_value" placeholder="Enter an attribute value" autofocus>
+    <input type="date" id="start-date" v-model="start_date" title="Start date" style="margin-left:.5em;">
+    <input type="date" id="end-date" v-model="end_date" title="End date" style="margin-left:.25em;">
     <button id="scan" @click="search_attr()">Search</button>
 </div>
 
@@ -96,18 +98,26 @@ button#scan:hover {
             delimiters: ['[[', ']]'],
             setup() {
                 const attribute_value = ref("")
+                const start_date = ref("")
+                const end_date = ref("")
                 const case_list = ref([])
                 const is_searching = ref(false)
 
                 async function search_attr() {
-                    const res = await fetch('/tools/search_attr_with_value?value='+attribute_value.value)
+                    const params = new URLSearchParams()
+                    params.set('value', attribute_value.value || '')
+                    if (start_date.value) params.set('start_date', start_date.value)
+                    if (end_date.value) params.set('end_date', end_date.value)
+                    // no case_sensitive param (always case-insensitive search)
+
+                    const res = await fetch('/tools/search_attr_with_value?'+params.toString())
                     let loc = await res.json()
                     case_list.value = loc
                     is_searching.value = true
                 }
 
                 onMounted(() => {
-                    $('#search-value').on('keypress',function(e) {                        
+                    $('#search-value, #start-date, #end-date').on('keypress',function(e) {                        
                         if(e.which == 13) {
                             search_attr();
                         }
@@ -118,6 +128,8 @@ button#scan:hover {
                 return {
                     message_list, // Avoid warning
                     attribute_value,
+                    start_date,
+                    end_date,
                     case_list,
                     is_searching,
 

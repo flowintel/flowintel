@@ -674,13 +674,42 @@ def delete_note_template(note_id: int) -> bool:
 # Search Attr value #
 #####################
 
-def search_attr_with_value(attr_value: str, current_user: User) -> list:
-    list_attr = CaseModel.get_misp_attribute_by_value(attr_value)
+def search_attr_with_value(attr_value: str, current_user: User, start_date: str = None, end_date: str = None) -> list:
+    # Build attribute query with optional filters
+    query = Misp_Attribute.query
+
+    # value filter: contains by default (case-insensitive when possible)
+    if attr_value:
+        pattern = f"%{attr_value}%"
+        try:
+            query = query.filter(Misp_Attribute.value.ilike(pattern))
+        except Exception:
+            # fallback for DBs without ilike support
+            query = query.filter(Misp_Attribute.value.like(pattern))
+
+    # date filters (creation_date)
+    if start_date:
+        try:
+            dt_start = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(Misp_Attribute.creation_date >= dt_start)
+        except Exception:
+            pass
+    if end_date:
+        try:
+            dt_end = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+            dt_next = dt_end + datetime.timedelta(days=1)
+            query = query.filter(Misp_Attribute.creation_date < dt_next)
+        except Exception:
+            pass
+
+    list_attr = query.all()
     list_obj = [Case_Misp_Object.query.get(attr.case_misp_object_id) for attr in list_attr]
 
     list_case = []
     seen_case_ids = set()
     for obj in list_obj:
+        if not obj:
+            continue
         if current_user.is_admin():
             case = Case.query.get(obj.case_id)
         else:

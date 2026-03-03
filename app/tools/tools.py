@@ -312,8 +312,11 @@ def search_attr():
 @tools_blueprint.route("/search_attr_with_value", methods=["GET"])
 @login_required
 def search_attr_with_value():
-    attr_value = request.args.get('value', 1, type=str)
-    res = ToolsModel.search_attr_with_value(attr_value, current_user)
+    attr_value = request.args.get('value', '', type=str)
+    start_date = request.args.get('start_date', None, type=str)
+    end_date = request.args.get('end_date', None, type=str)
+
+    res = ToolsModel.search_attr_with_value(attr_value, current_user, start_date=start_date, end_date=end_date)
     return res
 
 
