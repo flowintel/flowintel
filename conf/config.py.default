@@ -67,7 +67,11 @@ class Config:
     ENTRA_ROLE_QUEUER       = os.getenv('ENTRA_ROLE_QUEUER',       'Queuer')
     ENTRA_REDIRECT_URL = os.getenv('ENTRA_REDIRECT_URL', 'http://localhost:7006/account/entra/callback')
 
-    # Central template repository — manifest definition for this Flowintel instance
+    # Central template repository
+    # Base directory (relative to project root or absolute) where cloned repositories live.
+    REPOSITORY_BASE_PATH = os.getenv('REPOSITORY_BASE_PATH', 'modules/repositories')
+
+    # Manifest definition for this Flowintel instance
     REPOSITORY_MANIFEST = {
         "name": "demo",
         "description": "flowintel-template-repository",

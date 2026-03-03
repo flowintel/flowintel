@@ -11,6 +11,11 @@
                 <i class="fa-solid fa-plus fa-sm"></i>
             </button>
             <button class="btn btn-outline-secondary btn-sm ms-2" type="button"
+                    title="Scan modules/repositories for cloned repositories"
+                    @click="scanRepositories">
+                <i class="fa-solid fa-magnifying-glass-location fa-sm me-1"></i>Scan
+            </button>
+            <button class="btn btn-outline-secondary btn-sm ms-2" type="button"
                     title="What does manifest.json look like?" data-bs-toggle="modal" data-bs-target="#manifestModal">
                 <i class="fa-solid fa-file-code fa-sm me-1"></i>manifest.json
             </button>
@@ -25,6 +30,79 @@
 </div>
 
 <hr class="fading-line-2 mt-4 mb-4">
+
+<!-- Getting started + icon legend -->
+<div class="mb-4">
+    <div class="alert alert-info alert-dismissible py-3 mb-3" role="alert" style="border-radius: 12px;">
+        <div class="d-flex align-items-start gap-3">
+            <i class="fa-solid fa-circle-info fa-lg mt-1 flex-shrink-0"></i>
+            <div>
+                <strong>Before adding a repository</strong>, clone it to the server first:
+                <code class="d-block mt-1 mb-2 user-select-all">git clone &lt;URL&gt; modules/repositories/&lt;name&gt;</code>
+                Then click <i class="fa-solid fa-plus fa-sm mx-1"></i> above, enter a name and the local path (e.g. <code>modules/repositories/my-repo</code>).
+                Use <i class="fa-solid fa-arrows-rotate fa-xs mx-1"></i> <strong>Sync</strong> on a repository to scan its templates and make them available for import.
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-md-6">
+            <div class="card border-0 bg-light rounded-3 h-100">
+                <div class="card-body py-3 px-3">
+                    <h6 class="fw-semibold mb-2 text-muted" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: .05em;">
+                        <i class="fa-solid fa-code-branch me-2"></i>Repository actions
+                    </h6>
+                    <div class="d-flex flex-column gap-2" style="font-size: 0.82rem;">
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-tower-broadcast fa-xs fa-fw"></i></button>
+                            <span><strong>Check</strong> — verify the local path and validate <code>manifest.json</code></span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-info btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-arrows-rotate fa-xs fa-fw"></i></button>
+                            <span><strong>Sync</strong> — re-scan the repository and refresh the template list</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-primary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-pen-to-square fa-xs fa-fw"></i></button>
+                            <span><strong>Edit</strong> — update the repository name, URL or local path</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-danger btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-trash fa-xs fa-fw"></i></button>
+                            <span><strong>Delete</strong> — remove the repository from Flowintel</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div class="card border-0 bg-light rounded-3 h-100">
+                <div class="card-body py-3 px-3">
+                    <h6 class="fw-semibold mb-2 text-muted" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: .05em;">
+                        <i class="fa-solid fa-file-code me-2"></i>Template actions
+                    </h6>
+                    <div class="d-flex flex-column gap-2" style="font-size: 0.82rem;">
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-eye fa-xs fa-fw"></i></button>
+                            <span><strong>View</strong> — preview the raw template JSON from the repository</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-code-compare fa-xs fa-fw"></i></button>
+                            <span><strong>Diff</strong> — compare the repository version with your local copy</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-arrows-rotate fa-xs fa-fw"></i></button>
+                            <span><strong>Refresh</strong> — re-import to update an already-imported template</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-success btn-sm py-0 px-2 flex-shrink-0 disabled" style="pointer-events:none;font-size:0.72rem;"><i class="fa-solid fa-cloud-arrow-down fa-xs me-1"></i>Import</button>
+                            <span><strong>Import</strong> — add this template to Flowintel for the first time</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="case-core-style">
     <div v-if="loading" class="text-center py-4">
@@ -379,6 +457,39 @@
             </div>
         </div>
     </template>
+</div>
+
+<!-- Scan results modal -->
+<div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModal-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scanModal-title">
+                    <i class="fa-solid fa-magnifying-glass-location me-2"></i>Discovered repositories
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="scanModal-spinner" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Scanning…</span></div>
+                </div>
+                <div id="scanModal-error" class="alert alert-danger d-none"></div>
+                <div id="scanModal-body" class="d-none">
+                    <p class="text-muted small mb-3">
+                        <i class="fa-solid fa-folder-open me-1"></i>
+                        Scanning <code id="scanModal-base"></code>
+                    </p>
+                    <div id="scanModal-empty" class="text-muted text-center py-3 d-none">
+                        <i class="fa-solid fa-circle-info me-1"></i>No subdirectories found.
+                    </div>
+                    <div class="list-group" id="scanModal-list"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Add / Edit modal -->
@@ -843,7 +954,89 @@
                 }
             }
 
-            // ── Add / Edit modal ─────────────────────────────────────────────────
+            // ── Scan for repositories ─────────────────────────────────────────────────────
+            async function scanRepositories() {
+                const modal     = bootstrap.Modal.getOrCreateInstance(document.getElementById('scanModal'))
+                const spinnerEl = document.getElementById('scanModal-spinner')
+                const errorEl   = document.getElementById('scanModal-error')
+                const bodyEl    = document.getElementById('scanModal-body')
+                const baseEl    = document.getElementById('scanModal-base')
+                const listEl    = document.getElementById('scanModal-list')
+                const emptyEl   = document.getElementById('scanModal-empty')
+
+                spinnerEl.classList.remove('d-none')
+                errorEl.classList.add('d-none')
+                bodyEl.classList.add('d-none')
+                listEl.innerHTML = ''
+                modal.show()
+
+                try {
+                    const res  = await fetch('/templating/repositories/scan')
+                    const data = await res.json()
+                    spinnerEl.classList.add('d-none')
+
+                    if (data.error && !data.found.length) {
+                        errorEl.textContent = data.error
+                        errorEl.classList.remove('d-none')
+                        return
+                    }
+
+                    baseEl.textContent = data.base_path
+                    bodyEl.classList.remove('d-none')
+
+                    if (!data.found.length) {
+                        emptyEl.classList.remove('d-none')
+                        return
+                    }
+                    emptyEl.classList.add('d-none')
+
+                    for (const repo of data.found) {
+                        const item = document.createElement('div')
+                        item.className = 'list-group-item d-flex align-items-center justify-content-between gap-3 py-2'
+
+                        const left = document.createElement('div')
+                        const displayName = repo.name !== repo.dir
+                            ? `${repo.name} <span class="text-muted fw-normal">(${repo.dir})</span>`
+                            : repo.name
+                        const manifestBadge = repo.has_manifest
+                            ? '<span class="badge bg-success-subtle text-success border border-success-subtle fw-normal" style="font-size:0.65rem;"><i class="fa-solid fa-circle-check me-1"></i>manifest.json</span>'
+                            : '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-normal" style="font-size:0.65rem;"><i class="fa-solid fa-triangle-exclamation me-1"></i>no manifest.json</span>'
+                        left.innerHTML = `
+                            <div class="fw-semibold small">${displayName}</div>
+                            <div class="d-flex gap-2 mt-1 flex-wrap">
+                                <code class="small text-muted">${repo.local_path}</code>
+                                ${manifestBadge}
+                            </div>`
+
+                        const right = document.createElement('div')
+                        right.className = 'flex-shrink-0'
+                        if (repo.already_added) {
+                            right.innerHTML = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-normal"><i class="fa-solid fa-circle-check me-1"></i>Already added</span>'
+                        } else {
+                            const btn = document.createElement('button')
+                            btn.className = 'btn btn-outline-success btn-sm'
+                            btn.innerHTML = '<i class="fa-solid fa-plus fa-xs me-1"></i>Add'
+                            btn.addEventListener('click', () => {
+                                modal.hide()
+                                editTarget.value = null
+                                form.value = { name: repo.name, url: '', description: '', local_path: repo.local_path }
+                                bootstrap.Modal.getOrCreateInstance(document.getElementById('repoFormModal')).show()
+                            })
+                            right.appendChild(btn)
+                        }
+
+                        item.appendChild(left)
+                        item.appendChild(right)
+                        listEl.appendChild(item)
+                    }
+                } catch (e) {
+                    spinnerEl.classList.add('d-none')
+                    errorEl.textContent = 'Network error: ' + e
+                    errorEl.classList.remove('d-none')
+                }
+            }
+
+            // ── Add / Edit modal ─────────────────────────────────────────────────────
             function openAdd() {
                 editTarget.value = null
                 form.value = { name: '', url: '', description: '', local_path: '' }
@@ -916,7 +1109,7 @@
                 form, editTarget,
                 connectivity, refreshing, expanded,
                 entries, fetchEntries, importing, diffing,
-                toggleExpand, checkConnectivity, refreshRemote,
+                toggleExpand, checkConnectivity, refreshRemote, scanRepositories,
                 openAdd, openEdit, saveRepo, deleteRepo,
                 importEntry, viewEntry, diffEntry,
                 onInput

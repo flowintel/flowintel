@@ -1281,7 +1281,7 @@ class Template_Repository(db.Model):
     uuid = db.Column(db.String(36), index=True, unique=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(256), index=True)
     description = db.Column(db.String)
-    url = db.Column(db.String(512))
+    url = db.Column(db.String(512), nullable=True)
     local_path = db.Column(db.String(512))
     version = db.Column(db.Integer)
     creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))

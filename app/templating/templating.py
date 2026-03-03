@@ -1299,6 +1299,50 @@ def repositories_index():
     return render_template("templating/repositories.html", manifest_json=manifest_json)
 
 
+@templating_blueprint.route("/repositories/scan", methods=['GET'])
+@login_required
+@template_editor_required
+def repositories_scan():
+    """List subdirectories in the configured repository base path.
+
+    Returns each directory with its name, resolved local_path, whether a
+    manifest.json is present, and whether it is already registered.
+    """
+    base_rel = current_app.config.get('REPOSITORY_BASE_PATH', 'modules/repositories')
+    base = _repo_base_path(base_rel)
+
+    if not os.path.isdir(base):
+        return {"base_path": base_rel, "found": [], "error": f"Directory not found: {base_rel}"}, 200
+
+    existing_paths = {r.local_path for r in Template_Repository.query.with_entities(Template_Repository.local_path).all()}
+
+    found = []
+    for entry in sorted(os.listdir(base)):
+        full = os.path.join(base, entry)
+        if not os.path.isdir(full):
+            continue
+        rel_path = f"{base_rel}/{entry}"
+        has_manifest = os.path.isfile(os.path.join(full, 'manifest.json'))
+        name = entry
+        if has_manifest:
+            try:
+                import json as _json
+                with open(os.path.join(full, 'manifest.json'), 'r', encoding='utf-8') as f:
+                    mf = _json.load(f)
+                name = mf.get('name') or entry
+            except Exception:
+                pass
+        found.append({
+            "name": name,
+            "dir": entry,
+            "local_path": rel_path,
+            "has_manifest": has_manifest,
+            "already_added": rel_path in existing_paths,
+        })
+
+    return {"base_path": base_rel, "found": found}, 200
+
+
 @templating_blueprint.route("/repositories/list", methods=['GET'])
 @login_required
 @template_editor_required
