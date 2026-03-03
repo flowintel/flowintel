@@ -148,6 +148,8 @@ class Case(db.Model):
     ticket_id = db.Column(db.String)
     is_updated_from_misp = db.Column(db.Boolean, default=False)
     computer_assistate_report = db.Column(db.String)
+    computer_assistate_model = db.Column(db.String, nullable=True)
+    computer_assistate_prompt = db.Column(db.Text, nullable=True)
 
     def to_json(self):
         json_dict = {
@@ -170,7 +172,9 @@ class Case(db.Model):
             "privileged_case": self.privileged_case,
             "ticket_id": self.ticket_id,
             "is_updated_from_misp": self.is_updated_from_misp,
-            "computer_assistate_report": self.computer_assistate_report
+            "computer_assistate_report": self.computer_assistate_report,
+            "computer_assistate_model": self.computer_assistate_model,
+            "computer_assistate_prompt": self.computer_assistate_prompt
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
@@ -212,7 +216,9 @@ class Case(db.Model):
             "is_private": self.is_private,
             "ticket_id": self.ticket_id,
             "is_updated_from_misp": self.is_updated_from_misp,
-            "computer_assistate_report": self.computer_assistate_report
+            "computer_assistate_report": self.computer_assistate_report,
+            "computer_assistate_model": self.computer_assistate_model,
+            "computer_assistate_prompt": self.computer_assistate_prompt
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)

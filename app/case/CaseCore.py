@@ -965,7 +965,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return False
     
 
-    def generate_computer_assistate_report(self, case: Case, current_user: User):
+    def generate_computer_assistate_report(self, case: Case, current_user: User, model: str = None, prompt: str = None):
         """Generate a report from all informations find in the case"""
 
         history = CommonModel.get_history(case.uuid)
@@ -980,12 +980,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return_dict["misp-objects"] = misp_object_list
         return_dict["history"] = history
 
-        if not ConfigModule.OLLAMA_URL or not ConfigModule.OLLAMA_MODEL:
+        model_to_use = model if model else ConfigModule.OLLAMA_MODEL
+        if not ConfigModule.OLLAMA_URL or not model_to_use:
             return {"message": "Ollama configuration is missing", "toast_class": "warning-subtle"}, 400
-        
-        asking_input = "Give me a report using:"
 
-        message = f"{asking_input} {json.dumps(return_dict)}"
+        if prompt:
+            message = prompt
+        else:
+            asking_input = "Give me a report using:"
+            message = f"{asking_input} {json.dumps(return_dict)}"
 
         url = f"{ConfigModule.OLLAMA_URL}/api/generate"
         headers = {"Content-Type": "application/json"}
@@ -993,7 +996,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             headers["Authorization"] = f"Bearer {ConfigModule.OLLAMA_KEY}"
 
         payload = {
-            "model": ConfigModule.OLLAMA_MODEL,
+            "model": model_to_use,
             "prompt": message,
             "stream": False,
         }
@@ -1018,10 +1021,24 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             text=True,
         )
 
-        self.TasksAI[case.uuid] = {"proc": process, "case_id": case.id}
+        # Store process and metadata so we can annotate the final report when done
+        input_prompt_desc = prompt if prompt else "auto-generated from case data"
+        self.TasksAI[case.uuid] = {"proc": process, "case_id": case.id, "model": model_to_use, "prompt_desc": input_prompt_desc}
+
+        # Persist model and prompt to the case record so they are available later
+        try:
+            case.computer_assistate_model = model_to_use
+            # store full prompt (could be large) — prompt if provided, else the constructed message
+            case.computer_assistate_prompt = prompt if prompt else message
+            db.session.add(case)
+            db.session.commit()
+        except Exception:
+            # If DB update fails, continue but log
+            flowintel_log("error", 500, f"Unable to persist AI model/prompt for case {case.id}")
 
         CommonModel.update_last_modif(case.id)
-        CommonModel.save_history(case.uuid, current_user, f"AI report generated and added to notes")
+        hist_prompt = (prompt[:500] + '...') if prompt and len(prompt) > 500 else (prompt or "(auto-generated)")
+        CommonModel.save_history(case.uuid, current_user, f"AI report generation started (model={model_to_use}, prompt={hist_prompt})")
         return {"message": "AI report generation started", "toast_class": "success-subtle"}, 200
     
     def _finalize_task_if_done(self, case_uuid):
@@ -1041,19 +1058,59 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             case = Case.query.get(task_entry["case_id"])
             if case:
                 if proc.returncode != 0 or stderr_text:
-                    print(f"Ollama subprocess error for case {case_uuid}: {stderr_text}")
                     error_msg = stderr_text if stderr_text else "Unknown error"
-                    case.computer_assistate_report = f"Error generating AI report: {error_msg}"
+                    print(f"Ollama subprocess error for case {case_uuid}: {error_msg}")
+
+                    # Persist a human-readable error into the existing report field
+                    try:
+                        model_used = task_entry.get('model')
+                        prompt_desc = task_entry.get('prompt_desc')
+                        # truncate stderr for storage/display to avoid huge blobs
+                        stderr_display = (stderr_text[:1000] + '...') if stderr_text and len(stderr_text) > 1000 else stderr_text
+                        header_lines = []
+                        if model_used:
+                            header_lines.append(f"**Model:** {model_used}")
+                        if prompt_desc:
+                            pd = (prompt_desc[:1000] + '...') if len(prompt_desc) > 1000 else prompt_desc
+                            header_lines.append(f"**Prompt:** {pd}")
+                        header = ("\n\n".join(header_lines) + "\n\n---\n\n") if header_lines else ""
+                        case.computer_assistate_report = header + f"Error generating AI report (returncode={proc.returncode})\n{stderr_display}"
+                        db.session.add(case)
+                        db.session.commit()
+                    except Exception:
+                        flowintel_log("error", 500, f"Unable to persist AI error for case {case.id}")
                 else:
                     content = stdout_text
                     if not content:
-                        case.computer_assistate_report = "Error generating AI report: Empty response"
+                        case.computer_assistate_report = ""
                     else:
                         try:
                             parsed = json.loads(content)
-                            case.computer_assistate_report = parsed.get("response", content)
+                            body = parsed.get("response", content)
                         except json.JSONDecodeError:
-                            case.computer_assistate_report = content
+                            body = content
+
+                        # Prepend model/prompt header if available
+                        model_used = task_entry.get('model')
+                        prompt_desc = task_entry.get('prompt_desc')
+                        header = ""
+                        if model_used or prompt_desc:
+                            pd = (prompt_desc[:1000] + '...') if prompt_desc and len(prompt_desc) > 1000 else (prompt_desc or "")
+                            header_lines = []
+                            if model_used:
+                                header_lines.append(f"**Model:** {model_used}")
+                            if pd:
+                                header_lines.append(f"**Prompt:** {pd}")
+                            if header_lines:
+                                header = "\n\n".join(header_lines) + "\n\n---\n\n"
+
+                        case.computer_assistate_report = header + (body or "")
+                        # Save updated report on success (already assigned above)
+                        try:
+                            db.session.add(case)
+                            db.session.commit()
+                        except Exception:
+                            pass
                 db.session.commit()
 
         del self.TasksAI[case_uuid]

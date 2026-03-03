@@ -4,6 +4,8 @@ import json
 import os
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app, abort
 from flask_login import login_required, current_user
+import requests
+import conf.config_module as ConfigModule
 
 from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel, FILE_FOLDER
@@ -840,7 +842,9 @@ def run_computer_assistate_report(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         if not CaseModel.check_exist_task(case.uuid):
             flowintel_log("audit", 200, "Run computer assisted report", User=current_user.email, CaseId=cid)
-            return CaseModel.generate_computer_assistate_report(case, current_user)
+            model = request.args.get('model') if request.args.get('model') else None
+            prompt = request.args.get('prompt') if request.args.get('prompt') else None
+            return CaseModel.generate_computer_assistate_report(case, current_user, model=model, prompt=prompt)
         return {"message": "There's already a generation going for this case", "toast_class": "warning-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
@@ -857,7 +861,7 @@ def status_computer_assistate_report(cid):
         if CaseModel.get_status_computer_assistate_report(case.uuid):
             flowintel_log("audit", 200, "Get status computer assisted report", User=current_user.email, CaseId=cid)
             return {"report_status": "running"}, 200
-        return {"report_status": "done"}, 200
+        return {"report_status": "done", "message": "Report generation completed"}, 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -868,7 +872,17 @@ def get_computer_assistate_report(cid):
     case = CommonModel.get_case(cid)
     if case:
         flowintel_log("audit", 200, "Get computer assisted report", User=current_user.email, CaseId=cid)
-        return {"report": case.computer_assistate_report}
+
+        resp = {"report": case.computer_assistate_report}
+        # Include persisted model/prompt if available
+        try:
+            if getattr(case, 'computer_assistate_model', None):
+                resp["model"] = case.computer_assistate_model
+            if getattr(case, 'computer_assistate_prompt', None):
+                resp["prompt"] = case.computer_assistate_prompt
+        except Exception:
+            pass
+        return resp
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -896,6 +910,44 @@ def export_computer_assistate_report(cid):
             return res
         return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/list_ollama_models", methods=['GET'])
+@login_required
+def list_ollama_models():
+    """Return a list of available models from the configured Ollama server"""
+    if not ConfigModule.OLLAMA_URL:
+        return {"message": "Ollama URL not configured", 'toast_class': "warning-subtle"}, 400
+
+    url = f"{ConfigModule.OLLAMA_URL}/api/tags"
+    headers = {}
+    if getattr(ConfigModule, 'OLLAMA_KEY', None):
+        headers["Authorization"] = f"Bearer {ConfigModule.OLLAMA_KEY}"
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        models = []
+        if isinstance(data, list):
+            for item in data:
+                if isinstance(item, dict):
+                    name = item.get('name') or item.get('model') or item.get('id')
+                    if name:
+                        models.append(name)
+                elif isinstance(item, str):
+                    models.append(item)
+        elif isinstance(data, dict) and 'models' in data and isinstance(data['models'], list):
+            for item in data['models']:
+                if isinstance(item, dict):
+                    name = item.get('name') or item.get('model') or item.get('id')
+                    if name:
+                        models.append(name)
+        flowintel_log("audit", 200, "List ollama models", User=current_user.email)
+        return {"models": models}, 200
+    except requests.RequestException as e:
+        flowintel_log("error", 500, f"Error listing ollama models: {e}", User=current_user.email)
+        return {"message": "Unable to reach Ollama", 'toast_class': "danger-subtle"}, 500
 
 
 @case_blueprint.route("/get_orgs", methods=['GET'])
