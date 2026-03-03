@@ -187,7 +187,7 @@ export default {
             <fieldset class="analyzer-select-case">
                 <legend class="analyzer-select-case"><i class="fa-solid fa-user fa-sm me-1"></i><span class="section-title" style="font-size: 0.85em;">Assign</span></legend>
                 <div v-if="users_in_case">
-                    <select data-placeholder="Users" multiple :class="'select2-selectUser'+task.id" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
+					<select data-placeholder="Users" multiple :class="['select2-selectUser'+task.id, 'select2-selectUser']" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
                         <template v-for="user in users_in_case.users_list">
                             <option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]] [[user.last_name]]</option>
                         </template>

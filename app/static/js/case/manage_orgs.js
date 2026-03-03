@@ -5,7 +5,7 @@ export default {
     props: {
         cases_info: Object
     },
-    setup(props) {
+    setup(props, { emit }) {
         const orgs = ref([])
 
         async function fetch_orgs() {
@@ -25,6 +25,8 @@ export default {
                 let index = cases_info.orgs_in_case.indexOf(org)
                 if (index > -1)
                     cases_info.orgs_in_case.splice(index, 1)
+                // notify parent to refresh users list
+                try { emit('case_orgs_changed') } catch (e) {}
             }
             display_toast(res)
         }
@@ -60,6 +62,8 @@ export default {
                     var myModalEl = document.getElementById('add_orgs');
                     var modal = bootstrap.Modal.getInstance(myModalEl)
                     modal.hide();
+                    // notify parent to refresh users list after adding orgs
+                    try { emit('case_orgs_changed') } catch (e) {}
                 }
                 display_toast(res)
             }

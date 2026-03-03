@@ -249,7 +249,7 @@
                         </div>
                     </div>
 
-                    <manage_orgs :cases_info="cases_info"></manage_orgs>
+                    <manage_orgs :cases_info="cases_info" @case_orgs_changed="get_all_users_case"></manage_orgs>
                 </div>
             </div>
         </template>
@@ -909,6 +909,12 @@
                         display_toast(res)
                     }else{
                         users_in_case.value = await res.json()
+                        await nextTick()
+                        // reinitialize select2 on user selects so new options render
+                        $('.select2-selectUser').each(function () {
+                            try { $(this).select2('destroy') } catch (e) { }
+                            $(this).select2({ width: 'element' })
+                        })
                     }
                 }
                 get_all_users_case()
@@ -1436,6 +1442,8 @@
                     if (listContainer) {
                         new Sortable(listContainer, options);
                     }
+
+                    // (users refreshed via Vue event emitted by child component)
                 })
 
                 const can_edit_case = computed(() => {
@@ -1493,6 +1501,7 @@
                     export_notes,
                     fetch_case_connectors,
                     fetch_case_files,
+                    get_all_users_case,
 
                     change_status_sort,
                     change_switch_check,
