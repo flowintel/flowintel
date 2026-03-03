@@ -166,6 +166,11 @@ export default {
 
             if (await res.status == 200) {
                 $("#modal-send-to-" + modal_identifier).modal("hide");
+                if (props.is_case) {
+                    emit("case_connectors", true)
+                } else {
+                    emit("task_connectors", true)
+                }
             }
 
             display_toast(res, true)
