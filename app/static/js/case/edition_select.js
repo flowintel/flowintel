@@ -4,7 +4,7 @@ import {getTextColor, mapIcon} from '/static/js/utils.js'
 const { ref, nextTick, onMounted, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
-    props:{type_object: String},
+    props:{type_object: String, object_id: Number},
 	emits: ['st', 'sc', 'sct', 'sg', "delete_st", "delete_sc", "delete_sg", "delete_sct"],
 	setup(props, {emit}) {
 		const taxonomies = ref([])
@@ -83,16 +83,16 @@ export default {
             let url
 
             if(props.type_object == "case"){
-                url = "/case/get_taxonomies_case/" +window.location.pathname.split("/").slice(-1)
+                url = "/case/get_taxonomies_case/" +props.object_id
             }
             else if(props.type_object == "task"){
-                url = "/case/get_taxonomies_task/" +window.location.pathname.split("/").slice(-1)
+                url = "/case/get_taxonomies_task/" +props.object_id
             }
             else if(props.type_object == "case_template"){
-                url = "/templating/get_taxonomies_case/" +window.location.pathname.split("/").slice(-1)
+                url = "/templating/get_taxonomies_case/" +props.object_id
             }
             else if(props.type_object == "task_template"){
-                url = "/templating/get_taxonomies_task/" +window.location.pathname.split("/").slice(-1)
+                url = "/templating/get_taxonomies_task/" +props.object_id
             }
 
             const res = await fetch(url)
@@ -119,16 +119,16 @@ export default {
         async function fetch_galaxies_case_task(){
             let url 
             if(props.type_object == "case"){
-                url = "/case/get_galaxies_case/" +window.location.pathname.split("/").slice(-1)
+                url = "/case/get_galaxies_case/" +props.object_id
             }
             else if(props.type_object == "task"){
-                url = "/case/get_galaxies_task/" +window.location.pathname.split("/").slice(-1)
+                url = "/case/get_galaxies_task/" +props.object_id
             }
             else if(props.type_object == "case_template"){
-                url = "/templating/get_galaxies_case/" +window.location.pathname.split("/").slice(-1)
+                url = "/templating/get_galaxies_case/" +props.object_id
             }
             else if(props.type_object == "task_template"){
-                url = "/templating/get_galaxies_task/" +window.location.pathname.split("/").slice(-1)
+                url = "/templating/get_galaxies_task/" +props.object_id
             }
 
             const res = await fetch(url)
@@ -156,16 +156,16 @@ export default {
             let url
 
             if(props.type_object == "case"){
-                url = "/case/get_custom_tags_case/" +window.location.pathname.split("/").slice(-1)
+                url = "/case/get_custom_tags_case/" +props.object_id
             }
             else if(props.type_object == "task"){
-                url = "/case/get_custom_tags_task/" +window.location.pathname.split("/").slice(-1)
+                url = "/case/get_custom_tags_task/" +props.object_id
             }
             else if(props.type_object == "case_template"){
-                url = "/templating/get_custom_tags_case/" +window.location.pathname.split("/").slice(-1)
+                url = "/templating/get_custom_tags_case/" +props.object_id
             }
             else if(props.type_object == "task_template"){
-                url = "/templating/get_custom_tags_task/" +window.location.pathname.split("/").slice(-1)
+                url = "/templating/get_custom_tags_task/" +props.object_id
             }
 
             const res = await fetch(url)

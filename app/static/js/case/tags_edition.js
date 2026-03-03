@@ -125,6 +125,7 @@ export default {
                 <div class="modal-body">
                     <edition_select 
                         :type_object="type_object"
+                        :object_id="current_case.id"
                         @st="(msg) => selected_tags=selected_tags.concat(msg)"
                         @sc="(msg) => selected_clusters=selected_clusters.concat(msg)"
                         @sct="(msg) => selected_custom_tags=selected_custom_tags.concat(msg)"

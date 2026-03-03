@@ -156,7 +156,7 @@ export default {
 				if (loc_val == "flowintel") {
 					notify_user(user_id)
 				} else {
-					const res = await fetch("/case/" + window.location.pathname.split("/").slice(-1) + "/task/" + props.task.id + "/call_module_task_no_instance?module=" + loc_val + "&user_id=" + user_id);
+					const res = await fetch("/case/" + props.task.case_id + "/task/" + props.task.id + "/call_module_task_no_instance?module=" + loc_val + "&user_id=" + user_id);
 					display_toast(res, true)
 				}
 				is_module_loading.value = false

@@ -318,7 +318,7 @@
                 async function fetchTasks() {
                     tasks_list.value = null
                     const res = await fetch(
-                        '/templating/get_task_by_case/'+window.location.pathname.split("/").slice(-1)
+                        '/templating/get_task_by_case/{{case_id}}'
                     )
                     let loc = await res.json()
                     tasks_list.value = loc["tasks"]
@@ -330,7 +330,7 @@
                 }
 
                 async function fetch_case_template_connectors(){
-                    const res = await fetch("/templating/"+ window.location.pathname.split("/").slice(-1) +"/get_case_template_connector_instances")
+                    const res = await fetch("/templating/{{case_id}}/get_case_template_connector_instances")
                     if(await res.status==404 ){
                         display_toast(res)
                     }else{

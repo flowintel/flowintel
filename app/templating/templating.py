@@ -190,12 +190,12 @@ def edit_task(tid):
                 if case_id:
                     return redirect(f"/templating/case/{case_id}")
                 return redirect(f"/templating/tasks")
-            return render_template("templating/edit_task_template.html", form=form, description=template.description, case_id=case_id)
+            return render_template("templating/edit_task_template.html", form=form, description=template.description, case_id=case_id, task_id=tid)
         else:
             form.title.data = template.title
             form.time_required.data = template.time_required
 
-        return render_template("templating/edit_task_template.html", form=form, description=template.description, case_id=case_id)
+        return render_template("templating/edit_task_template.html", form=form, description=template.description, case_id=case_id, task_id=tid)
     return render_template("404.html")
 
 

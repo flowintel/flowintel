@@ -91,7 +91,7 @@ export default {
 
 		async function fetch_module_selected(module) {
 			// Get modules and instances linked on
-			const res = await fetch("/case/" + window.location.pathname.split("/").slice(-1) + "/task/" + props.task.id + "/get_instance_module?type=send_to&module=" + module)
+			const res = await fetch("/case/" + props.task.case_id + "/task/" + props.task.id + "/get_instance_module?type=send_to&module=" + module)
 			if (await res.status == 400) {
 				display_toast(res)
 			} else {

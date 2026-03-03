@@ -748,7 +748,7 @@
                 }
 
                 async function fetch_case_connectors(){
-                    const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/get_case_connectors")
+                    const res = await fetch("/case/{{case.id}}/get_case_connectors")
                     if(await res.status==404 ){
                         display_toast(res)
                     }else{
@@ -757,7 +757,7 @@
                     }
                 }
                 async function fetch_case_files(){
-                    const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/get_case_info")
+                    const res = await fetch("/case/{{case.id}}/get_case_info")
                     if(await res.status==404 ){
                         display_toast(res)
                     }else{
@@ -872,7 +872,7 @@
                 async function fetchCase() {
                     cases_info.value = null
                     const res = await fetch(
-                        window.location.pathname.split("/").slice(-1)+'/get_case_info'
+                        `/case/{{case.id}}/get_case_info`
                     )
 
                     if(await res.status == 404){
@@ -904,7 +904,7 @@
 
                 async function get_all_users_case(){
                     users_in_case.value = null
-                    const res = await fetch('/case/' + window.location.pathname.split("/").slice(-1) + '/get_all_users')
+                    const res = await fetch(`/case/{{case.id}}/get_all_users`)
                     if(await res.status == 404){
                         display_toast(res)
                     }else{

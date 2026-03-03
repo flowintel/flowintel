@@ -40,7 +40,7 @@ export default {
 
             let url
             if (props.is_case) {
-                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/add_connector"
+                url = "/case/" + props.object_id + "/add_connector"
             } else {
                 url = "/case/task/" + props.object_id + "/add_connector"
             }
@@ -70,7 +70,7 @@ export default {
         async function remove_connector(element_instance_id) {
             let url
             if (props.is_case) {
-                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/connectors/" + element_instance_id + "/remove_connector"
+                url = "/case/" + props.object_id + "/connectors/" + element_instance_id + "/remove_connector"
             } else {
                 url = "/case/task/" + props.object_id + "/remove_connector/" + element_instance_id
             }
@@ -98,7 +98,7 @@ export default {
         async function edit_connector() {
             let url
             if (props.is_case) {
-                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/connectors/" + edit_instance.value.case_task_instance_id + "/edit_connector"
+                url = "/case/" + props.object_id + "/connectors/" + edit_instance.value.case_task_instance_id + "/edit_connector"
             } else {
                 url = "/case/task/" + props.object_id + "/edit_connector/" + edit_instance.value.case_task_instance_id
             }
@@ -147,9 +147,9 @@ export default {
 
             let url
             if (props.is_case) {
-                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/call_module_case"
+                url = "/case/" + props.object_id + "/call_module_case"
             } else {
-                url = "/case/" + window.location.pathname.split("/").slice(-1) + "/task/" + props.object_id + "/call_module_task"
+                url = "/case/" + props.object_id + "/task/" + props.object_id + "/call_module_task"
             }
 
             const res = await fetch(url, {

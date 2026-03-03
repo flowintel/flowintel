@@ -38,7 +38,7 @@ export default {
 
             let url
             if(props.is_case){
-                url = "/templating/"+ window.location.pathname.split("/").slice(-1) +"/add_connector"
+                url = "/templating/"+ props.object_id +"/add_connector"
             }else{
                 url = "/templating/task/"+props.object_id+"/add_connector"
             }

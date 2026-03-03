@@ -48,6 +48,7 @@
 
         <edition_select 
             :type_object="'task_template'"
+            :object_id="{{ task_id }}"
             @st="(msg) => selected_tags=selected_tags.concat(msg)"
             @sc="(msg) => selected_clusters=selected_clusters.concat(msg)"
             @sg="(msg) => selected_galaxies=selected_galaxies.concat(msg)"

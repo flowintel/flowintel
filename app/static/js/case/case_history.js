@@ -230,7 +230,6 @@ export default {
 
         async function fetch_case_misp_object(){
             const res = await fetch("/case/"+props.case_id+"/get_case_misp_object")
-            // const res = await fetch("/case/"+ window.location.pathname.split("/").slice(-1) +"/get_case_misp_object")
             if(await res.status==404 ){
                 display_toast(res)
             }else{
