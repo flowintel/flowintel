@@ -1160,12 +1160,33 @@ def repository_entry_import(rid, eid):
     now = datetime.datetime.now(tz=datetime.timezone.utc)
 
     if entry.type == "task":
-        # Embedded tasks use stored metadata; standalone tasks re-fetch their JSON
         if entry.parent_case_uuid:
-            tpl_title       = entry.title or ""
-            tpl_description = entry.description or ""
-            tpl_version     = entry.version or 1
-            tpl_time        = None
+            # Embedded task: read actual task data from the parent case JSON file
+            # so that all fields (including time_required) reflect the remote.
+            parent_entry = Template_Repository_Entry.query.filter_by(
+                repository_id=rid,
+                uuid=entry.parent_case_uuid,
+                type="case",
+                parent_case_uuid=None,
+            ).first()
+            task_data_remote = None
+            if parent_entry:
+                case_tpl, case_err = _read_entry_file(repo, parent_entry)
+                if not case_err:
+                    for td in case_tpl.get("tasks_template", []):
+                        if td.get("uuid") == entry.uuid:
+                            task_data_remote = td
+                            break
+            if task_data_remote:
+                tpl_title       = (task_data_remote.get("title") or task_data_remote.get("name") or entry.title or "").strip()
+                tpl_description = task_data_remote.get("description") or entry.description or ""
+                tpl_version     = task_data_remote.get("version") or entry.version or 1
+                tpl_time        = task_data_remote.get("time_required")
+            else:
+                tpl_title       = entry.title or ""
+                tpl_description = entry.description or ""
+                tpl_version     = entry.version or 1
+                tpl_time        = None
         else:
             tpl, err = _read_entry_file(repo, entry)
             if err:
@@ -1189,12 +1210,11 @@ def repository_entry_import(rid, eid):
             )
             db.session.add(local)
         else:
-            local.title        = tpl_title
-            local.description  = tpl_description
-            if not entry.parent_case_uuid:
-                local.time_required = tpl_time
-            local.version      = tpl_version
-            local.last_modif   = now
+            local.title         = tpl_title
+            local.description   = tpl_description
+            local.time_required = tpl_time  # always overwrite — remote is authoritative
+            local.version       = tpl_version
+            local.last_modif    = now
         db.session.commit()
         action = "imported" if created else "updated"
         msg = f"Task template \"{local.title}\" {action} successfully."
@@ -1221,7 +1241,7 @@ def repository_entry_import(rid, eid):
         else:
             local_case.title        = tpl.get("title", local_case.title)
             local_case.description  = tpl.get("description", local_case.description)
-            local_case.time_required = tpl.get("time_required", local_case.time_required)
+            local_case.time_required = tpl.get("time_required")  # always overwrite — remote is authoritative
             local_case.notes        = tpl.get("notes") if isinstance(tpl.get("notes"), str) else local_case.notes
             local_case.version      = tpl.get("version", local_case.version)
             local_case.last_modif   = now
@@ -1248,7 +1268,7 @@ def repository_entry_import(rid, eid):
             else:
                 local_task.title        = task_data.get("title", local_task.title)
                 local_task.description  = task_data.get("description", local_task.description)
-                local_task.time_required = task_data.get("time_required", local_task.time_required)
+                local_task.time_required = task_data.get("time_required")  # always overwrite — remote is authoritative
                 local_task.version      = task_data.get("version", local_task.version)
                 local_task.last_modif   = now
 
