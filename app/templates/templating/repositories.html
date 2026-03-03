@@ -701,7 +701,7 @@
             // expanded: Set of repo IDs whose accordion is open
             const expanded     = ref(new Set())
 
-            // ── Filtered list ────────────────────────────────────────────────
+            // Filtered list
             const filtered = computed(() => {
                 const q = searchQuery.value.trim().toLowerCase()
                 if (!q) return repos.value
@@ -712,7 +712,7 @@
                 )
             })
 
-            // ── Load ─────────────────────────────────────────────────────────
+            // Load
             async function fetchRepos() {
                 loading.value = true
                 try {
@@ -724,7 +724,7 @@
                 }
             }
 
-            // ── Accordion ────────────────────────────────────────────────────
+            // Accordion
             function toggleExpand(repo) {
                 const s = new Set(expanded.value)
                 if (s.has(repo.id)) {
@@ -736,7 +736,7 @@
                 expanded.value = s
             }
 
-            // ── Connectivity check ────────────────────────────────────────────
+            // Connectivity check
             async function checkConnectivity(repo) {
                 connectivity[repo.id] = 'checking'
                 try {
@@ -770,7 +770,7 @@
                 }
             }
 
-            // ── Refresh remote ────────────────────────────────────────────────
+            // Refresh remote
             async function refreshRemote(repo) {
                 refreshing[repo.id] = true
                 try {
@@ -792,7 +792,7 @@
                 }
             }
 
-            // ── Diff entry (local vs remote) ─────────────────────────────────
+            // Diff entry (local vs remote)
             async function diffEntry(tpl, repo) {
                 if (diffing[tpl.id]) return
                 diffing[tpl.id] = true
@@ -847,19 +847,6 @@
                         notes: 'Notes', tasks_count: 'Task count'
                     }
 
-                    function cellHtml(val) {
-                        if (val === null || val === undefined) return '<span class="text-muted fst-italic">—</span>'
-                        const s = String(val)
-                        if (s.length > 300) {
-                            const short = s.slice(0, 300).replace(/</g, '&lt;')
-                            const full  = s.replace(/</g, '&lt;')
-                            return `<span class="cell-short">${short}<span class="text-muted">…</span>` +
-                                   `<a href="#" class="ms-1 small text-primary show-more-link" data-full="${encodeURIComponent(full)}">[show more]</a></span>` +
-                                   `<span class="cell-full d-none" style="white-space:pre-wrap;">${full}</span>`
-                        }
-                        return `<span style="white-space:pre-wrap;">${s.replace(/</g, '&lt;')}</span>`
-                    }
-
                     for (const row of data.fields) {
                         const tr = document.createElement('tr')
                         if (!row.match) tr.classList.add('table-warning')
@@ -874,6 +861,34 @@
                                        `<td class="text-center">${icon}</td>` +
                                        `<td>${cellHtml(row.local)}</td>` +
                                        `<td>${cellHtml(row.remote)}</td>`
+                        tbodyEl.appendChild(tr)
+                    }
+
+                    // Tags row
+                    if (data.tags) {
+                        const tr = document.createElement('tr')
+                        if (!data.tags.match) tr.classList.add('table-warning')
+                        const icon = data.tags.match
+                            ? '<i class="fa-solid fa-circle-check text-success"></i>'
+                            : '<i class="fa-solid fa-circle-exclamation text-warning"></i>'
+                        tr.innerHTML = `<td class="fw-semibold text-nowrap">Tags</td>` +
+                                       `<td class="text-center">${icon}</td>` +
+                                       `<td>${tagSetCellHtml(data.tags, 'local')}</td>` +
+                                       `<td>${tagSetCellHtml(data.tags, 'remote')}</td>`
+                        tbodyEl.appendChild(tr)
+                    }
+
+                    // Galaxy clusters row
+                    if (data.clusters) {
+                        const tr = document.createElement('tr')
+                        if (!data.clusters.match) tr.classList.add('table-warning')
+                        const icon = data.clusters.match
+                            ? '<i class="fa-solid fa-circle-check text-success"></i>'
+                            : '<i class="fa-solid fa-circle-exclamation text-warning"></i>'
+                        tr.innerHTML = `<td class="fw-semibold text-nowrap">Galaxy clusters</td>` +
+                                       `<td class="text-center">${icon}</td>` +
+                                       `<td>${tagSetCellHtml(data.clusters, 'local')}</td>` +
+                                       `<td>${tagSetCellHtml(data.clusters, 'remote')}</td>`
                         tbodyEl.appendChild(tr)
                     }
 
@@ -898,7 +913,7 @@
                 }
             }
 
-            // ── Import entry ─────────────────────────────────────────────────────
+            // Import entry
             async function importEntry(tpl, repo) {
                 if (importing[tpl.id]) return
                 importing[tpl.id] = true
@@ -919,7 +934,7 @@
                 }
             }
 
-            // ── View remote template ──────────────────────────────────────────
+            // View remote template
             async function viewEntry(tpl, repo) {
                 // Reset modal state
                 const titleEl   = document.getElementById('viewEntryModal-title')
@@ -954,7 +969,34 @@
                 }
             }
 
-            // ── Scan for repositories ─────────────────────────────────────────────────────
+            function cellHtml(val) {
+                if (val === null || val === undefined) return '<span class="text-muted fst-italic">—</span>'
+                const raw = String(val)
+                const s = escHtml(raw)
+                if (raw.length > 300) {
+                    const short = escHtml(raw.slice(0, 300))
+                    return `<span class="cell-short">${short}<span class="text-muted">…</span>` +
+                           `<a href="#" class="ms-1 small text-primary show-more-link">[show more]</a></span>` +
+                           `<span class="cell-full d-none" style="white-space:pre-wrap;">${s}</span>`
+                }
+                return `<span style="white-space:pre-wrap;">${s}</span>`
+            }
+
+            function tagSetCellHtml(diff, side) {
+                if (!diff) return '<span class="text-muted fst-italic">—</span>'
+                const items = [
+                    ...diff.common.map(t => `<span class="badge bg-secondary-subtle text-secondary-emphasis border me-1 mb-1">${escHtml(t)}</span>`),
+                    ...(side === 'local' ? diff.local_only : diff.remote_only).map(t =>
+                        `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle me-1 mb-1">${escHtml(t)}</span>`)
+                ]
+                return items.length ? items.join('') : '<span class="text-muted fst-italic">—</span>'
+            }
+
+            function escHtml(s) {
+                return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+            }
+
+            // Scan for repositories
             async function scanRepositories() {
                 const modal     = bootstrap.Modal.getOrCreateInstance(document.getElementById('scanModal'))
                 const spinnerEl = document.getElementById('scanModal-spinner')
@@ -996,15 +1038,15 @@
 
                         const left = document.createElement('div')
                         const displayName = repo.name !== repo.dir
-                            ? `${repo.name} <span class="text-muted fw-normal">(${repo.dir})</span>`
-                            : repo.name
+                            ? `${escHtml(repo.name)} <span class="text-muted fw-normal">(${escHtml(repo.dir)})</span>`
+                            : escHtml(repo.name)
                         const manifestBadge = repo.has_manifest
                             ? '<span class="badge bg-success-subtle text-success border border-success-subtle fw-normal" style="font-size:0.65rem;"><i class="fa-solid fa-circle-check me-1"></i>manifest.json</span>'
                             : '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-normal" style="font-size:0.65rem;"><i class="fa-solid fa-triangle-exclamation me-1"></i>no manifest.json</span>'
                         left.innerHTML = `
                             <div class="fw-semibold small">${displayName}</div>
                             <div class="d-flex gap-2 mt-1 flex-wrap">
-                                <code class="small text-muted">${repo.local_path}</code>
+                                <code class="small text-muted">${escHtml(repo.local_path)}</code>
                                 ${manifestBadge}
                             </div>`
 
@@ -1036,7 +1078,7 @@
                 }
             }
 
-            // ── Add / Edit modal ─────────────────────────────────────────────────────
+            // Add / Edit modal
             function openAdd() {
                 editTarget.value = null
                 form.value = { name: '', url: '', description: '', local_path: '' }
@@ -1082,23 +1124,27 @@
                 }
             }
 
-            // ── Delete ────────────────────────────────────────────────────────
+            // Delete
             async function deleteRepo(repo) {
-                const res  = await fetch(`/templating/repositories/${repo.id}/delete`, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': $('#csrf_token').val() }
-                })
-                const data = await res.json()
-                if (res.ok) {
-                    const idx = repos.value.findIndex(r => r.id === repo.id)
-                    if (idx !== -1) repos.value.splice(idx, 1)
-                    const modal = bootstrap.Modal.getInstance(document.getElementById(`deleteModal_${repo.id}`))
-                    if (modal) modal.hide()
+                try {
+                    const res  = await fetch(`/templating/repositories/${repo.id}/delete`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': $('#csrf_token').val() }
+                    })
+                    const data = await res.json()
+                    if (res.ok) {
+                        const idx = repos.value.findIndex(r => r.id === repo.id)
+                        if (idx !== -1) repos.value.splice(idx, 1)
+                        const modal = bootstrap.Modal.getInstance(document.getElementById(`deleteModal_${repo.id}`))
+                        if (modal) modal.hide()
+                    }
+                    message_list.value.push({ message: data.message, toast_class: data.toast_class })
+                } catch (e) {
+                    message_list.value.push({ message: 'Delete failed: ' + e, toast_class: 'danger-subtle' })
                 }
-                message_list.value.push({ message: data.message, toast_class: data.toast_class })
             }
 
-            // ── Search ────────────────────────────────────────────────────────
+            // Search
             function onInput(e) { searchQuery.value = e.target.value }
 
             onMounted(fetchRepos)

@@ -71,11 +71,11 @@ class Config:
     # Base directory (relative to project root or absolute) where cloned repositories live.
     REPOSITORY_BASE_PATH = os.getenv('REPOSITORY_BASE_PATH', 'modules/repositories')
 
-    # Manifest definition for this Flowintel instance
+    # Manifest shown as an example in the "What does manifest.json look like?" UI modal.
     REPOSITORY_MANIFEST = {
-        "name": "demo",
-        "description": "flowintel-template-repository",
-        "uuid": "393c9227-ec80-4929-9f39-c5e91d637844",
+        "name": "My Template Repository",
+        "description": "A short description of what this repository contains.",
+        "uuid": "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx",
         "version": 1
     }
 

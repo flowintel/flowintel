@@ -15,7 +15,7 @@ from ..utils.formHelper import prepare_tags
 from ..case import common_core as CommonCaseModel
 from ..case.common_core import get_instance_with_icon
 from ..utils.logger import flowintel_log
-from ..db_class.db import Template_Repository, Template_Repository_Entry, Case_Template, Task_Template, Case_Task_Template
+from ..db_class.db import Template_Repository, Template_Repository_Entry, Case_Template, Task_Template, Case_Task_Template, Tags, Cluster, Case_Template_Tags, Case_Template_Galaxy_Tags, Task_Template_Tags, Task_Template_Galaxy_Tags
 from .. import db
 
 templating_blueprint = Blueprint(
@@ -737,6 +737,7 @@ def delete_url_tool(tid, utid):
 # Repositories
 ##########
 
+
 @templating_blueprint.route("/repositories/<int:rid>/check", methods=['GET'])
 @login_required
 @template_editor_required
@@ -913,7 +914,7 @@ def _read_entry_file(repo, entry):
     base = _repo_base_path(repo.local_path)
     filepath = os.path.normpath(os.path.join(base, entry.download_url))
     # Guard against path traversal
-    if not filepath.startswith(base + os.sep) and filepath != base:
+    if not filepath.startswith(base + os.sep):
         return None, "Invalid file path"
     if not os.path.isfile(filepath):
         return None, f"File not found: {entry.download_url}"
@@ -950,8 +951,9 @@ def _scan_local_entries(repo):
                 continue
             filepath = os.path.join(type_dir, filename)
             try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    tpl = json.load(f)
+                with open(filepath, "rb") as f:
+                    raw_bytes = f.read()
+                tpl = json.loads(raw_bytes)
             except Exception:
                 continue
 
@@ -963,9 +965,7 @@ def _scan_local_entries(repo):
             description_ = (tpl.get("description") or "")[:500]
             version_ = tpl.get("version")
             relative_path = f"{tpl_type}/{filename}"
-
-            with open(filepath, "rb") as f:
-                file_sha = hashlib.sha1(f.read()).hexdigest()
+            file_sha = hashlib.sha1(raw_bytes).hexdigest()
 
             entry = Template_Repository_Entry.query.filter_by(
                 repository_id=repo.id, uuid=uuid_, type=tpl_type, parent_case_uuid=None
@@ -1010,6 +1010,16 @@ def _scan_local_entries(repo):
                     task_entry.last_synced = now
                     upserted.append(task_entry)
 
+    # Remove entries that were not seen in this scan (template removed from repo)
+    if upserted:
+        db.session.flush()
+        seen_ids = {e.id for e in upserted}
+        Template_Repository_Entry.query.filter(
+            Template_Repository_Entry.repository_id == repo.id,
+            Template_Repository_Entry.id.notin_(seen_ids),
+        ).delete(synchronize_session=False)
+    else:
+        Template_Repository_Entry.query.filter_by(repository_id=repo.id).delete(synchronize_session=False)
     db.session.commit()
     return [e.to_json() for e in upserted], None
 
@@ -1024,6 +1034,16 @@ def _norm(v):
     return v
 
 
+def _set_diff(local_set, remote_set):
+    """Compare two tag/cluster sets; return match flag plus per-side lists."""
+    return {
+        "match":       local_set == remote_set,
+        "local_only":  sorted(local_set - remote_set),
+        "remote_only": sorted(remote_set - local_set),
+        "common":      sorted(local_set & remote_set),
+    }
+
+
 @templating_blueprint.route("/repositories/<int:rid>/entries/<int:eid>/diff", methods=["GET"])
 @login_required
 @template_editor_required
@@ -1035,8 +1055,8 @@ def repository_entry_diff(rid, eid):
 
     repo = Template_Repository.query.get(rid)
     if entry.parent_case_uuid:
-        # Embedded task — read its data from the parent case file so all fields,
-        # including time_required, reflect the actual remote values.
+        # Embedded task: start from DB-cached values as fallback, then
+        # try to read the parent case file to get fresh data for all fields.
         remote = {
             "title": entry.title,
             "description": entry.description,
@@ -1052,7 +1072,12 @@ def repository_entry_diff(rid, eid):
             if not case_err:
                 for td in case_tpl.get("tasks_template", []):
                     if td.get("uuid") == entry.uuid:
-                        remote["time_required"] = td.get("time_required")
+                        remote.update({
+                            "title":         td.get("title") or td.get("name"),
+                            "description":   td.get("description"),
+                            "version":       td.get("version"),
+                            "time_required": td.get("time_required"),
+                        })
                         break
     else:
         remote, err = _read_entry_file(repo, entry)
@@ -1081,6 +1106,28 @@ def repository_entry_diff(rid, eid):
             ("tasks_count",   local_task_count,          remote_task_count),
         ]
 
+        local_tags = set(
+            tag.name for tag in Tags.query
+            .join(Case_Template_Tags, Case_Template_Tags.tag_id == Tags.id)
+            .filter(Case_Template_Tags.case_id == local_obj.id).all()
+        )
+        remote_tags = set(
+            t if isinstance(t, str) else t.get("name", "")
+            for t in remote.get("tags", [])
+        )
+        tags_diff = _set_diff(local_tags, remote_tags)
+
+        local_clusters = set(
+            c.name for c in Cluster.query
+            .join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.cluster_id == Cluster.id)
+            .filter(Case_Template_Galaxy_Tags.template_id == local_obj.id).all()
+        )
+        remote_clusters = set(
+            c["name"] if isinstance(c, dict) else c
+            for c in remote.get("clusters", [])
+        )
+        clusters_diff = _set_diff(local_clusters, remote_clusters)
+
     elif entry.type == "task":
         local_obj = Task_Template.query.filter_by(uuid=entry.uuid).first()
         if not local_obj:
@@ -1092,6 +1139,29 @@ def repository_entry_diff(rid, eid):
             ("version",       local_obj.version,        remote.get("version")),
             ("time_required", local_obj.time_required,  remote.get("time_required")),
         ]
+
+        local_tags = set(
+            tag.name for tag in Tags.query
+            .join(Task_Template_Tags, Task_Template_Tags.tag_id == Tags.id)
+            .filter(Task_Template_Tags.task_id == local_obj.id).all()
+        )
+        remote_tags = set(
+            t if isinstance(t, str) else t.get("name", "")
+            for t in remote.get("tags", [])
+        )
+        tags_diff = _set_diff(local_tags, remote_tags)
+
+        local_clusters = set(
+            c.name for c in Cluster.query
+            .join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.cluster_id == Cluster.id)
+            .filter(Task_Template_Galaxy_Tags.template_id == local_obj.id).all()
+        )
+        remote_clusters = set(
+            c["name"] if isinstance(c, dict) else c
+            for c in remote.get("clusters", [])
+        )
+        clusters_diff = _set_diff(local_clusters, remote_clusters)
+
     else:
         return {"message": f"Unknown entry type: {entry.type}", "toast_class": "warning-subtle"}, 200
 
@@ -1105,8 +1175,9 @@ def repository_entry_diff(rid, eid):
             "remote": str(remote_val) if remote_val is not None else None,
         })
 
-    has_diff = any(not f["match"] for f in fields)
-    return {"local_exists": True, "has_diff": has_diff, "fields": fields}, 200
+    has_diff = any(not f["match"] for f in fields) or not tags_diff["match"] or not clusters_diff["match"]
+    return {"local_exists": True, "has_diff": has_diff, "fields": fields,
+            "tags": tags_diff, "clusters": clusters_diff}, 200
 
 
 @templating_blueprint.route("/repositories/<int:rid>/entries/<int:eid>/raw", methods=["GET"])
@@ -1169,16 +1240,17 @@ def repository_entry_import(rid, eid):
                         if td.get("uuid") == entry.uuid:
                             task_data_remote = td
                             break
-            if task_data_remote:
-                tpl_title       = (task_data_remote.get("title") or task_data_remote.get("name") or entry.title or "").strip()
-                tpl_description = task_data_remote.get("description") or ""
-                tpl_version     = task_data_remote.get("version") or entry.version or 1
-                tpl_time        = task_data_remote.get("time_required")
-            else:
-                tpl_title       = entry.title or ""
-                tpl_description = entry.description or ""
-                tpl_version     = entry.version or 1
-                tpl_time        = None
+            if not task_data_remote:
+                return {
+                    "message": "Could not read task details from the parent case template. "
+                               "Try refreshing the repository first.",
+                    "toast_class": "warning-subtle",
+                }, 200
+
+            tpl_title       = (task_data_remote.get("title") or task_data_remote.get("name") or entry.title or "").strip()
+            tpl_description = task_data_remote.get("description") or ""
+            tpl_version     = task_data_remote.get("version") or entry.version or 1
+            tpl_time        = task_data_remote.get("time_required")
         else:
             tpl, err = _read_entry_file(repo, entry)
             if err:
@@ -1238,8 +1310,12 @@ def repository_entry_import(rid, eid):
             local_case.version      = tpl.get("version") or local_case.version
             local_case.last_modif   = now
 
-        # Upsert embedded tasks and link to the case
+        # Upsert embedded tasks and link to the case.
+        # Seed the order counter from any tasks already linked to this case so
+        # that re-imports append rather than clash with existing ordering.
         task_count = 0
+        max_order = db.session.query(db.func.max(Case_Task_Template.case_order_id)).filter_by(case_id=local_case.id).scalar()
+        next_order = (max_order or 0) + 1
         for task_data in tpl.get("tasks_template", []):
             t_uuid = task_data.get("uuid", "")
             if not t_uuid:
@@ -1265,8 +1341,8 @@ def repository_entry_import(rid, eid):
                 local_task.last_modif   = now
 
             if not Case_Task_Template.query.filter_by(case_id=local_case.id, task_id=local_task.id).first():
-                order = Case_Task_Template.query.filter_by(case_id=local_case.id).count() + 1
-                db.session.add(Case_Task_Template(case_id=local_case.id, task_id=local_task.id, case_order_id=order))
+                db.session.add(Case_Task_Template(case_id=local_case.id, task_id=local_task.id, case_order_id=next_order))
+                next_order += 1
             task_count += 1
 
         db.session.commit()
@@ -1374,6 +1450,9 @@ def repository_add():
     if not name or not local_path:
         return {"message": "Name and local path are required", "toast_class": "warning-subtle"}, 400
 
+    if Template_Repository.query.filter_by(local_path=local_path).first():
+        return {"message": "A repository with this local path already exists", "toast_class": "warning-subtle"}, 400
+
     repo = Template_Repository(
         name=name,
         description=(data.get("description") or "").strip() or None,
@@ -1402,6 +1481,12 @@ def repository_edit(rid):
     local_path = (data.get("local_path") or "").strip()
     if not name or not local_path:
         return {"message": "Name and local path are required", "toast_class": "warning-subtle"}, 400
+
+    if Template_Repository.query.filter(
+        Template_Repository.local_path == local_path,
+        Template_Repository.id != rid,
+    ).first():
+        return {"message": "Another repository already uses this local path", "toast_class": "warning-subtle"}, 400
 
     repo.name = name
     repo.description = (data.get("description") or "").strip() or None

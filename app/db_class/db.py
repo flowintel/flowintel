@@ -1295,9 +1295,8 @@ class Template_Repository(db.Model):
             "url": self.url,
             "local_path": self.local_path,
             "version": self.version,
-            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL) if self.creation_date else None,
         }
-
 
 
 class Template_Repository_Entry(db.Model):
