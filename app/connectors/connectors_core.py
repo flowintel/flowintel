@@ -391,20 +391,25 @@ def delete_icon_core(iid):
 def check_misp_connectivity(instance):
     """Check connectivity to a MISP instance"""
     # Check if API key is set
-    if not instance.global_api_key:
+    user_api_key = get_user_instance_by_instance(instance.id)
+    if not instance.global_api_key and (not user_api_key or not user_api_key.api_key):
         return {
             "success": False,
             "message": "API key is not configured for this instance",
             "is_api_key_missing": True
         }
-    
+
+    if instance.global_api_key:
+        loc_api_key = instance.global_api_key
+    else:
+        loc_api_key = user_api_key.api_key
     try:
         from pymisp import PyMISP
         import urllib3
         urllib3.disable_warnings()
         
         # Initialize MISP connection - if this succeeds, connectivity is verified
-        misp = PyMISP(instance.url, instance.global_api_key, ssl=False, timeout=20)
+        misp = PyMISP(instance.url, loc_api_key, ssl=False, timeout=20)
         
         return {
             "success": True,
