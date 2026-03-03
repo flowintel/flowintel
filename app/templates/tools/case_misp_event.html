@@ -92,7 +92,7 @@
                 const event_info = ref("")
 
                 async function fetch_misp_connectors(){
-                    const res = await fetch("/case/misp_connectors")
+                    const res = await fetch("/tools/misp_connectors")
                     if(await res.status==400 ){
                         display_toast(res)
                     }else{

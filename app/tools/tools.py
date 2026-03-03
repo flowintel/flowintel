@@ -293,6 +293,12 @@ def check_misp_event():
     return {"is_connection_okay": False}
 
 
+@tools_blueprint.route("/misp_connectors", methods=['GET'])
+@login_required
+def misp_connectors():
+    """Return list of misp connectors"""
+    return {"misp_connectors": ToolsModel.get_misp_connector_by_user(current_user.id)}, 200
+
 #####################
 # Search Attr value #
 #####################

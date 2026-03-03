@@ -12,6 +12,7 @@ from ..templating.TemplateCase import TemplateModel
 from ..templating.TaskTemplateCore import TaskModel as TaskTemplateModel
 from sqlalchemy import or_
 from ..utils import misp_object_helper
+from  ..connectors import connectors_core as ConnectorModel
 
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 
@@ -466,6 +467,22 @@ def get_tag_galaxy_top_stats(current_user, limit=10):
 ########################
 # Case from MISP Event #
 ########################
+
+def get_misp_connector_by_user(user_id):
+        connector = ConnectorModel.get_connector_by_name("MISP")
+        instances_list = []
+        if connector:
+            for instance in connector.instances:
+                if instance.type=='receive_from':
+                    if instance.global_api_key:
+                        loc_instance = instance.to_json()
+                        if ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                            loc_instance["is_user_global_api"] = True
+                        instances_list.append(loc_instance)
+                    elif ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                        instances_list.append(instance.to_json())
+        return instances_list
+
 def check_connection_misp(misp_instance_id: int, current_user: User):
     instance = Connector_Instance.query.get(misp_instance_id)
     if instance:

@@ -97,10 +97,8 @@ export default {
 
         async function edit_connector() {
             let url
-            let loc_update_from_misp = false
             if (props.is_case) {
                 url = "/case/" + window.location.pathname.split("/").slice(-1) + "/connectors/" + edit_instance.value.case_task_instance_id + "/edit_connector"
-                loc_update_from_misp = $("#checkbox-update-misp-" + modal_identifier).is(":checked")
             } else {
                 url = "/case/task/" + props.object_id + "/edit_connector/" + edit_instance.value.case_task_instance_id
             }
@@ -112,26 +110,13 @@ export default {
                     "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    "identifier": loc_identifier,
-                    "update_from_misp": loc_update_from_misp
+                    "identifier": loc_identifier
                 })
             });
             if (await res.status == 200) {
                 for (let i in props.case_task_connectors_list) {
                     if (props.case_task_connectors_list[i].case_task_instance_id == edit_instance.value.case_task_instance_id) {
                         props.case_task_connectors_list[i].identifier = loc_identifier
-                        if (loc_update_from_misp) {
-                            props.case_task_connectors_list[i].is_updating_case = true
-                        } else {
-                            props.case_task_connectors_list[i].is_updating_case = false
-                        }
-                    }
-                }
-                if (props.is_case) {
-                    if (loc_update_from_misp) {
-                        props.cases_info.case.is_updated_from_misp = true
-                    } else {
-                        props.cases_info.case.is_updated_from_misp = false
                     }
                 }
                 edit_instance.value = {}
@@ -195,6 +180,10 @@ export default {
             }
             display_toast(res)
             is_loading_update.value = false
+
+            if (props.is_case) {
+                props.cases_info.case.is_updated_from_misp = true
+            }
         }
 
 
@@ -304,29 +293,28 @@ export default {
                     <td v-else><i>None</i></td>
 
                     <td v-if="(!is_case && object_id && cases_info.tasks) ? (cases_info.tasks.find(t => t.id === object_id)?.can_edit && cases_info.present_in_case || cases_info.permission.admin) : (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)">
-                        <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)"> <i class="fa-solid fa-pen-to-square"></i> </button> 
-                        <button v-if="!is_sending" class="btn btn-outline-secondary" @click="send_to_modal(instance)"> Send to </button>
-                        <button v-else class="btn btn-outline-secondary" type="button" disabled>
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            <span role="status">Loading...</span>
-                        </button>
-                        <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)"> <i class="fa-solid fa-trash"></i> </button>
-                    </td>
-
-                    <td>
-                        <template v-if="instance.is_updating_case">
-                            <template v-if="is_loading_update">
-                                <button class="btn btn-outline-secondary" type="button" disabled>
-                                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                    <span class="visually-hidden" role="status">Loading...</span>
-                                </button>
-                            </template>
-                            <template v-else>
-                                <button class="btn btn-outline-secondary" @click="update_case(instance.case_task_instance_id)" title="Update case with the event misp">
-                                    <i class="fa-solid fa-recycle"></i>
-                                </button>
-                            </template>
+                        <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button> 
+                        <template v-if="instance.details.type == 'send_to'">
+                            <button v-if="!is_sending" class="btn btn-outline-secondary" @click="send_to_modal(instance)"> Send to </button>
+                            <button v-else class="btn btn-outline-secondary" type="button" disabled>
+                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                <span role="status">Loading...</span>
+                            </button>
                         </template>
+                        <template v-else-if="instance.details.type == 'receive_from'">
+                            <button v-if="!is_sending" class="btn btn-outline-secondary" @click="update_case(instance.case_task_instance_id)" title="Update case with the event misp">
+                                <i class="fa-solid fa-recycle"></i>
+                            </button>
+                            <button v-else class="btn btn-outline-secondary" type="button" disabled>
+                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                <span role="status">Loading...</span>
+                            </button>
+                        </template>
+                        <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </td>
                 </tr>
             </tbody>
@@ -383,13 +371,6 @@ export default {
                             <input :id="'input-edit-connector-'+modal_identifier" class="form-control" :value="edit_instance.identifier">
                             <label>Identifier</label>
                         </div>
-
-                         <div v-if="is_case" class="form-check mt-4">
-                            <template v-if="!cases_info.case.is_updated_from_misp || edit_instance.is_updating_case">
-                                <input class="form-check-input" :checked="edit_instance.is_updating_case" type="checkbox" :id="'checkbox-update-misp-'+modal_identifier" name="option1" value="">
-                                <label class="form-check-label">Use to update the case ?</label>
-                            </template>
-                        </div> 
 
                     </div>
                     <div class="modal-footer">

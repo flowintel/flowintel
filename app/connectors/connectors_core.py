@@ -44,6 +44,10 @@ def get_user_instance_by_user(user_id):
 def get_user_instance_both(user_id, instance_id):
     return User_Connector_Instance.query.filter_by(user_id=user_id, instance_id=instance_id).all()
 
+def get_connector_by_name(name):
+    """Return a connector by its name"""
+    return Connector.query.where(Connector.name.like(name)).first()
+
 def get_icons():
     """Return all icons"""
     return Connector_Icon.query.all()

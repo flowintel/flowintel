@@ -1160,13 +1160,6 @@ def delete_attribute(cid, oid, aid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/misp_connectors", methods=['GET'])
-@login_required
-def misp_connectors():
-    """Return list of misp connectors"""
-    return {"misp_connectors": CaseModel.get_misp_connector_by_user(current_user.id)}, 200
-
-
 @case_blueprint.route("/<cid>/nb_objects", methods=['GET'])
 @login_required
 def nb_objects(cid):
