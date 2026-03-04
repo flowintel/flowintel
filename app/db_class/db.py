@@ -233,7 +233,8 @@ class Case(db.Model):
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id==self.id)\
                                                     .where(Cluster.id==Case_Galaxy_Tags.cluster_id).all()]
-
+        json_dict["custom_tags"] = [custom_tag.download() for custom_tag in Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                                                    .where(Case_Custom_Tags.case_id==self.id).all()]
 
         return json_dict
 
@@ -321,6 +322,8 @@ class Task(db.Model):
         json_dict["subtasks"] = [subtask.download() for subtask in self.subtasks]
         json_dict["urls_tools"] = [url_tool.download() for url_tool in self.urls_tools]
         json_dict["external_references"] = [ext_ref.download() for ext_ref in self.external_references]
+        json_dict["custom_tags"] = [custom_tag.download() for custom_tag in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                                                    .where(Task_Custom_Tags.task_id==self.id).all()]
 
         return json_dict
     
@@ -1098,6 +1101,14 @@ class Custom_Tags(db.Model):
             "color": self.color,
             "icon": self.icon,
             "is_active": self.is_active
+        }
+        return json_dict
+
+    def download(self):
+        json_dict = {
+            "name": self.name,
+            "color": self.color,
+            "icon": self.icon
         }
         return json_dict
         

@@ -13,6 +13,7 @@ from ..templating.TaskTemplateCore import TaskModel as TaskTemplateModel
 from sqlalchemy import or_
 from ..utils import misp_object_helper
 from  ..connectors import connectors_core as ConnectorModel
+from ..custom_tags import custom_tags_core as CustomModel
 
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 
@@ -78,7 +79,17 @@ def case_creation_from_importer(case, current_user):
     for i in range(0, len(case.get("clusters", []))):
         case["clusters"][i] = case["clusters"][i]["name"]
 
-    case["custom_tags"] = []
+    # Custom tags
+    if case.get("custom_tags"):
+        loc_custom_tags = []
+        for tag in case.get("custom_tags", []):
+            if isinstance(tag, dict):
+                loc_custom_tags.append(tag.get("name"))
+            else:
+                loc_custom_tags.append(tag)
+        case["custom_tags"] = loc_custom_tags
+    else:
+        case["custom_tags"] = []
         
     
     #######################
@@ -109,7 +120,17 @@ def case_creation_from_importer(case, current_user):
         for i in range(0, len(task.get("clusters", []))):
             task["clusters"][i] = task["clusters"][i]["name"]
         
-        task["custom_tags"] = []
+        # Custom tags
+        if task.get("custom_tags"):
+            loc_custom_tags = []
+            for tag in task.get("custom_tags", []):
+                if isinstance(tag, dict):
+                    loc_custom_tags.append(tag.get("name"))
+                else:
+                    loc_custom_tags.append(tag)
+            task["custom_tags"] = loc_custom_tags
+        else:
+            task["custom_tags"] = []
 
     #################
     ## DB Creation ##
@@ -167,7 +188,17 @@ def case_template_creation_from_importer(template):
     for i in range(0, len(template["clusters"])):
         template["clusters"][i] = template["clusters"][i]["name"]
 
-    template["custom_tags"] = []
+    # Custom tags
+    if template.get("custom_tags"):
+        loc_custom_tags = []
+        for tag in template.get("custom_tags", []):
+            if isinstance(tag, dict):
+                loc_custom_tags.append(tag.get("name"))
+            else:
+                loc_custom_tags.append(tag)
+        template["custom_tags"] = loc_custom_tags
+    else:
+        template["custom_tags"] = []
         
     
     #######################
@@ -187,7 +218,17 @@ def case_template_creation_from_importer(template):
         for i in range(0, len(task["clusters"])):
             task["clusters"][i] = task["clusters"][i]["name"]
         
-        task["custom_tags"] = []
+        # Custom tags
+        if task.get("custom_tags"):
+            loc_custom_tags = []
+            for tag in task.get("custom_tags", []):
+                if isinstance(tag, dict):
+                    loc_custom_tags.append(tag.get("name"))
+                else:
+                    loc_custom_tags.append(tag)
+            task["custom_tags"] = loc_custom_tags
+        else:
+            task["custom_tags"] = []
 
     #################
     ## DB Creation ##
@@ -219,11 +260,48 @@ def case_template_creation_from_importer(template):
 
 
     
-def importer_core(files_list, current_user, importer_type):
+def importer_core(files_list, current_user, importer_type, create_custom_tags=False):
+    def _create_missing_custom_tags_in_case(case_obj):
+        # create custom tags that don't exist in the instance
+        for ct in case_obj.get("custom_tags", []):
+            if isinstance(ct, dict):
+                name = ct.get("name")
+                if name and not CustomModel.get_custom_tag_by_name(name):
+                    try:
+                        CustomModel.add_custom_tag_core({
+                            "name": name,
+                            "color": ct.get("color", "#000000"),
+                            "icon": ct.get("icon", "")
+                        })
+                    except Exception:
+                        pass
+        # handle both case tasks and template tasks
+        for task in case_obj.get("tasks", []) + case_obj.get("tasks_template", []):
+            for ct in task.get("custom_tags", []):
+                if isinstance(ct, dict):
+                    name = ct.get("name")
+                    if name and not CustomModel.get_custom_tag_by_name(name):
+                        try:
+                            CustomModel.add_custom_tag_core({
+                                "name": name,
+                                "color": ct.get("color", "#000000"),
+                                "icon": ct.get("icon", "")
+                            })
+                        except Exception:
+                            pass
+
     for file in files_list:
         if files_list[file].filename:
             try:
                 file_data = json.loads(files_list[file].read().decode())
+                # Create missing custom tags
+                if create_custom_tags:
+                    if isinstance(file_data, list):
+                        for case in file_data:
+                            _create_missing_custom_tags_in_case(case)
+                    elif isinstance(file_data, dict):
+                        _create_missing_custom_tags_in_case(file_data)
+
                 if type(file_data) == list:
                     for case in file_data:
                         if importer_type == 'case':

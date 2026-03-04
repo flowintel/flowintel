@@ -36,7 +36,10 @@ def importer():
     importer_type = request.args.get('type', 1, type=str)
     if importer_type:
         if len(request.files) > 0:
-            message = ToolsModel.importer_core(request.files, current_user, importer_type)
+            # Create custom tags present in JSON if they don't exist
+            create_custom_tags = request.form.get('create_custom_tags', 'false')
+            create_custom_tags = True if str(create_custom_tags).lower() == 'true' else False
+            message = ToolsModel.importer_core(request.files, current_user, importer_type, create_custom_tags)
             if message:
                 message["toast_class"] = "danger-subtle"
                 return message, 400

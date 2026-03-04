@@ -12,28 +12,84 @@
     <hr class="fading-line mt-4 mb-4">
 
     <div class="case-core-style">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex gap-2">
+                <div role="button" tabindex="0" @click="active_tab('import_case')"
+                     :class="['card p-2', main_tab=='import_case' ? 'border-primary shadow-sm' : 'border-secondary']"
+                     style="cursor:pointer; min-width:160px;">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-solid fa-file-circle-plus fa-lg me-2"></i>
+                        <div>
+                            <div class="fw-bold">Case</div>
+                            <div class="small text-muted">Import cases</div>
+                        </div>
+                    </div>
+                </div>
 
-        <ul class="nav nav-tabs" style="margin-bottom: 10px;">
-            <li class="nav-item">
-                <button class="nav-link active" id="tab-case" aria-current="page" @click="active_tab('import_case')">Case</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="tab-template" @click="active_tab('import_template')">Template</button>
-            </li>
-        </ul>
+                <div role="button" tabindex="0" @click="active_tab('import_template')"
+                     :class="['card p-2', main_tab=='import_template' ? 'border-primary shadow-sm' : 'border-secondary']"
+                     style="cursor:pointer; min-width:160px;">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-solid fa-layer-group fa-lg me-2"></i>
+                        <div>
+                            <div class="fw-bold">Template</div>
+                            <div class="small text-muted">Import templates</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        <template v-if="main_tab == 'import_case'">
-            <div class="w-50 mt-4">
-                <input class="form-control" type="file" id="importer_case" />
-                <button class="btn btn-primary" @click="read_json('importer_case')" style="margin-top: 10px;">Add</button>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="create_custom_tags" v-model="createCustom">
+                <label class="form-check-label ms-2" for="create_custom_tags">Create custom tags from JSON</label>
             </div>
-        </template>
-        <template v-else-if="main_tab == 'import_template'">
-            <div class="w-50 mt-4">
-                <input class="form-control" type="file" id="importer_template" />
-                <button class="btn btn-primary" @click="read_json('importer_template')" style="margin-top: 10px;">Add</button>
+        </div>
+
+        <div class=" p-3">
+            <div class="mb-3">
+                <div :class="['border rounded p-4 text-center', dragOver? 'border-primary bg-light' : 'border-dashed']"
+                     @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop"
+                     style="cursor: pointer;">
+                    <i v-if="main_tab=='import_case'" class="fa-solid fa-cloud-arrow-up fa-2x mb-2"></i>
+                    <i v-else class="fa-solid fa-file-import fa-2x mb-2"></i>
+                    <div class="mb-2">Drag & drop [[ main_tab=='import_case' ? 'case' : 'template' ]] JSON files here, or</div>
+                    <button class="btn btn-outline-primary btn-sm" @click.prevent="openFilePicker">Browse files</button>
+                    <input id="importer_files" type="file" accept="application/json" multiple class="d-none" @change="onFilesSelected">
+                </div>
             </div>
-        </template>
+
+            <div v-if="files.length" class="mb-3">
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center" v-for="(f, idx) in files" :key="f.name + idx">
+                        <div>
+                            <strong>[[ f.name ]]</strong>
+                            <div class="text-muted small">[[ formatSize(f.size) ]]</div>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-link text-danger" @click.prevent="removeFile(idx)">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-primary" :disabled="loading || !files.length" @click="uploadFiles">
+                    <span v-if="main_tab=='import_case'">Upload Cases</span>
+                    <span v-else>Upload Templates</span>
+                </button>
+                <button class="btn btn-secondary" :disabled="loading || !files.length" @click="clearFiles">Clear</button>
+            </div>
+
+            <div class="mt-3" v-if="loading">
+                <div class="progress" style="height: 10px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" :style="{width: progress + '%'}" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
+                        [[ progress ]]%
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 {% endblock %}
@@ -49,55 +105,102 @@
             setup() {
 
                 const main_tab = ref('import_case')
+                const files = ref([])
+                const loading = ref(false)
+                const progress = ref(0)
+                const dragOver = ref(false)
+                const createCustom = ref(false)
 
                 function active_tab(tab_name){
-                    if(tab_name == 'import_case'){
-                        main_tab.value = 'import_case'
-                        if ( !document.getElementById("tab-case").classList.contains("active") ){
-                            document.getElementById("tab-case").classList.add("active")
-                            document.getElementById("tab-template").classList.remove("active")
-                        }
-                    }else if(tab_name == 'import_template'){
-                        main_tab.value = 'import_template'
-                        if ( !document.getElementById("tab-template").classList.contains("active") ){
-                            document.getElementById("tab-template").classList.add("active")
-                            document.getElementById("tab-case").classList.remove("active")
-                        }
-                    }
+                    main_tab.value = tab_name
                 }
 
-                async function read_json(importer_id){
-                    let files = document.getElementById(importer_id).files
-
-                    let formData = new FormData();
-                    for(let i=0;i<files.length;i++){
-                        formData.append("files"+i, files[i]);
-                    }
-
-                    let url = '/tools/importer?type='
-                    if(importer_id == 'importer_case'){
-                        url += 'case'
-                    }else if(importer_id == 'importer_template'){
-                        url += 'template'
-                    }
-
-                    const res = await fetch(
-                        url, {
-                            headers: { "X-CSRFToken": $("#csrf_token").val() },
-                            method: "POST",
-                            files: files,
-                            body: formData
-                        }
-                    )
-                    display_toast(res)
+                function openFilePicker(){
+                    document.getElementById('importer_files').click()
                 }
-                
-    
+
+                function onFilesSelected(e){
+                    const f = Array.from(e.target.files || [])
+                    files.value = files.value.concat(f)
+                    // reset input so selecting same file again works
+                    e.target.value = null
+                }
+
+                function removeFile(idx){
+                    files.value.splice(idx,1)
+                }
+
+                function clearFiles(){
+                    files.value = []
+                }
+
+                function onDragOver(){ dragOver.value = true }
+                function onDragLeave(){ dragOver.value = false }
+                function onDrop(e){
+                    dragOver.value = false
+                    const f = Array.from(e.dataTransfer.files || [])
+                    files.value = files.value.concat(f)
+                }
+
+                function formatSize(bytes){
+                    if(bytes < 1024) return bytes + ' B'
+                    if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB'
+                    return (bytes/(1024*1024)).toFixed(2) + ' MB'
+                }
+
+                function uploadFiles(){
+                    if(!files.value.length) return
+                    const url = '/tools/importer?type=' + (main_tab.value == 'import_case' ? 'case' : 'template')
+                    const formData = new FormData()
+                    files.value.forEach((f, idx) => formData.append('files' + idx, f))
+                    formData.append('create_custom_tags', createCustom.value ? 'true' : 'false')
+
+                    const xhr = new XMLHttpRequest()
+                    xhr.open('POST', url, true)
+                    xhr.setRequestHeader('X-CSRFToken', document.getElementById('csrf_token').value)
+                    xhr.upload.onprogress = function(e){
+                        if(e.lengthComputable){
+                            progress.value = Math.round((e.loaded / e.total) * 100)
+                        }
+                    }
+                    loading.value = true
+                    xhr.onreadystatechange = function(){
+                        if(xhr.readyState === 4){
+                            loading.value = false
+                            progress.value = 0
+                            try{
+                                const json = JSON.parse(xhr.responseText || '{}')
+                                display_toast(new Response(JSON.stringify(json), {status: xhr.status}))
+                            }catch(err){
+                                display_toast(new Response(JSON.stringify({message: 'Invalid response from server'}), {status: xhr.status}))
+                            }
+                        }
+                    }
+                    xhr.onerror = function(){
+                        loading.value = false
+                        display_toast(new Response(JSON.stringify({message: 'Upload failed'}), {status:500}))
+                    }
+                    xhr.send(formData)
+                }
+
                 return {
                     message_list,
                     main_tab,
-                    read_json,
-                    active_tab
+                    files,
+                    loading,
+                    progress,
+                    dragOver,
+                    createCustom,
+                    active_tab,
+                    openFilePicker,
+                    onFilesSelected,
+                    removeFile,
+                    clearFiles,
+                    onDragOver,
+                    onDragLeave,
+                    onDrop,
+                    formatSize,
+                    uploadFiles
                 }
             }
         }).mount('#main-container')
