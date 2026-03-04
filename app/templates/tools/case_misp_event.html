@@ -70,7 +70,11 @@
             </div>
             
         </div>
-        <button class="btn btn-primary" @click="submit()" style="margin-top: 10px;">Submit</button>
+        <button class="btn btn-primary" @click="submit" :disabled="is_submitting" style="margin-top: 10px;">
+            <span v-if="is_submitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <span v-if="is_submitting">Submitting...</span>
+            <span v-else>Submit</span>
+        </button>
     </div>
 
 {% endblock %}
@@ -90,6 +94,7 @@
                 const is_loading_misp_connector = ref(false)
                 const is_loading_misp_event = ref(false)
                 const event_info = ref("")
+                const is_submitting = ref(false)
 
                 async function fetch_misp_connectors(){
                     const res = await fetch("/tools/misp_connectors")
@@ -174,8 +179,9 @@
 
 
                 async function submit() {
+                    is_submitting.value = true
                     const res_msg = await fetch(
-                        '/tools/case_misp_event',{
+                        '/tools/case_misp_event',{ 
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
                             body: JSON.stringify({
@@ -191,6 +197,7 @@
                         window.location.href='/case/'+loc["case_id"]
                     }else{
                         await display_toast(res_msg)
+                        is_submitting.value = false
                     }
                 }
 
@@ -209,6 +216,7 @@
                     is_loading_misp_connector,
                     is_loading_misp_event,
                     event_info,
+                    is_submitting,
 
                     check_title,
                     check_connection,
