@@ -26,16 +26,28 @@ def verif_add_instance(data_dict):
     if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = ""
 
+    # type is mandatory for creation
     if "type_select" not in data_dict or not data_dict["type_select"]:
-        data_dict["type_select"] = ""
+        return {"message": "Please give a type to your instance"}
     elif data_dict["type_select"] not in utils.get_module_type():
         return {"message": "type selected unknown"}
     
     if "url" not in data_dict or not data_dict["url"]:
         return {"message": "Please give a url to your instance"}
+    else:
+        # basic URL validation and scheme sanitization
+        from urllib.parse import urlparse
+        parsed = urlparse(data_dict["url"].strip())
+        scheme = (parsed.scheme or '').lower()
+        if scheme not in ("http", "https"):
+            return {"message": "URL must start with http:// or https://"}
+        if not parsed.netloc:
+            return {"message": "Invalid URL"}
     
     if "api_key" not in data_dict or not data_dict["api_key"]:
         data_dict["api_key"] = ""
+
+    return data_dict
 
 def verif_edit_connector(data_dict, cid):
     connector = Connector.query.get(cid)
@@ -67,6 +79,14 @@ def verif_edit_instance(data_dict, iid):
 
     if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = instance.url
+    else:
+        from urllib.parse import urlparse
+        parsed = urlparse(data_dict["url"].strip())
+        scheme = (parsed.scheme or '').lower()
+        if scheme not in ("http", "https"):
+            return {"message": "URL must start with http:// or https://"}
+        if not parsed.netloc:
+            return {"message": "Invalid URL"}
 
     if "api_key" not in data_dict or not data_dict["api_key"]:
         data_dict["api_key"] = instance.api_key

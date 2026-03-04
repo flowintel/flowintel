@@ -30,10 +30,22 @@ class AddConnectorInstanceForm(FlaskForm):
     description = TextAreaField('Description', default="", validators=[Optional()])
     url = StringField('Url', validators=[InputRequired(), Length(0, 64)])
     api_key = StringField('Api key', validators=[Optional(), Length(0, 100)])
-    type_select = StringField('Type', validators=[Optional()])
+    # Make type mandatory when creating an instance
+    type_select = StringField('Type', validators=[InputRequired()])
     is_global_connector = BooleanField('Global connector', validators=[Optional()])
     
     submit = SubmitField('Add')
+    
+    def validate_url(self, field):
+        from urllib.parse import urlparse
+        if not field.data:
+            return
+        parsed = urlparse(field.data.strip())
+        scheme = (parsed.scheme or '').lower()
+        if scheme not in ("http", "https"):
+            raise ValidationError("URL must start with http:// or https://")
+        if not parsed.netloc:
+            raise ValidationError("Invalid URL")
         
 
 class EditConnectorForm(FlaskForm):
@@ -59,6 +71,18 @@ class EditConnectorInstanceForm(FlaskForm):
     is_global_connector = BooleanField('Global connector', validators=[Optional()])
     
     submit = SubmitField('Modify')
+    
+    def validate_url(self, field):
+        # Also validate on edit to avoid persisting unsafe schemes
+        from urllib.parse import urlparse
+        if not field.data:
+            return
+        parsed = urlparse(field.data.strip())
+        scheme = (parsed.scheme or '').lower()
+        if scheme not in ("http", "https"):
+            raise ValidationError("URL must start with http:// or https://")
+        if not parsed.netloc:
+            raise ValidationError("Invalid URL")
         
         
 class AddIconForm(FlaskForm):
