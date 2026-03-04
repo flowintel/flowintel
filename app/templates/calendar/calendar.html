@@ -11,6 +11,7 @@
 <script src="{{ url_for('static',filename='js/vendor/calendar/flatpickr-monthSelect.js') }}"></script>
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/calendar/flatpickr.min.css') }}">
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/calendar/flatpickr-monthSelect.css') }}">
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/calendar_custom.css') }}">
 {%endblock%}
 
 {% block content %}
@@ -18,7 +19,7 @@
 <div>
     <!-- Modal -->
     <div class="modal fade" id="modal_task" tabindex="-1" aria-labelledby="modal_task_label" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modal_task_label">Modal title</h5>
@@ -73,7 +74,7 @@
         </div>
     </div>
 
-    <input id="monthPicker" class="start-50 translate-middle-x mb-2 mt-3" placeholder="Select month" style="text-align: center; position: relative;">
+    <input id="monthPicker" class="form-control start-50 translate-middle-x mb-2 mt-3" placeholder="Select month" style="text-align: center; position: relative;">
 
     <div id="calendar" class="case-core-style"></div>
 
@@ -85,6 +86,7 @@
 <script type="module">
     const { createApp, ref, nextTick, onMounted } = Vue
     import {message_list} from '/static/js/toaster.js'
+    import { getTextColor, mapIcon } from '/static/js/utils.js'
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
@@ -235,60 +237,153 @@
                     },
                     eventContent: function(arg) {
                         let arrayOfDomNodes = []
-                        
+
                         let containerEl = document.createElement('div')
                         containerEl.style.cssText = 'display: flex; align-items: center; width: 100%;'
-                        
+
                         let titleEl = document.createElement('span')
                         titleEl.classList.add('fc-event-title')
-                        titleEl.style.cssText = 'flex: 1;'
+                        titleEl.style.cssText = 'flex: 1; font-size: 0.88rem; margin-left: 4px;'
                         titleEl.innerHTML = arg.event.title
-                        
+
                         let downloadEl = document.createElement('a')
                         downloadEl.innerHTML = '<i class="fa-solid fa-download"></i>'
                         downloadEl.classList.add('fc-event-download')
                         downloadEl.style.cssText = 'margin-left: 8px; color: inherit; cursor: pointer; flex-shrink: 0;'
                         downloadEl.title = 'Download ICS'
-                        
-                        if (arg.event.extendedProps.toJson.case_id) {
-                            downloadEl.href = '/calendar/download_task_ics/' + arg.event.extendedProps.toJson.id
-                        } else {
-                            downloadEl.href = '/calendar/download_case_ics/' + arg.event.extendedProps.toJson.id
+
+                        if (arg.event.extendedProps && arg.event.extendedProps.toJson) {
+                            if (arg.event.extendedProps.toJson.case_id) {
+                                downloadEl.href = '/calendar/download_task_ics/' + arg.event.extendedProps.toJson.id
+                            } else {
+                                downloadEl.href = '/calendar/download_case_ics/' + arg.event.extendedProps.toJson.id
+                            }
                         }
-                        
+
                         downloadEl.addEventListener('click', function(e) {
                             e.stopPropagation() // Prevent opening the modal
                         })
-                        
+
                         containerEl.appendChild(titleEl)
                         containerEl.appendChild(downloadEl)
                         arrayOfDomNodes.push(containerEl)
-                        
+
                         return { domNodes: arrayOfDomNodes }
                     },
                     datesSet: function(info) {
                         onDateChange();
                     },
                     eventClick: function(info) {
-                        $("#modal_task_label").text(info.event.extendedProps.toJson.title).css("margin-right", "5px")
+                        const d = info.event.extendedProps.toJson
+                        $("#modal_task_label").text(d.title).css("margin-right", "5px")
                         $("#status_modal").empty()
-                        $("#status_modal").append(
-                            $("<span>").attr({"class": 
-                                "badge rounded-pill text-bg-"+status_info.value.status[info.event.extendedProps.toJson.status_id -1].bootstrap_style})
-                                .text(status_info.value.status[ info.event.extendedProps.toJson.status_id -1].name)
+                        if (d.status_id && status_info.value && status_info.value.status){
+                            const s = status_info.value.status[d.status_id -1]
+                            if (s) {
+                                $("#status_modal").append(
+                                    $("<span>").attr({"class": "badge rounded-pill text-bg-"+s.bootstrap_style}).text(s.name)
+                                )
+                            }
+                        }
+
+                        // Build details block
+                        $("#modal_body").empty()
+
+                        let type = d.case_id ? 'Task' : 'Case'
+
+                        let details = $("<div>")
+                        details.append($("<p>").html('<strong>Creation:</strong> ' + (d.creation_date || '—')))
+                        details.append($("<p>").html('<strong>Last modified:</strong> ' + (d.last_modif || '—')))
+                        details.append($("<p>").html('<strong>Deadline:</strong> ' + (d.deadline || '—')))
+
+                        // Tags
+                        if (d.tags && d.tags.length){
+                            let tagsContainer = $("<div>").css({"display":"flex","flex-wrap":"wrap","gap":"6px","align-items":"center"})
+                            d.tags.forEach(t => {
+                                try {
+                                    let color = t.color || '#777'
+                                    let tagEl = $("<div>").addClass('tag').attr('title', t.description || '')
+                                    tagEl.css({"background-color": color, "color": getTextColor(color), "padding": "4px 8px", "border-radius": "6px", "display": "inline-flex", "align-items": "center", "gap": "6px", "font-weight": "600"})
+                                    if (t.icon) {
+                                        tagEl.append($("<i>").addClass(t.icon))
+                                    }
+                                    tagEl.append($("<span>").html('<i class="fa-solid fa-tag" style="margin-left: 3px;"></i>'))
+                                    tagEl.append(document.createTextNode(t.name || t))
+                                    tagsContainer.append(tagEl)
+                                } catch (e) {
+                                    // fallback
+                                    tagsContainer.append($("<span>").addClass('badge bg-secondary me-1').text(t.name || t))
+                                }
+                            })
+                            details.append($("<p>").append($("<strong>").text('Tags: ')).append(tagsContainer))
+                        }
+
+                        // Custom tags
+                        if (d.custom_tags && d.custom_tags.length) {
+                            let customContainer = $("<div>").css({"display":"flex","flex-wrap":"wrap","gap":"6px","align-items":"center"})
+                            d.custom_tags.forEach(ct => {
+                                try {
+                                    let color = ct.color || '#777'
+                                    let ctEl = $("<div>").addClass('tag').attr('title', ct.description || '')
+                                    ctEl.css({"background-color": color, "color": getTextColor(color), "padding": "4px 8px", "border-radius": "6px", "display": "inline-flex", "align-items": "center", "gap": "6px", "font-weight": "600"})
+                                    if (ct.icon) {
+                                        ctEl.append($("<i>").addClass(ct.icon))
+                                    }
+                                    ctEl.append(document.createTextNode(ct.name || ct))
+                                    customContainer.append(ctEl)
+                                } catch (e) {
+                                    customContainer.append($("<span>").addClass('badge bg-secondary me-1').text(ct.name || ct))
+                                }
+                            })
+                            details.append($("<p>").append($("<strong>").text('Custom tags: ')).append(customContainer))
+                        }
+
+                        // Case-specific info
+                        if (!d.case_id) {
+                            // case
+                            if (typeof d.nb_tasks !== 'undefined')
+                                details.append($("<p>").html('<strong>Tasks:</strong> ' + (d.nb_tasks || 0)))
+                        } else {
+                            // task
+                            details.append($("<p>").html('<strong>Case:</strong> <a href="/case/' + d.case_id + '">' + (d.case_id) + '</a>'))
+                            if (typeof d.nb_notes !== 'undefined')
+                                details.append($("<p>").html('<strong>Notes:</strong> ' + (d.nb_notes || (d.notes? d.notes.length : 0))))
+                            if (d.urls_tools && d.urls_tools.length)
+                                details.append($("<p>").html('<strong>URLs/Tools:</strong> ' + d.urls_tools.map(u => u.name).join(', ')))
+                        }
+
+                        // Clusters (render like in case_tasks.js)
+                        if (d.clusters && d.clusters.length) {
+                            let clustersContainer = $("<div>").css({"display":"flex","flex-wrap":"wrap","gap":"8px","align-items":"center"})
+                            d.clusters.forEach(c => {
+                                try {
+                                    let clEl = $("<div>").addClass("cluster").attr('title', 'Description:\n' + (c.description || '') + '\n\nMetadata:\n' + (c.meta || ''))
+                                    clEl.append($("<span>").html(mapIcon(c.icon)))
+                                    clEl.append(document.createTextNode(' ' + (c.tag || c.name || '')))
+                                    clustersContainer.append(clEl)
+                                } catch (e) {
+                                    clustersContainer.append($("<span>").text(c.tag || c.name || ''))
+                                }
+                            })
+                            details.append($("<p>").append($("<strong>").text('Clusters: ')).append(clustersContainer))
+                        }
+
+                        // Description
+                        details.append($("<div>").append($("<pre>").attr({"class": "description"}).text(d.description || '')))
+
+                        $("#modal_body").append(details)
+
+                        // type badge
+                        $("#status_modal").prepend(
+                            $("<span>").addClass("modal-type-badge "+(d.case_id?"task":"case")).text(d.case_id?"Task":"Case")
                         )
-                        $("#modal_body").text("")
-                        $("#modal_body").append(
-                            $("<div>").append(
-                                $("<pre>").attr({"class": "description"})
-                                .text(info.event.extendedProps.toJson.description)
-                            )
-                        )
-                        if(info.event.extendedProps.toJson.case_id)
-                            $("#see_case").attr("href", "/case/" + info.event.extendedProps.toJson.case_id)
+
+                        // See case link
+                        if(d.case_id)
+                            $("#see_case").attr("href", "/case/" + d.case_id)
                         else
-                            $("#see_case").attr("href", "/case/" + info.event.extendedProps.toJson.id)
-                        
+                            $("#see_case").attr("href", "/case/" + d.id)
+
                         openModal()
                     }
                 });

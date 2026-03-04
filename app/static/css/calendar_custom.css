@@ -1,0 +1,18 @@
+/* Modern calendar tweaks */
+.fc .fc-daygrid-event .fc-event-title { font-weight: 500; font-size: 0.88rem; }
+.fc-event-download { color: rgba(0,0,0,0.6); }
+.calendar-controls .form-check { margin-bottom: .25rem; }
+#monthPicker.form-control { max-width: 360px; }
+.modal-header { background: linear-gradient(90deg,#f8fafc,#ffffff); border-bottom: 1px solid #e9ecef; }
+.modal-title { font-weight: 700; font-size: 1.05rem; }
+.modal-body .description { white-space: pre-wrap; background: #f8f9fa; padding: .75rem; border-radius: 6px; }
+.calendar-detail-list p { margin-bottom: .4rem; }
+.calendar-detail-list .badge { border-radius: 999px; }
+.case-core-style { padding: 18px; border-radius: 12px; }
+.fc .fc-daygrid-event { border-radius: 8px; padding: 1px 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+/* Modal type badge (prominent) */
+.modal-type-badge { display:inline-block; font-size:0.82rem; padding:4px 8px; border-radius:999px; color:#fff; font-weight:600; margin-right:8px; }
+.modal-type-badge.case { background: #2f6fb0; }
+.modal-type-badge.task { background: rgb(20, 150, 20); }
+
