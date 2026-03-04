@@ -55,3 +55,6 @@ conf/config_module.py
 /temp
 # Flask history
 .flask_history/*
+
+# Ignore cloned template repositories
+modules/repositories/*

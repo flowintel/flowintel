@@ -31,8 +31,14 @@
 
 <hr class="fading-line-2 mt-4 mb-4">
 
-<!-- Getting started + icon legend -->
 <div class="mb-4">
+    <a class="text-muted small text-decoration-none d-inline-flex align-items-center gap-1 mb-2"
+       data-bs-toggle="collapse" href="#repoHelpBlock" role="button"
+       aria-expanded="false" aria-controls="repoHelpBlock">
+        <i class="fa-solid fa-circle-question me-1"></i>Help &amp; icon legend
+        <i class="fa-solid fa-chevron-down fa-2xs ms-1"></i>
+    </a>
+    <div class="collapse" id="repoHelpBlock">
     <div class="alert alert-info alert-dismissible py-3 mb-3" role="alert" style="border-radius: 12px;">
         <div class="d-flex align-items-start gap-3">
             <i class="fa-solid fa-circle-info fa-lg mt-1 flex-shrink-0"></i>
@@ -102,6 +108,7 @@
             </div>
         </div>
     </div>
+    </div>
 </div>
 
 <div class="case-core-style">
@@ -118,7 +125,6 @@
     <template v-else>
         <div v-for="repo in filtered" :key="repo.id" class="list-group mb-3">
 
-            <!-- Header row -->
             <div style="display: flex;"
                  :style="{
                      'border-top-left-radius':     '15px',
@@ -127,7 +133,6 @@
                      'border-bottom-right-radius': expanded.has(repo.id) ? '0' : '15px'
                  }">
 
-                <!-- Clickable summary -->
                 <a class="list-group-item list-group-item-action case-index-list"
                    style="cursor: pointer;"
                    :style="{
@@ -175,7 +180,6 @@
                     </div>
                 </a>
 
-                <!-- Action buttons -->
                 <div class="d-flex flex-column"
                      :style="{
                          'border-bottom':              expanded.has(repo.id) ? 'none' : '',
@@ -214,13 +218,11 @@
                 </div>
             </div>
 
-            <!-- Accordion body -->
             <div v-if="expanded.has(repo.id)"
                  class="list-group-item"
                  style="border-top: none; border-bottom-left-radius: 15px; border-bottom-right-radius: 15px; background-color: #f8f9fa; padding: 20px;">
                 <div class="row g-4">
 
-                    <!-- Case templates -->
                     <div class="col-12 col-md-6">
                         <h6 class="fw-semibold mb-3">
                             <i class="fa-solid fa-folder-open me-2 text-primary"></i>Case templates
@@ -320,7 +322,6 @@
                         </div>
                     </div>
 
-                    <!-- Task templates -->
                     <div class="col-12 col-md-6">
                         <h6 class="fw-semibold mb-3">
                             <i class="fa-solid fa-list-check me-2 text-primary"></i>Task templates
@@ -432,7 +433,6 @@
         </div>
     </template>
 
-    <!-- Delete confirmation modals (keyed off full repos list so they survive search filtering) -->
     <template v-if="!loading" v-for="repo in repos" :key="'del_'+repo.id">
         <div class="modal fade" :id="'deleteModal_'+repo.id" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog">
@@ -459,7 +459,6 @@
     </template>
 </div>
 
-<!-- Scan results modal -->
 <div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModal-title" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -492,7 +491,6 @@
     </div>
 </div>
 
-<!-- Add / Edit modal -->
 <div class="modal fade" id="repoFormModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -558,7 +556,6 @@
     </div>
 </div>
 
-<!-- Local vs Remote diff modal -->
 <div class="modal fade" id="diffEntryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -602,7 +599,6 @@
     </div>
 </div>
 
-<!-- Remote template view modal -->
 <div class="modal fade" id="viewEntryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -632,7 +628,6 @@
     </div>
 </div>
 
-<!-- Manifest info modal -->
 <div class="modal fade" id="manifestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -672,11 +667,8 @@
             const editTarget  = ref(null)
             const form        = ref({ name: '', url: '', description: '', local_path: '' })
 
-            // entries[repo.id] = { case: [...], task: [...], loading: false }
             const entries = reactive({})
-            // importing[entry.id] = true while an import request is in-flight
             const importing = reactive({})
-            // diffing[entry.id] = true while a diff request is in-flight
             const diffing = reactive({})
 
             async function fetchEntries(repo) {
@@ -694,14 +686,10 @@
                 }
             }
 
-            // connectivity[repo.id]: undefined | 'checking' | 'ok' | 'error'
             const connectivity = reactive({})
-            // refreshing[repo.id]: boolean
             const refreshing   = reactive({})
-            // expanded: Set of repo IDs whose accordion is open
             const expanded     = ref(new Set())
 
-            // Filtered list
             const filtered = computed(() => {
                 const q = searchQuery.value.trim().toLowerCase()
                 if (!q) return repos.value
@@ -712,7 +700,6 @@
                 )
             })
 
-            // Load
             async function fetchRepos() {
                 loading.value = true
                 try {
@@ -724,7 +711,6 @@
                 }
             }
 
-            // Accordion
             function toggleExpand(repo) {
                 const s = new Set(expanded.value)
                 if (s.has(repo.id)) {
@@ -736,7 +722,6 @@
                 expanded.value = s
             }
 
-            // Connectivity check
             async function checkConnectivity(repo) {
                 connectivity[repo.id] = 'checking'
                 try {
@@ -770,7 +755,6 @@
                 }
             }
 
-            // Refresh remote
             async function refreshRemote(repo) {
                 refreshing[repo.id] = true
                 try {
@@ -792,12 +776,10 @@
                 }
             }
 
-            // Diff entry (local vs remote)
             async function diffEntry(tpl, repo) {
                 if (diffing[tpl.id]) return
                 diffing[tpl.id] = true
 
-                // Pre-open modal in loading state
                 const titleEl   = document.getElementById('diffEntryModal-title')
                 const spinnerEl = document.getElementById('diffEntryModal-spinner')
                 const errorEl   = document.getElementById('diffEntryModal-error')
@@ -831,7 +813,6 @@
                         return
                     }
 
-                    // Summary banner
                     if (data.has_diff) {
                         summaryEl.innerHTML = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">' +
                             '<i class="fa-solid fa-triangle-exclamation me-1"></i>Differences found</span>'
@@ -840,7 +821,6 @@
                             '<i class="fa-solid fa-circle-check me-1"></i>Local copy matches remote</span>'
                     }
 
-                    // Field rows
                     const FIELD_LABELS = {
                         title: 'Title', description: 'Description',
                         version: 'Version', time_required: 'Time required',
@@ -855,7 +835,7 @@
                             ? '<i class="fa-solid fa-circle-check text-success"></i>'
                             : '<i class="fa-solid fa-circle-exclamation text-warning"></i>'
 
-                        const label = FIELD_LABELS[row.field] || row.field
+                        const label = FIELD_LABELS[row.field] || escHtml(row.field)
 
                         tr.innerHTML = `<td class="fw-semibold text-nowrap">${label}</td>` +
                                        `<td class="text-center">${icon}</td>` +
@@ -864,7 +844,6 @@
                         tbodyEl.appendChild(tr)
                     }
 
-                    // Tags row
                     if (data.tags) {
                         const tr = document.createElement('tr')
                         if (!data.tags.match) tr.classList.add('table-warning')
@@ -878,7 +857,6 @@
                         tbodyEl.appendChild(tr)
                     }
 
-                    // Galaxy clusters row
                     if (data.clusters) {
                         const tr = document.createElement('tr')
                         if (!data.clusters.match) tr.classList.add('table-warning')
@@ -892,7 +870,6 @@
                         tbodyEl.appendChild(tr)
                     }
 
-                    // Wire "show more" toggle links
                     tbodyEl.querySelectorAll('.show-more-link').forEach(link => {
                         link.addEventListener('click', e => {
                             e.preventDefault()
@@ -913,7 +890,6 @@
                 }
             }
 
-            // Import entry
             async function importEntry(tpl, repo) {
                 if (importing[tpl.id]) return
                 importing[tpl.id] = true
@@ -934,9 +910,7 @@
                 }
             }
 
-            // View remote template
             async function viewEntry(tpl, repo) {
-                // Reset modal state
                 const titleEl   = document.getElementById('viewEntryModal-title')
                 const spinnerEl = document.getElementById('viewEntryModal-spinner')
                 const errorEl   = document.getElementById('viewEntryModal-error')
@@ -947,7 +921,6 @@
                 preEl.classList.add('d-none')
                 preEl.textContent = ''
 
-                // Open modal
                 const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('viewEntryModal'))
                 modal.show()
 
@@ -996,7 +969,6 @@
                 return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
             }
 
-            // Scan for repositories
             async function scanRepositories() {
                 const modal     = bootstrap.Modal.getOrCreateInstance(document.getElementById('scanModal'))
                 const spinnerEl = document.getElementById('scanModal-spinner')
@@ -1078,7 +1050,6 @@
                 }
             }
 
-            // Add / Edit modal
             function openAdd() {
                 editTarget.value = null
                 form.value = { name: '', url: '', description: '', local_path: '' }
@@ -1124,7 +1095,6 @@
                 }
             }
 
-            // Delete
             async function deleteRepo(repo) {
                 try {
                     const res  = await fetch(`/templating/repositories/${repo.id}/delete`, {
@@ -1144,7 +1114,6 @@
                 }
             }
 
-            // Search
             function onInput(e) { searchQuery.value = e.target.value }
 
             onMounted(fetchRepos)

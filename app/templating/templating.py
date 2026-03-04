@@ -15,7 +15,11 @@ from ..utils.formHelper import prepare_tags
 from ..case import common_core as CommonCaseModel
 from ..case.common_core import get_instance_with_icon
 from ..utils.logger import flowintel_log
-from ..db_class.db import Template_Repository, Template_Repository_Entry, Case_Template, Task_Template, Case_Task_Template, Tags, Cluster, Case_Template_Tags, Case_Template_Galaxy_Tags, Task_Template_Tags, Task_Template_Galaxy_Tags
+from ..db_class.db import (
+    Case_Template, Case_Task_Template, Case_Template_Galaxy_Tags, Case_Template_Tags,
+    Cluster, Tags, Task_Template, Task_Template_Galaxy_Tags, Task_Template_Tags,
+    Template_Repository, Template_Repository_Entry,
+)
 from .. import db
 
 templating_blueprint = Blueprint(
@@ -24,6 +28,8 @@ templating_blueprint = Blueprint(
     template_folder='templates',
     static_folder='static'
 )
+
+MANIFEST_REQUIRED_KEYS = {"name", "description", "uuid", "version"}
 
 
 ##########
@@ -742,7 +748,7 @@ def delete_url_tool(tid, utid):
 @login_required
 @template_editor_required
 def repository_check(rid):
-    """Verify the local cloned repository exists and contains a valid manifest.json."""
+    """Check repository connectivity and manifest validity"""
     repo = Template_Repository.query.get(rid)
     if not repo:
         return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
@@ -756,18 +762,11 @@ def repository_check(rid):
                       User=current_user.email, RepositoryId=repo.id, Name=repo.name, Path=repo.local_path)
         return {"reachable": False, "error": f"Directory not found: {repo.local_path}"}, 200
 
-    manifest_path = os.path.join(base, "manifest.json")
-    if not os.path.isfile(manifest_path):
-        return {"reachable": True, "valid": False, "error": "manifest.json not found in the repository"}, 200
+    manifest, err = _read_manifest(base)
+    if err:
+        return {"reachable": True, "valid": False, "error": err}, 200
 
-    try:
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
-    except Exception as exc:
-        return {"reachable": True, "valid": False, "error": f"manifest.json is not valid JSON: {exc}"}, 200
-
-    required_keys = {"name", "description", "uuid", "version"}
-    missing = required_keys - set(manifest.keys())
+    missing = MANIFEST_REQUIRED_KEYS - set(manifest.keys())
     valid = not missing
     flowintel_log("audit", 200, "Template repository check",
                   User=current_user.email, RepositoryId=repo.id, Name=repo.name, Valid=valid)
@@ -782,6 +781,7 @@ def repository_check(rid):
 @login_required
 @template_editor_required
 def repository_refresh(rid):
+    """Refresh repository metadata from manifest"""
     repo = Template_Repository.query.get(rid)
     if not repo:
         return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
@@ -790,22 +790,13 @@ def repository_refresh(rid):
         return {"message": "No local path configured for this repository", "toast_class": "warning-subtle"}, 200
 
     base = _repo_base_path(repo.local_path)
-    manifest_path = os.path.join(base, "manifest.json")
-    if not os.path.isfile(manifest_path):
-        flowintel_log("audit", 200, "Template repository refresh failed — manifest.json not found",
-                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, Path=repo.local_path)
-        return {"message": f"manifest.json not found at: {repo.local_path}", "toast_class": "danger-subtle"}, 200
+    manifest, err = _read_manifest(base)
+    if err:
+        flowintel_log("audit", 200, "Template repository refresh failed",
+                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, Error=err)
+        return {"message": f"Could not read manifest: {err}", "toast_class": "danger-subtle"}, 200
 
-    try:
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
-    except Exception as exc:
-        flowintel_log("audit", 200, "Template repository refresh failed — invalid manifest",
-                      User=current_user.email, RepositoryId=repo.id, Name=repo.name, Error=str(exc))
-        return {"message": f"Could not read manifest.json: {exc}", "toast_class": "danger-subtle"}, 200
-
-    required_keys = {"name", "description", "uuid", "version"}
-    missing = required_keys - set(manifest.keys())
+    missing = MANIFEST_REQUIRED_KEYS - set(manifest.keys())
     if missing:
         flowintel_log("audit", 200, "Template repository refresh failed — invalid manifest",
                       User=current_user.email, RepositoryId=repo.id, Name=repo.name, MissingKeys=sorted(missing))
@@ -827,6 +818,8 @@ def repository_refresh(rid):
         repo.version = new_version
         changed = True
     if new_uuid and new_uuid != repo.uuid:
+        if Template_Repository.query.filter(Template_Repository.uuid == new_uuid, Template_Repository.id != repo.id).first():
+            return {"message": "Another repository already uses this manifest UUID", "toast_class": "warning-subtle"}, 200
         repo.uuid = new_uuid
         changed = True
 
@@ -857,12 +850,6 @@ def repository_refresh(rid):
 
 
 def _annotate_local(entries_list):
-    """
-    Enriches each entry dict with local copy information:
-      local        – True if a matching UUID exists locally
-      localVersion – the local template's version (or None)
-      localNewer   – True when the local copy is ahead of the remote
-    """
     case_uuids = {e["uuid"] for e in entries_list if e.get("type") == "case"}
     task_uuids = {e["uuid"] for e in entries_list if e.get("type") == "task"}
 
@@ -887,7 +874,6 @@ def _annotate_local(entries_list):
 
 
 def _annotate_local_grouped(entries_list):
-    """Annotate and return entries split into {case: [...], task: [...]} dict."""
     annotated = _annotate_local(entries_list)
     return {
         "case": [e for e in annotated if e["type"] == "case"],
@@ -896,21 +882,24 @@ def _annotate_local_grouped(entries_list):
 
 
 def _repo_base_path(local_path):
-    """Resolve a repository's local_path to an absolute filesystem path.
-
-    Relative paths are resolved from the project root (parent of the Flask app package).
-    """
     if os.path.isabs(local_path):
         return local_path
     project_root = os.path.dirname(current_app.root_path)
     return os.path.normpath(os.path.join(project_root, local_path))
 
 
-def _read_entry_file(repo, entry):
-    """Read and parse the JSON template file for a given entry from the local cloned repo.
+def _read_manifest(base):
+    manifest_path = os.path.join(base, "manifest.json")
+    if not os.path.isfile(manifest_path):
+        return None, "manifest.json not found"
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            return json.load(f), None
+    except Exception as exc:
+        return None, f"manifest.json is not valid JSON: {exc}"
 
-    Returns (data_dict, None) on success, or (None, error_message) on failure.
-    """
+
+def _read_entry_file(repo, entry):
     if not entry.download_url:
         return None, "No file path recorded for this entry"
     if not repo or not repo.local_path:
@@ -930,12 +919,6 @@ def _read_entry_file(repo, entry):
 
 
 def _scan_local_entries(repo):
-    """Scan the local cloned repository for case/ and task/ template files.
-
-    Walks case/ and task/ subdirectories, parses each .json file, and upserts
-    the corresponding Template_Repository_Entry rows.
-    Returns (entries_json_list, error_string_or_None).
-    """
     if not repo.local_path:
         return [], "No local path configured for this repository"
     base = _repo_base_path(repo.local_path)
@@ -1029,7 +1012,6 @@ def _scan_local_entries(repo):
 
 
 def _norm(v):
-    """Normalise a value for diff comparison: strip whitespace, treat empty string as None."""
     if v is None:
         return None
     if isinstance(v, str):
@@ -1039,7 +1021,6 @@ def _norm(v):
 
 
 def _set_diff(local_set, remote_set):
-    """Compare two tag/cluster sets; return match flag plus per-side lists."""
     return {
         "match":       local_set == remote_set,
         "local_only":  sorted(local_set - remote_set),
@@ -1048,19 +1029,35 @@ def _set_diff(local_set, remote_set):
     }
 
 
+def _local_tag_names(join_model, filter_col, obj_id):
+    return set(
+        t.name for t in Tags.query.join(join_model, join_model.tag_id == Tags.id)
+        .filter(filter_col == obj_id).all()
+    )
+
+
+def _local_cluster_names(join_model, filter_col, obj_id):
+    return set(
+        c.name for c in Cluster.query.join(join_model, join_model.cluster_id == Cluster.id)
+        .filter(filter_col == obj_id).all()
+    )
+
+
+def _remote_names(items):
+    return set(x if isinstance(x, str) else x.get("name", "") for x in items)
+
+
 @templating_blueprint.route("/repositories/<int:rid>/entries/<int:eid>/diff", methods=["GET"])
 @login_required
 @template_editor_required
 def repository_entry_diff(rid, eid):
-    """Compare a remote template entry against the local copy field-by-field."""
+    """Compare a repository entry against the local template"""
     entry = Template_Repository_Entry.query.filter_by(id=eid, repository_id=rid).first()
     if not entry:
         return {"message": "Entry not found", "toast_class": "danger-subtle"}, 404
 
     repo = Template_Repository.query.get(rid)
     if entry.parent_case_uuid:
-        # Embedded task: start from DB-cached values as fallback, then
-        # try to read the parent case file to get fresh data for all fields.
         remote = {
             "title": entry.title,
             "description": entry.description,
@@ -1099,7 +1096,7 @@ def repository_entry_diff(rid, eid):
 
         remote_notes = remote.get("notes")
         if isinstance(remote_notes, list):
-            remote_notes = None  # list-form notes can't be meaningfully compared to a string
+            remote_notes = None  # list-form notes can't be compared to a string
 
         raw_fields = [
             ("title",         local_obj.title,           remote.get("title")),
@@ -1110,27 +1107,8 @@ def repository_entry_diff(rid, eid):
             ("tasks_count",   local_task_count,          remote_task_count),
         ]
 
-        local_tags = set(
-            tag.name for tag in Tags.query
-            .join(Case_Template_Tags, Case_Template_Tags.tag_id == Tags.id)
-            .filter(Case_Template_Tags.case_id == local_obj.id).all()
-        )
-        remote_tags = set(
-            t if isinstance(t, str) else t.get("name", "")
-            for t in remote.get("tags", [])
-        )
-        tags_diff = _set_diff(local_tags, remote_tags)
-
-        local_clusters = set(
-            c.name for c in Cluster.query
-            .join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.cluster_id == Cluster.id)
-            .filter(Case_Template_Galaxy_Tags.template_id == local_obj.id).all()
-        )
-        remote_clusters = set(
-            c["name"] if isinstance(c, dict) else c
-            for c in remote.get("clusters", [])
-        )
-        clusters_diff = _set_diff(local_clusters, remote_clusters)
+        local_tags = _local_tag_names(Case_Template_Tags, Case_Template_Tags.case_id, local_obj.id)
+        local_clusters = _local_cluster_names(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id, local_obj.id)
 
     elif entry.type == "task":
         local_obj = Task_Template.query.filter_by(uuid=entry.uuid).first()
@@ -1144,30 +1122,14 @@ def repository_entry_diff(rid, eid):
             ("time_required", local_obj.time_required,  remote.get("time_required")),
         ]
 
-        local_tags = set(
-            tag.name for tag in Tags.query
-            .join(Task_Template_Tags, Task_Template_Tags.tag_id == Tags.id)
-            .filter(Task_Template_Tags.task_id == local_obj.id).all()
-        )
-        remote_tags = set(
-            t if isinstance(t, str) else t.get("name", "")
-            for t in remote.get("tags", [])
-        )
-        tags_diff = _set_diff(local_tags, remote_tags)
-
-        local_clusters = set(
-            c.name for c in Cluster.query
-            .join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.cluster_id == Cluster.id)
-            .filter(Task_Template_Galaxy_Tags.template_id == local_obj.id).all()
-        )
-        remote_clusters = set(
-            c["name"] if isinstance(c, dict) else c
-            for c in remote.get("clusters", [])
-        )
-        clusters_diff = _set_diff(local_clusters, remote_clusters)
+        local_tags = _local_tag_names(Task_Template_Tags, Task_Template_Tags.task_id, local_obj.id)
+        local_clusters = _local_cluster_names(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id, local_obj.id)
 
     else:
         return {"message": f"Unknown entry type: {entry.type}", "toast_class": "warning-subtle"}, 200
+
+    tags_diff = _set_diff(local_tags, _remote_names(remote.get("tags", [])))
+    clusters_diff = _set_diff(local_clusters, _remote_names(remote.get("clusters", [])))
 
     fields = []
     for field_name, local_val, remote_val in raw_fields:
@@ -1188,20 +1150,18 @@ def repository_entry_diff(rid, eid):
 @login_required
 @template_editor_required
 def repository_entry_raw(rid, eid):
-    """Proxy the remote template JSON for viewing in the browser."""
+    """Get raw template JSON from a repository entry"""
     entry = Template_Repository_Entry.query.filter_by(id=eid, repository_id=rid).first()
     if not entry:
         return {"message": "Entry not found", "toast_class": "danger-subtle"}, 404
 
-    # Embedded tasks don't have their own file — return stored fields as synthetic JSON
+    # Embedded tasks don't have their own file
     if entry.parent_case_uuid:
         return {
             "uuid": entry.uuid,
             "title": entry.title,
             "version": entry.version,
             "description": entry.description,
-            "_note": f"This task is embedded inside case template {entry.parent_case_uuid}. "
-                     "Only stored metadata is shown here."
         }, 200
 
     repo = Template_Repository.query.get(rid)
@@ -1215,7 +1175,7 @@ def repository_entry_raw(rid, eid):
 @login_required
 @template_editor_required
 def repository_entry_import(rid, eid):
-    """Import a remote template entry into local Case_Template / Task_Template."""
+    """Import a template entry from a repository"""
     repo = Template_Repository.query.get(rid)
     if not repo:
         return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
@@ -1314,9 +1274,6 @@ def repository_entry_import(rid, eid):
             local_case.version      = tpl.get("version") or local_case.version
             local_case.last_modif   = now
 
-        # Upsert embedded tasks and link to the case.
-        # Seed the order counter from any tasks already linked to this case so
-        # that re-imports append rather than clash with existing ordering.
         task_count = 0
         max_order = db.session.query(db.func.max(Case_Task_Template.case_order_id)).filter_by(case_id=local_case.id).scalar()
         next_order = (max_order or 0) + 1
@@ -1358,7 +1315,6 @@ def repository_entry_import(rid, eid):
     flowintel_log("audit", 200, "Template imported from central repository",
                   User=current_user.email, RepositoryId=rid, EntryId=eid, Type=entry.type)
 
-    # Return fresh annotated entries so badges update immediately
     all_entries = Template_Repository_Entry.query.filter_by(repository_id=rid).order_by(
         Template_Repository_Entry.type, Template_Repository_Entry.title
     ).all()
@@ -1373,6 +1329,7 @@ def repository_entry_import(rid, eid):
 @login_required
 @template_editor_required
 def repository_entries(rid):
+    """List entries for a template repository"""
     repo = Template_Repository.query.get(rid)
     if not repo:
         return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
@@ -1386,7 +1343,7 @@ def repository_entries(rid):
 @login_required
 @template_editor_required
 def repositories_index():
-    """View all central template repositories."""
+    """View all template repositories"""
     manifest_json = json.dumps(current_app.config.get("REPOSITORY_MANIFEST", {}), indent=4)
     return render_template("templating/repositories.html", manifest_json=manifest_json)
 
@@ -1395,11 +1352,7 @@ def repositories_index():
 @login_required
 @template_editor_required
 def repositories_scan():
-    """List subdirectories in the configured repository base path.
-
-    Returns each directory with its name, resolved local_path, whether a
-    manifest.json is present, and whether it is already registered.
-    """
+    """Scan for repository directories"""
     base_rel = current_app.config.get('REPOSITORY_BASE_PATH', 'modules/repositories')
     base = _repo_base_path(base_rel)
 
@@ -1438,7 +1391,7 @@ def repositories_scan():
 @login_required
 @template_editor_required
 def repositories_list():
-    """Return all repositories as JSON."""
+    """Get all template repositories"""
     repos = Template_Repository.query.order_by(Template_Repository.name).all()
     return {"repositories": [r.to_json() for r in repos]}, 200
 
@@ -1447,7 +1400,7 @@ def repositories_list():
 @login_required
 @template_editor_required
 def repository_add():
-    """Create a new template repository."""
+    """Add a template repository"""
     data = request.json or {}
     name = (data.get("name") or "").strip()
     local_path = (data.get("local_path") or "").strip()
@@ -1463,6 +1416,23 @@ def repository_add():
         url=(data.get("url") or "").strip() or None,
         local_path=local_path,
     )
+
+    # If the local path already contains a manifest.json, seed uuid/version/
+    # description from it so the user sees the correct values immediately.
+    base = _repo_base_path(local_path)
+    manifest, _ = _read_manifest(base)
+    if manifest:
+        mf_uuid = (manifest.get("uuid") or "").strip()
+        if mf_uuid:
+            if Template_Repository.query.filter_by(uuid=mf_uuid).first():
+                return {"message": "A repository with this manifest UUID already exists", "toast_class": "warning-subtle"}, 400
+            repo.uuid = mf_uuid
+        if manifest.get("version") is not None:
+            repo.version = manifest["version"]
+        mf_desc = (manifest.get("description") or "").strip()
+        if mf_desc and not repo.description:
+            repo.description = mf_desc
+
     db.session.add(repo)
     db.session.commit()
     flowintel_log("audit", 201, "Template repository added",
@@ -1475,7 +1445,7 @@ def repository_add():
 @login_required
 @template_editor_required
 def repository_edit(rid):
-    """Edit an existing template repository."""
+    """Edit a template repository"""
     repo = Template_Repository.query.get(rid)
     if not repo:
         return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
@@ -1507,7 +1477,7 @@ def repository_edit(rid):
 @login_required
 @template_editor_required
 def repository_delete(rid):
-    """Delete a template repository."""
+    """Delete a template repository"""
     repo = Template_Repository.query.get(rid)
     if not repo:
         return {"message": "Repository not found", "toast_class": "danger-subtle"}, 404
