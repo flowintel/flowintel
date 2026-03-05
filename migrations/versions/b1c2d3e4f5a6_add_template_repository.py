@@ -1,7 +1,7 @@
 """add template_repository and template_repository_entry tables
 
 Revision ID: b1c2d3e4f5a6
-Revises: a95e730510d6
+Revises: 5e8211f301aa
 Create Date: 2026-02-27 00:00:00.000000
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision = 'b1c2d3e4f5a6'
-down_revision = 'a95e730510d6'
+down_revision = '5e8211f301aa'
 branch_labels = None
 depends_on = None
 
