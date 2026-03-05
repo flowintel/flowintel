@@ -26,3 +26,4 @@ redis
 psycopg2-binary
 msal
 requests
+python-gnupg
