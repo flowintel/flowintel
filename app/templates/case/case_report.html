@@ -112,6 +112,24 @@
                 <button class="btn btn-outline-secondary btn-sm" id="btn-copy" title="Copy to clipboard">
                     <i class="fa-solid fa-copy me-1"></i>Copy
                 </button>
+                <button class="btn btn-outline-secondary btn-sm d-none" id="btn-download-sig" title="Download detached GPG signature">
+                    <i class="fa-solid fa-file-signature me-1"></i>Download .sig
+                </button>
+            </div>
+        </div>
+
+        <!-- GPG signature banner -->
+        <div id="sig-banner" class="d-none mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <span id="sig-badge" class="badge"></span>
+                <button class="btn btn-link btn-sm p-0 text-decoration-none" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#sig-details">
+                    Details
+                </button>
+            </div>
+            <div class="collapse mt-1" id="sig-details">
+                <pre class="border rounded p-2 bg-light mb-0" style="font-size:.75rem; max-height:12rem; overflow-y:auto;"
+                     id="sig-block"></pre>
             </div>
         </div>
         <!-- Rendered HTML view (default) -->
@@ -140,6 +158,7 @@
     const md = window.markdownit({ html: true })
 
     let rawMarkdown = ''
+    let rawSignature = ''
     let showingRaw = false
 
     document.getElementById("btn-generate").addEventListener("click", async function () {
@@ -178,9 +197,38 @@
             }
 
             rawMarkdown = data.report;
+            rawSignature = data.signature || '';
             showingRaw = false;
             document.getElementById("btn-download-pdf").removeAttribute("disabled");
             document.getElementById("btn-attach-pdf").removeAttribute("disabled");
+
+            // Signature banner
+            const sigBanner = document.getElementById('sig-banner');
+            const sigBadge  = document.getElementById('sig-badge');
+            const sigBlock  = document.getElementById('sig-block');
+            const sigBtn    = document.getElementById('btn-download-sig');
+            const detailsBtn = sigBanner.querySelector('[data-bs-toggle="collapse"]');
+            sigBlock.textContent = '';
+            document.getElementById('sig-details').classList.remove('show');
+            if (rawSignature) {
+                sigBadge.className = 'badge bg-success-subtle text-success border border-success-subtle';
+                sigBadge.innerHTML = '<i class="fa-solid fa-file-signature me-1"></i>';
+                sigBadge.append('Digitally signed by ' + (data.signed_by || 'unknown') + ' at ' + (data.signed_at || ''));
+                sigBlock.textContent = rawSignature;
+                sigBanner.classList.remove('d-none');
+                sigBtn.classList.remove('d-none');
+                detailsBtn.classList.remove('d-none');
+            } else if (data.signature_error) {
+                sigBadge.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle';
+                sigBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>';
+                sigBadge.append('Signing failed: ' + data.signature_error);
+                sigBanner.classList.remove('d-none');
+                sigBtn.classList.add('d-none');
+                detailsBtn.classList.add('d-none');
+            } else {
+                sigBanner.classList.add('d-none');
+                sigBtn.classList.add('d-none');
+            }
 
             // Render HTML by default
             document.getElementById("report-rendered").innerHTML = md.render(rawMarkdown);
@@ -300,6 +348,10 @@
 
             const fd = new FormData();
             fd.append('file', pdfBlob, filename);
+            if (rawSignature) {
+                const sigBlob = new Blob([rawSignature], { type: 'application/pgp-signature' });
+                fd.append('sig_file', sigBlob, filename.replace('.pdf', '.md.sig'));
+            }
 
             const res = await fetch(`/case/${CASE_ID}/report/attach_pdf`, {
                 method: 'POST',
@@ -316,6 +368,16 @@
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-paperclip me-1"></i>Attach to case as PDF';
         }
+    });
+
+    document.getElementById("btn-download-sig").addEventListener("click", function () {
+        if (!rawSignature) return;
+        const blob = new Blob([rawSignature], { type: 'application/pgp-signature' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `case-${CASE_ID}-report.md.sig`;
+        a.click();
+        URL.revokeObjectURL(a.href);
     });
 </script>
 {% endblock %}

@@ -67,6 +67,11 @@ class Config:
     ENTRA_ROLE_QUEUER       = os.getenv('ENTRA_ROLE_QUEUER',       'Queuer')
     ENTRA_REDIRECT_URL = os.getenv('ENTRA_REDIRECT_URL', 'http://localhost:7006/account/entra/callback')
 
+    # GPG report signing (leave GPG_KEY_ID empty to disable)
+    GPG_HOME = ""        # Path to the GPG keyring directory (empty = default ~/.gnupg)
+    GPG_KEY_ID = ""      # Fingerprint or email of the signing key (empty = signing disabled)
+    GPG_PASSPHRASE = ""  # Passphrase for the key (empty = no passphrase or use gpg-agent)
+
     # Initial users configuration
     INIT_ADMIN_USER = {
         "first_name": "admin",
