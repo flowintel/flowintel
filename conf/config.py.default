@@ -67,6 +67,18 @@ class Config:
     ENTRA_ROLE_QUEUER       = os.getenv('ENTRA_ROLE_QUEUER',       'Queuer')
     ENTRA_REDIRECT_URL = os.getenv('ENTRA_REDIRECT_URL', 'http://localhost:7006/account/entra/callback')
 
+    # Central template repository
+    # Base directory
+    REPOSITORY_BASE_PATH = os.getenv('REPOSITORY_BASE_PATH', 'modules/repositories')
+
+    # Manifest shown as example in "What does manifest.json look like?"
+    REPOSITORY_MANIFEST = {
+        "name": "My Template Repository",
+        "description": "A short description of what this repository contains.",
+        "uuid": "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx",
+        "version": 1
+    }
+
     # Initial users configuration
     INIT_ADMIN_USER = {
         "first_name": "admin",

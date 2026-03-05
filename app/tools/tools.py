@@ -378,6 +378,7 @@ def system_settings():
         'limit_user_view_to_org': current_app.config.get('LIMIT_USER_VIEW_TO_ORG'),
         'enforce_privileged_case': current_app.config.get('ENFORCE_PRIVILEGED_CASE', False),
         'entra_id_enabled': current_app.config.get('ENTRA_ID_ENABLED', False),
+        'repository_base_path': current_app.config.get('REPOSITORY_BASE_PATH', 'modules/repositories'),
         'task_requested': current_app.config.get('TASK_REQUESTED', 7),
         'task_approved': current_app.config.get('TASK_APPROVED', 8),
         'task_rejected': current_app.config.get('TASK_REJECTED', 9)
