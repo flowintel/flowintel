@@ -71,6 +71,17 @@ class Config:
     GPG_HOME = ""        # Path to the GPG keyring directory (empty = default ~/.gnupg)
     GPG_KEY_ID = ""      # Fingerprint or email of the signing key (empty = signing disabled)
     GPG_PASSPHRASE = ""  # Passphrase for the key (empty = no passphrase or use gpg-agent)
+    # Central template repository
+    # Base directory
+    REPOSITORY_BASE_PATH = os.getenv('REPOSITORY_BASE_PATH', 'modules/repositories')
+
+    # Manifest shown as example in "What does manifest.json look like?"
+    REPOSITORY_MANIFEST = {
+        "name": "My Template Repository",
+        "description": "A short description of what this repository contains.",
+        "uuid": "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx",
+        "version": 1
+    }
 
     # Initial users configuration
     INIT_ADMIN_USER = {

@@ -145,11 +145,11 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         template = Task_Template(
             title=form_dict["title"],
             description=form_dict["description"],
-            uuid=str(uuid.uuid4()),
+            uuid=form_dict.get("uuid") or str(uuid.uuid4()),
             nb_notes=0,
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
             time_required=form_dict["time_required"],
-            version=1
+            version=form_dict.get("version") or 1,
         )
         db.session.add(template)
         db.session.commit()

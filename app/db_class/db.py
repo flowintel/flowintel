@@ -1291,6 +1291,64 @@ class Note_Template_Model(db.Model):
 
         return json_dict
 
+
+class Template_Repository(db.Model):
+    __tablename__ = 'template__repository'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True, unique=True, default=lambda: str(uuid.uuid4()))
+    name = db.Column(db.String(256), index=True, nullable=False)
+    description = db.Column(db.String)
+    url = db.Column(db.String(512), nullable=True)
+    local_path = db.Column(db.String(512))
+    version = db.Column(db.Integer)
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+    entries = db.relationship("Template_Repository_Entry", backref="repository", lazy="dynamic", cascade=CASCADE_DELETE_ORPHAN)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "uuid": self.uuid,
+            "name": self.name,
+            "description": self.description,
+            "url": self.url,
+            "local_path": self.local_path,
+            "version": self.version,
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL) if self.creation_date else None,
+        }
+
+
+class Template_Repository_Entry(db.Model):
+    __tablename__ = 'template__repository_entry'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    repository_id = db.Column(db.Integer, db.ForeignKey('template__repository.id', ondelete='CASCADE'), index=True)
+    uuid = db.Column(db.String(36), index=True)
+    title = db.Column(db.String(256))
+    type = db.Column(db.String(8), index=True)   # 'case' | 'task'
+    version = db.Column(db.Integer)
+    description = db.Column(db.String)
+    download_url = db.Column(db.String(512))
+    remote_sha = db.Column(db.String(64))
+    parent_case_uuid = db.Column(db.String(36), nullable=True, index=True)
+    parent_case_title = db.Column(db.String(256), nullable=True)
+    last_synced = db.Column(db.DateTime, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "repository_id": self.repository_id,
+            "uuid": self.uuid,
+            "title": self.title,
+            "type": self.type,
+            "version": self.version,
+            "description": self.description,
+            "download_url": self.download_url,
+            "remote_sha": self.remote_sha,
+            "parent_case_uuid": self.parent_case_uuid,
+            "parent_case_title": self.parent_case_title,
+            "last_synced": self.last_synced.strftime(DATETIME_FORMAT_FULL) if self.last_synced else None,
+        }
+
+
 class Case_Note_Template_Model(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
