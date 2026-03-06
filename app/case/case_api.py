@@ -9,7 +9,7 @@ from ..utils import utils
 from ..utils.logger import flowintel_log
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required, template_editor_required
+from ..decorators import api_required, editor_required, misp_editor_required, template_editor_required
 
 case_ns = Namespace("case", description="Endpoints to manage cases")
 
@@ -582,7 +582,7 @@ class GetInstanceModules(Resource):
 @case_ns.route('/<cid>/call_module_case', methods=['POST'])
 @case_ns.doc(description='Call a module on a case')
 class CallModuleCase(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     @case_ns.doc(params={
         "module": "Required. Name of the module to call",
         "instance_id": "Required. List of name or id of instances to use for the module"
@@ -667,7 +667,7 @@ class GetConnectors(Resource):
 @case_ns.route('/get_case_connectors/<cid>', methods=['GET'])
 @case_ns.doc(description='Get all connectors instance for a case')
 class GetConnectorsCase(Resource):
-    method_decorators = [api_required]
+    method_decorators = [misp_editor_required, api_required]
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
@@ -687,7 +687,7 @@ class GetConnectorsCase(Resource):
 @case_ns.route('/<cid>/add_connectors', methods=['POST'])
 @case_ns.doc(description='Add connectors to a case')
 class AddConnectorsCase(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     @case_ns.doc(params={
         "connectors": "Required. List of connectors instance. Dict with 'name' and 'identifier' as keys."
     })
@@ -706,7 +706,7 @@ class AddConnectorsCase(Resource):
 @case_ns.route('/<cid>/edit_connector/<ciid>', methods=['POST'])
 @case_ns.doc(description='Edit connector')
 class EditConnectorsCase(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     @case_ns.doc(params={
         "identifier": "Required. Identifier used by modules to identify where to send data."
     })
@@ -725,7 +725,7 @@ class EditConnectorsCase(Resource):
 @case_ns.route('/<cid>/remove_connector/<ciid>', methods=['GET'])
 @case_ns.doc(description='Remove a connector')
 class RemoveConnectors(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     def get(self, cid, ciid):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)

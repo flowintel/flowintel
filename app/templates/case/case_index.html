@@ -259,6 +259,7 @@
                                 <span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">
                                     [[ status_info.status[case_loc.status_id -1].name ]]
                                 </span>
+                                <img v-if="case_loc.has_misp_event && case_loc.misp_icon" :src="'/static/icons/' + case_loc.misp_icon" class="ms-2" style="max-height: 20px;" title="Linked to MISP event">
                             </small>
                         </div>
                         <div class="d-flex w-100">

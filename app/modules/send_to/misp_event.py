@@ -1,13 +1,21 @@
 import json
-from pymisp import MISPEvent, MISPGalaxy, MISPGalaxyCluster, MISPObject, PyMISP
+import logging
+import os
+from pathlib import Path
+from pymisp import MISPAttribute, MISPEvent, MISPGalaxy, MISPGalaxyCluster, MISPObject, MISPObjectReference, PyMISP
 import uuid
+from flask import current_app
 import conf.config_module as Config
 from .misp_object_event import all_object_to_misp, manage_object_creation
+from app.case.CaseCore import FILE_FOLDER
+
+logger = logging.getLogger(__name__)
+
 
 module_config = {
     "connector": "misp",
     "case_task": "case",
-    "description": "Create or modify an event using the current case. The event will include:\n\t- case's info as misp-object\n\t- tasks' info as misp-object \n\t- misp-object\n\t- tasks\n\t- case and tasks notes as event report"
+    "description": "Create or modify an event using the current case. The event will include:\n\t- case's info as misp-object\n\t- tasks' info as misp-object\n\t- tasks' subtasks as text attributes\n\t- tasks' external references as link attributes\n\t- case and tasks notes as event report\n\t- file attachments (when MISP_EXPORT_FILES is enabled)"
 }
 
 def common_edit(case_task, attribute):
@@ -183,6 +191,211 @@ def create_galaxy_cluster(misp: PyMISP, event, clusters):
 
     return event
 
+def _collect_files(case):
+    """Return a list of (file_dict, origin_type, origin_uuid) tuples."""
+    files = []
+    for f in case.get("files", []):
+        files.append((f, "case", case["uuid"]))
+    for task in case.get("tasks", []):
+        for f in task.get("files", []):
+            files.append((f, "task", task["uuid"]))
+    return files
+
+
+def _find_misp_object(event, origin_type, origin_uuid):
+    """Find the flowintel-case or flowintel-task MISPObject"""
+    if origin_type == "case":
+        obj_name, relation = "flowintel-case", "case-uuid"
+    else:
+        obj_name, relation = "flowintel-task", "task-uuid"
+
+    for obj in event.get_objects_by_name(obj_name):
+        for attr in obj.attributes:
+            if attr.object_relation == relation and attr.value == origin_uuid:
+                return obj
+    return None
+
+
+def _existing_attr_values(event, attr_types, prefix=None):
+    """Return a set of attribute values already on the MISP event."""
+    values = set()
+    if not isinstance(attr_types, tuple):
+        attr_types = (attr_types,)
+    for attr in event.Attribute:
+        if attr.type in attr_types:
+            if attr.value and (prefix is None or attr.value.startswith(prefix)):
+                values.add(attr.value)
+    return values
+
+
+def add_case_task_references(misp, event, case):
+    """Add 'includes' references from the flowintel-case object to each
+    flowintel-task object.  Existing references are skipped."""
+    case_obj = _find_misp_object(event, "case", case["uuid"])
+    if not case_obj or not getattr(case_obj, "id", None):
+        logger.debug("MISP export: case object not found, skipping task references")
+        return
+
+    # Collect UUIDs that already have a reference from this case object
+    existing_refs = set()
+    for ref in getattr(case_obj, "ObjectReference", []):
+        ref_uuid = getattr(ref, "referenced_uuid", None)
+        ref_type = getattr(ref, "relationship_type", None)
+        if ref_uuid and ref_type == "includes":
+            existing_refs.add(ref_uuid)
+
+    task_objects = event.get_objects_by_name("flowintel-task")
+    for task in case.get("tasks", []):
+        for obj in task_objects:
+            for attr in obj.attributes:
+                if attr.object_relation == "task-uuid" and attr.value == task["uuid"]:
+                    if obj.uuid in existing_refs:
+                        break
+                    if not getattr(obj, "id", None):
+                        break
+                    try:
+                        ref = MISPObjectReference()
+                        ref.object_uuid = case_obj.uuid
+                        ref.object_id = case_obj.id
+                        ref.referenced_uuid = obj.uuid
+                        ref.relationship_type = "includes"
+                        misp.add_object_reference(ref)
+                        logger.info("MISP export: added 'includes' reference from case to task '%s'",
+                                    task.get("title", task["uuid"]))
+                    except Exception as e:
+                        logger.warning("MISP export: failed to add case→task reference for '%s': %s",
+                                       task.get("title", task["uuid"]), e)
+                    break
+
+
+def upload_files_to_event(misp, event, case):
+    """Upload case & task files as MISP 'attachment' attributes."""
+    if not current_app.config.get("MISP_EXPORT_FILES", False):
+        return
+
+    all_files = _collect_files(case)
+    if not all_files:
+        return
+
+    existing = _existing_attr_values(event, ("attachment", "malware-sample"))
+
+    for file_meta, origin_type, origin_uuid in all_files:
+        if file_meta["name"] in existing:
+            logger.debug("MISP export: file '%s' already attached, skipping", file_meta["name"])
+            continue
+
+        file_path = os.path.join(FILE_FOLDER, file_meta["uuid"])
+        if not os.path.isfile(file_path):
+            logger.warning("MISP export: file not found on disk: %s (%s)", file_meta["name"], file_path)
+            continue
+
+        try:
+            attr = MISPAttribute()
+            attr.type = "attachment"
+            attr.value = file_meta["name"]
+            attr.comment = "Uploaded from Flowintel"
+            attr.data = Path(file_path)
+            attr.distribution = 5
+
+            result = misp.add_attribute(event, attr, pythonify=True)
+            logger.info("MISP export: attached file '%s' to event %s", file_meta["name"], event.get("uuid", "?"))
+
+            # Create a reference from the case/task object to the file attribute
+            result_uuid = getattr(result, "uuid", None)
+            if result_uuid:
+                misp_obj = _find_misp_object(event, origin_type, origin_uuid)
+                if misp_obj and getattr(misp_obj, "id", None):
+                    try:
+                        ref = MISPObjectReference()
+                        ref.object_uuid = misp_obj.uuid
+                        ref.object_id = misp_obj.id
+                        ref.referenced_uuid = result_uuid
+                        ref.relationship_type = "has-attachment"
+                        misp.add_object_reference(ref)
+                        logger.info("MISP export: added reference from %s object to file '%s'",
+                                    origin_type, file_meta["name"])
+                    except Exception as e:
+                        logger.warning("MISP export: failed to add reference for file '%s': %s",
+                                       file_meta["name"], e)
+        except Exception as e:
+            logger.error("MISP export: failed to attach file '%s': %s", file_meta["name"], e)
+
+
+def _add_attribute_with_reference(misp, event, task_obj, attr_type, value, comment, relationship):
+    """Create a MISP attribute on the event and link it to *task_obj*."""
+    attr = MISPAttribute()
+    attr.type = attr_type
+    attr.value = value
+    attr.comment = comment
+    attr.distribution = 5  # Inherit event distribution
+
+    result = misp.add_attribute(event, attr, pythonify=True)
+    result_uuid = getattr(result, "uuid", None)
+    if result_uuid:
+        ref = MISPObjectReference()
+        ref.object_uuid = task_obj.uuid
+        ref.object_id = task_obj.id
+        ref.referenced_uuid = result_uuid
+        ref.relationship_type = relationship
+        misp.add_object_reference(ref)
+    return result
+
+
+def add_subtasks_to_event(misp, event, case):
+    """Add task subtasks as MISP 'text' attributes with 'includes' references."""
+    existing = _existing_attr_values(event, "text", prefix="Subtask: ")
+
+    for task in case.get("tasks", []):
+        task_obj = _find_misp_object(event, "task", task["uuid"])
+        if not task_obj or not getattr(task_obj, "id", None):
+            continue
+
+        for subtask in task.get("subtasks", []):
+            description = subtask.get("description", "")
+            if not description:
+                continue
+            value = f"Subtask: {description}"
+            if value in existing:
+                continue
+
+            try:
+                _add_attribute_with_reference(
+                    misp, event, task_obj,
+                    attr_type="text", value=value,
+                    comment=f"Subtask of task '{task.get('title', '')}'",
+                    relationship="includes",
+                )
+                logger.info("MISP export: added subtask '%s'", value)
+            except Exception as e:
+                logger.warning("MISP export: failed to add subtask '%s': %s", value, e)
+
+
+def add_external_references_to_event(misp, event, case):
+    """Add task external references as MISP 'link' attributes with 'references' relations."""
+    existing = _existing_attr_values(event, "link")
+
+    for task in case.get("tasks", []):
+        task_obj = _find_misp_object(event, "task", task["uuid"])
+        if not task_obj or not getattr(task_obj, "id", None):
+            continue
+
+        for ext_ref in task.get("external_references", []):
+            url = ext_ref.get("url", "")
+            if not url or url in existing:
+                continue
+
+            try:
+                _add_attribute_with_reference(
+                    misp, event, task_obj,
+                    attr_type="link", value=url,
+                    comment=f"External reference of task '{task.get('title', '')}'",
+                    relationship="references",
+                )
+                logger.info("MISP export: added external reference '%s'", url)
+            except Exception as e:
+                logger.warning("MISP export: failed to add external reference '%s': %s", url, e)
+
+
 def handler(instance, case, user):
     """
     instance: name, url, description, uuid, connector_id, type, api_key, identifier
@@ -339,6 +552,8 @@ def handler(instance, case, user):
                 if "errors" in event:
                     return event, object_uuid_list
 
+                add_case_task_references(misp, event, case)
+
             ## Case doesn't exist in the event
             else:
                 misp_object = create_case(case)
@@ -368,6 +583,13 @@ def handler(instance, case, user):
                 if "errors" in event:
                     return event, object_uuid_list
 
+                add_case_task_references(misp, event, case)
+
+            upload_files_to_event(misp, event, case)
+
+            add_subtasks_to_event(misp, event, case)
+            add_external_references_to_event(misp, event, case)
+
             res, object_uuid_list = all_object_to_misp(misp, event, case["objects"], object_uuid_list)
             if "errors" in res:
                 return res, object_uuid_list
@@ -381,6 +603,8 @@ def handler(instance, case, user):
         event = MISPEvent()
         event.uuid = str(uuid.uuid4())
         event.info = f"Case: {case['title']}"  # Required
+        event.threat_level_id = current_app.config.get("MISP_EVENT_THREAT_LEVEL", 4)
+        event.analysis = current_app.config.get("MISP_EVENT_ANALYSIS", 0)
 
         misp_object = create_case(case)
         event.add_object(misp_object)
@@ -410,6 +634,7 @@ def handler(instance, case, user):
 
         event = misp.add_event(event, pythonify=True)
 
+        add_case_task_references(misp, event, case)
 
         ## Get all notes from task to create an event report
         ## Case's notes event report
@@ -435,6 +660,11 @@ def handler(instance, case, user):
             }   
             misp.add_event_report(event.get("id"), event_report)
 
+        upload_files_to_event(misp, event, case)
+
+        add_subtasks_to_event(misp, event, case)
+        add_external_references_to_event(misp, event, case)
+
         for object in case["objects"]:
             res, object_uuid_list = manage_object_creation(misp, event, object, object_uuid_list)
             if "errors" in res:
@@ -442,6 +672,15 @@ def handler(instance, case, user):
     
     if "errors" in event:
         return event, object_uuid_list
+
+    local_tags = current_app.config.get("MISP_ADD_LOCAL_TAGS_ALL_EVENTS", "")
+    if local_tags:
+        if isinstance(local_tags, list):
+            for tag in local_tags:
+                misp.tag(event, tag, local=True)
+        else:
+            misp.tag(event, local_tags, local=True)
+
     return event.get("uuid"), object_uuid_list
 
 def introspection():

@@ -333,6 +333,17 @@ def get_connector_by_name(name):
     """Return a connector by its name"""
     return Connector.query.where(Connector.name.like(name)).first()
 
+def get_misp_connector_icon():
+    """Return the icon UUID for the MISP connector, or None."""
+    icon = (
+        Icon_File.query
+        .join(Connector_Icon, Connector_Icon.file_icon_id == Icon_File.id)
+        .join(Connector, Connector.icon_id == Connector_Icon.id)
+        .filter(Connector.name == "MISP")
+        .first()
+    )
+    return icon.uuid if icon else None
+
 def get_instance(iid):
     """Return an instance"""
     return Connector_Instance.query.get(iid)
@@ -887,10 +898,15 @@ def module_error_check(event):
     if isinstance(event, dict):
         if "message" in event:
             return event
-        if type(event["errors"][1]["errors"]) == dict:
-            return {"message": event["errors"][1]["errors"]["value"][0]}
+        errors = event.get("errors")
+        if not errors:
+            return {"message": "Unknown error"}
+        if isinstance(errors, str):
+            return {"message": errors}
+        if isinstance(errors[1]["errors"], dict):
+            return {"message": errors[1]["errors"]["value"][0]}
         else:
-            loc = re.search(r"\{.*\}", event["errors"][1]["errors"])
+            loc = re.search(r"\{.*\}", errors[1]["errors"])
             if loc:
                 return {"message": json.loads(loc.group())["value"][0]}
-            return {"message": event["errors"][1]["errors"]}
+            return {"message": errors[1]["errors"]}

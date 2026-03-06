@@ -12,7 +12,7 @@ from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User
-from ..decorators import editor_required, template_editor_required, admin_required
+from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
@@ -302,7 +302,7 @@ def get_case_info(cid):
             files_list = []
 
         case_json = case.to_json()
-        case_json["misp_icon"] = "fe377a79-1950-407a-a02f-c5e1d990ca60"
+        case_json["misp_icon"] = CommonModel.get_misp_connector_icon() or ""
 
         return jsonify({"case": case_json, "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json(), "files": files_list}), 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -743,6 +743,7 @@ def get_instance_module(cid):
 
 @case_blueprint.route("/<cid>/call_module_case", methods=['GET', 'POST'])
 @login_required
+@misp_editor_required
 def call_module_case(cid):
     """Run a module"""
     case = CommonModel.get_case(cid)
@@ -1232,6 +1233,7 @@ def nb_objects(cid):
 
 @case_blueprint.route("/<cid>/get_case_connectors", methods=['GET', 'POST'])
 @login_required
+@misp_editor_required
 def get_case_connectors(cid):
     """Get all connectors for a case"""
     case = CommonModel.get_case(cid)
@@ -1241,12 +1243,13 @@ def get_case_connectors(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         instance_list = list()
+        misp_connector = CommonModel.get_connector_by_name("MISP")
         for case_connector in CommonModel.get_case_connectors(cid, current_user):
-            connect = CommonModel.get_connector_by_name("MISP")
-            connect_instance = CommonModel.get_instance(case_connector.instance_id)
             is_misp_connector = False
-            if connect.id == connect_instance.connector_id:
-                is_misp_connector = True
+            if misp_connector:
+                connect_instance = CommonModel.get_instance(case_connector.instance_id)
+                if connect_instance and connect_instance.connector_id == misp_connector.id:
+                    is_misp_connector = True
             instance_list.append({
                 "case_task_instance_id": case_connector.id,
                 "details": CommonModel.get_instance_with_icon(case_connector.instance_id),
@@ -1260,7 +1263,7 @@ def get_case_connectors(cid):
 
 @case_blueprint.route("/<cid>/add_connector", methods=['POST'])
 @login_required
-@editor_required
+@misp_editor_required
 def add_connector(cid):
     """Add MISP Connector"""
     if CommonModel.get_case(cid):
@@ -1276,7 +1279,7 @@ def add_connector(cid):
 
 @case_blueprint.route("/<cid>/connectors/<ciid>/remove_connector", methods=['GET'])
 @login_required
-@editor_required
+@misp_editor_required
 def remove_connector(cid, ciid):
     """Remove a connector from case"""
     if CommonModel.get_case(cid):
@@ -1292,7 +1295,7 @@ def remove_connector(cid, ciid):
 
 @case_blueprint.route("/<cid>/connectors/<ciid>/edit_connector", methods=['POST'])
 @login_required
-@editor_required
+@misp_editor_required
 def edit_connector(cid, ciid):
     """Edit Connector"""
     if CommonModel.get_case(cid):
@@ -1310,9 +1313,9 @@ def edit_connector(cid, ciid):
 
 @case_blueprint.route("/<cid>/update_case/<iid>", methods=['GET'])
 @login_required
-@editor_required
+@misp_editor_required
 def update_case(cid, iid):
-    """Remove a connector from case"""
+    """Update case from MISP connector"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             res = CaseModel.receive_from_misp(iid, cid, current_user)
