@@ -1,9 +1,12 @@
 from pymisp import MISPEvent, MISPObject, PyMISP, MISPAttribute
-from pymisp.exceptions import InvalidMISPObjectAttribute, InvalidMISPObject
+from pymisp.exceptions import InvalidMISPObjectAttribute, InvalidMISPObject, NewAttributeError
 import uuid
 import conf.config_module as Config
+import logging
 import urllib3
 urllib3.disable_warnings()
+
+logger = logging.getLogger(__name__)
 
 module_config = {
     "connector": "misp",
@@ -16,15 +19,35 @@ def create_object(misp, object, event_id):
     misp_object = MISPObject(object["name"], standalone=False)
     attr_uuid_list = list()
     for attr in object["attributes"]:
-        loc_attr = misp_object.add_attribute(attr["object_relation"], value=attr["value"],
-                                             to_ids=attr["ids_flag"], 
-                                             comment=attr["comment"], 
-                                             first_seen=attr["first_seen"], 
-                                             last_seen=attr["last_seen"])
+        try:
+            kwargs = {
+                "to_ids": attr["ids_flag"],
+                "comment": attr["comment"],
+            }
+            if attr.get("first_seen"):
+                kwargs["first_seen"] = attr["first_seen"]
+            if attr.get("last_seen"):
+                kwargs["last_seen"] = attr["last_seen"]
+            loc_attr = misp_object.add_attribute(
+                attr["object_relation"], value=attr["value"], **kwargs
+            )
+        except NewAttributeError as e:
+            # Value doesn't match the type expected by the object template.
+            # Skip the attribute rather than aborting the entire export.
+            logger.warning(
+                "Skipped attribute %s (relation=%s, value=%r): %s",
+                attr.get("id"), attr["object_relation"], attr["value"], e,
+            )
+            continue
         attr_uuid_list.append({
             "attribute_id": attr["id"],
             "uuid": loc_attr.uuid
         })         # Need to save uuid of attr for later update
+    if not misp_object.attributes:
+        # Every attribute was skipped — don't push an empty object to MISP.
+        return misp_object, attr_uuid_list, {
+            "errors": f"Object '{object['name']}' has no valid attributes after filtering"
+        }
     res = misp.add_object(event_id, misp_object)
     return misp_object, attr_uuid_list, res
 
@@ -82,9 +105,12 @@ def all_object_to_misp(misp, event, objects, object_uuid_list):
                         res = misp.update_attribute(attribute)
                         if "errors" in res:
                             return res, object_uuid_list
-                except InvalidMISPObjectAttribute:
-                    # Object exist but not this attribute
-                    loc_attr = loc_object.add_attribute(attr["object_relation"], value=attr["value"])
+                except (InvalidMISPObjectAttribute, NewAttributeError):
+                    # Object exist but not this attribute, or value type mismatch
+                    try:
+                        loc_attr = loc_object.add_attribute(attr["object_relation"], value=attr["value"])
+                    except NewAttributeError:
+                        continue
                     attr_uuid_list.append({
                         "attribute_id": attr["id"],
                         "uuid": loc_attr.uuid

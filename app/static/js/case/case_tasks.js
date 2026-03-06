@@ -6,7 +6,7 @@ import tabExternalRef from './TaskComponent/tab-external-ref.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
-const { ref, nextTick } = Vue
+const { ref, computed, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -259,7 +259,7 @@ export default {
 
 		// Vue function
 		Vue.onMounted(() => {
-			fetch_task_connectors()
+			if (can_use_connectors.value) fetch_task_connectors()
 			select2_change(props.task.id)
 			// $('.select2-select').select2({
 			// 	theme: 'bootstrap-5',
@@ -291,7 +291,16 @@ export default {
 			}
 		})
 
+		const can_use_connectors = computed(() => {
+			if (!props.cases_info) return false
+			const permission = props.cases_info.permission
+			if (permission && permission.admin) return true
+			if (permission && permission.misp_editor) return true
+			return false
+		})
+
 		return {
+			can_use_connectors,
 			getTextColor,
 			mapIcon,
 			module_loader,
@@ -503,7 +512,7 @@ export default {
 				</li>
 				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-connectors-'+task.id" @click="select_tab_task('connectors')">
-					<i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title">Connectors<template v-if="task_connectors_list && task_connectors_list.length"> ([[ task_connectors_list.length ]])</template></span>
+					<i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i><i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title">Connectors<template v-if="task_connectors_list && task_connectors_list.length"> ([[ task_connectors_list.length ]])</template></span>
 					</button>
 				</li>
 				<li class="nav-item">
@@ -541,7 +550,11 @@ export default {
 			</template>
 
 			<template v-else-if="selected_tab == 'connectors'">
-				<div class="card card-body">
+				<div v-if="!can_use_connectors" class="alert alert-warning" role="alert">
+					<i class="fa-solid fa-lock me-2"></i>
+					<strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
+				</div>
+				<div v-else class="card card-body">
 					<caseconnectors 
 						:case_task_connectors_list="task_connectors_list"
 						:all_connectors_list="all_connectors_list"

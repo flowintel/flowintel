@@ -149,7 +149,7 @@
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-connectors" @click="active_tab('connectors')">
-                <i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title fs-6">Connectors </span>
+                <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i><i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title fs-6">Connectors </span>
                 <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_connectors_list.length]]</span>
             </button>
         </li>
@@ -354,7 +354,11 @@
         </template>
 
         <template v-else-if="main_tab == 'connectors'">
-            <div v-if="cases_info">
+            <div v-if="!can_use_connectors" class="alert alert-warning" role="alert">
+                <i class="fa-solid fa-lock me-2"></i>
+                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
+            </div>
+            <div v-else-if="cases_info">
                 <caseconnectors 
                     :case_task_connectors_list="case_connectors_list"
                     :all_connectors_list="all_connectors_list"
@@ -1336,7 +1340,7 @@
                     await fetchCase()
                     initialize_select2()
                     autosave_case_note()
-                    fetch_case_connectors()
+                    if (can_use_connectors.value) fetch_case_connectors()
                     fetch_case_files()
 
                     $('.new-link-ajax').select2({
@@ -1462,6 +1466,14 @@
                     return false
                 })
 
+                const can_use_connectors = computed(() => {
+                    if (!cases_info.value) return false
+                    const permission = cases_info.value.permission
+                    if (permission && permission.admin) return true
+                    if (permission && permission.misp_editor) return true
+                    return false
+                })
+
                 
     
                 return {
@@ -1476,6 +1488,7 @@
                     is_exporting,
                     nb_misp_objects,
                     can_edit_case,
+                    can_use_connectors,
                     onInput,
                     sort_by_filter,
                     active_tab,

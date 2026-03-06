@@ -12,7 +12,7 @@ from flask_login import login_required, current_user
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
-from ..decorators import editor_required
+from ..decorators import editor_required, misp_editor_required
 from ..utils.utils import form_to_dict, validate_file_size, query_post_query
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
@@ -719,7 +719,7 @@ def get_instance_module(cid, tid):
 
 @task_blueprint.route("/<cid>/task/<tid>/call_module_task", methods=['GET', 'POST'])
 @login_required
-@editor_required
+@misp_editor_required
 def call_module_task(cid, tid):
     """Run a module"""
     case = CommonModel.get_case(cid)
@@ -1097,6 +1097,7 @@ def get_connectors():
 
 @task_blueprint.route("/get_task_connectors/<tid>", methods=['GET'])
 @login_required
+@misp_editor_required
 def get_task_connectors(tid):
     """Get all connectors for a task"""
     task = CommonModel.get_task(tid)
@@ -1106,11 +1107,18 @@ def get_task_connectors(tid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         instance_list = list()
+        misp_connector = CommonModel.get_connector_by_name("MISP")
         for task_connector in CommonModel.get_task_connectors(tid):
+            is_misp_connector = False
+            if misp_connector:
+                connect_instance = CommonModel.get_instance(task_connector.instance_id)
+                if connect_instance and connect_instance.connector_id == misp_connector.id:
+                    is_misp_connector = True
             instance_list.append({
                 "case_task_instance_id": task_connector.id,
                 "details": CommonModel.get_instance_with_icon(task_connector.instance_id),
-                "identifier": task_connector.identifier
+                "identifier": task_connector.identifier,
+                "is_misp_connector": is_misp_connector
             })
         return {"task_connectors": instance_list}, 200
     return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
@@ -1118,7 +1126,7 @@ def get_task_connectors(tid):
 
 @task_blueprint.route("/task/<tid>/add_connector", methods=['POST'])
 @login_required
-@editor_required
+@misp_editor_required
 def add_connector(tid):
     """Add Connector"""
     task = CommonModel.get_task(tid)
@@ -1138,7 +1146,7 @@ def add_connector(tid):
 
 @task_blueprint.route("/task/<tid>/remove_connector/<ciid>", methods=['GET'])
 @login_required
-@editor_required
+@misp_editor_required
 def remove_connector(tid, ciid):
     """Remove a connector from task"""
     task = CommonModel.get_task(tid)
@@ -1155,7 +1163,7 @@ def remove_connector(tid, ciid):
 
 @task_blueprint.route("/task/<tid>/edit_connector/<ciid>", methods=['POST'])
 @login_required
-@editor_required
+@misp_editor_required
 def edit_connector(tid, ciid):
     """Edit Connector"""
     task = CommonModel.get_task(tid)

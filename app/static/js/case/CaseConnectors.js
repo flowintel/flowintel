@@ -119,8 +119,8 @@ export default {
                         props.case_task_connectors_list[i].identifier = loc_identifier
                     }
                 }
-                edit_instance.value = {}
                 $("#modal-edit-connectors-" + modal_identifier).modal("hide");
+                edit_instance.value = null
 
             }
             display_toast(res)
@@ -149,7 +149,7 @@ export default {
             if (props.is_case) {
                 url = "/case/" + props.object_id + "/call_module_case"
             } else {
-                url = "/case/" + props.object_id + "/task/" + props.object_id + "/call_module_task"
+                url = "/case/" + props.cases_info.case.id + "/task/" + props.object_id + "/call_module_task"
             }
 
             const res = await fetch(url, {
@@ -173,7 +173,7 @@ export default {
                 }
             }
 
-            display_toast(res, true)
+            display_toast(res)
         }
 
         async function update_case(instance_id) {
@@ -294,6 +294,11 @@ export default {
 
                     <td v-if="instance.identifier">
                         <span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>
+                        <template v-if="instance.is_misp_connector">
+                            <a style="margin-left: 8px;" :href="(instance.details.url.endsWith('/') ? instance.details.url : instance.details.url + '/') + 'events/view/' + instance.identifier" target="_blank" title="Open MISP event on remote instance">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            </a>
+                        </template>
                     </td>
                     <td v-else><i>None</i></td>
 
@@ -369,9 +374,17 @@ export default {
                 <div class="modal-content">
                     <div class="modal-header">
                         <h1 class="modal-title fs-5" id="EditConnectorsLabel">Edit Connectors</h1>
-                        <button type="button" class="btn-close" aria-label="Cancel"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
                     </div>
                     <div class="modal-body" v-if="edit_instance">
+                        <div class="mb-3">
+                            <small class="text-muted">Instance name</small>
+                            <div class="fw-semibold">[[ edit_instance.details.name ]]</div>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">Instance URL</small>
+                            <div class="fw-semibold">[[ edit_instance.details.url ]]</div>
+                        </div>
                         <div class="form-floating col">
                             <input :id="'input-edit-connector-'+modal_identifier" class="form-control" :value="edit_instance.identifier">
                             <label>Identifier</label>

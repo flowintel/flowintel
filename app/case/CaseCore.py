@@ -469,7 +469,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Regroup all information if a case"""
         loc = dict()
         loc["cases"] = list()
-        
+        misp_icon = CommonModel.get_misp_connector_icon() or ""
+
         for case in cases:
             case_loc = case.to_json()
             case_loc["present_in_case"] = CommonModel.get_present_in_case(case.id, user)
@@ -480,7 +481,23 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             case_loc["owner_org_name"] = owner_org.name if owner_org else "Unknown"            
             orgs_in_case = CommonModel.get_orgs_in_case(case.id)
             case_loc["orgs_in_case"] = [{"id": org.id, "name": org.name} for org in orgs_in_case]
-            
+
+            # Check if case has a MISP connector with a non-empty identifier
+            has_misp_event = (
+                db.session.query(Case_Connector_Instance)
+                .join(Connector_Instance, Case_Connector_Instance.instance_id == Connector_Instance.id)
+                .join(Connector, Connector_Instance.connector_id == Connector.id)
+                .filter(
+                    Case_Connector_Instance.case_id == case.id,
+                    Connector.name == "MISP",
+                    Case_Connector_Instance.identifier.isnot(None),
+                    Case_Connector_Instance.identifier != ""
+                )
+                .first() is not None
+            )
+            case_loc["has_misp_event"] = has_misp_event
+            case_loc["misp_icon"] = misp_icon
+
             loc["cases"].append(case_loc)
 
 
@@ -1328,6 +1345,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         instance["identifier"] = case_instance.identifier
 
         case["objects"] = self.get_misp_object_instance(case["id"], instance["id"])
+
+        # Include file metadata for MISP export
+        case["files"] = [f.to_json() for f in loc_case.files]
+        for loc_task in case["tasks"]:
+            task_obj = CommonModel.get_task(loc_task["id"])
+            if task_obj:
+                loc_task["files"] = [f.to_json() for f in task_obj.files]
+                loc_task["subtasks"] = [s.to_json() for s in task_obj.subtasks]
+            else:
+                loc_task["files"] = []
+                loc_task["subtasks"] = []
 
         #######
         # RUN #

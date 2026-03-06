@@ -1,11 +1,12 @@
 from pymisp import MISPEvent, MISPObject, PyMISP
 import uuid
+from flask import current_app
 import conf.config_module as Config
 
 module_config = {
     "connector": "misp",
     "case_task": "task",
-    "description": "Create or modify an event using the current task. The event will include:\n\t- task's info as misp-object\n\t- An event report with notes of the task"
+    "description": "Create or modify an event using the current task. The event will include:\n\t- task's info as misp-object\n\t- An event report with notes of the task\n\t- file attachments (when MISP_EXPORT_FILES is enabled)"
 }
 
 def task_edit(task, attribute):
@@ -228,6 +229,15 @@ def handler(instance, case, task, user):
     
     if "errors" in event:
         return event
+
+    local_tags = current_app.config.get("MISP_ADD_LOCAL_TAGS_ALL_EVENTS", "")
+    if local_tags:
+        if isinstance(local_tags, list):
+            for tag in local_tags:
+                misp.tag(event, tag, local=True)
+        else:
+            misp.tag(event, local_tags, local=True)
+
     return event.get("uuid")
 
 def introspection():

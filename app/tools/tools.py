@@ -379,6 +379,10 @@ def system_settings():
         'enforce_privileged_case': current_app.config.get('ENFORCE_PRIVILEGED_CASE', False),
         'entra_id_enabled': current_app.config.get('ENTRA_ID_ENABLED', False),
         'repository_base_path': current_app.config.get('REPOSITORY_BASE_PATH', 'modules/repositories'),
+        'misp_export_files': current_app.config.get('MISP_EXPORT_FILES', False),
+        'misp_event_threat_level': current_app.config.get('MISP_EVENT_THREAT_LEVEL', 4),
+        'misp_event_analysis': current_app.config.get('MISP_EVENT_ANALYSIS', 0),
+        'misp_add_local_tags_all_events': current_app.config.get('MISP_ADD_LOCAL_TAGS_ALL_EVENTS', ''),
         'task_requested': current_app.config.get('TASK_REQUESTED', 7),
         'task_approved': current_app.config.get('TASK_APPROVED', 8),
         'task_rejected': current_app.config.get('TASK_REJECTED', 9)

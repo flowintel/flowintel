@@ -8,7 +8,7 @@ from ..utils import utils
 from ..utils.logger import flowintel_log
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required
+from ..decorators import api_required, editor_required, misp_editor_required
 
 task_ns = Namespace("task", description="Endpoints to manage tasks")
 
@@ -482,7 +482,7 @@ class GetGalaxiesTask(Resource):
 @task_ns.route('/<tid>/get_connectors', methods=['GET'])
 @task_ns.doc(description='Get all connectors for a task')
 class GetConnectors(Resource):
-    method_decorators = [api_required]
+    method_decorators = [misp_editor_required, api_required]
     def get(self, tid):
         task = CommonModel.get_task(tid)
         if task:
@@ -504,7 +504,7 @@ class GetConnectors(Resource):
 @task_ns.route('/<tid>/add_connectors', methods=['POST'])
 @task_ns.doc(description='Add connectors to a task')
 class AddConnectorsTask(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     @task_ns.doc(params={
         "connectors": "Required. List of connectors instance. Dict with 'name' and 'identifier' as keys."
     })
@@ -528,7 +528,7 @@ class AddConnectorsTask(Resource):
 @task_ns.route('/<tid>/edit_connector/<ciid>', methods=['POST'])
 @task_ns.doc(description='Edit connector')
 class EditConnectorTask(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     @task_ns.doc(params={
         "identifier": "Required. Identifier used by modules to identify where to send data."
     })
@@ -548,7 +548,7 @@ class EditConnectorTask(Resource):
 @task_ns.route('/<tid>/remove_connector/<ciid>', methods=['GET'])
 @task_ns.doc(description='Remove a connector')
 class RemoveConnectorTask(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     def get(self, tid, ciid):
         task = CommonModel.get_task(tid)
         if task:

@@ -951,6 +951,75 @@ You only need to edit `config_module.py` if you're using:
 
 If you're not using these features, leave the file unchanged.
 
+### MISP connector configuration
+
+Flowintel can export case and task data to a MISP instance through its connector system. The MISP-related settings in `conf/config.py` control the default behaviour when events are created or updated on your MISP server.
+
+These settings are optional. If you do not use the MISP connector, you can leave them at their defaults.
+
+**MISP_EXPORT_FILES**
+
+When set to `True`, Flowintel will attach any files uploaded to a case or task as attributes on the corresponding MISP event during export. When set to `False`, only structured data (observables, notes, and metadata) is exported; file attachments are skipped.
+
+```python
+MISP_EXPORT_FILES = True
+```
+
+Default: `False`. Enable this if you want file evidence included in MISP events.
+
+**MISP_EVENT_THREAT_LEVEL**
+
+Sets the default threat level assigned to MISP events created by Flowintel. MISP uses the following scale:
+
+| Value | Meaning   |
+|-------|-----------|
+| 1     | High      |
+| 2     | Medium    |
+| 3     | Low       |
+| 4     | Undefined |
+
+```python
+MISP_EVENT_THREAT_LEVEL = 4
+```
+
+Default: `4` (Undefined). Adjust this to match the default classification appropriate for your organisation.
+
+**MISP_EVENT_ANALYSIS**
+
+Sets the default analysis state for newly created MISP events. MISP uses the following values:
+
+| Value | Meaning  |
+|-------|----------|
+| 0     | Initial  |
+| 1     | Ongoing  |
+| 2     | Complete |
+
+```python
+MISP_EVENT_ANALYSIS = 0
+```
+
+Default: `0` (Initial). Events exported from Flowintel typically start as initial and are progressed within MISP as analysis continues.
+
+**MISP_ADD_LOCAL_TAGS_ALL_EVENTS**
+
+A list of local tags that Flowintel will automatically apply to every MISP event it creates or updates. Local tags are visible only on your MISP instance and are not synchronised with other servers, making them useful for internal workflow tracking and source attribution.
+
+The value can be a single string or a list of strings:
+
+```python
+# Single tag
+MISP_ADD_LOCAL_TAGS_ALL_EVENTS = 'curation:source="flowintel"'
+
+# Multiple tags
+MISP_ADD_LOCAL_TAGS_ALL_EVENTS = [
+    'workflow:state="incomplete"',
+    'curation:source="flowintel"'
+]
+```
+
+Default: `'curation:source="flowintel"'`. Set to an empty string or empty list to skip tagging.
+
+
 ## Installing Flowintel
 
 ### Run the installation script
