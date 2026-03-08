@@ -313,9 +313,14 @@ def get_case_info(cid):
 @editor_required
 def complete_case(cid):
     """Mark a case as completed"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            case = CommonModel.get_case(cid)
+            if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
+                operation = "revival" if case.completed else "completion"
+                flowintel_log("audit", 403, f"Complete case: Privileged case {operation} denied", User=current_user.email, CaseId=cid)
+                return {"message": "Insufficient permissions", 'toast_class': "danger-subtle"}, 403
+            
             was_completed = case.completed
             
             if CaseModel.complete_case(cid, current_user):
@@ -360,11 +365,12 @@ def change_status(cid):
 
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            CaseModel.change_status_core(status, case, current_user)
-            status_obj = CommonModel.get_status(status)
-            status_name = status_obj.name if status_obj else str(status)
-            flowintel_log("audit", 200, "Case status changed", User=current_user.email, CaseId=cid, CaseTitle=case.title, Status=status_name)
-            return {"message": "Status changed", "toast_class": "success-subtle"}, 200
+            if CaseModel.change_status_core(status, case, current_user):
+                status_obj = CommonModel.get_status(status)
+                status_name = status_obj.name if status_obj else str(status)
+                flowintel_log("audit", 200, "Case status changed", User=current_user.email, CaseId=cid, CaseTitle=case.title, Status=status_name)
+                return {"message": "Status changed", "toast_class": "success-subtle"}, 200
+            return {"message": "Invalid status", "toast_class": "danger-subtle"}, 400
         flowintel_log("audit", 403, "Change case status: Action not allowed", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -541,9 +547,16 @@ def merge_case(cid, ocid):
             return {"message": "Cannot merge privileged cases", 'toast_class': "danger-subtle"}, 403
         
         merging_case = CommonModel.get_case(ocid)
-        if merging_case and not check_user_private_case(merging_case):
+        if not merging_case:
+            return {"message": "Target case not found", 'toast_class': "danger-subtle"}, 404
+        
+        if not check_user_private_case(merging_case):
             flowintel_log("audit", 403, "Merge case: Permission denied for target case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        
+        if merging_case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
+            flowintel_log("audit", 403, "Merge case: Target is a privileged case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
+            return {"message": "Cannot merge into privileged cases", 'toast_class': "danger-subtle"}, 403
             
         if CaseModel.merge_case_core(case, merging_case, current_user):
             CaseModel.delete_case(cid, current_user)
