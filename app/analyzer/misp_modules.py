@@ -1,6 +1,7 @@
-from flask import Blueprint, jsonify, redirect, render_template, request, session
+from flask import Blueprint, jsonify, redirect, render_template, request, session as flask_session
 from flask_login import current_user, login_required
 from ..decorators import editor_required
+from ..utils.logger import flowintel_log
 from . import session_class as SessionModel
 from . import misp_modules_core as MispModuleModel
 
@@ -37,21 +38,22 @@ def index():
 @editor_required
 def result_to_case():
     """Enrich notes from previous selection"""
-    session["note_selected"] = request.form["note_selected"]
-    session["misp_object_selected"] = request.form["misp_object_selected"]
-    return render_template("analyzer/misp_modules_result_to_case.html")
+    flask_session["note_selected"] = request.form["note_selected"]
+    flask_session["misp_object_selected"] = request.form["misp_object_selected"]
+    analyzer_case_id = flask_session.get("analyzer_case_id", "")
+    return render_template("analyzer/misp_modules_result_to_case.html", analyzer_case_id=analyzer_case_id)
 
 @analyzer_blueprint.route("/misp-modules/get_note_selected", methods=['GET', 'POST'])
 @login_required
 def get_note_selected():
     """Get notes selected"""
-    return session.get("note_selected")
+    return flask_session.get("note_selected")
 
 @analyzer_blueprint.route("/misp-modules/get_misp_object_selected", methods=['GET', 'POST'])
 @login_required
 def get_misp_object_selected():
     """Get notes selected"""
-    return session.get("misp_object_selected")
+    return flask_session.get("misp_object_selected")
 
 
 @analyzer_blueprint.route("/misp-modules/manage_notes_selected", methods=['GET', 'POST'])
@@ -61,8 +63,10 @@ def manage_notes_selected():
     """Manage notes selected"""
     case_id = MispModuleModel.manage_notes_selected(request.json, current_user)
     if  isinstance(case_id, int):
-        session["note_selected"] = ""
-        session["misp_object_selected"] = ""
+        flask_session["note_selected"] = ""
+        flask_session["misp_object_selected"] = ""
+        flowintel_log("audit", 200, "Analyser results saved to case",
+            User=current_user.email, CaseId=case_id)
         return {"case_id": case_id}, 200
     case_id["toast_class"] = "warning-subtle"
     return case_id, 400
@@ -97,9 +101,16 @@ def run_misp_modules():
     if "query" in request.json:
         if "input" in request.json and request.json["input"]:
             if "modules" in request.json:
+                flask_session["analyzer_case_id"] = request.json.get("case_id", "")
                 session = SessionModel.SessionClass(request.json, current_user)
                 session.start()
                 SessionModel.sessions.append(session)
+                flowintel_log("audit", 201, "Analyser run started",
+                    User=current_user.email,
+                    Input=request.json["input"],
+                    Modules=", ".join(request.json["modules"]),
+                    Query=", ".join(request.json["query"]),
+                    SessionId=session.uuid)
                 return jsonify(session.status()), 201
             return {"message": "Need a module type", 'toast_class': "warning-subtle"}, 400
         return {"message": "Need an input (misp attribute)", 'toast_class': "warning-subtle"}, 400
