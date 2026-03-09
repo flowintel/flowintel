@@ -231,7 +231,8 @@ def request_password_reset():
             NotifModel.create_notification_for_admins(
                 message=f"Password reset requested for user {email}",
                 html_icon="fa-solid fa-key",
-                user_id_for_redirect=user.id
+                user_id_for_redirect=user.id,
+                org_id=user.org_id
             )
         else:
             flowintel_log("audit", 200, "Password reset requested for non-existent user", Email=email, IP=get_client_ip())

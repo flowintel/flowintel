@@ -36,14 +36,29 @@ def delete_notification_core(nid):
     return False
 
 
-def create_notification_for_admins(message, html_icon, case_id=None, user_id_for_redirect=None):
-    """Create a notification for all users with admin permissions."""
+def create_notification_for_admins(message, html_icon, case_id=None, user_id_for_redirect=None, org_id=None):
+    """Create a notification for all admins. If org_id is given, also notify Org Admins of that organisation."""
     admin_roles = Role.query.filter_by(admin=True).all()
-    if not admin_roles:
-        return False
-    
     admin_role_ids = [role.id for role in admin_roles]
-    admin_users = User.query.filter(User.role_id.in_(admin_role_ids)).all()
+    admin_users = User.query.filter(User.role_id.in_(admin_role_ids)).all() if admin_role_ids else []
+
+    org_admin_users = []
+    if org_id:
+        org_admin_roles = Role.query.filter_by(org_admin=True).all()
+        org_admin_role_ids = [role.id for role in org_admin_roles]
+        if org_admin_role_ids:
+            org_admin_users = User.query.filter(
+                User.role_id.in_(org_admin_role_ids),
+                User.org_id == org_id
+            ).all()
+
+    # Deduplicate by user id
+    recipients = {u.id: u for u in admin_users}
+    for u in org_admin_users:
+        recipients.setdefault(u.id, u)
+
+    if not recipients:
+        return False
 
     stored_case_id = None
     if user_id_for_redirect:
@@ -52,11 +67,11 @@ def create_notification_for_admins(message, html_icon, case_id=None, user_id_for
     elif case_id:
         stored_case_id = case_id
     
-    for admin_user in admin_users:
+    for user in recipients.values():
         notif = Notification(
             message=message,
             is_read=False,
-            user_id=admin_user.id,
+            user_id=user.id,
             case_id=stored_case_id,
             creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
             html_icon=html_icon
