@@ -16,13 +16,18 @@
 }
 
 .search-result {
-	position: absolute;
+	/* position: absolute;
 	background-color: white;
 	box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
 	padding: 17px;
   overflow-y: scroll;
   height: 50vh;
-  z-index: 9999
+  z-index: 9999 */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  z-index: 1050;
+  border-radius: 10px;
 }
 
 .search-result a {

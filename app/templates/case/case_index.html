@@ -188,7 +188,7 @@
     <hr class="fading-line-2 mt-4 mb-4">
 
     <!-- pagination -->
-    <nav aria-label="Page navigation" class="nav-pagination" v-if="case_list && case_list.nb_pages > 1">
+    <nav aria-label="Page navigation" class="nav-pagination" v-if="case_list && case_list.nb_pages > 1" v-cloak>
         <ul class="pagination">
             <li :class="{'page-item': true, 'disabled': current_page == 1}">
                 <button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button>
@@ -350,7 +350,7 @@
         </div>
     </template>
 
-    <nav aria-label="Page navigation" class="nav-pagination" v-if="case_list && case_list.nb_pages > 1">
+    <nav aria-label="Page navigation" class="nav-pagination" v-if="case_list && case_list.nb_pages > 1" v-cloak>
         <ul class="pagination">
             <li :class="{'page-item': true, 'disabled': current_page == 1}">
                 <button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button>

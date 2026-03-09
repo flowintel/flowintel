@@ -9,15 +9,58 @@
         </button>
 
         <!-- Search form -->
-        <div id="search-form" class="d-none">
-            <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
-                <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
+        <div id="search-form" class="d-none position-relative">
+            <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-input-wrap">
+                <input autocomplete="off" @input="onInput" @keydown.arrow-down.prevent="selectNext" 
+                @keydown.arrow-up.prevent="selectPrev" @keydown.enter.prevent="activateSelected" 
+                @keydown.escape.prevent="hideResults" type="search" v-model="search_query" 
+                class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" aria-label="Search cases" />
             </div>
-            <div v-if="result_search && result_search.length" class="search-result justify-content-center">
-                <div v-for="case_search in result_search" style="margin-bottom: 2px;">
-                    <i class="fa-solid fa-circle fa-2xs"></i>
-                    <a v-if="case_search.description" :href="'/case/'+case_search.id" :title="case_search.description">[[case_search.title]]</a>
-                    <a v-else :href="'/case/'+case_search.id" title="No description">[[case_search.title]]</a>
+
+            <!-- Inline card-style results panel -->
+            <div v-show="show_results" class="search-result position-absolute bg-white shadow-lg">
+                <div v-if="result_search && result_search.length" style="padding: 12px 20px 20px;max-height:460px;overflow:auto;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="small text-muted">Results: <strong>[[result_search.length]]</strong></div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary" @click.prevent="clearSearch">Clear</button>
+                        </div>
+                    </div>
+                    <div v-for="(case_search, idx) in result_search" :key="case_search.id" class="card mb-2" :class="{'border-primary': selectedIndex===idx}" @mouseenter="selectedIndex=idx">
+                        <div class="card-body p-2 d-flex justify-content-between align-items-start">
+                            <div class="me-2" style="flex:1;min-width:0;">
+                                <div class="fw-semibold text-truncate">[[case_search.title]]</div>
+                                <div class="text-muted small text-truncate">[[case_search.description || 'No description']]</div>
+                            </div>
+                            <div class="ms-2 text-end">
+                                <div class="small text-muted">ID: [[case_search.id]]</div>
+                                <div class="btn-group btn-group-sm mt-1" role="group">
+                                    <a :href="'/case/'+case_search.id" class="btn btn-sm btn-primary">Open</a>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" @click.prevent="previewCase(case_search)">Preview</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-else class="text-center text-muted small py-2">No cases found</div>
+            </div>
+        </div>
+
+        <!-- Preview modal -->
+        <div v-if="preview_case" class="modal-backdrop d-flex align-items-start justify-content-center d-none" 
+        style="position:fixed;inset:0;z-index:1060;background-color: rgba(108,117,125,0.5);" id="modal-search">
+            <div class="card mt-5" style="width:720px;max-width:95%;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="fw-semibold">[[preview_case.title]]</div>
+                    <div>
+                        <a :href="'/case/'+preview_case.id" class="btn btn-sm btn-primary me-1">Open</a>
+                        <button class="btn btn-sm btn-outline-secondary" @click="closePreview">Close</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">ID: [[preview_case.id]]</p>
+                    <p>[[preview_case.description || 'No description available.']]</p>
+                    <pre v-if="preview_case.raw" class="small bg-light p-2" style="white-space:pre-wrap;">[[preview_case.raw]]</pre>
                 </div>
             </div>
         </div>
@@ -86,60 +129,117 @@
 </nav>
 
 <script type="module">
-	const { createApp, ref, computed, onMounted } = Vue
-	import {display_toast, message_list} from '/static/js/toaster.js'
+    const { createApp, ref, onMounted, onBeforeUnmount } = Vue
+    import {display_toast, message_list} from '/static/js/toaster.js'
 
-	createApp({
-		delimiters: ['[[', ']]'],
-		setup() {
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
             const result_search = ref([])
             const notif_list = ref(null)
             const search_query = ref('')
+            const selectedIndex = ref(-1)
+            const show_results = ref(false)
+            const preview_case = ref(null)
             let searchTimer = null
 
             async function fetchSearch(text){
                 result_search.value = []
-                if(text){
+                // only search when user provided at least 3 characters
+                if(text && text.length >= 3){
                     const res = await fetch('/case/search?text='+encodeURIComponent(text))
-                    if (await res.status == 200){
+                    if (res.status == 200){
                         let loc = await res.json()
-                        result_search.value = loc["cases"]
+                        const cases = loc["cases"] || []
+                        // limit displayed results to first 20
+                        result_search.value = cases.slice(0, 20)
+                        show_results.value = result_search.value && result_search.value.length > 0
+                        selectedIndex.value = -1
                     }
                     else{
                         display_toast(res)
+                        show_results.value = false
                     }
+                } else {
+                    show_results.value = false
                 }
             }
 
             function onInput(e){
                 clearTimeout(searchTimer)
-                search_query.value = e.target.value
-                searchTimer = setTimeout(() => fetchSearch(search_query.value), 300)
+                // v-model already keeps search_query in sync, but handle for safety
+                if(e && e.target) search_query.value = e.target.value
+
+                // don't search until user typed at least 3 chars
+                if(!search_query.value || search_query.value.length < 3){
+                    result_search.value = []
+                    show_results.value = false
+                    return
+                }
+
+                searchTimer = setTimeout(() => fetchSearch(search_query.value), 250)
             }
 
-			async function fetchNotif() {
-				notif_list.value = null
-				const res = await fetch('/notification/get_user_notifications_len')
-				let loc = await res.json()
-				notif_list.value = loc["notif"]
-			}
+            function selectNext(){
+                if(!result_search.value || !result_search.value.length) return
+                selectedIndex.value = Math.min(result_search.value.length - 1, selectedIndex.value + 1)
+            }
 
-			fetchNotif()
+            function selectPrev(){
+                if(!result_search.value || !result_search.value.length) return
+                selectedIndex.value = Math.max(0, selectedIndex.value - 1)
+            }
 
-			// hide search result when click out 
-			$(document).mouseup(function(e) {
-				var container = $(".search-result");
+            function activateSelected(){
+                if(selectedIndex.value >= 0 && result_search.value[selectedIndex.value]){
+                    window.location.href = '/case/'+result_search.value[selectedIndex.value].id
+                } else if(result_search.value && result_search.value.length){
+                    window.location.href = '/case/'+result_search.value[0].id
+                }
+            }
 
-				// if the target of the click isn't the container nor a descendant of the container
-				if (!container.is(e.target) && container.has(e.target).length === 0) 
-				{
-					container.hide();
-				}
-			});
+            function previewCase(item){
+                preview_case.value = item
+            }
 
-			
-			onMounted(() => {
-				$('#search-form').removeClass('d-none')
+            function closePreview(){
+                preview_case.value = null
+            }
+
+            function hideResults(){
+                show_results.value = false
+            }
+
+            function clearSearch(){
+                search_query.value = ''
+                result_search.value = []
+                hideResults()
+            }
+
+            async function fetchNotif() {
+                notif_list.value = null
+                const res = await fetch('/notification/get_user_notifications_len')
+                let loc = await res.json()
+                notif_list.value = loc["notif"]
+            }
+
+            fetchNotif()
+
+            function onDocClick(e){
+                const container = document.querySelector('#search-form')
+                if(!container) return
+                if(!container.contains(e.target)){
+                    show_results.value = false
+                }
+            }
+
+            onMounted(() => {
+                // show search input
+                $('#search-form').removeClass('d-none')
+                $('#modal-search').removeClass('d-none')
+                const el = document.getElementById('search-input-wrap')
+                if(el) el.classList.remove('d-none')
+                document.addEventListener('mouseup', onDocClick)
 
                 document.getElementById("notification_id").addEventListener('click', function(){
                     localStorage.setItem("activePage", "");
@@ -150,14 +250,29 @@
                 document.getElementById("logout_id").addEventListener('click', function(){
                     localStorage.setItem("activePage", "");
                 })
-			})
+            })
 
-			return {
-				onInput,
-				result_search,
-				notif_list,
-				message_list
-			}
-		}
-	}).mount('.navbar')
+            onBeforeUnmount(() => {
+                document.removeEventListener('mouseup', onDocClick)
+            })
+
+            return {
+                onInput,
+                result_search,
+                notif_list,
+                message_list,
+                search_query,
+                show_results,
+                selectedIndex,
+                selectNext,
+                selectPrev,
+                activateSelected,
+                preview_case,
+                previewCase,
+                closePreview,
+                hideResults,
+                clearSearch
+            }
+        }
+    }).mount('.navbar')
 </script>
