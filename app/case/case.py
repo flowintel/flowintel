@@ -17,6 +17,7 @@ from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
 from ..utils.file_converter import convert_file_to_note_content
+from ..utils.gpg import sign_text
 
 case_blueprint = Blueprint(
     'case',
@@ -1850,7 +1851,23 @@ def case_report_generate(cid):
     flowintel_log("audit", 200, "Case report generated",
                   User=current_user.email, CaseId=cid,
                   Options=", ".join(k for k, v in opts.items() if v))
-    return {"report": "\n".join(lines)}
+
+    report_text = "\n".join(lines)
+    result = {"report": report_text}
+
+    try:
+        sig = sign_text(report_text)
+    except Exception as e:
+        sig = {"error": str(e)}
+
+    if sig and "error" not in sig:
+        result["signature"] = sig["signature"]
+        result["signed_by"] = sig["signed_by"]
+        result["signed_at"] = sig["signed_at"]
+    elif sig and "error" in sig:
+        result["signature_error"] = sig["error"]
+
+    return result
 
 
 @case_blueprint.route("/<cid>/report/attach_pdf", methods=['POST'])
@@ -1867,10 +1884,10 @@ def case_report_attach_pdf(cid):
 
     created_files = CaseModel.add_file_core(case, request.files, current_user)
     if created_files:
-        fname = created_files[0].name
-        flowintel_log("audit", 200, "Case report attached as PDF",
-                      User=current_user.email, CaseId=cid, FileName=fname)
-        return {"message": f"Report '{fname}' attached to case", "toast_class": "success-subtle"}, 200
+        names = ", ".join(f.name for f in created_files)
+        flowintel_log("audit", 200, "Case report attached",
+                      User=current_user.email, CaseId=cid, Files=names)
+        return {"message": "Report attached to case", "toast_class": "success-subtle"}, 200
     return {"message": "Failed to attach PDF", "toast_class": "danger-subtle"}, 400
   
 @case_blueprint.route("/<cid>/convert_case_file_to_note/<fid>", methods=['POST'])

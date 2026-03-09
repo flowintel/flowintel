@@ -381,7 +381,9 @@ def system_settings():
         'repository_base_path': current_app.config.get('REPOSITORY_BASE_PATH', 'modules/repositories'),
         'task_requested': current_app.config.get('TASK_REQUESTED', 7),
         'task_approved': current_app.config.get('TASK_APPROVED', 8),
-        'task_rejected': current_app.config.get('TASK_REJECTED', 9)
+        'task_rejected': current_app.config.get('TASK_REJECTED', 9),
+        'gpg_enabled': bool(current_app.config.get('GPG_KEY_ID')),
+        'gpg_key_id': current_app.config.get('GPG_KEY_ID', ''),
     }
     
     return render_template('tools/system_settings.html', system_info=system_info)
