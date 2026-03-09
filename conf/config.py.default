@@ -67,6 +67,19 @@ class Config:
     ENTRA_ROLE_QUEUER       = os.getenv('ENTRA_ROLE_QUEUER',       'Queuer')
     ENTRA_REDIRECT_URL = os.getenv('ENTRA_REDIRECT_URL', 'http://localhost:7006/account/entra/callback')
 
+    # MISP connector: attach case & task files to the MISP event
+    MISP_EXPORT_FILES = os.getenv('MISP_EXPORT_FILES', 'false').lower() == 'true'
+
+    # MISP event defaults
+    # Threat level: 1 = High, 2 = Medium, 3 = Low, 4 = Undefined
+    MISP_EVENT_THREAT_LEVEL = int(os.getenv('MISP_EVENT_THREAT_LEVEL', '4'))
+    # Analysis state: 0 = Initial, 1 = Ongoing, 2 = Complete
+    MISP_EVENT_ANALYSIS = int(os.getenv('MISP_EVENT_ANALYSIS', '0'))
+    # Local tags added to every MISP event created/updated by flowintel.
+    # Can be a string or a list of strings. Leave empty to skip.
+    # Example: 'curation:source="flowintel"' or ['tag1', 'tag2']
+    MISP_ADD_LOCAL_TAGS_ALL_EVENTS = os.getenv('MISP_ADD_LOCAL_TAGS_ALL_EVENTS', 'curation:source="flowintel"')
+
     # GPG report signing (leave GPG_KEY_ID empty to disable)
     GPG_HOME = ""        # Path to the GPG keyring directory (empty = default ~/.gnupg)
     GPG_KEY_ID = ""      # Fingerprint or email of the signing key (empty = signing disabled)

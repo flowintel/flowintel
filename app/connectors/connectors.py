@@ -6,7 +6,7 @@ from flask_login import (
 
 from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm, AddConnectorInstanceForm, EditConnectorInstanceForm
 from . import connectors_core as ConnectorModel
-from ..decorators import admin_required
+from ..decorators import admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_module_type_with_desc
 from ..utils.logger import flowintel_log
 
@@ -152,7 +152,7 @@ def add_connector():
 
 @connector_blueprint.route("/<cid>/add_instance", methods=['GET','POST'])
 @login_required
-@admin_required
+@misp_editor_required
 def add_instance(cid):
     """Add an instance"""
     if ConnectorModel.get_connector(cid):
@@ -226,7 +226,7 @@ def edit_connector(cid):
 
 @connector_blueprint.route("/<cid>/edit_instance/<iid>", methods=['GET','POST'])
 @login_required
-@admin_required
+@misp_editor_required
 def edit_instance(cid, iid):
     """Edit an instance"""
     if ConnectorModel.get_connector(cid):
@@ -299,7 +299,7 @@ def delete_connector(cid):
 
 @connector_blueprint.route("/<cid>/delete_instance/<iid>", methods=['GET','POST'])
 @login_required
-@admin_required
+@misp_editor_required
 def delete_instance(cid, iid):
     """Delete the instance"""
     if ConnectorModel.get_connector(cid):

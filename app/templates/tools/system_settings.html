@@ -133,6 +133,58 @@
                                 <td class="fw-bold">Repository Base Path</td>
                                 <td><code>{{ system_info.repository_base_path }}</code></td>
                             </tr>
+                            <tr>
+                                <td class="fw-bold">MISP Export Files</td>
+                                <td>
+                                    <span class="badge {% if system_info.misp_export_files %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.misp_export_files }}
+                                    </span>
+                                    <small class="text-muted ms-1">Attach case &amp; task files to MISP events</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">MISP Event Threat Level</td>
+                                <td>
+                                    <code>{{ system_info.misp_event_threat_level }}</code>
+                                    <small class="text-muted ms-1">
+                                        {% if system_info.misp_event_threat_level == 1 %}High
+                                        {% elif system_info.misp_event_threat_level == 2 %}Medium
+                                        {% elif system_info.misp_event_threat_level == 3 %}Low
+                                        {% else %}Undefined{% endif %}
+                                        (1=High, 2=Medium, 3=Low, 4=Undefined)
+                                    </small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">MISP Event Analysis</td>
+                                <td>
+                                    <code>{{ system_info.misp_event_analysis }}</code>
+                                    <small class="text-muted ms-1">
+                                        {% if system_info.misp_event_analysis == 0 %}Initial
+                                        {% elif system_info.misp_event_analysis == 1 %}Ongoing
+                                        {% elif system_info.misp_event_analysis == 2 %}Complete
+                                        {% else %}Unknown{% endif %}
+                                        (0=Initial, 1=Ongoing, 2=Complete)
+                                    </small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">MISP Local Tags</td>
+                                <td>
+                                    {% if system_info.misp_add_local_tags_all_events %}
+                                        {% if system_info.misp_add_local_tags_all_events is iterable and system_info.misp_add_local_tags_all_events is not string %}
+                                            {% for tag in system_info.misp_add_local_tags_all_events %}
+                                                <code>{{ tag }}</code>{% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <code>{{ system_info.misp_add_local_tags_all_events }}</code>
+                                        {% endif %}
+                                        <small class="text-muted ms-1">Added as local tags to every exported event</small>
+                                    {% else %}
+                                        <span class="text-muted">Disabled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>

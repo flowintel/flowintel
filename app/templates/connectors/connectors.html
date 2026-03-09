@@ -87,7 +87,7 @@
 
             <div class="collapse" :id="'collapse'+connector.id" style="margin-bottom: 20px;">
                 <div class="card card-body" :id="'card-body_'+connector.id" style="background-color: whitesmoke;">
-                    {% if current_user.is_admin() %}
+                    {% if current_user.is_admin() or current_user.is_misp_editor() %}
                     <span>
                         <a class="btn btn-outline-success" :href="'/connectors/'+connector.id+'/add_instance'" type="button" style="margin-bottom: 10px;">
                             Add an instance
@@ -115,7 +115,7 @@
                                         <td><i>api key set</i></td>
                                         
                                         <td>
-                                            {% if current_user.is_admin() %}
+                                            {% if current_user.is_admin() or current_user.is_misp_editor() %}
                                             <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
@@ -123,7 +123,7 @@
                                             <button v-if="connector.name.toLowerCase() === 'misp'" class="btn btn-info btn-sm" type="button" title="Check connectivity" @click="check_misp_connectivity(connector.id, instance.id)">
                                                 <i class="fa-solid fa-plug"></i>
                                             </button>
-                                            {% if current_user.is_admin() %}
+                                            {% if current_user.is_admin() or current_user.is_misp_editor() %}
                                             <span
                                                 :title="instance.has_links ? 'Cannot delete instance linked to cases/tasks' : 'Delete the instance'"
                                                 style="display: inline-block;"
