@@ -265,6 +265,17 @@
                         <div class="d-flex w-100">
                             <small><i>[[case_loc.open_tasks]] open/ [[case_loc.closed_tasks]] closed</i></small>
                         </div>
+                        <div class="d-flex w-100 mt-2 justify-content-between">
+                            <span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
+                                <i>[[ case_loc.files ? case_loc.files.length : 0 ]] Files</i>
+                            </span>
+                            <span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
+                                <i>[[ case_loc.nb_objects ? case_loc.nb_objects : 0 ]] Objects</i>
+                            </span>
+                            <span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
+                                <i>[[ case_loc.link_to ? case_loc.link_to.length : 0 ]] Linked</i>
+                            </span>
+                        </div>
                         <div class="d-flex w-100" style="margin-top: 5px;">
                             <small>
                                 <i class="fa-solid fa-building me-1"></i>

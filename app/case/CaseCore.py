@@ -511,6 +511,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             )
             case_loc["has_misp_event"] = has_misp_event
             case_loc["misp_icon"] = misp_icon
+            # Include files metadata and object count for the case index
+            try:
+                case_loc["files"] = [f.to_json() for f in case.files]
+            except Exception:
+                case_loc["files"] = []
+            # number of MISP objects in the case
+            try:
+                case_loc["nb_objects"] = len(self.get_misp_object_by_case(case.id))
+            except Exception:
+                case_loc["nb_objects"] = 0
 
             loc["cases"].append(case_loc)
 
