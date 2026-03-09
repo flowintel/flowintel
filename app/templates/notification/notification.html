@@ -16,13 +16,17 @@
     <div class="row align-items-center">
         <div class="col-auto d-flex align-items-center">
             <h5 class="mb-0"><i class="fa-solid fa-bell me-2"></i>Notifications</h5>
+            <span v-if="notif_list" class="badge bg-secondary ms-2">
+                <template v-if="has_filters">[[filtered_list.length]] (of [[notif_list.length]])</template>
+                <template v-else>[[notif_list.length]]</template>
+            </span>
             <button v-if="!flag_is_read" class="btn btn-primary btn-sm ms-3" @click="mark_all_read()" title="Mark all messages as read">
                 <i class="fa-solid fa-check fa-sm"></i>
             </button>
         </div>
 
         <div class="col-auto">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Filter options">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Read filter">
                 <button type="button" class="btn btn-sm" :class="!flag_is_read ? 'btn-primary' : 'btn-outline-secondary'" @click="select_unread_read(true)">
                     <i class="fa-solid fa-envelope fa-sm me-1"></i>Unread
                 </button>
@@ -30,6 +34,35 @@
                     <i class="fa-solid fa-envelope-open fa-sm me-1"></i>Read
                 </button>
             </div>
+        </div>
+
+        <div class="col-auto">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Time filter">
+                <button type="button" class="btn btn-sm" :class="time_filter === 'today' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'today'">
+                    Today
+                </button>
+                <button type="button" class="btn btn-sm" :class="time_filter === 'week' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'week'">
+                    This week
+                </button>
+                <button type="button" class="btn btn-sm" :class="time_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'all'">
+                    All
+                </button>
+            </div>
+        </div>
+
+        <div class="col-auto">
+            <select class="form-select form-select-sm" v-model="type_filter" style="min-width: 150px;">
+                <option value="all">All types</option>
+                <option value="assign">Assigned</option>
+                <option value="unassign">Unassigned</option>
+                <option value="completed">Completed</option>
+                <option value="revived">Revived</option>
+                <option value="deleted">Deleted</option>
+                <option value="org">Organisation</option>
+                <option value="deadline">Deadline</option>
+                <option value="admin">Admin</option>
+                <option value="other">Other</option>
+            </select>
         </div>
     </div>
 </div>
@@ -51,14 +84,14 @@
 
 <div class="case-core-style">
     <template v-if="notif_list">
-        <template v-if="notif_list.length === 0">
+        <template v-if="filtered_list.length === 0">
             <div class="text-center text-muted py-4">
                 <i class="fa-solid fa-inbox fa-2x mb-2"></i>
                 <p class="mb-0">No notifications</p>
             </div>
         </template>
         <template v-else>
-            <template v-for="notif in notif_list">
+            <template v-for="notif in filtered_list">
                 <a :href="getNotificationUrl(notif)" class="list-group-item list-group-item-action case-index-list d-flex align-items-center" :style="flag_is_read ? 'background-color: #f8f9fa;' : ''">
                     <input class="form-check-input me-3" type="checkbox" @click.prevent="read_notification(notif)" title="Mark as read/unread">
                     <div class="flex-grow-1">
@@ -73,10 +106,10 @@
                         <small class="text-muted">
                             <i class="fa-solid fa-clock me-1"></i>
                             <span v-if="flag_is_read">
-                                Read [[dayjs.utc(notif.read_date).fromNow()]]
+                                Read [[dayjs.utc(notif.read_date).format('YYYY-MM-DD HH:mm')]] - [[dayjs.utc(notif.read_date).fromNow()]]
                             </span>
                             <span v-else>
-                                Received [[dayjs.utc(notif.creation_date).fromNow()]]
+                                Received [[dayjs.utc(notif.creation_date).format('YYYY-MM-DD HH:mm')]] - [[dayjs.utc(notif.creation_date).fromNow()]]
                             </span>
                         </small>
                     </div>
@@ -101,7 +134,7 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, onMounted } = Vue
+    const { createApp, ref, computed } = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
 
     createApp({
@@ -109,8 +142,61 @@
         setup() {
             let flag_is_read = ref(false)
             const notif_list = ref(null)
+            const time_filter = ref('all')
+            const type_filter = ref('all')
             const show_password_reset_prompt = ref(false)
             const password_reset_user_id = ref(null)
+
+            const icon_type_map = {
+                'fa-solid fa-hand': 'assign',
+                'fa-solid fa-handshake-slash': 'unassign',
+                'fa-solid fa-square-check': 'completed',
+                'fa-solid fa-check': 'completed',
+                'fa-solid fa-circle-check': 'completed',
+                'fa-solid fa-heart-circle-plus': 'revived',
+                'fa-solid fa-heart-circle-bolt': 'revived',
+                'fa-solid fa-circle-xmark': 'revived',
+                'fa-solid fa-trash': 'deleted',
+                'fa-solid fa-sitemap': 'org',
+                'fa-solid fa-hand-holding-hand': 'org',
+                'fa-solid fa-door-open': 'org',
+                'fa-solid fa-circle-exclamation': 'deadline',
+                'fa-solid fa-bell': 'deadline',
+                'fa-solid fa-key': 'admin',
+                'fa-solid fa-user-shield': 'admin',
+            }
+
+            const filtered_list = computed(() => {
+                if (!notif_list.value) return []
+                let list = notif_list.value
+
+                if (time_filter.value !== 'all') {
+                    const now = dayjs.utc()
+                    list = list.filter(notif => {
+                        const date = dayjs.utc(notif.creation_date)
+                        if (time_filter.value === 'today') {
+                            return date.isSame(now, 'day')
+                        }
+                        if (time_filter.value === 'week') {
+                            return date.isAfter(now.subtract(7, 'day'))
+                        }
+                        return true
+                    })
+                }
+
+                if (type_filter.value !== 'all') {
+                    list = list.filter(notif => {
+                        const mapped = icon_type_map[notif.html_icon] || 'other'
+                        return mapped === type_filter.value
+                    })
+                }
+
+                return list
+            })
+
+            const has_filters = computed(() => {
+                return time_filter.value !== 'all' || type_filter.value !== 'all'
+            })
 
             // Check URL parameters for password reset completion
             const urlParams = new URLSearchParams(window.location.search)
@@ -211,7 +297,11 @@
             return {
                 message_list,
                 notif_list,
+                filtered_list,
+                has_filters,
                 flag_is_read,
+                time_filter,
+                type_filter,
                 read_notification,
                 select_unread_read,
                 delete_notif,

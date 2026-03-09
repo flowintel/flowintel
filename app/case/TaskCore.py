@@ -489,7 +489,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
             task_user = Task_User(task_id=task.id, user_id=user.id)
             if not flag_current_user:
-                NotifModel.create_notification_user(f"You have been assign to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-hand")
+                NotifModel.create_notification_user(f"You have been assigned to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'", task.case_id, user_id=user.id, html_icon="fa-solid fa-hand")
     
             if not Task_User.query.filter_by(task_id=task.id, user_id=user.id).first():
                 db.session.add(task_user)
