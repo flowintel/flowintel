@@ -248,6 +248,32 @@
                 </div>
             </div>
 
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-file-signature me-2"></i>Report Signing</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">GPG Signing</td>
+                                <td>
+                                    <span class="badge {% if system_info.gpg_enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {% if system_info.gpg_enabled %}Enabled{% else %}Disabled{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% if system_info.gpg_enabled %}
+                            <tr>
+                                <td class="fw-bold">Key ID</td>
+                                <td><code>{{ system_info.gpg_key_id }}</code></td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="alert alert-info">
                 <i class="fa-solid fa-circle-info me-2"></i>
                 This page displays read-only configuration. To modify settings, edit <code>conf/config.py</code> or set environment variables and restart the application.

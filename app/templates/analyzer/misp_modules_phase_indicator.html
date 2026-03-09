@@ -1,0 +1,37 @@
+<!--
+    Phase indicator for the MISP modules analyser workflow.
+-->
+<div class="d-flex align-items-center mb-3 mt-2">
+    <div class="d-flex align-items-center">
+        {% if active_phase > 1 %}
+        <span class="badge rounded-pill bg-success me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;"><i class="fa-solid fa-check"></i></span>
+        <span class="text-success">Select &amp; configure</span>
+        {% else %}
+        <span class="badge rounded-pill bg-primary me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">1</span>
+        <span class="fw-bold">Select &amp; configure</span>
+        {% endif %}
+    </div>
+    <i class="fa-solid fa-chevron-right mx-3 text-muted"></i>
+    <div class="d-flex align-items-center">
+        {% if active_phase > 2 %}
+        <span class="badge rounded-pill bg-success me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;"><i class="fa-solid fa-check"></i></span>
+        <span class="text-success">Analyser results</span>
+        {% elif active_phase == 2 %}
+        <span class="badge rounded-pill bg-primary me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">2</span>
+        <span class="fw-bold">Analyser results</span>
+        {% else %}
+        <span class="badge rounded-pill bg-secondary me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">2</span>
+        <span class="text-muted">Analyser results</span>
+        {% endif %}
+    </div>
+    <i class="fa-solid fa-chevron-right mx-3 text-muted"></i>
+    <div class="d-flex align-items-center">
+        {% if active_phase == 3 %}
+        <span class="badge rounded-pill bg-primary me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">3</span>
+        <span class="fw-bold">Save to case</span>
+        {% else %}
+        <span class="badge rounded-pill bg-secondary me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">3</span>
+        <span class="text-muted">Save to case</span>
+        {% endif %}
+    </div>
+</div>

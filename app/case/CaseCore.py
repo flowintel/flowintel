@@ -211,7 +211,18 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             for obj in self.get_misp_object_by_case(case_id):
                 self.delete_misp_object(obj.id)
             Case_Misp_Object.query.filter_by(case_id=case.id).delete()
-            
+
+            Recurring_Notification.query.filter_by(case_id=case.id).delete()
+            Case_Note_Template_Model.query.filter_by(case_id=case.id).delete()
+
+            for file in case.files:
+                file_path = os.path.join(FILE_FOLDER, file.uuid)
+                if os.path.isfile(file_path):
+                    try:
+                        os.remove(file_path)
+                    except OSError as e:
+                        flowintel_log("error", 500, f"Failed to remove file '{file.uuid}' from disk", Error=str(e))
+
             db.session.delete(case)
             db.session.commit()
             return True
@@ -458,6 +469,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def change_status_core(self, status, case, current_user):
         """Change the status of a case"""
+        status_obj = CommonModel.get_status(status)
+        if not status_obj:
+            return False
         case.status_id = status
         CommonModel.update_last_modif(case.id)
         db.session.commit()

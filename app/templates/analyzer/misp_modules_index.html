@@ -16,8 +16,7 @@
     <div class="case-core-style" style="border-radius: 0;">
         <div class="row align-items-center">
             <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-puzzle-piece me-2"></i>MISP-Modules</h5>
-                <i class="fa fa-question ms-2" title="Select text from note present in case or tasks" style="font-size: small;"></i>
+                <h5 class="mb-0"><i class="fa-solid fa-puzzle-piece me-2"></i>MISP modules</h5>
             </div>
             <div class="col-auto ms-auto">
                 <a class="btn btn-outline-primary btn-sm" href="/analyzer/misp-modules/history">
@@ -28,13 +27,17 @@
                 </a>
             </div>
         </div>
+        <p class="text-muted mb-0 mt-1">The MISP module analyser allows you to use external enrichment modules. Be aware of any PAP restrictions that apply as you can be sending data to external services.</p>
     </div>
     <hr>
+
+    {% set active_phase = 1 %}
+    {% include 'analyzer/misp_modules_phase_indicator.html' %}
 
     <div class="row">
         <div class="col-6">
             <fieldset class="analyzer-select-case">
-                <legend class="analyzer-select-case"><i class="fa-solid fa-briefcase fa-sm me-1"></i><span class="section-title">Select a Case</span></legend>
+                <legend class="analyzer-select-case"><i class="fa-solid fa-briefcase fa-sm me-1"></i><span class="section-title">Select a case</span></legend>
                 <div id="case-search" class="d-none">
                     <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
                         <input id="case-search-input" @input="onInputCase" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
@@ -51,8 +54,8 @@
         </div>
         <div class="col-6">
             <fieldset class="analyzer-select-case d-none" id="task-search">
-                <legend class="analyzer-select-case"><i class="fa-solid fa-clipboard-list fa-sm me-1"></i><span class="section-title">Select a Task</span></legend>
-                <select data-placeholder="Select a Task" class="select2-select form-control" name="task_select" id="task_select">
+                <legend class="analyzer-select-case"><i class="fa-solid fa-clipboard-list fa-sm me-1"></i><span class="section-title">Select a task</span></legend>
+                <select data-placeholder="Select a task" class="select2-select form-control" name="task_select" id="task_select">
                     <option value="None">--</option>
                     <template v-for="task, key in result_search_task">
                             <option :value="key" :selected="task.id == '{{task_id}}'">[[task.title]] </option>
@@ -72,7 +75,7 @@
                 </li>
                 <li class="nav-item">
                     <button :disabled="!case_selected || !case_selected.notes" class="nav-link" id="tab-all-notes" @click="active_tab('all')">
-                        <i class="fa-solid fa-layer-group fa-sm me-1"></i><span class="section-title">All Tasks notes</span>
+                        <i class="fa-solid fa-layer-group fa-sm me-1"></i><span class="section-title">All tasks notes</span>
                     </button>
                 </li>
                 <li class="nav-item">
@@ -82,7 +85,7 @@
                 </li>
                 <li class="nav-item">
                     <button :disabled="!case_selected" class="nav-link" id="tab-misp-object" @click="active_tab('misp-object')">
-                        <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title">MISP Objects</span>
+                        <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title">MISP objects</span>
                     </button>
                 </li>
             </ul>
@@ -105,7 +108,15 @@
                 </template>
             </div>
             <div v-else-if="main_tab == 'misp-object'">
-                <h6>Select Values</h6>
+                <div class="d-flex align-items-center mb-2">
+                    <h6 class="mb-0">Select values</h6>
+                    <div class="form-check form-switch ms-3 mb-0">
+                        <input class="form-check-input" type="checkbox" id="auto-copy-toggle" v-model="auto_copy">
+                        <label class="form-check-label" for="auto-copy-toggle">
+                            <small :class="auto_copy ? 'text-success' : 'text-muted'">Auto-copy [[ auto_copy ? 'on' : 'off' ]]</small>
+                        </label>
+                    </div>
+                </div>
                 <div v-for="misp_object, key_obj in case_misp_objects" class="accordion p-1" :id="'accordion-'+key_obj">
                     <div class="accordion-item">
                         <h2 class="accordion-header">
@@ -130,7 +141,10 @@
                                         </thead>
                                         <tbody>
                                             <tr v-for="attribute, key_attr in misp_object.attributes ">
-                                                <td>[[attribute.value]]</td>
+                                                <td @click="copy_to_input(attribute)" style="cursor: pointer;" title="Copy into input attributes"
+                                                    :class="{'table-success': highlighted_values.has(attribute.value)}">
+                                                    [[attribute.value]]
+                                                </td>
                                                 <td>[[attribute.object_relation]]</td>
                                                 <td>[[attribute.type]]</td>
 
@@ -182,6 +196,8 @@
                 const main_tab = ref()
                 const all_notes = ref()
                 const case_misp_objects = ref()
+                const auto_copy = ref(true)
+                const highlighted_values = ref(new Set())
 
                 let editor = ""
 
@@ -214,6 +230,7 @@
 
                 async function select_case(case_search){
                     case_selected.value = case_search
+                    window._analyzer_case_id = case_search.id
                     result_search.value = []
                     $("#case-search-input").val(case_search.title)
                     $('#task-search').removeClass('d-none')
@@ -328,7 +345,51 @@
 
                         
                     }
+
+                    // Sync highlights when query inputs change or are removed
+                    document.addEventListener('input', (e) => {
+                        if (e.target.id && e.target.id.startsWith('process-query-'))
+                            refresh_highlights()
+                    })
+                    const obs = new MutationObserver(() => refresh_highlights())
+                    obs.observe(document.getElementById('main-container'), { childList: true, subtree: true })
                 })
+
+                function refresh_highlights() {
+                    const inputs = document.querySelectorAll('input[id^="process-query-"]')
+                    const input_values = new Set()
+                    inputs.forEach(el => { if (el.value) input_values.add(el.value) })
+                    const kept = new Set()
+                    for (const v of highlighted_values.value) {
+                        if (input_values.has(v)) kept.add(v)
+                    }
+                    highlighted_values.value = kept
+                }
+
+                function copy_to_input(attribute) {
+                    if (!auto_copy.value) return
+
+                    highlighted_values.value.add(attribute.value)
+                    highlighted_values.value = new Set(highlighted_values.value)
+
+                    const inputs = document.querySelectorAll('input[id^="process-query-"]')
+                    if (inputs.length) {
+                        const last_input = inputs[inputs.length - 1]
+                        last_input.value = attribute.value
+                        last_input.dispatchEvent(new Event('input', { bubbles: true }))
+                    }
+
+                    // Match attribute type in the Select2 dropdown
+                    const select_el = document.getElementById('input_select')
+                    if (select_el) {
+                        for (let opt of select_el.options) {
+                            if (opt.value === attribute.type) {
+                                $('#input_select').val(attribute.type).trigger('change')
+                                break
+                            }
+                        }
+                    }
+                }
 
                 return {
                     message_list,
@@ -340,9 +401,12 @@
                     all_notes,
                     md,
                     case_misp_objects,
+                    auto_copy,
+                    highlighted_values,
                     onInputCase,
                     select_case,
                     active_tab,
+                    copy_to_input,
                 }
             }
         }).mount('#main-container')

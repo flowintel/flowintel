@@ -939,6 +939,69 @@ The `ENTRA_REDIRECT_URL` must exactly match the redirect URI registered in the A
 - SSO accounts cannot change their login
 - Administrators can still edit SSO users (change role, organisation) but cannot set a local password for them
 
+### GPG report signing (optional)
+
+Flowintel can digitally sign case reports with a GPG key. When configured, every generated report includes a detached PGP signature that recipients can verify independently. If you do not need signed reports, skip this section, report generation works without it.
+
+#### Create a signing key
+
+Generate a dedicated GPG key for the user account that runs Flowintel:
+
+```bash
+# Generate a new GPG key (follow the prompts: choose RSA and RSA, 4096 bits,
+# and set an expiry that matches your key-rotation policy)
+gpg --full-generate-key
+
+# List keys to find the fingerprint or email you just created
+gpg --list-keys --keyid-format long
+```
+
+Use a dedicated email address for the signing key (for example `flowintel-signing@yourdomain.com`) so that the key is clearly linked to the application rather than to an individual person.
+
+If you are running Flowintel as a systemd service under a dedicated user (for example `yourusername`), generate the key as that user so it ends up in the correct keyring:
+
+```bash
+sudo -u yourusername gpg --full-generate-key
+```
+
+#### Configure Flowintel
+
+Open `conf/config.py` and set the three GPG settings in the `Config` class:
+
+```python
+# GPG report signing
+GPG_HOME = "/home/yourusername/.gnupg"      # Path to the GPG keyring directory
+GPG_KEY_ID = "flowintel-signing@yourdomain.com"  # Fingerprint or email of the signing key
+GPG_PASSPHRASE = "your_passphrase_here"     # Passphrase for the key (leave empty if unprotected)
+```
+
+| Setting | Description |
+|---------|-------------|
+| `GPG_HOME` | Absolute path to the `.gnupg` directory that holds the signing key. Leave empty to use the default keyring of the process owner. |
+| `GPG_KEY_ID` | Fingerprint or email address that identifies the signing key. Must match a key present in the keyring. |
+| `GPG_PASSPHRASE` | Passphrase that unlocks the private key. Leave empty if the key has no passphrase. |
+
+Leave all three settings empty to disable signing. When `GPG_KEY_ID` is empty, Flowintel skips signing entirely and reports are generated without a signature.
+
+#### Disabling signing
+
+`GPG_KEY_ID` is the only setting that controls whether signing is active. Setting `GPG_HOME` or `GPG_PASSPHRASE` to an empty string does **not** disable signing:
+
+- An empty `GPG_HOME` causes GPG to fall back to the default keyring (`~/.gnupg`). If a matching key exists there, signing will still succeed.
+- An empty `GPG_PASSPHRASE` does not prevent signing either. The `gpg-agent` process caches passphrases across sessions, so GPG can unlock the key without being given the passphrase again. This cache persists until the agent is restarted or its timeout expires.
+
+To fully disable signing, clear `GPG_KEY_ID`:
+
+```python
+GPG_KEY_ID = ""
+```
+
+If you want to stop the `gpg-agent` from caching passphrases (for example during testing), you can flush its cache:
+
+```bash
+gpgconf --kill gpg-agent
+```
+
 ### Module configuration
 
 The `conf/config_module.py` file contains settings for optional features. In most setups, you won't need to modify this file. The default settings work for standard installations.

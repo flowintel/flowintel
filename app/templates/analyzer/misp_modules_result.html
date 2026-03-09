@@ -14,10 +14,13 @@
 
 {% block content %}
     <div class="case-core-style" style="border-radius: 0;">
-        <h1>Analyzers Results</h1>
-        <i>Select note to inject this in case or task</i>
+        <h1>Analyser results</h1>
+        <i>Select analyser results to build a summary note</i>
     </div>
     <hr class="fading-line-2 mt-4 mb-4">
+
+    {% set active_phase = 2 %}
+    {% include 'analyzer/misp_modules_phase_indicator.html' %}
 
     <button class="btn btn-primary" @click="nextPage()" style="margin-bottom: 10px;margin-top: -3px;">Next</button>
 
@@ -41,11 +44,11 @@
                 </li>
             </ul>
             
-            <h6>Select note</h6>
+            <h6>Select analyser results</h6>
             <div class="accordion" v-if="Object.keys(analyzer_results).length" style="width: 95%">
                 <!-- <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in JSON.parse(analyzer_results.result)"> -->
                 <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in analyzer_results.result">
-                    <h2 class="accordion-header">
+                    <h2 class="accordion-header d-flex">
                         <button class="accordion-button" :title="key_query" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenMain-'+key_query" aria-expanded="true" :aria-controls="'panelsStayOpenMain-'+key_query">
                             <template v-if="key_query.length > 45">
                                 [[key_query.substring(0, 45)]]...
@@ -53,6 +56,9 @@
                             <template v-else>
                                 [[key_query]]
                             </template>
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm ms-2 me-2 text-nowrap" @click.stop="copy_markdown_to_note(key_query, ele)" title="Add to summary note">
+                            <i class="fa-solid fa-file-import me-1"></i>Add to summary note
                         </button>
                     </h2>
                     <div :id="'panelsStayOpenMain-'+key_query" class="accordion-collapse collapse show">
@@ -158,7 +164,7 @@ Value: [[misp_attr]]
             </div>
         </div>
         <div class="analyse-editor-container" style="margin-top: 50px; margin-right: 10px;">
-            <h6>Note selected</h6>
+            <h6>Summary note of lookup results</h6>
             <div class="card card-body">
                 <div id="editor-selected-notes"></div>
             </div>
@@ -307,6 +313,42 @@ Value: [[misp_attr]]
                     })
                 })
 
+                function copy_markdown_to_note(query_key, query_results) {
+                    let md = '## ' + query_key + '\n\n'
+                    for (const [module_name, result] of Object.entries(query_results)) {
+                        if ('error' in result) continue
+                        md += '### ' + module_name + '\n\n'
+                        if ('Object' in result.results) {
+                            for (const obj of result.results.Object) {
+                                md += '#### ' + obj.name + '\n'
+                                for (const attr of obj.Attribute) {
+                                    md += '###### ' + attr.object_relation + '\n'
+                                    md += 'Type: ' + attr.type + '\n'
+                                    md += 'Value: ' + attr.value + '\n'
+                                }
+                                md += '\n---\n\n'
+                            }
+                        } else {
+                            let attr_num = 1
+                            for (const misp_attrs of Object.values(result.results)) {
+                                for (const val of misp_attrs.values) {
+                                    md += '#### Attr ' + attr_num + '\n'
+                                    md += 'Type: ' + misp_attrs.types.join(', ') + '\n'
+                                    md += 'Value: ' + val + '\n\n'
+                                    attr_num++
+                                }
+                            }
+                        }
+                    }
+                    // Append to editor
+                    const current = editor.state.doc.toString()
+                    const insert_at = current.trimEnd().length
+                    const prefix = current.trimEnd().length > 0 ? '\n\n' : ''
+                    editor.dispatch({
+                        changes: { from: insert_at, to: editor.state.doc.length, insert: prefix + md.trimEnd() + '\n' }
+                    })
+                }
+
                 return {
                     message_list,
                     main_tab,
@@ -317,7 +359,8 @@ Value: [[misp_attr]]
                     misp_object_list,
                     active_tab,
                     nextPage,
-                    select_misp_object
+                    select_misp_object,
+                    copy_markdown_to_note
                 }
             }
         }).mount('#main-container')

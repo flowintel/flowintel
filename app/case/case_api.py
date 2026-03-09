@@ -212,8 +212,16 @@ class MergeCase(Resource):
                     return error
             
             merging_case = CommonModel.get_case(ocid)
-            if merging_case and not check_user_private_case(merging_case, request.headers, current_user):
+            if not merging_case:
+                return {"message": "Target case not found"}, 404
+            
+            if not check_user_private_case(merging_case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
+            
+            if merging_case.privileged_case:
+                error = check_privileged_case_permission(current_user, operation="merging into")
+                if error:
+                    return error
             
             if CaseModel.merge_case_core(case, merging_case, current_user):
                 flowintel_log("audit", 200, "Case merged", User=current_user.email, SourceCaseId=cid, TargetCaseId=ocid)
@@ -264,10 +272,10 @@ class CompleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
         from ..decorators import check_privileged_case_permission
-        current_user = utils.get_user_from_api(request.headers)
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            case = CommonModel.get_case(cid)
-            if case:
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if case.privileged_case:
                     operation = "revival" if case.completed else "completion"
                     error = check_privileged_case_permission(current_user, operation=operation)
@@ -283,8 +291,8 @@ class CompleteCase(Resource):
                         flowintel_log("audit", 200, "Case completed", User=current_user.email, CaseId=cid, CaseTitle=case.title)
                     return {"message": f"Case {cid} completed"}, 200
                 return {"message": f"Error case {cid} completed"}, 400
-            return {"message": "Case not found"}, 404
-        return {"message": "Permission denied"}, 403
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
 
 @case_ns.route('/<cid>/delete')
 @case_ns.doc(description='Delete a case', params={'cid': 'id of a case'})
@@ -292,10 +300,10 @@ class DeleteCase(Resource):
     method_decorators = [editor_required, api_required]
     def get(self, cid):
         from ..decorators import check_privileged_case_permission
-        current_user = utils.get_user_from_api(request.headers)
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            case = CommonModel.get_case(cid)
-            if case:
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if case.privileged_case:
                     error = check_privileged_case_permission(current_user, operation="deletion")
                     if error:
@@ -305,8 +313,8 @@ class DeleteCase(Resource):
                     flowintel_log("audit", 200, "Case deleted", User=current_user.email, CaseId=cid)
                     return {"message": "Case deleted"}, 200
                 return {"message": "Error case deleted"}, 400
-            return {"message": "Case not found"}, 404
-        return {"message": "Permission denied"}, 403
+            return {"message": "Permission denied"}, 403
+        return {"message": "Case not found"}, 404
     
 @case_ns.route('/<cid>/add_org', methods=['POST'])
 @case_ns.doc(description='Add an org to the case', params={'cid': 'id of a case'})
@@ -460,9 +468,10 @@ class ChangeStatusCase(Resource):
             if case:
                 current_user = utils.get_user_from_api(request.headers)
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                    CaseModel.change_status_core(request.json["status_id"], case, current_user)
-                    flowintel_log("audit", 200, "Case status changed", User=current_user.email, CaseId=cid, StatusId=request.json["status_id"])
-                    return {"message": "Status changed"}, 200
+                    if CaseModel.change_status_core(request.json["status_id"], case, current_user):
+                        flowintel_log("audit", 200, "Case status changed", User=current_user.email, CaseId=cid, StatusId=request.json["status_id"])
+                        return {"message": "Status changed"}, 200
+                    return {"message": "Invalid status"}, 400
                 return {"message": "Permission denied"}, 403
             return {"message": "Case doesn't exist"}, 404
         return {"message": "Please enter a status id"}, 400

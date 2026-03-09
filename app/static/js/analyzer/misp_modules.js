@@ -3,18 +3,20 @@ const { ref, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	setup() {
-		const cp_entries = ref(1)
+		const entries = ref([1])
+		let next_id = 2
 		const misp_attributes_list = ref([])
 		const modules_list = ref([])
 		const config_query = ref([])
 		const attr_selected = ref([])
+		const modules_selected = ref([])
 
 		function add_entry() {
-			cp_entries.value += 1
+			entries.value.push(next_id++)
 		}
-		function delete_entry() {
-			if (cp_entries.value > 1)
-				cp_entries.value -= 1
+		function delete_entry(id) {
+			if (entries.value.length > 1)
+				entries.value = entries.value.filter(e => e !== id)
 		}
 
 		async function query_misp_attributes() {
@@ -45,6 +47,7 @@ export default {
 					})
 					$('#modules_select').on('change.select2', async function (e) {
 						let loc_list = $(this).select2('data').map(item => item.id)
+						modules_selected.value = loc_list
 						config_query.value = []
 						for (let el in loc_list) {
 							for (let index in modules_list.value) {
@@ -91,8 +94,8 @@ export default {
 
 		async function submit() {
 			let current_query = []
-			for (let i = 1; i <= cp_entries.value; i++) {
-				let loc_query_res = $("#process-query-" + i).val()
+			for (let id of entries.value) {
+				let loc_query_res = $("#process-query-" + id).val()
 				if (loc_query_res)
 					current_query.push(loc_query_res)
 			}
@@ -114,6 +117,7 @@ export default {
 				"modules": loc_modules,
 				"input": loc,
 				"query": current_query,
+				"case_id": window._analyzer_case_id || ''
 			}
 
 			const res = await fetch('/analyzer/misp-modules/run', {
@@ -132,10 +136,11 @@ export default {
 
 
 		return {
-			cp_entries,
+			entries,
 			misp_attributes_list,
 			modules_list,
 			attr_selected,
+			modules_selected,
 
 			add_entry,
 			delete_entry,
@@ -145,12 +150,12 @@ export default {
 		}
 	},
 	template: `
-		<div class="analyse-editor-container d-none" style="margin-top: 50px;">
-			<button class="btn btn-primary" @click="submit()">Submit</button>
+		<div class="analyse-editor-container d-none" style="height: calc(100vh - 470px);">
+			<button class="btn btn-primary" @click="submit()" :disabled="!modules_selected.length">Submit</button>
 			<div class="row">
 				<div class="col-6" v-if="misp_attributes_list.length">
 					<div>
-						<h4><i class="fa-solid fa-keyboard fa-sm me-1"></i><span class="section-title">Input Attributes</span></h4>
+						<h4><i class="fa-solid fa-keyboard fa-sm me-1"></i><span class="section-title">Input attributes</span></h4>
 					</div>
 					<div>
 						<select data-placeholder="Input" class="select2-input form-control" name="input_select" id="input_select">
@@ -163,8 +168,8 @@ export default {
 				</div>
 				<template v-if="modules_list.length">
 					<div v-if="attr_selected.length" class="col-6">
-						<h4><i class="fa-solid fa-puzzle-piece fa-sm me-1"></i><span class="section-title">Modules</span></h4>
-						<select data-placeholder="Modules" class="select2-modules form-control" multiple name="modules_select" id="modules_select">
+						<h4><i class="fa-solid fa-puzzle-piece fa-sm me-1"></i><span class="section-title">Analyser modules</span></h4>
+						<select data-placeholder="Analyser modules" class="select2-modules form-control" multiple name="modules_select" id="modules_select">
 							<template v-for="key in modules_list">
 								<option v-if="checked_attr(key.mispattributes.input)" :value="key.name" :title="key.meta.description">[[key.name]]</option>
 							</template>
@@ -178,13 +183,13 @@ export default {
 				<button @click="add_entry()" class="btn btn-primary" style="margin-top: 10px;" title="Add an entry">
 					<i class="fa-solid fa-plus"></i>
 				</button>
-				<button @click="delete_entry()" class="btn btn-danger" style="margin-top: 10px;" title="Delete an entry">
-					<i class="fa-solid fa-trash"></i>
-				</button>
 			</div>
-			<template v-for="elem in cp_entries">
-				<div style="margin-top: 10px;">
+			<template v-for="elem in entries" :key="elem">
+				<div class="d-flex align-items-center" style="margin-top: 10px;">
 					<input type="text" :id="'process-query-'+elem" placeholder="Enter here..." autofocus class="form-control" style="border-radius: 5px;" />
+					<button v-if="entries.length > 1" @click="delete_entry(elem)" class="btn btn-danger btn-sm ms-2" title="Delete this entry">
+						<i class="fa-solid fa-trash"></i>
+					</button>
 				</div>
 			</template>
 		</div>
