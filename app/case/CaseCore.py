@@ -10,7 +10,7 @@ from flask import send_file, current_app
 import pymisp
 import requests
 
-from sqlalchemy import desc, and_
+from sqlalchemy import desc, and_, func
 from sqlalchemy.exc import SQLAlchemyError
 from dateutil import relativedelta
 
@@ -324,6 +324,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if filter:
             if filter == "my_org":
                 query = query.join(Case_Org, Case_Org.case_id==Case.id).filter(Case_Org.org_id==current_user.org_id)
+            elif filter == "title":
+                query = query.order_by(desc(func.lower(Case.title)))
             else:
                 query = query.order_by(desc(filter))
         
@@ -347,6 +349,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
                     .filter(and_(Case.completed==completed, Case_Org.org_id==user.org_id))\
                     .order_by(desc(Case.last_modif)).all()
+            elif filter == "title":
+                cases = Case.query.filter_by(completed=completed).order_by(desc(func.lower(Case.title))).all()
             else:
                 cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).all()
 
