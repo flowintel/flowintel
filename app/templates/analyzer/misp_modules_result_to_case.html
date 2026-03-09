@@ -12,13 +12,17 @@
 
 
 {% block content %}
-    <h1>Analyzers</h1>
+    <h1>Analysers</h1>
+    <i>Select the target case and task for the analyser results</i>
     <hr>
+
+    {% set active_phase = 3 %}
+    {% include 'analyzer/misp_modules_phase_indicator.html' %}
 
     <div class="row">
         <div class="col-6">
             <fieldset class="analyzer-select-case">
-                <legend class="analyzer-select-case">Select a Case</legend>
+                <legend class="analyzer-select-case">Select a case</legend>
                 <div id="case-search" class="d-none">
                     <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
                         <input id="case-search-input" @input="onInputCase" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
@@ -64,9 +68,9 @@
 
         <div class="col-6">
             <fieldset class="analyzer-select-case" v-if="!bool_case_task_note">
-                <legend class="analyzer-select-case">Select a Task</legend>
+                <legend class="analyzer-select-case">Select a task</legend>
                 <template v-if="!create_case && !create_task">
-                    <select data-placeholder="Select a Task" class="select2-select form-control" name="task_select" id="task_select">
+                    <select data-placeholder="Select a task" class="select2-select form-control" name="task_select" id="task_select">
                         <option value="None">--</option>
                         <template v-for="task, key in result_search_task">
                             <option :value="key">[[task.title]]</option>
@@ -79,7 +83,7 @@
                         <template v-if="task_selected.nb_notes > 0">
                             <input type="radio" id="task_edit_radio" name="task_note_radio" value="Tasks" @click="select_task_note(false)">
                             <label for="task_edit_radio">Edit existing note</label>
-                            <select data-placeholder="Select a Task" class="select2-select-note form-control d-none" name="task_note_select" id="task_note_select">
+                            <select data-placeholder="Select a note" class="select2-select-note form-control d-none" name="task_note_select" id="task_note_select">
                                 <option value="None">--</option>
                                 <template v-for="note, key in task_selected.notes">
                                     <option :value="key"># Note [[key]]</option>
@@ -108,21 +112,26 @@
             </fieldset>
         </div>
     </div>
-    <button class="btn btn-primary" @click="submit()">Submit</button>
+    <button class="btn btn-primary" @click="submit()" :disabled="!case_selected && !create_case">Submit</button>
     <hr>
     <div class="row">
         <div class="col-6">
-            <h6>Note selected</h6>
+            <div class="d-flex align-items-center mb-2">
+                <h6 class="mb-0">Summary note of lookup results</h6>
+                <button class="btn btn-outline-primary btn-sm ms-3" @click="insert_summary_into_note()" title="Insert summary note into note">
+                    <i class="fa-solid fa-file-import me-1"></i>Insert summary note into note
+                </button>
+            </div>
             <div class="card card-body">
                 [[note_selected]]
             </div>
         </div>
-        <div class="col-6 note-editor-container d-none" id="editor_id">
+        <div class="col-6 d-none" id="editor_id">
             <div class="accordion" id="accordionExample">
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                        Note to Edit
+                        Note to edit
                         </button>
                     </h2>
                     <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordionExample">
@@ -134,7 +143,7 @@
                 <div class="accordion-item" v-if="case_selected">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                        MISP Objects
+                        MISP objects
                         </button>
                     </h2>
                     <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
@@ -402,8 +411,36 @@
                     setEditor("\n\n")
                 }
 
-                onMounted(() => {
+                function insert_summary_into_note(){
+                    if (!note_selected.value) return
+                    let summary = typeof note_selected.value === 'string'
+                        ? note_selected.value
+                        : JSON.stringify(note_selected.value, null, 2)
+
+                    if (!editor) {
+                        setEditor(summary)
+                    } else {
+                        let current = editor.state.doc.toString().trimEnd()
+                        let sep = current.length > 0 ? '\n\n' : ''
+                        editor.dispatch({
+                            changes: { from: 0, to: editor.state.doc.length, insert: current + sep + summary }
+                        })
+                    }
+                    $("#editor_id").removeClass('d-none')
+                }
+
+                onMounted(async () => {
                     $('#case-search').removeClass('d-none')
+
+                    // Auto-select case/task from phase 1 if available
+                    const saved_case_id = "{{analyzer_case_id}}"
+                    if (saved_case_id) {
+                        const res = await fetch('/case/get_case/' + saved_case_id)
+                        if (res.status === 200) {
+                            let loc = await res.json()
+                            await select_case(loc)
+                        }
+                    }
                 })
 
                 return {
@@ -422,7 +459,8 @@
                     submit,
                     select_case_task,
                     select_task_note,
-                    open_collapse_case
+                    open_collapse_case,
+                    insert_summary_into_note
                 }
             }
         }).mount('#main-container')

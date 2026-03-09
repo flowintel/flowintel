@@ -280,87 +280,85 @@ export default {
                                                         <i class="fa-solid fa-pen-to-square"></i>
                                                     </button>
                                                     <button type="button" class="btn btn-danger btn-sm" title="Delete attribute"
-                                                    @click="delete_attribute(attribute.id, misp_object['object-template'].id)">
+                                                    @click="delete_attribute(attribute.id, misp_object.id)">
                                                         <i class="fa-solid fa-trash"></i>
                                                     </button>
                                                 </td>
-
-
-                                                <!-- Modal Edit attribute -->
-                                                <div class="modal fade" :id="'modal-edit-attr-'+attribute.id" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
-                                                    <div class="modal-dialog modal-xl">
-                                                        <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h1 class="modal-title fs-5" id="EditObjectLabel">Edit Attribute</h1>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <div class="form-floating input-group mb-3">
-                                                                <div class="row">
-                                                                    <div class="form-floating col">
-                                                                        <input :id="'attribute_value_'+attribute.id" class="form-control" :value="attribute.value">
-                                                                        <label>value</label>
-                                                                    </div>
-                                                                    <div class="form-floating col">
-                                                                        <select class="form-select" :id='"select-type-attr-"+attribute.id'>
-                                                                            <template v-for="attr in activeTemplateAttr.attributes">
-                                                                                <option :value="attr.name+'::'+attr.misp_attribute">
-                                                                                    [[attr.name]]::[[attr.misp_attribute]]
-                                                                                </option>
-                                                                            </template>
-                                                                        </select>
-                                                                        <label>type</label>
-                                                                    </div>
-                                                                    <div class="form-floating col">
-                                                                        <input :id="'attribute_'+attribute.id+'_first_seen'" 
-                                                                                :value="attribute.first_seen" 
-                                                                                class="form-control"
-                                                                                type="datetime-local">
-                                                                        <label>first_seen</label>
-                                                                    </div>
-                                                                    <div class="form-floating col">
-                                                                        <input :id="'attribute_'+attribute.id+'_last_seen'" 
-                                                                                :value="attribute.last_seen" 
-                                                                                class="form-control"
-                                                                                type="datetime-local">
-                                                                        <label>last_seen</label>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="row mt-3">
-                                                                    <div class="col">
-                                                                        <input :id="'attribute_'+attribute.id+'_ids'" 
-                                                                                :checked="attribute.ids_flag"
-                                                                                type="checkbox">
-                                                                        <label>IDS</label>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="row mt-3">
-                                                                    <div class="form-floating col">
-                                                                        <textarea :id="'attribute_'+attribute.id+'_comment'" 
-                                                                                    :value="attribute.comment" 
-                                                                                    class="form-control" row="4" cols="70">
-                                                                        </textarea>
-                                                                        <label>Comment</label>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                            <button type="button" class="btn btn-primary" 
-                                                                @click="edit_attr(misp_object.id, attribute.id)">
-                                                                Save changes
-                                                            </button>
-                                                        </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
+                                <!-- Edit-attribute modals (outside table for valid HTML) -->
+                                <template v-for="attribute in misp_object.attributes" :key="'edit-modal-'+attribute.id">
+                                    <div class="modal fade" :id="'modal-edit-attr-'+attribute.id" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-xl">
+                                            <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h1 class="modal-title fs-5" id="EditObjectLabel">Edit Attribute</h1>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="form-floating input-group mb-3">
+                                                    <div class="row">
+                                                        <div class="form-floating col">
+                                                            <input :id="'attribute_value_'+attribute.id" class="form-control" :value="attribute.value">
+                                                            <label>value</label>
+                                                        </div>
+                                                        <div class="form-floating col">
+                                                            <select class="form-select" :id='"select-type-attr-"+attribute.id'>
+                                                                <template v-for="attr in activeTemplateAttr.attributes">
+                                                                    <option :value="attr.name+'::'+attr.misp_attribute">
+                                                                        [[attr.name]]::[[attr.misp_attribute]]
+                                                                    </option>
+                                                                </template>
+                                                            </select>
+                                                            <label>type</label>
+                                                        </div>
+                                                        <div class="form-floating col">
+                                                            <input :id="'attribute_'+attribute.id+'_first_seen'" 
+                                                                    :value="attribute.first_seen" 
+                                                                    class="form-control"
+                                                                    type="datetime-local">
+                                                            <label>first_seen</label>
+                                                        </div>
+                                                        <div class="form-floating col">
+                                                            <input :id="'attribute_'+attribute.id+'_last_seen'" 
+                                                                    :value="attribute.last_seen" 
+                                                                    class="form-control"
+                                                                    type="datetime-local">
+                                                            <label>last_seen</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mt-3">
+                                                        <div class="col">
+                                                            <input :id="'attribute_'+attribute.id+'_ids'" 
+                                                                    :checked="attribute.ids_flag"
+                                                                    type="checkbox">
+                                                            <label>IDS</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mt-3">
+                                                        <div class="form-floating col">
+                                                            <textarea :id="'attribute_'+attribute.id+'_comment'" 
+                                                                        :value="attribute.comment" 
+                                                                        class="form-control" row="4" cols="70">
+                                                            </textarea>
+                                                            <label>Comment</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                <button type="button" class="btn btn-primary" 
+                                                    @click="edit_attr(misp_object.id, attribute.id)">
+                                                    Save changes
+                                                </button>
+                                            </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
