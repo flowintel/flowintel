@@ -252,7 +252,7 @@
                             </div>
                         </div>
                     </a>
-                    <div v-if="!template.current_user_permission.read_only">
+                    <div v-if="can_manage_templates && !template.current_user_permission.read_only">
                         <div>
                             <a class="btn btn-primary" :href="`/templating/edit_case/${template.id}`" type="button" title="Edit the case template">
                                 <i class="fa-solid fa-pen-to-square fa-fw"></i>
@@ -341,6 +341,7 @@
                 const md = window.markdownit()
                 const dayjs = window.dayjs
 
+                const can_manage_templates = ref(window.can_manage_templates)
                 const expandedCases = ref({})
 
                 async function fetch_templates(page){
@@ -536,6 +537,7 @@
                     custom_tags,
 
                     visiblePages,
+                    can_manage_templates,
 
                     delete_case,
                     fetch_templates,

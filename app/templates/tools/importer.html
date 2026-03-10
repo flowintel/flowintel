@@ -14,6 +14,7 @@
     <div class="case-core-style">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="d-flex gap-2">
+                {% if can_import_cases %}
                 <div role="button" tabindex="0" @click="active_tab('import_case')"
                      :class="['card p-2', main_tab=='import_case' ? 'border-primary shadow-sm' : 'border-secondary']"
                      style="cursor:pointer; min-width:160px;">
@@ -25,7 +26,19 @@
                         </div>
                     </div>
                 </div>
+                {% else %}
+                <div class="card p-2 border-secondary opacity-50" style="min-width:160px; cursor: not-allowed;" title="You do not have the Importer permission">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-solid fa-lock fa-lg me-2 text-muted"></i>
+                        <div>
+                            <div class="fw-bold text-muted">Case</div>
+                            <div class="small text-muted">Import cases</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
 
+                {% if can_import_templates %}
                 <div role="button" tabindex="0" @click="active_tab('import_template')"
                      :class="['card p-2', main_tab=='import_template' ? 'border-primary shadow-sm' : 'border-secondary']"
                      style="cursor:pointer; min-width:160px;">
@@ -37,15 +50,42 @@
                         </div>
                     </div>
                 </div>
+                {% else %}
+                <div class="card p-2 border-secondary opacity-50" style="min-width:160px; cursor: not-allowed;" title="You do not have the Template Editor permission">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-solid fa-lock fa-lg me-2 text-muted"></i>
+                        <div>
+                            <div class="fw-bold text-muted">Template</div>
+                            <div class="small text-muted">Import templates</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
+            {% if can_import_cases or can_import_templates %}
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="create_custom_tags" v-model="createCustom">
                 <label class="form-check-label ms-2" for="create_custom_tags">Create custom tags from JSON</label>
             </div>
+            {% endif %}
         </div>
 
-        <div class=" p-3">
+        {% if not can_import_cases %}
+        <div class="alert alert-warning py-1 px-2 mt-2 mb-0" role="alert">
+            <i class="fa-solid fa-lock me-1"></i>
+            You do not have the Importer permission and are not allowed to import cases.
+        </div>
+        {% endif %}
+        {% if not can_import_templates %}
+        <div class="alert alert-warning py-1 px-2 {% if not can_import_cases %}mt-1{% else %}mt-2{% endif %} mb-0" role="alert">
+            <i class="fa-solid fa-lock me-1"></i>
+            You do not have the Template Editor permission and are not allowed to import templates.
+        </div>
+        {% endif %}
+
+        {% if can_import_cases or can_import_templates %}
+        <div class="p-3">
             <div class="mb-3">
                 <div :class="['border rounded p-4 text-center', dragOver? 'border-primary bg-light' : 'border-dashed']"
                      @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop"
@@ -76,8 +116,8 @@
 
             <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-primary" :disabled="loading || !files.length" @click="uploadFiles">
-                    <span v-if="main_tab=='import_case'">Upload Cases</span>
-                    <span v-else>Upload Templates</span>
+                    <span v-if="main_tab=='import_case'">Upload cases</span>
+                    <span v-else>Upload templates</span>
                 </button>
                 <button class="btn btn-secondary" :disabled="loading || !files.length" @click="clearFiles">Clear</button>
             </div>
@@ -90,6 +130,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 
 {% endblock %}
@@ -100,11 +141,15 @@
         const { createApp, ref } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         
+        const can_import_cases = {{ 'true' if can_import_cases else 'false' }}
+        const can_import_templates = {{ 'true' if can_import_templates else 'false' }}
+
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
 
-                const main_tab = ref('import_case')
+                const default_tab = can_import_cases ? 'import_case' : 'import_template'
+                const main_tab = ref(default_tab)
                 const files = ref([])
                 const loading = ref(false)
                 const progress = ref(0)
@@ -112,6 +157,8 @@
                 const createCustom = ref(false)
 
                 function active_tab(tab_name){
+                    if (tab_name === 'import_case' && !can_import_cases) return
+                    if (tab_name === 'import_template' && !can_import_templates) return
                     main_tab.value = tab_name
                 }
 
