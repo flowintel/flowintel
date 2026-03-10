@@ -623,6 +623,8 @@ class Case_Template(db.Model):
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
+        json_dict["custom_tags"] = [custom_tag.download() for custom_tag in Custom_Tags.query.join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                                                    .where(Case_Template_Custom_Tags.case_template_id==self.id).all()]
 
 
         return json_dict
@@ -678,6 +680,8 @@ class Task_Template(db.Model):
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Template_Tags, Task_Template_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Template_Galaxy_Tags, Task_Template_Galaxy_Tags.template_id==self.id)\
                                                     .where(Cluster.id==Task_Template_Galaxy_Tags.cluster_id).all()]
+        json_dict["custom_tags"] = [custom_tag.download() for custom_tag in Custom_Tags.query.join(Task_Template_Custom_Tags, Task_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
+                                                    .where(Task_Template_Custom_Tags.task_template_id==self.id).all()]
 
         return json_dict
     
