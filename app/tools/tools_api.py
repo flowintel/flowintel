@@ -2,9 +2,10 @@ from flask import request
 from . import tools_core as ToolModel
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required, template_editor_required
+from ..decorators import api_required, importer_required, template_editor_required
 
 from ..utils import utils
+from ..utils.logger import flowintel_log
 
 from . import validate_api as ValidateApi
 
@@ -15,7 +16,7 @@ importer_ns = Namespace("importer", description="Endpoints to manage importer")
 @importer_ns.route('/case')
 @importer_ns.doc(description='Import a case. JSON is required')
 class ImportCase(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [importer_required, api_required]
     def post(self):
         if request.json:
             current_user = utils.get_user_api(request.headers["X-API-KEY"])
@@ -28,6 +29,7 @@ class ImportCase(Resource):
                 res = ToolModel.case_creation_from_importer(request.json, current_user)
                 if res:
                     return res
+            flowintel_log("audit", 200, "Case imported via API", User=current_user.email)
             return {"message": "All created"}
         return {"message": "Please give data"}, 400
         
@@ -38,6 +40,7 @@ class ImportCaseTemplate(Resource):
     method_decorators = [template_editor_required, api_required]
     def post(self):
         if request.json:
+            current_user = utils.get_user_api(request.headers["X-API-KEY"])
             if type(request.json) == list:
                 for case in request.json:
                     res = ToolModel.case_template_creation_from_importer(case)
@@ -47,6 +50,7 @@ class ImportCaseTemplate(Resource):
                 res = ToolModel.case_template_creation_from_importer(request.json)
                 if res:
                     return res
+            flowintel_log("audit", 200, "Template imported via API", User=current_user.email)
             return {"message": "All created"}
         return {"message": "Please give data"}, 400
         

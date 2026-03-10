@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, request, current_app
+from flask import Blueprint, abort, flash, redirect, render_template, request, current_app
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..decorators import editor_required, admin_required, template_editor_required
@@ -22,19 +22,31 @@ tools_blueprint = Blueprint(
 
 @tools_blueprint.route("/importer_view", methods=['GET'])
 @login_required
-@editor_required
 def importer_view():
     """Importer view"""
-    return render_template("tools/importer.html")
+    can_import_cases = current_user.is_admin() or current_user.is_importer()
+    can_import_templates = current_user.is_admin() or current_user.is_template_editor()
+    return render_template("tools/importer.html",
+                           can_import_cases=can_import_cases,
+                           can_import_templates=can_import_templates)
 
 
 @tools_blueprint.route("/importer", methods=['POST'])
 @login_required
-@editor_required
 def importer():
     """Import case and task"""
     importer_type = request.args.get('type', 1, type=str)
     if importer_type:
+        if importer_type == 'case':
+            if not (current_user.is_admin() or current_user.is_importer()):
+                flowintel_log("audit", 403, "Case import denied", User=current_user.email)
+                abort(403)
+        elif importer_type == 'template':
+            if not (current_user.is_admin() or current_user.is_template_editor()):
+                flowintel_log("audit", 403, "Template import denied", User=current_user.email)
+                abort(403)
+        else:
+            return {"message": "Invalid import type", "toast_class": "warning-subtle"}, 400
         if len(request.files) > 0:
             # Create custom tags present in JSON if they don't exist
             create_custom_tags = request.form.get('create_custom_tags', 'false')
@@ -43,6 +55,7 @@ def importer():
             if message:
                 message["toast_class"] = "danger-subtle"
                 return message, 400
+            flowintel_log("audit", 200, f"Import successful (type={importer_type})", User=current_user.email)
             return {"message": "All created", "toast_class": "success-subtle"}, 200
         return {"message": "Need to give a least a file", "toast_class": "warning-subtle"}, 400
     return {"message": "Need to give a type of import", "toast_class": "warning-subtle"}, 400

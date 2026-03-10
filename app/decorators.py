@@ -61,6 +61,16 @@ def permission_required(perm):
                         abort(403)
                 elif not (current_user.is_admin() or current_user.is_misp_editor()):
                     abort(403)
+            elif perm == "importer":
+                if request.path.startswith("/api/"):
+                    api_key = request.headers.get("X-API-KEY")
+                    if not api_key:
+                        abort(403)
+                    user = get_user_api(api_key)
+                    if not user or not (user.is_admin() or user.is_importer()):
+                        abort(403)
+                elif not (current_user.is_admin() or current_user.is_importer()):
+                    abort(403)
             return f(*args, **kwargs)
 
         return decorated_function
@@ -97,6 +107,9 @@ def template_editor_required(f):
 
 def misp_editor_required(f):
     return permission_required("misp_editor")(f)
+
+def importer_required(f):
+    return permission_required("importer")(f)
 
 def api_required(f):
     return verification_required()(f)
