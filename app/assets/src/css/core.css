@@ -624,3 +624,158 @@ legend.analyzer-select-case {
 .blurred::selection {
   background: transparent;
 }
+
+
+
+
+/* =================
+   Case IndexStyles
+   ================= */
+.case-grid { 
+  display:flex; 
+  flex-direction:column; 
+  gap:16px; }
+
+.case-card { 
+  display:flex; 
+  background:#fff; 
+  border-radius:10px; 
+  padding:14px; 
+  box-shadow:0 1px 5px rgba(0,0,0,0.10); 
+  align-items:flex-start; 
+  gap:12px; 
+  border-bottom:1px solid #e9ecef; 
+  padding-bottom:12px; 
+  margin-bottom:6px }
+
+.case-meta { 
+  width:auto; 
+  min-width:0;
+  display:flex; 
+  flex-direction:column; 
+  align-items:center; 
+  gap:8px; }
+
+.case-meta .status { 
+  font-size:13px; 
+  padding:6px 8px; 
+  border-radius:999px; }
+
+.case-meta .counts { 
+  font-size:13px; 
+  color:#333; }
+
+.case-content { 
+  flex:1; 
+  min-width:0; }
+
+/* Remove underline for card links and inherit text color */
+a.case-content { 
+  text-decoration: none; 
+  color: inherit; 
+  display:block; }
+
+a.case-content:hover { 
+  text-decoration: none; }
+
+
+.case-title-index { 
+  font-weight:700; 
+  font-size:1.25rem;
+  color:#2c3e50; 
+  display:flex; 
+  align-items:center; 
+  gap:8px; }
+
+.case-title-index .icons { 
+  font-size:12px; 
+  color:#6c757d; }
+
+.case-tags { 
+  margin-top:8px; 
+  display:flex; 
+  gap:6px; 
+  flex-wrap:wrap; }
+
+.case-actions { 
+  display:flex; 
+  flex-direction:column; 
+  gap:8px; 
+  align-items:flex-end; }
+
+.case-actions .btn { 
+  width:36px;
+  height:32px; 
+  padding:4px; 
+  font-size:0.85rem; 
+  border-radius:6px; }
+
+.compact-action-row { 
+  display:flex; 
+  flex-direction:column; 
+  gap:6px; 
+  align-items:center; }
+
+.case-meta-row { 
+  display:flex; 
+  gap:12px; 
+  align-items:center; 
+  margin-top:8px; 
+  color:#666; 
+  font-size:13px; }
+
+.case-status-inline { 
+  display:inline-flex; 
+  align-items:center; 
+  gap:8px; 
+  margin-left:auto; }
+
+.case-status-inline .badge { 
+  font-size:12px; 
+  padding:4px 8px; 
+  border-radius:10px; }
+
+.case-stats-row { 
+  margin-top:8px; 
+  display:flex; 
+  gap:8px; 
+  align-items:center; 
+  color:#444; }
+
+.case-tag-group { 
+  display:flex; 
+  gap:8px; 
+  align-items:center; 
+  width:100%; }
+
+.collapsed-overflow { 
+  max-height:110px;
+  overflow:hidden; 
+  display:flex; 
+  gap:6px; 
+  align-items:center; }
+
+.show-more-btn { 
+  cursor:pointer;
+  color:#0d6efd; 
+  background:transparent; 
+  border:none; 
+  padding:0; 
+  font-size:13px; }
+
+.orgs-list { 
+  display:flex;
+  gap:6px; 
+  align-items:center; 
+  flex-wrap:wrap; }
+
+  @media (max-width:768px){ 
+    .case-card{
+      flex-direction:column} 
+
+    .case-meta,.case-actions{
+      width:100%;
+      flex-direction:row;
+      justify-content:space-between
+    } 
+  }
