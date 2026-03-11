@@ -27,7 +27,7 @@
                     <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-form">
                         <input id="case-search-input" @input="onInputCase" type="search" class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" />
                     </div>
-                    <div v-if="result_search && result_search.length" class="search-result justify-content-center" style="z-index: 1;">
+                    <div v-if="result_search && result_search.length" class="search-analyser justify-content-center" style="z-index: 1;">
                         <div v-for="case_search in result_search" style="margin-bottom: 2px;">
                             <i class="fa-solid fa-circle fa-2xs"></i>
                             <a v-if="case_search.description" @click="select_case(case_search)" :title="case_search.description" style="cursor: pointer;">[[case_search.title]]</a>

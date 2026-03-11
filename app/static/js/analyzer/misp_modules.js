@@ -4,6 +4,7 @@ export default {
 	delimiters: ['[[', ']]'],
 	setup() {
 		const entries = ref([1])
+		const isSubmitting = ref(false)
 		let next_id = 2
 		const misp_attributes_list = ref([])
 		const modules_list = ref([])
@@ -93,6 +94,7 @@ export default {
 		}
 
 		async function submit() {
+			isSubmitting.value = true
 			let current_query = []
 			for (let id of entries.value) {
 				let loc_query_res = $("#process-query-" + id).val()
@@ -128,8 +130,10 @@ export default {
 			if (await res.status == 201) {
 				let loc = await res.json()
 				await nextTick()
+				isSubmitting.value = false
 				window.location.href = "/analyzer/misp-modules/loading/" + loc['id']
 			} else {
+				isSubmitting.value = false
 				display_toast(res, true)
 			}
 		}
@@ -141,6 +145,7 @@ export default {
 			modules_list,
 			attr_selected,
 			modules_selected,
+			isSubmitting,
 
 			add_entry,
 			delete_entry,
@@ -151,7 +156,11 @@ export default {
 	},
 	template: `
 		<div class="analyse-editor-container d-none" style="height: calc(100vh - 470px);">
-			<button class="btn btn-primary" @click="submit()" :disabled="!modules_selected.length">Submit</button>
+			<button class="btn btn-primary" @click="submit()" :disabled="isSubmitting || !modules_selected.length">
+				<span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+				<span v-if="!isSubmitting">Submit</span>
+				<span v-else>Submitting...</span>
+			</button>
 			<div class="row">
 				<div class="col-6" v-if="misp_attributes_list.length">
 					<div>

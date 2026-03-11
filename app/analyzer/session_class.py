@@ -126,6 +126,11 @@ class SessionClass:
             else:
                 send_to = {"module": work[2], self.input_query: work[1], "config": loc_config}
             res = query_post_query(send_to)
+            if "message" in res:
+                self.nb_errors += 1
+                self.result[work[1]] = {work[2]: {"error": res["message"]}}
+                self.jobs.task_done()
+                continue
 
             ## Sort attr in object by ui-priority
             if res and "results" in res and "Object" in res["results"]:

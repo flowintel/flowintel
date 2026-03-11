@@ -47,87 +47,89 @@
             <h6>Select analyser results</h6>
             <div class="accordion" v-if="Object.keys(analyzer_results).length" style="width: 95%">
                 <!-- <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in JSON.parse(analyzer_results.result)"> -->
-                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in analyzer_results.result">
-                    <h2 class="accordion-header d-flex">
-                        <button class="accordion-button" :title="key_query" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenMain-'+key_query" aria-expanded="true" :aria-controls="'panelsStayOpenMain-'+key_query">
-                            <template v-if="key_query.length > 45">
-                                [[key_query.substring(0, 45)]]...
-                            </template>
-                            <template v-else>
-                                [[key_query]]
-                            </template>
-                        </button>
-                        <button class="btn btn-outline-primary btn-sm ms-2 me-2 text-nowrap" @click.stop="copy_markdown_to_note(key_query, ele)" title="Add to summary note">
-                            <i class="fa-solid fa-file-import me-1"></i>Add to summary note
-                        </button>
-                    </h2>
-                    <div :id="'panelsStayOpenMain-'+key_query" class="accordion-collapse collapse show">
-                        <div class="accordion" style="padding: 25px">
-                            <div class="accordion-item" :id="'list-item-'+key_query+'-'+key" v-for="result, key in ele">
-                                <template v-if="!('error' in result)">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button" style="height: 40px;" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpen-'+key_query+'-'+key" aria-expanded="true" :aria-controls="'panelsStayOpen-'+key">
-                                            [[key]]
-                                        </button>
-                                    </h2>
-                                    <div :id="'panelsStayOpen-'+key_query+'-'+key" class="accordion-collapse collapse show">
-                                        <!-- visual part -->
-                                        <template v-if="main_tab == 'visual'">
-                                            <div class="accordion-body" >
-                                                <template v-if="'Object' in result.results">
-                                                    <template v-for="obj in result.results.Object">
-                                                        <button class="btn btn-primary" @click="select_misp_object(obj)" title="Add this object to selected object">
-                                                            <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
-                                                        </button>
-                                                        <div v-html="parseMispObject(obj)[0].outerHTML"></div>
+                <div class="accordion-item" :id="'list-item-'+key_query" v-for="(ele, key_query) in analyzer_results.result">
+                    <template v-if="Object.values(ele).some(r => !('error' in r))">
+                        <h2 class="accordion-header d-flex">
+                            <button class="accordion-button" :title="key_query" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenMain-'+key_query" aria-expanded="true" :aria-controls="'panelsStayOpenMain-'+key_query">
+                                <template v-if="key_query.length > 45">
+                                    [[key_query.substring(0, 45)]]...
+                                </template>
+                                <template v-else>
+                                    [[key_query]]
+                                </template>
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm ms-2 me-2 text-nowrap" @click.stop="copy_markdown_to_note(key_query, ele)" title="Add to summary note">
+                                <i class="fa-solid fa-file-import me-1"></i>Add to summary note
+                            </button>
+                        </h2>
+                        <div :id="'panelsStayOpenMain-'+key_query" class="accordion-collapse collapse show">
+                            <div class="accordion" style="padding: 25px">
+                                <div class="accordion-item" :id="'list-item-'+key_query+'-'+key" v-for="(result, key) in ele">
+                                    <template v-if="!('error' in result)">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button" style="height: 40px;" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpen-'+key_query+'-'+key" aria-expanded="true" :aria-controls="'panelsStayOpen-'+key">
+                                                [[key]]
+                                            </button>
+                                        </h2>
+                                        <div :id="'panelsStayOpen-'+key_query+'-'+key" class="accordion-collapse collapse show">
+                                            <!-- visual part -->
+                                            <template v-if="main_tab == 'visual'">
+                                                <div class="accordion-body" >
+                                                    <template v-if="'results' in result && 'Object' in result.results">
+                                                        <template v-for="obj in result.results.Object">
+                                                            <button class="btn btn-primary" @click="select_misp_object(obj)" title="Add this object to selected object">
+                                                                <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
+                                                            </button>
+                                                            <div v-html="parseMispObject(obj)[0].outerHTML"></div>
+                                                        </template>
                                                     </template>
-                                                </template>
-        
-                                                <template v-else>
-                                                    <template v-for="misp_attrs, key_loop in result.results">
-                                                        <div v-for="misp_attr in misp_attrs.values" class="accordion-body" v-html="parseMispAttr(misp_attr, misp_attrs.types, key_loop)[0].outerHTML"></div>
+            
+                                                    <template v-else>
+                                                        <template v-for="(misp_attrs, key_loop) in result.results">
+                                                            <div v-for="misp_attr in misp_attrs.values" class="accordion-body" v-html="parseMispAttr(misp_attr, misp_attrs.types, key_loop)[0].outerHTML"></div>
+                                                        </template>
                                                     </template>
-                                                </template>
-                                            </div>
-                                        </template>
-                                        <!-- json part -->
-                                        <template v-if="main_tab == 'json'">
-                                            <div class="accordion-body" v-html="generateCoreFormatUI(result)[0].outerHTML"></div>
-                                        </template>
-                                        <!-- markdown part -->
-                                        <template v-if="main_tab == 'markdown'">
-                                            <div class="accordion-body">
-                                                <template v-if="'Object' in result.results">
-                                                    <template v-for="obj, key_obj in result.results.Object">
-                                                        <pre>
+                                                </div>
+                                            </template>
+                                            <!-- json part -->
+                                            <template v-if="main_tab == 'json'">
+                                                <div class="accordion-body" v-html="generateCoreFormatUI(result)[0].outerHTML"></div>
+                                            </template>
+                                            <!-- markdown part -->
+                                            <template v-if="main_tab == 'markdown'">
+                                                <div class="accordion-body">
+                                                    <template v-if="'Object' in result.results">
+                                                        <template v-for="(obj, key_obj) in result.results.Object">
+                                                            <pre>
 #### [[obj.name]]
-<template v-for="attr, key_attr in obj.Attribute">
+<template v-for="(attr, key_attr) in obj.Attribute">
 ###### [[attr.object_relation]]
 Type: [[attr.type]]
 Value: [[attr.value]]
 </template>
-                                                        </pre>
-                                                        <hr>
+                                                            </pre>
+                                                            <hr>
+                                                        </template>
                                                     </template>
-                                                </template>
-                                                <template v-else>
-                                                    <template v-for="misp_attrs, key_loop in result.results">
-                                                        <template v-for="misp_attr in misp_attrs.values">
-                                                            <pre>
+                                                    <template v-else>
+                                                        <template v-for="(misp_attrs, key_loop) in result.results">
+                                                            <template v-for="misp_attr in misp_attrs.values">
+                                                                <pre>
 #### Attr [[key_loop +1]]
 Type: [[misp_attrs.types.join(", ")]]
 Value: [[misp_attr]]
-                                                            </pre>
+                                                                </pre>
+                                                            </template>
                                                         </template>
                                                     </template>
-                                                </template>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </template> <!-- Not error -->
-                            </div>
-                        </div> <!-- Accordion -->
-                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template> <!-- Not error -->
+                                </div>
+                            </div> <!-- Accordion -->
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -135,15 +137,16 @@ Value: [[misp_attr]]
             <hr style="margin-top: 50px; width: 95%">
             <h3 id="errors_part">Errors</h3>
             <div class="accordion" style="width: 95%">
-                <div class="accordion-item" :id="'list-item-'+key_query" v-for="ele, key_query in analyzer_results.result">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button collapsed" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenMainError-'+key_query" aria-expanded="false" :aria-controls="'panelsStayOpenMainError-'+key_query">
-                            [[key_query]]
-                        </button>
-                    </h2>
-                    <div :id="'panelsStayOpenMainError-'+key_query" class="accordion-collapse collapse">
+                <!-- Only show top-level entries that contain at least one error -->
+                <div class="accordion-item" :id="'list-item-error-'+key_query" v-for="(ele, key_query) in analyzer_results.result">
+                    <template v-if="Object.values(ele).some(r => 'error' in r)">
+                        <h2 class="accordion-header">
+                            <div class="accordion-button disabled" style="cursor: default;">
+                                [[key_query]]
+                            </div>
+                        </h2>
                         <div class="accordion" style="padding: 25px">
-                            <div class="accordion-item" :id="'list-item-'+key_query+'-'+key" v-for="result, key in ele">
+                            <div class="accordion-item" :id="'list-item-error-'+key_query+'-'+key" v-for="(result, key) in ele">
                                 <template v-if="'error' in result">
                                     <h2 class="accordion-header">
                                         <button class="accordion-button" style="height: 40px;" data-bs-toggle="collapse" :data-bs-target="'#panelsStayOpenError-'+key_query+'-'+key" aria-expanded="false" :aria-controls="'panelsStayOpenError-'+key_query+'-'+key">
@@ -159,7 +162,7 @@ Value: [[misp_attr]]
                                 </template>
                             </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </div>
         </div>
@@ -169,7 +172,7 @@ Value: [[misp_attr]]
                 <div id="editor-selected-notes"></div>
             </div>
             <div class="row">
-                <div v-for="misp_object, key_obj in misp_object_list" class="accordion p-1" :id="'accordion-'+key_obj">
+                <div v-for="(misp_object, key_obj) in misp_object_list" class="accordion p-1" :id="'accordion-'+key_obj">
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                         <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
@@ -187,7 +190,7 @@ Value: [[misp_attr]]
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="attribute, key_attr in misp_object.attributes ">
+                                        <tr v-for="(attribute, key_attr) in misp_object.attributes ">
                                             <td>[[attribute.object_relation]]</td>
                                             <td>[[attribute.value]]</td>
                                             <td>[[attribute.type]]</td>
@@ -217,18 +220,17 @@ Value: [[misp_attr]]
             delimiters: ['[[', ']]'],
             setup() {
                 const main_tab = ref('visual')
-                const analyzer_results = ref()
+                const analyzer_results = ref({})
                 const misp_object_list = ref([])
 
                 let editor = ""
 
                 async function fetch_result(){
-                    analyzer_results.value = {}
                     const res = await fetch("/analyzer/misp-modules/result_data/{{sid}}")
                     let loc = await res.json()
                     analyzer_results.value = loc
                 }
-                fetch_result()
+                
 
                 async function active_tab(tab_name){
                     if(tab_name == 'visual'){
@@ -305,6 +307,8 @@ Value: [[misp_attr]]
                 }
 
                 onMounted(() => {
+                    fetch_result()
+
                     const targetElement = document.getElementById('editor-selected-notes')
                     editor = new EditorView({
                         doc: "\n\n",
