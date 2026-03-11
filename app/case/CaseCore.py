@@ -690,6 +690,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             task.case_id = merging_case.id
             task.case_order_id = max_order + i  # append after existing tasks
 
+        # Add files
+        for file in current_case.files:
+            file.case_id = merging_case.id
+
 
         # Add links
         links = Case_Link_Case.query.filter(
