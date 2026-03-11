@@ -125,7 +125,7 @@ export default {
                 <div class="collapse show" id="collapseOrgs">
                     <div class="row mt-2">
                         <div class="col-6 link-style-first" v-for="org in cases_info.orgs_in_case" :key="org.id">
-                            <span style="margin-left: 8%;  padding: 5px;">
+                            <span style="margin-left: 8%;padding: 5px;" :title="org.description">
                                 [[org.name]]
                                 <small v-if="org.id == cases_info.case.owner_org_id" class="text-success">
                                     <i class="fa-solid fa-crown fa-sm"></i> owner
