@@ -58,93 +58,124 @@
     <!-- Last Modifications Section -->
     <div class="case-core-style">
         <h5 class="mb-3"><i class="fa-solid fa-clock-rotate-left me-2"></i>Last modifications</h5>
-        
-        <div style="margin-left: 20px;">
+
+        <div style="margin-left: 0;">
             <template v-if="case_list">
-                <template v-for="case_loc in case_list">
-            <div class="list-group" style="margin-bottom: 15px;">
-                <div style="display:flex; border-radius: 10px;">
-                    <a :href="`/case/${case_loc.id}`" class="list-group-item list-group-item-action case-index-list">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
-                                <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ case_loc.id ]]-[[ case_loc.title ]]
-                                <span style="font-size: 12px; vertical-align: middle;">
-                                    <i v-if="case_loc.is_private" class="fa-solid fa-lock" 
-                                    title="The case is private, only org present in can see this case"></i>
-                                    <i v-else class="fa-solid fa-globe" 
-                                    title="The case is public anyone can see this case but only org present in case can modify it"></i>
-                                </span>
-                                <button v-if="case_loc.link_to.length" disabled class="btn btn-outline-primary btn-sm" style="margin-left: 20px;">
-                                    <i class="fa-solid fa-paperclip"></i> <span class="badge text-bg-secondary">[[case_loc.link_to.length]]</span>
-                                </button>
-                            </h5>                            
-                            <small><i>Changed [[ (dayjs.utc(case_loc.last_modif).fromNow()) ]]</i></small>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                           <template v-if="case_loc.description">
-                                <template v-if="case_loc.description.length > 300">
-                                    <div class="position-relative">
-                                        <button
-                                            class="btn btn-outline-primary btn-sm float-end me-2"
-                                            type="button"
-                                            @click.stop.prevent="expandedCases[case_loc.id] = !expandedCases[case_loc.id]"
-                                            title="See the full description"
-                                        >
-                                            <i :class="['fa-solid', expandedCases[case_loc.id] ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
-                                        </button>
-
-                                        <!-- Show either truncated or full text -->
-                                        <pre class="description" v-html="md.render(expandedCases[case_loc.id] ? case_loc.description : truncateText(case_loc.description))"></pre>
+                <div class="case-grid">
+                    <template v-for="case_loc in case_list">
+                        <div class="case-card">
+                            <a :href="`/case/${case_loc.id}`" class="case-content">
+                                <div class="case-title-index">
+                                    <i class="fa-solid fa-angle-right fa-sm me-2" style="color: rgb(108, 117, 125);"></i>
+                                    <span class="id">[[ case_loc.id ]]</span>
+                                    <span> - </span>
+                                    <span>[[ case_loc.title ]]</span>
+                                    <span class="icons">
+                                        <i v-if="case_loc.is_private" class="fa-solid fa-lock" title="Private"></i>
+                                        <i v-else class="fa-solid fa-globe" title="Public"></i>
+                                    </span>
+                                    <div class="case-status-inline">
+                                        <span :class="'badge rounded-pill text-bg-'+(status_info ? status_info.status[case_loc.status_id -1].bootstrap_style : 'secondary')">[[ status_info ? status_info.status[case_loc.status_id -1].name : 'Unknown' ]]</span>
+                                        <img v-if="case_loc.misp_icon" :src="'/static/icons/' + case_loc.misp_icon" style="max-height:18px;" title="Linked to MISP event"/>
                                     </div>
-                                </template>
-                                <template v-else>
-                                    <pre v-html="md.render(case_loc.description)" class="description"></pre>
-                                </template>
-                            </template>
-                            <template v-else>
-                                <p class="card-text"><i style="font-size: 12px;">No description</i></p>
-                            </template>
-
-                            <small v-if="status_info"><span :class="'badge rounded-pill text-bg-'+status_info.status[case_loc.status_id -1].bootstrap_style">[[ status_info.status[case_loc.status_id -1].name ]]</span></small>
-                        </div>
-                        <div class="d-flex w-100">
-                            <small><i>[[case_loc.open_tasks]] open/ [[case_loc.closed_tasks]] closed</i></small>
-                        </div>
-                        <div class="d-flex w-100" v-if="case_loc.custom_tags" style="margin-top: 5px;">
-                            <template v-for="custom_tag in case_loc.custom_tags">
-                                <div class="tag" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">
-                                    <i v-if="custom_tag.icon" :class="custom_tag.icon"></i>
-                                    [[custom_tag.name]]
                                 </div>
-                            </template>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <div v-if="case_loc.tags">
-                                <template v-for="tag in case_loc.tags">
-                                    <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                                        [[tag.name]]
+
+                                <div class="case-meta-row">
+                                    <div class="case-meta-item" title="Last modified">
+                                        <i class="fa-solid fa-clock-rotate-left fa-fw"></i>
+                                        <span>[[ dayjs.utc(case_loc.last_modif).fromNow() ]]</span>
                                     </div>
-                                </template>
-                            </div>
-                            <div v-else></div>
-                            <small v-if="case_loc.deadline" :title="case_loc.deadline"><i>Deadline [[dayjs.utc(case_loc.deadline).endOf().fromNow()]]</i></small>
-                            <small v-else><i>No deadline</i></small>
-                        </div>
-                        <div class="d-flex w-100" v-if="case_loc.clusters">
-                            <template v-for="cluster in case_loc.clusters">
-                                <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + cluster.meta">
-                                    <span class="cluster">
-                                        <span v-html="mapIcon(cluster.icon)"></span>
-                                    [[cluster.tag]]
+                                    <div class="case-meta-item" title="Tasks open/closed">
+                                        <i class="fa-solid fa-list-check fa-fw"></i>
+                                        <span>[[case_loc.open_tasks]] open / [[case_loc.closed_tasks]] closed</span>
+                                    </div>
+                                    <div class="case-meta-item" title="Ticket id" v-if="case_loc.ticket_id">
+                                        <i class="fa-solid fa-ticket fa-fw"></i>
+                                        <span>[[ case_loc.ticket_id ]]</span>
+                                    </div>
+                                    <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+                                        <div class="case-meta-item"><i class="fa-solid fa-building fa-fw"></i><span>[[case_loc.owner_org_name]]</span></div>
+                                        <div v-if="case_loc.orgs_in_case && case_loc.orgs_in_case.length > 1" class="case-meta-item" title="Orgs in case">
+                                            <i class="fa-solid fa-users fa-fw"></i>
+                                            <div class="orgs-list">
+                                                <span v-for="org in case_loc.orgs_in_case.filter(o => o.name !== case_loc.owner_org_name)" class="badge bg-light text-dark">[[ org.name ]]</span>
+                                            </div>
+                                        </div>
+                                        <div v-if="case_loc.deadline" class="case-meta-item case-meta-deadline" :title="'Deadline: ' + case_loc.deadline">
+                                            <i class="fa-solid fa-hourglass-half fa-fw"></i>
+                                            <span class="meta-label">Deadline</span>
+                                            <span class="meta-value" :style="deadlineSoon(case_loc.deadline) ? 'color:#dc3545' : ''">[[ dayjs.utc(case_loc.deadline).endOf().fromNow() ]]</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="case-stats-row">
+                                    <span class="badge rounded-pill" style="background:#eef6ff;color:#084298; font-weight:500;" title="Files">
+                                        <i class="fa-solid fa-file-lines me-1"></i> [[ filesCount(case_loc) ]]
+                                    </span>
+                                    <span class="badge rounded-pill" style="background:#eef6ff;color:#084298; font-weight:500;" title="MISP-Objects">
+                                        <i class="fa-solid fa-database me-1"></i> [[ objectsCount(case_loc) ]]
+                                    </span>
+                                    <span class="badge rounded-pill" style="background:#eef6ff;color:#084298; font-weight:500;" title="Links">
+                                        <i class="fa-solid fa-link me-1"></i> [[ case_loc.link_to ? case_loc.link_to.length : 0 ]]
                                     </span>
                                 </div>
-                            </template>
+
+                                <div>
+                                    <template v-if="case_loc.description">
+                                        <div style="margin-top:6px;">
+                                            <button type="button" class="btn btn-sm btn-link case-description-toggle" @click.stop.prevent="expandedCases[case_loc.id] = !expandedCases[case_loc.id]">
+                                                <template v-if="expandedCases[case_loc.id]">
+                                                    <i class="fa-solid fa-chevron-down"></i> Description
+                                                </template>
+                                                <template v-else>
+                                                    <i class="fa-solid fa-chevron-right"></i> Description
+                                                </template>
+                                            </button>
+                                        </div>
+                                        <pre class="case-description" v-html="md.render(expandedCases[case_loc.id] ? case_loc.description : truncateText(case_loc.description))"></pre>
+                                    </template>
+                                    <template v-else>
+                                        <i style="color:#888">No description</i>
+                                    </template>
+                                </div>
+
+                                <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+                                    <div class="case-tag-group">
+                                        <div :class="{'collapsed-overflow': !expandedTags[case_loc.id]}" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                            <template v-for="item in visibleTags(case_loc)">
+                                                <template v-if="item.type === 'custom'">
+                                                    <div class="tag" :style="{'background-color': item.data.color, 'color': getTextColor(item.data.color)}">
+                                                        <i v-if="item.data.icon" :class="item.data.icon" style="margin-right:6px"></i>
+                                                        [[ item.data.name ]]
+                                                    </div>
+                                                </template>
+                                                <template v-else-if="item.type === 'tag'">
+                                                    <div class="tag" :title="item.data.description" :style="{'background-color': item.data.color, 'color': getTextColor(item.data.color)}">
+                                                        <i v-if="item.data.icon" :class="item.data.icon" style="margin-right:6px"></i>
+                                                        <i v-else class="fa-solid fa-tag" style="margin-right:6px"></i>
+                                                        [[ item.data.name ]]
+                                                    </div>
+                                                </template>
+                                                <template v-else>
+                                                    <div :title="'Description:\n' + item.data.description + '\n\nMetadata:\n' + item.data.meta">
+                                                        <span class="cluster">
+                                                            <span v-html="mapIcon(item.data.icon)"></span>
+                                                            [[ item.data.tag ]]
+                                                        </span>
+                                                    </div>
+                                                </template>
+                                            </template>
+                                        </div>
+                                        <button type="button" v-if="hiddenTagCount(case_loc) > 0" class="show-more-btn" @click.stop.prevent="toggleTags(case_loc.id)">
+                                            [[ expandedTags[case_loc.id] ? 'Show less' : '+' + hiddenTagCount(case_loc) + ' more' ]]
+                                        </button>
+                                    </div>
+                                </div>
+                            </a>
                         </div>
-                    </a>
+                    </template>
                 </div>
-            </div>
-        </template>
             </template>
             <template v-else>
                 <div class="text-center py-3">
@@ -171,13 +202,76 @@
             const home_stats = ref(null)
             const md = window.markdownit()
             const expandedCases = ref({})
+            const expandedTags = ref({})
+
+            function mergeTags(case_loc){
+                const arr = []
+                if(!case_loc) return arr
+                if(case_loc.custom_tags){ for(const t of case_loc.custom_tags) arr.push({type:'custom', data: t}) }
+                if(case_loc.tags){ for(const t of case_loc.tags) arr.push({type:'tag', data: t}) }
+                if(case_loc.clusters){ for(const c of case_loc.clusters) arr.push({type:'cluster', data: c}) }
+                return arr
+            }
+
+            function visibleTags(case_loc){
+                const items = mergeTags(case_loc)
+                const customs = items.filter(i => i.type === 'custom')
+                const tags = items.filter(i => i.type === 'tag')
+                const clusters = items.filter(i => i.type === 'cluster')
+                if(!expandedTags.value[case_loc.id]){
+                    const vis = []
+                    vis.push(...customs.slice(0,2))
+                    vis.push(...tags.slice(0,2))
+                    vis.push(...clusters.slice(0,2))
+                    return vis
+                }
+                return items
+            }
+
+            function hiddenTagCount(case_loc){
+                const items = mergeTags(case_loc)
+                const customs = items.filter(i => i.type === 'custom')
+                const tags = items.filter(i => i.type === 'tag')
+                const clusters = items.filter(i => i.type === 'cluster')
+                const visibleWhenCollapsed = Math.min(2, customs.length) + Math.min(2, tags.length) + Math.min(2, clusters.length)
+                return Math.max(0, items.length - visibleWhenCollapsed)
+            }
+
+            function toggleTags(id){
+                expandedTags.value[id] = !expandedTags.value[id]
+            }
+
+            function filesCount(case_loc){
+                if(!case_loc) return 0
+                if(case_loc.files) return case_loc.files.length
+                if(case_loc.nb_files) return case_loc.nb_files
+                if(case_loc.files_count) return case_loc.files_count
+                return 0
+            }
+
+            function objectsCount(case_loc){
+                if(!case_loc) return 0
+                if(case_loc.nb_objects) return case_loc.nb_objects
+                if(case_loc.objects) return Array.isArray(case_loc.objects) ? case_loc.objects.length : 0
+                if(case_loc.nb_objects_count) return case_loc.nb_objects_count
+                return 0
+            }
+
+            function deadlineSoon(deadline){
+                if(!deadline) return false
+                try{
+                    const diff = dayjs.utc(deadline).diff(dayjs.utc(), 'day', true)
+                    return diff >= 0 && diff <= 7
+                }catch(e){
+                    return false
+                }
+            }
 
             async function fetchCase() {
                 case_list.value = null
                 const res = await fetch("/last_case")
                 let loc = await res.json()
-                case_list.value = loc["cases"]
-                
+                case_list.value = loc["cases"]                
             }
             fetchCase()
 
@@ -225,7 +319,14 @@
                 status_info,
                 version,
                 home_stats,
-                expandedCases
+                expandedCases,
+                expandedTags,
+                visibleTags,
+                hiddenTagCount,
+                toggleTags,
+                filesCount,
+                objectsCount,
+                deadlineSoon
             }
         }
     }).mount('#main-container')

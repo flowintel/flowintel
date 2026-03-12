@@ -3,9 +3,10 @@ from flask import Blueprint, render_template, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import desc
 
-from ..db_class.db import Case, Task_User, Task, Notification
+from ..db_class.db import Case, Case_Misp_Object, Task_User, Task, Notification
 
 from ..case import common_core as CommonModel
+from ..case.CaseCore import CaseModel
 
 home_blueprint = Blueprint(
     'home',
@@ -73,17 +74,16 @@ def last_case():
     cp = 0
     last_case = []
     all_case = Case.query.order_by(desc('last_modif')).all()
+    misp_icon = CommonModel.get_misp_connector_icon() or ""
     for case in all_case:
         if cp < 10:
             if case.is_private:
                 if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
-                    loc_case = case.to_json()
-                    loc_case["open_tasks"], loc_case["closed_tasks"] = open_closed(case)
+                    loc_case = CaseModel.regroup_case_info_core(case, current_user, misp_icon)
                     last_case.append(loc_case)
                     cp += 1
             else:
-                loc_case = case.to_json()
-                loc_case["open_tasks"], loc_case["closed_tasks"] = open_closed(case)
+                loc_case = CaseModel.regroup_case_info_core(case, current_user, misp_icon)
                 last_case.append(loc_case)
                 cp += 1
             case.to_json()

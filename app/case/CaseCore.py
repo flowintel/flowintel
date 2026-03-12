@@ -482,6 +482,46 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.save_history(case.uuid, current_user, "Case Status changed")
         return True
 
+    def regroup_case_info_core(self, case, user, misp_icon):
+        """Regroup all information if a case"""
+
+        case_loc = case.to_json()
+        case_loc["present_in_case"] = CommonModel.get_present_in_case(case.id, user)
+        case_loc["current_user_permission"] = CommonModel.get_role(user).to_json()
+        case_loc["open_tasks"], case_loc["closed_tasks"] = self.open_closed(case)
+        
+        owner_org = CommonModel.get_org(case.owner_org_id)
+        case_loc["owner_org_name"] = owner_org.name if owner_org else "Unknown"            
+        orgs_in_case = CommonModel.get_orgs_in_case(case.id)
+        case_loc["orgs_in_case"] = [{"id": org.id, "name": org.name} for org in orgs_in_case]
+
+        # Check if case has a MISP connector with a non-empty identifier
+        has_misp_event = (
+            db.session.query(Case_Connector_Instance)
+            .join(Connector_Instance, Case_Connector_Instance.instance_id == Connector_Instance.id)
+            .join(Connector, Connector_Instance.connector_id == Connector.id)
+            .filter(
+                Case_Connector_Instance.case_id == case.id,
+                Connector.name == "MISP",
+                Case_Connector_Instance.identifier.isnot(None),
+                Case_Connector_Instance.identifier != ""
+            )
+            .first() is not None
+        )
+        case_loc["has_misp_event"] = has_misp_event
+        case_loc["misp_icon"] = misp_icon
+        # Include files metadata and object count for the case index
+        try:
+            case_loc["files"] = [f.to_json() for f in case.files]
+        except Exception:
+            case_loc["files"] = []
+        # number of MISP objects in the case
+        try:
+            case_loc["nb_objects"] = len(self.get_misp_object_by_case(case.id))
+        except Exception:
+            case_loc["nb_objects"] = 0
+
+        return case_loc
 
     def regroup_case_info(self, cases, user, nb_pages=None):
         """Regroup all information if a case"""
@@ -490,44 +530,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         misp_icon = CommonModel.get_misp_connector_icon() or ""
 
         for case in cases:
-            case_loc = case.to_json()
-            case_loc["present_in_case"] = CommonModel.get_present_in_case(case.id, user)
-            case_loc["current_user_permission"] = CommonModel.get_role(user).to_json()
-            case_loc["open_tasks"], case_loc["closed_tasks"] = self.open_closed(case)
-            
-            owner_org = CommonModel.get_org(case.owner_org_id)
-            case_loc["owner_org_name"] = owner_org.name if owner_org else "Unknown"            
-            orgs_in_case = CommonModel.get_orgs_in_case(case.id)
-            case_loc["orgs_in_case"] = [{"id": org.id, "name": org.name} for org in orgs_in_case]
-
-            # Check if case has a MISP connector with a non-empty identifier
-            has_misp_event = (
-                db.session.query(Case_Connector_Instance)
-                .join(Connector_Instance, Case_Connector_Instance.instance_id == Connector_Instance.id)
-                .join(Connector, Connector_Instance.connector_id == Connector.id)
-                .filter(
-                    Case_Connector_Instance.case_id == case.id,
-                    Connector.name == "MISP",
-                    Case_Connector_Instance.identifier.isnot(None),
-                    Case_Connector_Instance.identifier != ""
-                )
-                .first() is not None
-            )
-            case_loc["has_misp_event"] = has_misp_event
-            case_loc["misp_icon"] = misp_icon
-            # Include files metadata and object count for the case index
-            try:
-                case_loc["files"] = [f.to_json() for f in case.files]
-            except Exception:
-                case_loc["files"] = []
-            # number of MISP objects in the case
-            try:
-                case_loc["nb_objects"] = len(self.get_misp_object_by_case(case.id))
-            except Exception:
-                case_loc["nb_objects"] = 0
-
+            case_loc = self.regroup_case_info_core(case, user, misp_icon)
             loc["cases"].append(case_loc)
-
 
         if nb_pages:
             loc["nb_pages"] = nb_pages
