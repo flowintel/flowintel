@@ -96,32 +96,71 @@
         <script src="{{ url_for('static',filename='js/sidebar.js') }}"></script>
 
         <script>
-            // Wrap markdown-it factory so every instance escapes HTML inside ```mermaid``` blocks.
+            // Prevent XSS in mermaid code blocks by sanitizing at the renderer level.
+            // Wraps the markdownit() factory so that every instance automatically
+            // escapes HTML inside mermaid fence output, regardless of fence syntax
+            // (```, ~~~, ````, etc.) and regardless of which mermaid plugin is used.
             (function(){
-                if(!window.markdownit) return
+                if(!window.markdownit || window.__markdownit_xss_protected) return
                 try{
-                    const orig = window.markdownit
-                    if(window.__markdownit_mermaid_sanitized) return
-                    window.markdownit = function(){
-                        const inst = orig.apply(this, arguments)
-                        try{
-                            if(!inst.__mermaid_render_sanitized){
-                                const origRender = inst.render.bind(inst)
-                                inst.render = function(src, env){
-                                    if(!src || typeof src !== 'string') return origRender(src, env)
-                                    const sanitized = src.replace(/```mermaid([\s\S]*?)```/g, function(match, inner){
-                                        const content = inner.replace(/^\n/, '')
-                                        const escaped = content.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                                        return '```mermaid\n' + escaped + '\n```'
-                                    })
-                                    return origRender(sanitized, env)
+                    const origFactory = window.markdownit
+
+                    function _escapeHtml(str){
+                        if(!str) return str
+                        return str
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#39;')
+                    }
+
+                    // Wrap the fence renderer rule so mermaid content is always escaped.
+                    // Calls the original rule first (to preserve side-effects like
+                    // mermaid.run() scheduling), then rebuilds the output with safe content.
+                    function _secureFenceRule(inst){
+                        const currentRule = inst.renderer.rules.fence
+                        if(!currentRule || currentRule.__xss_safe) return
+
+                        const secureRule = function(tokens, idx, options, env, self){
+                            const token = tokens[idx]
+                            // Call original rule for side-effects (mermaid scheduling, etc.)
+                            const result = currentRule.call(this, tokens, idx, options, env, self)
+
+                            if(token.info && token.info.trim().toLowerCase() === 'mermaid'){
+                                const escaped = _escapeHtml(token.content)
+                                // Detect wrapper tag from plugin output (pre or div)
+                                const m = result.match(/^<(pre|div)(\s+[^>]*)?>/)
+                                if(m){
+                                    return '<' + m[1] + (m[2]||'') + '>' + escaped + '</' + m[1] + '>'
                                 }
-                                inst.__mermaid_render_sanitized = true
+                                return '<pre class="mermaid">' + escaped + '</pre>'
                             }
-                        }catch(e){}
+                            return result
+                        }
+                        secureRule.__xss_safe = true
+                        inst.renderer.rules.fence = secureRule
+                    }
+
+                    window.markdownit = function(){
+                        const inst = origFactory.apply(this, arguments)
+
+                        // Secure the default fence rule
+                        _secureFenceRule(inst)
+
+                        // Wrap .use() so that when a plugin replaces the fence rule,
+                        // the new rule is automatically wrapped too.
+                        const origUse = inst.use.bind(inst)
+                        inst.use = function(){
+                            const result = origUse.apply(this, arguments)
+                            _secureFenceRule(inst)
+                            return result
+                        }
+
                         return inst
                     }
-                    window.__markdownit_mermaid_sanitized = true
+
+                    window.__markdownit_xss_protected = true
                 }catch(e){}
             })();
         </script>
