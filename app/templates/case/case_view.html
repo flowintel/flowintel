@@ -7,12 +7,17 @@
 {% block head %}
 <script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
+<script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
 <script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/note_variables.js') }}"></script>
+
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timeline.css') }}">
 
 <script src="{{ url_for('static',filename='js/vendor/timelinejs.js') }}"></script>
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/timelinejs.css') }}">
+
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/note_template.css') }}">
 
 <script src="{{ url_for('static',filename='js/vendor/Sortable.min.js') }}"></script>
 
@@ -291,12 +296,12 @@
                         </div>
                         <div class="container-fluid" style="display: flex; width:90%">
                             <div class="note-editor" id="editor"></div>
-                            <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                            <div class="markdown-render" v-html="edit_preview_html"></div>
                         </div>
                     </template>
                     <template v-else>
                         <div>
-                            <button class="btn btn-primary mb-2" @click="edit_note()">
+                            <button class="btn btn-primary" @click="edit_note()">
                                 <small><i class="fa-solid fa-pen fa-fw"></i></small> Edit
                             </button>
                             <div class="btn-group">
@@ -320,8 +325,21 @@
                                     </li>
                                 </ul>
                             </div>
+                            <button class="btn btn-outline-secondary mb-2" @click="show_variables_help = !show_variables_help" title="Note variables reference">
+                                <small><i class="fa-solid fa-at fa-fw"></i></small> Variables
+                            </button>
                         </div>
-                        <div v-html="md.render(cases_info.case.notes)" class="markdown-render-result container-fluid"></div>
+                        <div v-if="show_variables_help" class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+                            <button type="button" class="btn-close" @click="show_variables_help = false"></button>
+                            <h6><i class="fa-solid fa-at"></i> Note Variables</h6>
+                            <p class="mb-1">Use <code>@this.case.title</code>, <code>@this.case.status</code>, <code>@task.10.title</code>, etc. in your notes.</p>
+                            <p class="mb-1">Variables are shown as raw syntax in edit mode and resolved to actual values in render mode.</p>
+                            <details>
+                                <summary>Full reference</summary>
+                                <div v-html="md.render(variables_reference)" class="mt-2" style="max-height: 400px; overflow-y: auto;"></div>
+                            </details>
+                        </div>
+                        <div v-html="resolved_case_notes_html" class="markdown-render-result container-fluid"></div>
                     </template>
                 </div>
                 <div v-else class="d-flex">
@@ -330,7 +348,7 @@
                     </div>
                     <div class="container-fluid" style="display: flex; width:90%">
                         <div class="note-editor" id="editor"></div>
-                        <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                        <div class="markdown-render" v-html="edit_preview_html"></div>
                     </div>
                 </div>
             </template>
@@ -624,8 +642,8 @@
                 </div>
             </template>
             <template v-else-if="tasks_tab == 'tasks-notes'">
-                <template v-for="notes in all_notes">
-                    <div class="all-tasks-notes" v-html="md.render(notes)"></div>
+                <template v-for="(notes, idx) in all_notes">
+                    <div class="all-tasks-notes" v-html="resolved_all_notes[idx] || md.render(notes.text || notes)"></div>
                 </template>
             </template>
             
@@ -716,6 +734,9 @@
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
 
+                const show_variables_help = ref(false)
+                const variables_reference = ref('')
+
                 const case_connectors_list = ref([])
                 const all_connectors_list = ref([])
                 const modules = ref()
@@ -729,18 +750,70 @@
                 const all_notes = ref("")
                 let editor
                 const note_editor_render = ref("")
-                // Re-run mermaid on live-preview updates (editing mode)
-                watch(note_editor_render, async () => {
-                    await nextTick()
-                    try{
-                        // run mermaid only inside the preview container
-                        md.mermaid.run({ querySelector: '.markdown-render .mermaid' })
-                    }catch(e){}
-                })
+                const edit_preview_html = ref("")
+
                 const edit_mode = ref(false)
 
                 const md = window.markdownit()			// Library to Parse and display markdown
 		        md.use(mermaidMarkdown.default)			// Use mermaid library
+
+                // Debounced preview resolver for live editing (uses the same md instance)
+                const _previewResolver = FlowintelNoteVariables.createPreviewResolver(
+                    md,
+                    {{ case.id }},
+                    500,
+                    async () => {
+                        await nextTick()
+                        try { await md.mermaid.run({ querySelector: '.markdown-render .mermaid' }) } catch(e) {}
+                    }
+                )
+
+                // Re-run mermaid on live-preview updates (editing mode)
+                watch(note_editor_render, (newVal) => {
+                    // Update the preview with debounced variable resolution
+                    _previewResolver.update(newVal, null, edit_preview_html)
+                })
+
+                // Note variables resolution
+                const resolved_case_notes = ref('')
+                const resolved_case_notes_html = ref('')
+                const resolved_all_notes = ref([])
+                const case_id_for_vars = {{ case.id }}
+
+                async function resolveAndSetNotes() {
+                    if (cases_info.value && cases_info.value.case && cases_info.value.case.notes) {
+                        const resolved = await FlowintelNoteVariables.resolveNoteVariables(
+                            case_id_for_vars, cases_info.value.case.notes
+                        )
+                        resolved_case_notes.value = resolved
+                        // Also render with styling markers
+                        const markedResolved = await FlowintelNoteVariables.resolveNoteVariables(
+                            case_id_for_vars, cases_info.value.case.notes, null, true
+                        )
+                        resolved_case_notes_html.value = FlowintelNoteVariables.postProcessVarMarkers(
+                            md.render(markedResolved)
+                        )
+                    } else {
+                        resolved_case_notes.value = ''
+                        resolved_case_notes_html.value = ''
+                    }
+                }
+
+                async function resolveAllTaskNotes() {
+                    if (all_notes.value && all_notes.value.length) {
+                        const promises = all_notes.value.map(entry => {
+                            const text = entry.text || entry
+                            const taskId = entry.task_id || null
+                            return FlowintelNoteVariables.resolveNoteVariables(case_id_for_vars, text, taskId, true)
+                        })
+                        const resolved = await Promise.all(promises)
+                        resolved_all_notes.value = resolved.map(r =>
+                            FlowintelNoteVariables.postProcessVarMarkers(md.render(r))
+                        )
+                    } else {
+                        resolved_all_notes.value = []
+                    }
+                }
 
                 const case_for_link = ref([])
 
@@ -892,6 +965,7 @@
                         scrollIntoSelectedElement()
                         fetch_open_closed()
                         fetch_nb_misp_objects()
+                        resolveAndSetNotes()
 
                         $('.select2-select-add-orgs').select2({
                             theme: 'bootstrap-5',
@@ -900,6 +974,17 @@
                     }
                 }
                 
+                // Fetch variables reference for help panel
+                async function fetchVariablesReference() {
+                    try {
+                        const res = await fetch('/case/note_variables_reference')
+                        if (res.ok) {
+                            const data = await res.json()
+                            variables_reference.value = data.reference || ''
+                        }
+                    } catch(e) {}
+                }
+                fetchVariablesReference()
 
                 async function fetchStatus() {
                     status_info.value = null
@@ -949,7 +1034,7 @@
                     if(targetElement && targetElement.innerHTML === ""){
                         editor = new EditorView({
                             doc: default_text,
-                            extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
+                            extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
                                 if (v.docChanged) {
                                     note_editor_render.value = editor.state.doc.toString()
                                 }
@@ -958,13 +1043,14 @@
                         })
                     }
                     await nextTick()
-                    md.mermaid.init()
+                    try { await md.mermaid.init() } catch(e) {}
                 }
 
                 async function fetch_all_notes(){
                     const res = await fetch("/case/"+cases_info.value.case.id+"/all_notes")
                     let loc = await res.json()
                     all_notes.value = loc["notes"]
+                    resolveAllTaskNotes()
                 }
 
                 async function active_tab(tab_name){
@@ -1086,7 +1172,7 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        md.mermaid.init()
+                        try { await md.mermaid.init() } catch(e) {}
                     }else if(tab_name == 'hedgedoc'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-hedgedoc").classList.contains("active") ){
@@ -1096,7 +1182,7 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        md.mermaid.init()
+                        try { await md.mermaid.init() } catch(e) {}
                     }else if(tab_name == 'computer-assistate'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-computer-assistate").classList.contains("active") ){
@@ -1106,7 +1192,7 @@
                             document.getElementById("subtab-hedgedoc").classList.remove("active")
                         }
                         await nextTick()
-                        md.mermaid.init()
+                        try { await md.mermaid.init() } catch(e) {}
                     }
                 }
 
@@ -1125,7 +1211,7 @@
                         }
                         await fetch_all_notes()
                         await nextTick()
-                        md.mermaid.init()
+                        try { await md.mermaid.init() } catch(e) {}
                     }
                 }
 
@@ -1200,12 +1286,14 @@
                         edit_mode.value = false
                         cases_info.value.case.last_modif = Date.now()
                         cases_info.value.case.notes = notes_loc
+                        FlowintelNoteVariables.clearVariableCache()
+                        await resolveAndSetNotes()
                         await nextTick()
                         
                         if(!notes_loc){
                             prepare_editor("\n\n")
                         }
-                        md.mermaid.init()
+                        try { await md.mermaid.init() } catch(e) {}
                     }
                     await display_toast(res_msg)
                 }
@@ -1528,7 +1616,14 @@
 
                     get_completion_pourcentage,
                     get_completion_color,
-                    is_open_cases
+                    is_open_cases,
+
+                    resolved_case_notes,
+                    resolved_case_notes_html,
+                    resolved_all_notes,
+                    show_variables_help,
+                    variables_reference,
+                    edit_preview_html
                 }
             }
         }).mount('#main-container')

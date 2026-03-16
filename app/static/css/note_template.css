@@ -1,0 +1,14 @@
+/* Styles for note template params and render pane */
+.template-param{width:100%;border-radius:8px;border:1px solid #d0d7de;padding:.6rem .75rem;background:#f7f9fb;resize:none;transition:box-shadow .12s ease,border-color .12s ease}
+.template-param:focus{outline:none;border-color:#7fb0ff;box-shadow:0 6px 18px rgba(31, 111, 235, 0.08);background:#fff}
+.form-floating .template-param{min-height:3rem;padding:.9rem .75rem .4rem}
+.form-floating label{color:#6c757d;padding-left:.25rem}
+.form-floating{position:relative}
+
+/* Rendering pane styles for template preview */
+.render-pane{background:#ffffff;border:1px solid rgba(136,144,153,0.18);border-radius:8px;padding:14px;margin-top:6px;width:100%;box-shadow:0 1px 6px rgba(20,20,20,0.04)}
+.render-pane .render-content{white-space:pre-wrap;word-wrap:break-word;overflow:auto;color:#222;font-size:0.95rem}
+.render-pane .render-content .mermaid{background:transparent}
+
+/* Slightly tighter spacing for the param column */
+.col-6 > div[style*="margin-bottom"]{margin-bottom:6px}

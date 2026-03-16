@@ -208,7 +208,7 @@ export default {
 					</div>
 				</div>
 			</div>
-			<div class="col-md-8">
+			<div class="col-md-8" v-if="computer_assistate_report">
 				<div class="d-flex justify-content-between mb-2">
 					<div>
 						<button class="btn btn-outline-secondary btn-sm me-2" @click="markdown_view = !markdown_view">

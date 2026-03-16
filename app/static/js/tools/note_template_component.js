@@ -65,7 +65,7 @@ export default {
 			if (targetElement) {
 				content_editor = new EditorView({
 					doc: props.note_template.content || "\n\n",
-					extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
+					extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
 						if (v.docChanged) {
 							temp_content.value = content_editor.state.doc.toString()
 						}

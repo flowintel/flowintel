@@ -977,7 +977,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
 
     def get_all_notes(self, case):
-        """Get all tasks' notes"""
+        """Get all tasks' notes, returning both the text and the task id for variable resolution"""
         loc_notes = []
         for task in case.tasks:
             loc = ""
@@ -991,7 +991,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     else:
                         continue
                 if not len(loc) == loc_len:
-                    loc_notes.append(loc)
+                    loc_notes.append({"text": loc, "task_id": task.id})
         return loc_notes
 
 

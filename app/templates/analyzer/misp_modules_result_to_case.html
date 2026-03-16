@@ -6,6 +6,7 @@
 
 {% block head %}
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
+<script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -198,7 +199,7 @@
                         const targetElement = document.getElementById('editor-selected-notes')
                         editor = new EditorView({
                             doc: note,
-                            extensions: [basicSetup, languages.markdown()],
+                            extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : [])],
                             parent: targetElement
                         })
                     }else{

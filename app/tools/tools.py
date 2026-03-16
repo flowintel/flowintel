@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, flash, redirect, render_template, request, current_app
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
+from ..utils.note_variables import get_syntax_reference
 from ..decorators import editor_required, admin_required, template_editor_required
 from ..utils.utils import get_modules_list
 from ..utils.logger import flowintel_log
@@ -155,6 +156,14 @@ def community_stats():
 @login_required
 def note_template_index():
     return render_template("tools/note_template_index.html")
+
+
+@tools_blueprint.route("/note_variables_reference", methods=['GET'])
+@login_required
+def note_variables_reference_view():
+    """Render the note variables syntax reference page"""
+    reference = get_syntax_reference()
+    return render_template("tools/note_variables_reference.html", reference=reference)
 
 @tools_blueprint.route("/create_note_template_view", methods=['GET'])
 @login_required

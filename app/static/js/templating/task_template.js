@@ -43,7 +43,7 @@ export default {
 					if (targetElement) {
 						let editor = new EditorView({
 							doc: "\n\n",
-							extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
+							extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
 								if (v.docChanged) {
 									note_editor_render.value[i] = editor.state.doc.toString()
 								}
@@ -58,7 +58,7 @@ export default {
 				if (targetElement) {
 					let editor = new EditorView({
 						doc: "\n\n",
-						extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
+						extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
 								note_editor_render.value[0] = editor.state.doc.toString()
 							}
@@ -108,7 +108,7 @@ export default {
 				if (targetElement.innerHTML === "") {
 					let editor = new EditorView({
 						doc: "\n\n",
-						extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
+						extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
 							if (v.docChanged) {
 								note_editor_render.value[key] = editor.state.doc.toString()
 							}
@@ -165,7 +165,7 @@ export default {
 			const targetElement = document.getElementById('editor1_' + key + "_" + props.template.id)
 			let editor = new EditorView({
 				doc: template.notes[key].note,
-				extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
+				extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
 					if (v.docChanged) {
 						note_editor_render.value[key] = editor.state.doc.toString()
 					}
@@ -205,7 +205,7 @@ export default {
 					if (targetElement.innerHTML === "") {
 						editor = new EditorView({
 							doc: "\n\n",
-							extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
+							extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
 								if (v.docChanged) {
 									note_editor_render.value = editor.state.doc.toString()
 								}

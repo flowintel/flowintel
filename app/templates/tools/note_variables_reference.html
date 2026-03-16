@@ -1,0 +1,35 @@
+<!--
+    Note Variables Reference Page
+-->
+
+{% extends 'base.html' %}
+
+{% block head %}
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+{{ super() }}
+{% endblock %}
+
+{% block content %}
+
+<div class="case-core-style">
+    <h4 class="mb-3"><i class="fa-solid fa-code me-2"></i>Flowintel Variable Syntax</h4>
+    <div id="vars-ref">
+        <div class="markdown-render-result" v-html="md.render(reference)"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, ref } = Vue
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const md = window.markdownit()
+            const reference = {{ reference|tojson|safe }}
+            return { md, reference }
+        }
+    }).mount('#main-container')
+</script>
+{% endblock %}

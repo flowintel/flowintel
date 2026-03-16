@@ -840,3 +840,23 @@ a.case-content:hover {
   overflow-y: scroll;
   height: 50vh
 }
+
+
+
+/* Style for note variables */
+.note-variable.unresolved {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 0.9em;
+}
+.note-var-resolved {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-weight: 500;
+  border-bottom: 2px solid #bee5eb;
+}

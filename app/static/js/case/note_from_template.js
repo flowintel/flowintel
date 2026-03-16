@@ -38,6 +38,14 @@ export default {
                     if(note_template_list.value[i].id == loc_id){
                         selected_note_template.value = note_template_list.value[i]
                         mustache_render.value = selected_note_template.value.content
+                        // initialize autosize for params after DOM update
+                        setTimeout(() => {
+                            if (selected_note_template.value && selected_note_template.value.params) {
+                                for (let j in selected_note_template.value.params.list) {
+                                    attachAutosize(selected_note_template.value.params.list[j])
+                                }
+                            }
+                        }, 0)
                         break
                     }
                 }
@@ -55,7 +63,15 @@ export default {
                 for(let i in selected_note_template.value.params.list){
                     $("#"+selected_note_template.value.params.list[i]).val(case_note_template.value.values.list[selected_note_template.value.params.list[i]])
                 }
-                
+                // attach autosize listeners and size textareas
+                setTimeout(() => {
+                    if (selected_note_template.value && selected_note_template.value.params) {
+                        for (let i in selected_note_template.value.params.list) {
+                            attachAutosize(selected_note_template.value.params.list[i])
+                        }
+                    }
+                }, 0)
+
                 reload(case_note_template.value.content)
             }else{
                 fetch_note_template()
@@ -111,7 +127,7 @@ export default {
                     if(targetElement && targetElement.innerHTML === ""){
                         editor = new EditorView({
                             doc: case_note_template.value.content,
-                            extensions: [basicSetup, languages.markdown(), EditorView.updateListener.of((v) => {
+                            extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
                                 if (v.docChanged) {
                                     note_editor_render.value = editor.state.doc.toString()
                                 }
@@ -131,7 +147,15 @@ export default {
                     for(let i in selected_note_template.value.params.list){
                         $("#"+selected_note_template.value.params.list[i]).val(case_note_template.value.values.list[selected_note_template.value.params.list[i]])
                     }
-                    
+                    // attach autosize listeners to current params
+                    setTimeout(() => {
+                        if (selected_note_template.value && selected_note_template.value.params) {
+                            for(let i in selected_note_template.value.params.list){
+                                attachAutosize(selected_note_template.value.params.list[i])
+                            }
+                        }
+                    }, 0)
+
                     reload(case_note_template.value.content)
                 }
             }
@@ -158,8 +182,37 @@ export default {
             }
 
             let compiled = Handlebars.compile(current_note_template_content)
-            mustache_render.value = compiled(loc)
+            let result = compiled(loc)
+
+            // Also resolve @variables in the output
+            if (window.FlowintelNoteVariables && window.FlowintelNoteVariables.hasVariables(result)) {
+                window.FlowintelNoteVariables.resolveNoteVariables(
+                    props.cases_info.case.id, result
+                ).then(resolved => {
+                    mustache_render.value = resolved
+                })
+            } else {
+                mustache_render.value = result
+            }
         }  
+
+        // Auto-resize helpers for textarea parameters
+        function autosize(el){
+            if(!el) return
+            el.style.height = 'auto'
+            el.style.height = (el.scrollHeight) + 'px'
+        }
+
+        function attachAutosize(elemId){
+            const el = document.getElementById(elemId)
+            if(!el) return
+            // only attach once
+            if(el.dataset._autosizeAttached) return
+            el.addEventListener('input', () => autosize(el))
+            // initial size
+            autosize(el)
+            el.dataset._autosizeAttached = '1'
+        }
         
         async function create(){
             let loc = {}
@@ -361,9 +414,11 @@ export default {
 
                 <div class="row">
                     <div class="col-6">
-                        <div v-for="elem in selected_note_template.params.list">
-                            <label class="form-label" :for="elem">[[elem]]</label>
-                            <input class="form-control" type="text" :name="elem" :id="elem"/>
+                        <div v-for="elem in selected_note_template.params.list" style="margin-bottom:8px;">
+                            <div class="form-floating">
+                                <textarea class="form-control template-param auto-resize" rows="3" :name="elem" :id="elem" placeholder=" "></textarea>
+                                <label :for="elem">[[elem]]</label>
+                            </div>
                         </div>
                     </div>
 
@@ -381,19 +436,21 @@ export default {
                         </ul>
 
                         <template v-if="rendering_tab == 'mixed'">
-                            <div style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px; width:99%">
-                                <span v-html="md.render(mustache_render)"></span>
+                            <div class="render-pane">
+                                <div class="render-content" v-html="md.render(mustache_render)"></div>
                             </div>
                         </template>
                         <template v-else-if="rendering_tab == 'template'">
-                            <div style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px; width:99%">
-                                <span v-if="Object.keys(case_note_template).length" v-html="md.render(case_note_template.content)"></span>
-                                <span v-else v-html="md.render(selected_note_template.content)"></span>
+                            <div class="render-pane">
+                                <div class="render-content">
+                                    <span v-if="Object.keys(case_note_template).length" v-html="md.render(case_note_template.content)"></span>
+                                    <span v-else v-html="md.render(selected_note_template.content)"></span>
+                                </div>
                             </div>
                         </template>
                         <template v-else-if="rendering_tab == 'final'">
-                            <div style="background-color: white; border: 1px rgb(176, 171, 171) solid; padding: 5px; border-radius: 5px; margin-top: 3px; width:99%">
-                                <span v-html="md.render(mustache_render)"></span>
+                            <div class="render-pane">
+                                <div class="render-content" v-html="md.render(mustache_render)"></div>
                             </div>
                         </template>
                     </div>

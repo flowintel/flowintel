@@ -18,6 +18,7 @@ from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
 from ..utils.file_converter import convert_file_to_note_content
 from ..utils.gpg import sign_text
+from ..utils.note_variables import resolve_variables, get_syntax_reference
 
 case_blueprint = Blueprint(
     'case',
@@ -1714,7 +1715,7 @@ def case_report_generate(cid):
 
                 urls_tools = task.urls_tools.all()
                 if urls_tools:
-                    lines.append("- **URL/Tools:** " + ", ".join(ut.name for ut in urls_tools))
+                    lines.append("- **URL/Tools:** " + ", ".join(ut.name for ut in urls_tools if ut.name))
 
                 ext_refs = task.external_references.all()
                 if ext_refs:
@@ -1740,8 +1741,9 @@ def case_report_generate(cid):
             has_notes = True
             lines.append("#### Case note")
             lines.append("")
+            resolved_case_note = resolve_variables(case.notes, case_id=case.id)
             lines.append("```")
-            lines.extend(line.replace("```", "") for line in case.notes.splitlines())
+            lines.extend(line.replace("```", "") for line in resolved_case_note.splitlines())
             lines.append("```")
             lines.append("")
 
@@ -1751,8 +1753,11 @@ def case_report_generate(cid):
             lines.append("#### Task notes")
             lines.append("")
             for section in task_note_sections:
+                section_text = section["text"] if isinstance(section, dict) else section
+                task_id = section["task_id"] if isinstance(section, dict) else None
+                resolved_section = resolve_variables(section_text, case_id=case.id, task_id=task_id)
                 lines.append("```")
-                lines.extend(line.replace("```", "") for line in section.splitlines())
+                lines.extend(line.replace("```", "") for line in resolved_section.splitlines())
                 lines.append("```")
                 lines.append("")
 
@@ -1940,3 +1945,32 @@ def convert_case_file_to_note(cid, fid):
         return {"message": "Error saving note", "toast_class": "danger-subtle"}, 400
     flowintel_log("audit", 200, "Case file converted to note", User=current_user.email, CaseId=cid, FileId=fid, FileName=file.name)
     return {"message": f"File '{file.name}' converted to note successfully", "toast_class": "success-subtle", "notes": new_notes}, 200
+
+
+#####################
+# Note Variables    #
+#####################
+
+@case_blueprint.route("/<cid>/resolve_note_variables", methods=['POST'])
+@login_required
+def resolve_note_variables(cid):
+    """Resolve @-prefixed variable references in note text"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    
+    text = request.json.get("text", "")
+    task_id = request.json.get("task_id", None)
+    mark = request.json.get("mark", False)
+    
+    resolved = resolve_variables(text, case_id=int(cid), task_id=int(task_id) if task_id else None, mark=bool(mark))
+    return {"resolved": resolved}, 200
+
+
+@case_blueprint.route("/note_variables_reference", methods=['GET'])
+@login_required
+def note_variables_reference():
+    """Return the complete syntax reference for note variables"""
+    return {"reference": get_syntax_reference()}, 200

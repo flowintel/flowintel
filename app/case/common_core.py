@@ -653,10 +653,16 @@ def convert_inline_code_to_verb(text: str) -> str:
 
 def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int = None):
     """Export notes into a format like pdf or docx"""
+    from ..utils.note_variables import resolve_variables
     if not case_task:
-        note = get_task_note(note_id).note
+        note_obj = get_task_note(note_id)
+        note = note_obj.note
+        task = Task.query.get(note_obj.task_id)
+        note = resolve_variables(note, case_id=task.case_id if task else None, task_id=task.id if task else None)
     else:
-        note = get_case(case_task_id).notes
+        case = get_case(case_task_id)
+        note = case.notes
+        note = resolve_variables(note, case_id=case_task_id)
 
     return export_notes_core(case_task_id, type_req, note)
 
