@@ -21,6 +21,7 @@ from ..db_class.db import *
 from ..utils.logger import flowintel_log
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
+from ..utils.note_variables import resolve_variables
 from . import common_core as CommonModel
 from . TaskCore import TaskModel
 from ..utils.utils import get_modules_list
@@ -1023,11 +1024,31 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         history = CommonModel.get_history(case.uuid)
 
-        task_list = [task.download() for task in case.tasks]
+        # Build task_list from Task objects so we can resolve variables
+        task_list = []
+        for task in case.tasks:
+            td = task.download()
+            # Resolve variables inside each note of the task (use case id + task id)
+            notes = td.get('notes') or []
+            for note in notes:
+                if note and isinstance(note, dict) and note.get('note'):
+                    try:
+                        note['note'] = resolve_variables(note.get('note', ''), case.id, task.id, mark=False)
+                    except Exception:
+                        # fallback: leave original note
+                        pass
+            td['notes'] = notes
+            task_list.append(td)
 
         misp_object_list = [obj.download() for obj in CaseModel.get_misp_object_by_case(case.id)]
         loc_case = case.download()
         del loc_case["computer_assistate_report"]
+        # Resolve variables in the case notes as well
+        try:
+            loc_case['notes'] = resolve_variables(loc_case.get('notes', ''), case.id, None, mark=False)
+        except Exception:
+            pass
+
         return_dict = loc_case
         return_dict["tasks"] = task_list
         return_dict["misp-objects"] = misp_object_list
@@ -1392,6 +1413,26 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             else:
                 loc_task["files"] = []
                 loc_task["subtasks"] = []
+
+        # Resolve @-variables inside notes before passing to module handlers
+        try:
+            case["notes"] = resolve_variables(case.get("notes", ""), case.get("id"), None, mark=False)
+        except Exception:
+            pass
+
+        for loc_task in case.get("tasks", []):
+            try:
+                # resolve notes list if present (list of dicts from Note.download())
+                notes = loc_task.get("notes") or []
+                for n in notes:
+                    if n and isinstance(n, dict) and n.get("note"):
+                        try:
+                            n["note"] = resolve_variables(n.get("note", ""), case.get("id"), loc_task.get("id"), mark=False)
+                        except Exception:
+                            pass
+                loc_task["notes"] = notes
+            except Exception:
+                continue
 
         #######
         # RUN #
