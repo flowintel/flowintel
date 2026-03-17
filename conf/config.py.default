@@ -1,15 +1,58 @@
 import os
+
 class Config:
+    """
+    Base configuration for Flowintel.
+    """
+    
+    # =============================================================================
+    # SECRET KEY (REQUIRED)
+    # =============================================================================
+    # The SECRET_KEY is used for session encryption and CSRF protection.
+    # Generate a strong random key using:
+    #   python3 -c 'import secrets; print(secrets.token_hex(32))'
     SECRET_KEY = 'SECRET_KEY_ENV_VAR_NOT_SET'
     
+    # =============================================================================
+    # FLASK APPLICATION BINDING
+    # =============================================================================
+    # FLASK_URL: IP address Flask binds to
+    #   - Use '127.0.0.1' for local access only (recommended when behind NGINX)
+    #   - Use '0.0.0.0' to allow direct access from other machines (testing only)
+    # FLASK_PORT: Port number Flask listens on (default 7006)
     FLASK_URL = '127.0.0.1'
     FLASK_PORT = 7006
+
+    # =============================================================================
+    # MISP MODULES
+    # =============================================================================
+    # Address and port where MISP modules are running for analysis and enrichment
     MISP_MODULE = '127.0.0.1:6666'
+    
+    # =============================================================================
+    # DATABASE CONFIGURATION
+    # =============================================================================
+    # Connection pool settings for PostgreSQL
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    
+    # =============================================================================
+    # SESSION STORAGE (VALKEY)
+    # =============================================================================
+    # Valkey is used for session management. It runs as a systemd service
+    # Only change these if Valkey runs on a different host.
     VALKEY_IP = os.getenv('VALKEY_IP', '127.0.0.1')
     VALKEY_PORT = os.getenv('VALKEY_PORT', '6379')
+    
+    # =============================================================================
+    # AUDIT LOGGING
+    # =============================================================================
+    # All user actions are logged to logs/record.log with the AUDIT prefix.
     AUDIT_LOG_PREFIX = os.getenv('AUDIT_LOG_PREFIX', 'AUDIT')
     LOG_FILE = os.getenv('LOG_FILE', 'record.log')
+    
+    # =============================================================================
+    # APPLICATION BRANDING
+    # =============================================================================
     APP_NAME = "Flowintel"
     
     # Logo configuration
@@ -21,6 +64,11 @@ class Config:
     WELCOME_TEXT_BOTTOM = os.getenv('WELCOME_TEXT_BOTTOM', '')
     WELCOME_LOGO = os.getenv('WELCOME_LOGO', '')
     
+    # =============================================================================
+    # FILE UPLOADS
+    # =============================================================================
+    # Maximum file size for attachments (in bytes)
+    # Remember to keep this in sync with NGINX client_max_body_size setting.
     FILE_UPLOAD_MAX_SIZE = int(os.getenv('FILE_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))  # Default 5MB
 
     # Reverse proxy configuration
@@ -31,15 +79,25 @@ class Config:
     PROXY_X_HOST = int(os.getenv('PROXY_X_HOST', 1))     # Trust X-Forwarded-Host
     PROXY_X_PREFIX = int(os.getenv('PROXY_X_PREFIX', 0)) # Trust X-Forwarded-Prefix
 
-    # System roles that cannot be deleted
+    # =============================================================================
+    # ACCESS CONTROL
+    # =============================================================================
+    # System roles that cannot be deleted (admin, user, bot)
     SYSTEM_ROLES = [1, 2, 3]
     
-    # Task status IDs for privileged case workflow
+    # =============================================================================
+    # TASK STATUS IDS
+    # =============================================================================
+    # Task status identifiers for workflow management
+    # These IDs must match the status entries in your database
     TASK_REQUESTED = 7   # Task requested by Queuer in privileged case, pending approval
     TASK_APPROVED = 8    # Task approved by Admin/CaseAdmin/QueueAdmin
     TASK_REJECTED = 5    # Task rejected by Admin/CaseAdmin/QueueAdmin
     
-    # Limit user view to own organization (only admins can see all users)
+    # Limit user view to own organisation
+    # When True: Users can only see other users within their own organisation
+    # When False: All users can see all other users
+    # Administrators always see all users regardless of this setting.
     LIMIT_USER_VIEW_TO_ORG = False # False is the previous default ; alt.: True 
 
     # GDPR and privacy notice for case and task forms
@@ -96,7 +154,11 @@ class Config:
         "version": 1
     }
 
-    # Initial users configuration
+    # =============================================================================
+    # INITIAL USER ACCOUNTS
+    # =============================================================================
+    # These users are created on first installation.
+    # IMPORTANT: Change the admin password immediately after first login!
     INIT_ADMIN_USER = {
         "first_name": "admin",
         "last_name": "admin",
@@ -110,6 +172,10 @@ class Config:
     }
 
 
+# =============================================================================
+# DEVELOPMENT CONFIGURATION
+# =============================================================================
+# Used for local development and testing.
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel.sqlite"
@@ -120,6 +186,10 @@ class DevelopmentConfig(Config):
         print('THIS APP IS IN DEBUG MODE. \
                 YOU SHOULD NOT SEE THIS IN PRODUCTION.')
 
+# =============================================================================
+# TESTING CONFIGURATION
+# =============================================================================
+# Used for automated testing (pytest).
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel-test.sqlite"
@@ -131,6 +201,20 @@ class TestingConfig(Config):
         print('THIS APP IS IN TESTING MODE.  \
                 YOU SHOULD NOT SEE THIS IN PRODUCTION.')
 
+# =============================================================================
+# PRODUCTION CONFIGURATION
+# =============================================================================
+# Used for production deployments.
+# Database: PostgreSQL (recommended for production)
+# 
+# Configure these settings using environment variables or a .env file.
+# 
+# Example .env file:
+#   DB_USER=flowintel
+#   DB_PASSWORD=your_secure_password
+#   DB_HOST=localhost
+#   DB_PORT=5432
+#   DB_NAME=flowintel
 class ProductionConfig(Config):
     # environment variables
     SESSION_TYPE = "redis"
@@ -147,6 +231,12 @@ class ProductionConfig(Config):
     def init_app(cls, app):
         print('THIS APP IS IN PRODUCTION MODE.')
 
+# =============================================================================
+# DOCKER CONFIGURATION
+# =============================================================================
+# Used for Docker container deployments.
+# Database: PostgreSQL (required for Docker deployments)
+# All settings are configured via environment variables in docker-compose.yml
 class DockerConfig(Config):
     DEBUG = True
     SESSION_TYPE = "redis"

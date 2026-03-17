@@ -1,4 +1,4 @@
-<img title="" src="./doc/flowintel_logo.png" alt="" width="149" data-align="center">
+<img title="" src="./doc/images/flowintel_logo.png" alt="" width="149" data-align="center">
 
 Flowintel is an open-source platform designed to assist analysts in organizing their cases and tasks. It features a range of tools and functionalities to enhance workflow efficiency. 
 
@@ -24,7 +24,7 @@ Flowintel is an open-source platform designed to assist analysts in organizing t
 
 - **Comprehensive Audit Logging**: Maintains a full audit trail of all actions, ensuring transparency and compliance.
 
-![task-management](./doc/case_example.png)
+![task-management](./doc/images/case_example.png)
 
 ## Quick start
 
@@ -41,6 +41,9 @@ Change the **configuration** in  `conf/config.py`
 Run the **installation** script `./install.sh`
 
 **Start** the application with `./launch.sh -l`
+
+### MacOS
+In `/bin` there's a script for installation and for launching
 
 #### Account
 
