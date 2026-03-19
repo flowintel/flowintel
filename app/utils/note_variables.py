@@ -75,6 +75,13 @@ All variables start with `@` and use dot notation to access properties.
 
   @this.case.orgs                    Comma-separated org names in the case
 
+### Current User Variables
+
+    @user.<property> or @me.<property>  Properties of the currently logged-in user
+
+    Properties:
+        id, email, first_name, last_name, full_name, org_id, org
+
 ### User Variables (assigned to task)
 
   @task.<id>.assigned_users          Comma-separated user names
@@ -92,12 +99,13 @@ from ..db_class.db import (
     Case, Task, Subtask, Note, Status, Org, Case_Org,
     Case_Misp_Object, Misp_Attribute, Task_User, User
 )
+from flask_login import current_user
 
 # Pattern to match @variable references
 # Matches @word.word.word... patterns, including numeric and UUID segments
 # Stops at whitespace, end of line, or common punctuation that isn't part of the reference
 VARIABLE_PATTERN = re.compile(
-    r'@((?:this|case|task|now|today)(?:\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\.[a-zA-Z_][a-zA-Z0-9_]*|\.\d+)*)',
+    r'@((?:this|case|task|now|today|user|me)(?:\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\.[a-zA-Z_][a-zA-Z0-9_]*|\.\d+)*)',
     re.MULTILINE
 )
 
@@ -159,6 +167,35 @@ def _lookup_entity(model, identifier: str):
     return None
 
 
+def _resolve_user_property(user: User, parts: list):
+    """Resolve properties for the current logged-in user.
+
+    Supported properties:
+      id, email, first_name, last_name, full_name, org_id, org
+    """
+    if not parts:
+        return None
+
+    prop = parts[0]
+    # Only support single-level properties for now
+    if len(parts) != 1:
+        return None
+
+    props = {
+        'id': lambda u: u.id,
+        'email': lambda u: u.email or '',
+        'first_name': lambda u: u.first_name or '',
+        'last_name': lambda u: u.last_name or '',
+        'full_name': lambda u: f"{u.first_name or ''} {u.last_name or ''}".strip(),
+        'org_id': lambda u: getattr(u, 'org_id', None),
+        'org': lambda u: (Org.query.get(u.org_id).name if getattr(u, 'org_id', None) and Org.query.get(u.org_id) else ''),
+    }
+
+    if prop in props:
+        return props[prop](user)
+    return None
+
+
 def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
     """Resolve a single variable path like 'this.case.title'"""
     parts = var_path.split('.')
@@ -217,6 +254,14 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
         if not task:
             return None
         return _resolve_task_property(task, parts[2:])
+
+    # @user.<property> or @me.<property> -> current logged-in user
+    if root == 'user' or root == 'me':
+        # root refers to the current authenticated user
+        if current_user is None or getattr(current_user, 'is_anonymous', True):
+            return None
+        # parts[1:] are the properties requested
+        return _resolve_user_property(current_user, parts[1:])
     
     return None
 
@@ -612,6 +657,22 @@ Example: `@case.42.title` → title of case #42.
 
 Use `@task.<id>.<property>` to reference a **different task** by its ID.
 Example: `@task.10.title` → title of task #10.
+
+---
+
+## Current User Variables
+
+| Variable | Description |
+|----------|-------------|
+| `@user.id` | Current user ID |
+| `@user.email` | Current user email |
+| `@user.first_name` | Current user first name |
+| `@user.last_name` | Current user last name |
+| `@user.full_name` | Current user full name |
+| `@user.org_id` | Current user org id |
+| `@user.org` | Current user org name |
+
+Use `@me.<property>` as an alias for `@user.<property>`.
 
 ---
 

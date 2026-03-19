@@ -10,6 +10,8 @@
         { label: '@case.',  insert: '@case.',  info: 'Reference a case property' },
         { label: '@task.',  insert: '@task.',  info: 'Reference a task property' },
         { label: '@this.',  insert: '@this.',  info: 'Current case / task' },
+        { label: '@user.',  insert: '@user.',  info: 'Current user property' },
+        { label: '@me.',    insert: '@me.',    info: 'Alias for current user' },
         { label: '@now',    insert: '@now',    info: 'Current date & time' },
         { label: '@today',  insert: '@today',  info: 'Current date' },
     ]
@@ -76,9 +78,6 @@
         { label: 'notes.',          insert: 'notes.',          info: 'Note by position (N)' },
     ]
 
-    // Sub-properties shown after @...tasks.<n>.
-    const TASK_SUB_ITEMS = TASK_PROPERTY_ITEMS
-
     // Sub-properties for subtasks: @...subtasks.<n>.<prop>
     const SUBTASK_PROPERTY_ITEMS = [
         { label: 'id',          insert: 'id',          info: 'Subtask ID' },
@@ -91,6 +90,17 @@
         { label: 'id',   insert: 'id',   info: 'Note ID' },
         { label: 'uuid', insert: 'uuid', info: 'Note UUID' },
         { label: 'note', insert: 'note', info: 'Note content' },
+    ]
+
+    // User properties for @user. and @me.
+    const USER_PROPERTY_ITEMS = [
+        { label: 'id',         insert: 'id',         info: 'User ID' },
+        { label: 'email',      insert: 'email',      info: 'User email' },
+        { label: 'first_name', insert: 'first_name', info: 'First name' },
+        { label: 'last_name',  insert: 'last_name',  info: 'Last name' },
+        { label: 'full_name',  insert: 'full_name',  info: 'Full name' },
+        { label: 'org_id',     insert: 'org_id',     info: 'Organization ID' },
+        { label: 'org',        insert: 'org',        info: 'Organization name' },
     ]
 
     // Sub-properties for misp_objects: @...misp_objects.<n>.<prop>
@@ -121,6 +131,7 @@
         CASE_PROPERTY_ITEMS, TASK_PROPERTY_ITEMS,
         SUBTASK_PROPERTY_ITEMS, NOTE_PROPERTY_ITEMS,
         MISP_OBJECT_PROPERTY_ITEMS, ATTRIBUTE_PROPERTY_ITEMS,
+        USER_PROPERTY_ITEMS,
     ]
 
     // ── Token detection ───────────────────────────────────────────────
@@ -317,6 +328,12 @@
         if (t === '@this.') return { items: THIS_ITEMS }
         if (/^@this\.\w+$/.test(t) && !t.endsWith('.')) {
             return { items: filterItems(THIS_ITEMS, t.slice(6)) }
+        }
+
+        // ── @user. / @me. (current user) ───────────────────────────────
+        if (t === '@user.' || t === '@me.') return { items: USER_PROPERTY_ITEMS }
+        if (/^@(user|me)\.\w+$/.test(t) && !t.endsWith('.')) {
+            return { items: filterItems(USER_PROPERTY_ITEMS, t.replace(/^@(user|me)\./, '')) }
         }
 
         // ── Determine entity type from prefix ────────────────────────
@@ -542,6 +559,15 @@
     // ── Public API ────────────────────────────────────────────────────
     window.FlowintelVarComplete = {
         extension: extension,
+        // Return an array of suggestion items for a given token text (used by textarea completion)
+        getSuggestionsForToken: function(tokenText){
+            try{
+                const res = getSuggestions(tokenText)
+                return res && res.items ? res.items : []
+            }catch(e){
+                return []
+            }
+        }
     }
 
 })();
