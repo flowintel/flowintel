@@ -39,20 +39,38 @@ export default {
 	<div class="row">
 		<div class="col-auto">
 			<fieldset class="analyzer-select-case">
-				<legend class="analyzer-select-case"><i class="fa-solid fa-calendar-plus fa-sm me-1"></i><span class="section-title">Creation date</span></legend>
+				<legend class="analyzer-select-case">
+					<i class="fa-solid fa-calendar-plus fa-sm me-1"></i>
+					<span class="section-title">Creation date</span>
+				</legend>
 				<i>[[task.creation_date]]</i>
 			</fieldset>
 		</div>
 		<div class="col-auto">
 			<fieldset class="analyzer-select-case">
-				<legend class="analyzer-select-case"><i class="fa-solid fa-calendar-check fa-sm me-1"></i><span class="section-title">Deadline</span></legend>
+				<legend class="analyzer-select-case">
+					<i class="fa-solid fa-calendar-check fa-sm me-1"></i>
+					<span class="section-title">Deadline</span>
+				</legend>
 				<i>[[task.deadline]]</i>
 			</fieldset>
 		</div>
 		<div class="col-auto">
 			<fieldset class="analyzer-select-case" style="text-align: center;">
-				<legend class="analyzer-select-case"><i class="fa-solid fa-clock fa-sm me-1"></i><span class="section-title">Time required</span></legend>
+				<legend class="analyzer-select-case">
+					<i class="fa-solid fa-clock fa-sm me-1"></i>
+					<span class="section-title">Time required</span>
+				</legend>
 				<i>[[task.time_required]]</i>
+			</fieldset>
+		</div>
+		<div class="col-auto">
+			<fieldset class="analyzer-select-case" style="text-align: center;">
+				<legend class="analyzer-select-case">
+					<i class="fa-solid fa-fingerprint fa-sm me-1"></i>
+					<span class="section-title">UUID</span>
+				</legend>
+				<i>[[task.uuid]]</i>
 			</fieldset>
 		</div>
 	</div>
