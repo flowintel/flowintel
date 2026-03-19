@@ -194,6 +194,32 @@ function init_db_docker {
     python3 app.py -td
 }
 
+function test_data_community {
+    prepare_app_run
+    export FLASKENV="development"
+    python3 app.py -tdc
+}
+
+function delete_test_data_community {
+    prepare_app_run
+    export FLASKENV="development"
+    python3 app.py -dtdc
+}
+
+function test_data_cases {
+    prepare_app_run
+    export FLASKENV="development"
+    export HISTORY_DIR=$history_dir/history
+    python3 app.py -tdcc
+}
+
+function delete_test_data_cases {
+    prepare_app_run
+    export FLASKENV="development"
+    export HISTORY_DIR=$history_dir/history
+    python3 app.py -dtdcc
+}
+
 if [ "$1" ]; then
     case $1 in
         -l | --launch )             launch;;
@@ -207,6 +233,10 @@ if [ "$1" ]; then
         -ks | --killscript )        killscript;;
         -tg | --taxo_galaxy )       taxo_galaxy_update;;
         -mm | --misp_modules )      misp_module_update;;
+        -tdc | --test_data_community )       test_data_community;;
+        -dtdc | --delete_test_data_community ) delete_test_data_community;;
+        -tdcc | --test_data_cases )          test_data_cases;;
+        -dtdcc | --delete_test_data_cases )  delete_test_data_cases;;
     esac
     shift
 else

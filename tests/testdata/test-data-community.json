@@ -1,0 +1,108 @@
+{
+    "roles": [
+        {
+            "name": "OrgAdmin",
+            "description": "Organisation administrator with case, audit, template, MISP and importer access",
+            "permissions": {
+                "org_admin": true,
+                "case_admin": true,
+                "audit_viewer": true,
+                "template_editor": true,
+                "misp_editor": true,
+                "importer": true
+            }
+        },
+        {
+            "name": "CaseAdmin",
+            "description": "Case administrator",
+            "permissions": {
+                "case_admin": true
+            }
+        },
+        {
+            "name": "QueueAdmin",
+            "description": "Queue administrator",
+            "permissions": {
+                "queue_admin": true
+            }
+        },
+        {
+            "name": "Queuer",
+            "description": "User who can add items to queues",
+            "permissions": {
+                "queuer": true
+            }
+        }
+    ],
+
+    "organisations": [
+        {
+            "name": "LEA Organisation",
+            "description": "Law enforcement agency",
+            "users": [
+                {
+                    "first_name": "Alice",
+                    "last_name": "Manager",
+                    "email": "alice.manager@lea-org.local",
+                    "password": "lea-manager-01",
+                    "role": "OrgAdmin"
+                },
+                {
+                    "first_name": "Bob",
+                    "last_name": "Officer",
+                    "email": "bob.officer@lea-org.local",
+                    "password": "lea-officer-01",
+                    "role": "CaseAdmin"
+                },
+                {
+                    "first_name": "Carol",
+                    "last_name": "Officer",
+                    "email": "carol.officer@lea-org.local",
+                    "password": "lea-officer-02",
+                    "role": "QueueAdmin"
+                },
+                {
+                    "first_name": "Dave",
+                    "last_name": "Deputy",
+                    "email": "dave.deputy@lea-org.local",
+                    "password": "lea-deputy-01",
+                    "role": "Queuer"
+                },
+                {
+                    "first_name": "Eve",
+                    "last_name": "Comms",
+                    "email": "eve.comms@lea-org.local",
+                    "password": "lea-comms-01",
+                    "role": "Read Only"
+                }
+            ]
+        },
+        {
+            "name": "CSIRT Organisation",
+            "description": "Computer security incident response team",
+            "users": [
+                {
+                    "first_name": "Frank",
+                    "last_name": "TeamLead",
+                    "email": "frank.teamlead@csirt-org.local",
+                    "password": "csirt-lead-01",
+                    "role": "OrgAdmin"
+                },
+                {
+                    "first_name": "Grace",
+                    "last_name": "Handler",
+                    "email": "grace.handler@csirt-org.local",
+                    "password": "csirt-handler-01",
+                    "role": "CaseAdmin"
+                },
+                {
+                    "first_name": "Hank",
+                    "last_name": "Junior",
+                    "email": "hank.junior@csirt-org.local",
+                    "password": "csirt-junior-01",
+                    "role": "Queuer"
+                }
+            ]
+        }
+    ]
+}
