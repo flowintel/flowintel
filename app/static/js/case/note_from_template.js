@@ -42,7 +42,8 @@ export default {
                         setTimeout(() => {
                             if (selected_note_template.value && selected_note_template.value.params) {
                                 for (let j in selected_note_template.value.params.list) {
-                                    attachAutosize(selected_note_template.value.params.list[j])
+                                    attachAutosize(selected_note_template.value.params.list[i])
+                                    initCodeMirrorForParam(selected_note_template.value.params.list[i])
                                 }
                             }
                         }, 0)
@@ -64,13 +65,15 @@ export default {
                     $("#"+selected_note_template.value.params.list[i]).val(case_note_template.value.values.list[selected_note_template.value.params.list[i]])
                 }
                 // attach autosize listeners and size textareas
-                setTimeout(() => {
-                    if (selected_note_template.value && selected_note_template.value.params) {
-                        for (let i in selected_note_template.value.params.list) {
-                            attachAutosize(selected_note_template.value.params.list[i])
+                    setTimeout(() => {
+                        if (selected_note_template.value && selected_note_template.value.params) {
+                            for (let i in selected_note_template.value.params.list) {
+                                attachAutosize(selected_note_template.value.params.list[i])
+                                // initialize CodeMirror for params so we can use CM completions
+                                initCodeMirrorForParam(selected_note_template.value.params.list[i])
+                            }
                         }
-                    }
-                }, 0)
+                    }, 0)
 
                 reload(case_note_template.value.content)
             }else{
@@ -165,10 +168,11 @@ export default {
         function reload(current_note_template_content, no_keep=false){            
             let loc = {}
             for(let i in selected_note_template.value.params.list){
-                loc[selected_note_template.value.params.list[i]] = $("#"+selected_note_template.value.params.list[i]).val()
+                const id = selected_note_template.value.params.list[i]
+                loc[id] = getParamValue(id)
 
                 if(Object.keys(case_note_template.value).length)
-                    case_note_template.value.values.list[i] = $("#"+selected_note_template.value.params.list[i]).val()
+                    case_note_template.value.values.list[i] = getParamValue(id)
             }
 
             if(!no_keep && rendering_tab.value != 'final'){
@@ -190,9 +194,13 @@ export default {
                     props.cases_info.case.id, result
                 ).then(resolved => {
                     mustache_render.value = resolved
+                    // show a small toast to inform user reload completed
+                    display_toast({ json: async () => ({ message: 'Template reloaded', toast_class: 'success-subtle' }) })
                 })
             } else {
                 mustache_render.value = result
+                // show a small toast to inform user reload completed
+                display_toast({ json: async () => ({ message: 'Template reloaded', toast_class: 'success-subtle' }) })
             }
         }  
 
@@ -203,12 +211,196 @@ export default {
             el.style.height = (el.scrollHeight) + 'px'
         }
 
+        // Map of param id -> CodeMirror EditorView
+        const paramEditors = {}
+
+        function initCodeMirrorForParam(elemId){
+            if(paramEditors[elemId]) return
+            const ta = document.getElementById(elemId)
+            if(!ta) return
+            // create container for CM and hide textarea
+            const wrapper = document.createElement('div')
+            wrapper.id = elemId + '_cm'
+            wrapper.style.border = '1px solid #ddd'
+            wrapper.style.borderRadius = '4px'
+            wrapper.style.background = 'white'
+            wrapper.style.minHeight = '100px'
+            // handle Bootstrap floating label: convert to normal label above editor
+            const parentDiv = ta.parentNode
+            let labelEl = null
+            if(parentDiv){
+                // try find explicit label[for]
+                labelEl = parentDiv.querySelector('label[for="'+elemId+'"]') || ta.nextElementSibling
+                if(parentDiv.classList && parentDiv.classList.contains('form-floating')){
+                    parentDiv.classList.remove('form-floating')
+                    parentDiv.classList.add('mb-3')
+                }
+                // ensure a visible label exists above the editor
+                if(labelEl && labelEl.tagName === 'LABEL'){
+                    labelEl.style.display = 'block'
+                    labelEl.style.marginBottom = '6px'
+                } else {
+                    // create a new label if none found
+                    labelEl = document.createElement('label')
+                    labelEl.setAttribute('for', elemId)
+                    labelEl.textContent = ta.getAttribute('placeholder') || ta.getAttribute('name') || elemId
+                    labelEl.style.display = 'block'
+                    labelEl.style.marginBottom = '6px'
+                    parentDiv.insertBefore(labelEl, ta)
+                }
+                // make label more prominent
+                labelEl.classList.add('form-label')
+                labelEl.style.fontWeight = '600'
+                labelEl.style.color = 'var(--bs-body-color, #212529)'
+                labelEl.style.fontSize = '0.95rem'
+            }
+            ta.style.display = 'none'
+            // insert wrapper after textarea
+            ta.parentNode.insertBefore(wrapper, ta.nextSibling)
+
+            const initial = (ta.value !== undefined) ? ta.value : ta.innerText || ''
+            const extensions = [basicSetup, languages.markdown()]
+            if(window.FlowintelVarComplete) extensions.push(FlowintelVarComplete.extension())
+
+            const view = new EditorView({
+                doc: initial,
+                extensions: extensions,
+                parent: wrapper
+            })
+            paramEditors[elemId] = view
+        }
+
+        function getParamValue(paramId){
+            if(paramEditors[paramId]){
+                try{ return paramEditors[paramId].state.doc.toString() }catch(e){ }
+            }
+            try{ return $("#"+paramId).val() }catch(e){
+                const el = document.getElementById(paramId)
+                return el ? el.value : ''
+            }
+        }
+
+        // Minimal textarea completion: uses FlowintelVarComplete.getSuggestionsForToken for @-tokens
+        function createCompletionPopup(){
+            if(document.getElementById('fi-textarea-complete')) return
+            const popup = document.createElement('div')
+            popup.id = 'fi-textarea-complete'
+            Object.assign(popup.style, {
+                position: 'absolute',
+                zIndex: 10000,
+                background: 'var(--bs-body-bg, #fff)',
+                border: '1px solid var(--bs-border-color, #dee2e6)',
+                padding: '6px',
+                display: 'none',
+                maxHeight: '240px',
+                overflow: 'auto',
+                minWidth: '200px',
+                boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+                borderRadius: '6px',
+                fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, sans-serif',
+                fontSize: '13px'
+            })
+            popup.className = 'fi-complete-popup'
+            document.body.appendChild(popup)
+            popup.addEventListener('mousedown', (e) => e.preventDefault())
+        }
+
+        function showCompletionList(items, targetEl, token){
+            createCompletionPopup()
+            const popup = document.getElementById('fi-textarea-complete')
+            popup.innerHTML = ''
+            const norm = items.map(it => (typeof it === 'string') ? { label: it, insert: it } : (it && typeof it === 'object') ? { label: it.label || it.insert || '', insert: it.insert || it.label || '' } : { label: String(it), insert: String(it) })
+            norm.forEach((it, idx) => {
+                const row = document.createElement('div')
+                row.className = 'fi-complete-item'
+                Object.assign(row.style, { padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', margin: '2px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'monospace' })
+                const lbl = document.createElement('span')
+                lbl.textContent = it.label
+                row.appendChild(lbl)
+                row.addEventListener('mouseenter', () => row.style.background = 'var(--bs-primary, #0d6efd)')
+                row.addEventListener('mouseleave', () => row.style.background = 'transparent')
+                row.addEventListener('click', () => {
+                    applyCompletion(targetEl, token, it)
+                    hideCompletion()
+                    targetEl.focus()
+                })
+                popup.appendChild(row)
+            })
+            const rect = targetEl.getBoundingClientRect()
+            popup.style.left = (rect.left + window.scrollX + 4) + 'px'
+            popup.style.top = (rect.bottom + window.scrollY + 4) + 'px'
+            popup.style.display = items && items.length ? 'block' : 'none'
+        }
+
+        function hideCompletion(){
+            const p = document.getElementById('fi-textarea-complete')
+            if(p) p.style.display = 'none'
+        }
+
+        function applyCompletion(el, token, item){
+            const val = el.value
+            const before = val.slice(0, token.start)
+            const after = val.slice(token.end)
+            const insertVal = (typeof item === 'string') ? item : (item.insert || item.label || '')
+            let replacement = insertVal
+            if(token.type === 'handlebars'){
+                if(!/^{{/.test(replacement)) replacement = `{{${replacement}}}`
+            } else if(token.type === 'at'){
+                // If token contains a dot, keep prefix up to last dot and replace/append after it
+                const tokText = token.text || ('@' + (token.prefix || ''))
+                const lastDot = tokText.lastIndexOf('.')
+                if(lastDot >= 0){
+                    const prefix = tokText.slice(0, lastDot + 1) // keep trailing dot
+                    replacement = prefix + insertVal
+                } else {
+                    // no dot -> full replace with insertVal
+                    replacement = insertVal
+                }
+            }
+            el.value = before + replacement + after
+            try{ $(el).val(el.value) }catch(e){}
+            setCaretPosition(el, before.length + replacement.length)
+            autosize(el)
+        }
+
+        function setCaretPosition(ctrl, pos){ try{ ctrl.setSelectionRange(pos, pos) }catch(e){} }
+
+        function getTokenBeforeCaret(el){
+            const pos = el.selectionStart || 0
+            const text = el.value.slice(0, pos)
+            let m = text.match(/{{\s*(\w*)$/)
+            if(m) return { type: 'handlebars', prefix: m[1], start: pos - m[0].length, end: pos }
+            m = text.match(/@([\w.:-]*)$/)
+            if(m) return { type: 'at', prefix: m[1], text: m[0], start: pos - m[0].length, end: pos }
+            return null
+        }
+
         function attachAutosize(elemId){
             const el = document.getElementById(elemId)
             if(!el) return
             // only attach once
             if(el.dataset._autosizeAttached) return
-            el.addEventListener('input', () => autosize(el))
+            el.addEventListener('input', (ev) => {
+                autosize(el)
+                const token = getTokenBeforeCaret(el)
+                if(!token){ hideCompletion(); return }
+
+                if(token.type === 'at' && window.FlowintelVarComplete && window.FlowintelVarComplete.getSuggestionsForToken){
+                    // reuse CM6 suggestion logic
+                    const items = window.FlowintelVarComplete.getSuggestionsForToken(token.text || ('@' + token.prefix))
+                    if(items && items.length) showCompletionList(items, el, token)
+                    else hideCompletion()
+                } else if(token.type === 'handlebars'){
+                    // use template params as simple completion source
+                    let candidates = []
+                    try{ if(selected_note_template.value && selected_note_template.value.params) candidates = selected_note_template.value.params.list.slice() }catch(e){ candidates = [] }
+                    const filtered = candidates.filter(c => c.indexOf(token.prefix || '') === 0)
+                    if(filtered.length) showCompletionList(filtered, el, token)
+                    else hideCompletion()
+                } else {
+                    hideCompletion()
+                }
+            })
             // initial size
             autosize(el)
             el.dataset._autosizeAttached = '1'
@@ -217,7 +409,8 @@ export default {
         async function create(){
             let loc = {}
             for(let i in selected_note_template.value.params.list){
-                loc[selected_note_template.value.params.list[i]] = $("#"+selected_note_template.value.params.list[i]).val()
+                const id = selected_note_template.value.params.list[i]
+                loc[id] = getParamValue(id)
             }
             const res_msg = await fetch(
                 '/case/' + props.cases_info.case.id + '/create_note_template_case',{
@@ -238,8 +431,9 @@ export default {
         async function save() {
             let loc = {}
             for(let i in selected_note_template.value.params.list){
-                loc[selected_note_template.value.params.list[i]] = $("#"+selected_note_template.value.params.list[i]).val()
-                case_note_template.value.values.list[i] = $("#"+selected_note_template.value.params.list[i]).val()
+                const id = selected_note_template.value.params.list[i]
+                loc[id] = getParamValue(id)
+                case_note_template.value.values.list[i] = getParamValue(id)
             }
             const res_msg = await fetch(
                 '/case/' + props.cases_info.case.id + '/modif_note_template_case',{
@@ -415,10 +609,12 @@ export default {
                 <div class="row">
                     <div class="col-6">
                         <div v-for="elem in selected_note_template.params.list" style="margin-bottom:8px;">
-                            <div class="form-floating">
+                            <fieldset class="analyzer-select-case shadow-sm">
+                                <legend class="analyzer-select-case">
+                                    <span class="section-title">[[elem]]</span> 
+                                </legend>
                                 <textarea class="form-control template-param auto-resize" rows="3" :name="elem" :id="elem" placeholder=" "></textarea>
-                                <label :for="elem">[[elem]]</label>
-                            </div>
+                            </fieldset>
                         </div>
                     </div>
 
