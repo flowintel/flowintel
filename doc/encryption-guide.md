@@ -27,7 +27,7 @@ Flowintel handles sensitive information in law enforcement and security environm
 This guide focuses on **LUKS encryption** for Linux filesystems. LUKS is one of the most robust and reliable encryption solutions available for Linux systems, offering several advantages over alternative approaches:
 
 - **Industry-leading security**: LUKS uses AES-256-XTS encryption. This encryption has been extensively peer-reviewed and is trusted by security professionals worldwide.
-- **Battle-tested reliability**: LUKS has been the standard disk encryption method for Linux distributions for over 15 years. This maturity means edge cases have been discovered and resolved, making it highly dependable for production use.
+- **Tested reliability**: LUKS has been the standard disk encryption method for Linux distributions for over 15 years. This maturity means edge cases have been discovered and resolved, making it highly dependable for production use.
 - **Transparent operation**: Applications (including Flowintel and PostgreSQL) operate normally without modification. There is no need to change application code or workflows.
 - **Flexible key management**: LUKS supports different key slots, allowing multiple administrators to have their own passphrases. Keys can be rotated without re-encrypting the entire volume.
 - **Comprehensive tooling**: The cryptsetup utility provides straightforward commands for all encryption operations, from initial setup to key rotation and recovery. Ubuntu includes LUKS support out of the box.
@@ -70,6 +70,8 @@ You have two main approaches for implementing encryption, depending on whether U
 
 **Best for**: Existing Ubuntu installations, virtual machines, environments where reinstallation is not practical.
 
+![installation-manual-diagrams/flowintel-installation-installation-encryption.png](installation-manual-diagrams/flowintel-installation-installation-encryption.png)
+
 ## Option 1: Full disk encryption (new installation)
 
 ### Prerequisites
@@ -88,7 +90,7 @@ You have two main approaches for implementing encryption, depending on whether U
 
    When prompted for installation type, choose "Try or install Ubuntu" and select the option "Encrypt the LVM group with LUKS".
 
-![LUKS-ubuntu-install.png](LUKS-ubuntu-install.png)
+![installation-manual-diagrams/LUKS-ubuntu-install.png](installation-manual-diagrams/LUKS-ubuntu-install.png)
 
 3. **Choose security key**
 
@@ -155,7 +157,7 @@ After installing Ubuntu with full disk encryption:
 
    Replace `/dev/sda3` with the actual encrypted partition from your system. For full disk encryption, this is typically on the primary system disk.
 
-3. **Continue with Flowintel installation**
+2. **Continue with Flowintel installation**
 
    Proceed with the standard Flowintel installation as documented in the installation manual. All Flowintel data will automatically be encrypted because the entire filesystem is encrypted.
 
@@ -330,9 +332,7 @@ To mount the encrypted volume at boot:
 
 5. **Test automatic unlock and mount**
 
-   The configuration you have created is processed during system boot. The most reliable way to test it is to reboot and verify that the encrypted volume is unlocked and mounted without manual intervention.
-
-   The crypttab configuration is processed during boot. Test by rebooting the system:
+   The crypttab and fstab entries you have just created are processed during system boot. The most reliable way to test them is to reboot and verify that the encrypted volume is unlocked and mounted without manual intervention:
 
    ```bash
    sudo reboot
