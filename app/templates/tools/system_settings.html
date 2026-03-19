@@ -127,27 +127,19 @@
                 </div>
             </div>
 
-            <!-- ── Core configuration ── -->
+            <!-- ── Base configuration ── -->
             <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-sliders me-2"></i>Core configuration</h6>
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-sliders me-2"></i>Base configuration</h6>
                     {% if system_info.config_last_modified %}
                     <small class="text-muted"><code>config.py</code> last modified {{ system_info.config_last_modified }}</small>
                     {% endif %}
                 </div>
                 <div class="card-body">
-                    <table class="table table-sm table-borderless mb-0">
-                        <tbody>
-                            <tr>
-                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> Application name <small class="fw-normal text-muted">(APP_NAME)</small></td>
-                                <td>{{ system_info.app_name }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
 
-                    <!-- Environment -->
-                    <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
-                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">Environment</span>
+                    <!-- Working mode -->
+                    <div class="mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
+                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">Working mode</span>
                     </div>
                     <table class="table table-sm table-borderless mb-0">
                         <tbody>
@@ -160,7 +152,28 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Secret key <small class="fw-normal text-muted">(SECRET_KEY)</small></td>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Debug mode <small class="fw-normal text-muted">(DEBUG)</small></td>
+                                <td>
+                                    <span class="badge {% if system_info.debug %}bg-danger{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.debug }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Application name <small class="fw-normal text-muted">(APP_NAME)</small></td>
+                                <td>{{ system_info.app_name }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Environment -->
+                    <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
+                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">Environment</span>
+                    </div>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> Secret key <small class="fw-normal text-muted">(SECRET_KEY)</small></td>
                                 <td>
                                     {% if system_info.secret_key_set %}
                                         <span class="badge bg-success">Configured</span>
@@ -170,12 +183,16 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Debug mode <small class="fw-normal text-muted">(DEBUG)</small></td>
-                                <td>
-                                    <span class="badge {% if system_info.debug %}bg-danger{% else %}bg-secondary{% endif %}">
-                                        {{ system_info.debug }}
-                                    </span>
-                                </td>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Flask URL <small class="fw-normal text-muted">(FLASK_URL)</small></td>
+                                <td><code>{{ system_info.flask_url or 'Not configured' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Flask port <small class="fw-normal text-muted">(FLASK_PORT)</small></td>
+                                <td><code>{{ system_info.flask_port or 'Not configured' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> MISP enrichment modules <small class="fw-normal text-muted">(MISP_MODULE)</small></td>
+                                <td><code>{{ system_info.misp_module or 'Not configured' }}</code></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Session type <small class="fw-normal text-muted">(SESSION_TYPE)</small></td>
@@ -188,18 +205,6 @@
                             <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Session storage port <small class="fw-normal text-muted">(VALKEY_PORT)</small></td>
                                 <td><code>{{ system_info.valkey_port }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Flask URL <small class="fw-normal text-muted">(FLASK_URL)</small></td>
-                                <td><code>{{ system_info.flask_url or 'Not configured' }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Flask port <small class="fw-normal text-muted">(FLASK_PORT)</small></td>
-                                <td><code>{{ system_info.flask_port or 'Not configured' }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> MISP module <small class="fw-normal text-muted">(MISP_MODULE)</small></td>
-                                <td><code>{{ system_info.misp_module or 'Not configured' }}</code></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Max upload file size <small class="fw-normal text-muted">(FILE_UPLOAD_MAX_SIZE)</small></td>
@@ -235,6 +240,10 @@
                             <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Proxy_x_proto <small class="fw-normal text-muted">(PROXY_X_PROTO)</small></td>
                                 <td><code>{{ system_info.proxy_x_proto }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Proxy_x_host <small class="fw-normal text-muted">(PROXY_X_HOST)</small></td>
+                                <td><code>{{ system_info.proxy_x_host }}</code></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Proxy_x_prefix <small class="fw-normal text-muted">(PROXY_X_PREFIX)</small></td>
@@ -302,46 +311,6 @@
                         </tbody>
                     </table>
 
-                    <!-- MISP integration -->
-                    <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
-                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">MISP integration</span>
-                    </div>
-                    <table class="table table-sm table-borderless mb-0">
-                        <tbody>
-                            <tr>
-                                <td class="fw-bold" style="width: 40%;">MISP export files <small class="fw-normal text-muted">(MISP_EXPORT_FILES)</small></td>
-                                <td>
-                                    {{ bool_edit('misp_export_files') }}
-                                    <small class="text-muted ms-1" v-if="!editing.misp_export_files">Attach case &amp; task files to MISP events</small>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">MISP event threat level <small class="fw-normal text-muted">(MISP_EVENT_THREAT_LEVEL)</small></td>
-                                <td>
-                                    {{ int_edit('misp_event_threat_level') }}
-                                    <small class="text-muted ms-1" v-if="!editing.misp_event_threat_level">
-                                        [[ {1:'High', 2:'Medium', 3:'Low'}[editValues.misp_event_threat_level] || 'Undefined' ]]
-                                        (1=High, 2=Medium, 3=Low, 4=Undefined)
-                                    </small>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">MISP event analysis <small class="fw-normal text-muted">(MISP_EVENT_ANALYSIS)</small></td>
-                                <td>
-                                    {{ int_edit('misp_event_analysis') }}
-                                    <small class="text-muted ms-1" v-if="!editing.misp_event_analysis">
-                                        [[ {0:'Initial', 1:'Ongoing', 2:'Complete'}[editValues.misp_event_analysis] || 'Unknown' ]]
-                                        (0=Initial, 1=Ongoing, 2=Complete)
-                                    </small>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">MISP add local tags all events <small class="fw-normal text-muted">(MISP_ADD_LOCAL_TAGS_ALL_EVENTS)</small></td>
-                                <td>{{ str_edit('misp_add_local_tags_all_events', code=true, empty_text='Disabled') }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
                     <!-- Theming -->
                     <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
                         <span class="fw-bold text-secondary" style="font-size: 0.85em;">Theming</span>
@@ -374,17 +343,7 @@
                             </tr>
                             <tr>
                                 <td class="fw-bold">GDPR notice <small class="fw-normal text-muted">(GDPR_NOTICE)</small></td>
-                                <td>
-                                    <span v-if="!editing.gdpr_notice" @dblclick="startEdit('gdpr_notice')" style="cursor: pointer;" title="Double-click to edit">
-                                        <small v-if="editValues.gdpr_notice">[[ editValues.gdpr_notice ]]</small>
-                                        <small v-else class="text-muted">Not set</small>
-                                    </span>
-                                    <span v-else class="d-flex align-items-center gap-1">
-                                        <input type="text" class="form-control form-control-sm ss-compact flex-grow-1" v-model="editValues.gdpr_notice">
-                                        <button class="btn btn-sm p-0 text-success" @click="saveEdit('gdpr_notice')" title="Save"><i class="fa-solid fa-floppy-disk"></i></button>
-                                        <button class="btn btn-sm p-0 text-secondary" @click="cancelEdit('gdpr_notice')" title="Cancel"><i class="fa-solid fa-xmark"></i></button>
-                                    </span>
-                                </td>
+                                <td><small>{{ str_edit('gdpr_notice', code=false) }}</small></td>
                             </tr>
                         </tbody>
                     </table>
@@ -496,6 +455,50 @@
                                 <td><code>{{ system_info.entra_role_queuer }}</code></td>
                             </tr>
                             {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── MISP integration ── -->
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-shield-halved me-2"></i>MISP integration</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">MISP export files <small class="fw-normal text-muted">(MISP_EXPORT_FILES)</small></td>
+                                <td>
+                                    {{ bool_edit('misp_export_files') }}
+                                    <small class="text-muted ms-1" v-if="!editing.misp_export_files">Attach case &amp; task files to MISP events</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">MISP event threat level <small class="fw-normal text-muted">(MISP_EVENT_THREAT_LEVEL)</small></td>
+                                <td>
+                                    {{ int_edit('misp_event_threat_level') }}
+                                    <small class="text-muted ms-1" v-if="!editing.misp_event_threat_level">
+                                        [[ {1:'High', 2:'Medium', 3:'Low'}[editValues.misp_event_threat_level] || 'Undefined' ]]
+                                        (1=High, 2=Medium, 3=Low, 4=Undefined)
+                                    </small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">MISP event analysis <small class="fw-normal text-muted">(MISP_EVENT_ANALYSIS)</small></td>
+                                <td>
+                                    {{ int_edit('misp_event_analysis') }}
+                                    <small class="text-muted ms-1" v-if="!editing.misp_event_analysis">
+                                        [[ {0:'Initial', 1:'Ongoing', 2:'Complete'}[editValues.misp_event_analysis] || 'Unknown' ]]
+                                        (0=Initial, 1=Ongoing, 2=Complete)
+                                    </small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">MISP add local tags all events <small class="fw-normal text-muted">(MISP_ADD_LOCAL_TAGS_ALL_EVENTS)</small></td>
+                                <td>{{ str_edit('misp_add_local_tags_all_events', code=true, empty_text='Disabled') }}</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>

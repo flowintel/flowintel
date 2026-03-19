@@ -370,9 +370,10 @@ def system_settings():
     db_name = getattr(config_class, 'db_name', None)
     db_host = getattr(config_class, 'db_host', None)
     
-    installation_path = str(Path(__file__).parent.parent.parent)
+    app_root = Path(__file__).parent.parent.parent
+    installation_path = str(app_root)
 
-    config_path = Path(__file__).parent.parent.parent / 'conf' / 'config.py'
+    config_path = app_root / 'conf' / 'config.py'
     try:
         config_last_modified = datetime.fromtimestamp(config_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
     except OSError:
@@ -389,7 +390,7 @@ def system_settings():
     python_version = platform.python_version()
     
     system_info = {
-        # System (display only)
+        # System
         'installation_path': installation_path,
         'os_name': os_name,
         'os_release': os_release,
@@ -399,7 +400,7 @@ def system_settings():
         'app_name': current_app.config.get('APP_NAME', 'Flowintel'),
         'config_last_modified': config_last_modified,
 
-        # Core configuration (CLI)
+        # Configuration
         'flaskenv': flaskenv,
         'secret_key_set': current_app.config.get('SECRET_KEY', '') not in ('', 'SECRET_KEY_ENV_VAR_NOT_SET'),
         'debug': current_app.config.get('DEBUG', False),
@@ -413,14 +414,15 @@ def system_settings():
         'behind_proxy': current_app.config.get('BEHIND_PROXY', False),
         'proxy_x_for': current_app.config.get('PROXY_X_FOR', 1),
         'proxy_x_proto': current_app.config.get('PROXY_X_PROTO', 1),
+        'proxy_x_host': current_app.config.get('PROXY_X_HOST', 1),
         'proxy_x_prefix': current_app.config.get('PROXY_X_PREFIX', 0),
         'system_roles': current_app.config.get('SYSTEM_ROLES', [1, 2, 3]),
 
-        # UI-editable booleans
+        # Setup
         'limit_user_view_to_org': current_app.config.get('LIMIT_USER_VIEW_TO_ORG'),
         'enforce_privileged_case': current_app.config.get('ENFORCE_PRIVILEGED_CASE', False),
 
-        # UI-editable strings
+        # Logging & theming
         'log_file': getattr(config_class, 'LOG_FILE', None),
         'audit_log_prefix': current_app.config.get('AUDIT_LOG_PREFIX', 'AUDIT'),
         'main_logo': current_app.config.get('MAIN_LOGO', ''),
@@ -431,23 +433,23 @@ def system_settings():
         'show_gdpr_notice': current_app.config.get('SHOW_GDPR_NOTICE', True),
         'gdpr_notice': current_app.config.get('GDPR_NOTICE', ''),
 
-        # MISP settings (UI-editable)
+        # MISP
         'misp_export_files': current_app.config.get('MISP_EXPORT_FILES', False),
         'misp_event_threat_level': current_app.config.get('MISP_EVENT_THREAT_LEVEL', 4),
         'misp_event_analysis': current_app.config.get('MISP_EVENT_ANALYSIS', 0),
         'misp_add_local_tags_all_events': current_app.config.get('MISP_ADD_LOCAL_TAGS_ALL_EVENTS', ''),
 
-        # Report signing (CLI)
+        # Report signing
         'gpg_enabled': bool(current_app.config.get('GPG_KEY_ID')),
         'gpg_home': current_app.config.get('GPG_HOME', ''),
         'gpg_key_id': current_app.config.get('GPG_KEY_ID', ''),
 
-        # Task status IDs (UI-editable integers)
+        # Task status IDs
         'task_requested': current_app.config.get('TASK_REQUESTED', 7),
         'task_approved': current_app.config.get('TASK_APPROVED', 8),
         'task_rejected': current_app.config.get('TASK_REJECTED', 9),
 
-        # Entra ID SSO (CLI)
+        # Entra ID SSO
         'entra_id_enabled': current_app.config.get('ENTRA_ID_ENABLED', False),
         'entra_tenant_id': current_app.config.get('ENTRA_TENANT_ID', ''),
         'entra_client_id': current_app.config.get('ENTRA_CLIENT_ID', ''),
@@ -523,15 +525,16 @@ def system_settings_save():
     else:
         py_value = repr(str(value))
 
-    config_path = Path(__file__).parent.parent.parent / 'conf' / 'config.py'
+    app_root = Path(__file__).parent.parent.parent
+    config_path = app_root / 'conf' / 'config.py'
     backup_path = config_path.parent / 'config.py.backup'
 
     # Create backup before modifying
     shutil.copy2(str(config_path), str(backup_path))
 
     content = config_path.read_text()
-    pattern = re.compile(r'^(\s+' + re.escape(key) + r'\s*=\s*)(.+)$', re.MULTILINE)
-    new_content, count = pattern.subn(lambda m: m.group(1) + py_value, content, count=1)
+    pattern = re.compile(r'^(\s+' + re.escape(key) + r'\s*=\s*)(.*?)(\s*#.*)?$', re.MULTILINE)
+    new_content, count = pattern.subn(lambda m: m.group(1) + py_value + (m.group(3) or ''), content, count=1)
 
     if count == 0:
         return jsonify({"error": f"Could not find {key} in config.py"}), 400
