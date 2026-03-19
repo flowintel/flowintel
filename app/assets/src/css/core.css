@@ -692,12 +692,12 @@ legend.analyzer-select-case {
   background:#fff; 
   border-radius:10px; 
   padding:14px; 
-  box-shadow:0 1px 5px rgba(0,0,0,0.10); 
+  box-shadow:1px 3px 7px #0000001c; 
   align-items:flex-start; 
   gap:12px; 
   border-bottom:1px solid #e9ecef; 
   padding-bottom:12px; 
-  margin-bottom:6px }
+  margin-bottom:15px }
 
 .case-meta { 
   width:auto; 
