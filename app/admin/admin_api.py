@@ -43,6 +43,21 @@ edit_org_model = admin_ns.model('EditOrg', {
     'uuid': fields.String(required=False, description='UUID of the organisation')
 })
 
+add_role_model = admin_ns.model('AddRole', {
+    'name': fields.String(required=True, description='Name for the role'),
+    'description': fields.String(required=False, description='Description of the role'),
+    'admin': fields.Boolean(required=False, description='Admin privilege'),
+    'read_only': fields.Boolean(required=False, description='Read-only privilege'),
+    'org_admin': fields.Boolean(required=False, description='Organisation admin privilege'),
+    'case_admin': fields.Boolean(required=False, description='Case admin privilege'),
+    'queue_admin': fields.Boolean(required=False, description='Queue admin privilege'),
+    'queuer': fields.Boolean(required=False, description='Queuer privilege'),
+    'audit_viewer': fields.Boolean(required=False, description='Audit viewer privilege'),
+    'template_editor': fields.Boolean(required=False, description='Template editor privilege'),
+    'misp_editor': fields.Boolean(required=False, description='MISP editor privilege'),
+    'importer': fields.Boolean(required=False, description='Importer privilege'),
+})
+
 
 
 #########
@@ -262,4 +277,48 @@ class GetRoles(Resource):
     def get(self):
         roles = AdminModel.get_all_roles()
         return {"roles": [role.to_json() for role in roles]}, 200
+
+
+@admin_ns.route('/add_role')
+@admin_ns.doc(description='Add new role')
+class AddRole(Resource):
+    method_decorators = [admin_required, api_required]
+
+    @admin_ns.expect(add_role_model)
+    def post(self):
+        if request.json:
+            api_user = get_user_api(request.headers["X-API-KEY"])
+            verif_dict = AdminModelApi.verif_add_role(request.json)
+            if "message" not in verif_dict:
+                role = AdminModel.add_role_core(verif_dict)
+                flowintel_log("audit", 200, "Role added via API", Role=role.name, RoleId=role.id, By=api_user.email)
+                return {"message": f"Role created: {role.id}", "role_id": role.id}, 201
+            return verif_dict, 400
+        return {"message": "Please give data"}, 400
+
+
+@admin_ns.route('/delete_role/<rid>')
+@admin_ns.doc(description='Delete role', params={'rid': 'id of a role'})
+class DeleteRole(Resource):
+    method_decorators = [admin_required, api_required]
+    def get(self, rid):
+        api_user = get_user_api(request.headers["X-API-KEY"])
+        role_id = int(rid)
+
+        if role_id in current_app.config['SYSTEM_ROLES']:
+            return {"message": "Cannot delete system role"}, 400
+
+        role = AdminModel.get_role(role_id)
+        if not role:
+            return {"message": "Role not found"}, 404
+
+        users_count = AdminModel.count_users_with_role(role_id)
+        if users_count > 0:
+            return {"message": f"Cannot delete role: {users_count} user(s) still assigned"}, 400
+
+        role_name = role.name
+        if AdminModel.delete_role(role_id):
+            flowintel_log("audit", 200, "Role deleted via API", RoleId=role_id, RoleName=role_name, By=api_user.email)
+            return {"message": "Role deleted"}, 200
+        return {"message": "Error deleting role"}, 400
 
