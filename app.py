@@ -50,8 +50,6 @@ parser.add_argument("-utg", "--update_taxo_galaxies", help="Update taxonomies an
 parser.add_argument("-mm", "--misp_modules", help="Add or update misp-modules", action="store_true")
 parser.add_argument("-py", "--pymisp", help="Update pymisp misp objects", action="store_true")
 parser.add_argument("-td", "--test_data", help="Create default test cases", action="store_true")
-parser.add_argument("-tdc", "--test_data_community", help="Create community test data (roles, orgs, users)", action="store_true")
-parser.add_argument("-dtdc", "--delete_test_data_community", help="Delete community test data", action="store_true")
 parser.add_argument("-tdcc", "--test_data_cases", help="Import test cases and assign to community orgs/users", action="store_true")
 parser.add_argument("-dtdcc", "--delete_test_data_cases", help="Delete community test cases", action="store_true")
 args = parser.parse_args()
@@ -112,14 +110,6 @@ elif args.test_data:
             create_default_case(admin_user)
         else:
             print("Error: No admin user found")
-elif args.test_data_community:
-    with app.app_context():
-        from app.utils.init_community_data import create_community_test_data
-        create_community_test_data()
-elif args.delete_test_data_community:
-    with app.app_context():
-        from app.utils.init_community_data import delete_community_test_data
-        delete_community_test_data()
 elif args.test_data_cases:
     with app.app_context():
         from app.utils.init_community_data import create_community_test_cases

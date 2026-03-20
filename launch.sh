@@ -195,15 +195,23 @@ function init_db_docker {
 }
 
 function test_data_community {
+    local api_key="$1"
+    if [ -z "$api_key" ]; then
+        echo "Usage: launch.sh -tdc <admin_api_key>"
+        exit 1
+    fi
     prepare_app_run
-    export FLASKENV="development"
-    python3 app.py -tdc
+    python3 tests/testdata/init_community_data.py create --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
 }
 
 function delete_test_data_community {
+    local api_key="$1"
+    if [ -z "$api_key" ]; then
+        echo "Usage: launch.sh -dtdc <admin_api_key>"
+        exit 1
+    fi
     prepare_app_run
-    export FLASKENV="development"
-    python3 app.py -dtdc
+    python3 tests/testdata/init_community_data.py delete --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
 }
 
 function test_data_cases {
@@ -233,8 +241,8 @@ if [ "$1" ]; then
         -ks | --killscript )        killscript;;
         -tg | --taxo_galaxy )       taxo_galaxy_update;;
         -mm | --misp_modules )      misp_module_update;;
-        -tdc | --test_data_community )       test_data_community;;
-        -dtdc | --delete_test_data_community ) delete_test_data_community;;
+        -tdc | --test_data_community )       test_data_community "$2";;
+        -dtdc | --delete_test_data_community ) delete_test_data_community "$2";;
         -tdcc | --test_data_cases )          test_data_cases;;
         -dtdcc | --delete_test_data_cases )  delete_test_data_cases;;
     esac
