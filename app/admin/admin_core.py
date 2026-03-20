@@ -1,7 +1,7 @@
 import datetime
 import os
 from .. import db
-from ..db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy
+from ..db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy, Notification, Recurring_Notification
 from ..utils.utils import generate_api_key
 import uuid
 
@@ -237,6 +237,8 @@ def delete_user_core(id):
     user = get_user(id)
     if user:
         Task_User.query.filter_by(user_id=user.id).delete()
+        Notification.query.filter_by(user_id=user.id).delete()
+        Recurring_Notification.query.filter_by(user_id=user.id).delete()
         if not delete_default_org(user.org_id):
             db.session.delete(user)
         db.session.commit()
