@@ -216,16 +216,12 @@ function delete_test_data_community {
 
 function test_data_cases {
     prepare_app_run
-    export FLASKENV="development"
-    export HISTORY_DIR=$history_dir/history
-    python3 app.py -tdcc
+    python3 tests/testdata/init_community_cases.py create --url "http://$APP_URL:$APP_PORT"
 }
 
 function delete_test_data_cases {
     prepare_app_run
-    export FLASKENV="development"
-    export HISTORY_DIR=$history_dir/history
-    python3 app.py -dtdcc
+    python3 tests/testdata/init_community_cases.py delete --url "http://$APP_URL:$APP_PORT"
 }
 
 if [ "$1" ]; then

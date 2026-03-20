@@ -1,7 +1,7 @@
 {
     "uuid": "c0a48002-d113-46e0-8c4a-949a936f017f",
     "title": "New Compromised Workstation",
-    "description": "## Compromised workstation \u2013 malware activity\r\n\r\nInvestigation on a compromised workstation found at institution ABC.",
+    "description": "**Compromised workstation** \u2013 malware activity\r\n\r\nInvestigation on a compromised workstation found at institution ABC.",
     "recurring_type": null,
     "notes": null,
     "time_required": "",
