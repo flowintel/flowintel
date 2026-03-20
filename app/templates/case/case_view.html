@@ -51,7 +51,7 @@
                 <span v-if="status_info" :class="'badge rounded-pill text-bg-' + status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
                     [[ status_info.status[{{case.status_id}} -1].name ]]
                 </span>
-                <span v-if="cases_info && cases_info.case.is_updated_from_misp" title="Created from MISP event">
+                <span v-if="cases_info && cases_info.case.has_misp_event && cases_info.case.misp_icon" title="Linked to MISP event">
                     <img :src="'/static/icons/' + cases_info.case.misp_icon" style="max-width: 24px; vertical-align: middle;">
                 </span>
             </div>

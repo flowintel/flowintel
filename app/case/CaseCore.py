@@ -496,20 +496,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         orgs_in_case = CommonModel.get_orgs_in_case(case.id)
         case_loc["orgs_in_case"] = [{"id": org.id, "name": org.name} for org in orgs_in_case]
 
-        # Check if case has a MISP connector with a non-empty identifier
-        has_misp_event = (
-            db.session.query(Case_Connector_Instance)
-            .join(Connector_Instance, Case_Connector_Instance.instance_id == Connector_Instance.id)
-            .join(Connector, Connector_Instance.connector_id == Connector.id)
-            .filter(
-                Case_Connector_Instance.case_id == case.id,
-                Connector.name == "MISP",
-                Case_Connector_Instance.identifier.isnot(None),
-                Case_Connector_Instance.identifier != ""
-            )
-            .first() is not None
-        )
-        case_loc["has_misp_event"] = has_misp_event
+        case_loc["has_misp_event"] = CommonModel.case_has_misp_event(case.id)
         case_loc["misp_icon"] = misp_icon
         # Include files metadata and object count for the case index
         try:
