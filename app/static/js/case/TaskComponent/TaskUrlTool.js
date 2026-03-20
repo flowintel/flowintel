@@ -120,7 +120,7 @@ export default {
             <template v-for="url_tool in task.urls_tools">
                 <div>
                     [[url_tool.name]]
-                    <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
+                    <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
                         <button @click="delete_url_tool(task, url_tool.id)" class="btn btn-danger btn-sm" style="float: right;">
                             <i class="fa-solid fa-trash"></i>
                         </button>
