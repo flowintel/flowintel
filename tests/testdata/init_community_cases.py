@@ -78,11 +78,8 @@ def _find_key(keys_map, org, role):
 
 
 def _find_assignees(keys_map, org):
-    """Return user entries with Queuer or QueueAdmin role for an org."""
-    assignees = []
-    for role in ("Queuer", "QueueAdmin"):
-        assignees.extend(keys_map.get(org, {}).get(role, []))
-    return assignees
+    """Return user entries with Queuer role for an org."""
+    return keys_map.get(org, {}).get("Queuer", [])
 
 
 def _parse_deadline(deadline_str):
