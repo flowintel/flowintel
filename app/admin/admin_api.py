@@ -111,7 +111,7 @@ class AddUser(Resource):
                 role = AdminModel.get_role(user.role_id)
                 org = AdminModel.get_org(user.org_id)
                 flowintel_log("audit", 200, "User added via API", User=request.json.get('email'), UserId=user.id, Role=role.name if role else "Unknown", Organisation=org.name if org else "Unknown", By=api_user.email)
-                return {"message": f"User created {user.id}", "id": user.id}, 201
+                return {"message": f"User created {user.id}", "id": user.id, "api_key": user.api_key}, 201
             return verif_dict, 400
         return {"message": "Please give data"}, 400
 
