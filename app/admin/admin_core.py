@@ -1,5 +1,7 @@
 import datetime
 import os
+import msgspec
+from flask import current_app
 from .. import db
 from ..db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy
 from ..utils.utils import generate_api_key
@@ -232,10 +234,27 @@ def admin_edit_user_core(form_dict, id):
         delete_default_org(prev_user_org_id)
 
 
+def _invalidate_user_sessions(user_id):
+    """Remove all server-side sessions belonging to a user."""
+    redis_client = current_app.config.get("SESSION_REDIS")
+    if not redis_client:
+        return
+    prefix = current_app.config.get("SESSION_KEY_PREFIX", "session:")
+    decoder = msgspec.msgpack.Decoder()
+    for key in redis_client.scan_iter(f"{prefix}*"):
+        try:
+            data = decoder.decode(redis_client.get(key))
+            if data.get("_user_id") == str(user_id):
+                redis_client.delete(key)
+        except Exception:
+            continue
+
+
 def delete_user_core(id):
     """Delete the user to the DB"""
     user = get_user(id)
     if user:
+        _invalidate_user_sessions(user.id)
         Task_User.query.filter_by(user_id=user.id).delete()
         if not delete_default_org(user.org_id):
             db.session.delete(user)
