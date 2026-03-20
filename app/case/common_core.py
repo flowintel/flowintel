@@ -188,8 +188,8 @@ def get_file(fid):
     return File.query.get(fid)
 
 def get_all_status():
-    """Return a list of all status"""
-    return Status.query.all()
+    """Return a list of all status ordered by display order"""
+    return Status.query.order_by(Status.order).all()
 
 def get_status(sid):
     """Return a status"""

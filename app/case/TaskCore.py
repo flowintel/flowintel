@@ -5,7 +5,7 @@ import datetime
 from flask import current_app
 from .. import db
 from ..db_class.db import (
-    Cluster, Custom_Tags, File, Note, Status, Subtask, Tags, Task,
+    Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
     Task_Tags, Task_Url_Tool, Task_External_Reference, Task_User, User, Galaxy
 )
@@ -299,6 +299,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                     html_icon="fa-solid fa-circle-exclamation"
                 )
 
+                # Optionally assign approvers so the task appears in their assignments
+                if current_app.config.get('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST'):
+                    self.assign_approvers_to_task(task, case)
+
         CommonModel.update_last_modif(cid)
 
         case = CommonModel.get_case(cid)
@@ -370,15 +374,19 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         self.update_task_time_modification(task, current_user, f"Task '{task.title}' edited")
     
     def can_edit_requested_task(self, current_user):
-        """Check if user can edit a task in Requested or Rejected status"""
+        """Check if user can edit a task in a restricted status"""
         return current_user.is_admin() or current_user.is_case_admin() or current_user.is_queue_admin()
     
     def is_task_restricted(self, task):
-        """Check if task is in a restricted status (Requested or Rejected) in a privileged case"""
+        """Check if task is in a restricted status (Requested, Rejected or Request Review) in a privileged case"""
         case = CommonModel.get_case(task.case_id)
         if not case:
             return False
-        return case.privileged_case and task.status_id in (current_app.config['TASK_REQUESTED'], current_app.config['TASK_REJECTED'])
+        return case.privileged_case and task.status_id in (
+            current_app.config['TASK_REQUESTED'],
+            current_app.config['TASK_REJECTED'],
+            current_app.config['TASK_REQUEST_REVIEW']
+        )
 
 
     def add_file_core(self, task, files_list, current_user):
@@ -531,11 +539,37 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         return False
 
 
+    def assign_approvers_to_task(self, task, case):
+        """Assign Admin, Case Admin and Queue Admin users from the owner org to the task."""
+        org = Org.query.get(case.owner_org_id)
+        if not org:
+            return
+
+        approver_roles = Role.query.filter(
+            (Role.admin == True) | (Role.case_admin == True) | (Role.queue_admin == True)
+        ).all()
+        if not approver_roles:
+            return
+
+        approver_role_ids = {role.id for role in approver_roles}
+        for user in org.users:
+            if user.role_id in approver_role_ids:
+                if not Task_User.query.filter_by(task_id=task.id, user_id=user.id).first():
+                    db.session.add(Task_User(task_id=task.id, user_id=user.id))
+                    NotifModel.create_notification_user(
+                        f"You have been assigned to: '{task.id}-{task.title}' of case '{case.id}-{case.title}'",
+                        task.case_id, user_id=user.id, html_icon="fa-solid fa-hand"
+                    )
+
+
     def change_task_status(self, status, task, current_user):
         """Return the status of a task"""
         old_status_id = task.status_id
         task.status_id = status
-        self.update_task_time_modification(task, current_user, f"Status changed for task '{task.title}'")
+
+        new_status = CommonModel.get_status(status)
+        new_status_name = new_status.name if new_status else str(status)
+        self.update_task_time_modification(task, current_user, f"Status changed to '{new_status_name}' for task '{task.id}-{task.title}'")
         
         case = CommonModel.get_case(task.case_id)
         if case and case.privileged_case:
@@ -575,6 +609,44 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                         case_id=task.case_id,
                         user_id=task_user.user_id,
                         html_icon="fa-solid fa-circle-xmark"
+                    )
+            
+            elif status == current_app.config['TASK_REQUEST_REVIEW']:
+                review_msg = f"Task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been submitted for review"
+                
+                NotifModel.create_notification_for_approvers(
+                    message=review_msg,
+                    case_id=task.case_id,
+                    org_id=case.owner_org_id,
+                    html_icon="fa-solid fa-magnifying-glass"
+                )
+
+                if current_app.config.get('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST'):
+                    self.assign_approvers_to_task(task, case)
+            
+            elif status == current_app.config['TASK_REQUESTED']:
+                requested_msg = f"Task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been set to Requested"
+                
+                NotifModel.create_notification_for_approvers(
+                    message=requested_msg,
+                    case_id=task.case_id,
+                    org_id=case.owner_org_id,
+                    html_icon="fa-solid fa-circle-exclamation"
+                )
+
+                if current_app.config.get('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST'):
+                    self.assign_approvers_to_task(task, case)
+            
+            elif old_status_id == current_app.config['TASK_REQUEST_REVIEW']:
+                status_change_msg = f"Task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been set to '{new_status_name}' after review"
+                
+                task_users = Task_User.query.filter_by(task_id=task.id).all()
+                for task_user in task_users:
+                    NotifModel.create_notification_user(
+                        message=status_change_msg,
+                        case_id=task.case_id,
+                        user_id=task_user.user_id,
+                        html_icon="fa-solid fa-circle-info"
                     )
         
         return True

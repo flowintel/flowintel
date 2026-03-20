@@ -93,6 +93,7 @@ class Config:
     TASK_REQUESTED = 7   # Task requested by Queuer in privileged case, pending approval
     TASK_APPROVED = 8    # Task approved by Admin/CaseAdmin/QueueAdmin
     TASK_REJECTED = 5    # Task rejected by Admin/CaseAdmin/QueueAdmin
+    TASK_REQUEST_REVIEW = 9  # Task submitted for review before finishing
     
     # Limit user view to own organisation
     # When True: Users can only see other users within their own organisation
@@ -106,6 +107,11 @@ class Config:
     
     # Privileged case enforcement
     ENFORCE_PRIVILEGED_CASE = os.getenv('ENFORCE_PRIVILEGED_CASE', 'false').lower() == 'true'
+
+    # Auto-assign Admin, Case Admin and Queue Admin to a task when it is
+    # set to "Requested" or "Request Review" in a privileged case.
+    # This makes the task visible in their assignment list.
+    PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST = os.getenv('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST', 'false').lower() == 'true'
 
     # Microsoft Entra ID (Azure AD) SSO configuration
     ENTRA_ID_ENABLED = os.getenv('ENTRA_ID_ENABLED', 'false').lower() == 'true'

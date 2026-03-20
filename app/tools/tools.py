@@ -407,7 +407,8 @@ def system_settings():
         'misp_add_local_tags_all_events': current_app.config.get('MISP_ADD_LOCAL_TAGS_ALL_EVENTS', ''),
         'task_requested': current_app.config.get('TASK_REQUESTED', 7),
         'task_approved': current_app.config.get('TASK_APPROVED', 8),
-        'task_rejected': current_app.config.get('TASK_REJECTED', 9),
+        'task_rejected': current_app.config.get('TASK_REJECTED', 5),
+        'task_request_review': current_app.config.get('TASK_REQUEST_REVIEW', 9),
         'gpg_enabled': bool(current_app.config.get('GPG_KEY_ID')),
         'gpg_key_id': current_app.config.get('GPG_KEY_ID', ''),
     }

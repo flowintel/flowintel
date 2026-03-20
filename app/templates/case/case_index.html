@@ -231,7 +231,7 @@
                                 <i v-if="case_loc.privileged_case" class="fa-solid fa-user-shield ms-1" title="Privileged case" style="color:#dc3545"></i>
                             </span>
                             <div class="case-status-inline">
-                                <span :class="'badge rounded-pill text-bg-'+(status_info ? status_info.status[case_loc.status_id -1].bootstrap_style : 'secondary')">[[ status_info ? status_info.status[case_loc.status_id -1].name : 'Unknown' ]]</span>
+                                <span :class="'badge rounded-pill text-bg-'+(status_info ? (status_info.status.find(s => s.id === case_loc.status_id)?.bootstrap_style || 'secondary') : 'secondary')">[[ status_info ? (status_info.status.find(s => s.id === case_loc.status_id)?.name || 'Unknown') : 'Unknown' ]]</span>
                                 <img v-if="case_loc.misp_icon" :src="'/static/icons/' + case_loc.misp_icon" style="max-height:18px;" title="Linked to MISP event"/>
                             </div>
                         </div>
@@ -289,7 +289,7 @@
                                         </template>
                                     </button>
                                 </div>
-                                <pre class="case-description" v-html="md.render(expandedCases[case_loc.id] ? case_loc.description : truncateText(case_loc.description))"></pre>
+                                <pre v-if="expandedCases[case_loc.id]" class="case-description" v-html="md.render(case_loc.description)"></pre>
                             </template>
                             <template v-else>
                                 <i style="color:#888">No description</i>
@@ -330,10 +330,17 @@
                         </div>
                     </a>
 
-                    <div class="case-actions">
+                    <div class="case-actions" v-if="!case_loc.current_user_permission.read_only && (case_loc.present_in_case || case_loc.current_user_permission.admin)">
                         <div class="compact-action-row">
                             <button v-if="case_loc.completed" class="btn btn-secondary" :title="'Revive the case'" @click="complete_case(case_loc, case_list.cases, true)"><i class="fa-solid fa-backward fa-sm"></i></button>
-                            <button v-else class="btn btn-success" :title="'Complete the case'" @click="complete_case(case_loc, case_list.cases, false)"><i class="fa-solid fa-check fa-sm"></i></button>
+                            <span v-else :title="case_loc.privileged_case && !case_loc.current_user_permission.admin && !case_loc.current_user_permission.case_admin ? 'A privileged case can only be completed by an Admin or Case Admin' : 'Complete the case'" style="display:inline-block;">
+                                <button class="btn btn-success"
+                                        @click="complete_case(case_loc, case_list.cases, false)"
+                                        :disabled="case_loc.privileged_case && !case_loc.current_user_permission.admin && !case_loc.current_user_permission.case_admin"
+                                        style="pointer-events: auto;">
+                                    <i class="fa-solid fa-check fa-sm"></i>
+                                </button>
+                            </span>
                             <a class="btn btn-primary" :href="`/case/edit/${case_loc.id}`" title="Edit"><i class="fa-solid fa-pen-to-square fa-sm"></i></a>
                         </div>
 
@@ -371,7 +378,7 @@
     <script type="module">
         const { createApp, ref, onMounted, computed} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
-        import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
+        import {getTextColor, mapIcon} from '/static/js/utils.js'
         
         createApp({
             delimiters: ['[[', ']]'],
@@ -533,7 +540,7 @@
                         case_loc.last_modif = Date.now()
                         case_loc.completed = !case_loc.completed
 
-                        if(status_info.value.status[case_loc.status_id -1].name == 'Finished'){
+                        if(status_info.value.status.find(s => s.id === case_loc.status_id)?.name == 'Finished'){
                             for(let i in status_info.value.status){
                                 if(status_info.value.status[i].name == 'Created')
                                 case_loc.status_id = status_info.value.status[i].id
@@ -717,8 +724,7 @@
                     onInput,
                     change_status_sort,
                     change_switch_check,
-                    fetch_sorted_cases,
-                    truncateText
+                    fetch_sorted_cases
                     ,deadlineSoon
                 }
             }

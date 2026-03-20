@@ -142,10 +142,13 @@
 		});
 
 		const activePage = localStorage.getItem("activePage");
-		if (!activePage) return;
+		// When viewing a case (e.g. /case/2), highlight "Cases" in the sidebar
+		const currentPath = window.location.pathname;
+		const effectivePage = (currentPath.startsWith('/case/') && /^\/case\/\d/.test(currentPath)) ? '/case/' : activePage;
+		if (!effectivePage) return;
 
 		// Find the matching link
-		const activeLink = document.querySelector(`.nav-link[href="${activePage}"], .collapse-item[href="${activePage}"]`);
+		const activeLink = document.querySelector(`.nav-link[href="${effectivePage}"], .collapse-item[href="${effectivePage}"]`);
 		if (!activeLink) return;
 
 		activeLink.classList.add("active");

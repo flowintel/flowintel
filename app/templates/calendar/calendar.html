@@ -278,7 +278,7 @@
                         $("#modal_task_label").text(d.title).css("margin-right", "5px")
                         $("#status_modal").empty()
                         if (d.status_id && status_info.value && status_info.value.status){
-                            const s = status_info.value.status[d.status_id -1]
+                            const s = status_info.value.status.find(st => st.id === d.status_id)
                             if (s) {
                                 $("#status_modal").append(
                                     $("<span>").attr({"class": "badge rounded-pill text-bg-"+s.bootstrap_style}).text(s.name)
