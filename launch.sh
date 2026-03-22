@@ -154,7 +154,8 @@ function init_db_prod {
     python3 app.py -i
     python3 app.py -tg
     python3 app.py -mm
-    python3 app.py -td
+    # don't import test data for prod 
+    #python3 app.py -td
 }
 
 function reload_db {
