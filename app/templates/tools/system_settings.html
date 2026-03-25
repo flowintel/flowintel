@@ -1,63 +1,102 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
+{# ── Inline-editing macros ── #}
+
+{% macro bool_edit(key, true_class='bg-success', false_class='bg-secondary') %}
+<span v-if="!editing.{{ key }}" @dblclick="startEdit('{{ key }}')" style="cursor: pointer;" title="Double-click to edit">
+    <span class="badge" :class="editValues.{{ key }} ? '{{ true_class }}' : '{{ false_class }}'">
+        [[ editValues.{{ key }} ? 'True' : 'False' ]]
+    </span>
+</span>
+<span v-else class="d-inline-flex align-items-center gap-1">
+    <select class="form-select form-select-sm ss-compact" v-model="editValues.{{ key }}">
+        <option :value="true">True</option>
+        <option :value="false">False</option>
+    </select>
+    <button class="btn btn-sm p-0 text-success" @click="saveEdit('{{ key }}')" title="Save"><i class="fa-solid fa-floppy-disk"></i></button>
+    <button class="btn btn-sm p-0 text-secondary" @click="cancelEdit('{{ key }}')" title="Cancel"><i class="fa-solid fa-xmark"></i></button>
+</span>
+{% endmacro %}
+
+{% macro str_edit(key, code=true, empty_text='Not set') %}
+<span v-if="!editing.{{ key }}" @dblclick="startEdit('{{ key }}')" style="cursor: pointer;" title="Double-click to edit">
+    {% if code %}<code v-if="editValues.{{ key }}">[[ editValues.{{ key }} ]]</code>{% else %}<span v-if="editValues.{{ key }}">[[ editValues.{{ key }} ]]</span>{% endif %}
+    <span v-else class="text-muted">{{ empty_text }}</span>
+</span>
+<span v-else class="d-flex align-items-center gap-1">
+    <input type="text" class="form-control form-control-sm ss-compact flex-grow-1" v-model="editValues.{{ key }}">
+    <button class="btn btn-sm p-0 text-success" @click="saveEdit('{{ key }}')" title="Save"><i class="fa-solid fa-floppy-disk"></i></button>
+    <button class="btn btn-sm p-0 text-secondary" @click="cancelEdit('{{ key }}')" title="Cancel"><i class="fa-solid fa-xmark"></i></button>
+</span>
+{% endmacro %}
+
+{% macro int_edit(key) %}
+<span v-if="!editing.{{ key }}" @dblclick="startEdit('{{ key }}')" style="cursor: pointer;" title="Double-click to edit">
+    <code>[[ editValues.{{ key }} ]]</code>
+</span>
+<span v-else class="d-inline-flex align-items-center gap-1">
+    <input type="number" class="form-control form-control-sm ss-compact" style="width: 80px;" v-model.number="editValues.{{ key }}" @keydown="filterNumericKey">
+    <button class="btn btn-sm p-0 text-success" @click="saveEdit('{{ key }}')" title="Save"><i class="fa-solid fa-floppy-disk"></i></button>
+    <button class="btn btn-sm p-0 text-secondary" @click="cancelEdit('{{ key }}')" title="Cancel"><i class="fa-solid fa-xmark"></i></button>
+</span>
+{% endmacro %}
+
 <div class="case-core-style" style="border-radius: 0">
-    <h5 class="mb-0"><i class="fa-solid fa-gears me-2"></i>System Settings</h5>
+    <h5 class="mb-0"><i class="fa-solid fa-gears me-2"></i>System settings</h5>
 </div>
 <hr class="fading-line-2 mb-4 mt-4">
 
 <div class="container-fluid">
+
+    <style>
+        small.text-danger.fw-bold { font-size: 0.6em; vertical-align: middle; }
+        .card-body .ss-compact.form-select-sm,
+        .card-body .ss-compact.form-control-sm {
+            padding: 1px 6px;
+            min-height: 0;
+            height: auto;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        .card-body select.ss-compact.form-select-sm {
+            padding-right: 24px;
+        }
+    </style>
+
+    <!-- Legend -->
+    <div class="mb-3">
+        <small class="text-danger fw-bold">CLI</small>
+        <small class="text-muted"> = read-only setting. Edit <code>config.py</code> to modify configuration.</small>
+    </div>
+
+    <div v-if="backupCreated" class="alert alert-info d-flex align-items-start mb-3" role="alert">
+        <i class="fa-solid fa-circle-info me-2 mt-1"></i>
+        <div>
+            Configuration backup stored in <code>config.py.backup</code>.
+            To restore, manually copy <code>conf/config.py.backup</code> over <code>conf/config.py</code> and restart the application.
+        </div>
+        <button type="button" class="btn-close ms-auto" @click="backupCreated = false"></button>
+    </div>
+
     <div class="row">
         <div class="col-lg-6">
+
+            <!-- ── System ── -->
             <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-server me-2"></i>System</h6>
                 </div>
                 <div class="card-body">
-                    <table class="table table-sm table-borderless">
+                    <table class="table table-sm table-borderless mb-0">
                         <tbody>
                             <tr>
-                                <td class="fw-bold" style="width: 40%;">Environment</td>
-                                <td>
-                                    <span class="badge {% if system_info.flaskenv == 'production' %}bg-success{% elif system_info.flaskenv == 'development' %}bg-warning{% else %}bg-secondary{% endif %}">
-                                        {{ system_info.flaskenv }}
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Session Type</td>
-                                <td>{{ system_info.session_type or 'Not configured' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Debug Mode</td>
-                                <td>
-                                    <span class="badge {% if system_info.debug %}bg-danger{% else %}bg-success{% endif %}">
-                                        {{ system_info.debug }}
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Flask URL</td>
-                                <td><code>{{ system_info.flask_url or 'Not configured' }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Flask Port</td>
-                                <td><code>{{ system_info.flask_port or 'Not configured' }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">MISP Module</td>
-                                <td><code>{{ system_info.misp_module or 'Not configured' }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Log File</td>
-                                <td><code>{{ system_info.log_file or 'Not configured' }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Installation Path</td>
+                                <td class="fw-bold" style="width: 40%;">Installation path</td>
                                 <td><code style="font-size: 0.85em;">{{ system_info.installation_path }}</code></td>
                             </tr>
                             <tr>
-                                <td class="fw-bold">Operating System</td>
+                                <td class="fw-bold">Operating system</td>
                                 <td>
                                     <span class="badge {% if system_info.os_name == 'Linux' %}bg-success{% elif system_info.os_name == 'Darwin' %}bg-info{% elif system_info.os_name == 'Windows' %}bg-primary{% else %}bg-secondary{% endif %}">
                                         {{ system_info.os_name }}
@@ -66,11 +105,11 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td class="fw-bold">Python Version</td>
+                                <td class="fw-bold">Python version</td>
                                 <td><code>{{ system_info.python_version }}</code></td>
                             </tr>
                             <tr>
-                                <td class="fw-bold">Running As</td>
+                                <td class="fw-bold">Running as</td>
                                 <td>
                                     <code>{{ system_info.process_user }}</code>
                                     {% if system_info.process_uid is not none %}
@@ -88,15 +127,87 @@
                 </div>
             </div>
 
+            <!-- ── Base configuration ── -->
             <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-sliders me-2"></i>Configuration</h6>
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-sliders me-2"></i>Base configuration</h6>
+                    {% if system_info.config_last_modified %}
+                    <small class="text-muted"><code>config.py</code> last modified {{ system_info.config_last_modified }}</small>
+                    {% endif %}
                 </div>
                 <div class="card-body">
-                    <table class="table table-sm table-borderless">
+
+                    <!-- Working mode -->
+                    <div class="mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
+                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">Working mode</span>
+                    </div>
+                    <table class="table table-sm table-borderless mb-0">
                         <tbody>
                             <tr>
-                                <td class="fw-bold" style="width: 40%;">Max Upload Size</td>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> System environment <small class="fw-normal text-muted">(FLASKENV)</small></td>
+                                <td>
+                                    <span class="badge {% if system_info.flaskenv == 'production' %}bg-success{% elif system_info.flaskenv == 'development' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.flaskenv }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Debug mode <small class="fw-normal text-muted">(DEBUG)</small></td>
+                                <td>
+                                    <span class="badge {% if system_info.debug %}bg-danger{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.debug }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Application name <small class="fw-normal text-muted">(APP_NAME)</small></td>
+                                <td>{{ system_info.app_name }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Environment -->
+                    <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
+                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">Environment</span>
+                    </div>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> Secret key <small class="fw-normal text-muted">(SECRET_KEY)</small></td>
+                                <td>
+                                    {% if system_info.secret_key_set %}
+                                        <span class="badge bg-success">Configured</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Not set</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Flask URL <small class="fw-normal text-muted">(FLASK_URL)</small></td>
+                                <td><code>{{ system_info.flask_url or 'Not configured' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Flask port <small class="fw-normal text-muted">(FLASK_PORT)</small></td>
+                                <td><code>{{ system_info.flask_port or 'Not configured' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> MISP enrichment modules <small class="fw-normal text-muted">(MISP_MODULE)</small></td>
+                                <td><code>{{ system_info.misp_module or 'Not configured' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Session type <small class="fw-normal text-muted">(SESSION_TYPE)</small></td>
+                                <td>{{ system_info.session_type or 'Not configured' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Session storage host <small class="fw-normal text-muted">(VALKEY_IP)</small></td>
+                                <td><code>{{ system_info.valkey_ip }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Session storage port <small class="fw-normal text-muted">(VALKEY_PORT)</small></td>
+                                <td><code>{{ system_info.valkey_port }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Max upload file size <small class="fw-normal text-muted">(FILE_UPLOAD_MAX_SIZE)</small></td>
                                 <td>
                                     {% if system_info.file_upload_max_size %}
                                         {{ (system_info.file_upload_max_size / 1024 / 1024) | round(2) }} MB
@@ -105,123 +216,301 @@
                                     {% endif %}
                                 </td>
                             </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Proxy -->
+                    <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
+                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">Proxy</span>
+                    </div>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
                             <tr>
-                                <td class="fw-bold">Org View Restriction</td>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> Behind proxy <small class="fw-normal text-muted">(BEHIND_PROXY)</small></td>
                                 <td>
-                                    <span class="badge {% if system_info.limit_user_view_to_org %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {{ system_info.limit_user_view_to_org }}
+                                    <span class="badge {% if system_info.behind_proxy %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.behind_proxy }}
                                     </span>
                                 </td>
                             </tr>
                             <tr>
-                                <td class="fw-bold">Enforce Privileged Case</td>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Proxy_x_for <small class="fw-normal text-muted">(PROXY_X_FOR)</small></td>
+                                <td><code>{{ system_info.proxy_x_for }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Proxy_x_proto <small class="fw-normal text-muted">(PROXY_X_PROTO)</small></td>
+                                <td><code>{{ system_info.proxy_x_proto }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Proxy_x_host <small class="fw-normal text-muted">(PROXY_X_HOST)</small></td>
+                                <td><code>{{ system_info.proxy_x_host }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Proxy_x_prefix <small class="fw-normal text-muted">(PROXY_X_PREFIX)</small></td>
+                                <td><code>{{ system_info.proxy_x_prefix }}</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- System roles -->
+                    <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
+                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">System roles</span>
+                    </div>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> System roles <small class="fw-normal text-muted">(SYSTEM_ROLES)</small></td>
+                                <td><code>{{ system_info.system_roles }}</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Setup -->
+                    <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
+                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">Setup</span>
+                    </div>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">Org view restriction <small class="fw-normal text-muted">(LIMIT_USER_VIEW_TO_ORG)</small></td>
+                                <td>{{ bool_edit('limit_user_view_to_org') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Enforce privileged case <small class="fw-normal text-muted">(ENFORCE_PRIVILEGED_CASE)</small></td>
+                                <td>{{ bool_edit('enforce_privileged_case') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Task status ID Requested <small class="fw-normal text-muted">(TASK_REQUESTED)</small></td>
+                                <td>{{ int_edit('task_requested') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Task status ID Approved <small class="fw-normal text-muted">(TASK_APPROVED)</small></td>
+                                <td>{{ int_edit('task_approved') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Task status ID Rejected <small class="fw-normal text-muted">(TASK_REJECTED)</small></td>
+                                <td>{{ int_edit('task_rejected') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Logging -->
+                    <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
+                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">Logging</span>
+                    </div>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">Log file <small class="fw-normal text-muted">(LOG_FILE)</small></td>
+                                <td>{{ str_edit('log_file', code=true, empty_text='Not configured') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Audit log prefix <small class="fw-normal text-muted">(AUDIT_LOG_PREFIX)</small></td>
+                                <td>{{ str_edit('audit_log_prefix') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Theming -->
+                    <div class="mt-3 mb-2 pb-1" style="border-bottom: 1px solid #dee2e6;">
+                        <span class="fw-bold text-secondary" style="font-size: 0.85em;">Theming</span>
+                    </div>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">Main logo <small class="fw-normal text-muted">(MAIN_LOGO)</small></td>
+                                <td>{{ str_edit('main_logo') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Topright logo <small class="fw-normal text-muted">(TOPRIGHT_LOGO)</small></td>
+                                <td>{{ str_edit('topright_logo') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Welcome text top <small class="fw-normal text-muted">(WELCOME_TEXT_TOP)</small></td>
+                                <td>{{ str_edit('welcome_text_top', code=false) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Welcome text bottom <small class="fw-normal text-muted">(WELCOME_TEXT_BOTTOM)</small></td>
+                                <td>{{ str_edit('welcome_text_bottom', code=false) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Welcome logo <small class="fw-normal text-muted">(WELCOME_LOGO)</small></td>
+                                <td>{{ str_edit('welcome_logo') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Show GDPR notice <small class="fw-normal text-muted">(SHOW_GDPR_NOTICE)</small></td>
+                                <td>{{ bool_edit('show_gdpr_notice') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">GDPR notice <small class="fw-normal text-muted">(GDPR_NOTICE)</small></td>
+                                <td><small>{{ str_edit('gdpr_notice', code=false) }}</small></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="col-lg-6">
+
+            <!-- ── Report signing ── -->
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-file-signature me-2"></i>Report signing</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> GPG signing <small class="fw-normal text-muted">(GPG_KEY_ID)</small></td>
                                 <td>
-                                    <span class="badge {% if system_info.enforce_privileged_case %}bg-warning{% else %}bg-secondary{% endif %}">
-                                        {{ system_info.enforce_privileged_case }}
+                                    <span class="badge {% if system_info.gpg_enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {% if system_info.gpg_enabled %}Enabled{% else %}Disabled{% endif %}
                                     </span>
                                 </td>
                             </tr>
+                            {% if system_info.gpg_enabled %}
                             <tr>
-                                <td class="fw-bold">Entra ID SSO</td>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> GPG home directory <small class="fw-normal text-muted">(GPG_HOME)</small></td>
+                                <td><code>{{ system_info.gpg_home or 'Default (~/.gnupg)' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> GPG key ID <small class="fw-normal text-muted">(GPG_KEY_ID)</small></td>
+                                <td><code>{{ system_info.gpg_key_id }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> GPG passphrase <small class="fw-normal text-muted">(GPG_PASSPHRASE)</small></td>
+                                <td><span class="badge bg-secondary">Configured</span></td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── Entra ID SSO ── -->
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-brands fa-microsoft me-2"></i>Entra ID SSO</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> Enabled <small class="fw-normal text-muted">(ENTRA_ID_ENABLED)</small></td>
                                 <td>
                                     <span class="badge {% if system_info.entra_id_enabled %}bg-success{% else %}bg-secondary{% endif %}">
                                         {{ system_info.entra_id_enabled }}
                                     </span>
                                 </td>
                             </tr>
+                            {% if system_info.entra_id_enabled %}
                             <tr>
-                                <td class="fw-bold">Repository Base Path</td>
-                                <td><code>{{ system_info.repository_base_path }}</code></td>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Tenant ID <small class="fw-normal text-muted">(ENTRA_TENANT_ID)</small></td>
+                                <td><code>{{ system_info.entra_tenant_id }}</code></td>
                             </tr>
                             <tr>
-                                <td class="fw-bold">MISP Export Files</td>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(ENTRA_CLIENT_ID)</small></td>
+                                <td><code>{{ system_info.entra_client_id }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Redirect URL <small class="fw-normal text-muted">(ENTRA_REDIRECT_URL)</small></td>
+                                <td><code style="font-size: 0.85em;">{{ system_info.entra_redirect_url }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group admin <small class="fw-normal text-muted">(ENTRA_GROUP_ADMIN)</small></td>
+                                <td><code>{{ system_info.entra_group_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group editor <small class="fw-normal text-muted">(ENTRA_GROUP_EDITOR)</small></td>
+                                <td><code>{{ system_info.entra_group_editor }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group read only <small class="fw-normal text-muted">(ENTRA_GROUP_READONLY)</small></td>
+                                <td><code>{{ system_info.entra_group_readonly }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group case admin <small class="fw-normal text-muted">(ENTRA_GROUP_CASE_ADMIN)</small></td>
+                                <td><code>{{ system_info.entra_group_case_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role case admin <small class="fw-normal text-muted">(ENTRA_ROLE_CASE_ADMIN)</small></td>
+                                <td><code>{{ system_info.entra_role_case_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group queue admin <small class="fw-normal text-muted">(ENTRA_GROUP_QUEUE_ADMIN)</small></td>
+                                <td><code>{{ system_info.entra_group_queue_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role queue admin <small class="fw-normal text-muted">(ENTRA_ROLE_QUEUE_ADMIN)</small></td>
+                                <td><code>{{ system_info.entra_role_queue_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group queuer <small class="fw-normal text-muted">(ENTRA_GROUP_QUEUER)</small></td>
+                                <td><code>{{ system_info.entra_group_queuer }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role queuer <small class="fw-normal text-muted">(ENTRA_ROLE_QUEUER)</small></td>
+                                <td><code>{{ system_info.entra_role_queuer }}</code></td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── MISP integration ── -->
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-shield-halved me-2"></i>MISP integration</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">MISP export files <small class="fw-normal text-muted">(MISP_EXPORT_FILES)</small></td>
                                 <td>
-                                    <span class="badge {% if system_info.misp_export_files %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {{ system_info.misp_export_files }}
-                                    </span>
-                                    <small class="text-muted ms-1">Attach case &amp; task files to MISP events</small>
+                                    {{ bool_edit('misp_export_files') }}
+                                    <small class="text-muted ms-1" v-if="!editing.misp_export_files">Attach case &amp; task files to MISP events</small>
                                 </td>
                             </tr>
                             <tr>
-                                <td class="fw-bold">MISP Event Threat Level</td>
+                                <td class="fw-bold">MISP event threat level <small class="fw-normal text-muted">(MISP_EVENT_THREAT_LEVEL)</small></td>
                                 <td>
-                                    <code>{{ system_info.misp_event_threat_level }}</code>
-                                    <small class="text-muted ms-1">
-                                        {% if system_info.misp_event_threat_level == 1 %}High
-                                        {% elif system_info.misp_event_threat_level == 2 %}Medium
-                                        {% elif system_info.misp_event_threat_level == 3 %}Low
-                                        {% else %}Undefined{% endif %}
+                                    {{ int_edit('misp_event_threat_level') }}
+                                    <small class="text-muted ms-1" v-if="!editing.misp_event_threat_level">
+                                        [[ {1:'High', 2:'Medium', 3:'Low'}[editValues.misp_event_threat_level] || 'Undefined' ]]
                                         (1=High, 2=Medium, 3=Low, 4=Undefined)
                                     </small>
                                 </td>
                             </tr>
                             <tr>
-                                <td class="fw-bold">MISP Event Analysis</td>
+                                <td class="fw-bold">MISP event analysis <small class="fw-normal text-muted">(MISP_EVENT_ANALYSIS)</small></td>
                                 <td>
-                                    <code>{{ system_info.misp_event_analysis }}</code>
-                                    <small class="text-muted ms-1">
-                                        {% if system_info.misp_event_analysis == 0 %}Initial
-                                        {% elif system_info.misp_event_analysis == 1 %}Ongoing
-                                        {% elif system_info.misp_event_analysis == 2 %}Complete
-                                        {% else %}Unknown{% endif %}
+                                    {{ int_edit('misp_event_analysis') }}
+                                    <small class="text-muted ms-1" v-if="!editing.misp_event_analysis">
+                                        [[ {0:'Initial', 1:'Ongoing', 2:'Complete'}[editValues.misp_event_analysis] || 'Unknown' ]]
                                         (0=Initial, 1=Ongoing, 2=Complete)
                                     </small>
                                 </td>
                             </tr>
                             <tr>
-                                <td class="fw-bold">MISP Local Tags</td>
-                                <td>
-                                    {% if system_info.misp_add_local_tags_all_events %}
-                                        {% if system_info.misp_add_local_tags_all_events is iterable and system_info.misp_add_local_tags_all_events is not string %}
-                                            {% for tag in system_info.misp_add_local_tags_all_events %}
-                                                <code>{{ tag }}</code>{% if not loop.last %}, {% endif %}
-                                            {% endfor %}
-                                        {% else %}
-                                            <code>{{ system_info.misp_add_local_tags_all_events }}</code>
-                                        {% endif %}
-                                        <small class="text-muted ms-1">Added as local tags to every exported event</small>
-                                    {% else %}
-                                        <span class="text-muted">Disabled</span>
-                                    {% endif %}
-                                </td>
+                                <td class="fw-bold">MISP add local tags all events <small class="fw-normal text-muted">(MISP_ADD_LOCAL_TAGS_ALL_EVENTS)</small></td>
+                                <td>{{ str_edit('misp_add_local_tags_all_events', code=true, empty_text='Disabled') }}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-list-check me-2"></i>Task Status IDs</h6>
-                </div>
-                <div class="card-body">
-                    <table class="table table-sm table-borderless">
-                        <tbody>
-                            <tr>
-                                <td class="fw-bold" style="width: 40%;">Requested</td>
-                                <td><code>{{ system_info.task_requested }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Approved</td>
-                                <td><code>{{ system_info.task_approved }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Rejected</td>
-                                <td><code>{{ system_info.task_rejected }}</code></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-6">
+            <!-- ── Database ── -->
             <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-database me-2"></i>Database</h6>
                 </div>
                 <div class="card-body">
-                    <table class="table table-sm table-borderless">
+                    <table class="table table-sm table-borderless mb-0">
                         <tbody>
                             <tr>
                                 <td class="fw-bold" style="width: 40%;">Type</td>
@@ -248,36 +537,6 @@
                 </div>
             </div>
 
-            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-file-signature me-2"></i>Report Signing</h6>
-                </div>
-                <div class="card-body">
-                    <table class="table table-sm table-borderless">
-                        <tbody>
-                            <tr>
-                                <td class="fw-bold" style="width: 40%;">GPG Signing</td>
-                                <td>
-                                    <span class="badge {% if system_info.gpg_enabled %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {% if system_info.gpg_enabled %}Enabled{% else %}Disabled{% endif %}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% if system_info.gpg_enabled %}
-                            <tr>
-                                <td class="fw-bold">Key ID</td>
-                                <td><code>{{ system_info.gpg_key_id }}</code></td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="alert alert-info">
-                <i class="fa-solid fa-circle-info me-2"></i>
-                This page displays read-only configuration. To modify settings, edit <code>conf/config.py</code> or set environment variables and restart the application.
-            </div>
         </div>
     </div>
 </div>
@@ -286,14 +545,121 @@
 
 {% block script %}
 <script type="module">
-    const { createApp } = Vue
+    const { createApp, reactive, ref } = Vue
     import { message_list } from '/static/js/toaster.js'
 
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
+            const editing = reactive({
+                limit_user_view_to_org: false,
+                enforce_privileged_case: false,
+                misp_export_files: false,
+                show_gdpr_notice: false,
+                log_file: false,
+                audit_log_prefix: false,
+                main_logo: false,
+                topright_logo: false,
+                welcome_text_top: false,
+                welcome_text_bottom: false,
+                welcome_logo: false,
+                gdpr_notice: false,
+                misp_add_local_tags_all_events: false,
+                task_requested: false,
+                task_approved: false,
+                task_rejected: false,
+                misp_event_threat_level: false,
+                misp_event_analysis: false
+            })
+
+            const editValues = reactive({
+                limit_user_view_to_org: {{ system_info.limit_user_view_to_org | tojson }},
+                enforce_privileged_case: {{ system_info.enforce_privileged_case | tojson }},
+                misp_export_files: {{ system_info.misp_export_files | tojson }},
+                show_gdpr_notice: {{ system_info.show_gdpr_notice | tojson }},
+                log_file: {{ (system_info.log_file or '') | tojson }},
+                audit_log_prefix: {{ (system_info.audit_log_prefix or '') | tojson }},
+                main_logo: {{ (system_info.main_logo or '') | tojson }},
+                topright_logo: {{ (system_info.topright_logo or '') | tojson }},
+                welcome_text_top: {{ (system_info.welcome_text_top or '') | tojson }},
+                welcome_text_bottom: {{ (system_info.welcome_text_bottom or '') | tojson }},
+                welcome_logo: {{ (system_info.welcome_logo or '') | tojson }},
+                gdpr_notice: {{ (system_info.gdpr_notice or '') | tojson }},
+                {% if system_info.misp_add_local_tags_all_events is iterable and system_info.misp_add_local_tags_all_events is not string %}
+                misp_add_local_tags_all_events: {{ system_info.misp_add_local_tags_all_events | join(', ') | tojson }},
+                {% else %}
+                misp_add_local_tags_all_events: {{ (system_info.misp_add_local_tags_all_events or '') | tojson }},
+                {% endif %}
+                task_requested: {{ system_info.task_requested | tojson }},
+                task_approved: {{ system_info.task_approved | tojson }},
+                task_rejected: {{ system_info.task_rejected | tojson }},
+                misp_event_threat_level: {{ system_info.misp_event_threat_level | tojson }},
+                misp_event_analysis: {{ system_info.misp_event_analysis | tojson }}
+            })
+
+            const backupCreated = ref(false)
+            const originalValues = reactive({})
+
+            function filterNumericKey(event) {
+                if (event.ctrlKey || event.metaKey) return
+                if (event.key.length === 1 && !/\d/.test(event.key)) {
+                    event.preventDefault()
+                }
+            }
+
+            function startEdit(key) {
+                // Close any other open editor first
+                for (const k in editing) {
+                    if (editing[k] && k !== key) {
+                        editValues[k] = originalValues[k]
+                        editing[k] = false
+                    }
+                }
+                originalValues[key] = editValues[key]
+                editing[key] = true
+            }
+
+            async function saveEdit(key) {
+                try {
+                    const res = await fetch('/tools/system_settings/save', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.getElementById('csrf_token').value
+                        },
+                        body: JSON.stringify({ key: key, value: editValues[key] })
+                    })
+                    if (res.ok) {
+                        const data = await res.json()
+                        if (data.backup_created) backupCreated.value = true
+                        editing[key] = false
+                    } else {
+                        const err = await res.json()
+                        message_list.push({ message: err.error || 'Save failed', type: 'warning' })
+                        editValues[key] = originalValues[key]
+                        editing[key] = false
+                    }
+                } catch (e) {
+                    message_list.push({ message: 'Could not reach the server', type: 'warning' })
+                    editValues[key] = originalValues[key]
+                    editing[key] = false
+                }
+            }
+
+            function cancelEdit(key) {
+                editValues[key] = originalValues[key]
+                editing[key] = false
+            }
+
             return {
-                message_list
+                message_list,
+                editing,
+                editValues,
+                backupCreated,
+                filterNumericKey,
+                startEdit,
+                saveEdit,
+                cancelEdit
             }
         }
     }).mount('#main-container')
