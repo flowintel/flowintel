@@ -73,6 +73,7 @@
                                     <span class="icons">
                                         <i v-if="case_loc.is_private" class="fa-solid fa-lock" title="Private"></i>
                                         <i v-else class="fa-solid fa-globe" title="Public"></i>
+                                        <i v-if="case_loc.privileged_case" class="fa-solid fa-user-shield ms-1" title="Privileged case" style="color:#dc3545"></i>
                                     </span>
                                     <div class="case-status-inline">
                                         <span :class="'badge rounded-pill text-bg-'+(status_info ? status_info.status[case_loc.status_id -1].bootstrap_style : 'secondary')">[[ status_info ? status_info.status[case_loc.status_id -1].name : 'Unknown' ]]</span>
