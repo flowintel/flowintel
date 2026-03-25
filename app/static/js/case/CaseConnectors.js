@@ -188,6 +188,7 @@ export default {
 
             if (props.is_case) {
                 props.cases_info.case.is_updated_from_misp = true
+                props.cases_info.case.has_misp_event = true
             }
         }
 
