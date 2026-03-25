@@ -1,5 +1,4 @@
 import {display_toast, create_message} from '../toaster.js'
-import AddObjectAttributes from './AddObjectAttributes.js'
 const { ref, onMounted, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -8,21 +7,23 @@ export default {
 		cases_info: Object
 	},
     emits: ['modif_misp_objects'],
-    components: {
-        AddObjectAttributes,
-    },
 	setup(props, {emit}) {
         const case_misp_objects = ref([])
         const misp_objects = ref([])
         const activeTemplate = ref({requiredOneOf: [],})
         const activeTemplateAttr = ref({requiredOneOf: [],})
         const selectedQuickTemplate = ref('');
+        const showAddObject = ref(false)
+        const newObjectAttrState = ref({ relation_type_combo: '', value: '', first_seen: '', last_seen: '', comment: '', ids_flag: false, disable_correlation: true })
+        const editingObjectAttrId = ref(null)
+        const editObjectAttrState = ref({})
+        const objectAttrCount = ref(0)
         const list_attr = ref([])
         const editingAttrId = ref(null)
         const editState = ref({})
         const addingAttrToObject = ref(null)
         const newAttrState = ref({})
-        const compactView = ref(false)
+        const compactView = ref(true)
 
         const defaultObjectTemplates = {
             'domain/ip': '43b3b146-77eb-4931-b4cc-b66c60f28734',
@@ -52,15 +53,100 @@ export default {
             }
         }
 
-        async function save_changes(object_id=null, key=null) {
+        function toggleAddObject() {
+            showAddObject.value = !showAddObject.value
+            if (!showAddObject.value) {
+                resetAddObjectForm()
+            }
+        }
+
+        function resetAddObjectForm() {
+            activeTemplate.value = { requiredOneOf: [] }
+            selectedQuickTemplate.value = ''
+            newObjectAttrState.value = { relation_type_combo: '', value: '', first_seen: '', last_seen: '', comment: '', ids_flag: false, disable_correlation: true }
+            list_attr.value = []
+            objectAttrCount.value = 0
+            editingObjectAttrId.value = null
+        }
+
+        function cancelAddObject() {
+            showAddObject.value = false
+            resetAddObjectForm()
+        }
+
+        function addObjectAttribute() {
+            let s = newObjectAttrState.value
+            if (!s.value) {
+                create_message("Need to add a value", "warning-subtle")
+                return
+            }
+            if (!s.relation_type_combo) {
+                create_message("Need to select a type", "warning-subtle")
+                return
+            }
+            let parts = s.relation_type_combo.split('::')
+            objectAttrCount.value += 1
+            list_attr.value.push({
+                id: objectAttrCount.value, value: s.value,
+                object_relation: parts[0], type: parts[1],
+                first_seen: s.first_seen, last_seen: s.last_seen,
+                comment: s.comment, ids_flag: s.ids_flag,
+                disable_correlation: s.disable_correlation
+            })
+            s.value = ''
+            s.comment = ''
+            s.first_seen = ''
+            s.last_seen = ''
+            s.ids_flag = false
+            s.disable_correlation = true
+        }
+
+        function removeObjectAttribute(attr_id) {
+            let idx = list_attr.value.findIndex(a => a.id === attr_id)
+            if (idx !== -1) {
+                list_attr.value.splice(idx, 1)
+            }
+        }
+
+        function startEditObjectAttr(attr) {
+            editingObjectAttrId.value = attr.id
+            editObjectAttrState.value = {
+                value: attr.value,
+                relation_type_combo: attr.object_relation + '::' + attr.type,
+                first_seen: attr.first_seen,
+                last_seen: attr.last_seen,
+                comment: attr.comment,
+                ids_flag: attr.ids_flag,
+                disable_correlation: attr.disable_correlation
+            }
+        }
+
+        function cancelEditObjectAttr() {
+            editingObjectAttrId.value = null
+            editObjectAttrState.value = {}
+        }
+
+        function saveEditObjectAttr(attr_id) {
+            let s = editObjectAttrState.value
+            if (!s.value) { create_message("Need to add a value", "warning-subtle"); return }
+            if (!s.relation_type_combo) { create_message("Need to select a type", "warning-subtle"); return }
+            let parts = s.relation_type_combo.split('::')
+            let idx = list_attr.value.findIndex(a => a.id === attr_id)
+            if (idx !== -1) {
+                list_attr.value.splice(idx, 1, {
+                    id: attr_id, value: s.value,
+                    object_relation: parts[0], type: parts[1],
+                    first_seen: s.first_seen, last_seen: s.last_seen,
+                    comment: s.comment, ids_flag: s.ids_flag,
+                    disable_correlation: s.disable_correlation
+                })
+            }
+            cancelEditObjectAttr()
+        }
+
+        async function save_changes() {
             if(list_attr.value.length){
-                let url = ""
-                if (object_id){
-                    url = "/case/"+props.case_id+"/add_attributes/"+object_id
-                }else{
-                    url = "/case/"+props.case_id+"/create_misp_object"
-                }
-                const res = await fetch(url, {
+                const res = await fetch("/case/"+props.case_id+"/create_misp_object", {
                     method: "POST",
                     headers: {
                         "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
@@ -71,28 +157,14 @@ export default {
                     })
                 });
                 if(await res.status==200){
-                    list_attr.value = []
-                    activeTemplate.value = {}
                     await fetch_case_misp_object()
-                    if(key){
-                        $("#modal-add-attribute-"+key).modal("hide")
-
-                        var myModal = new bootstrap.Modal(document.getElementById("modal-add-attribute-"+key), {});
-                        myModal.hide();
-                    }
+                    cancelAddObject()
                     emit("modif_misp_objects", true)
                 }
                 display_toast(res)
             }else{
                 create_message("Need to add an attribute", "warning-subtle")
             }
-        }
-
-        function add_attribute_list(object){
-            list_attr.value.push(object)            
-        }
-        function delete_attribute_list(object){
-            list_attr.value.splice(object, 1)
         }
 
         function toggleCompactView() {
@@ -118,13 +190,6 @@ export default {
                 emit("modif_misp_objects", true)
             }
             display_toast(res)
-        }
-
-        async function open_modal_add_attribute(template_uuid, modal_id, key){
-            activeTemplateAttr.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid);
-            var myModal = new bootstrap.Modal(document.getElementById(modal_id + key), {});
-            myModal.show();
-            
         }
 
         async function delete_attribute(attribute_id, misp_object_id) {
@@ -372,17 +437,6 @@ export default {
 		onMounted(() => {
             fetch_case_misp_object()
             fetch_misp_object()
-
-            $('.select2-misp-object').select2({
-                theme: 'bootstrap-5',
-                dropdownParent: $("#modal-add-object")
-            })
-            $('.select2-misp-object').on('change.select2', function (e) {
-                activeTemplate.value = misp_objects.value.find(
-                    (objectTemplate) => objectTemplate.uuid === $(this).select2('data').map(item => item.id)[0]
-                );
-            })
-            
         })
 
 		return {
@@ -392,12 +446,20 @@ export default {
             activeTemplateAttr,
             selectedQuickTemplate,
             list_attr,
+            showAddObject,
+            newObjectAttrState,
+            editingObjectAttrId,
+            editObjectAttrState,
+            toggleAddObject,
+            cancelAddObject,
+            addObjectAttribute,
+            removeObjectAttribute,
+            startEditObjectAttr,
+            cancelEditObjectAttr,
+            saveEditObjectAttr,
             save_changes,
-            add_attribute_list,
-            delete_attribute_list,
             copyUuidToClipboard,
             delete_object,
-            open_modal_add_attribute,
             delete_attribute,
             editingAttrId,
             editState,
@@ -413,27 +475,10 @@ export default {
             toggleCompactView
 		}
     },
-    css: `
-        .tab-content {
-            border-left: 1px solid #ddd;
-            border-right: 1px solid #ddd;
-            border-bottom: 1px solid #ddd;
-            padding: 10px;
-        }
 
-        .nav-tabs {
-            margin-bottom: 0;
-        }
-
-        .figure {
-            width: 100px;
-            text-align: center;
-            vertical-align: middle;
-        }
-    `,
 	template: `
     <div class="mb-1">
-        <button class="btn btn-primary" title="Add a new object" data-bs-toggle="modal" data-bs-target="#modal-add-object">
+        <button class="btn btn-primary" title="Add a new object" @click="toggleAddObject()">
             <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
         </button>
         <a v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" 
@@ -446,6 +491,229 @@ export default {
             <span class="d-none d-sm-inline ms-1">[[ compactView ? 'Detailed' : 'Compact' ]]</span>
         </button>
     </div>
+
+    <!-- Inline panel -->
+    <div v-if="showAddObject" class="card mb-3 mt-2">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold">Add object</span>
+            <button type="button" class="btn-close" @click="cancelAddObject()" aria-label="Close"></button>
+        </div>
+        <div class="card-body">
+            <div class="btn-group mb-3" role="group">
+                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                    v-bind:value="'domain/ip'" name="btnradio-inline" id="btn-domain-ip-inline" autocomplete="off">
+                <label class="btn btn-outline-primary" for="btn-domain-ip-inline">
+                    <i class="fa-solid fa-network-wired fa-lg mt-2" />
+                    <p class="mb-0 mt-1" style="font-size: 0.8rem;">Domain/IP</p>
+                </label>
+                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                    v-bind:value="'url/domain'" name="btnradio-inline" id="btn-url-domain-inline" autocomplete="off">
+                <label class="btn btn-outline-primary" for="btn-url-domain-inline">
+                    <i class="fa-solid fa-link fa-lg mt-2" />
+                    <p class="mb-0 mt-1" style="font-size: 0.8rem;">URL/Domain</p>
+                </label>
+                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                    v-bind:value="'file/hash'" name="btnradio-inline" id="btn-file-hash-inline" autocomplete="off">
+                <label class="btn btn-outline-primary" for="btn-file-hash-inline">
+                    <i class="fa-solid fa-file-lines fa-lg mt-2" />
+                    <p class="mb-0 mt-1" style="font-size: 0.8rem;">File/Hash</p>
+                </label>
+                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                    v-bind:value="'vulnerability'" name="btnradio-inline" id="btn-vulnerability-inline" autocomplete="off">
+                <label class="btn btn-outline-primary" for="btn-vulnerability-inline">
+                    <i class="fa-solid fa-skull-crossbones fa-lg mt-2" />
+                    <p class="mb-0 mt-1" style="font-size: 0.8rem;">Vulnerability</p>
+                </label>
+                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                    v-bind:value="'financial'" name="btnradio-inline" id="btn-financial-inline" autocomplete="off">
+                <label class="btn btn-outline-primary" for="btn-financial-inline">
+                    <i class="fa-solid fa-money-check-dollar fa-lg mt-2" />
+                    <p class="mb-0 mt-1" style="font-size: 0.8rem;">Financial</p>
+                </label>
+                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                    v-bind:value="'personal'" name="btnradio-inline" id="btn-person-inline" autocomplete="off">
+                <label class="btn btn-outline-primary" for="btn-person-inline">
+                    <i class="fa-solid fa-person fa-lg mt-2" />
+                    <p class="mb-0 mt-1" style="font-size: 0.8rem;">Personal</p>
+                </label>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Or select a template from the list:</label>
+                <select class="form-select" @change="activeTemplate = misp_objects.find(o => o.uuid === $event.target.value) || { requiredOneOf: [] }">
+                    <option value="">--</option>
+                    <template v-for="object in misp_objects">
+                        <option :value="object.uuid" :selected="activeTemplate.uuid === object.uuid">[[object.name]]</option>
+                    </template>
+                </select>
+            </div>
+
+            <div v-if="activeTemplate.uuid">
+                <div class="mb-2">
+                    <span class="fw-bold">[[ activeTemplate.name ]] </span>
+                    <span class="badge bg-light text-dark">[[activeTemplate.uuid]] </span>
+                    <button type="button" class="btn btn-sm"><i class="text-primary fa-solid fa-copy"
+                            @click="copyUuidToClipboard" /></button>
+                    <span class="badge bg-secondary">[[ activeTemplate.meta_category ]]</span>
+                    <div class="text-muted" style="font-size: 0.85rem;">[[ activeTemplate.description ]]</div>
+                    <div v-if="activeTemplate.requiredOneOf && activeTemplate.requiredOneOf.length" class="text-muted" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-circle-info me-1"></i>Required (at least one): [[ activeTemplate.requiredOneOf.join(', ') ]]
+                    </div>
+                </div>
+
+                <hr>
+
+                <h6 class="fw-bold">Add attributes</h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                        <select v-model="newObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                            <option value="">-- select --</option>
+                            <template v-for="attr in activeTemplate.attributes">
+                                <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                        <input v-model="newObjectAttrState.value" class="form-control form-control-sm" type="text" placeholder="Value" style="font-size: 0.875rem;">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
+                        <input v-model="newObjectAttrState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Last Seen</label>
+                        <input v-model="newObjectAttrState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">IDS</label>
+                        <div class="form-check mt-1">
+                            <input v-model="newObjectAttrState.ids_flag" type="checkbox" class="form-check-input">
+                        </div>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;" title="Disable correlation">Corr.</label>
+                        <div class="form-check mt-1">
+                            <input v-model="newObjectAttrState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Comment</label>
+                        <input v-model="newObjectAttrState.comment" class="form-control form-control-sm" type="text" placeholder="Comment" style="font-size: 0.875rem;">
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary btn-sm" @click="addObjectAttribute()">
+                            <i class="fa-solid fa-plus me-1"></i>Add attribute
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Added attributes table -->
+                <div v-if="list_attr.length" class="table-responsive mb-3">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Object Relation</th>
+                                <th>Type</th>
+                                <th>Value</th>
+                                <th>First Seen</th>
+                                <th>Last Seen</th>
+                                <th>IDS</th>
+                                <th>Comment</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="attr in list_attr" :key="attr.id">
+                                <template v-if="editingObjectAttrId !== attr.id">
+                                    <td>[[attr.object_relation]]</td>
+                                    <td>[[attr.type]]</td>
+                                    <td>[[attr.value]]</td>
+                                    <td>[[attr.first_seen || '-']]</td>
+                                    <td>[[attr.last_seen || '-']]</td>
+                                    <td>[[attr.ids_flag]]</td>
+                                    <td>[[attr.comment || '-']]</td>
+                                    <td style="white-space: nowrap;">
+                                        <button type="button" class="btn btn-primary btn-sm" @click="startEditObjectAttr(attr)" title="Edit">
+                                            <i class="fa-solid fa-fw fa-pen-to-square"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm" @click="removeObjectAttribute(attr.id)" title="Remove">
+                                            <i class="fa-solid fa-fw fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </template>
+                                <template v-else>
+                                    <td colspan="8" style="padding: 1rem;">
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                                                <select v-model="editObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                    <template v-for="a in activeTemplate.attributes">
+                                                        <option :value="a.name + '::' + a.misp_attribute">[[a.name]]::[[a.misp_attribute]]</option>
+                                                    </template>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                                                <input v-model="editObjectAttrState.value" class="form-control form-control-sm" type="text" style="font-size: 0.875rem;">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
+                                                <input v-model="editObjectAttrState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Last Seen</label>
+                                                <input v-model="editObjectAttrState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">IDS</label>
+                                                <div class="form-check mt-1">
+                                                    <input v-model="editObjectAttrState.ids_flag" type="checkbox" class="form-check-input">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;" title="Disable correlation">Corr.</label>
+                                                <div class="form-check mt-1">
+                                                    <input v-model="editObjectAttrState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Comment</label>
+                                                <input v-model="editObjectAttrState.comment" class="form-control form-control-sm" type="text" placeholder="Comment" style="font-size: 0.875rem;">
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-primary btn-sm" @click="saveEditObjectAttr(attr.id)">
+                                                <i class="fa-solid fa-fw fa-check me-1"></i>Save
+                                            </button>
+                                            <button type="button" class="btn btn-secondary btn-sm" @click="cancelEditObjectAttr()">
+                                                <i class="fa-solid fa-fw fa-times me-1"></i>Cancel
+                                            </button>
+                                        </div>
+                                    </td>
+                                </template>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" @click="save_changes()">
+                        <i class="fa-solid fa-check me-1"></i>Save
+                    </button>
+                    <button type="button" class="btn btn-secondary" @click="cancelAddObject()">
+                        <i class="fa-solid fa-times me-1"></i>Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div v-for="misp_object, key_obj in case_misp_objects" class="accordion col-6 p-1" :id="'accordion-'+key_obj">
             <div class="accordion-item">
@@ -660,137 +928,5 @@ export default {
         </div>
     </div>
 
-    <!-- Modal Add object -->
-    <div class="modal fade" id="modal-add-object" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="EditObjectLabel">Add Object</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-
-                <div class="modal-body">
-                    <ul class="nav nav-tabs" id="addObjectTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="category-tab" data-bs-toggle="tab"
-                                data-bs-target="#category" type="button" role="tab" aria-controls="category"
-                                aria-selected="true">Category</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="attributes-tab" data-bs-toggle="tab"
-                                :disabled="!activeTemplate.uuid" data-bs-target="#attributes" type="button"
-                                role="tab" aria-controls="attributes" aria-selected="false">Attributes</button>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content" id="add-object-tab-content">
-                        <div class="tab-pane show active" id="category" role="tabpanel"
-                            aria-labelledby="category-tab">
-                            <div class="btn-group" role="group">
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'domain/ip'" name="btnradio" id="btn-domain-ip"
-                                    autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-domain-ip">
-                                    <i class="fa-solid fa-network-wired fa-2xl mt-3" />
-                                    <p>Domain/IP</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'url/domain'" name="btnradio" id="btn-url-domain"
-                                    autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-url-domain">
-                                    <i class="fa-solid fa-link fa-2xl mt-3" />
-                                    <p>URL/Domain</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'file/hash'" name="btnradio" id="btn-file-hash"
-                                    autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-file-hash">
-                                    <i class="fa-solid fa-file-lines fa-2xl mt-3" />
-                                    <p>File/Hash</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'vulnerability'" name="btnradio" id="btn-vulnerability"
-                                    autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-vulnerability">
-                                    <i class="fa-solid fa-skull-crossbones fa-2xl mt-3" />
-                                    <p>Vulnerability</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'financial'" name="btnradio" id="btn-financial"
-                                    autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-financial">
-                                    <i class="fa-solid fa-money-check-dollar fa-2xl mt-3" />
-                                    <p>Financial</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'personal'" name="btnradio" id="btn-person" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-person">
-                                    <i class="fa-solid fa-person fa-2xl mt-3" />
-                                    <p>Personal</p>
-                                </label>
-                            </div>
-                            <div class="col text-start mt-3">
-                                <label for="activeTemplate" class="form-label">Or select a template from the
-                                    list:</label>
-                                <select class="select2-misp-object">
-                                    <option value="">--</option>
-                                    <template v-for="object in misp_objects">
-                                        <option :value="object.uuid">[[object.name]]</option>
-                                    </template>
-                                </select>
-                            </div>
-                            <div v-if="activeTemplate.uuid">
-                                <div class="mt-3">
-                                    <span class="fw-bold">[[ activeTemplate.name ]] </span>
-                                    <span class="badge bg-light text-dark">[[activeTemplate.uuid]] </span>
-                                    <button type="button" class="btn"><i class="text-primary fa-solid fa-copy"
-                                            @click="copyUuidToClipboard" /></button>
-                                    <span class="badge bg-secondary">[[ activeTemplate.meta_category ]]</span>
-                                    <div>[[ activeTemplate.description ]]</div>
-                                </div>
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th style="width: 30%" scope="col">type</th>
-                                            <th style="width: 30%" scope="col">MISP type</th>
-                                            <th style="width: 30%" scope="col">correlate</th>
-                                            <th style="width: 30%" scope="col">multiple</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <template :key="attribute.id" v-for="attribute in activeTemplate.attributes">
-                                            <tr>
-                                                <td>[[ attribute.name ]] </td>
-                                                <td>[[ attribute.misp_attribute ]]</td>
-                                                <td>[[ attribute.disable_correlation ]]</td>
-                                                <td>[[ attribute.multiple ]]</td>
-                                            </tr>
-                                            <tr>
-                                                <td></td>
-                                                <td colspan="3" class="text-secondary">[[ attribute.description ]]</td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="attributes" role="tabpanel" aria-labelledby="attributes-tab">
-                            <AddObjectAttributes v-if="activeTemplate.uuid"
-                                :key_obj="activeTemplate.uuid"
-                                :template="activeTemplate"
-                                :only_attr="false"
-                                @object-attribute-added="(object) => add_attribute_list(object)"
-                                @object-attribute-deleted="delete_attribute_list"/>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" @click="save_changes()">Save changes</button>
-                </div>
-            </div>
-        </div>
-    </div>
     `
 }
