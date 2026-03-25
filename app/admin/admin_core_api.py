@@ -137,3 +137,14 @@ def verif_edit_org(data_dict, org_id):
 
     return data_dict
 
+
+def verif_add_role(data_dict):
+    if "name" not in data_dict or not data_dict["name"]:
+        return {"message": "Please give a name for the role"}
+    elif Role.query.filter_by(name=data_dict["name"]).first():
+        return {"message": "Name already exists"}
+
+    if "description" not in data_dict or not data_dict["description"]:
+        data_dict["description"] = ""
+
+    return data_dict
