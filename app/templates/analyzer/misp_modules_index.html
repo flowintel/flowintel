@@ -240,9 +240,9 @@
                     let loc = await res.json()
                     all_notes.value = loc["notes"]
 
-                    const res_task = await fetch("/case/"+case_selected.value.id+"/sort_tasks")
+                    const res_task = await fetch("/case/"+case_selected.value.id+"/sort_tasks?per_page=0")
                     let loc_task = await res_task.json()
-                    result_search_task.value = loc_task
+                    result_search_task.value = loc_task.tasks
 
                     fetch_case_misp_object(case_selected.value.id)
 

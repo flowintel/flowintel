@@ -746,7 +746,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         
         return query.where(Task.case_id==case_id).filter(and_(*conditions)).order_by(Task.case_order_id).all()
 
-    def sort_tasks(self, case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False, filter=False, title_search=None):
+    def sort_tasks(self, case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False, filter=False, title_search=None, page=1, per_page=10):
         """Sort all tasks by completed and depending of taxonomies and galaxies"""
 
 
@@ -787,14 +787,22 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 ql = title_search.lower()
                 tasks = [t for t in tasks if ql in getattr(t, 'title','').lower()]
 
-            return self.get_task_info(tasks, user)
+            total = len(tasks)
+            if per_page > 0:
+                start = (page - 1) * per_page
+                tasks = tasks[start:start + per_page]
+            return {"tasks": self.get_task_info(tasks, user), "total": total}
 
         # apply title search when no 'filter' parameter used
         if title_search:
             ql = title_search.lower()
             tasks = [t for t in tasks if ql in getattr(t, 'title','').lower()]
 
-        return self.get_task_info(tasks, user)
+        total = len(tasks)
+        if per_page > 0:
+            start = (page - 1) * per_page
+            tasks = tasks[start:start + per_page]
+        return {"tasks": self.get_task_info(tasks, user), "total": total}
 
     def change_order(self, case, task, request_json):
         """Change the order of tasks"""

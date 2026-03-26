@@ -291,7 +291,8 @@ def get_case_info(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Get case info: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
-        tasks = TaskModel.sort_tasks(case, current_user, completed=False)
+        tasks_result = TaskModel.sort_tasks(case, current_user, completed=False)
+        tasks = tasks_result["tasks"]
 
         o_in_c = CommonModel.get_orgs_in_case(case.id)
         orgs_in_case = [o_c.to_json() for o_c in o_in_c]

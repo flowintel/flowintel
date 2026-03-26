@@ -48,7 +48,7 @@
                 <span v-if="cases_info && cases_info.case.privileged_case" class="case-visibility-badge" title="Privileged case - four-eye-review workflow">
                     <i class="fa-solid fa-user-shield" style="color: #dc3545;"></i>
                 </span>
-                <span v-if="status_info" :class="'badge rounded-pill text-bg-' + (status_info.status.find(s => s.id === cases_info.case.status_id)?.bootstrap_style || 'secondary')" id="id-case-status">
+                <span v-if="status_info && cases_info" :class="'badge rounded-pill text-bg-' + (status_info.status.find(s => s.id === cases_info.case.status_id)?.bootstrap_style || 'secondary')" id="id-case-status">
                     [[ status_info.status.find(s => s.id === cases_info.case.status_id)?.name ]]
                 </span>
                 <span v-if="cases_info && cases_info.case.has_misp_event && cases_info.case.misp_icon" title="Linked to MISP event">
@@ -753,6 +753,33 @@
                         </div>
                     </template>
                 </div>
+
+                <!-- Pagination -->
+                <nav v-if="total_pages > 1" aria-label="Task pagination" class="mt-3 d-flex justify-content-center">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item" :class="{ disabled: current_page <= 1 }">
+                            <a class="page-link" href="#task-collapse" @click.prevent="go_to_page(current_page - 1)">
+                                <i class="fa-solid fa-chevron-left fa-xs"></i>
+                            </a>
+                        </li>
+                        <template v-for="p in total_pages" :key="p">
+                            <li v-if="p === 1 || p === total_pages || (p >= current_page - 2 && p <= current_page + 2)" class="page-item" :class="{ active: p === current_page }">
+                                <a class="page-link" href="#task-collapse" @click.prevent="go_to_page(p)">[[ p ]]</a>
+                            </li>
+                            <li v-else-if="p === current_page - 3 || p === current_page + 3" class="page-item disabled">
+                                <span class="page-link">&hellip;</span>
+                            </li>
+                        </template>
+                        <li class="page-item" :class="{ disabled: current_page >= total_pages }">
+                            <a class="page-link" href="#task-collapse" @click.prevent="go_to_page(current_page + 1)">
+                                <i class="fa-solid fa-chevron-right fa-xs"></i>
+                            </a>
+                        </li>
+                    </ul>
+                    <span class="ms-3 text-muted align-self-center" style="font-size: 0.82rem;">
+                        [[ total_tasks ]] task<span v-if="total_tasks !== 1">s</span>
+                    </span>
+                </nav>
             </template>
             <template v-else-if="tasks_tab == 'tasks-notes'">
                 <template v-for="(notes, idx) in all_notes">
@@ -829,6 +856,10 @@
                 let or_and_galaxies = true
 
                 const is_open_cases = ref(true)
+
+                const current_page = ref(1)
+                const total_tasks = ref(0)
+                const per_page = 10
 
                 const main_tab = ref('main')
                 const subtab_note = ref('case')
@@ -1017,6 +1048,7 @@
 
                 async function change_status_sort(status){
                     is_open_cases.value = status
+                    current_page.value = 1
                     await fetch_sorted_tasks()
                 }
 
@@ -1025,6 +1057,7 @@
                     if (changeOperator) or_and_taxo = !or_and_taxo
                     if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
 
+                    current_page.value = 1
                     fetch_sorted_tasks()
                 }
 
@@ -1047,20 +1080,24 @@
 
                     let url = `/case/${cases_info.value.case.id}/sort_tasks?${loc_status}${loc_filter}${loc_or_and_taxo}${loc_or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`
                     if (search_query.value) url += '&q=' + encodeURIComponent(search_query.value)
+                    url += `&page=${current_page.value}&per_page=${per_page}`
                     
                     const res = await fetch(url)
                     let loc = await res.json()
 
+                    total_tasks.value = loc.total
+
                     if(asc_desc)
-                        cases_info.value.tasks = loc.reverse()
+                        cases_info.value.tasks = loc.tasks.reverse()
                     else
-                        cases_info.value.tasks = loc
+                        cases_info.value.tasks = loc.tasks
 
                     loc_tasks_list = cases_info.value.tasks
                 }
 
                 function sort_by_filter(filter){
                     current_filter = filter
+                    current_page.value = 1
                     fetch_sorted_tasks()
                 }
 
@@ -1081,6 +1118,7 @@
                         fetch_open_closed()
                         fetch_nb_misp_objects()
                         resolveAndSetNotes()
+                        await fetch_sorted_tasks()
 
                         $('.select2-select-add-orgs').select2({
                             theme: 'bootstrap-5',
@@ -1130,6 +1168,7 @@
                 function onInput(e){
                     clearTimeout(searchTimer)
                     search_query.value = e.target.value
+                    current_page.value = 1
                     searchTimer = setTimeout(() => fetch_sorted_tasks(), 300)
                 }
 
@@ -1453,6 +1492,7 @@
 
                     $('#filter_tags_select').on('change', function (e) {
                         selected_tags.value = $(this).select2('data').map(item => item.id);
+                        current_page.value = 1
                         fetch_sorted_tasks()
                     })
                     $('#filter_galaxies_select').on('change', function (e) {
@@ -1461,11 +1501,13 @@
                     })
                     $('#filter_clusters_select').on('change', function (e) {
                         selected_clusters.value = $(this).select2('data').map(item => item.id);
+                        current_page.value = 1
                         fetch_sorted_tasks()
                     })
 
                     $('#task_custom_tags_select').on('change', function (e) {
                         selected_custom_tags.value = $(this).select2('data').map(item => item.id);
+                        current_page.value = 1
                         fetch_sorted_tasks()
                     })
                 }
@@ -1673,6 +1715,14 @@
                     // (users refreshed via Vue event emitted by child component)
                 })
 
+                const total_pages = computed(() => Math.ceil(total_tasks.value / per_page))
+
+                function go_to_page(page) {
+                    if (page < 1 || page > total_pages.value) return
+                    current_page.value = page
+                    fetch_sorted_tasks()
+                }
+
                 const can_edit_case = computed(() => {
                     if (!cases_info.value) return false
                     const permission = cases_info.value.permission
@@ -1748,6 +1798,11 @@
                     get_completion_pourcentage,
                     get_completion_color,
                     is_open_cases,
+
+                    current_page,
+                    total_tasks,
+                    total_pages,
+                    go_to_page,
 
                     resolved_case_notes,
                     resolved_case_notes_html,
