@@ -392,7 +392,9 @@ def get_status():
         "config": {
             "TASK_REQUESTED": current_app.config.get('TASK_REQUESTED', 7),
             "TASK_APPROVED": current_app.config.get('TASK_APPROVED', 8),
-            "TASK_REJECTED": current_app.config.get('TASK_REJECTED', 5)
+            "TASK_REJECTED": current_app.config.get('TASK_REJECTED', 5),
+            "TASK_REQUEST_REVIEW": current_app.config.get('TASK_REQUEST_REVIEW', 9),
+            "PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST": current_app.config.get('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST', False)
         }
     }), 200
 

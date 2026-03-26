@@ -30,7 +30,7 @@ def upgrade():
     # Check if Approved status exists
     result = bind.execute(text("SELECT COUNT(*) FROM status WHERE name = 'Approved'")).scalar()
     if result == 0:
-        bind.execute(text("INSERT INTO status (name, bootstrap_style) VALUES ('Approved', 'info')"))
+        bind.execute(text("INSERT INTO status (name, bootstrap_style) VALUES ('Approved', 'success')"))
 
 
 def downgrade():

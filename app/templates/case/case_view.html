@@ -48,8 +48,8 @@
                 <span v-if="cases_info && cases_info.case.privileged_case" class="case-visibility-badge" title="Privileged case - four-eye-review workflow">
                     <i class="fa-solid fa-user-shield" style="color: #dc3545;"></i>
                 </span>
-                <span v-if="status_info" :class="'badge rounded-pill text-bg-' + status_info.status[{{case.status_id}} -1].bootstrap_style" id="id-case-status">
-                    [[ status_info.status[{{case.status_id}} -1].name ]]
+                <span v-if="status_info" :class="'badge rounded-pill text-bg-' + (status_info.status.find(s => s.id === {{case.status_id}})?.bootstrap_style || 'secondary')" id="id-case-status">
+                    [[ status_info.status.find(s => s.id === {{case.status_id}})?.name ]]
                 </span>
                 <span v-if="cases_info && cases_info.case.has_misp_event && cases_info.case.misp_icon" title="Linked to MISP event">
                     <img :src="'/static/icons/' + cases_info.case.misp_icon" style="max-width: 24px; vertical-align: middle;">
@@ -117,16 +117,130 @@
     <!-- Description (collapsible) -->
     {% if case.description %}
     <div class="case-description-section">
-        <button class="btn btn-link btn-sm case-description-toggle" type="button" 
-                data-bs-toggle="collapse" data-bs-target="#collapseDescription" 
-                aria-expanded="true" aria-controls="collapseDescription">
+        <button class="btn btn-link btn-sm case-description-toggle" type="button"
+                @click="showDescription = !showDescription"
+                :aria-expanded="showDescription">
             <i class="fa-solid fa-chevron-down"></i> Description
         </button>
-        <div class="collapse show" id="collapseDescription">
+        <div v-show="showDescription">
             <pre class="case-description" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
         </div>
     </div>
     {% endif %}
+
+    <!-- Privileged case workflow (collapsed by default) -->
+    <template v-if="cases_info && cases_info.case && cases_info.case.privileged_case && status_info">
+        <div class="mt-3" style="font-size: 0.85rem;">
+            <button class="btn btn-link btn-sm text-decoration-none p-0" type="button"
+                    @click="showWorkflow = !showWorkflow">
+                <i class="fa-solid fa-shield-halved fa-sm me-1"></i>
+                <i class="fa-solid" :class="showWorkflow ? 'fa-chevron-down' : 'fa-chevron-right'" style="font-size: 0.6rem;"></i> Privileged case workflow
+            </button>
+            <div v-show="showWorkflow">
+                <div class="mt-2 px-3 py-3 rounded" style="background-color: var(--bs-tertiary-bg); font-size: 0.84rem;">
+                    <!-- Legend -->
+                    <div class="d-flex gap-3 mb-3" style="font-size: 0.78rem;">
+                        <span><i class="fa-solid fa-circle fa-xs me-1" style="color: #0d6efd;"></i>Requester</span>
+                        <span><i class="fa-solid fa-circle fa-xs me-1" style="color: #dc3545;"></i>Approver</span>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div style="position: relative; padding-left: 28px;">
+                        <!-- Vertical line -->
+                        <div style="position: absolute; left: 9px; top: 10px; bottom: 10px; width: 2px; background: linear-gradient(to bottom, #0d6efd 0%, #dc3545 18%, #0d6efd 32%, #0d6efd 50%, #dc3545 65%, #dc3545 78%, #dc3545 100%); border-radius: 1px;"></div>
+
+                        <!-- Step 1: Submit (Requester) -->
+                        <div class="d-flex align-items-start mb-3" style="position: relative;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #0d6efd; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">1</span>
+                            </span>
+                            <div>
+                                <strong>Submit a new task</strong>
+                                <span class="text-muted">: requires approval from an approver.</span>
+                                <template v-if="status_info.config.PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST">
+                                    <br><small class="text-info"><i class="fa-solid fa-user-plus fa-sm me-1"></i>Approvers are assigned automatically.</small>
+                                </template>
+                                <br><small class="text-muted"><i class="fa-solid fa-bell fa-sm me-1"></i>All approvers are notified.</small>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Approval (Approver) -->
+                        <div class="d-flex align-items-start mb-3" style="position: relative;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #dc3545; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">2</span>
+                            </span>
+                            <div>
+                                <strong>Approval or rejection</strong>
+                                <span class="text-muted">: an approver reviews the task and either approves or rejects it.</span>
+                                <br><small class="text-muted"><i class="fa-solid fa-bell fa-sm me-1"></i>The requester is notified of the decision.</small>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Work (Requester) -->
+                        <div class="d-flex align-items-start mb-3" style="position: relative;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #0d6efd; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">3</span>
+                            </span>
+                            <div>
+                                <strong>Work on the task</strong>
+                                <span class="text-muted">: once approved, the assignee can set the task to Created, Ongoing or Request Review.</span>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Request review (Requester) -->
+                        <div class="d-flex align-items-start mb-3" style="position: relative;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #0d6efd; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">4</span>
+                            </span>
+                            <div>
+                                <strong>Request review</strong>
+                                <span class="text-muted">: the assignee submits the task for review by an approver.</span>
+                                <template v-if="status_info.config.PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST">
+                                    <br><small class="text-info"><i class="fa-solid fa-user-plus fa-sm me-1"></i>Approvers are assigned automatically.</small>
+                                </template>
+                                <br><small class="text-muted"><i class="fa-solid fa-bell fa-sm me-1"></i>All approvers are notified.</small>
+                            </div>
+                        </div>
+
+                        <!-- Step 5: Final review (Approver) -->
+                        <div class="d-flex align-items-start mb-3" style="position: relative;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #dc3545; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">5</span>
+                            </span>
+                            <div>
+                                <strong>Final review</strong>
+                                <span class="text-muted">: an approver either finishes the task or returns it to the assignee for further work.</span>
+                                <br><small class="text-muted"><i class="fa-solid fa-rotate-left fa-sm me-1"></i>If returned, the workflow continues from step 3.</small>
+                                <br><small class="text-muted"><i class="fa-solid fa-bell fa-sm me-1"></i>The requester is notified of the outcome.</small>
+                            </div>
+                        </div>
+
+                        <!-- Step 6: Complete task (Approver) -->
+                        <div class="d-flex align-items-start mb-3" style="position: relative;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #dc3545; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">6</span>
+                            </span>
+                            <div>
+                                <strong>Complete the task</strong>
+                                <span class="text-muted">: once in Finished status, a task can be completed by an Admin or Case Admin.</span>
+                            </div>
+                        </div>
+
+                        <!-- Step 7: Complete case (Approver) -->
+                        <div class="d-flex align-items-start" style="position: relative;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #dc3545; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">7</span>
+                            </span>
+                            <div>
+                                <strong>Complete the case</strong>
+                                <span class="text-muted">: a privileged case can only be completed by an Admin or Case Admin.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
 </div>
 
 <div class="case-core-style mt-4" id="case-main-nav">
@@ -428,7 +542,6 @@
     </div> <!-- Collapse  -->
 </div> <!-- Case-core-style  -->
 
-    
 <hr class="fading-line-2 mt-4 mb-5">
 
 
@@ -735,6 +848,8 @@
                 const selected_custom_tags = ref([])
 
                 const show_variables_help = ref(false)
+                const showDescription = ref(false)
+                const showWorkflow = ref(false)
                 const variables_reference = ref('')
 
                 const case_connectors_list = ref([])
@@ -1020,11 +1135,26 @@
 
                 function scrollIntoSelectedElement() {
                     const url = new URL(location.href)
-                    const task_id = url.hash.slice(1)
-                    if(task_id){
-                        const taskElem = document.getElementById(`${task_id}`)
-                        if (taskElem) {
-                            taskElem.scrollIntoView({ behavior: "smooth" });
+                    const fragment = url.hash.slice(1)
+                    if(fragment){
+                        // Extract the task id from "task-{id}"
+                        const match = fragment.match(/^task-(\d+)$/)
+                        if (match) {
+                            const taskId = match[1]
+                            const collapseTarget = document.getElementById('collapse' + taskId)
+                            if (collapseTarget) {
+                                const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseTarget)
+                                bsCollapse.show()
+                                collapseTarget.addEventListener('shown.bs.collapse', function scrollOnce() {
+                                    collapseTarget.removeEventListener('shown.bs.collapse', scrollOnce)
+                                    document.getElementById('task-' + taskId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                                })
+                            }
+                        } else {
+                            const elem = document.getElementById(fragment)
+                            if (elem) {
+                                elem.scrollIntoView({ behavior: 'smooth' })
+                            }
                         }
                     }
                 }
@@ -1428,6 +1558,7 @@
                     await fetchCase()
                     initialize_select2()
                     autosave_case_note()
+
                     if (can_use_connectors.value) fetch_case_connectors()
                     fetch_case_files()
 
@@ -1622,6 +1753,8 @@
                     resolved_case_notes_html,
                     resolved_all_notes,
                     show_variables_help,
+                    showDescription,
+                    showWorkflow,
                     variables_reference,
                     edit_preview_html
                 }

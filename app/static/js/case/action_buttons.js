@@ -27,7 +27,7 @@ export default {
         async function complete_case(case_loc){
             const res = await fetch('/case/' + case_loc.id + '/complete_case')
             if (await res.status == 200){
-                if(props.status_info.status[case_loc.status_id -1].name == 'Finished'){
+                if(props.status_info.status.find(s => s.id === case_loc.status_id)?.name == 'Finished'){
                     for(let i in props.status_info.status){
                         if(props.status_info.status[i].name == 'Created')
                         case_loc.status_id = props.status_info.status[i].id

@@ -5,14 +5,21 @@ export default {
 	},
 	emits: ['tasks_list', 'current_filter'],
 	setup(props, { emit }) {
-		let show_ongoing = true
+		let active_filter = 'ongoing'
 		let current_filter = ""
 		let asc_desc = true
 
-		async function filter_ongoing(ongoing) {
-			show_ongoing = ongoing
-
-			const res = await fetch(`/my_assignment/sort_tasks?status=${show_ongoing}&page=1`)
+		async function filter_tasks(mode) {
+			active_filter = mode
+			let url
+			if (mode === 'ongoing') {
+				url = `/my_assignment/sort_tasks?status=true&page=1`
+			} else if (mode === 'finished') {
+				url = `/my_assignment/sort_tasks?status=false&page=1`
+			} else {
+				url = `/my_assignment/sort_tasks?status=true&inactive=true&page=1`
+			}
+			const res = await fetch(url)
 			let loc = await res.json()
 			emit('tasks_list', loc)
 		}
@@ -43,7 +50,9 @@ export default {
 				asc_desc = !asc_desc
 
 			if (current_filter) {
-				let res = await fetch(`/my_assignment/sort_tasks?status=${show_ongoing}&page=1&filter=${current_filter}`)
+				let status_param = active_filter === 'finished' ? 'false' : 'true'
+				let inactive_param = active_filter === 'inactive' ? '&inactive=true' : ''
+				let res = await fetch(`/my_assignment/sort_tasks?status=${status_param}&page=1&filter=${current_filter}${inactive_param}`)
 				let loc = await res.json()
 				if (!asc_desc) {
 					for (let key in loc["tasks"]) {
@@ -57,7 +66,7 @@ export default {
 
 
 		return {
-			filter_ongoing,
+			filter_tasks,
 			sort_by_last_modif,
 			sort_by_title,
 			sort_by_deadline,
@@ -74,12 +83,16 @@ export default {
 			<div class="d-flex w-100 justify-content-between">
 				<div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_ongoing(true)" checked>
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_tasks('ongoing')" checked>
 						<label class="form-check-label" for="radioStatusOngoing"><i class="fa-solid fa-spinner fa-sm me-1"></i>Ongoing Tasks</label>
 					</div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_ongoing(false)">
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_tasks('finished')">
 						<label class="form-check-label" for="radioStatusFinished"><i class="fa-solid fa-check-circle fa-sm me-1"></i>Finished Tasks</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusInactive" @click="filter_tasks('inactive')">
+						<label class="form-check-label" for="radioStatusInactive"><i class="fa-solid fa-ban fa-sm me-1"></i>Rejected / Unavailable</label>
 					</div>
 				</div>
 

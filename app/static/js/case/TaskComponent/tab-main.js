@@ -1,5 +1,5 @@
 import { display_toast } from '/static/js/toaster.js'
-import { isStatusDropdownDisabled, getStatusDropdownTooltip, getAvailableStatuses } from '/static/js/case/helpers.js'
+import { isStatusDropdownDisabled, getStatusDropdownTooltip, getAvailableStatuses, canEditRestrictedTask } from '/static/js/case/helpers.js'
 const { ref, computed } = Vue
 import subtask from './subtask.js'
 import TaskUrlTool from './TaskUrlTool.js'
@@ -72,11 +72,15 @@ export default {
 			)
 			if (await res.status == 200) {
 				const wasCompleted = task.completed
-				const isFinished = props.status_info.status[status - 1].name == 'Finished'
+				const statusObj = props.status_info.status.find(s => s.id === status)
+				const isFinished = statusObj && statusObj.name == 'Finished'
 				
 				task.last_modif = Date.now()
 				task.status_id = status
 				task.completed = isFinished
+
+				// Re-evaluate can_edit based on the new status
+				task.can_edit = canEditRestrictedTask(task, props.cases_info, props.status_info)
 
 				// Update open/closed counts only if completion state actually changed
 				if (wasCompleted && !isFinished) {
@@ -178,9 +182,9 @@ export default {
 		}
 	},
 	template: `
-	<div v-if="status_info && cases_info.case && cases_info.case.privileged_case && (task.status_id == status_info.config.TASK_REQUESTED || task.status_id == status_info.config.TASK_REJECTED) && !task.can_edit" class="alert alert-info" role="alert" style="margin-bottom: 15px;">
+	<div v-if="status_info && cases_info.case && cases_info.case.privileged_case && (task.status_id == status_info.config.TASK_REQUESTED || task.status_id == status_info.config.TASK_REJECTED || task.status_id == status_info.config.TASK_REQUEST_REVIEW) && !task.can_edit" class="alert alert-info" role="alert" style="margin-bottom: 15px;">
 		<i class="fa-solid fa-info-circle me-2"></i>
-		A task in Requested or Rejected status in a privileged case can only be modified by Admin, Case Admin or Queue Admin
+		A task in Requested, Rejected or Request Review status in a privileged case can only be modified by Admin, Case Admin or Queue Admin
 	</div>
 	<div class="row">
         <div class="col" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
@@ -254,11 +258,12 @@ export default {
                                     aria-expanded="false"
                                     :disabled="statusDropdownDisabled"
                                     :title="statusDropdownTooltip">
-                                [[ status_info.status[task.status_id -1].name ]]
+                                [[ status_info.status.find(s => s.id === task.status_id)?.name ]]
                             </button>
                             <ul class="dropdown-menu" :id="'dropdown_ul_status_'+task.id">
-                                <li v-for="status in availableStatuses" :key="status.id">
-                                    <button class="dropdown-item" @click="change_status(status.id, task)">[[ status.name ]]</button>
+                                <li v-for="(status, idx) in availableStatuses" :key="status.id">
+                                    <hr v-if="idx > 0 && status.order > 7 && availableStatuses[idx-1].order <= 7" class="dropdown-divider">
+                                    <button class="dropdown-item" @click="change_status(status.id, task)" :disabled="status.disabled" :class="{ 'text-muted': status.disabled }">[[ status.name ]]</button>
                                 </li>
                             </ul>
                         </template>

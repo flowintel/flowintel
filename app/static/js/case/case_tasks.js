@@ -6,6 +6,7 @@ import tabExternalRef from './TaskComponent/tab-external-ref.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
+import { isCompleteTaskDisabled, getCompleteTaskTooltip } from './helpers.js'
 const { ref, computed, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -56,7 +57,7 @@ export default {
 				task.last_modif = Date.now()
 				task.completed = !task.completed
 				let status = task.status_id
-				if (props.status_info.status[task.status_id - 1].name == 'Finished') {
+				if (props.status_info.status.find(s => s.id === task.status_id)?.name == 'Finished') {
 					for (let i in props.status_info.status) {
 						if (props.status_info.status[i].name == 'Created')
 							task.status_id = props.status_info.status[i].id
@@ -313,6 +314,8 @@ export default {
 			take_task,
 			remove_assign_task,
 			complete_task,
+			isCompleteTaskDisabled,
+			getCompleteTaskTooltip,
 			formatNow,
 			endOf,
 			present_user_in_task,
@@ -331,7 +334,7 @@ export default {
 			@click="toggleCollapse(task.id)"
 		>
 			<div class="d-flex w-100 justify-content-between">
-				<h5 class="mb-1"><i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ key_loop+1 ]]- [[task.title]]</h5>
+				<h5 class="mb-1"><i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ task.id ]]- [[task.title]]</h5>
 				<small :title="'Changed: ' + task.last_modif"><i><i class="fa-solid fa-arrows-rotate"></i> [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
 
@@ -361,8 +364,8 @@ export default {
 				</template>
 
 				<small v-if="status_info">
-					<span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">
-						[[ status_info.status[task.status_id -1].name ]]
+					<span :class="'badge rounded-pill text-bg-'+(status_info.status.find(s => s.id === task.status_id)?.bootstrap_style || 'secondary')">
+						[[ status_info.status.find(s => s.id === task.status_id)?.name ]]
 					</span>
 				</small>
 			</div>
@@ -457,18 +460,24 @@ export default {
 		</a>
 		<div v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
 			<div>
-				<button v-if="task.completed" 
-						class="btn btn-secondary"
-						@click="complete_task(task)" 
-						title="Revive the task">
-					<i class="fa-solid fa-backward fa-fw"></i>
-				</button>
-				<button v-else 
-						class="btn btn-success"
-						@click="complete_task(task)" 
-						title="Complete the task">
-					<i class="fa-solid fa-check fa-fw"></i>
-				</button>
+				<span v-if="task.completed" 
+				      title="Revive the task"
+				      style="display:inline-block;">
+					<button class="btn btn-secondary"
+							@click="complete_task(task)">
+						<i class="fa-solid fa-backward fa-fw"></i>
+					</button>
+				</span>
+				<span v-else 
+				      :title="getCompleteTaskTooltip(task, cases_info, status_info)"
+				      style="display:inline-block;">
+					<button class="btn btn-success"
+							@click="complete_task(task)" 
+							:disabled="isCompleteTaskDisabled(task, cases_info, status_info)"
+							style="pointer-events: auto;">
+						<i class="fa-solid fa-check fa-fw"></i>
+					</button>
+				</span>
 			</div>
 			<div>
 				<button v-if="!task.is_current_user_assigned" 

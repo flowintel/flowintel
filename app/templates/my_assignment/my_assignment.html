@@ -113,8 +113,8 @@
                             </template>
 
                             <small v-if="status_info">
-                                <span :class="'badge rounded-pill text-bg-'+status_info.status[task.status_id -1].bootstrap_style">
-                                    [[ status_info.status[task.status_id -1].name ]]
+                                <span :class="'badge rounded-pill text-bg-'+(status_info.status.find(s => s.id === task.status_id)?.bootstrap_style || 'secondary')">
+                                    [[ status_info.status.find(s => s.id === task.status_id)?.name ]]
                                 </span>
                             </small>
                         </div>

@@ -28,6 +28,7 @@ def my_assignment_sort_tasks():
     """Sort tasks and optionally calculate statistics"""
     page = request.args.get('page', 1, type=int)
     show_completed = request.args.get('status', default=False, type=is_it_true)
+    inactive_only = request.args.get('inactive', default=False, type=is_it_true)
     completed = not show_completed
     filter_value = request.args.get('filter', type=str)
     
@@ -35,10 +36,11 @@ def my_assignment_sort_tasks():
         user=current_user, 
         completed=completed, 
         page=page, 
-        filter=filter_value
+        filter=filter_value,
+        inactive_only=inactive_only
     )
     
-    stats = AssignModel.calculate_task_stats(current_user) if not completed else None
+    stats = AssignModel.calculate_task_stats(current_user) if not completed and not inactive_only else None
     
     return {
         "tasks": AssignModel.get_task_info(tasks_list, current_user), 

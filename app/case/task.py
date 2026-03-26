@@ -76,8 +76,8 @@ def edit_task(cid, tid):
             task_modif = CommonModel.get_task(tid)
 
             if TaskModel.is_task_restricted(task_modif) and not TaskModel.can_edit_requested_task(current_user):
-                flowintel_log("audit", 403, "Task edit denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                flash("Task in Requested or Rejected status can only be edited by Admin, Case Admin or Queue Admin", "error")
+                flowintel_log("audit", 403, "Task edit denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                flash("Task in restricted status can only be edited by Admin, Case Admin or Queue Admin", "error")
                 return redirect(f"/case/{cid}")
 
             if form.validate_on_submit():
@@ -114,8 +114,8 @@ def complete_task(tid):
     if task:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
             if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                flowintel_log("audit", 403, "Complete task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-                return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                flowintel_log("audit", 403, "Complete task denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
             
             if TaskModel.complete_task(tid, current_user):
                 flowintel_log("audit", 200, "Task completed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
@@ -136,8 +136,8 @@ def delete_task(cid, tid):
         if task:
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                    flowintel_log("audit", 403, "Delete task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                    flowintel_log("audit", 403, "Delete task denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                 
                 if TaskModel.delete_task(tid, current_user):
                     flowintel_log("audit", 200, "Task deleted", User=current_user.email, CaseId=cid, TaskId=tid)
@@ -159,8 +159,8 @@ def modif_note(cid, tid):
         if task:
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                    flowintel_log("audit", 403, "Modify task note denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                    flowintel_log("audit", 403, "Modify task note denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                 
                 notes = request.json["notes"]
                 if "note_id" in request.args:
@@ -186,8 +186,8 @@ def create_note(cid, tid):
             task = CommonModel.get_task(tid)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                    flowintel_log("audit", 403, "Create task note denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                    flowintel_log("audit", 403, "Create task note denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                 
                 res_note = TaskModel.create_note(tid, current_user)
                 if res_note:
@@ -210,8 +210,8 @@ def delete_note(cid, tid):
             task = CommonModel.get_task(tid)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                    flowintel_log("audit", 403, "Delete task note denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                    flowintel_log("audit", 403, "Delete task note denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                 
                 if "note_id" in request.args:
                     if TaskModel.delete_note(tid, request.args.get("note_id"), current_user):
@@ -255,8 +255,8 @@ def take_task(cid, tid):
         if task:
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                    flowintel_log("audit", 403, "Take task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                    flowintel_log("audit", 403, "Take task denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                 
                 if TaskModel.assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     flowintel_log("audit", 200, "User assigned to task", User=current_user.email, CaseId=cid, TaskId=tid, AssignedUser=current_user.email)
@@ -280,8 +280,8 @@ def assign_user(cid, tid):
             if task:
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                        flowintel_log("audit", 403, "Assign users to task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                        return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                        flowintel_log("audit", 403, "Assign users to task denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                        return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                     
                     assigned_users_info = []
                     for user_id in users_list:
@@ -329,8 +329,8 @@ def remove_assigned_user(cid, tid):
             if task:
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                        flowintel_log("audit", 403, "Remove assigned user denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                        return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                        flowintel_log("audit", 403, "Remove assigned user denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                        return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                     
                     if TaskModel.remove_assign_task(tid, user=user_id, current_user=current_user, flag_current_user=False):
                         removed_user = User.query.get(user_id)
@@ -356,15 +356,15 @@ def change_task_status(cid, tid):
             if task:
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                        flowintel_log("audit", 403, "Change task status denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                        return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                        flowintel_log("audit", 403, "Change task status denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title)
+                        return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                     
                     try:
                         if TaskModel.change_task_status(status, task, current_user):
                             db.session.commit()
                             status_obj = CommonModel.get_status(status)
                             status_name = status_obj.name if status_obj else str(status)
-                            flowintel_log("audit", 200, "Task status changed", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, Status=status_name)
+                            flowintel_log("audit", 200, f"Status changed to '{status_name}' for task '{tid}-{task.title}'", User=current_user.email, CaseId=cid, TaskId=tid)
                             return {"message": "Status changed", "toast_class": "success-subtle"}, 200
                         return {"message": "Error changed status", "toast_class": "danger-subtle"}, 400
                     except Exception as e:
@@ -469,8 +469,8 @@ def add_files(cid, tid):
         if task:
             if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
                 if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                    flowintel_log("audit", 403, "Add files to task denied: Task in Requested or Rejected status", User=current_user.email, CaseId=cid, TaskId=tid)
-                    return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+                    flowintel_log("audit", 403, "Add files to task denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                 
                 if len(request.files) > 0:
                     # Validate file sizes before processing
@@ -1168,8 +1168,8 @@ def add_connector(tid):
     task = CommonModel.get_task(tid)
     if task and (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
         if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-            flowintel_log("audit", 403, "Add connector denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-            return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+            flowintel_log("audit", 403, "Add connector denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+            return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
         
         if "connectors" in request.json and TaskModel.add_connector(tid, request.json, current_user):
             flowintel_log("audit", 200, "Connector added to task", User=current_user.email, CaseId=task.case_id, TaskId=tid)

@@ -71,15 +71,29 @@ def create_user_org(user):
 
 
 def create_status():
-    status = [("Created", "success"), ("Ongoing", "primary"), ("Recurring", "info"), ("Unavailable", "info"), ("Rejected", "danger"), ("Finished", "danger")]
+    status = [
+        ("Created", "success", 1),
+        ("Ongoing", "primary", 4),
+        ("Recurring", "info", 8),
+        ("Unavailable", "info", 9),
+        ("Rejected", "danger", 7),
+        ("Finished", "danger", 6),
+        ("Requested", "warning", 2),
+        ("Approved", "success", 3),
+        ("Request Review", "warning", 5),
+    ]
 
     for s in status:
         existing_status = Status.query.filter_by(name=s[0]).first()
         if existing_status:
+            if existing_status.order != s[2]:
+                existing_status.order = s[2]
+                db.session.commit()
             continue
         status_db = Status(
             name=s[0],
-            bootstrap_style=s[1]
+            bootstrap_style=s[1],
+            order=s[2]
         )
 
         db.session.add(status_db)

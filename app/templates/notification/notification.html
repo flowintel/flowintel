@@ -278,18 +278,22 @@
             }
 
             function getNotificationUrl(notif) {
-                // If case_id is null or undefined, redirect to homepage
                 if (!notif.case_id) {
                     return '/';
                 }
-                // If case_id is negative, it's a user ID for admin edit page.
-                // NOTE: This convention (negative case_id means user ID) may be confusing for future maintainers.
-                // Consider using a more explicit property (e.g., notif.user_id or notif.type) to distinguish notification types.
+                // Negative case_id encodes a user ID for admin notifications
                 if (notif.case_id < 0) {
                     return `/admin/edit_user/${Math.abs(notif.case_id)}?from_notif=true`;
                 }
-                // Otherwise, it's a regular case ID
-                return `/case/${notif.case_id}`;
+                // Link to the case, and if the message mentions a task, deep-link to it
+                let url = `/case/${notif.case_id}`;
+                if (notif.message) {
+                    const match = notif.message.match(/'(\d+)-/);
+                    if (match) {
+                        url += `#task-${match[1]}`;
+                    }
+                }
+                return url;
             }
 
             fetchNotif(true)

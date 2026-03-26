@@ -1,15 +1,28 @@
-from ..db_class.db import Subtask, Task, Task_User, User
+from ..db_class.db import Status, Subtask, Task, Task_User, User
 from sqlalchemy import desc
 from ..case import common_core as CommonModel
 from ..case.TaskCore import TaskModel
 from datetime import datetime, timedelta
 
+# Statuses that should not appear under "Ongoing Tasks"
+_INACTIVE_STATUS_NAMES = ("Rejected", "Unavailable")
+
 def get_user(uid):
     return User.query.get(uid)
 
-def my_assignment_sort(user, completed, page, filter=None):
+def _inactive_status_ids():
+    return [s.id for s in Status.query.filter(Status.name.in_(_INACTIVE_STATUS_NAMES)).all()]
+
+def my_assignment_sort(user, completed, page, filter=None, inactive_only=False):
     query = Task.query.join(Task_User, Task_User.task_id==Task.id)\
                       .where(Task_User.user_id==user.id, Task.completed==completed)
+    inactive_ids = _inactive_status_ids()
+    if inactive_only:
+        if inactive_ids:
+            query = query.filter(Task.status_id.in_(inactive_ids))
+    elif not completed:
+        if inactive_ids:
+            query = query.filter(Task.status_id.notin_(inactive_ids))
     if filter:
         query = query.order_by(desc(filter))
     query = query.paginate(page=page, per_page=20, max_per_page=50)
@@ -41,6 +54,9 @@ def get_task_info(tasks_list, user):
 def calculate_task_stats(user):
     base_query = Task.query.join(Task_User, Task_User.task_id==Task.id)\
                            .filter(Task_User.user_id==user.id, Task.completed==False)
+    excluded = _inactive_status_ids()
+    if excluded:
+        base_query = base_query.filter(Task.status_id.notin_(excluded))
     
     total = base_query.count()
     
