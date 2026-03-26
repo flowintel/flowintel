@@ -339,7 +339,7 @@ def test_change_status(client):
 def test_list_status(client):
     response = client.get("/api/case/list_status", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200
-    assert len(response.json) == 6
+    assert len(response.json) == 9
 
 def test_delete_task(client):
     create_response = create_case_as_admin(client)

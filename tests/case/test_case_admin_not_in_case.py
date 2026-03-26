@@ -348,10 +348,6 @@ def test_change_status(client):
                         )
     assert response.status_code == 200 and b"Status changed" in response.data
 
-def test_list_status(client):
-    response = client.get("/api/case/list_status", headers={"X-API-KEY": API_KEY})
-    assert response.status_code == 200 and len(response.json) == 6
-
 def test_delete_task(client):
     test_create_task(client)
     response = client.get("/api/task/1/delete", headers={"X-API-KEY": API_KEY})
