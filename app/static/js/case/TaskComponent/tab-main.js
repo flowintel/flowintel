@@ -86,6 +86,13 @@ export default {
 				if (wasCompleted && !isFinished) {
 					props.open_closed["closed"] -= 1
 					props.open_closed["open"] += 1
+					// If the parent case is marked completed in the UI, revive it
+					if (props.cases_info && props.cases_info.case && props.cases_info.case.completed) {
+						props.cases_info.case.completed = false
+						const created = props.status_info.status.find(s => s.name === 'Created')
+						if (created) props.cases_info.case.status_id = created.id
+						props.cases_info.case.finish_date = null
+					}
 				} else if (!wasCompleted && isFinished) {
 					props.open_closed["open"] -= 1
 					props.open_closed["closed"] += 1

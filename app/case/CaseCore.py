@@ -389,7 +389,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 case.finish_date = datetime.datetime.now(tz=datetime.timezone.utc)
                 case.status_id = Status.query.filter_by(name="Finished").first().id
                 for task in case.tasks:
-                    TaskModel.complete_task(task.id, current_user)
+                    if not task.completed:
+                        TaskModel.complete_task(task.id, current_user)
                 NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' is now completed", cid, html_icon="fa-solid fa-square-check", current_user=current_user)
             else:
                 case.finish_date = None

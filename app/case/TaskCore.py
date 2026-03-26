@@ -195,10 +195,28 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 task.finish_date = datetime.datetime.now(tz=datetime.timezone.utc)
                 task.case_order_id = -1
                 self.reorder_tasks(case, task.id)
+                # Save history with appropriate message depending on completed state
+                self.update_task_time_modification(task, current_user, f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed")
             else:
                 task.status_id = Status.query.filter_by(name="Created").first().id
                 task.finish_date = None
                 task.case_order_id = self.get_nb_open_tasks(case)
+                # If the task is being reopened in a completed case, revive the case
+                try:
+                    if case and case.completed:
+                        case.completed = False
+                        case.finish_date = None
+                        case.status_id = Status.query.filter_by(name="Created").first().id
+                        db.session.commit()
+
+                        NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' is now revived", case.id, html_icon="fa-solid fa-heart-circle-plus", current_user=current_user)
+                        CommonModel.update_last_modif(case.id)
+                        CommonModel.save_history(case.uuid, current_user, "Case revived")
+                except Exception:
+                    print("error while reviving case in complete_task:", flush=True)
+                    db.session.rollback()
+                # Save history with appropriate message depending on completed state
+                self.update_task_time_modification(task, current_user, f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived")
             for task_user in task_users:
                 if task.completed:
                     message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' completed"
@@ -206,8 +224,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 else:
                     message = f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' revived"
                     NotifModel.create_notification_user(message, task.case_id, user_id=task_user.user_id, html_icon="fa-solid fa-heart-circle-bolt")
-
-            self.update_task_time_modification(task, current_user, f"Task '{task.title}' completed")
+                
             return True
         return False
 
@@ -220,6 +237,9 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
             case = CommonModel.get_case(cid)
+            # Preserve case completion state so creating a task doesn't revive/alter a closed case
+            orig_case_completed = case.completed
+
             case.nb_tasks = case.nb_tasks or 0
 
             status_id = 1
@@ -304,6 +324,21 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                     self.assign_approvers_to_task(task, case)
 
         CommonModel.update_last_modif(cid)
+
+        # If a task is added to a completed case, revive the case (clear finished state)
+        try:
+            case = CommonModel.get_case(cid)
+            if orig_case_completed:
+                case.completed = False
+                case.finish_date = None
+                case.status_id = Status.query.filter_by(name="Created").first().id
+                db.session.commit()
+
+                NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' is now revived", cid, html_icon="fa-solid fa-heart-circle-plus", current_user=current_user)
+                CommonModel.update_last_modif(cid)
+                CommonModel.save_history(case.uuid, current_user, "Case revived")
+        except Exception:
+            db.session.rollback()
 
         case = CommonModel.get_case(cid)
         CommonModel.save_history(case.uuid, current_user, f"Task '{task.title}' Created")

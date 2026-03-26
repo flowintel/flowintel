@@ -48,8 +48,8 @@
                 <span v-if="cases_info && cases_info.case.privileged_case" class="case-visibility-badge" title="Privileged case - four-eye-review workflow">
                     <i class="fa-solid fa-user-shield" style="color: #dc3545;"></i>
                 </span>
-                <span v-if="status_info" :class="'badge rounded-pill text-bg-' + (status_info.status.find(s => s.id === {{case.status_id}})?.bootstrap_style || 'secondary')" id="id-case-status">
-                    [[ status_info.status.find(s => s.id === {{case.status_id}})?.name ]]
+                <span v-if="status_info" :class="'badge rounded-pill text-bg-' + (status_info.status.find(s => s.id === cases_info.case.status_id)?.bootstrap_style || 'secondary')" id="id-case-status">
+                    [[ status_info.status.find(s => s.id === cases_info.case.status_id)?.name ]]
                 </span>
                 <span v-if="cases_info && cases_info.case.has_misp_event && cases_info.case.misp_icon" title="Linked to MISP event">
                     <img :src="'/static/icons/' + cases_info.case.misp_icon" style="max-width: 24px; vertical-align: middle;">

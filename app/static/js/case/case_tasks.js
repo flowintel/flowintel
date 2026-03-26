@@ -74,8 +74,26 @@ export default {
 					}
 				}
 				let index = props.cases_info.tasks.indexOf(task)
-				if (index > -1)
-					props.cases_info.tasks.splice(index, 1)
+				// After toggling, if task is completed remove it from current list,
+				// if revived remove from closed list or insert into open list.
+				if (task.completed) {
+					if (index > -1) props.cases_info.tasks.splice(index, 1)
+				} else {
+					if (index > -1) {
+						// remove revived task from this list
+						props.cases_info.tasks.splice(index, 1)
+					} else {
+						// ensure revived task is visible
+						props.cases_info.tasks.unshift(task)
+					}
+					// If the case itself was marked completed, update its UI state to created
+					if (props.cases_info.case && props.cases_info.case.completed) {
+						props.cases_info.case.completed = false
+						const created = props.status_info.status.find(s => s.name === 'Created')
+						if (created) props.cases_info.case.status_id = created.id
+						props.cases_info.case.finish_date = null
+					}
+				}
 			}
 			await display_toast(res)
 		}
@@ -334,7 +352,7 @@ export default {
 			@click="toggleCollapse(task.id)"
 		>
 			<div class="d-flex w-100 justify-content-between">
-				<h5 class="mb-1"><i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ task.id ]]- [[task.title]]</h5>
+				<h5 class="mb-1"><i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ key_loop + 1 ]]- [[task.title]]</h5>
 				<small :title="'Changed: ' + task.last_modif"><i><i class="fa-solid fa-arrows-rotate"></i> [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
 
