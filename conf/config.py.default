@@ -42,27 +42,7 @@ class Config:
     # Only change these if Valkey runs on a different host.
     VALKEY_IP = os.getenv('VALKEY_IP', '127.0.0.1')
     VALKEY_PORT = os.getenv('VALKEY_PORT', '6379')
-    
-    # =============================================================================
-    # AUDIT LOGGING
-    # =============================================================================
-    # All user actions are logged to logs/record.log with the AUDIT prefix.
-    AUDIT_LOG_PREFIX = os.getenv('AUDIT_LOG_PREFIX', 'AUDIT')
-    LOG_FILE = os.getenv('LOG_FILE', 'record.log')
-    
-    # =============================================================================
-    # APPLICATION BRANDING
-    # =============================================================================
-    APP_NAME = "Flowintel"
-    
-    # Logo configuration
-    MAIN_LOGO = os.getenv('MAIN_LOGO', '/static/image/flowintel.png')
-    TOPRIGHT_LOGO = os.getenv('TOPRIGHT_LOGO', '')
-    
-    # Login page configuration
-    WELCOME_TEXT_TOP = os.getenv('WELCOME_TEXT_TOP', '')
-    WELCOME_TEXT_BOTTOM = os.getenv('WELCOME_TEXT_BOTTOM', '')
-    WELCOME_LOGO = os.getenv('WELCOME_LOGO', '')
+    SESSION_TYPE = "redis" # Can be overridden in dev/test/prod class
     
     # =============================================================================
     # FILE UPLOADS
@@ -71,94 +51,21 @@ class Config:
     # Remember to keep this in sync with NGINX client_max_body_size setting.
     FILE_UPLOAD_MAX_SIZE = int(os.getenv('FILE_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))  # Default 5MB
 
-    # Reverse proxy configuration
+    # =============================================================================
+    # REVERSE PROXY
+    # =============================================================================
     # SECURITY: Only enable if Flask is NOT directly accessible (firewall blocks Flask port)
-    BEHIND_PROXY = os.getenv('BEHIND_PROXY', 'false').lower() == 'true'
+    BEHIND_PROXY = os.getenv('BEHIND_PROXY', 'true').lower() == 'true'
     PROXY_X_FOR = int(os.getenv('PROXY_X_FOR', 1))       # Number of proxies to trust
     PROXY_X_PROTO = int(os.getenv('PROXY_X_PROTO', 1))   # Trust X-Forwarded-Proto
     PROXY_X_HOST = int(os.getenv('PROXY_X_HOST', 1))     # Trust X-Forwarded-Host
     PROXY_X_PREFIX = int(os.getenv('PROXY_X_PREFIX', 0)) # Trust X-Forwarded-Prefix
 
     # =============================================================================
-    # ACCESS CONTROL
+    # SYSTEM ROLES
     # =============================================================================
     # System roles that cannot be deleted (admin, user, bot)
     SYSTEM_ROLES = [1, 2, 3]
-    
-    # =============================================================================
-    # TASK STATUS IDS
-    # =============================================================================
-    # Task status identifiers for workflow management
-    # These IDs must match the status entries in your database
-    TASK_REQUESTED = 7   # Task requested by Queuer in privileged case, pending approval
-    TASK_APPROVED = 8    # Task approved by Admin/CaseAdmin/QueueAdmin
-    TASK_REJECTED = 5    # Task rejected by Admin/CaseAdmin/QueueAdmin
-    TASK_REQUEST_REVIEW = 9  # Task submitted for review before finishing
-    
-    # Limit user view to own organisation
-    # When True: Users can only see other users within their own organisation
-    # When False: All users can see all other users
-    # Administrators always see all users regardless of this setting.
-    LIMIT_USER_VIEW_TO_ORG = False # False is the previous default ; alt.: True 
-
-    # GDPR and privacy notice for case and task forms
-    SHOW_GDPR_NOTICE = os.getenv('SHOW_GDPR_NOTICE', 'true').lower() == 'true'
-    GDPR_NOTICE = os.getenv('GDPR_NOTICE', 'Please be mindful of GDPR and privacy regulations when adding personal or sensitive information to cases and tasks.')
-    
-    # Privileged case enforcement
-    ENFORCE_PRIVILEGED_CASE = os.getenv('ENFORCE_PRIVILEGED_CASE', 'false').lower() == 'true'
-
-    # Auto-assign Admin, Case Admin and Queue Admin to a task when it is
-    # set to "Requested" or "Request Review" in a privileged case.
-    # This makes the task visible in their assignment list.
-    PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST = os.getenv('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST', 'false').lower() == 'true'
-
-    # Microsoft Entra ID (Azure AD) SSO configuration
-    ENTRA_ID_ENABLED = os.getenv('ENTRA_ID_ENABLED', 'false').lower() == 'true'
-    ENTRA_TENANT_ID = os.getenv('ENTRA_TENANT_ID', '')           # Directory (tenant) ID
-    ENTRA_CLIENT_ID = os.getenv('ENTRA_CLIENT_ID', '')           # Application (client) ID
-    ENTRA_CLIENT_SECRET = os.getenv('ENTRA_CLIENT_SECRET', '')   # Client secret value
-    # Entra ID group names that map to Flowintel roles
-    # FlowintelAdmin members → provisioned as Editor, admins are notified to promote manually
-    ENTRA_GROUP_ADMIN = os.getenv('ENTRA_GROUP_ADMIN', 'FlowintelAdmin')
-    ENTRA_GROUP_EDITOR = os.getenv('ENTRA_GROUP_EDITOR', 'FlowintelEditor')
-    ENTRA_GROUP_READONLY = os.getenv('ENTRA_GROUP_READONLY', 'FlowintelReadOnly')
-    ENTRA_GROUP_CASE_ADMIN  = os.getenv('ENTRA_GROUP_CASE_ADMIN',  'FlowintelCaseAdmin')
-    ENTRA_ROLE_CASE_ADMIN   = os.getenv('ENTRA_ROLE_CASE_ADMIN',   'CaseAdmin')
-    ENTRA_GROUP_QUEUE_ADMIN = os.getenv('ENTRA_GROUP_QUEUE_ADMIN', 'FlowintelQueueAdmin')
-    ENTRA_ROLE_QUEUE_ADMIN  = os.getenv('ENTRA_ROLE_QUEUE_ADMIN',  'QueueAdmin')
-    ENTRA_GROUP_QUEUER      = os.getenv('ENTRA_GROUP_QUEUER',      'FlowintelQueuer')
-    ENTRA_ROLE_QUEUER       = os.getenv('ENTRA_ROLE_QUEUER',       'Queuer')
-    ENTRA_REDIRECT_URL = os.getenv('ENTRA_REDIRECT_URL', 'http://localhost:7006/account/entra/callback')
-
-    # MISP connector: attach case & task files to the MISP event
-    MISP_EXPORT_FILES = os.getenv('MISP_EXPORT_FILES', 'false').lower() == 'true'
-
-    # MISP event defaults
-    # Threat level: 1 = High, 2 = Medium, 3 = Low, 4 = Undefined
-    MISP_EVENT_THREAT_LEVEL = int(os.getenv('MISP_EVENT_THREAT_LEVEL', '4'))
-    # Analysis state: 0 = Initial, 1 = Ongoing, 2 = Complete
-    MISP_EVENT_ANALYSIS = int(os.getenv('MISP_EVENT_ANALYSIS', '0'))
-    # Local tags added to every MISP event created/updated by flowintel.
-    # Can be a string or a list of strings. Leave empty to skip.
-    # Example: 'curation:source="flowintel"' or ['tag1', 'tag2']
-    MISP_ADD_LOCAL_TAGS_ALL_EVENTS = os.getenv('MISP_ADD_LOCAL_TAGS_ALL_EVENTS', 'curation:source="flowintel"')
-
-    # GPG report signing (leave GPG_KEY_ID empty to disable)
-    GPG_HOME = ""        # Path to the GPG keyring directory (empty = default ~/.gnupg)
-    GPG_KEY_ID = ""      # Fingerprint or email of the signing key (empty = signing disabled)
-    GPG_PASSPHRASE = ""  # Passphrase for the key (empty = no passphrase or use gpg-agent)
-    # Central template repository
-    # Base directory
-    REPOSITORY_BASE_PATH = os.getenv('REPOSITORY_BASE_PATH', 'modules/repositories')
-
-    # Manifest shown as example in "What does manifest.json look like?"
-    REPOSITORY_MANIFEST = {
-        "name": "My Template Repository",
-        "description": "A short description of what this repository contains.",
-        "uuid": "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx",
-        "version": 1
-    }
 
     # =============================================================================
     # INITIAL USER ACCOUNTS
@@ -176,6 +83,128 @@ class Config:
         "last_name": "Bot",
         "email": "neo@admin.admin" # Password auto generated
     }
+
+    # =============================================================================
+    # AUDIT LOGGING
+    # =============================================================================
+    # All user actions are logged to logs/record.log with the AUDIT prefix.
+    AUDIT_LOG_PREFIX = os.getenv('AUDIT_LOG_PREFIX', 'AUDIT')
+    LOG_FILE = os.getenv('LOG_FILE', 'record.log')
+    
+    # =============================================================================
+    # APPLICATION THEMING
+    # =============================================================================
+    APP_NAME = "Flowintel"
+    
+    # Logo configuration
+    MAIN_LOGO = os.getenv('MAIN_LOGO', '/static/image/flowintel.png')
+    TOPRIGHT_LOGO = os.getenv('TOPRIGHT_LOGO', '')
+    
+    # Login page configuration
+    WELCOME_TEXT_TOP = os.getenv('WELCOME_TEXT_TOP', '')
+    WELCOME_TEXT_BOTTOM = os.getenv('WELCOME_TEXT_BOTTOM', '')
+    WELCOME_LOGO = os.getenv('WELCOME_LOGO', '')
+    
+    # =============================================================================
+    # TASK STATUS IDS
+    # =============================================================================
+    # Task status identifiers for workflow management
+    # These IDs must match the status entries in your database
+    TASK_REQUESTED = 7   # Task requested by Queuer in privileged case, pending approval
+    TASK_APPROVED = 8    # Task approved by Admin/CaseAdmin/QueueAdmin
+    TASK_REJECTED = 5    # Task rejected by Admin/CaseAdmin/QueueAdmin
+    TASK_REQUEST_REVIEW = 9  # Task submitted for review before finishing
+    
+    # =============================================================================
+    # ACCESS CONTROL
+    # =============================================================================   
+    # Limit user view to own organisation
+    # When True: Users can only see other users within their own organisation
+    # When False: All users can see all other users
+    # Administrators always see all users regardless of this setting.
+    LIMIT_USER_VIEW_TO_ORG = False # False is the previous default ; alt.: True 
+
+    # =============================================================================
+    # GDPR
+    # =============================================================================
+    # GDPR and privacy notice for case and task forms
+    SHOW_GDPR_NOTICE = os.getenv('SHOW_GDPR_NOTICE', 'true').lower() == 'true'
+    GDPR_NOTICE = os.getenv('GDPR_NOTICE', 'Please be mindful of GDPR and privacy regulations when adding personal or sensitive information to cases and tasks.')
+
+    # =============================================================================
+    # PRIVILEGED CASE / FOUR-EYE REVIEW
+    # =============================================================================
+    # Privileged case enforcement
+    ENFORCE_PRIVILEGED_CASE = os.getenv('ENFORCE_PRIVILEGED_CASE', 'false').lower() == 'true'
+
+    # Auto-assign Admin, Case Admin and Queue Admin to a task when it is
+    # set to "Requested" or "Request Review" in a privileged case.
+    # This makes the task visible in their assignment list.
+    PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST = os.getenv('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST', 'false').lower() == 'true'
+
+    # =============================================================================
+    # ENTRA ID
+    # =============================================================================
+    # Microsoft Entra ID (Azure AD) SSO configuration
+    ENTRA_ID_ENABLED = os.getenv('ENTRA_ID_ENABLED', 'false').lower() == 'true'
+    ENTRA_TENANT_ID = os.getenv('ENTRA_TENANT_ID', '')           # Directory (tenant) ID
+    ENTRA_CLIENT_ID = os.getenv('ENTRA_CLIENT_ID', '')           # Application (client) ID
+    ENTRA_CLIENT_SECRET = os.getenv('ENTRA_CLIENT_SECRET', '')   # Client secret value
+
+    # Entra ID group names that map to Flowintel roles
+    # FlowintelAdmin members → provisioned as Editor, admins are notified to promote manually
+    ENTRA_GROUP_ADMIN = os.getenv('ENTRA_GROUP_ADMIN', 'FlowintelAdmin')
+    ENTRA_GROUP_EDITOR = os.getenv('ENTRA_GROUP_EDITOR', 'FlowintelEditor')
+    ENTRA_GROUP_READONLY = os.getenv('ENTRA_GROUP_READONLY', 'FlowintelReadOnly')
+    ENTRA_GROUP_CASE_ADMIN  = os.getenv('ENTRA_GROUP_CASE_ADMIN',  'FlowintelCaseAdmin')
+    ENTRA_ROLE_CASE_ADMIN   = os.getenv('ENTRA_ROLE_CASE_ADMIN',   'CaseAdmin')
+    ENTRA_GROUP_QUEUE_ADMIN = os.getenv('ENTRA_GROUP_QUEUE_ADMIN', 'FlowintelQueueAdmin')
+    ENTRA_ROLE_QUEUE_ADMIN  = os.getenv('ENTRA_ROLE_QUEUE_ADMIN',  'QueueAdmin')
+    ENTRA_GROUP_QUEUER      = os.getenv('ENTRA_GROUP_QUEUER',      'FlowintelQueuer')
+    ENTRA_ROLE_QUEUER       = os.getenv('ENTRA_ROLE_QUEUER',       'Queuer')
+    ENTRA_REDIRECT_URL = os.getenv('ENTRA_REDIRECT_URL', 'http://localhost:7006/account/entra/callback')
+
+    # =============================================================================
+    # MISP INTEGRATION
+    # =============================================================================
+    # MISP connector: attach case & task files to the MISP event
+    MISP_EXPORT_FILES = os.getenv('MISP_EXPORT_FILES', 'false').lower() == 'true'
+
+    # MISP event defaults
+    # Threat level: 1 = High, 2 = Medium, 3 = Low, 4 = Undefined
+    MISP_EVENT_THREAT_LEVEL = int(os.getenv('MISP_EVENT_THREAT_LEVEL', '4'))
+
+    # Analysis state: 0 = Initial, 1 = Ongoing, 2 = Complete
+    MISP_EVENT_ANALYSIS = int(os.getenv('MISP_EVENT_ANALYSIS', '0'))
+
+    # Local tags added to every MISP event created/updated by flowintel.
+    # Can be a string or a list of strings. Leave empty to skip.
+    # Example: 'curation:source="flowintel"' or ['tag1', 'tag2']
+    MISP_ADD_LOCAL_TAGS_ALL_EVENTS = os.getenv('MISP_ADD_LOCAL_TAGS_ALL_EVENTS', 'curation:source="flowintel"')
+
+    # =============================================================================
+    # REPORT SIGNING
+    # =============================================================================
+    # GPG report signing (leave GPG_KEY_ID empty to disable)
+    GPG_HOME = "/home/yourusername/.gnupg"        # Path to the GPG keyring directory (empty = default ~/.gnupg)
+    GPG_KEY_ID = ""      # Fingerprint or email of the signing key (empty = signing disabled)
+    GPG_PASSPHRASE = ""  # Passphrase for the key (empty = no passphrase or use gpg-agent)
+
+    # =============================================================================
+    # CENTRAL TEMPLATE REPOSITORY
+    # =============================================================================
+    # Central template repository
+    # Base directory
+    REPOSITORY_BASE_PATH = os.getenv('REPOSITORY_BASE_PATH', 'modules/repositories')
+
+    # Manifest shown as example in "What does manifest.json look like?"
+    REPOSITORY_MANIFEST = {
+        "name": "My Template Repository",
+        "description": "A short description of what this repository contains.",
+        "uuid": "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx",
+        "version": 1
+    }
+
 
 
 # =============================================================================
@@ -217,18 +246,18 @@ class TestingConfig(Config):
 # 
 # Example .env file:
 #   DB_USER=flowintel
-#   DB_PASSWORD=your_secure_password
+#   DB_PASSWORD=your_secure_password_here
 #   DB_HOST=localhost
 #   DB_PORT=5432
 #   DB_NAME=flowintel
 class ProductionConfig(Config):
     # environment variables
     SESSION_TYPE = "redis"
-    db_user = os.getenv('DB_USER', 'default_user')
-    db_password = os.getenv('DB_PASSWORD', 'default_password')
+    db_user = os.getenv('DB_USER', 'flowintel')
+    db_password = os.getenv('DB_PASSWORD', 'your_secure_password_here')
     db_host = os.getenv('DB_HOST', 'localhost')
     db_port = os.getenv('DB_PORT', '5432')
-    db_name = os.getenv('DB_NAME', 'default_db')
+    db_name = os.getenv('DB_NAME', 'flowintel')
 
     # Database URI
     SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"

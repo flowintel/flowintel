@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, flash, redirect, render_template, request, current_app
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, current_app
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..utils.note_variables import get_syntax_reference
@@ -8,7 +8,10 @@ from ..utils.logger import flowintel_log
 import os
 import platform
 import getpass
+import re
+import shutil
 from pathlib import Path
+from datetime import datetime
 
 tools_blueprint = Blueprint(
     'tools',
@@ -367,8 +370,15 @@ def system_settings():
     db_name = getattr(config_class, 'db_name', None)
     db_host = getattr(config_class, 'db_host', None)
     
-    installation_path = str(Path(__file__).parent.parent.parent)
-    
+    app_root = Path(__file__).parent.parent.parent
+    installation_path = str(app_root)
+
+    config_path = app_root / 'conf' / 'config.py'
+    try:
+        config_last_modified = datetime.fromtimestamp(config_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
+    except OSError:
+        config_last_modified = None
+
     process_user = getpass.getuser()
     try:
         process_uid = os.getuid()
@@ -380,38 +390,171 @@ def system_settings():
     python_version = platform.python_version()
     
     system_info = {
-        'flaskenv': flaskenv,
-        'session_type': current_app.config.get('SESSION_TYPE'),
-        'debug': current_app.config.get('DEBUG', False),
-        'flask_url': getattr(config_class, 'FLASK_URL', None),
-        'flask_port': getattr(config_class, 'FLASK_PORT', None),
-        'misp_module': getattr(config_class, 'MISP_MODULE', None),
-        'log_file': getattr(config_class, 'LOG_FILE', None),
+        # System
         'installation_path': installation_path,
         'os_name': os_name,
         'os_release': os_release,
         'python_version': python_version,
         'process_user': process_user,
         'process_uid': process_uid,
-        'db_type': db_type,
-        'db_name': db_name,
-        'db_host': db_host,
+        'app_name': current_app.config.get('APP_NAME', 'Flowintel'),
+        'config_last_modified': config_last_modified,
+
+        # Configuration
+        'flaskenv': flaskenv,
+        'secret_key_set': current_app.config.get('SECRET_KEY', '') not in ('', 'SECRET_KEY_ENV_VAR_NOT_SET'),
+        'debug': current_app.config.get('DEBUG', False),
+        'session_type': current_app.config.get('SESSION_TYPE'),
+        'valkey_ip': getattr(config_class, 'VALKEY_IP', '127.0.0.1'),
+        'valkey_port': getattr(config_class, 'VALKEY_PORT', '6379'),
+        'flask_url': getattr(config_class, 'FLASK_URL', None),
+        'flask_port': getattr(config_class, 'FLASK_PORT', None),
+        'misp_module': getattr(config_class, 'MISP_MODULE', None),
         'file_upload_max_size': current_app.config.get('FILE_UPLOAD_MAX_SIZE'),
+        'behind_proxy': current_app.config.get('BEHIND_PROXY', False),
+        'proxy_x_for': current_app.config.get('PROXY_X_FOR', 1),
+        'proxy_x_proto': current_app.config.get('PROXY_X_PROTO', 1),
+        'proxy_x_host': current_app.config.get('PROXY_X_HOST', 1),
+        'proxy_x_prefix': current_app.config.get('PROXY_X_PREFIX', 0),
+        'system_roles': current_app.config.get('SYSTEM_ROLES', [1, 2, 3]),
+
+        # Setup
         'limit_user_view_to_org': current_app.config.get('LIMIT_USER_VIEW_TO_ORG'),
         'enforce_privileged_case': current_app.config.get('ENFORCE_PRIVILEGED_CASE', False),
-        'entra_id_enabled': current_app.config.get('ENTRA_ID_ENABLED', False),
-        'repository_base_path': current_app.config.get('REPOSITORY_BASE_PATH', 'modules/repositories'),
+
+        # Logging & theming
+        'log_file': getattr(config_class, 'LOG_FILE', None),
+        'audit_log_prefix': current_app.config.get('AUDIT_LOG_PREFIX', 'AUDIT'),
+        'main_logo': current_app.config.get('MAIN_LOGO', ''),
+        'topright_logo': current_app.config.get('TOPRIGHT_LOGO', ''),
+        'welcome_text_top': current_app.config.get('WELCOME_TEXT_TOP', ''),
+        'welcome_text_bottom': current_app.config.get('WELCOME_TEXT_BOTTOM', ''),
+        'welcome_logo': current_app.config.get('WELCOME_LOGO', ''),
+        'show_gdpr_notice': current_app.config.get('SHOW_GDPR_NOTICE', True),
+        'gdpr_notice': current_app.config.get('GDPR_NOTICE', ''),
+
+        # MISP
         'misp_export_files': current_app.config.get('MISP_EXPORT_FILES', False),
         'misp_event_threat_level': current_app.config.get('MISP_EVENT_THREAT_LEVEL', 4),
         'misp_event_analysis': current_app.config.get('MISP_EVENT_ANALYSIS', 0),
         'misp_add_local_tags_all_events': current_app.config.get('MISP_ADD_LOCAL_TAGS_ALL_EVENTS', ''),
+
+        # Report signing
+        'gpg_enabled': bool(current_app.config.get('GPG_KEY_ID')),
+        'gpg_home': current_app.config.get('GPG_HOME', ''),
+        'gpg_key_id': current_app.config.get('GPG_KEY_ID', ''),
+
+        # Task status IDs
         'task_requested': current_app.config.get('TASK_REQUESTED', 7),
         'task_approved': current_app.config.get('TASK_APPROVED', 8),
         'task_rejected': current_app.config.get('TASK_REJECTED', 5),
         'task_request_review': current_app.config.get('TASK_REQUEST_REVIEW', 9),
         'gpg_enabled': bool(current_app.config.get('GPG_KEY_ID')),
         'gpg_key_id': current_app.config.get('GPG_KEY_ID', ''),
+
+        # Entra ID SSO
+        'entra_id_enabled': current_app.config.get('ENTRA_ID_ENABLED', False),
+        'entra_tenant_id': current_app.config.get('ENTRA_TENANT_ID', ''),
+        'entra_client_id': current_app.config.get('ENTRA_CLIENT_ID', ''),
+        'entra_group_admin': current_app.config.get('ENTRA_GROUP_ADMIN', ''),
+        'entra_group_editor': current_app.config.get('ENTRA_GROUP_EDITOR', ''),
+        'entra_group_readonly': current_app.config.get('ENTRA_GROUP_READONLY', ''),
+        'entra_group_case_admin': current_app.config.get('ENTRA_GROUP_CASE_ADMIN', ''),
+        'entra_role_case_admin': current_app.config.get('ENTRA_ROLE_CASE_ADMIN', ''),
+        'entra_group_queue_admin': current_app.config.get('ENTRA_GROUP_QUEUE_ADMIN', ''),
+        'entra_role_queue_admin': current_app.config.get('ENTRA_ROLE_QUEUE_ADMIN', ''),
+        'entra_group_queuer': current_app.config.get('ENTRA_GROUP_QUEUER', ''),
+        'entra_role_queuer': current_app.config.get('ENTRA_ROLE_QUEUER', ''),
+        'entra_redirect_url': current_app.config.get('ENTRA_REDIRECT_URL', ''),
+
+        # Database
+        'db_type': db_type,
+        'db_name': db_name,
+        'db_host': db_host,
     }
     
     return render_template('tools/system_settings.html', system_info=system_info)
+
+
+@tools_blueprint.route("/system_settings/save", methods=["POST"])
+@login_required
+@admin_required
+def system_settings_save():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    key = data.get('key', '').upper()
+    value = data.get('value')
+
+    # Whitelist of editable keys with their expected types
+    key_types = {
+        'LIMIT_USER_VIEW_TO_ORG': 'bool',
+        'ENFORCE_PRIVILEGED_CASE': 'bool',
+        'MISP_EXPORT_FILES': 'bool',
+        'SHOW_GDPR_NOTICE': 'bool',
+        'TASK_REQUESTED': 'int',
+        'TASK_APPROVED': 'int',
+        'TASK_REJECTED': 'int',
+        'MISP_EVENT_THREAT_LEVEL': 'int',
+        'MISP_EVENT_ANALYSIS': 'int',
+        'LOG_FILE': 'str',
+        'AUDIT_LOG_PREFIX': 'str',
+        'MAIN_LOGO': 'str',
+        'TOPRIGHT_LOGO': 'str',
+        'WELCOME_TEXT_TOP': 'str',
+        'WELCOME_TEXT_BOTTOM': 'str',
+        'WELCOME_LOGO': 'str',
+        'GDPR_NOTICE': 'str',
+        'MISP_ADD_LOCAL_TAGS_ALL_EVENTS': 'list',
+    }
+
+    if key not in key_types:
+        return jsonify({"error": "Invalid configuration key"}), 400
+
+    value_type = key_types[key]
+
+    # Format value for Python source code
+    if value_type == 'bool':
+        py_value = 'True' if value else 'False'
+    elif value_type == 'int':
+        try:
+            py_value = str(int(value))
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid integer value"}), 400
+    elif value_type == 'list':
+        items = [item.strip() for item in value.split(',') if item.strip()]
+        py_value = repr(items)
+    else:
+        py_value = repr(str(value))
+
+    app_root = Path(__file__).parent.parent.parent
+    config_path = app_root / 'conf' / 'config.py'
+    backup_path = config_path.parent / 'config.py.backup'
+
+    # Create backup before modifying
+    shutil.copy2(str(config_path), str(backup_path))
+
+    content = config_path.read_text()
+    pattern = re.compile(r'^(\s+' + re.escape(key) + r'\s*=\s*)(.*?)(\s*#.*)?$', re.MULTILINE)
+    new_content, count = pattern.subn(lambda m: m.group(1) + py_value + (m.group(3) or ''), content, count=1)
+
+    if count == 0:
+        return jsonify({"error": f"Could not find {key} in config.py"}), 400
+
+    config_path.write_text(new_content)
+
+    # Update running config
+    if value_type == 'bool':
+        current_app.config[key] = bool(value)
+    elif value_type == 'int':
+        current_app.config[key] = int(value)
+    elif value_type == 'list':
+        current_app.config[key] = items
+    else:
+        current_app.config[key] = str(value)
+
+    flowintel_log("audit", 200, "System setting changed", User=current_user.email, Setting=key, Value=py_value)
+
+    return jsonify({"message": "Configuration saved", "backup_created": True})
 

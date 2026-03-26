@@ -344,6 +344,21 @@ def get_misp_connector_icon():
     )
     return icon.uuid if icon else None
 
+def case_has_misp_event(case_id):
+    """Check whether a case is linked to a MISP event via a connector instance."""
+    return (
+        Case_Connector_Instance.query
+        .join(Connector_Instance, Case_Connector_Instance.instance_id == Connector_Instance.id)
+        .join(Connector, Connector_Instance.connector_id == Connector.id)
+        .filter(
+            Case_Connector_Instance.case_id == case_id,
+            Connector.name == "MISP",
+            Case_Connector_Instance.identifier.isnot(None),
+            Case_Connector_Instance.identifier != ""
+        )
+        .first() is not None
+    )
+
 def get_instance(iid):
     """Return an instance"""
     return Connector_Instance.query.get(iid)

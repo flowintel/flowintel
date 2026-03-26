@@ -305,6 +305,7 @@ def get_case_info(cid):
 
         case_json = case.to_json()
         case_json["misp_icon"] = CommonModel.get_misp_connector_icon() or ""
+        case_json["has_misp_event"] = CommonModel.case_has_misp_event(case.id)
 
         return jsonify({"case": case_json, "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json(), "files": files_list}), 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
