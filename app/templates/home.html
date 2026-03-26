@@ -134,7 +134,7 @@
                                                 </template>
                                             </button>
                                         </div>
-                                        <pre class="case-description" v-html="md.render(expandedCases[case_loc.id] ? case_loc.description : truncateText(case_loc.description))"></pre>
+                                        <pre v-if="expandedCases[case_loc.id]" class="case-description" v-html="md.render(case_loc.description)"></pre>
                                     </template>
                                     <template v-else>
                                         <i style="color:#888">No description</i>
