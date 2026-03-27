@@ -1991,7 +1991,7 @@ This section covers how to upgrade Flowintel to a newer version. Flowintel uses 
 
    ```bash
    mkdir -p instance/backup
-   pg_dump -U postgres -F c -b -v -f instance/backup/$(date +"%Y_%m_%d")_pg.sql flowintel
+   sudo -u postgres pg_dump -F c -b -v flowintel > instance/backup/$(date +"%Y_%m_%d")_pg.sql
    ```
 
    For full backup and restore procedures, including file system archives and retention, see the [backup and restore guide](backup-restore.md).
@@ -2046,6 +2046,15 @@ bash launch.sh -p
 # Production (systemd service)
 sudo systemctl start flowintel
 ```
+
+Once Flowintel is running, confirm that the new version is active:
+
+```bash
+curl -s http://127.0.0.1:7006/api/swagger.json \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['info']['version'])"
+```
+
+The output should match the version you upgraded to.
 
 ## Option 2: Upgrade to a specific version
 
@@ -2107,6 +2116,15 @@ After switching to the new tag, complete the remaining upgrade steps manually:
 
 5. **Start Flowintel** using the appropriate method for your environment (see above).
 
+6. **Verify the upgrade**. Once Flowintel is running, confirm that the new version is active:
+
+   ```bash
+   curl -s http://127.0.0.1:7006/api/swagger.json \
+     | python3 -c "import sys,json; print(json.load(sys.stdin)['info']['version'])"
+   ```
+
+   The output should match the version you upgraded to (for example `3.2.0`).
+
 ## Check for configuration changes
 
 New versions occasionally introduce new settings in the configuration files. After upgrading, compare the default templates with your current configuration:
@@ -2136,6 +2154,53 @@ To see which migrations are pending:
 
 ```bash
 flask db history --rev-range current:head
+```
+
+### Migration fails with "column already exists"
+
+**Symptom**: Running `flask db upgrade` (either directly or through `update.sh`) fails with an error like:
+
+```
+sqlalchemy.exc.OperationalError: (psycopg2.errors.DuplicateColumn)
+column "version" of relation "case__template" already exists
+```
+
+**Cause**: The database schema already contains the column or table that the migration is trying to create, but Alembic's revision tracking has not been updated to reflect this. This can happen when schema changes were applied manually, when a previous upgrade was interrupted after the SQL ran but before Alembic recorded the new revision, or when the database was restored from a backup that was newer than the migration history.
+
+**Solution**: If you have verified that the database schema is already up to date (for example because you are already running the latest version), you can tell Alembic to mark all migrations as applied without executing any SQL:
+
+```bash
+source env/bin/activate
+export FLASKENV=production  # or development
+flask db stamp head
+```
+
+This updates Alembic's revision table (`alembic_version`) to point to the latest migration without making any schema changes. After stamping, re-run the upgrade to confirm there are no further pending migrations:
+
+```bash
+flask db upgrade
+```
+
+**When not to use this**: Only use `flask db stamp head` when you are certain the database schema matches the current code. If you are genuinely behind on migrations (for example upgrading across several versions), stamping will skip those migrations and leave the schema incomplete. In that case, investigate which specific migration is failing and resolve the conflict manually.
+
+### "Error in misp-modules" during upgrade
+
+**Symptom**: During the upgrade (either through `update.sh` or the manual steps), the output includes:
+
+```
+[+] Create/Update MISP-Modules...
+[-] Error in misp-modules. It might not running.
+```
+
+**Cause**: This is a timing issue. The update script starts the MISP modules server in a background `screen` session and then immediately tries to query it. If the server has not finished starting by the time Flowintel queries it, the connection is refused and this error is printed.
+
+**Impact**: The error is **harmless**. Flowintel itself is upgraded correctly; only the MISP module database entries are not refreshed during this particular run. The modules will be registered automatically the next time Flowintel starts and successfully connects to the MISP modules server.
+
+**Solution**: No action is needed. If you want to force a refresh, wait a few seconds for the MISP modules server to finish starting and then run:
+
+```bash
+source env/bin/activate
+python3 app.py -mm
 ```
 
 ## Rolling back an upgrade
