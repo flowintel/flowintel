@@ -313,6 +313,24 @@ cd flowintel
 
 The repository is now cloned to `/opt/flowintel/flowintel`. All subsequent commands assume you're working from this directory.
 
+### Install a specific version
+
+Flowintel uses Git tags to mark releases. You can find the list of available versions at:
+
+https://github.com/flowintel/flowintel/tags
+
+Each tag corresponds to a release (e.g. `3.1.0`), with release notes available at `https://github.com/flowintel/flowintel/releases/tag/<version>`.
+
+To install a specific version instead of the latest development code, pass the tag to `git clone`:
+
+```bash
+cd /opt/flowintel
+git clone --branch 3.1.0 --single-branch https://github.com/flowintel/flowintel.git
+cd flowintel
+```
+
+Replace `3.1.0` with the tag of the version you want to install. Using `--single-branch` avoids downloading the full history of other branches.
+
 ### Secure file permissions
 
 Set appropriate permissions on the Flowintel application directory to prevent unauthorised access:
@@ -920,6 +938,9 @@ The main differences between environments:
 | FLASK_URL | Can use 0.0.0.0 | Can use 0.0.0.0 | Should be 127.0.0.1 (behind NGINX) |
 | Error display | Full stack traces shown | Full stack traces shown | Generic error pages |
 | BEHIND_PROXY | Direct access to Flask | Direct access to Flask | Access via NGINX |
+| Sample cases | Imported | Not imported | Not imported |
+
+Sample test cases are included in development installations to give new users something to explore immediately. Production and testing installations skip this import. This is not controlled by the configuration file but by the installation mode you choose when running the installation script.
 
 The testing configuration uses a separate SQLite database to avoid interfering with development data. It also disables CSRF token validation (`WTF_CSRF_ENABLED = False`) so that automated tests can submit forms without generating tokens.
 
@@ -1100,7 +1121,7 @@ If you do not plan to use the MISP connector, you can leave these settings at th
 The `MISP_EXPORT_FILES` setting controls whether file attachments are included when Flowintel exports a case or task to MISP. When set to `True`, any files uploaded to a case or task (for example evidence, screenshots, or documents) are attached as attributes on the corresponding MISP event. When set to `False`, only structured data such as observables, notes, and metadata is exported and file attachments are skipped.
 
 ```python
-MISP_EXPORT_FILES = True
+MISP_EXPORT_FILES = os.getenv('MISP_EXPORT_FILES', 'false').lower() == 'true
 ```
 
 The default is `False`. Enable this if your analysts need file evidence included in MISP events.
@@ -1189,6 +1210,7 @@ The installation script supports two installation modes:
 - Uses SQLite database
 - Suitable for testing and development
 - Easier to set up, no database server required
+- Installs sample cases
 
 **Production mode**:
 - Uses PostgreSQL database
@@ -1431,6 +1453,22 @@ For security monitoring and compliance, forward these log files to your SIEM or 
 
 
 # Troubleshooting
+
+## Installation errors
+
+**Symptom**: Running `git clone https://github.com/flowintel/flowintel.git` fails with a permission error:
+
+`fatal: could not create work tree dir 'flowintel': Permission denied`
+
+**Common causes and solutions**:
+
+1. **Wrong directory**
+
+   You are not inside `/opt/flowintel`. Change to the correct directory first with `cd /opt/flowintel`.
+
+2. **Insufficient permissions**
+
+   Your user does not own the target directory. Set the correct ownership by running `sudo chown yourusername:yourusername /opt/flowintel`, replacing `yourusername` with the account that will run Flowintel.
 
 ## NGINX fails to start
 
