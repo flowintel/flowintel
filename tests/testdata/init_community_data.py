@@ -1,7 +1,6 @@
-"""Create or delete community test data (organisations and users) via the REST API.
+"""Create or delete community test data (roles, organisations and users) via the REST API.
 
 Requires a running Flowintel instance and an admin API key.
-Roles referenced in the data file must already exist.
 
 On creation, user API keys are saved to .community-api-keys.json so that
 the case import script can authenticate as individual community users.
@@ -36,11 +35,17 @@ _NOUNS = [
 
 
 def _generate_passphrase():
-    """Return an easy-to-remember passphrase that meets the complexity rules."""
     adjective = random.choice(_ADJECTIVES)
     noun = random.choice(_NOUNS)
     number = random.randint(10, 99)
     return f"{adjective}{noun}{number}"
+
+
+def _error_msg(resp):
+    try:
+        return resp.json().get("message", resp.text)
+    except Exception:
+        return f"HTTP {resp.status_code}: {resp.text[:200]}"
 
 
 def _load_data():
@@ -53,65 +58,77 @@ def _headers(api_key):
 
 
 def _get_roles(base_url, api_key):
-    """Fetch all roles and return a name-to-id mapping."""
     resp = requests.get(f"{base_url}/api/admin/roles", headers=_headers(api_key))
     resp.raise_for_status()
     return {r["name"]: r["id"] for r in resp.json()["roles"]}
 
 
 def _get_orgs(base_url, api_key):
-    """Fetch all organisations and return a name-to-id mapping."""
     resp = requests.get(f"{base_url}/api/admin/orgs", headers=_headers(api_key))
     resp.raise_for_status()
     return {o["name"]: o["id"] for o in resp.json()["orgs"]}
 
 
 def _get_users(base_url, api_key):
-    """Fetch all users and return an email-to-id mapping."""
     resp = requests.get(f"{base_url}/api/admin/users", headers=_headers(api_key))
     resp.raise_for_status()
     return {u["email"]: u["id"] for u in resp.json()["users"]}
 
 
 def _create_roles(base_url, api_key, data):
-    """Create community roles via the API.
-
-    TODO: implement once the add/delete role API endpoints are available.
-    """
     roles_def = data.get("roles", [])
     if not roles_def:
         return
 
     print("Creating roles...")
     for role_def in roles_def:
-        # TODO: POST /api/admin/add_role once the endpoint is merged
-        print(f"  Skipped (not yet implemented): {role_def['name']}")
-    print("  Note: role creation via the API is not yet available.")
-    print("  Please create the required roles manually.")
+        payload = {
+            "name": role_def["name"],
+            "description": role_def.get("description", ""),
+        }
+        for perm, enabled in role_def.get("permissions", {}).items():
+            payload[perm] = enabled
+
+        resp = requests.post(
+            f"{base_url}/api/admin/add_role",
+            headers=_headers(api_key),
+            json=payload,
+        )
+        if resp.status_code == 201:
+            print(f"  Created: {role_def['name']}")
+        elif "already exists" in _error_msg(resp).lower():
+            print(f"  Skipped (exists): {role_def['name']}")
+        else:
+            print(f"  Error: {role_def['name']} - {_error_msg(resp)}")
+            sys.exit(1)
 
 
 def _delete_roles(base_url, api_key, data):
-    """Delete community roles via the API.
-
-    TODO: implement once the add/delete role API endpoints are available.
-    """
     roles_def = data.get("roles", [])
     if not roles_def:
         return
 
+    roles = _get_roles(base_url, api_key)
+
     print("Deleting community test roles...")
     for role_def in roles_def:
-        # TODO: GET /api/admin/delete_role/<id> once the endpoint is merged
-        print(f"  Skipped (not yet implemented): {role_def['name']}")
-    print("  Note: role deletion via the API is not yet available.")
-    print("  Please delete the roles manually if needed.")
+        role_id = roles.get(role_def["name"])
+        if not role_id:
+            print(f"  Not found: {role_def['name']}")
+            continue
+        resp = requests.get(
+            f"{base_url}/api/admin/delete_role/{role_id}",
+            headers=_headers(api_key),
+        )
+        if resp.status_code == 200:
+            print(f"  Deleted: {role_def['name']}")
+        else:
+            print(f"  Error: {role_def['name']} - {_error_msg(resp)}")
 
 
 def create(base_url, api_key):
-    """Create community organisations and users from the data file."""
     data = _load_data()
 
-    # Roles (placeholder — requires the add_role API endpoint)
     _create_roles(base_url, api_key, data)
 
     roles = _get_roles(base_url, api_key)
@@ -141,10 +158,10 @@ def create(base_url, api_key):
         )
         if resp.status_code == 201:
             print(f"  Created: {org_def['name']}")
-        elif "already exists" in resp.json().get("message", "").lower():
+        elif "already exists" in _error_msg(resp).lower():
             print(f"  Skipped (exists): {org_def['name']}")
         else:
-            print(f"  Error: {org_def['name']} - {resp.json().get('message', resp.text)}")
+            print(f"  Error: {org_def['name']} - {_error_msg(resp)}")
             sys.exit(1)
 
     orgs = _get_orgs(base_url, api_key)
@@ -182,10 +199,10 @@ def create(base_url, api_key):
                     "api_key": body["api_key"],
                 })
                 print(f"  Created: {name} ({u['role']})")
-            elif "already exists" in resp.json().get("message", "").lower():
+            elif "already exists" in _error_msg(resp).lower():
                 print(f"  Skipped (exists): {u['email']}")
             else:
-                print(f"  Error: {u['email']} - {resp.json().get('message', resp.text)}")
+                print(f"  Error: {u['email']} - {_error_msg(resp)}")
                 sys.exit(1)
 
     # Save API keys for use by the case import script
@@ -200,7 +217,6 @@ def create(base_url, api_key):
 
 
 def delete(base_url, api_key):
-    """Delete community users and organisations listed in the data file."""
     data = _load_data()
     users = _get_users(base_url, api_key)
     orgs = _get_orgs(base_url, api_key)
@@ -220,7 +236,7 @@ def delete(base_url, api_key):
             if resp.status_code == 200:
                 print(f"  Deleted: {u['first_name']} {u['last_name']} ({u['email']})")
             else:
-                print(f"  Error: {u['email']} - {resp.json().get('message', resp.text)}")
+                print(f"  Error: {u['email']} - {_error_msg(resp)}")
 
     # Delete organisations
     print("Deleting community test organisations...")
@@ -236,21 +252,19 @@ def delete(base_url, api_key):
         if resp.status_code == 200:
             print(f"  Deleted: {org_def['name']}")
         else:
-            print(f"  Error: {org_def['name']} - {resp.json().get('message', resp.text)}")
+            print(f"  Error: {org_def['name']} - {_error_msg(resp)}")
 
     # Remove API keys file
     if os.path.exists(API_KEYS_FILE):
         os.remove(API_KEYS_FILE)
         print(f"Removed {API_KEYS_FILE}")
 
-    # Roles (placeholder — requires the delete_role API endpoint)
     _delete_roles(base_url, api_key, data)
 
     print("Done.")
 
 
 def _print_overview(data):
-    """Print a summary table of the community data."""
     print("\n--- Community test data overview ---")
     for org_def in data["organisations"]:
         users_list = org_def.get("users", [])

@@ -38,7 +38,6 @@ def _headers(api_key):
 
 
 def _error_msg(resp):
-    """Extract an error message from a response, falling back to status + body."""
     try:
         return resp.json().get("message", resp.text)
     except Exception:
@@ -50,7 +49,6 @@ def _random_prefix():
 
 
 def _load_api_keys():
-    """Load community user API keys written by init_community_data.py."""
     if not os.path.exists(API_KEYS_FILE):
         print(f"Error: {API_KEYS_FILE} not found.")
         print("Run init_community_data.py create first.")
@@ -60,7 +58,6 @@ def _load_api_keys():
 
 
 def _keys_by_org_and_role(api_keys):
-    """Return a dict: {org_name: {role_name: [entries]}}."""
     mapping = {}
     for entry in api_keys:
         org = entry["org"]
@@ -70,7 +67,6 @@ def _keys_by_org_and_role(api_keys):
 
 
 def _find_key(keys_map, org, role):
-    """Return a single API key entry for the given org and role."""
     entries = keys_map.get(org, {}).get(role, [])
     if not entries:
         return None
@@ -78,7 +74,6 @@ def _find_key(keys_map, org, role):
 
 
 def _find_assignees(keys_map, org):
-    """Return user entries with Queuer role for an org."""
     return keys_map.get(org, {}).get("Queuer", [])
 
 
@@ -97,7 +92,6 @@ def _parse_deadline(deadline_str):
 
 
 def _load_case_files():
-    """Find and return paths for all case_*.json files in the testdata directory."""
     files = sorted(
         f for f in os.listdir(SCRIPT_DIR)
         if f.startswith("case_") and f.endswith(".json")
@@ -106,11 +100,10 @@ def _load_case_files():
 
 
 # ---------------------------------------------------------------------------
-# Create
+# Create / Delete
 # ---------------------------------------------------------------------------
 
 def _create_case(base_url, case_data, case_admin_key):
-    """Create a case via the API.  Returns the case_id or None on failure."""
     deadline_date, deadline_time = _parse_deadline(case_data.get("deadline"))
 
     body = {
@@ -138,7 +131,6 @@ def _create_case(base_url, case_data, case_admin_key):
 
 
 def _set_privileged(base_url, case_id, case_admin_key):
-    """Mark a case as privileged."""
     resp = requests.post(
         f"{base_url}/api/case/{case_id}/edit",
         headers=_headers(case_admin_key),
@@ -149,7 +141,6 @@ def _set_privileged(base_url, case_id, case_admin_key):
 
 
 def _add_case_note(base_url, case_id, note, api_key):
-    """Set the case-level note."""
     requests.post(
         f"{base_url}/api/case/{case_id}/modify_case_note",
         headers=_headers(api_key),
@@ -158,7 +149,6 @@ def _add_case_note(base_url, case_id, note, api_key):
 
 
 def _create_task(base_url, case_id, task_data, api_key):
-    """Create a task via the API.  Returns the task_id or None on failure."""
     deadline_date, deadline_time = _parse_deadline(task_data.get("deadline"))
 
     body = {
@@ -186,7 +176,6 @@ def _create_task(base_url, case_id, task_data, api_key):
 
 
 def _add_task_notes(base_url, task_id, notes, api_key):
-    """Create notes on a task."""
     for note_data in notes:
         text = note_data.get("note", "")
         if not text:
@@ -199,7 +188,6 @@ def _add_task_notes(base_url, task_id, notes, api_key):
 
 
 def _add_subtasks(base_url, task_id, subtasks, api_key):
-    """Create subtasks on a task."""
     for sub in subtasks:
         requests.post(
             f"{base_url}/api/task/{task_id}/create_subtask",
@@ -209,7 +197,6 @@ def _add_subtasks(base_url, task_id, subtasks, api_key):
 
 
 def _add_url_tools(base_url, task_id, urls_tools, api_key):
-    """Create URL/tool references on a task."""
     for ut in urls_tools:
         requests.post(
             f"{base_url}/api/task/{task_id}/create_url_tool",
@@ -219,7 +206,6 @@ def _add_url_tools(base_url, task_id, urls_tools, api_key):
 
 
 def _assign_users(base_url, task_id, user_ids, api_key):
-    """Assign users to a task."""
     if not user_ids:
         return
     requests.post(
@@ -230,7 +216,6 @@ def _assign_users(base_url, task_id, user_ids, api_key):
 
 
 def _create_misp_objects(base_url, case_id, misp_objects, api_key):
-    """Create MISP objects on a case."""
     for obj in misp_objects:
         body = {
             "object-template": {
@@ -331,10 +316,6 @@ def create(base_url):
     _print_overview(created_cases)
 
 
-# ---------------------------------------------------------------------------
-# Delete
-# ---------------------------------------------------------------------------
-
 def delete(base_url):
     """Delete all community test cases (identified by the description tag)."""
     api_keys = _load_api_keys()
@@ -384,10 +365,6 @@ def delete(base_url):
 
     print("Done.")
 
-
-# ---------------------------------------------------------------------------
-# Overview
-# ---------------------------------------------------------------------------
 
 def _print_overview(created_cases):
     if not created_cases:

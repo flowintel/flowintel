@@ -1,8 +1,8 @@
 #!/bin/bash -i
 set -e
 
-isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1`
-isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1`
+isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1 || true`
+isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1 || true`
 
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
