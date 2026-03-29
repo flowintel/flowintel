@@ -60,14 +60,10 @@ if [[ "$FLASKENV" == "development" ]]; then
     cp instance/flowintel.sqlite instance/backup/$(date +"%Y_%m_%d").sqlite
 else
     # PostgreSQL backup
-    # Customize PG variables if needed
-    PGUSER=${PGUSER:-"postgres"}
     PGDATABASE=${PGDATABASE:-"flowintel"}
-    PGPASSWORD=${PGPASSWORD:-""}   # If password required
-    export PGPASSWORD
     BACKUP_FILE="instance/backup/$(date +"%Y_%m_%d")_pg.sql"
     echo "Backing up PostgreSQL database to $BACKUP_FILE"
-    pg_dump -U "$PGUSER" -F c -b -v -f "$BACKUP_FILE" "$PGDATABASE"
+    sudo -u postgres pg_dump -F c -b -v "$PGDATABASE" > "$BACKUP_FILE"
 fi
 
 # Run migration script
@@ -92,6 +88,15 @@ pip install -U misp-modules
 
 screen -dmS "misp_mod_flowintel"
 screen -S "misp_mod_flowintel" -X screen -t "misp_modules_server" bash -c "misp-modules -l 127.0.0.1; read x"
+
+echo "Waiting for MISP modules to start..."
+for i in $(seq 1 30); do
+    if curl -s http://127.0.0.1:6666/modules > /dev/null 2>&1; then
+        echo "MISP modules are ready."
+        break
+    fi
+    sleep 1
+done
 
 python3 app.py -mm
 

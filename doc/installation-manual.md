@@ -313,6 +313,24 @@ cd flowintel
 
 The repository is now cloned to `/opt/flowintel/flowintel`. All subsequent commands assume you're working from this directory.
 
+### Install a specific version
+
+Flowintel uses Git tags to mark releases. You can find the list of available versions at:
+
+https://github.com/flowintel/flowintel/tags
+
+Each tag corresponds to a release (e.g. `3.1.0`), with release notes available at `https://github.com/flowintel/flowintel/releases/tag/<version>`.
+
+To install a specific version instead of the latest development code, pass the tag to `git clone`:
+
+```bash
+cd /opt/flowintel
+git clone --branch 3.1.0 --single-branch https://github.com/flowintel/flowintel.git
+cd flowintel
+```
+
+Replace `3.1.0` with the tag of the version you want to install. Using `--single-branch` avoids downloading the full history of other branches.
+
 ### Secure file permissions
 
 Set appropriate permissions on the Flowintel application directory to prevent unauthorised access:
@@ -920,6 +938,9 @@ The main differences between environments:
 | FLASK_URL | Can use 0.0.0.0 | Can use 0.0.0.0 | Should be 127.0.0.1 (behind NGINX) |
 | Error display | Full stack traces shown | Full stack traces shown | Generic error pages |
 | BEHIND_PROXY | Direct access to Flask | Direct access to Flask | Access via NGINX |
+| Sample cases | Imported | Not imported | Not imported |
+
+Sample test cases are included in development installations to give new users something to explore immediately. Production and testing installations skip this import. This is not controlled by the configuration file but by the installation mode you choose when running the installation script.
 
 The testing configuration uses a separate SQLite database to avoid interfering with development data. It also disables CSRF token validation (`WTF_CSRF_ENABLED = False`) so that automated tests can submit forms without generating tokens.
 
@@ -1100,7 +1121,7 @@ If you do not plan to use the MISP connector, you can leave these settings at th
 The `MISP_EXPORT_FILES` setting controls whether file attachments are included when Flowintel exports a case or task to MISP. When set to `True`, any files uploaded to a case or task (for example evidence, screenshots, or documents) are attached as attributes on the corresponding MISP event. When set to `False`, only structured data such as observables, notes, and metadata is exported and file attachments are skipped.
 
 ```python
-MISP_EXPORT_FILES = True
+MISP_EXPORT_FILES = os.getenv('MISP_EXPORT_FILES', 'false').lower() == 'true
 ```
 
 The default is `False`. Enable this if your analysts need file evidence included in MISP events.
@@ -1189,6 +1210,7 @@ The installation script supports two installation modes:
 - Uses SQLite database
 - Suitable for testing and development
 - Easier to set up, no database server required
+- Installs sample cases
 
 **Production mode**:
 - Uses PostgreSQL database
@@ -1405,12 +1427,17 @@ https://flowintel.yourdomain.com
 
 If you used a self-signed certificate, accept the browser security warning.
 
-Log in with the default administrator credentials:
+Log in with the default administrator credentials. If you customised the `INIT_ADMIN_USER` settings in the configuration file before installation, use those credentials instead:
 
 - **Email**: `admin@admin.admin`
 - **Password**: `admin`
 
+After a successful login, Flowintel displays its welcome page:
+![installation-manual-diagrams/flowintel-installation-firstlogin.png](installation-manual-diagrams/flowintel-installation-firstlogin.png)
+
 **Security warning**: Change the administrator password immediately after your first login. Navigate to your user profile in the web interface and set a strong password. These default credentials are defined in the configuration file and are only used to bootstrap the initial account. Once you update the password through the web interface, the values in the configuration file are no longer read.
+
+# Monitoring
 
 ## Log files for monitoring
 
@@ -1431,6 +1458,22 @@ For security monitoring and compliance, forward these log files to your SIEM or 
 
 
 # Troubleshooting
+
+## Installation errors
+
+**Symptom**: Running `git clone https://github.com/flowintel/flowintel.git` fails with a permission error:
+
+`fatal: could not create work tree dir 'flowintel': Permission denied`
+
+**Common causes and solutions**:
+
+1. **Wrong directory**
+
+   You are not inside `/opt/flowintel`. Change to the correct directory first with `cd /opt/flowintel`.
+
+2. **Insufficient permissions**
+
+   Your user does not own the target directory. Set the correct ownership by running `sudo chown yourusername:yourusername /opt/flowintel`, replacing `yourusername` with the account that will run Flowintel.
 
 ## NGINX fails to start
 
@@ -1911,6 +1954,282 @@ sudo dpkg-reconfigure -plow unattended-upgrades
 ```
 
 This configures Ubuntu to download and install security updates automatically. Review `/etc/apt/apt.conf.d/50unattended-upgrades` to confirm the settings match your requirements.
+
+
+# Upgrading Flowintel
+
+This section covers how to upgrade Flowintel to a newer version. Flowintel uses Flask-Migrate (Alembic) for database schema changes, so every upgrade includes a migration step that applies any new or modified tables and columns automatically. The upgrade process differs slightly depending on whether you follow the latest development branch or pin to tagged releases.
+
+## Before upgrading
+
+1. **Read the release notes**. Check the [Flowintel releases page](https://github.com/flowintel/flowintel/releases) for breaking changes, new dependencies, or manual steps that apply to the version you are upgrading to.
+
+2. **Stop Flowintel**. If Flowintel is running as a systemd service, stop it before making any changes:
+
+   ```bash
+   sudo systemctl stop flowintel
+   ```
+
+   If you are running Flowintel manually in a terminal, press `Ctrl+C` to stop it.
+
+3. **Back up the database and files**. If you have already set up the automated backup script described in the [backup and restore guide](backup-restore.md), run it manually before proceeding:
+
+   ```bash
+   sudo /opt/flowintel/backups/flowintel-backup.sh
+   ```
+
+   If you have not yet configured the backup script, create a quick manual backup instead.
+
+   **SQLite (development)**:
+
+   ```bash
+   mkdir -p instance/backup
+   cp instance/flowintel.sqlite instance/backup/$(date +"%Y_%m_%d").sqlite
+   ```
+
+   **PostgreSQL (production)**:
+
+   ```bash
+   mkdir -p instance/backup
+   sudo -u postgres pg_dump -F c -b -v flowintel > instance/backup/$(date +"%Y_%m_%d")_pg.sql
+   ```
+
+   For full backup and restore procedures, including file system archives and retention, see the [backup and restore guide](backup-restore.md).
+
+4. **Back up the configuration files**. Copy `conf/config.py` and `conf/config_module.py` so you can compare them with the updated defaults after the upgrade:
+
+   ```bash
+   cp conf/config.py conf/config.py.pre-upgrade
+   cp conf/config_module.py conf/config_module.py.pre-upgrade
+   ```
+
+## Option 1: Upgrade using the update script
+
+Flowintel includes an `update.sh` script that automates most of the upgrade process. It pulls the latest code from Git, backs up the database, runs database migrations, updates the MISP taxonomy and galaxy submodules, upgrades Python dependencies, and restarts the MISP modules.
+
+**Development environment:**
+
+```bash
+cd /opt/flowintel/flowintel
+bash update.sh
+```
+
+**Production environment:**
+
+```bash
+cd /opt/flowintel/flowintel
+bash update.sh --env production
+```
+
+The script performs the following steps:
+
+1. Stops any running Flowintel screen sessions
+2. Pulls the latest code with `git pull`
+3. Backs up the database (SQLite copy or PostgreSQL dump) into `instance/backup/`
+4. Runs `flask db upgrade` to apply pending database migrations
+5. Updates the MISP taxonomy and galaxy submodules
+6. Upgrades the `pytaxonomies`, `pymispgalaxies`, and `pymisp` Python packages
+7. Reloads taxonomy and galaxy data into the database
+8. Upgrades and restarts the MISP modules
+
+**Note**: The script uses `git pull`, so it always pulls the most recent commits on your current branch (typically `main`). If you want to upgrade to a specific tagged release instead, use the manual method described below.
+
+After the script completes, start Flowintel again:
+
+```bash
+# Development
+bash launch.sh -l
+
+# Production (manual)
+bash launch.sh -p
+
+# Production (systemd service)
+sudo systemctl start flowintel
+```
+
+Once Flowintel is running, confirm that the new version is active:
+
+```bash
+curl -s http://127.0.0.1:7006/api/swagger.json \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['info']['version'])"
+```
+
+The output should match the version you upgraded to.
+
+## Option 2: Upgrade to a specific version
+
+If you originally installed Flowintel from a specific Git tag (as described in the "Install a specific version" section), you can upgrade to a newer tagged release rather than tracking the latest development branch.
+
+Fetch all available tags from the remote repository:
+
+```bash
+cd /opt/flowintel/flowintel
+git fetch --tags
+```
+
+List the available versions:
+
+```bash
+git tag --list --sort=-v:refname
+```
+
+Check out the desired version:
+
+```bash
+git checkout tags/3.2.0
+```
+
+After switching to the new tag, complete the remaining upgrade steps manually:
+
+1. **Install updated Python dependencies**:
+
+   ```bash
+   source env/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. **Run database migrations**:
+
+   ```bash
+   # Development
+   bash migrate.sh --env development -u
+
+   # Production
+   bash migrate.sh --env production -u
+   ```
+
+3. **Update submodules and reload data**:
+
+   ```bash
+   git submodule update --remote
+   pip install -U pytaxonomies pymispgalaxies pymisp
+   python3 app.py -utg
+   python3 app.py -py
+   ```
+
+4. **Upgrade and restart MISP modules**:
+
+   ```bash
+   pip install -U misp-modules
+   python3 app.py -mm
+   ```
+
+5. **Start Flowintel** using the appropriate method for your environment (see above).
+
+6. **Verify the upgrade**. Once Flowintel is running, confirm that the new version is active:
+
+   ```bash
+   curl -s http://127.0.0.1:7006/api/swagger.json \
+     | python3 -c "import sys,json; print(json.load(sys.stdin)['info']['version'])"
+   ```
+
+   The output should match the version you upgraded to (for example `3.2.0`).
+
+## Check for configuration changes
+
+New versions occasionally introduce new settings in the configuration files. After upgrading, compare the default templates with your current configuration:
+
+```bash
+diff conf/config.py conf/config.py.default
+diff conf/config_module.py conf/config_module.py.default
+```
+
+If the defaults contain settings that are not present in your configuration, add them. The release notes normally document new or changed configuration options.
+
+## Database migrations
+
+Flowintel uses Flask-Migrate (which wraps Alembic) to manage database schema changes. Each release that modifies the database includes one or more migration scripts in the `migrations/versions/` directory. The `flask db upgrade` command (called by both `update.sh` and `migrate.sh -u`) applies these migrations in sequence, bringing your database schema up to date with the application code.
+
+If a migration fails, PostgreSQL leaves the database in its pre-migration state thanks to transactional DDL. SQLite does not support transactional DDL, so a failed migration on a development database may leave the schema in a partially modified state — restore from your backup in that case. Consult the release notes or the issue tracker for guidance.
+
+To check which migration your database is currently on:
+
+```bash
+source env/bin/activate
+export FLASKENV=production  # or development
+flask db current
+```
+
+To see which migrations are pending:
+
+```bash
+flask db history --rev-range current:head
+```
+
+### Migration fails with "column already exists"
+
+**Symptom**: Running `flask db upgrade` (either directly or through `update.sh`) fails with an error like:
+
+```
+sqlalchemy.exc.OperationalError: (psycopg2.errors.DuplicateColumn)
+column "version" of relation "case__template" already exists
+```
+
+**Cause**: The database schema already contains the column or table that the migration is trying to create, but Alembic's revision tracking has not been updated to reflect this. This can happen when schema changes were applied manually, when a previous upgrade was interrupted after the SQL ran but before Alembic recorded the new revision, or when the database was restored from a backup that was newer than the migration history.
+
+**Solution**: If you have verified that the database schema is already up to date (for example because you are already running the latest version), you can tell Alembic to mark all migrations as applied without executing any SQL:
+
+```bash
+source env/bin/activate
+export FLASKENV=production  # or development
+flask db stamp head
+```
+
+This updates Alembic's revision table (`alembic_version`) to point to the latest migration without making any schema changes. After stamping, re-run the upgrade to confirm there are no further pending migrations:
+
+```bash
+flask db upgrade
+```
+
+**When not to use this**: Only use `flask db stamp head` when you are certain the database schema matches the current code. If you are genuinely behind on migrations (for example upgrading across several versions), stamping will skip those migrations and leave the schema incomplete. In that case, investigate which specific migration is failing and resolve the conflict manually.
+
+### "Error in misp-modules" during upgrade
+
+**Symptom**: During the upgrade (either through `update.sh` or the manual steps), the output includes:
+
+```
+[+] Create/Update MISP-Modules...
+[-] Error in misp-modules. It might not running.
+```
+
+**Cause**: This is a timing issue. The update script starts the MISP modules server in a background `screen` session and then immediately tries to query it. If the server has not finished starting by the time Flowintel queries it, the connection is refused and this error is printed.
+
+**Impact**: The error is **harmless**. Flowintel itself is upgraded correctly; only the MISP module database entries are not refreshed during this particular run. The modules will be registered automatically the next time Flowintel starts and successfully connects to the MISP modules server.
+
+**Solution**: No action is needed. If you want to force a refresh, wait a few seconds for the MISP modules server to finish starting and then run:
+
+```bash
+source env/bin/activate
+python3 app.py -mm
+```
+
+## Rolling back an upgrade
+
+If the upgrade causes problems, you can revert to the previous version. For a full restore (database and files), follow the restore procedures in the [backup and restore guide](backup-restore.md). The summary below covers the essential steps:
+
+1. Stop Flowintel.
+2. Restore the database from the backup you created before upgrading (see the [backup and restore guide](backup-restore.md) for detailed instructions).
+3. Check out the previous Git tag or commit:
+
+   ```bash
+   git checkout tags/3.1.0
+   ```
+
+4. Reinstall the previous version's dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+5. Downgrade the database schema to match the previous version:
+
+   ```bash
+   bash migrate.sh --env production -d
+   ```
+
+6. Restore your pre-upgrade configuration files if needed.
+7. Start Flowintel.
+
 
 # Uninstalling Flowintel
 
