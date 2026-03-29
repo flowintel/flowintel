@@ -1,6 +1,8 @@
+*move to user manual in a later stage*
+
 # Setting up a demo environment
 
-Flowintel ships with sample cases and a community data set. A development installation imports the sample cases automatically during setup, so new developers have something to explore straight away. A production installation starts with a clean database and skips this data entirely.
+Flowintel ships with sample cases and a community data set. A development installation imports the sample cases automatically during setup, so users have something to explore straight away. A production installation starts with a clean database and skips this data entirely.
 
 If you are setting up a production instance for demo or training purposes, you can import the test data manually. This page describes the available data sets, how to import them, and how to clean up when you are done.
 
@@ -21,7 +23,7 @@ The `tests/testdata/` directory contains two case files:
 | `case_ForensicCase.json` | Forensic Case | A forensic investigation with four tasks covering disk extraction, timeline creation, evtx analysis, and report writing |
 | `case_NewCompromisedWorkstation.json` | New Compromised Workstation | A malware investigation scenario with multiple tasks, subtasks, URL tools, deadlines, and MISP objects |
 
-Each file is a self-contained JSON document that includes the case metadata, tasks, notes, subtasks, tags, URL tools, and (where applicable) MISP objects. The import process creates all of these records at once.
+Each file is a JSON document that includes the case metadata, tasks, notes, subtasks, tags, URL tools, and (where applicable) MISP objects. The import process creates all of these records at once.
 
 ### Community data
 
@@ -34,12 +36,12 @@ The community data set is defined in `tests/testdata/test-data-community.json`. 
 
 When you import this data, all users share the same randomly generated passphrase (for example `BrightCastle42`). Each user also receives a unique API key. The script prints the shared password and all credentials to the terminal and saves the API keys to a local file so that the case import script can authenticate as individual community users.
 
-After importing the community users, you can also import the sample cases through the REST API. This second step assigns cases to organisations, creates tasks as different users, sets cases as privileged, and distributes task assignments randomly across users. The result is a realistic multi-organisation workspace with notifications, approval queues, and cross-team case visibility.
+After importing the community users, you can also import the sample cases through the REST API. This second step assigns cases to organisations, creates tasks as different users, sets cases as privileged, and distributes task assignments randomly across users. The result is a realistic multi-organisation workspace with notifications and approval queues.
 
 
 ## Importing sample cases only
 
-If you only need the two sample cases and do not need community organisations or users, you can import them in one step. On a development installation these are already present, so this section is mainly relevant for production or demo instances.
+If you only need the two sample cases and do not need community organisations or users, you can import them in one step.
 
 Make sure Flowintel is **not** running (or run this in a separate terminal before starting it):
 
@@ -239,7 +241,7 @@ python3 tests/testdata/init_community_data.py delete --api-key <your-admin-api-k
 
 The script also deletes the `.community-api-keys.json` file.
 
-When removing the full community data set, delete the cases first (with `-dtdcc`), then the users and organisations (with `-dtdc`). If you delete the users before the cases, the cases will remain in the database without an owner.
+When removing the full community data set, delete the cases first (with `-dtdcc`), then the users and organisations (with `-dtdc`). 
 
 ### Remove all cases and templates
 
