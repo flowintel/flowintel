@@ -108,6 +108,7 @@ elif args.test_data:
             create_default_case(admin_user)
         else:
             print("Error: No admin user found")
+
 else:
     # get_modules_list()
     app.run(host=app.config.get("FLASK_URL"), port=app.config.get("FLASK_PORT"))

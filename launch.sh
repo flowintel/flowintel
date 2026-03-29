@@ -1,8 +1,8 @@
 #!/bin/bash -i
 set -e
 
-isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1`
-isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1`
+isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1 || true`
+isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1 || true`
 
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -154,7 +154,8 @@ function init_db_prod {
     python3 app.py -i
     python3 app.py -tg
     python3 app.py -mm
-    python3 app.py -td
+    # don't import test data for prod 
+    #python3 app.py -td
 }
 
 function reload_db {
@@ -194,6 +195,36 @@ function init_db_docker {
     python3 app.py -td
 }
 
+function test_data_community {
+    local api_key="$1"
+    if [ -z "$api_key" ]; then
+        echo "Usage: launch.sh -tdc <admin_api_key>"
+        exit 1
+    fi
+    prepare_app_run
+    python3 tests/testdata/init_community_data.py create --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
+}
+
+function delete_test_data_community {
+    local api_key="$1"
+    if [ -z "$api_key" ]; then
+        echo "Usage: launch.sh -dtdc <admin_api_key>"
+        exit 1
+    fi
+    prepare_app_run
+    python3 tests/testdata/init_community_data.py delete --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
+}
+
+function test_data_cases {
+    prepare_app_run
+    python3 tests/testdata/init_community_cases.py create --url "http://$APP_URL:$APP_PORT"
+}
+
+function delete_test_data_cases {
+    prepare_app_run
+    python3 tests/testdata/init_community_cases.py delete --url "http://$APP_URL:$APP_PORT"
+}
+
 if [ "$1" ]; then
     case $1 in
         -l | --launch )             launch;;
@@ -207,6 +238,10 @@ if [ "$1" ]; then
         -ks | --killscript )        killscript;;
         -tg | --taxo_galaxy )       taxo_galaxy_update;;
         -mm | --misp_modules )      misp_module_update;;
+        -tdc | --test_data_community )       test_data_community "$2";;
+        -dtdc | --delete_test_data_community ) delete_test_data_community "$2";;
+        -tdcc | --test_data_cases )          test_data_cases;;
+        -dtdcc | --delete_test_data_cases )  delete_test_data_cases;;
     esac
     shift
 else
