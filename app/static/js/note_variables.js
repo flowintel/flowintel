@@ -22,7 +22,8 @@ function _cacheKey(caseId, text, taskId, mark) {
 }
 
 // Regex matching the same pattern as the backend
-const VARIABLE_PATTERN = /@((?:this|case|task|now|today)(?:\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\.[a-zA-Z_][a-zA-Z0-9_]*|\.\d+)*)/g
+// Include `user` and `me` roots so client-side detection matches server-side
+const VARIABLE_PATTERN = /@((?:this|case|task|now|today|user|me)(?:\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\.[a-zA-Z_][a-zA-Z0-9_]*|\.\d+)*)/g
 
 /**
  * Check if text contains any @variable references
@@ -123,7 +124,7 @@ function clearVariableCache() {
 function styleUnresolvedVariables(html) {
     if (!html) return html
     return html.replace(
-        /@((?:this|case|task|now|today)(?:\.[a-zA-Z_][a-zA-Z0-9_]*|\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\.\d+)*)/g,
+        /@((?:this|case|task|now|today|user|me)(?:\.[a-zA-Z_][a-zA-Z0-9_]*|\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\.\d+)*)/g,
         '<code class="note-variable unresolved" title="Unresolved variable">@$1</code>'
     )
 }
