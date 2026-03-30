@@ -261,8 +261,8 @@
             "attributes": [
                 {
                     "value": "44d88612fea8a8f36de82e1278abb02f",
-                    "type": "datetime",
-                    "object_relation": "access-time",
+                    "type": "md5",
+                    "object_relation": "md5",
                     "first_seen": null,
                     "last_seen": null,
                     "comment": "EICAR test file",
@@ -271,8 +271,8 @@
                 },
                 {
                     "value": "3395856ce81f2b7382583e5c2f0f4a36f4d2f1f0",
-                    "type": "datetime",
-                    "object_relation": "access-time",
+                    "type": "sha1",
+                    "object_relation": "sha1",
                     "first_seen": null,
                     "last_seen": null,
                     "comment": "EICAR test file",
@@ -281,8 +281,8 @@
                 },
                 {
                     "value": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538a7f65757d54",
-                    "type": "datetime",
-                    "object_relation": "access-time",
+                    "type": "sha256",
+                    "object_relation": "sha256",
                     "first_seen": null,
                     "last_seen": null,
                     "comment": "EICAR test file",

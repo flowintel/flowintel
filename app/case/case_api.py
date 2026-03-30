@@ -313,6 +313,7 @@ class DeleteCase(Resource):
                     flowintel_log("audit", 200, "Case deleted", User=current_user.email, CaseId=cid)
                     return {"message": "Case deleted"}, 200
                 return {"message": "Error case deleted"}, 400
+            flowintel_log("audit", 403, "Case deletion denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied"}, 403
         return {"message": "Case not found"}, 404
     

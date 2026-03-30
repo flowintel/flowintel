@@ -37,7 +37,7 @@ def verif_create_case_task(data_dict):
 
     if "deadline_date" in data_dict:
         try:
-            data_dict["deadline_date"] = datetime.strptime(data_dict["deadline_date"], DATE_FORMAT) 
+            data_dict["deadline_date"] = datetime.strptime(data_dict["deadline_date"], DATE_FORMAT).date() 
         except ValueError:
             return {"message": "deadline_date bad format"}
     else:
@@ -45,7 +45,7 @@ def verif_create_case_task(data_dict):
 
     if "deadline_time" in data_dict:
         try:
-            data_dict["deadline_time"] = datetime.strptime(data_dict["deadline_time"], TIME_FORMAT) 
+            data_dict["deadline_time"] = datetime.strptime(data_dict["deadline_time"], TIME_FORMAT).time() 
         except ValueError:
             return {"message": "deadline_time bad format"}
     else:
@@ -80,21 +80,21 @@ def common_verif(data_dict, case_task):
 
     if "deadline_date" in data_dict:
         try:
-            data_dict["deadline_date"] = datetime.strptime(data_dict["deadline_date"], DATE_FORMAT) 
+            data_dict["deadline_date"] = datetime.strptime(data_dict["deadline_date"], DATE_FORMAT).date() 
         except ValueError:
             return {"message": "date bad format"}
     elif case_task.deadline:
-        data_dict["deadline_date"] = case_task.deadline.strftime(DATE_FORMAT)
+        data_dict["deadline_date"] = case_task.deadline.date()
     else:
         data_dict["deadline_date"] = ""
 
     if "deadline_time" in data_dict:
         try:
-            data_dict["deadline_time"] = datetime.strptime(data_dict["deadline_time"], TIME_FORMAT) 
+            data_dict["deadline_time"] = datetime.strptime(data_dict["deadline_time"], TIME_FORMAT).time() 
         except ValueError:
             return {"message": "time bad format"}
     elif case_task.deadline:
-        data_dict["deadline_time"] = case_task.deadline.strftime(TIME_FORMAT)
+        data_dict["deadline_time"] = case_task.deadline.time()
     else:
         data_dict["deadline_time"] = ""
 
