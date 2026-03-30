@@ -1534,6 +1534,48 @@ For security monitoring and compliance, forward these log files to your SIEM or 
         - Audit entries are prefixed with `AUDIT` and can be filtered with `grep AUDIT record.log`
         - Useful for compliance, forensic analysis, and tracking user actions such as case creation, task updates, and user changes
 
+### Log rotation (optional)
+
+Log rotation prevents log files from growing indefinitely and filling up the disk. Setting up rotation is optional, but recommended for any long-running installation.
+
+NGINX logs are typically already rotated by the configuration that ships with the NGINX (or Apache) package (`/etc/logrotate.d/nginx`). You do not need to configure rotation for those files yourself.
+
+The Flowintel application log and the backup log (if you run scheduled backups) are not covered by any default rotation policy. To rotate them, create a logrotate configuration file:
+
+```bash
+sudo vi /etc/logrotate.d/flowintel
+```
+
+Add the following content, replacing `yourusername` with the user account that runs Flowintel:
+
+```
+/opt/flowintel/flowintel/logs/record.log /opt/flowintel/backups/backup.log {
+    weekly
+    missingok
+    rotate 52
+    compress
+    delaycompress
+    notifempty
+    create 0640 yourusername yourusername
+}
+```
+
+| Directive | Meaning |
+|-----------|---------|
+| `weekly` | Rotate once per week |
+| `missingok` | Do not report an error if a log file is missing (useful when the backup log does not exist yet) |
+| `rotate 52` | Keep 52 rotated files (one year of weekly rotations) |
+| `compress` | Compress rotated files with gzip |
+| `delaycompress` | Wait one rotation cycle before compressing, so the most recent rotated file stays uncompressed |
+| `notifempty` | Skip rotation if the log file is empty |
+| `create 0640 yourusername yourusername` | After rotation, create a new log file with the specified permissions and ownership |
+
+Test the configuration by running a dry run:
+
+```bash
+sudo logrotate --debug /etc/logrotate.d/flowintel
+```
+
 
 # Troubleshooting
 
