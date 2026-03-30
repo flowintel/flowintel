@@ -7,7 +7,7 @@ This installation manual is part of a broader documentation set that covers inst
 
 - [Flowintel encryption guide](encryption-guide.md), which explains the encryption options to consider before installation
 - [Flowintel backup and restore](backup-restore.md), a guide to managing backups and restoring data
-- [Flowintel user manual](user-manual), which covers both the configuration of Flowintel for your organisation and day-to-day use during case handling
+- [Flowintel user manual](user-manual.md), which covers both the configuration of Flowintel for your organisation and day-to-day use during case handling
 
 ## What is Flowintel?
 
