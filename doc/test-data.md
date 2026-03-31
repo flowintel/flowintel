@@ -79,6 +79,7 @@ You need an admin API key for this step. You can find it in the Flowintel web in
 Run the import through `launch.sh` (the `-tdc` flag stands for "test data community"):
 
 ```bash
+cd /opt/flowintel/flowintel
 bash launch.sh -tdc <your-admin-api-key>
 ```
 
