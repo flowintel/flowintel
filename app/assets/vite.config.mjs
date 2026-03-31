@@ -112,6 +112,15 @@ export default defineConfig({
           src: path.resolve(__dirname, 'node_modules/vue/dist/vue.global.js'),
           dest: 'js/vendor',
         },
+        // Pivotick
+        {
+          src: path.resolve(__dirname, 'vendor/pivotick/pivotick.umd.js'),
+          dest: 'js/vendor',
+        },
+        {
+          src: path.resolve(__dirname, 'vendor/pivotick/pivotick.css'),
+          dest: 'css/vendor',
+        },
         {
           src: path.resolve(__dirname, 'node_modules/@popperjs/core/dist/umd/popper.min.js'),
           dest: 'js/vendor',

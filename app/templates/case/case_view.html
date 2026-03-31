@@ -17,6 +17,9 @@
 <script src="{{ url_for('static',filename='js/vendor/timelinejs.js') }}"></script>
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/timelinejs.css') }}">
 
+<script src="{{ url_for('static',filename='js/vendor/pivotick.umd.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/vendor/pivotick.css') }}">
+
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/note_template.css') }}">
 
 <script src="{{ url_for('static',filename='js/vendor/Sortable.min.js') }}"></script>
@@ -279,6 +282,11 @@
             </button>
         </li>
         <li class="nav-item">
+            <button class="nav-link" id="tab-timeline" @click="active_tab('timeline')">
+                <i class="fa-solid fa-timeline fa-sm me-1"></i><span class="section-title fs-6">Timeline</span>
+            </button>
+        </li>
+        <li class="nav-item">
             <button class="nav-link" id="tab-history" @click="active_tab('history')">
                 <i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i><span class="section-title fs-6">History</span>
             </button>
@@ -483,6 +491,28 @@
 
         <template v-else-if="main_tab == 'misp-objects'">
             <misp_object :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
+        </template>
+
+        <template v-else-if="main_tab == 'timeline'">
+            <ul class="nav nav-tabs" style="margin-bottom: 10px;">
+                <li class="nav-item">
+                    <button class="nav-link active" id="subtab-timeline-view" aria-current="page" @click="active_subtab_timeline('timeline-view')">
+                        <i class="fa-solid fa-timeline fa-sm me-1"></i><span class="section-title">Timeline</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="subtab-timeline-graph" @click="active_subtab_timeline('timeline-graph')">
+                        <i class="fa-solid fa-diagram-project fa-sm me-1"></i><span class="section-title">Graph</span>
+                    </button>
+                </li>
+            </ul>
+
+            <template v-if="subtab_timeline == 'timeline-view'">
+                <timeline_view :case_id="{{case.id}}" :cases_info="cases_info"></timeline_view>
+            </template>
+            <template v-else-if="subtab_timeline == 'timeline-graph'">
+                <timeline_graph :case_id="{{case.id}}" :cases_info="cases_info"></timeline_graph>
+            </template>
         </template>
 
         <template v-else-if="main_tab == 'connectors'">
@@ -820,6 +850,8 @@
         import caseconnectors from '/static/js/case/CaseConnectors.js'
         import casefiles from '/static/js/case/CaseFiles.js'
         import case_history from '/static/js/case/case_history.js'
+        import timeline_view from '/static/js/case/timeline_view.js'
+        import timeline_graph from '/static/js/case/timeline_graph.js'
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
@@ -838,6 +870,8 @@
                 caseconnectors,
                 casefiles,
                 case_history,
+                timeline_view,
+                timeline_graph,
                 note_from_template,
                 computer_assistate_template
             },
@@ -863,6 +897,7 @@
 
                 const main_tab = ref('main')
                 const subtab_note = ref('case')
+                const subtab_timeline = ref('timeline-view')
                 const tasks_tab = ref('main')
 
                 const taxonomies = ref([])
@@ -1233,6 +1268,7 @@
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
                             document.getElementById("tab-files").classList.remove("active")
+                            document.getElementById("tab-timeline").classList.remove("active")
                             await nextTick()
 
                             initialize_select2()
@@ -1247,6 +1283,7 @@
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
                             document.getElementById("tab-files").classList.remove("active")
+                            document.getElementById("tab-timeline").classList.remove("active")
                         }
                     }else if(tab_name == 'notes'){
                         let loc_tab = main_tab.value 
@@ -1259,6 +1296,7 @@
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
                             document.getElementById("tab-files").classList.remove("active")
+                            document.getElementById("tab-timeline").classList.remove("active")
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'notes'){
@@ -1276,6 +1314,20 @@
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
                             document.getElementById("tab-files").classList.remove("active")
+                            document.getElementById("tab-timeline").classList.remove("active")
+                        }
+                        await nextTick()
+                    }else if(tab_name == 'timeline'){
+                        main_tab.value = 'timeline'
+                        if ( !document.getElementById("tab-timeline").classList.contains("active") ){
+                            document.getElementById("tab-timeline").classList.add("active")
+                            document.getElementById("tab-main").classList.remove("active")
+                            document.getElementById("tab-notes").classList.remove("active")
+                            document.getElementById("tab-history").classList.remove("active")
+                            document.getElementById("tab-misp-objects").classList.remove("active")
+                            document.getElementById("tab-info").classList.remove("active")
+                            document.getElementById("tab-connectors").classList.remove("active")
+                            document.getElementById("tab-files").classList.remove("active")
                         }
                         await nextTick()
                     }else if(tab_name == 'connectors'){
@@ -1288,6 +1340,7 @@
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-misp-objects").classList.remove("active")
                             document.getElementById("tab-files").classList.remove("active")
+                            document.getElementById("tab-timeline").classList.remove("active")
                         }
                         await nextTick()
                     }else if(tab_name == 'files'){
@@ -1300,6 +1353,7 @@
                             document.getElementById("tab-info").classList.remove("active")
                             document.getElementById("tab-misp-objects").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
+                            document.getElementById("tab-timeline").classList.remove("active")
                         }
                         await nextTick()
                     }else if(tab_name == 'info'){
@@ -1312,6 +1366,7 @@
                             document.getElementById("tab-history").classList.remove("active")
                             document.getElementById("tab-connectors").classList.remove("active")
                             document.getElementById("tab-files").classList.remove("active")
+                            document.getElementById("tab-timeline").classList.remove("active")
                         }
                     }
                 }
@@ -1363,6 +1418,23 @@
                         await nextTick()
                         try { await md.mermaid.init() } catch(e) {}
                     }
+                }
+
+                async function active_subtab_timeline(tab_name) {
+                    if(tab_name == 'timeline-view'){
+                        subtab_timeline.value = tab_name
+                        if ( !document.getElementById("subtab-timeline-view").classList.contains("active") ){
+                            document.getElementById("subtab-timeline-view").classList.add("active")
+                            document.getElementById("subtab-timeline-graph").classList.remove("active")
+                        }
+                    }else if(tab_name == 'timeline-graph'){
+                        subtab_timeline.value = tab_name
+                        if ( !document.getElementById("subtab-timeline-graph").classList.contains("active") ){
+                            document.getElementById("subtab-timeline-graph").classList.add("active")
+                            document.getElementById("subtab-timeline-view").classList.remove("active")
+                        }
+                    }
+                    await nextTick()
                 }
 
                 async function active_task_tab(tab_name){
@@ -1753,6 +1825,7 @@
                     dayjs,
                     main_tab,
                     subtab_note,
+                    subtab_timeline,
                     tasks_tab,
                     is_exporting,
                     nb_misp_objects,
@@ -1762,6 +1835,7 @@
                     sort_by_filter,
                     active_tab,
                     active_subtab_note,
+                    active_subtab_timeline,
                     active_task_tab,
                     submit_add_new_link,
                     remove_case_link,

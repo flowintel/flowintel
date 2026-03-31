@@ -1373,6 +1373,46 @@ class Case_Note_Template_Model(db.Model):
 
         return json_dict
 
+
+class Case_Timeline_Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    date_text = db.Column(db.String, nullable=False)
+    date_parsed = db.Column(db.DateTime, nullable=True)
+    description = db.Column(db.String, nullable=False)
+    misp_object_id = db.Column(db.Integer, nullable=True)
+    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+
+    def to_json(self):
+        json_dict = {
+            "id": self.id,
+            "case_id": self.case_id,
+            "date_text": self.date_text,
+            "date_parsed": self.date_parsed.strftime(DATETIME_FORMAT_FULL) if self.date_parsed else None,
+            "description": self.description,
+            "misp_object_id": self.misp_object_id,
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL)
+        }
+        return json_dict
+
+
+class Case_Timeline_Event_Link(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    source_event_id = db.Column(db.Integer, db.ForeignKey('case__timeline__event.id', ondelete="CASCADE"))
+    target_event_id = db.Column(db.Integer, db.ForeignKey('case__timeline__event.id', ondelete="CASCADE"))
+    label = db.Column(db.String, nullable=True)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "case_id": self.case_id,
+            "source_event_id": self.source_event_id,
+            "target_event_id": self.target_event_id,
+            "label": self.label
+        }
+
+
 login_manager.anonymous_user = AnonymousUser
 
 @login_manager.user_loader

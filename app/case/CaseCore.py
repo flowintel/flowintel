@@ -1917,4 +1917,172 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.update_last_modif(case.id)
         return True
 
+
+    ############
+    # Timeline #
+    ############
+
+    def get_timeline_events(self, cid):
+        """Get all timeline events for a case"""
+        return Case_Timeline_Event.query.filter_by(case_id=cid).order_by(Case_Timeline_Event.date_parsed.asc().nullslast()).all()
+
+    def get_timeline_event(self, event_id):
+        """Get a timeline event by id"""
+        return Case_Timeline_Event.query.get(event_id)
+
+    def create_timeline_event(self, cid, date_text, description, misp_object_id, current_user):
+        """Create a new timeline event"""
+        date_parsed = self._parse_date(date_text)
+        event = Case_Timeline_Event(
+            case_id=cid,
+            date_text=date_text,
+            date_parsed=date_parsed,
+            description=description,
+            misp_object_id=misp_object_id if misp_object_id else None,
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+        db.session.add(event)
+        db.session.commit()
+
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, f"Timeline event added")
+        CommonModel.update_last_modif(cid)
+        return event
+
+    def edit_timeline_event(self, event_id, date_text, description, current_user):
+        """Edit a timeline event"""
+        event = self.get_timeline_event(event_id)
+        if not event:
+            return None
+        event.date_text = date_text
+        event.date_parsed = self._parse_date(date_text)
+        event.description = description
+        db.session.commit()
+
+        case = CommonModel.get_case(event.case_id)
+        CommonModel.save_history(case.uuid, current_user, f"Timeline event edited")
+        CommonModel.update_last_modif(event.case_id)
+        return event
+
+    def delete_timeline_event(self, cid, event_id, current_user):
+        """Delete a timeline event"""
+        event = self.get_timeline_event(event_id)
+        if not event or event.case_id != int(cid):
+            return False
+        db.session.delete(event)
+        db.session.commit()
+
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, f"Timeline event deleted")
+        CommonModel.update_last_modif(cid)
+        return True
+
+    def _parse_date(self, date_text):
+        """Try to parse a date string in various formats"""
+        formats = [
+            '%Y-%m-%d %H:%M:%S',
+            '%Y-%m-%d %H:%M',
+            '%Y-%m-%dT%H:%M:%S',
+            '%Y-%m-%dT%H:%M',
+            '%Y-%m-%d',
+            '%d/%m/%Y %H:%M:%S',
+            '%d/%m/%Y %H:%M',
+            '%d/%m/%Y',
+            '%m/%d/%Y %H:%M:%S',
+            '%m/%d/%Y %H:%M',
+            '%m/%d/%Y',
+            '%d-%m-%Y %H:%M:%S',
+            '%d-%m-%Y %H:%M',
+            '%d-%m-%Y',
+            '%b %d, %Y %H:%M:%S',
+            '%b %d, %Y %H:%M',
+            '%b %d, %Y',
+            '%B %d, %Y %H:%M:%S',
+            '%B %d, %Y %H:%M',
+            '%B %d, %Y',
+            '%Y/%m/%d %H:%M:%S',
+            '%Y/%m/%d %H:%M',
+            '%Y/%m/%d',
+        ]
+        for fmt in formats:
+            try:
+                return datetime.datetime.strptime(date_text.strip(), fmt)
+            except ValueError:
+                continue
+        return None
+
+    def import_misp_objects_to_timeline(self, cid, current_user):
+        """Import MISP objects with first_seen dates as timeline events"""
+        misp_objects = self.get_misp_object_by_case(cid)
+        imported = 0
+        for obj in misp_objects:
+            earliest_date = None
+            for attr in obj.attributes:
+                if attr.first_seen and (earliest_date is None or attr.first_seen < earliest_date):
+                    earliest_date = attr.first_seen
+
+            if earliest_date is None:
+                earliest_date = obj.creation_date
+
+            if earliest_date:
+                date_text = earliest_date.strftime('%Y-%m-%d %H:%M')
+                # Build description from object attributes
+                attr_lines = []
+                for attr in obj.attributes:
+                    attr_lines.append(f"{attr.object_relation}: {attr.value}")
+                description = f"[MISP] {obj.name}"
+                if attr_lines:
+                    description += " — " + ", ".join(attr_lines)
+
+                self.create_timeline_event(cid, date_text, description, obj.id, current_user)
+                imported += 1
+        return imported
+
+
+    #####################
+    # Timeline  - Graph #
+    #####################
+
+    def get_timeline_event_links(self, cid):
+        """Get all links between timeline events for a case"""
+        return Case_Timeline_Event_Link.query.filter_by(case_id=cid).all()
+
+    def create_timeline_event_link(self, cid, source_event_id, target_event_id, label, current_user):
+        """Create a link between two timeline events"""
+        link = Case_Timeline_Event_Link(
+            case_id=cid,
+            source_event_id=source_event_id,
+            target_event_id=target_event_id,
+            label=label or None
+        )
+        db.session.add(link)
+        db.session.commit()
+
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, f"Timeline event link added")
+        CommonModel.update_last_modif(cid)
+        return link
+
+    def delete_timeline_event_link(self, cid, link_id, current_user):
+        """Delete a link between timeline events"""
+        link = Case_Timeline_Event_Link.query.get(link_id)
+        if not link or link.case_id != int(cid):
+            return False
+        db.session.delete(link)
+        db.session.commit()
+
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, f"Timeline event link deleted")
+        CommonModel.update_last_modif(cid)
+        return True
+
+    def edit_timeline_event_link(self, link_id, label, current_user):
+        """Edit a link label"""
+        link = Case_Timeline_Event_Link.query.get(link_id)
+        if not link:
+            return None
+        link.label = label or None
+        db.session.commit()
+        return link
+
 CaseModel = CaseCore()

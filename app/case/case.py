@@ -1246,6 +1246,159 @@ def nb_objects(cid):
 
 
 
+############
+# Timeline #
+############
+
+@case_blueprint.route("/<int:cid>/get_timeline_events", methods=['GET'])
+@login_required
+def get_timeline_events(cid):
+    """Get all timeline events for a case"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        events = CaseModel.get_timeline_events(cid)
+        return {"events": [e.to_json() for e in events]}, 200
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<int:cid>/create_timeline_event", methods=['POST'])
+@login_required
+@editor_required
+def create_timeline_event(cid):
+    """Create a new timeline event"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "date_text" in request.json and "description" in request.json:
+                misp_object_id = request.json.get("misp_object_id")
+                event = CaseModel.create_timeline_event(
+                    cid, request.json["date_text"], request.json["description"],
+                    misp_object_id, current_user
+                )
+                return {"message": "Event created", "toast_class": "success-subtle", "event": event.to_json()}, 200
+            return {"message": "Need 'date_text' and 'description'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<int:cid>/edit_timeline_event/<int:eid>", methods=['POST'])
+@login_required
+@editor_required
+def edit_timeline_event(cid, eid):
+    """Edit a timeline event"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "date_text" in request.json and "description" in request.json:
+                event = CaseModel.edit_timeline_event(
+                    eid, request.json["date_text"], request.json["description"], current_user
+                )
+                if event:
+                    return {"message": "Event updated", "toast_class": "success-subtle", "event": event.to_json()}, 200
+                return {"message": "Event not found", "toast_class": "warning-subtle"}, 404
+            return {"message": "Need 'date_text' and 'description'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<int:cid>/delete_timeline_event/<int:eid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_timeline_event(cid, eid):
+    """Delete a timeline event"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CaseModel.delete_timeline_event(cid, eid, current_user):
+                return {"message": "Event deleted", "toast_class": "success-subtle"}, 200
+            return {"message": "Event not found", "toast_class": "warning-subtle"}, 404
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<int:cid>/import_misp_to_timeline", methods=['POST'])
+@login_required
+@editor_required
+def import_misp_to_timeline(cid):
+    """Import MISP objects into the timeline"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            count = CaseModel.import_misp_objects_to_timeline(cid, current_user)
+            return {"message": f"{count} MISP object(s) imported to timeline", "toast_class": "success-subtle"}, 200
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+#####################
+# Timeline  - Graph #
+#####################
+
+@case_blueprint.route("/<int:cid>/get_timeline_graph", methods=['GET'])
+@login_required
+def get_timeline_graph(cid):
+    """Get all timeline events and links for graph view"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        events = CaseModel.get_timeline_events(cid)
+        links = CaseModel.get_timeline_event_links(cid)
+        return {
+            "events": [e.to_json() for e in events],
+            "links": [l.to_json() for l in links]
+        }, 200
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<int:cid>/create_timeline_event_link", methods=['POST'])
+@login_required
+@editor_required
+def create_timeline_event_link(cid):
+    """Create a link between two timeline events"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "source_event_id" in request.json and "target_event_id" in request.json:
+                link = CaseModel.create_timeline_event_link(
+                    cid,
+                    request.json["source_event_id"],
+                    request.json["target_event_id"],
+                    request.json.get("label", ""),
+                    current_user
+                )
+                return {"message": "Link created", "toast_class": "success-subtle", "link": link.to_json()}, 200
+            return {"message": "Need 'source_event_id' and 'target_event_id'", "toast_class": "warning-subtle"}, 400
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<int:cid>/edit_timeline_event_link/<int:lid>", methods=['POST'])
+@login_required
+@editor_required
+def edit_timeline_event_link(cid, lid):
+    """Edit a timeline event link label"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            link = CaseModel.edit_timeline_event_link(lid, request.json.get("label", ""), current_user)
+            if link:
+                return {"message": "Link updated", "toast_class": "success-subtle", "link": link.to_json()}, 200
+            return {"message": "Link not found", "toast_class": "warning-subtle"}, 404
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+@case_blueprint.route("/<int:cid>/delete_timeline_event_link/<int:lid>", methods=['GET'])
+@login_required
+@editor_required
+def delete_timeline_event_link(cid, lid):
+    """Delete a timeline event link"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CaseModel.delete_timeline_event_link(cid, lid, current_user):
+                return {"message": "Link deleted", "toast_class": "success-subtle"}, 200
+            return {"message": "Link not found", "toast_class": "warning-subtle"}, 404
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
 #############
 # Connector #
 #############
