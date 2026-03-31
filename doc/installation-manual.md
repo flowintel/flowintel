@@ -7,7 +7,7 @@ This installation manual is part of a broader documentation set that covers inst
 
 - [Flowintel encryption guide](encryption-guide.md), which explains the encryption options to consider before installation
 - [Flowintel backup and restore](backup-restore.md), a guide to managing backups and restoring data
-- [Flowintel user manual](user-manual), which covers both the configuration of Flowintel for your organisation and day-to-day use during case handling
+- [Flowintel user manual](user-manual.md), which covers both the configuration of Flowintel for your organisation and day-to-day use during case handling
 
 ## What is Flowintel?
 
@@ -1034,6 +1034,8 @@ SSO accounts rely entirely on the organisation's Microsoft account for authentic
 
 Flowintel can digitally sign case reports with a GPG key. When configured, every generated report includes a detached GPG signature that recipients can verify independently. If you do not need signed reports, skip this section, report generation works without it.
 
+You can either create a new key or use an existing key.
+
 ### Create a signing key
 
 Generate a dedicated GPG key for the user account that runs Flowintel. When prompted, select **RSA and RSA** as the key type and set the key size to **4096** bits. For the expiry, you can either set the key not to expire or choose a specific date, depending on your organisation's key-rotation policy.
@@ -1059,6 +1061,83 @@ Verify the key was created by listing all keys on the keyring:
 ```bash
 gpg --list-keys --keyid-format long
 ```
+
+#### Export the public key
+
+Recipients of signed reports need your public key to verify the signature. Export it in armored (text) format so it can be shared by email, published on a website, or uploaded to a key server:
+
+```bash
+gpg --export --armor flowintel-signing@flowintel.yourdomain.com > flowintel-signing-public.asc
+```
+
+Distribute `flowintel-signing-public.asc` to anyone who needs to verify your signed reports.
+
+#### Verify a signature externally
+
+When a recipient downloads a signed report from Flowintel, they receive two files: the report itself (for example `case-report.pdf`) and a detached signature file (for example `case-report.pdf.sig`). To verify the signature outside of Flowintel:
+
+1. Import the Flowintel public key (only needed once):
+
+    ```bash
+    gpg --import flowintel-signing-public.asc
+    ```
+
+2. Verify the signature against the report:
+
+    ```bash
+    gpg --verify case-report.pdf.sig case-report.pdf
+    ```
+
+3. GPG prints the result. A valid signature looks like:
+
+    ```
+    gpg: Signature made Mon 30 Mar 2026 10:00:00 AM UTC
+    gpg:                using RSA key ABCDEF1234567890ABCDEF1234567890ABCDEF12
+    gpg: Good signature from "flowintel-signing@flowintel.yourdomain.com"
+    ```
+
+    If the signature does not match, GPG prints `BAD signature`. In that case, the report may have been modified after signing.
+
+### Use an existing key
+
+If you already have a GPG key pair on another machine (for example your workstation), you can export it and transfer it to the Flowintel server.
+
+#### Export the key pair
+
+On the machine that holds the key, export both the public and private key to armored files. Replace `flowintel-signing@flowintel.yourdomain.com` with the email address or fingerprint of your key:
+
+```bash
+gpg --export --armor flowintel-signing@flowintel.yourdomain.com > flowintel-signing-public.asc
+gpg --export-secret-keys --armor flowintel-signing@flowintel.yourdomain.com > flowintel-signing-private.asc
+```
+
+Transfer both files to the Flowintel server using a secure method such as `scp`:
+
+```bash
+scp flowintel-signing-public.asc flowintel-signing-private.asc yourusername@flowintel-server:/tmp/
+```
+
+After the transfer, delete the exported private key file from the source machine.
+
+#### Import the keys on the server
+
+On the Flowintel server, import the public key first, then the private key. If Flowintel runs as a dedicated user, import as that user so the keys end up in the correct keyring:
+
+```bash
+sudo -u yourusername gpg --import /tmp/flowintel-signing-public.asc
+sudo -u yourusername gpg --import /tmp/flowintel-signing-private.asc
+```
+
+Verify that both keys were imported:
+
+```bash
+sudo -u yourusername gpg --list-keys --keyid-format long
+sudo -u yourusername gpg --list-secret-keys --keyid-format long
+```
+
+The output should show the key with `sec` (secret/private) and `pub` (public) entries. If you only see `pub`, the private key was not imported correctly.
+
+Once the import is confirmed, remove the key files from the temporary location.
 
 ### Configure Flowintel for report signing
 
@@ -1097,18 +1176,6 @@ If you want to stop the `gpg-agent` from caching passphrases (for example during
 ```bash
 gpgconf --kill gpg-agent
 ```
-
-## Module configuration (optional)
-
-The `conf/config_module.py` file contains settings for optional features. The default settings work for standard installations.
-
-You only need to edit `config_module.py` if you're using:
-
-- **SMTP**: For sending email notifications
-- **Matrix**: For Matrix chat notifications
-- **Computer-assisted generation**: For AI-powered content generation features
-
-If you're not using these features, leave the file unchanged.
 
 ## MISP connector configuration (optional)
 
@@ -1178,6 +1245,17 @@ MISP_ADD_LOCAL_TAGS_ALL_EVENTS = [
 
 The default is `'curation:source="flowintel"'`, which marks every exported event as originating from Flowintel. Set this to an empty string or an empty list if you do not want any tags applied automatically.
 
+## Module configuration (optional)
+
+The `conf/config_module.py` file contains settings for optional features. The default settings work for standard installations.
+
+You only need to edit `config_module.py` if you're using:
+
+- **SMTP**: For sending email notifications
+- **Matrix**: For Matrix chat notifications
+- **Computer-assisted generation**: For AI-powered content generation features
+
+If you're not using these features, leave the file unchanged.
 
 # Installing Flowintel
 
@@ -1427,7 +1505,7 @@ https://flowintel.yourdomain.com
 
 If you used a self-signed certificate, accept the browser security warning.
 
-Log in with the default administrator credentials. If you customised the `INIT_ADMIN_USER` settings in the configuration file before installation, use those credentials instead:
+Log in with the default administrator credentials. If you customised the `INIT_ADMIN_USER` settings in the configuration file before installation, use those credentials instead.
 
 - **Email**: `admin@admin.admin`
 - **Password**: `admin`
@@ -1455,6 +1533,48 @@ For security monitoring and compliance, forward these log files to your SIEM or 
         - Contains Flask access logs (requests, responses) and application-level events
         - Audit entries are prefixed with `AUDIT` and can be filtered with `grep AUDIT record.log`
         - Useful for compliance, forensic analysis, and tracking user actions such as case creation, task updates, and user changes
+
+### Log rotation (optional)
+
+Log rotation prevents log files from growing indefinitely and filling up the disk. Setting up rotation is optional, but recommended for any long-running installation.
+
+NGINX logs are typically already rotated by the configuration that ships with the NGINX (or Apache) package (`/etc/logrotate.d/nginx`). You do not need to configure rotation for those files yourself.
+
+The Flowintel application log and the backup log (if you run scheduled backups) are not covered by any default rotation policy. To rotate them, create a logrotate configuration file:
+
+```bash
+sudo vi /etc/logrotate.d/flowintel
+```
+
+Add the following content, replacing `yourusername` with the user account that runs Flowintel:
+
+```
+/opt/flowintel/flowintel/logs/record.log /opt/flowintel/backups/backup.log {
+    weekly
+    missingok
+    rotate 52
+    compress
+    delaycompress
+    notifempty
+    create 0640 yourusername yourusername
+}
+```
+
+| Directive | Meaning |
+|-----------|---------|
+| `weekly` | Rotate once per week |
+| `missingok` | Do not report an error if a log file is missing (useful when the backup log does not exist yet) |
+| `rotate 52` | Keep 52 rotated files (one year of weekly rotations) |
+| `compress` | Compress rotated files with gzip |
+| `delaycompress` | Wait one rotation cycle before compressing, so the most recent rotated file stays uncompressed |
+| `notifempty` | Skip rotation if the log file is empty |
+| `create 0640 yourusername yourusername` | After rotation, create a new log file with the specified permissions and ownership |
+
+Test the configuration by running a dry run:
+
+```bash
+sudo logrotate --debug /etc/logrotate.d/flowintel
+```
 
 
 # Troubleshooting
@@ -1745,6 +1865,36 @@ For security monitoring and compliance, forward these log files to your SIEM or 
    ```
    
    This should return HTML from Flask. If it times out, check firewall rules.
+
+## NGINX logs "upstream sent duplicate header line: Date"
+
+**Symptom**: The NGINX error log (`/var/log/nginx/flowintel_error.log`) contains repeated warnings like:
+
+```
+upstream sent duplicate header line: "Date: Mon, 30 Mar 2026 12:00:00 GMT",
+previous value: "Date: Mon, 30 Mar 2026 12:00:00 GMT", ignored while reading
+response header from upstream, client: 192.168.x.x, server: flowintel.example.com,
+request: "GET /static/js/utils.js HTTP/2.0",
+upstream: "http://127.0.0.1:7006/static/js/utils.js"
+```
+
+**This warning is harmless.** The Flask application server sends its own `Date` header, and NGINX adds one as well. NGINX detects the duplicate, logs a warning, and ignores the upstream value. It does not affect functionality or cause errors for users.
+
+To silence the warnings, add `proxy_hide_header Date;` to the NGINX `location` block so NGINX strips the upstream `Date` header before processing:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:7006;
+    proxy_hide_header Date;
+    # ... rest of your proxy settings
+}
+```
+
+Then test and reload the configuration:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 ## Valkey connection errors
 
