@@ -13,6 +13,11 @@ There are two approaches, depending on what you need:
 | **Sample cases only** | Quick testing or exploration | Imports directly into the database; Flowintel does not need to be running | Two pre-built cases under the admin user |
 | **Full community data set** | Demos and training | Uses the REST API; requires an admin API key and Flowintel to be running | Step 1: organisations, users and roles. Step 2: cases assigned across organisations with the privileged workflow active |
 
+Before you start, make sure you are in the folder where you installed Flowintel.
+
+```bash
+cd /opt/flowintel/flowintel
+```
 
 ## What is included
 
@@ -30,7 +35,7 @@ The `tests/testdata/` directory contains two case files:
 | `case_ForensicCase.json` | Forensic Case | A forensic investigation with four tasks covering disk extraction, timeline creation, evtx analysis, and report writing |
 | `case_NewCompromisedWorkstation.json` | New Compromised Workstation | A malware investigation scenario with multiple tasks, subtasks, URL tools, deadlines, and MISP objects |
 
-Each file is a JSON document with the case metadata, tasks, notes, subtasks, tags, URL tools and (where applicable) MISP objects. The import creates all of these records at once.
+Each file is a JSON document containing the case metadata, tasks, notes, subtasks, tags, URL tools and (where applicable) MISP objects. The import creates all of these records at once.
 
 ### Community data
 
@@ -53,7 +58,6 @@ If you only need the two sample cases and do not need community organisations or
 Make sure Flowintel is **not** running (or run this in a separate terminal before starting it):
 
 ```bash
-cd /opt/flowintel/flowintel
 source env/bin/activate
 python3 app.py -td
 ```
@@ -79,7 +83,6 @@ You need an admin API key for this step. You can find it in the Flowintel web in
 Run the import through `launch.sh` (the `-tdc` flag stands for "test data community"):
 
 ```bash
-cd /opt/flowintel/flowintel
 bash launch.sh -tdc <your-admin-api-key>
 ```
 
@@ -105,7 +108,7 @@ The script:
 5. Generates a single random passphrase shared by all community users and prints it to the terminal
 6. Saves all user API keys to `tests/testdata/.community-api-keys.json`
 
-Take note of the shared password. Every community user is created with this same password, so you need it to log in as different users.
+Take note of the shared password. Every community user is created with this same password, so you need it to log in as different users during the demo.
 
 A successful run looks like this:
 
