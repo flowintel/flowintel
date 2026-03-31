@@ -4,15 +4,22 @@
 
 Flowintel ships with sample cases and a community data set. A development installation imports the sample cases automatically during setup, so users have something to explore straight away. A production installation starts with a clean database and skips this data entirely.
 
-If you are setting up a production instance for demo or training purposes, you can import the test data manually. This page describes the available data sets, how to import them, and how to clean up when you are done.
+If you are setting up a production instance for demo or training purposes, you can import the test data manually. This page describes the available data sets, how to import them, and how to clean up afterwards.
+
+There are two approaches, depending on what you need:
+
+| Approach | Use case | Method | What it creates |
+|----------|----------|--------|-----------------|
+| **Sample cases only** | Quick testing or exploration | Imports directly into the database; Flowintel does not need to be running | Two pre-built cases under the admin user |
+| **Full community data set** | Demos and training | Uses the REST API; requires an admin API key and Flowintel to be running | Step 1: organisations, users and roles. Step 2: cases assigned across organisations with the privileged workflow active |
 
 
 ## What is included
 
-The test data is made up of two layers that build on each other:
+The test data has two layers that build on each other:
 
 1. **Sample cases**: two pre-built cases stored as JSON files in `tests/testdata/`.
-2. **Community data**: a set of organisations, users, roles, and case assignments that simulate a multi-team environment. This layer is always imported manually and is designed for demo sites where you want to show how Flowintel handles collaboration between different organisations.
+2. **Community data**: organisations, users, roles and case assignments that simulate a multi-team environment. This layer is imported manually and is designed for demo sites where you want to show how Flowintel handles collaboration between different organisations.
 
 ### Sample cases
 
@@ -23,7 +30,7 @@ The `tests/testdata/` directory contains two case files:
 | `case_ForensicCase.json` | Forensic Case | A forensic investigation with four tasks covering disk extraction, timeline creation, evtx analysis, and report writing |
 | `case_NewCompromisedWorkstation.json` | New Compromised Workstation | A malware investigation scenario with multiple tasks, subtasks, URL tools, deadlines, and MISP objects |
 
-Each file is a JSON document that includes the case metadata, tasks, notes, subtasks, tags, URL tools, and (where applicable) MISP objects. The import process creates all of these records at once.
+Each file is a JSON document with the case metadata, tasks, notes, subtasks, tags, URL tools and (where applicable) MISP objects. The import creates all of these records at once.
 
 ### Community data
 
@@ -34,9 +41,9 @@ The community data set is defined in `tests/testdata/test-data-community.json`. 
 | LEA Organisation | Alice Manager, Bob Officer, Carol Officer, Dave Deputy, Eve Comms | OrgAdmin, CaseAdmin, QueueAdmin, Queuer, Read Only |
 | CSIRT Organisation | Frank TeamLead, Grace Handler, Hank Junior | OrgAdmin, CaseAdmin, Queuer |
 
-When you import this data, all users share the same randomly generated passphrase (for example `BrightCastle42`). Each user also receives a unique API key. The script prints the shared password and all credentials to the terminal and saves the API keys to a local file so that the case import script can authenticate as individual community users.
+When you import this data, all users share the same randomly generated passphrase (for example `BrightCastle42`). Each user also receives a unique API key. The script prints the shared password to the terminal and saves the API keys to a local file so the case import script can authenticate as individual community users.
 
-After importing the community users, you can also import the sample cases through the REST API. This second step assigns cases to organisations, creates tasks as different users, sets cases as privileged, and distributes task assignments randomly across users. The result is a realistic multi-organisation workspace with notifications and approval queues.
+After importing the community users, you can import the sample cases through the REST API. This second step assigns cases to organisations, creates tasks as different users, sets cases as privileged and distributes task assignments randomly. The result is a realistic multi-organisation workspace with notifications and approval queues.
 
 
 ## Importing sample cases only
@@ -51,7 +58,7 @@ source env/bin/activate
 python3 app.py -td
 ```
 
-The `-td` flag tells Flowintel to load every `case_*.json` file from `tests/testdata/` and import it under the admin user. You will see a confirmation message for each case that is created:
+The `-td` flag tells Flowintel to load every `case_*.json` file from `tests/testdata/` and import it under the admin user. You see a confirmation for each case:
 
 ```
   Created: Forensic Case
@@ -63,11 +70,11 @@ This approach creates the cases directly in the database. It does not require th
 
 ## Importing the full community data set
 
-The full community import is a two-step process. Both steps use the REST API, so Flowintel must be running before you begin.
+The full community import is a two-step process. Both steps use the REST API, so Flowintel must be running.
 
-### Step 1: Create organisations and users
+### Step 1: Create organisations, roles and users
 
-You need an admin API key for this step. If you have just logged in with the default `INIT_ADMIN_USER` credentials, this is the API key associated with `admin@admin.admin`. You can find it in the Flowintel web interface under your user profile, or retrieve it from the database.
+You need an admin API key for this step. You can find it in the Flowintel web interface under your profile, or retrieve it from the database.
 
 Run the import through `launch.sh` (the `-tdc` flag stands for "test data community"):
 
@@ -88,15 +95,16 @@ If Flowintel is running on a non-default address or port, add the `--url` flag:
 python3 tests/testdata/init_community_data.py create --api-key <your-admin-api-key> --url http://192.168.1.50:7006
 ```
 
-The script performs the following actions:
+The script:
 
 1. Reads the organisation and user definitions from `tests/testdata/test-data-community.json`
 2. Creates each organisation through the admin API
-3. Creates each user with the correct role and organisation membership
-4. Generates a single random passphrase shared by all community users and prints it to the terminal
-5. Saves all user API keys to `tests/testdata/.community-api-keys.json`
+3. Creates the necessary roles
+4. Creates each user with the correct role and organisation membership
+5. Generates a single random passphrase shared by all community users and prints it to the terminal
+6. Saves all user API keys to `tests/testdata/.community-api-keys.json`
 
-Take note of the shared password that is printed. Every community user is created with this same password, so you will need it to log in as different users when demonstrating the platform.
+Take note of the shared password. Every community user is created with this same password, so you need it to log in as different users.
 
 A successful run looks like this:
 
@@ -145,7 +153,7 @@ Organisation: CSIRT Organisation
 
 ### Step 2: Create community cases
 
-Once the organisations and users exist, import the sample cases through the REST API. This step does not require an admin API key because it reads the per-user keys from the `.community-api-keys.json` file saved in the previous step.
+Once the organisations, roles and users exist, import the sample cases through the REST API. This step does not require an admin API key because it reads the per-user keys from `.community-api-keys.json`, saved in the previous step.
 
 Run the import through `launch.sh` (the `-tdcc` flag stands for "test data community cases"):
 
@@ -166,17 +174,17 @@ Again, add `--url` if Flowintel is running on a non-default address:
 python3 tests/testdata/init_community_cases.py create --url http://192.168.1.50:7006
 ```
 
-The script performs the following actions:
+The script:
 
 1. Loads the API keys from `.community-api-keys.json`
 2. For each case file in `tests/testdata/`, creates the case as a CaseAdmin user from a randomly selected organisation
-3. Sets each case as privileged (which triggers the approval workflow)
-4. Creates tasks as a Queuer user (which generates task-requested notifications for approvers)
-5. Adds notes, subtasks, and URL tools to each task
+3. Sets each case as privileged, which triggers the approval workflow
+4. Creates tasks as a Queuer user, which generates task-requested notifications for approvers
+5. Adds notes, subtasks and URL tools to each task
 6. Randomly assigns tasks to users across organisations
 7. Creates MISP objects if the case file includes them
 
-Each case title is prefixed with a random identifier (for example `TC-ABC47`) so that you can run the import multiple times without name collisions. Every case description is also tagged with `[community-test-case]` so the cleanup script can find and remove them later.
+Each case title is prefixed with a random identifier (for example `TC-ABC47`) so you can run the import multiple times without name collisions. Every case description is also tagged with `[community-test-case]` so the cleanup script can find and remove them later.
 
 A successful run looks like this:
 
@@ -211,7 +219,7 @@ There are three ways to remove imported data, depending on how much you want to 
 
 ### Remove community cases only
 
-This deletes all cases whose description contains the `[community-test-case]` tag. It does not affect the community users or organisations.
+This deletes all cases whose description contains the `[community-test-case]` tag. It does not remove the community users, roles or organisations.
 
 ```bash
 bash launch.sh -dtdcc
@@ -224,9 +232,9 @@ source env/bin/activate
 python3 tests/testdata/init_community_cases.py delete
 ```
 
-### Remove community users and organisations
+### Remove community users, roles and organisations
 
-This removes the users and organisations created by the community data script. You need the admin API key again:
+This removes the users, roles and organisations created by the community data script. You need the admin API key again:
 
 ```bash
 bash launch.sh -dtdc <your-admin-api-key>
@@ -241,24 +249,24 @@ python3 tests/testdata/init_community_data.py delete --api-key <your-admin-api-k
 
 The script also deletes the `.community-api-keys.json` file.
 
-When removing the full community data set, delete the cases first (with `-dtdcc`), then the users and organisations (with `-dtdc`). 
+When removing the full community data set, delete the cases first (with `-dtdcc`), then the users, roles and organisations (with `-dtdc`).
 
 ### Remove all cases and templates
 
-If you want to wipe all case data from the database (not just community test data), use the database cleaner script:
+To wipe all case data from the database (not just community test data), use the database cleaner script:
 
 ```bash
 source env/bin/activate
 python3 bin/clean_database.py
 ```
 
-The script shows a summary of what will be deleted and asks for confirmation before proceeding. To skip the confirmation prompt (for example in a scripted setup), pass the `--force` flag:
+The script shows a summary of what will be deleted and asks for confirmation. To skip the prompt (for example in a scripted setup), pass the `--force` flag:
 
 ```bash
 python3 bin/clean_database.py --force
 ```
 
-This removes all cases, tasks, notes, subtasks, templates, notifications, and file records. It does not remove user accounts, organisations, taxonomies, or MISP module data.
+This removes all cases, tasks, notes, subtasks, templates, notifications and file records. It does not remove user accounts, organisations, roles, taxonomies or MISP module data.
 
 
 ## Quick-reference table
@@ -266,8 +274,8 @@ This removes all cases, tasks, notes, subtasks, templates, notifications, and fi
 | Action | `launch.sh` flag | Direct command |
 |--------|-------------------|----------------|
 | Import sample cases (database) | Built into `-i` (dev init) | `python3 app.py -td` |
-| Create community users and organisations | `-tdc <api-key>` | `python3 tests/testdata/init_community_data.py create --api-key <key>` |
+| Create community users, roles and organisations | `-tdc <api-key>` | `python3 tests/testdata/init_community_data.py create --api-key <key>` |
 | Create community cases | `-tdcc` | `python3 tests/testdata/init_community_cases.py create` |
 | Delete community cases | `-dtdcc` | `python3 tests/testdata/init_community_cases.py delete` |
-| Delete community users and organisations | `-dtdc <api-key>` | `python3 tests/testdata/init_community_data.py delete --api-key <key>` |
+| Delete community users, roles and organisations | `-dtdc <api-key>` | `python3 tests/testdata/init_community_data.py delete --api-key <key>` |
 | Wipe all cases and templates | — | `python3 bin/clean_database.py` |
