@@ -169,7 +169,10 @@
             </div>
         </div>
     </div>
-    {{form.submit(class='btn btn-primary')}}
+    <div class="d-flex gap-2">
+        <a href="/case/{{ case_id }}" class="btn btn-secondary">Cancel</a>
+        {{form.submit(class='btn btn-primary')}}
+    </div>
 </form>
 {% endblock %}
 

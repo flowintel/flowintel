@@ -78,9 +78,9 @@
         >
         </edition_select>
 
-        <div style="margin-top: 10px;">
+        <div class="d-flex gap-2" style="margin-top: 10px;">
+            <a href="/case/{{ case_id }}" class="btn btn-secondary">Cancel</a>
             <button class="btn btn-primary" type="button" @click="submit_form()">Save</button>
-            <a href="/case/{{ case_id }}" class="btn btn-secondary ms-2">Cancel</a>
         </div>
     </form>
 {% endblock %}

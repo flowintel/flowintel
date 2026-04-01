@@ -1,13 +1,9 @@
-<footer class="sticky-footer bg-light case-index-list" style="border-top: 1px solid #dee2e6; margin-top: 2rem; padding: 0.75rem 0; font-size: 0.8rem;">
-    <div class="container my-auto">
+<footer class="site-footer" style="font-size: 0.8rem;">
+    <div class="container-fluid px-4">
         <div class="row align-items-center">
             <div class="col">
-                <div class="d-flex justify-content-start text-muted">
+                <div class="d-flex justify-content-start align-items-center gap-3 text-muted">
                     <small>Flowintel v[[version]]</small>
-                </div>
-            </div>
-            <div class="col">
-                <div class="d-flex justify-content-end align-items-center gap-3">
                     <a href="https://flowintel.github.io/flowintel-doc/" class="text-muted text-decoration-none" style="font-size: 0.8rem;">
                         <i class="fa-solid fa-book me-1"></i>Documentation
                     </a>
@@ -17,6 +13,16 @@
                     <a href="https://github.com/flowintel/flowintel" class="text-muted">
                         <i class="fa-brands fa-github fa-lg"></i>
                     </a>
+                </div>
+            </div>
+            <div class="col-auto">
+                <div class="d-flex align-items-center gap-4">
+                    {% if config.FOOTER_1_LOGO %}
+                    <img src="{{ config.FOOTER_1_LOGO }}" alt="Partner logo 1" style="max-height: 40px; height: auto;" loading="lazy" />
+                    {% endif %}
+                    {% if config.FOOTER_2_LOGO %}
+                    <img src="{{ config.FOOTER_2_LOGO }}" alt="Partner logo 2" style="max-height: 40px; height: auto; margin-right: 12px;" loading="lazy" />
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -44,5 +50,5 @@
 				version
 			}
 		}
-	}).mount('.sticky-footer')
+	}).mount('.site-footer')
 </script>

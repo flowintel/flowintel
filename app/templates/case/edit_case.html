@@ -89,9 +89,9 @@
                     <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
                 </div>
             </div>
-            <div style="margin-top: 10px;">
+            <div class="d-flex gap-2" style="margin-top: 10px;">
+                <a href="{{ url_for('case.view', cid=case_id) }}" class="btn btn-secondary">Cancel</a>
                 <button class="btn btn-primary" type="submit">Save</button>
-                <a href="{{ url_for('case.view', cid=case_id) }}" class="btn btn-secondary ms-2">Cancel</a>
             </div>
         </div>
     </form>

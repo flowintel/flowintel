@@ -44,8 +44,15 @@
                     <div style="color: red;">{{form.description.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            <div class="modal-footer">
-                {{form.submit(class='btn btn-primary')}}
+            <div class="modal-footer" style="justify-content: flex-start;">
+                <div class="d-flex gap-2">
+                    <a class="btn btn-secondary" href="{{ url_for('admin.orgs') }}">Cancel</a>
+                    {% if edit_mode %}
+                    <button type="submit" class="btn btn-primary">Update</button>
+                    {% else %}
+                    {{form.submit(class='btn btn-primary')}}
+                    {% endif %}
+                </div>
             </div>
         </div>
     </form>

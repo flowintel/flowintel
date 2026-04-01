@@ -194,9 +194,15 @@
                 {%endif%}
             </div>
         </div>
-        <div class="modal-footer" style="margin-top: 10px;">
-            <a class="btn btn-secondary" href="/admin/users">Cancel</a>
-            {{form.submit(class='btn btn-primary', id='submitBtn')}}
+        <div class="modal-footer" style="margin-top: 10px; justify-content: flex-start;">
+            <div class="d-flex gap-2">
+                <a class="btn btn-secondary" href="/admin/users">Cancel</a>
+                {% if edit_mode %}
+                <button type="submit" class="btn btn-primary" id="submitBtn">Save</button>
+                {% else %}
+                <button type="submit" class="btn btn-primary" id="submitBtn">Register</button>
+                {% endif %}
+            </div>
         </div>
     </form>
 {% endblock %}
