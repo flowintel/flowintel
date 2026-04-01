@@ -77,7 +77,7 @@
                                     </span>
                                     <div class="case-status-inline">
                                         <span :class="'badge rounded-pill text-bg-'+(status_info ? (status_info.status.find(s => s.id === case_loc.status_id)?.bootstrap_style || 'secondary') : 'secondary')">[[ status_info ? (status_info.status.find(s => s.id === case_loc.status_id)?.name || 'Unknown') : 'Unknown' ]]</span>
-                                        <img v-if="case_loc.misp_icon" :src="'/static/icons/' + case_loc.misp_icon" style="max-height:18px;" title="Linked to MISP event"/>
+                                        <img v-if="case_loc.has_misp_event && case_loc.misp_icon" :src="'/static/icons/' + case_loc.misp_icon" style="max-height:18px;" title="Linked to MISP event"/>
                                     </div>
                                 </div>
 
