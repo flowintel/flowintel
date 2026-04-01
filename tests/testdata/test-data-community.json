@@ -43,31 +43,31 @@
                 {
                     "first_name": "Alice",
                     "last_name": "Manager",
-                    "email": "alice.manager@lea-org.local",
+                    "email": "alice.manager@lea-org.test",
                     "role": "OrgAdmin"
                 },
                 {
                     "first_name": "Bob",
                     "last_name": "Officer",
-                    "email": "bob.officer@lea-org.local",
+                    "email": "bob.officer@lea-org.test",
                     "role": "CaseAdmin"
                 },
                 {
                     "first_name": "Carol",
                     "last_name": "Officer",
-                    "email": "carol.officer@lea-org.local",
+                    "email": "carol.officer@lea-org.test",
                     "role": "QueueAdmin"
                 },
                 {
                     "first_name": "Dave",
                     "last_name": "Deputy",
-                    "email": "dave.deputy@lea-org.local",
+                    "email": "dave.deputy@lea-org.test",
                     "role": "Queuer"
                 },
                 {
                     "first_name": "Eve",
                     "last_name": "Comms",
-                    "email": "eve.comms@lea-org.local",
+                    "email": "eve.comms@lea-org.test",
                     "role": "Read Only"
                 }
             ]
@@ -79,19 +79,19 @@
                 {
                     "first_name": "Frank",
                     "last_name": "TeamLead",
-                    "email": "frank.teamlead@csirt-org.local",
+                    "email": "frank.teamlead@csirt-org.test",
                     "role": "OrgAdmin"
                 },
                 {
                     "first_name": "Grace",
                     "last_name": "Handler",
-                    "email": "grace.handler@csirt-org.local",
+                    "email": "grace.handler@csirt-org.test",
                     "role": "CaseAdmin"
                 },
                 {
                     "first_name": "Hank",
                     "last_name": "Junior",
-                    "email": "hank.junior@csirt-org.local",
+                    "email": "hank.junior@csirt-org.test",
                     "role": "Queuer"
                 }
             ]
