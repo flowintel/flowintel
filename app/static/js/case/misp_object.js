@@ -688,11 +688,11 @@ export default {
                                             </div>
                                         </div>
                                         <div class="d-flex gap-2">
-                                            <button type="button" class="btn btn-primary btn-sm" @click="saveEditObjectAttr(attr.id)">
-                                                <i class="fa-solid fa-fw fa-check me-1"></i>Save
-                                            </button>
                                             <button type="button" class="btn btn-secondary btn-sm" @click="cancelEditObjectAttr()">
-                                                <i class="fa-solid fa-fw fa-times me-1"></i>Cancel
+                                                Cancel
+                                            </button>
+                                            <button type="button" class="btn btn-primary btn-sm" @click="saveEditObjectAttr(attr.id)">
+                                                Save
                                             </button>
                                         </div>
                                     </td>
@@ -703,11 +703,11 @@ export default {
                 </div>
 
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-primary" @click="save_changes()">
-                        <i class="fa-solid fa-check me-1"></i>Save
-                    </button>
                     <button type="button" class="btn btn-secondary" @click="cancelAddObject()">
-                        <i class="fa-solid fa-times me-1"></i>Cancel
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" @click="save_changes()">
+                        Save
                     </button>
                 </div>
             </div>
@@ -852,13 +852,13 @@ export default {
                                                     <textarea v-model="editState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
                                                 </div>
                                                 <div class="d-flex gap-2">
-                                                    <button type="button" class="btn btn-success btn-sm" title="Save changes"
-                                                    @click="saveInlineEdit(misp_object.object_id, attribute.id)">
-                                                        <i class="fa-solid fa-fw fa-check me-1"></i>Save
-                                                    </button>
                                                     <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
                                                     @click="cancelEdit()">
-                                                        <i class="fa-solid fa-fw fa-times me-1"></i>Cancel
+                                                        Cancel
+                                                    </button>
+                                                    <button type="button" class="btn btn-primary btn-sm" title="Save changes"
+                                                    @click="saveInlineEdit(misp_object.object_id, attribute.id)">
+                                                        Save
                                                     </button>
                                                 </div>
                                             </td>
@@ -907,13 +907,13 @@ export default {
                                                 <textarea v-model="newAttrState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
                                             </div>
                                             <div class="d-flex gap-2">
-                                                <button type="button" class="btn btn-success btn-sm" title="Add attribute"
-                                                @click="saveNewAttribute(misp_object.object_id)">
-                                                    <i class="fa-solid fa-fw fa-check me-1"></i>Add
-                                                </button>
                                                 <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
                                                 @click="cancelAddAttribute()">
-                                                    <i class="fa-solid fa-fw fa-times me-1"></i>Cancel
+                                                    Cancel
+                                                </button>
+                                                <button type="button" class="btn btn-primary btn-sm" title="Add attribute"
+                                                @click="saveNewAttribute(misp_object.object_id)">
+                                                    Add
                                                 </button>
                                             </div>
                                         </td>

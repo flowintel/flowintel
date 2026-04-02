@@ -211,7 +211,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal-footer">
+        <div class="d-flex gap-2">
             <a class="btn btn-secondary" href="{{ url_for('admin.roles') }}">{% if is_system_role %}Close{% else %}Cancel{% endif %}</a>
             {% if not is_system_role %}
                 {{form.submit(class_="btn btn-primary", value="Save" if edit_mode else "Create")}}

@@ -4,10 +4,7 @@
     <div class="case-core-style" style="border-radius: 0;">
         <div class="row align-items-center">
             <div class="col-auto">
-                <h2 class="mb-0">Edit Note Template</h2>
-            </div>
-            <div class="col-auto">
-                <a type="button" class="btn btn-outline-dark" href="/tools/note_template_index"><i class="fa-solid fa-arrow-left"></i></a>
+                <h5 class="mb-0"><i class="fa-solid fa-note-sticky me-2"></i>Edit a note template</h5>
             </div>
         </div>
     </div>
@@ -24,7 +21,8 @@
             <textarea v-model="description" class="form-control" rows="3" placeholder="Description"></textarea>
         </div>
 
-        <div style="margin-top: 10px;">
+        <div class="d-flex gap-2" style="margin-top: 10px;">
+            <a href="{{ url_for('tools.note_template_index') }}" class="btn btn-secondary">Cancel</a>
             <button class="btn btn-primary" @click="submit_form()">Save</button>
         </div>
     </div>

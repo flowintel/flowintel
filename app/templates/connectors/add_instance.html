@@ -6,11 +6,10 @@
 
 {% block content %}
     <div class="case-core-style d-flex align-items-center" style="border-radius: 0;">
-        <a type="button" class="btn btn-outline-dark me-2" href="/connectors"><i class="fa-solid fa-arrow-left"></i></a>
         {% if edit_mode %}
-            <h5 class="mb-0"><i class="fa-solid fa-pen-to-square me-2"></i>Edit Instance</h5>
+            <h5 class="mb-0"><i class="fa-solid fa-pen-to-square me-2"></i>Edit instance</h5>
         {% else %}
-            <h5 class="mb-0"><i class="fa-solid fa-plug-circle-plus me-2"></i>Add Instance</h5>
+            <h5 class="mb-0"><i class="fa-solid fa-plug-circle-plus me-2"></i>Add instance</h5>
         {% endif %}
     </div>
 
@@ -71,8 +70,8 @@
                 {%endif%}
             </div>
             <hr>
-            <div class="d-flex justify-content-end">
-                <a href="/connectors" class="btn btn-outline-secondary me-2"><i class="fa-solid fa-xmark me-1"></i>Cancel</a>
+            <div class="d-flex gap-2">
+                <a href="/connectors" class="btn btn-secondary">Cancel</a>
                 {{form.submit(class='btn btn-primary')}}
             </div>
         </div>

@@ -13,12 +13,7 @@
 
 {% block content %}
     <div class="case-core-style d-flex">
-        <h2 style="margin-top: -5px;">
-            <a type="button" class="btn btn-outline-dark" href="/templating/cases">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-        </h2>
-        <h2 class="ms-2">Create a Case template</h2>
+        <h5 class="mb-0 ms-2"><i class="fa-solid fa-folder-open me-2"></i>Create a case template</h5>
     </div>
 
         <hr class="fading-line-2 mt-4 mb-4">
@@ -144,7 +139,7 @@
             <hr>
             <h5>Task</h5>
             <div class="mb-3 w-50">
-                <select data-placeholder="Task Template" multiple class="select2-select form-control" name="tasks" id="tasks">
+                <select data-placeholder="Task template" multiple class="select2-select form-control" name="tasks" id="tasks">
                     {% for choice in form.tasks.choices %}
                         <option value="{{choice[0]}}">{{choice[1]}}</option>
                     {% endfor %}
@@ -153,8 +148,11 @@
                     <div style="color: red;">{{form.tasks.errors[0] | safe}}</div>
                 {%endif%}
             </div>
-            
-            {{form.submit(class='btn btn-primary')}}
+
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('templating.case_templates_index') }}" class="btn btn-secondary">Cancel</a>
+                {{form.submit(class='btn btn-primary')}}
+            </div>
         </form>
 {% endblock %}
 
