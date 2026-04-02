@@ -13,12 +13,12 @@
 {%endblock%}
 
 {% block content %}
-<h2 class="case-core-style" style="border-radius: 0;">
-    Create task for Case #{{ case_id }}
+<h5 class="mb-0 case-core-style" style="border-radius: 0;">
+    <i class="fa-solid fa-list-check me-2"></i>Create task for Case #{{ case_id }}
     <button class="btn btn-outline-primary mt-1 mx-3" @click="hide_task_creation()" style="float: right" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
         Create from template
     </button> 
-</h2>
+</h5>
 
 <hr class="fading-line-2 mb-4 mt-4">
 

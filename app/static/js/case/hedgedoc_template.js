@@ -68,7 +68,8 @@ export default {
 					type="text"
 					style="margin-right: 5px; min-width: 400px; display: initial; width: 0;" 
 					:value="cases_info.case.hedgedoc_url" id="hedgedoc_input" 
-					:title="cases_info.case.hedgedoc_url" 
+					:title="cases_info.case.hedgedoc_url"
+					placeholder="https://hedgedoc.example.com/note-id"
 				/>
 				<button class="btn btn-primary" @click="change_hedgedoc_url()">Change url</button>
 				<div id="hedgedoc_input_error" style="color: brown"></div>

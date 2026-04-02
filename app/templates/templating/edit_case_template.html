@@ -12,7 +12,7 @@
 {%endblock%}
 
 {% block content %}
-    <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Edit a Case Template</h2>
+    <h5 class="mb-0 case-core-style" style="border-radius: 0;"><i class="fa-solid fa-folder-open me-2"></i>Edit a case template</h5>
     <hr class="fading-line-2 mt-4 mb-4">
     <form action="" method="post" id="form">
         {{ form.hidden_tag() }}
@@ -43,7 +43,8 @@
                 </div>
             </div>
 
-            <div style="margin-top: 10px;">
+            <div class="d-flex gap-2" style="margin-top: 10px;">
+                <a href="/templating/case/{{ form.template_id.data }}" class="btn btn-secondary">Cancel</a>
                 <button class="btn btn-primary">Save</button>
             </div>
         </div>

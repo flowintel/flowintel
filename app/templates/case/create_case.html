@@ -13,12 +13,12 @@
 {%endblock%}
 
 {% block content %}
-<h2 class="case-core-style" style="border-radius: 0;">
-    Create case 
+<h5 class="mb-0 case-core-style" style="border-radius: 0;">
+    <i class="fa-solid fa-folder-open me-2"></i>Create case 
     <button class="btn btn-outline-primary mt-1 mx-3" @click="hide_case_creation()" style="float: right" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
         From template
     </button> 
-</h2>
+</h5>
 
 {% if config.SHOW_GDPR_NOTICE %}
 <div class="alert alert-gdpr d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
