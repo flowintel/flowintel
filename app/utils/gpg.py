@@ -18,10 +18,11 @@ def sign_text(content):
         return None
 
     home = current_app.config.get("GPG_HOME") or None
+    binary = current_app.config.get("GPG_BINARY") or "gpg"
     key_id = current_app.config["GPG_KEY_ID"]
     passphrase = current_app.config.get("GPG_PASSPHRASE") or None
 
-    gpg = gnupg.GPG(gnupghome=home)
+    gpg = gnupg.GPG(gpgbinary=binary, gnupghome=home)
     sig = gpg.sign(content.encode("utf-8"), keyid=key_id, detach=True, passphrase=passphrase)
 
     if not sig or not sig.data:
