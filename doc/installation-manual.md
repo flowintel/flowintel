@@ -1141,10 +1141,11 @@ Once the import is confirmed, remove the key files from the temporary location.
 
 ### Configure Flowintel for report signing
 
-Open `conf/config.py` and set the three GPG settings:
+Open `conf/config.py` and set the GPG settings:
 
 ```python
 # GPG report signing
+GPG_BINARY = "/usr/bin/gpg"                 # Absolute path to the gpg binary
 GPG_HOME = "/home/yourusername/.gnupg"      # Path to the GPG keyring directory
 GPG_KEY_ID = "flowintel-signing@flowintel.yourdomain.com"  # Fingerprint or email of the signing key
 GPG_PASSPHRASE = "your_passphrase_here"     # Passphrase for the key (leave empty if unprotected)
@@ -1152,6 +1153,7 @@ GPG_PASSPHRASE = "your_passphrase_here"     # Passphrase for the key (leave empt
 
 | Setting | Description |
 |---------|-------------|
+| `GPG_BINARY` | Absolute path to the `gpg` binary (for example `/usr/bin/gpg`). Using an absolute path avoids issues with restricted `PATH` environments under gunicorn or systemd. Defaults to `gpg` if left empty. |
 | `GPG_HOME` | Absolute path to the `.gnupg` directory that holds the signing key. Leave empty to use the default keyring of the process owner. |
 | `GPG_KEY_ID` | Fingerprint or email address that identifies the signing key. Must match a key present in the keyring. |
 | `GPG_PASSPHRASE` | Passphrase that unlocks the private key. Leave empty if the key has no passphrase. |

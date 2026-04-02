@@ -186,6 +186,7 @@ class Config:
     # REPORT SIGNING
     # =============================================================================
     # GPG report signing (leave GPG_KEY_ID empty to disable)
+    GPG_BINARY = "/usr/bin/gpg"  # Absolute path to the gpg binary
     GPG_HOME = "/home/yourusername/.gnupg"        # Path to the GPG keyring directory (empty = default ~/.gnupg)
     GPG_KEY_ID = ""      # Fingerprint or email of the signing key (empty = signing disabled)
     GPG_PASSPHRASE = ""  # Passphrase for the key (empty = no passphrase or use gpg-agent)
