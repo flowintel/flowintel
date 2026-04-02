@@ -1406,42 +1406,49 @@ Press `Ctrl+C` to stop Flowintel.
 
 For production use, run Flowintel as a systemd service so it starts automatically on boot and restarts if it crashes.
 
-Flowintel includes a systemd service template. Copy it to the systemd directory:
+Flowintel ships with three systemd service templates in the `doc/` directory:
+
+- `flowintel.service` — the main application (Gunicorn)
+- `flowintel-misp-modules.service` — the MISP modules enrichment service
+- `flowintel-notifications.service` — the notification service
+
+Copy all three to the systemd directory:
 
 ```bash
 sudo cp /opt/flowintel/flowintel/doc/flowintel.service /etc/systemd/system/
+sudo cp /opt/flowintel/flowintel/doc/flowintel-misp-modules.service /etc/systemd/system/
+sudo cp /opt/flowintel/flowintel/doc/flowintel-notifications.service /etc/systemd/system/
 ```
 
-Edit the service file to replace `yourusername` with the actual user that owns the Flowintel installation:
+Edit all three service files to replace `yourusername` with the actual user that owns the Flowintel installation:
 
 ```bash
-sudo sed -i 's/yourusername/your-actual-username/g' /etc/systemd/system/flowintel.service
+sudo sed -i 's/yourusername/your-actual-username/g' \
+  /etc/systemd/system/flowintel.service \
+  /etc/systemd/system/flowintel-misp-modules.service \
+  /etc/systemd/system/flowintel-notifications.service
 ```
 
-Alternatively, edit the file manually:
+Alternatively, edit each file manually and replace both occurrences of `yourusername` with your actual username in the `User` and `Group` fields.
 
-```bash
-sudo vi /etc/systemd/system/flowintel.service
-```
-
-Replace both occurrences of `yourusername` with your actual username in the `User` and `Group` fields.
-
-The service file contains the following directives:
+The main service file contains the following directives:
 
 ```ini
 [Unit]
 Description=Flowintel Case Management Platform
 After=network.target postgresql.service valkey.service
 Requires=postgresql.service valkey.service
+Wants=flowintel-misp-modules.service flowintel-notifications.service
 
 [Service]
 Type=simple
 User=yourusername
 Group=yourusername
 WorkingDirectory=/opt/flowintel/flowintel
-Environment="PATH=/opt/flowintel/flowintel/env/bin"
+Environment="PATH=/opt/flowintel/flowintel/env/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="FLASKENV=production"
-ExecStart=/opt/flowintel/flowintel/env/bin/python app.py
+Environment="HISTORY_DIR=/opt/flowintel/flowintel/history"
+ExecStart=/opt/flowintel/flowintel/env/bin/gunicorn -w 4 "app:create_app()" -b 127.0.0.1:7006 --access-logfile -
 Restart=on-failure
 RestartSec=10s
 
@@ -1449,17 +1456,21 @@ RestartSec=10s
 WantedBy=multi-user.target
 ```
 
-The `[Unit]` section declares that Flowintel depends on PostgreSQL and Valkey; systemd will start those services first and stop Flowintel if either of them fails. `Type=simple` tells systemd that the process started by `ExecStart` is the main service process. `Restart=on-failure` means systemd will automatically restart Flowintel if it exits with a non-zero status, waiting 10 seconds (`RestartSec`) between attempts. `WantedBy=multi-user.target` ensures the service starts during normal multi-user boot.
+The `[Unit]` section declares that Flowintel depends on PostgreSQL and Valkey; systemd will start those services first and stop Flowintel if either of them fails. The `Wants=` directive tells systemd to also start the MISP modules and notification services when Flowintel starts. `Type=simple` tells systemd that the process started by `ExecStart` is the main service process. `Restart=on-failure` means systemd will automatically restart Flowintel if it exits with a non-zero status, waiting 10 seconds (`RestartSec`) between attempts. `WantedBy=multi-user.target` ensures the service starts during normal multi-user boot.
+
+The `ExecStart` directive uses Gunicorn with 4 worker processes. A common rule of thumb is to set the worker count to (2 x CPU cores) + 1. To change this, edit the `-w` value in the service file. The bind address (`127.0.0.1:7006`) should match the `FLASK_URL` and `FLASK_PORT` values in `conf/config.py`.
 
 If you need to adjust resource limits (for example capping memory usage), you can add directives such as `MemoryMax=512M` or `CPUQuota=200%` in the `[Service]` section.
 
-Enable and start the service:
+Enable and start the services:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable flowintel
+sudo systemctl enable flowintel flowintel-misp-modules flowintel-notifications
 sudo systemctl start flowintel
 ```
+
+Starting the main `flowintel` service automatically pulls in the MISP modules and notification services because of the `Wants=` directive.
 
 Check the service status:
 
@@ -1473,18 +1484,31 @@ Successful output should look like this:
 ● flowintel.service - Flowintel Case Management Platform
      Loaded: loaded (/etc/systemd/system/flowintel.service; enabled; preset: enabled)
      Active: active (running) since Fri 2026-01-30 08:04:19 UTC; 22s ago
-   Main PID: 14580 (python)
-      Tasks: 1 (limit: 4545)
-     Memory: 76.6M (peak: 76.6M)
-        CPU: 1.050s
+   Main PID: 14580 (gunicorn)
+      Tasks: 5 (limit: 4545)
+     Memory: 156.2M (peak: 160.0M)
+        CPU: 2.340s
      CGroup: /system.slice/flowintel.service
-             └─14580 /opt/flowintel/flowintel/env/bin/python app.py
+             ├─14580 /opt/flowintel/flowintel/env/bin/python /opt/flowintel/flowintel/env/bin/gunicorn ...
+             ├─14582 /opt/flowintel/flowintel/env/bin/python /opt/flowintel/flowintel/env/bin/gunicorn ...
+             ├─14583 /opt/flowintel/flowintel/env/bin/python /opt/flowintel/flowintel/env/bin/gunicorn ...
+             ├─14584 /opt/flowintel/flowintel/env/bin/python /opt/flowintel/flowintel/env/bin/gunicorn ...
+             └─14585 /opt/flowintel/flowintel/env/bin/python /opt/flowintel/flowintel/env/bin/gunicorn ...
 ```
 
-You should see `active (running)` in green. If there are errors, check the logs:
+You should see `active (running)` in green. You can also verify the companion services:
+
+```bash
+sudo systemctl status flowintel-misp-modules
+sudo systemctl status flowintel-notifications
+```
+
+If there are errors, check the logs:
 
 ```bash
 sudo journalctl -u flowintel -f
+sudo journalctl -u flowintel-misp-modules -f
+sudo journalctl -u flowintel-notifications -f
 ```
 
 Once Flowintel is running, restart NGINX so it recognises the backend service is available:
@@ -2409,9 +2433,9 @@ tar czf flowintel_files_$(date +%Y%m%d).tar.gz \
 Stop all running Flowintel services:
 
 ```bash
-# Stop Flowintel
-sudo systemctl stop flowintel
-sudo systemctl disable flowintel
+# Stop Flowintel and its companion services
+sudo systemctl stop flowintel flowintel-misp-modules flowintel-notifications
+sudo systemctl disable flowintel flowintel-misp-modules flowintel-notifications
 
 # Stop NGINX
 sudo systemctl stop nginx
@@ -2425,10 +2449,12 @@ sudo systemctl stop valkey
 
 ## Remove Flowintel application
 
-Remove the systemd service file:
+Remove the systemd service files:
 
 ```bash
 sudo rm /etc/systemd/system/flowintel.service
+sudo rm /etc/systemd/system/flowintel-misp-modules.service
+sudo rm /etc/systemd/system/flowintel-notifications.service
 sudo systemctl daemon-reload
 ```
 

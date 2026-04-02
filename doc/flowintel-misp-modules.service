@@ -1,0 +1,16 @@
+[Unit]
+Description=MISP Modules for Flowintel
+After=network.target
+
+[Service]
+Type=simple
+User=yourusername
+Group=yourusername
+WorkingDirectory=/opt/flowintel/flowintel
+Environment="PATH=/opt/flowintel/flowintel/env/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/flowintel/flowintel/env/bin/misp-modules -l 127.0.0.1
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
