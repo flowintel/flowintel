@@ -46,7 +46,19 @@ export async function create_message(message, toast_class, not_hide, icon){
 }
 
 export async function display_toast(res, not_hide=false) {
-	let loc = await res.json()
+	let loc
+	try {
+		loc = await res.json()
+	} catch (e) {
+		let message = "An unexpected error occurred"
+		if (res.status === 413) {
+			message = "The uploaded file is too large for the server to accept"
+		} else if (res.status) {
+			message = "Server returned an error (HTTP " + res.status + ")"
+		}
+		await create_message(message, "danger-subtle", not_hide)
+		return
+	}
 	
 	if (typeof loc["message"] == "object"){
 		for(let index in loc["message"]){
