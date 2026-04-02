@@ -1512,6 +1512,9 @@ def get_note_template(cid):
     case_note_template = CaseModel.get_case_note_template(cid)
     if case_note_template:
         template = CaseModel.get_note_template_model(case_note_template.note_template_id)
+        if not template:
+            CaseModel.remove_note_template(cid)
+            return {"message": "The linked note template no longer exists and has been unlinked", "toast_class": "warning-subtle"}, 404
         return {"case_note_template": case_note_template.to_json(), "current_template": template.to_json()}, 200
     return {"message": "No note template for the case"}, 404
 
