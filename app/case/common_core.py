@@ -140,7 +140,7 @@ def get_task_templates():
 
 def search(text: str, current_user: User) -> List[Case]:
     """Return cases containing text"""
-    cases = Case.query.where(Case.title.contains(text), Case.completed==False).paginate(page=1, per_page=30, max_per_page=50)
+    cases = Case.query.where(Case.title.icontains(text), Case.completed==False).paginate(page=1, per_page=30, max_per_page=50)
     return check_user_in_private_cases(cases, current_user)
 
 def get_all_org_case(case):
