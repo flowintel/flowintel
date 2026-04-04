@@ -121,6 +121,30 @@ class AnonymousUser(AnonymousUserMixin):
     def read_only(self):
         return True
 
+    def is_org_admin(self):
+        return False
+
+    def is_case_admin(self):
+        return False
+
+    def is_queue_admin(self):
+        return False
+
+    def is_queuer(self):
+        return False
+
+    def is_audit_viewer(self):
+        return False
+
+    def is_template_editor(self):
+        return False
+
+    def is_misp_editor(self):
+        return False
+
+    def is_importer(self):
+        return False
+
 
 class Case(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
