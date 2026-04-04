@@ -755,8 +755,8 @@ class Task_Template_Url_Tool(db.Model):
 
 class Case_Task_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    case_id = db.Column(db.Integer, index=True)
-    task_id = db.Column(db.Integer, index=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case__template.id', ondelete="CASCADE"), index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_TEMPLATE_ID, ondelete="CASCADE"), index=True)
     case_order_id = db.Column(db.Integer, index=True)
 
 
