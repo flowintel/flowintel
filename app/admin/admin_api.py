@@ -4,7 +4,7 @@ from . import admin_core_api as AdminModelApi
 
 from flask_restx import Namespace, Resource, fields
 from ..decorators import api_required, admin_required, admin_or_org_admin_required
-from ..utils.utils import get_user_api
+from ..utils.utils import get_user_api, reload_application
 from ..utils.logger import flowintel_log
 from flask import current_app
 from flask_login import current_user
@@ -321,4 +321,25 @@ class DeleteRole(Resource):
             flowintel_log("audit", 200, "Role deleted via API", RoleId=role_id, RoleName=role_name, By=api_user.email)
             return {"message": "Role deleted"}, 200
         return {"message": "Error deleting role"}, 400
+
+
+##########
+# Reload #
+##########
+
+@admin_ns.route('/reload')
+@admin_ns.doc(description='Gracefully reload application workers to pick up config.py changes')
+class ReloadApplication(Resource):
+    method_decorators = [api_required]
+    def post(self):
+        api_user = get_user_api(request.headers["X-API-KEY"])
+        if not api_user.is_admin():
+            return {"message": "Admin required"}, 403
+
+        ok, message, status = reload_application()
+        if not ok:
+            return {"message": message}, status
+
+        flowintel_log("audit", 200, "Application reload requested via API", By=api_user.email)
+        return {"message": message}, status
 

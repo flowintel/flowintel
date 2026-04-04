@@ -1,5 +1,23 @@
 {% extends 'base.html' %}
 
+{% block head %}
+{{ super() }}
+<style>
+    small.text-danger.fw-bold { font-size: 0.6em; vertical-align: middle; }
+    .card-body .ss-compact.form-select-sm,
+    .card-body .ss-compact.form-control-sm {
+        padding: 1px 6px;
+        min-height: 0;
+        height: auto;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+    .card-body select.ss-compact.form-select-sm {
+        padding-right: 24px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 
 {# ── Inline-editing macros ── #}
@@ -49,21 +67,6 @@
 <hr class="fading-line-2 mb-4 mt-4">
 
 <div class="container-fluid">
-
-    <style>
-        small.text-danger.fw-bold { font-size: 0.6em; vertical-align: middle; }
-        .card-body .ss-compact.form-select-sm,
-        .card-body .ss-compact.form-control-sm {
-            padding: 1px 6px;
-            min-height: 0;
-            height: auto;
-            font-size: 0.8rem;
-            line-height: 1.4;
-        }
-        .card-body select.ss-compact.form-select-sm {
-            padding-right: 24px;
-        }
-    </style>
 
     <!-- Legend -->
     <div class="mb-3">
@@ -124,6 +127,14 @@
                             </tr>
                         </tbody>
                     </table>
+                    <hr class="my-2">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <small class="text-muted">Reload the application to apply <code>config.py</code> changes</small>
+                        <button class="btn btn-sm btn-outline-warning" @click="confirmReload" :disabled="reloading">
+                            <i class="fa-solid fa-arrows-rotate me-1" :class="{ 'fa-spin': reloading }"></i>
+                            [[ reloading ? 'Reloading…' : 'Reload application' ]]
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -602,6 +613,7 @@
             })
 
             const backupCreated = ref(false)
+            const reloading = ref(false)
             const originalValues = reactive({})
 
             function filterNumericKey(event) {
@@ -639,12 +651,12 @@
                         editing[key] = false
                     } else {
                         const err = await res.json()
-                        message_list.push({ message: err.error || 'Save failed', type: 'warning' })
+                        message_list.value.push({ message: err.error || 'Save failed', type: 'warning' })
                         editValues[key] = originalValues[key]
                         editing[key] = false
                     }
                 } catch (e) {
-                    message_list.push({ message: 'Could not reach the server', type: 'warning' })
+                    message_list.value.push({ message: 'Could not reach the server', type: 'warning' })
                     editValues[key] = originalValues[key]
                     editing[key] = false
                 }
@@ -655,15 +667,44 @@
                 editing[key] = false
             }
 
+            async function confirmReload() {
+                if (!confirm('This will gracefully restart all application workers to pick up config.py changes. Active requests will finish before reloading. Continue?')) {
+                    return
+                }
+                reloading.value = true
+                try {
+                    const res = await fetch('/tools/system_settings/reload', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': document.getElementById('csrf_token').value
+                        }
+                    })
+                    const data = await res.json()
+                    if (res.ok) {
+                        message_list.value.push({ message: data.message, type: 'success' })
+                        // Wait for workers to restart, then reload the page
+                        setTimeout(() => { window.location.reload() }, 3000)
+                    } else {
+                        message_list.value.push({ message: data.error || 'Reload failed', type: 'warning' })
+                        reloading.value = false
+                    }
+                } catch (e) {
+                    message_list.value.push({ message: 'Could not reach the server', type: 'warning' })
+                    reloading.value = false
+                }
+            }
+
             return {
                 message_list,
                 editing,
                 editValues,
                 backupCreated,
+                reloading,
                 filterNumericKey,
                 startEdit,
                 saveEdit,
-                cancelEdit
+                cancelEdit,
+                confirmReload
             }
         }
     }).mount('#main-container')

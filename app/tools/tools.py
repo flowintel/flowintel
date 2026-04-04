@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..utils.note_variables import get_syntax_reference
 from ..decorators import editor_required, admin_required, template_editor_required
-from ..utils.utils import get_modules_list
+from ..utils.utils import get_modules_list, reload_application
 from ..utils.logger import flowintel_log
 import os
 import platform
@@ -557,4 +557,17 @@ def system_settings_save():
     flowintel_log("audit", 200, "System setting changed", User=current_user.email, Setting=key, Value=py_value)
 
     return jsonify({"message": "Configuration saved", "backup_created": True})
+
+
+@tools_blueprint.route("/system_settings/reload", methods=["POST"])
+@login_required
+@admin_required
+def system_settings_reload():
+    """Reload configuration by restarting gunicorn workers or refreshing in-process."""
+    ok, message, status = reload_application()
+    if not ok:
+        return jsonify({"error": message}), status
+
+    flowintel_log("audit", 200, "Application reload requested", User=current_user.email)
+    return jsonify({"message": message}), status
 
