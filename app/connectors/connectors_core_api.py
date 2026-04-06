@@ -62,6 +62,8 @@ def verif_edit_connector(data_dict, cid):
     if "icon_select" not in data_dict or not data_dict["icon_select"]:
         data_dict["icon_select"] = connector.icon_id
 
+    return data_dict
+
 def verif_edit_instance(data_dict, iid):
     instance = Connector_Instance.query.get(iid)
     if "name" not in data_dict or data_dict["name"] == instance.name or not data_dict["name"]:
@@ -89,4 +91,6 @@ def verif_edit_instance(data_dict, iid):
             return {"message": "Invalid URL"}
 
     if "api_key" not in data_dict or not data_dict["api_key"]:
-        data_dict["api_key"] = instance.api_key
+        data_dict["api_key"] = ""
+
+    return data_dict

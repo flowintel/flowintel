@@ -350,7 +350,7 @@ def check_connectivity(cid, iid):
     if connector.name.lower() != "misp":
         return {"message": "Connectivity check not supported for this connector type", "toast_class": "warning-subtle"}, 400
     
-    result = ConnectorModel.check_misp_connectivity(instance)
+    result = ConnectorModel.check_misp_connectivity(instance, current_user=current_user)
     status_code = 200 if result["success"] else 400
     return result, status_code
 

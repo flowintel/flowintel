@@ -1,12 +1,12 @@
 from flask import request
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, admin_required
+from ..decorators import api_required, admin_required, misp_editor_required
 from . import connectors_core as ConnectorModel
 from . import connectors_core_api as ConnectorModelApi
 from ..utils import utils
 
-connectors_ns = Namespace("case", description="Endpoints to manage connectors")
+connectors_ns = Namespace("connectors", description="Endpoints to manage connectors")
 
 
 
@@ -80,7 +80,7 @@ class EditConnector(Resource):
 @connectors_ns.route('/<cid>/add_instance', methods=['POST'])
 @connectors_ns.doc(description='Add a new instance of a connector')
 class AddInstance(Resource):
-    method_decorators = [api_required]
+    method_decorators = [misp_editor_required, api_required]
     @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
@@ -104,7 +104,7 @@ class AddInstance(Resource):
 @connectors_ns.route('/<cid>/edit_instance/<iid>', methods=['POST'])
 @connectors_ns.doc(description='Edit an instance of a connector')
 class EditInstance(Resource):
-    method_decorators = [api_required]
+    method_decorators = [misp_editor_required, api_required]
     @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
@@ -115,7 +115,7 @@ class EditInstance(Resource):
     def post(self, cid, iid):
         if ConnectorModel.get_connector(cid):
             if request.json:
-                verif_dict = ConnectorModelApi.verif_edit_instance(request.json)
+                verif_dict = ConnectorModelApi.verif_edit_instance(request.json, iid)
                 if not "message" in verif_dict:
                     instance = ConnectorModel.edit_connector_instance_core(iid, verif_dict)
                     return {"message": f"Instance created", "connector_id": instance.id}, 200
@@ -145,10 +145,12 @@ class DeleteConnector(Resource):
 @connectors_ns.route('/<cid>/instance/<iid>/delete')
 @connectors_ns.doc(description='Delete an instance of connector')
 class DeleteInstanceConnector(Resource):
-    method_decorators = [api_required]
+    method_decorators = [misp_editor_required, api_required]
     def get(self, cid, iid):
         if ConnectorModel.get_connector(cid):
             if ConnectorModel.get_instance(iid):
+                if ConnectorModel.instance_has_links(iid):
+                    return {"message":"Instance is linked to a case or task"}, 400
                 if ConnectorModel.delete_connector_instance_core(iid):
                     return {"message":"Instance deleted"}, 200
                 return {"message":"Error connector deleted"}, 400
