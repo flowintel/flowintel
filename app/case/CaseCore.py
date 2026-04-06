@@ -318,6 +318,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         CommonModel.save_history(case.uuid, current_user, f"Case edited")
 
+    ALLOWED_SORT_COLUMNS = {
+        "id": Case.id,
+        "last_modif": Case.last_modif,
+        "creation_date": Case.creation_date,
+        "deadline": Case.deadline,
+        "finish_date": Case.finish_date,
+    }
+
     def build_case_query(self, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, filter=None):
         """Build a case query depending on parameters"""
         query, conditions = self._build_sort_query(completed, tags, taxonomies, galaxies, clusters, custom_tags)
@@ -327,8 +335,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 query = query.join(Case_Org, Case_Org.case_id==Case.id).filter(Case_Org.org_id==current_user.org_id)
             elif filter == "title":
                 query = query.order_by(desc(func.lower(Case.title)))
+            elif filter in self.ALLOWED_SORT_COLUMNS:
+                query = query.order_by(desc(self.ALLOWED_SORT_COLUMNS[filter]))
             else:
-                query = query.order_by(desc(filter))
+                query = query.order_by(desc(Case.last_modif))
         
         return query.filter(and_(*conditions)).all()
     
@@ -352,8 +362,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     .order_by(desc(Case.last_modif)).all()
             elif filter == "title":
                 cases = Case.query.filter_by(completed=completed).order_by(desc(func.lower(Case.title))).all()
+            elif filter in self.ALLOWED_SORT_COLUMNS:
+                cases = Case.query.filter_by(completed=completed).order_by(desc(self.ALLOWED_SORT_COLUMNS[filter])).all()
             else:
-                cases = Case.query.filter_by(completed=completed).order_by(desc(filter)).all()
+                cases = Case.query.filter_by(completed=completed).order_by(desc(Case.last_modif)).all()
 
         list_case_user_in = list()
         for case in cases:
@@ -399,7 +411,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
             CommonModel.update_last_modif(cid)
             db.session.commit()
-            CommonModel.save_history(case.uuid, current_user, "Case completed")
+            if case.completed:
+                CommonModel.save_history(case.uuid, current_user, "Case completed")
+            else:
+                CommonModel.save_history(case.uuid, current_user, "Case revived")
             return True
         return False
 
@@ -1911,9 +1926,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         db.session.commit()
         
         CommonModel.save_history(case.uuid, current_user, f"File '{file.name}' deleted from case '{case.title}'")
-        CommonModel.update_last_modif(case.id)
-
-        CommonModel.save_history(case.uuid, current_user, f"File deleted for case '{case.title}'")
         CommonModel.update_last_modif(case.id)
         return True
 

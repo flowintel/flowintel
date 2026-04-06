@@ -579,12 +579,12 @@ class GetInstanceModules(Resource):
             if not check_user_private_case(case, request.headers):
                 return {"message": "Permission denied"}, 403
             
-            if "module" in request.args:
-                module = request.args.get("module")
-            if "type" in request.args:
-                type_module = request.args.get("type")
-            else:
-                return{"message": "Module type error"}, 400
+            if "module" not in request.args:
+                return {"message": "Need to pass 'module'"}, 400
+            if "type" not in request.args:
+                return {"message": "Need to pass 'type'"}, 400
+            module = request.args.get("module")
+            type_module = request.args.get("type")
             return {"instances": CaseModel.get_instance_module_core(module, type_module, case.id, current_user.id)}, 200
         return {"message": "Case Not found"}, 404
     
