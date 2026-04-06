@@ -258,12 +258,23 @@ class DeleteOrg(Resource):
     def get(self, oid):
         api_user = get_user_api(request.headers["X-API-KEY"])
         org = AdminModel.get_org(oid)
-        if org:
-            if AdminModel.delete_org_core(oid):
-                flowintel_log("audit", 200, "Org deleted via API", OrgId=oid, By=api_user.email)
-                return {"message": "Org deleted"}, 200
-            return {"message": "Error Org deleted"}, 400
-        return {"message": "Org not found"}, 404
+        if not org:
+            return {"message": "Org not found"}, 404
+
+        reasons = []
+        if org.has_users():
+            reasons.append("has users")
+        if org.owns_cases():
+            reasons.append("owns cases")
+        if reasons:
+            reason_str = " and ".join(reasons)
+            flowintel_log("audit", 403, "Org deletion prevented: " + reason_str, OrgId=oid, OrgName=org.name, By=api_user.email)
+            return {"message": "Cannot delete organisation that " + reason_str}, 403
+
+        if AdminModel.delete_org_core(oid):
+            flowintel_log("audit", 200, "Org deleted via API", OrgId=oid, By=api_user.email)
+            return {"message": "Org deleted"}, 200
+        return {"message": "Error deleting org"}, 400
 
 
 #########
