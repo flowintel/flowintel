@@ -55,7 +55,7 @@ Flowintel runs on Ubuntu Linux 22.04 LTS and 24.04 LTS. Other Debian-based distr
     - **Internet connectivity**
         - The following domains must be accessible during installation:
             - `*.ubuntu.com` (package repositories)
-            - `*.github.com`, `*.github.io`, `*.githubusercontent.com` (source code)
+            - `*.github.com`, `*.github.io`, `*.githubusercontent.com` (source code) or a (private) GitLab server where you cloned Flowintel
             - `*.pypi.org`, `*.python.org`, `*.pythonhosted.org` (Python packages)
         - After installation, internet access is only needed for updates.
     - **MISP modules enrichment services** (optional)
@@ -179,7 +179,7 @@ Install Git and basic dependencies:
 sudo apt install -y git curl wget build-essential
 ```
 
-### Configure firewall
+### Firewall
 
 Set up UFW (Uncomplicated Firewall) to allow only necessary inbound traffic:
 
