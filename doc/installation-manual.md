@@ -55,7 +55,7 @@ Flowintel runs on Ubuntu Linux 22.04 LTS and 24.04 LTS. Other Debian-based distr
     - **Internet connectivity**
         - The following domains must be accessible during installation:
             - `*.ubuntu.com` (package repositories)
-            - `*.github.com`, `*.github.io`, `*.githubusercontent.com` (source code)
+            - `*.github.com`, `*.github.io`, `*.githubusercontent.com` (source code) or a (private) GitLab server where you cloned Flowintel
             - `*.pypi.org`, `*.python.org`, `*.pythonhosted.org` (Python packages)
         - After installation, internet access is only needed for updates.
     - **MISP modules enrichment services** (optional)
@@ -144,9 +144,9 @@ Before starting the installation, verify you have:
 
 Flowintel is installed directly from its Git repository. There is no installer package or pre-built binary. The installation process clones the repository and sets up dependencies using standard Python and Linux tools.
 
-# Installation
+# Installing Linux services
 
-The installation follows these steps:
+Before installing Flowintel itself, you need to set up several Linux services it depends on. This section walks through each service in the order shown below.
 
 - Prepare the Linux system 
 - Create the installation location
@@ -157,6 +157,8 @@ The installation follows these steps:
 ![installation-manual-diagrams/flowintel-installation-high-level-overview.png](installation-manual-diagrams/flowintel-installation-high-level-overview.png)
 
 ## System preparation
+
+Start by updating the operating system and installing the packages that Flowintel and its build process depend on. You will also configure the host firewall so that only the required ports are open.
 
 **Virtual machine users**: If you're installing on a VM, create a snapshot before proceeding. This allows you to revert to a known good state if something goes wrong during installation.
 
@@ -177,7 +179,7 @@ Install Git and basic dependencies:
 sudo apt install -y git curl wget build-essential
 ```
 
-### Configure firewall
+### Firewall
 
 Set up UFW (Uncomplicated Firewall) to allow only necessary inbound traffic:
 
@@ -223,6 +225,8 @@ sudo ufw allow from 10.0.0.5 to any port 5432
 ![installation-manual-diagrams/flowintel-installation-Network.png](installation-manual-diagrams/flowintel-installation-Network.png)
 
 ## Installation location
+
+Flowintel stores its application files, configuration, and uploaded attachments under a single directory tree. Choosing the right location now makes future backups, storage expansion, and disaster recovery much simpler.
 
 For better organisation and easier backups, create a dedicated partition or mount point for Flowintel.
 
@@ -300,6 +304,8 @@ This process can be performed while Flowintel is running, but it is best to sche
 
 ## Download Flowintel
 
+Flowintel is distributed as a Git repository rather than a packaged installer. You clone the repository, optionally check out a tagged release, and then lock down the file permissions.
+
 ### Clone the repository
 
 Download Flowintel from GitHub:
@@ -349,9 +355,9 @@ This restricts access to the owner and group members, preventing other users on 
 
 **Important**: Do not apply chmod 750 to `/opt/flowintel` if you relocate the PostgreSQL data directory to `/opt/flowintel/database` (covered in the database section). This would prevent PostgreSQL from accessing the database. Only apply the permission restrictions to `/opt/flowintel/flowintel`.
 
-## Web server: reverse proxy with NGINX
+## Setup the reverse proxy
 
-While you can access Flask directly during development, running Flowintel behind a reverse proxy is strongly recommended for production.
+NGINX sits between users and the Flask application, handling TLS termination, static file serving, and request buffering. While you can access Flask directly during development, running Flowintel behind a reverse proxy is strongly recommended for production.
 
 **Note**: If you're just testing Flowintel, you can skip this section and access Flask directly at `http://localhost:7006`. For production deployments, continue with the NGINX setup below.
 
@@ -482,9 +488,9 @@ If the test passes, reload NGINX:
 sudo systemctl reload nginx
 ```
 
-## Database: PostgreSQL
+## Database
 
-Flowintel requires PostgreSQL for production use. While SQLite works for development and testing, PostgreSQL provides better performance, concurrency handling, and data integrity for production environments.
+This section covers installing PostgreSQL, creating the Flowintel database and user, and configuring authentication. Flowintel requires PostgreSQL for production use. While SQLite works for development and testing, PostgreSQL provides better performance, concurrency handling, and data integrity for production environments.
 
 ### Install PostgreSQL
 
@@ -679,9 +685,9 @@ flowintel=>
 If you see the PostgreSQL prompt, the setup is working correctly. Type `\q` to exit.
 
 
-# Configure Flowintel
+# Configure Flowintel for installation
 
-With the system packages, reverse proxy, and database in place, the next step is to configure the Flowintel application itself.
+With the system packages, reverse proxy, and database in place, the next step is to configure the Flowintel application. These settings must be in place before you run the installation script.
 
 ## Create configuration files
 
@@ -1410,9 +1416,9 @@ For production use, run Flowintel as a systemd service so it starts automaticall
 
 Flowintel ships with three systemd service templates in the `doc/` directory:
 
-- `flowintel.service` — the main application (Gunicorn)
-- `flowintel-misp-modules.service` — the MISP modules enrichment service
-- `flowintel-notifications.service` — the notification service
+- `flowintel.service` : the main application (Gunicorn)
+- `flowintel-misp-modules.service` : the MISP modules enrichment service
+- `flowintel-notifications.service` : the notification service
 
 Copy all three to the systemd directory:
 

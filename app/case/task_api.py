@@ -423,7 +423,7 @@ class UploadFile(Resource):
 @task_ns.route('/<tid>/download_file/<fid>')
 @task_ns.doc(description='Download a file', params={"tid": "id of a task", "fid": "id of a file"})
 class DownloadFile(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [api_required]
     def get(self, tid, fid):
         task = CommonModel.get_task(tid)
         if task:

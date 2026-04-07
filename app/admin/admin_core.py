@@ -82,17 +82,26 @@ def get_all_user_role(role_id):
 def get_taxonomies():
     return [taxo.to_json() for taxo in Taxonomy.query.all()]
 
-def get_nb_page_taxo(name=None):
-    """Return number of pages for taxonomies, optionally filtered by name.
-
-    Uses the same in-memory list logic as `get_taxonomies_page` so results
-    remain consistent when a `name` filter is provided.
-    """
-    taxo_list = get_taxonomies()
+def _filter_items(items, name=None, enabled=None):
     if name:
         name_l = name.lower()
-        taxo_list = [t for t in taxo_list if name_l in t.get('name', '').lower()]
+        items = [i for i in items if name_l in i.get('name', '').lower()]
+    if enabled == 'true':
+        items = [i for i in items if not i.get('exclude', False)]
+    elif enabled == 'false':
+        items = [i for i in items if i.get('exclude', False)]
+    return items
+
+def get_nb_page_taxo(name=None, enabled=None):
+    """Return number of pages for taxonomies, optionally filtered by name and enabled status."""
+    taxo_list = _filter_items(get_taxonomies(), name=name, enabled=enabled)
     return int(len(taxo_list) / 25) + 1
+
+def get_taxonomy_counts(name=None):
+    taxo_list = _filter_items(get_taxonomies(), name=name)
+    total = len(taxo_list)
+    enabled = sum(1 for t in taxo_list if not t.get('exclude', False))
+    return {"total": total, "enabled": enabled}
 
 def get_tags(taxonomy_id):
     return [tag.to_json() for tag in Taxonomy.query.get(taxonomy_id).tags]
@@ -111,17 +120,16 @@ def get_clusters():
 def get_clusters_galaxy(galaxy_id):
     return [cluster.to_json() for cluster in get_galaxy(galaxy_id).clusters]
 
-def get_nb_page_galaxies(name=None):
-    """Return number of pages for galaxies, optionally filtered by name.
-
-    Uses the same in-memory list logic as `get_galaxies_page` so results
-    remain consistent when a `name` filter is provided.
-    """
-    gal_list = get_galaxies()
-    if name:
-        name_l = name.lower()
-        gal_list = [g for g in gal_list if name_l in g.get('name', '').lower()]
+def get_nb_page_galaxies(name=None, enabled=None):
+    """Return number of pages for galaxies, optionally filtered by name and enabled status."""
+    gal_list = _filter_items(get_galaxies(), name=name, enabled=enabled)
     return int(len(gal_list) / 25) + 1
+
+def get_galaxy_counts(name=None):
+    gal_list = _filter_items(get_galaxies(), name=name)
+    total = len(gal_list)
+    enabled = sum(1 for g in gal_list if not g.get('exclude', False))
+    return {"total": total, "enabled": enabled}
 
 def get_tags_galaxy(galaxy_id):
     return [cluster.tag for cluster in get_galaxy(galaxy_id).clusters]
@@ -373,12 +381,9 @@ def delete_org_core(oid):
         return False
     
 
-def get_taxonomies_page(page, name=None):
+def get_taxonomies_page(page, name=None, enabled=None):
     nb_taxo = 25
-    taxo_list = get_taxonomies()
-    if name:
-        name_l = name.lower()
-        taxo_list = [t for t in taxo_list if name_l in t.get('name','').lower()]
+    taxo_list = _filter_items(get_taxonomies(), name=name, enabled=enabled)
 
     to_give = nb_taxo * page
     if to_give > len(taxo_list):
@@ -397,12 +402,16 @@ def taxonomy_status(taxonomy_id):
     taxo.exclude = not taxo.exclude
     db.session.commit()
 
-def get_galaxies_page(page, name=None):
+def bulk_set_exclude(model, ids, exclude):
+    for item_id in ids:
+        item = model.query.get(item_id)
+        if item:
+            item.exclude = exclude
+    db.session.commit()
+
+def get_galaxies_page(page, name=None, enabled=None):
     nb_galaxies = 25
-    galaxies_list = get_galaxies()
-    if name:
-        name_l = name.lower()
-        galaxies_list = [g for g in galaxies_list if name_l in g.get('name','').lower()]
+    galaxies_list = _filter_items(get_galaxies(), name=name, enabled=enabled)
 
     to_give = nb_galaxies * page
     if to_give > len(galaxies_list):
@@ -420,3 +429,5 @@ def galaxy_status(galaxy_id):
     gal = get_galaxy(galaxy_id)
     gal.exclude = not gal.exclude
     db.session.commit()
+
+

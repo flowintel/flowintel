@@ -710,12 +710,12 @@ def get_instance_module(cid, tid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
         if CommonModel.get_task(tid):
-            if "module" in request.args:
-                module = request.args.get("module")
-            if "type" in request.args:
-                type_module = request.args.get("type")
-            else:
-                return{"message": "Module type error", 'toast_class': "danger-subtle"}, 400
+            if "module" not in request.args:
+                return {"message": "Need to pass 'module'", 'toast_class': "danger-subtle"}, 400
+            if "type" not in request.args:
+                return {"message": "Need to pass 'type'", 'toast_class': "danger-subtle"}, 400
+            module = request.args.get("module")
+            type_module = request.args.get("type")
             return {"instances": TaskModel.get_instance_module_core(module, type_module, tid, current_user.id)}, 200
         return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404

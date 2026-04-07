@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..utils.note_variables import get_syntax_reference
 from ..decorators import editor_required, admin_required, template_editor_required
-from ..utils.utils import get_modules_list
+from ..utils.utils import get_modules_list, reload_application
 from ..utils.logger import flowintel_log
 import os
 import platform
@@ -94,6 +94,7 @@ def reload():
 # Stats #
 #########
 from ..db_class.db import Case, Case_Org
+from ..case.common_core import check_user_in_private_cases
 
 @tools_blueprint.route("/stats")
 @login_required
@@ -113,6 +114,7 @@ def chart_dict_constructor(input_dict):
 @login_required
 def case_stats():
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
+    cases = check_user_in_private_cases(cases, current_user)
     res_dict = ToolsModel.stats_core(cases)
 
     return res_dict
@@ -557,4 +559,17 @@ def system_settings_save():
     flowintel_log("audit", 200, "System setting changed", User=current_user.email, Setting=key, Value=py_value)
 
     return jsonify({"message": "Configuration saved", "backup_created": True})
+
+
+@tools_blueprint.route("/system_settings/reload", methods=["POST"])
+@login_required
+@admin_required
+def system_settings_reload():
+    """Reload configuration by restarting gunicorn workers or refreshing in-process."""
+    ok, message, status = reload_application()
+    if not ok:
+        return jsonify({"error": message}), status
+
+    flowintel_log("audit", 200, "Application reload requested", User=current_user.email)
+    return jsonify({"message": message}), status
 
