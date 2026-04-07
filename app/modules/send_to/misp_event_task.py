@@ -70,7 +70,7 @@ def event_report_note_task(task):
     return loc_notes
 
 
-def handler(instance, case, task, user):
+def handler(instance, case, task, user, case_model=None, db_session=None):
     """
     instance: name, url, description, uuid, connector_id, type, api_key, identifier
 
@@ -228,7 +228,7 @@ def handler(instance, case, task, user):
             misp.add_event_report(event.get("id"), event_report)
     
     if "errors" in event:
-        return event
+        return {"message": event.get("errors", "Error with MISP event")}
 
     local_tags = current_app.config.get("MISP_ADD_LOCAL_TAGS_ALL_EVENTS", "")
     if local_tags:
@@ -238,7 +238,7 @@ def handler(instance, case, task, user):
         else:
             misp.tag(event, local_tags, local=True)
 
-    return event.get("uuid")
+    return {"identifier": event.get("uuid")}
 
 def introspection():
     return module_config

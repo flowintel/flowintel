@@ -272,7 +272,15 @@
         <li class="nav-item">
             <button class="nav-link" id="tab-connectors" @click="active_tab('connectors')">
                 <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i><i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title fs-6">Connectors </span>
-                <span class="badge text-bg-secondary d-none" id="id-nb-connectors">[[case_connectors_list.length]]</span>
+                <span class="badge text-bg-secondary" id="id-nb-connectors" v-if="case_connectors_list && case_connectors_list.length">[[case_connectors_list.length]]</span>
+            </button>
+        </li>
+        <li class="nav-item" v-for="connType in connector_types_in_case" :key="connType">
+            <button class="nav-link dynamic-connector-tab" :id="'tab-connector-' + connType.toLowerCase()" @click="active_tab('connector-' + connType.toLowerCase())">
+                <i class="fa-solid fa-puzzle-piece fa-sm me-1"></i>
+                <span class="section-title fs-6 me-1">[[ connType ]] </span>
+                <span class="badge text-bg-secondary" v-if="module_counts && module_counts[connType]"> [[ module_counts[connType] ]]</span>
+                
             </button>
         </li>
         <li class="nav-item">
@@ -493,6 +501,25 @@
             <misp_object :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
         </template>
 
+        <template v-else-if="main_tab == 'connectors'">
+            <div v-if="!can_use_connectors" class="alert alert-warning" role="alert">
+                <i class="fa-solid fa-lock me-2"></i>
+                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
+            </div>
+            <div v-else-if="cases_info">
+                <caseconnectors 
+                    :case_task_connectors_list="case_connectors_list"
+                    :all_connectors_list="all_connectors_list"
+                    :modules="modules"
+                    :is_case="true"
+                    :object_id="cases_info.case.id"
+                    :cases_info="cases_info"
+                    @case_connectors="(msg) => fetch_case_connectors()"
+                    @task_connectors="">
+                </caseconnectors>
+            </div>
+        </template>
+
         <template v-else-if="main_tab == 'timeline'">
             <ul class="nav nav-tabs" style="margin-bottom: 10px;">
                 <li class="nav-item">
@@ -515,26 +542,26 @@
             </template>
         </template>
 
-        <template v-else-if="main_tab == 'connectors'">
-            <div v-if="!can_use_connectors" class="alert alert-warning" role="alert">
-                <i class="fa-solid fa-lock me-2"></i>
-                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
-            </div>
-            <div v-else-if="cases_info">
-                <caseconnectors 
-                    :case_task_connectors_list="case_connectors_list"
-                    :all_connectors_list="all_connectors_list"
-                    :modules="modules"
-                    :is_case="true"
-                    :object_id="cases_info.case.id"
+        <template v-for="connType in connector_types_in_case" :key="'content-' + connType">
+            <template v-if="main_tab == 'connector-' + connType.toLowerCase()">
+                <component 
+                    v-if="loaded_module_components[connType]"
+                    :is="loaded_module_components[connType]"
+                    :case_id="cases_info.case.id"
                     :cases_info="cases_info"
-                    @case_connectors="(msg) => fetch_case_connectors()"
-                    @task_connectors="">
-                </caseconnectors>
-            </div>
+                    :connector_instances="get_connector_instances(connType)"
+                    :connector_type="connType"
+                    @case_connectors="(msg) => fetch_case_connectors()">
+                </component>
+                <div v-else class="alert alert-secondary p-3">
+                    <i class="fa-solid fa-puzzle-piece me-2"></i>
+                    No specific view component available for <strong>[[ connType ]]</strong>.
+                    <br><small class="text-muted">Contributors can create one at <code>app/static/js/case/ModuleComponents/[[ connType ]].js</code></small>
+                </div>
+            </template>
         </template>
 
-        <template v-else-if="main_tab == 'files'">
+        <template v-if="main_tab == 'files'">
             <div v-if="cases_info">
                 <casefiles
                     :case_id="cases_info.case.id"
@@ -546,7 +573,7 @@
             </div>
         </template>
 
-        <template v-else-if="main_tab == 'info'">
+        <template v-if="main_tab == 'info'">
             <div class="row">
                 <div class="col-auto">
                     <fieldset class="analyzer-select-case" style="text-align: center;">
@@ -840,7 +867,7 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, nextTick, onMounted, watch } = Vue
+        const { createApp, ref, computed, nextTick, onMounted, watch, markRaw } = Vue
         import case_tasks from '/static/js/case/case_tasks.js'
         import hedgedoc_template from '/static/js/case/hedgedoc_template.js'
         import action_buttons from '/static/js/case/action_buttons.js'
@@ -926,6 +953,64 @@
                 const case_files_list = ref([])
 
                 const nb_misp_objects = ref(0)
+
+                // Dynamic connector module components
+                const loaded_module_components = ref({})
+
+                const connector_types_in_case = computed(() => {
+                    if (!case_connectors_list.value || !case_connectors_list.value.length) return []
+                    if (!all_connectors_list.value || typeof all_connectors_list.value !== 'object' || Array.isArray(all_connectors_list.value)) return []
+
+                    const instanceTypeMap = {}
+                    for (const [typeName, instances] of Object.entries(all_connectors_list.value)) {
+                        if (Array.isArray(instances)) {
+                            for (const inst of instances) {
+                                instanceTypeMap[inst.id] = typeName
+                            }
+                        }
+                    }
+
+                    const types = new Set()
+                    for (const conn of case_connectors_list.value) {
+                        if (conn.details && conn.details.id !== undefined) {
+                            const typeName = instanceTypeMap[conn.details.id]
+                            if (typeName && typeName.toUpperCase() !== 'MISP') {
+                                types.add(typeName)
+                            }
+                        }
+                    }
+                    return [...types]
+                })
+
+                function get_connector_instances(connType) {
+                    if (!case_connectors_list.value || !all_connectors_list.value) return []
+                    const typeInstances = all_connectors_list.value[connType]
+                    if (!typeInstances) return []
+                    const typeInstanceIds = new Set(typeInstances.map(i => i.id))
+                    return case_connectors_list.value.filter(c => c.details && typeInstanceIds.has(c.details.id))
+                }
+
+                async function loadModuleComponent(typeName) {
+                    if (loaded_module_components.value[typeName] !== undefined) return
+                    try {
+                        const module = await import('/static/js/case/ModuleComponents/' + typeName + '.js')
+                        loaded_module_components.value = { ...loaded_module_components.value, [typeName]: markRaw(module.default) }
+                    } catch (e) {
+                        console.warn('No ModuleComponent found for connector type: ' + typeName)
+                        loaded_module_components.value = { ...loaded_module_components.value, [typeName]: null }
+                    }
+                }
+
+                // Auto-load module components when connector types change
+                watch(connector_types_in_case, (types) => {
+                    for (const typeName of types) {
+                        loadModuleComponent(typeName)
+                    }
+                })
+
+                // store counts emitted by module components (e.g., Rulezet)
+                const module_counts = ref({})
+
 
                 const open_closed = ref({})
                 const all_notes = ref("")
@@ -1016,6 +1101,8 @@
                     }else{
                         let loc = await res.json()
                         case_connectors_list.value = loc["case_connectors"]
+                        // refresh module counts when connectors change
+                        await fetch_module_counts()
                     }
                 }
                 async function fetch_case_files(){
@@ -1037,6 +1124,18 @@
                     }
                 }
                 fetch_connectors()
+
+                async function fetch_module_counts() {
+                    try {
+                        const res = await fetch(`/case/{{case.id}}/module_counts`)
+                        if (res.status === 200) {
+                            const d = await res.json()
+                            module_counts.value = d.counts || {}
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                }
 
                 async function fetch_modules(){
                     // Get modules and instances linked on
@@ -1257,46 +1356,32 @@
                     resolveAllTaskNotes()
                 }
 
+                // Helper to deactivate all tabs (static + dynamic)
+                function deactivate_all_tabs() {
+                    ;['tab-main','tab-history','tab-notes','tab-misp-objects','tab-info','tab-files','tab-timeline','tab-connectors'].forEach(id => {
+                        const el = document.getElementById(id)
+                        if (el) el.classList.remove('active')
+                    })
+                    document.querySelectorAll('.dynamic-connector-tab').forEach(el => el.classList.remove('active'))
+                }
+
                 async function active_tab(tab_name){
+
                     if(tab_name == 'main'){
                         main_tab.value = 'main'
                         if ( !document.getElementById("tab-main").classList.contains("active") ){
+                            deactivate_all_tabs()
                             document.getElementById("tab-main").classList.add("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-notes").classList.remove("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-connectors").classList.remove("active")
-                            document.getElementById("tab-files").classList.remove("active")
-                            document.getElementById("tab-timeline").classList.remove("active")
                             await nextTick()
 
                             initialize_select2()
-                        }
-                    }else if(tab_name == 'history'){
-                        main_tab.value = 'history'
-                        if ( !document.getElementById("tab-history").classList.contains("active") ){
-                            document.getElementById("tab-history").classList.add("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-notes").classList.remove("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-connectors").classList.remove("active")
-                            document.getElementById("tab-files").classList.remove("active")
-                            document.getElementById("tab-timeline").classList.remove("active")
                         }
                     }else if(tab_name == 'notes'){
                         let loc_tab = main_tab.value 
                         main_tab.value = 'notes'
                         if ( !document.getElementById("tab-notes").classList.contains("active") ){
+                            deactivate_all_tabs()
                             document.getElementById("tab-notes").classList.add("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-connectors").classList.remove("active")
-                            document.getElementById("tab-files").classList.remove("active")
-                            document.getElementById("tab-timeline").classList.remove("active")
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'notes'){
@@ -1304,70 +1389,13 @@
                         }else{
                             prepare_editor(cases_info.value.case.notes)
                         }
-                    }else if(tab_name == 'misp-objects'){
-                        main_tab.value = 'misp-objects'
-                        if ( !document.getElementById("tab-misp-objects").classList.contains("active") ){
-                            document.getElementById("tab-misp-objects").classList.add("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-notes").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-connectors").classList.remove("active")
-                            document.getElementById("tab-files").classList.remove("active")
-                            document.getElementById("tab-timeline").classList.remove("active")
-                        }
+                    }else{
+                        // Dynamic connector tab
+                        main_tab.value = tab_name
+                        deactivate_all_tabs()
+                        const tabEl = document.getElementById('tab-' + tab_name)
+                        if (tabEl) tabEl.classList.add('active')
                         await nextTick()
-                    }else if(tab_name == 'timeline'){
-                        main_tab.value = 'timeline'
-                        if ( !document.getElementById("tab-timeline").classList.contains("active") ){
-                            document.getElementById("tab-timeline").classList.add("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-notes").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-connectors").classList.remove("active")
-                            document.getElementById("tab-files").classList.remove("active")
-                        }
-                        await nextTick()
-                    }else if(tab_name == 'connectors'){
-                        main_tab.value = 'connectors'
-                        if ( !document.getElementById("tab-connectors").classList.contains("active") ){
-                            document.getElementById("tab-connectors").classList.add("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-notes").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-files").classList.remove("active")
-                            document.getElementById("tab-timeline").classList.remove("active")
-                        }
-                        await nextTick()
-                    }else if(tab_name == 'files'){
-                        main_tab.value = 'files'
-                        if ( !document.getElementById("tab-files").classList.contains("active") ){
-                            document.getElementById("tab-files").classList.add("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-notes").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-info").classList.remove("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-connectors").classList.remove("active")
-                            document.getElementById("tab-timeline").classList.remove("active")
-                        }
-                        await nextTick()
-                    }else if(tab_name == 'info'){
-                        main_tab.value = 'info'
-                        if ( !document.getElementById("tab-info").classList.contains("active") ){
-                            document.getElementById("tab-info").classList.add("active")
-                            document.getElementById("tab-misp-objects").classList.remove("active")
-                            document.getElementById("tab-main").classList.remove("active")
-                            document.getElementById("tab-notes").classList.remove("active")
-                            document.getElementById("tab-history").classList.remove("active")
-                            document.getElementById("tab-connectors").classList.remove("active")
-                            document.getElementById("tab-files").classList.remove("active")
-                            document.getElementById("tab-timeline").classList.remove("active")
-                        }
                     }
                 }
 
@@ -1703,7 +1731,6 @@
                         dropdownParent: $('#add_new_link')
                     });
 
-                    $("#id-nb-connectors").removeClass("d-none")
                     $("#id-nb-misp-object").removeClass("d-none")
                     // $("#id-case-status").removeClass("d-none")
 
@@ -1885,7 +1912,12 @@
                     showDescription,
                     showWorkflow,
                     variables_reference,
-                    edit_preview_html
+                    edit_preview_html,
+
+                    connector_types_in_case,
+                    loaded_module_components,
+                    get_connector_instances
+                    ,module_counts
                 }
             }
         }).mount('#main-container')

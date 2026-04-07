@@ -396,7 +396,7 @@ def add_external_references_to_event(misp, event, case):
                 logger.warning("MISP export: failed to add external reference '%s': %s", url, e)
 
 
-def handler(instance, case, user):
+def handler(instance, case, user, case_model=None, db_session=None):
     """
     instance: name, url, description, uuid, connector_id, type, api_key, identifier
 
@@ -411,7 +411,7 @@ def handler(instance, case, user):
     try:
         misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
     except Exception:
-        return {"message": "Error connecting to MISP"}, {}
+        return {"message": "Error connecting to MISP"}
     flag = False
     object_uuid_list = {}
     if "identifier" in instance and instance["identifier"]:
@@ -550,7 +550,7 @@ def handler(instance, case, user):
                 
                 event = misp.update_event(event, pythonify=True)
                 if "errors" in event:
-                    return event, object_uuid_list
+                    return {"message": event.get("errors", "Error updating event")}
 
                 add_case_task_references(misp, event, case)
 
@@ -581,7 +581,7 @@ def handler(instance, case, user):
 
                 event = misp.update_event(event, pythonify=True)
                 if "errors" in event:
-                    return event, object_uuid_list
+                    return {"message": event.get("errors", "Error updating event")}
 
                 add_case_task_references(misp, event, case)
 
@@ -592,7 +592,7 @@ def handler(instance, case, user):
 
             res, object_uuid_list = all_object_to_misp(misp, event, case["objects"], object_uuid_list)
             if "errors" in res:
-                return res, object_uuid_list
+                return {"message": res.get("errors", "Error syncing objects")}
 
     ## Case have no id for this connector or the event doesn't exist anymore  
     else: 
@@ -668,10 +668,10 @@ def handler(instance, case, user):
         for object in case["objects"]:
             res, object_uuid_list = manage_object_creation(misp, event, object, object_uuid_list)
             if "errors" in res:
-                return res, object_uuid_list
+                return {"message": res.get("errors", "Error creating object")}
     
     if "errors" in event:
-        return event, object_uuid_list
+        return {"message": event.get("errors", "Error with MISP event")}
 
     local_tags = current_app.config.get("MISP_ADD_LOCAL_TAGS_ALL_EVENTS", "")
     if local_tags:
@@ -681,7 +681,11 @@ def handler(instance, case, user):
         else:
             misp.tag(event, local_tags, local=True)
 
-    return event.get("uuid"), object_uuid_list
+    # Let the module handle its own DB storage
+    if case_model and object_uuid_list:
+        case_model.result_misp_object_module(object_uuid_list, instance["id"], case["id"])
+
+    return {"identifier": event.get("uuid")}
 
 def introspection():
     return module_config

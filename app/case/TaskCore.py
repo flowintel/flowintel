@@ -898,18 +898,17 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         # RUN #
         #######
         modules, _ = get_modules_list()
-        event_uuid = modules[module].handler(instance, case, task, user)
-        res = CommonModel.module_error_check(event_uuid)
-        if res:
-            return res
-        
-        ###########
-        # RESULTS #
-        ###########
+        result = modules[module].handler(instance, case, task, user, case_model=self, db_session=db)
 
-        if task_instance.identifier != event_uuid:
-            task_instance.identifier = event_uuid
-            db.session.commit()
+        # Module returns None for success, or a dict.
+        # Dict with "message" key means error.
+        # Dict with "identifier" key means update the connector identifier.
+        if isinstance(result, dict):
+            if "message" in result:
+                return result
+            if "identifier" in result and task_instance.identifier != result["identifier"]:
+                task_instance.identifier = result["identifier"]
+                db.session.commit()
 
         CommonModel.save_history(case["uuid"], user, f"Task Module {module} used on instances: {instance['name']}")
 

@@ -819,9 +819,10 @@ def call_module_case(cid):
             flowintel_log("audit", 403, "Call module on case: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
-        case_instance_id = request.get_json()["case_task_instance_id"]
-        module = request.get_json()["module"]
-        res = CaseModel.call_module_case(module, case_instance_id, case, current_user)
+        payload = request.get_json()
+        case_instance_id = payload.get("case_task_instance_id")
+        module = payload.get("module")
+        res = CaseModel.call_module_case(module, case_instance_id, case, current_user, payload=payload)
         if res:
             res["toast_class"] = "danger-subtle"
             return jsonify(res), 400
@@ -1530,24 +1531,6 @@ def edit_connector(cid, ciid):
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
-
-@case_blueprint.route("/<cid>/update_case/<iid>", methods=['GET'])
-@login_required
-@misp_editor_required
-def update_case(cid, iid):
-    """Update case from MISP connector"""
-    if CommonModel.get_case(cid):
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            res = CaseModel.receive_from_misp(iid, cid, current_user)
-            if not isinstance(res, dict):
-                flowintel_log("audit", 200, "Case updated from MISP connector", User=current_user.email, CaseId=cid, ConnectorInstanceId=iid)
-                flash("Objects updated successfully", "success")
-                return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
-            else:
-                res["toast_class"] = "danger-subtle"
-                return res, 400
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
-    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 #################
 # Note Template #

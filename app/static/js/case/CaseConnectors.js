@@ -16,6 +16,7 @@ export default {
         const connectors_selected = ref([])
         const edit_instance = ref()
         const send_to_instance = ref()
+        const receive_from_instance = ref()
         const module_selected = ref({})
         const is_loading_update = ref(false)
 
@@ -133,6 +134,12 @@ export default {
             myModal.show();
         }
 
+        function receive_from_modal(instance) {
+            receive_from_instance.value = instance
+            var myModal = new bootstrap.Modal(document.getElementById("modal-receive-from-" + modal_identifier), {});
+            myModal.show();
+        }
+
         async function submit_module() {
             is_sending.value = true
             $("#modules_errors").hide()
@@ -176,22 +183,49 @@ export default {
             display_toast(res)
         }
 
-        async function update_case(instance_id) {
-            is_loading_update.value = true
-            let url = '/case/' + props.cases_info.case.id + '/update_case/' + instance_id
-            const res = await fetch(url)
-            if (await res.status == 200) {
-                window.location.href = '/case/' + props.cases_info.case.id
-            }
-            display_toast(res)
-            is_loading_update.value = false
+        async function submit_receive_module() {
+            is_sending.value = true
+            $("#modules_errors_receive").hide()
+            let modules_select = $("#modules_select_receive_" + modal_identifier).val()
 
+
+            if (!modules_select || modules_select == "None") {
+                $("#modules_errors_receive").text("Select an item")
+                $("#modules_errors_receive").show()
+                is_sending.value = false
+                return
+            }
+
+            let url
             if (props.is_case) {
-                props.cases_info.case.is_updated_from_misp = true
-                props.cases_info.case.has_misp_event = true
+                url = "/case/" + props.object_id + "/call_module_case"
+            } else {
+                url = "/case/" + props.cases_info.case.id + "/task/" + props.object_id + "/call_module_task"
             }
-        }
 
+            const res = await fetch(url, {
+                method: "POST",
+                body: JSON.stringify({
+                    "module": modules_select,
+                    "case_task_instance_id": receive_from_instance.value.case_task_instance_id
+                }),
+                headers: {
+                    "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+                }
+            });
+            is_sending.value = false
+
+            if (await res.status == 200) {
+                $("#modal-receive-from-" + modal_identifier).modal("hide");
+                if (props.is_case) {
+                    emit("case_connectors", true)
+                } else {
+                    emit("task_connectors", true)
+                }
+            }
+
+            display_toast(res)
+        }
 
         onMounted(() => {
             $('.select2-connect').select2({
@@ -202,8 +236,24 @@ export default {
                 theme: 'bootstrap-5',
                 dropdownParent: $("#modal-send-to-" + modal_identifier)
             })
+            $('.select2-module-receive').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $("#modal-receive-from-" + modal_identifier)
+            })
 
             $("#modules_select_" + modal_identifier).on('change.select2', function (e) {
+                let loc = $(this).select2('data').map(item => item.id)
+
+                for (let i in props.modules) {
+                    if (loc == i) {
+                        module_selected.value = props.modules[i].config
+                        break
+                    }
+                }
+
+            })
+
+            $("#modules_select_receive_" + modal_identifier).on('change.select2', function (e) {
                 let loc = $(this).select2('data').map(item => item.id)
 
                 for (let i in props.modules) {
@@ -247,8 +297,9 @@ export default {
             edit_instance_open_modal,
             edit_connector,
             send_to_modal,
+            receive_from_modal,
             submit_module,
-            update_case
+            submit_receive_module
         }
     },
     css: `
@@ -308,16 +359,14 @@ export default {
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button> 
                         <template v-if="instance.details.type == 'send_to'">
-                            <button v-if="!is_sending" class="btn btn-outline-secondary" @click="send_to_modal(instance)"> Send to </button>
+                            <button v-if="!is_sending" class="btn btn-outline-secondary mx-1" @click="send_to_modal(instance)"> Send to </button>
                             <button v-else class="btn btn-outline-secondary" type="button" disabled>
                                 <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                                 <span role="status">Loading...</span>
                             </button>
                         </template>
                         <template v-else-if="instance.details.type == 'receive_from'">
-                            <button v-if="!is_sending" class="btn btn-outline-secondary" @click="update_case(instance.case_task_instance_id)" title="Update case with the event misp">
-                                <i class="fa-solid fa-recycle"></i>
-                            </button>
+                            <button v-if="!is_sending" class="btn btn-outline-secondary mx-1" @click="receive_from_modal(instance)"> Receive </button>
                             <button v-else class="btn btn-outline-secondary" type="button" disabled>
                                 <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                                 <span role="status">Loading...</span>
@@ -434,6 +483,44 @@ export default {
                             <span role="status">Loading...</span>
                         </button>
                         <button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Modal receive from -->
+        <div class="modal fade" :id="'modal-receive-from-'+modal_identifier" tabindex="-1" aria-labelledby="modal-receive-fromLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="modal-receive-fromLabel">Receive from modules</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display: flex;">
+                            <div>
+                                <label for="modules_select_receive">Modules:</label>
+                                <select data-placeholder="Modules" class="select2-module-receive form-control" name="modules_select_receive" :id="'modules_select_receive_'+modal_identifier">
+                                    <option value="None">--</option>
+                                    <template v-for="module, key in modules">
+                                        <option v-if="module.type == 'receive_from'" :value="[[key]]">[[key]]</option>
+                                    </template>
+                                </select>
+                                <div id="modules_errors_receive" class="invalid-feedback"></div>
+                                <div class="case-core-style mt-3" v-if="Object.keys(module_selected).length">
+                                    <b>Module Description:</b><br>
+                                    <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[module_selected.description]]</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button v-if="is_sending" class="btn btn-primary" type="button" disabled>
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            <span role="status">Loading...</span>
+                        </button>
+                        <button v-else type="button" @click="submit_receive_module()" class="btn btn-primary">Submit</button>
                     </div>
                 </div>
             </div>
