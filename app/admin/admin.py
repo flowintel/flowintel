@@ -392,7 +392,7 @@ def get_org_users():
         for user in users:
             u = user.to_json()
             r = AdminModel.get_role(user.role_id)
-            u["role"] = r.name
+            u["role"] = r.name if r else "Unknown"
             users_list.append(u)
 
         return {"users": users_list}
@@ -427,7 +427,7 @@ def get_role_users():
         for user in users:
             u = user.to_json()
             o = AdminModel.get_org(user.org_id)
-            u["org"] = o.name
+            u["org"] = o.name if o else "No Organization"
             users_list.append(u)
 
         return {"users": users_list}
