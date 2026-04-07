@@ -9,7 +9,7 @@ from . import admin_core as AdminModel
 from ..decorators import admin_required
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
-from ..db_class.db import User, Role
+from ..db_class.db import User, Role, Taxonomy, Galaxy
 
 admin_blueprint = Blueprint(
     'admin',
@@ -458,14 +458,23 @@ def get_taxonomies_page():
     """Get taxonomies of a specific page"""
     page = request.args.get('page', 1, type=int)
     name = request.args.get('name', None, type=str)
-    return {"taxonomies": AdminModel.get_taxonomies_page(page, name=name)}
+    enabled = request.args.get('enabled', None, type=str)
+    return {"taxonomies": AdminModel.get_taxonomies_page(page, name=name, enabled=enabled)}
 
 @admin_blueprint.route("/nb_page_taxo", methods=['GET'])
 @login_required
 def nb_page_taxo():
     """Get number of page to list all taxonomies"""
     name = request.args.get('name', None, type=str)
-    return {"nb_page": AdminModel.get_nb_page_taxo(name=name)}
+    enabled = request.args.get('enabled', None, type=str)
+    return {"nb_page": AdminModel.get_nb_page_taxo(name=name, enabled=enabled)}
+
+@admin_blueprint.route("/taxonomy_counts", methods=['GET'])
+@login_required
+def taxonomy_counts():
+    """Get total and enabled taxonomy counts"""
+    name = request.args.get('name', None, type=str)
+    return AdminModel.get_taxonomy_counts(name=name)
 
 @admin_blueprint.route("/get_tags", methods=['GET'])
 @login_required
@@ -484,6 +493,20 @@ def taxonomy_status():
     taxonomy_id = request.args.get('taxonomy', type=int)
     AdminModel.taxonomy_status(taxonomy_id)
     return {"message":"Taxonomy changed", "toast_class": "success-subtle"}, 200
+
+@admin_blueprint.route("/bulk_taxonomy_status", methods=['POST'])
+@login_required
+@admin_required
+def bulk_taxonomy_status():
+    """Enable or disable multiple taxonomies at once"""
+    data = request.get_json()
+    taxonomy_ids = data.get('taxonomy_ids', [])
+    exclude = data.get('exclude', True)
+    if not isinstance(taxonomy_ids, list):
+        return {"message": "Invalid request", "toast_class": "danger-subtle"}, 400
+    AdminModel.bulk_set_exclude(Taxonomy, taxonomy_ids, exclude)
+    action = "disabled" if exclude else "enabled"
+    return {"message": f"{len(taxonomy_ids)} taxonomies {action}", "toast_class": "success-subtle"}, 200
 
 
 
@@ -510,7 +533,8 @@ def get_galaxies_page():
     """Get galaxies of a specific page"""
     page = request.args.get('page', 1, type=int)
     name = request.args.get('name', None, type=str)
-    gal = AdminModel.get_galaxies_page(page, name=name)
+    enabled = request.args.get('enabled', None, type=str)
+    gal = AdminModel.get_galaxies_page(page, name=name, enabled=enabled)
     return {"galaxies": gal}
 
 @admin_blueprint.route("/nb_page_galaxies", methods=['GET'])
@@ -518,7 +542,15 @@ def get_galaxies_page():
 def nb_page_galaxies():
     """Get number of page to list all galaxies"""
     name = request.args.get('name', None, type=str)
-    return {"nb_page": AdminModel.get_nb_page_galaxies(name=name)}
+    enabled = request.args.get('enabled', None, type=str)
+    return {"nb_page": AdminModel.get_nb_page_galaxies(name=name, enabled=enabled)}
+
+@admin_blueprint.route("/galaxy_counts", methods=['GET'])
+@login_required
+def galaxy_counts():
+    """Get total and enabled galaxy counts"""
+    name = request.args.get('name', None, type=str)
+    return AdminModel.get_galaxy_counts(name=name)
 
 @admin_blueprint.route("/get_tags_galaxy", methods=['GET'])
 @login_required
@@ -546,3 +578,17 @@ def galaxy_status():
     galaxy_id = request.args.get('galaxy', type=int)
     AdminModel.galaxy_status(galaxy_id)
     return {"message":"Galaxy changed", "toast_class": "success-subtle"}, 200
+
+@admin_blueprint.route("/bulk_galaxy_status", methods=['POST'])
+@login_required
+@admin_required
+def bulk_galaxy_status():
+    """Enable or disable multiple galaxies at once"""
+    data = request.get_json()
+    galaxy_ids = data.get('galaxy_ids', [])
+    exclude = data.get('exclude', True)
+    if not isinstance(galaxy_ids, list):
+        return {"message": "Invalid request", "toast_class": "danger-subtle"}, 400
+    AdminModel.bulk_set_exclude(Galaxy, galaxy_ids, exclude)
+    action = "disabled" if exclude else "enabled"
+    return {"message": f"{len(galaxy_ids)} galaxies {action}", "toast_class": "success-subtle"}, 200

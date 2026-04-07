@@ -11,6 +11,40 @@
                 <h5 class="mb-0"><i class="fa-solid fa-globe me-2"></i>Galaxies</h5>
             </div>
 
+            <!-- Counts -->
+            <div class="col-auto" v-if="galaxy_counts">
+                <span class="text-muted" style="font-size: 0.85rem;">
+                    [[ galaxy_counts.total ]] galaxies, [[ galaxy_counts.enabled ]] enabled
+                </span>
+            </div>
+
+            <!-- Filter buttons -->
+            <div class="col-auto">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Filter options">
+                    <button type="button" class="btn btn-sm" :class="current_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('all')" title="Show all galaxies">
+                        <i class="fa-solid fa-list fa-sm me-1"></i>All
+                    </button>
+                    <button type="button" class="btn btn-sm" :class="current_filter === 'enabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('enabled')" title="Show enabled galaxies">
+                        <i class="fa-solid fa-check fa-sm me-1"></i>Enabled
+                    </button>
+                    <button type="button" class="btn btn-sm" :class="current_filter === 'disabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('disabled')" title="Show disabled galaxies">
+                        <i class="fa-solid fa-xmark fa-sm me-1"></i>Not enabled
+                    </button>
+                </div>
+            </div>
+
+            <!-- Enable/Disable all -->
+            <div class="col-auto" v-if="is_admin">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-success" @click="bulkSetStatus(false)" title="Enable all on this page">
+                        <i class="fa-solid fa-toggle-on fa-sm me-1"></i>Enable all
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" @click="bulkSetStatus(true)" title="Disable all on this page">
+                        <i class="fa-solid fa-toggle-off fa-sm me-1"></i>Disable all
+                    </button>
+                </div>
+            </div>
+
             <!-- Search bar -->
             <div class="col input-group w-auto">
                 <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
@@ -43,8 +77,10 @@
             <template v-for="galaxy in galaxies_list.galaxies">
                 <div class="list-group" style="margin-bottom: 5px;">
                     <div class="d-flex align-items-center">
-                        <input v-if="galaxy.exclude" class="form-check-input me-2" type="checkbox" name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)" style="transform: scale(0.85);">
-                        <input v-else class="form-check-input me-2" type="checkbox" checked name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)" style="transform: scale(0.85);">
+                        <template v-if="is_admin">
+                            <input v-if="galaxy.exclude" class="form-check-input me-2" type="checkbox" name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)" style="transform: scale(0.85);">
+                            <input v-else class="form-check-input me-2" type="checkbox" checked name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)" style="transform: scale(0.85);">
+                        </template>
                         <a @click="extend_collapse(galaxy.id)" class="list-group-item list-group-item-action py-1">
                             <div class="d-flex w-100 justify-content-between">
                                 <h6 class="mb-0" style="font-size: 0.9rem;">[[galaxy.name]]</h6>
@@ -120,31 +156,74 @@
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
+                const is_admin = {{ 'true' if current_user.is_admin() else 'false' }}
                 const galaxies_list = ref(null)
                 const clusters_table = ref({})
                 const current_page = ref(1)
                 const nb_pages = ref(0)
                 const search_query = ref('')
+                const current_filter = ref('all')
+                const galaxy_counts = ref(null)
                 let searchTimer = null
 
+                function buildFilterParam() {
+                    if (current_filter.value === 'enabled') return '&enabled=true'
+                    if (current_filter.value === 'disabled') return '&enabled=false'
+                    return ''
+                }
 
                 async function fetchGalaxies(page) {
                     galaxies_list.value = null
                     let url = 'get_galaxies_page?page='+page
                     if (search_query.value) url += '&name='+encodeURIComponent(search_query.value)
+                    url += buildFilterParam()
                     const res = await fetch(url)
                     let loc = await res.json()
                     galaxies_list.value = loc
                     current_page.value = page
                     await fetchNbPage()
+                    await fetchCounts()
                 }
 
                 async function fetchNbPage() {
                     let url = 'nb_page_galaxies'
-                    if (search_query.value) url += '?name='+encodeURIComponent(search_query.value)
+                    let sep = '?'
+                    if (search_query.value) { url += sep+'name='+encodeURIComponent(search_query.value); sep = '&' }
+                    if (current_filter.value !== 'all') {
+                        let val = current_filter.value === 'enabled' ? 'true' : 'false'
+                        url += sep+'enabled='+val
+                    }
                     const res = await fetch(url)
                     let loc = await res.json()
                     nb_pages.value = loc["nb_page"]
+                }
+
+                async function fetchCounts() {
+                    let url = 'galaxy_counts'
+                    if (search_query.value) url += '?name='+encodeURIComponent(search_query.value)
+                    const res = await fetch(url)
+                    galaxy_counts.value = await res.json()
+                }
+
+                function applyFilter(filter) {
+                    current_filter.value = filter
+                    fetchGalaxies(1)
+                }
+
+                async function bulkSetStatus(exclude) {
+                    if (!galaxies_list.value || !galaxies_list.value.galaxies) return
+                    const ids = galaxies_list.value.galaxies.map(g => g.id)
+                    if (ids.length === 0) return
+                    const res = await fetch('bulk_galaxy_status', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': $("#csrf_token").val()
+                        },
+                        body: JSON.stringify({galaxy_ids: ids, exclude: exclude})
+                    })
+                    display_toast(res)
+                    await fetchGalaxies(current_page.value)
                 }
 
                 async function extend_collapse(galaxy_id){
@@ -168,6 +247,7 @@
                 async function deactivate_galaxy(galaxy_id){
                     const res = await fetch('galaxy_status?galaxy='+galaxy_id)
                     display_toast(res)
+                    await fetchCounts()
                 }
 
                 const visiblePages = computed(() => {
@@ -203,7 +283,12 @@
                     fetchGalaxies,
                     onInput,
                     deactivate_galaxy,
-                    visiblePages
+                    visiblePages,
+                    is_admin,
+                    current_filter,
+                    galaxy_counts,
+                    applyFilter,
+                    bulkSetStatus
                 }
             }
         }).mount('#main-container')
