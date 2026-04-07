@@ -3,6 +3,7 @@ import importlib
 import os
 import json
 import re
+import signal
 import sys
 import uuid
 import secrets
@@ -32,6 +33,27 @@ def validate_file_size(file, max_size=None):
         return False, f"File '{file.filename}' is too large ({file_size_mb}MB). Maximum allowed size is {max_size_mb}MB.", file_size_mb
     
     return True, None, file_size_mb
+
+
+def reload_application():
+    """Send SIGHUP to the gunicorn master so workers restart and re-read config.
+
+    Returns (success: bool, message: str, status_code: int).
+    """
+    if "gunicorn" not in sys.modules:
+        return True, "Development server detected — it auto-reloads on file changes.", 200
+
+    master_pid = os.getppid()
+    if master_pid == 1:
+        return False, "Gunicorn master process not found (workers orphaned).", 500
+
+    try:
+        os.kill(master_pid, signal.SIGHUP)
+    except OSError as exc:
+        return False, f"Failed to send reload signal: {exc}", 500
+
+    return True, "Reload signal sent. Workers will restart momentarily.", 200
+
 
 MODULES = {}
 MODULES_CONFIG = {}
