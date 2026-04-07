@@ -402,6 +402,35 @@ class Task_Url_Tool(db.Model):
         }
         return json_dict
 
+
+class Rulezet_Rule(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
+    case_id = db.Column(db.Integer, index=True)
+    instance_id = db.Column(db.Integer, index=True)
+    remote_id = db.Column(db.String, index=True)
+    title = db.Column(db.String, nullable=True)
+    description = db.Column(db.String, nullable=True)
+    format = db.Column(db.String, nullable=True)
+    content = db.Column(db.Text, nullable=True)
+    version = db.Column(db.String, nullable=True)
+    date_added = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "uuid": self.uuid,
+            "case_id": self.case_id,
+            "instance_id": self.instance_id,
+            "remote_id": self.remote_id,
+            "title": self.title,
+            "description": self.description,
+            "format": self.format,
+            "content": self.content,
+            "version": self.version,
+            "date_added": self.date_added.strftime(DATETIME_FORMAT_FULL) if self.date_added else None
+        }
+
 class Task_External_Reference(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))

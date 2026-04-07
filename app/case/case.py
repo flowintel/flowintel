@@ -11,7 +11,7 @@ from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
-from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User
+from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule
 from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
@@ -733,6 +733,11 @@ def get_galaxies_case(cid):
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 
+
+#############
+## MODULES ##
+#############
+
 @case_blueprint.route("/get_case_modules", methods=['GET'])
 @login_required
 def get_case_modules():
@@ -758,6 +763,49 @@ def get_instance_module(cid):
             return{"message": "Module type error", 'toast_class': "danger-subtle"}, 400
         return {"instances": CaseModel.get_instance_module_core(module, type_module, cid, current_user.id)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/rulezet_rules", methods=['GET'])
+@login_required
+def get_rulezet_rules(cid):
+    """Return stored Rulezet rules for a case (optional query param `instance_id`)"""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Get rulezet rules of a case: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        instance_id = request.args.get('instance_id')
+        query = Rulezet_Rule.query.filter_by(case_id=case.id)
+        if instance_id:
+            try:
+                query = query.filter_by(instance_id=int(instance_id))
+            except Exception:
+                pass
+        rules = [r.to_json() for r in query.order_by(Rulezet_Rule.date_added.desc()).all()]
+        flowintel_log("audit", 200, "Get rulezet rules of a case", User=current_user.email, CaseId=cid)
+        return {"rules": rules}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/module_counts", methods=['GET'])
+@login_required
+def get_module_counts(cid):
+    """Return counts for known module components for the case."""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Get module counts of a case: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
+        counts = {}
+        try:
+            counts['Rulezet'] = Rulezet_Rule.query.filter_by(case_id=case.id).count()
+        except Exception:
+            counts['Rulezet'] = 0
+
+        flowintel_log("audit", 200, "Get module counts of a case", User=current_user.email, CaseId=cid)
+        return {"counts": counts}, 200
+    return {"message": "Case Not Found", 'toast_class': "danger-subtle"}, 404
 
 
 @case_blueprint.route("/<cid>/call_module_case", methods=['GET', 'POST'])
