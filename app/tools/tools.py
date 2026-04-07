@@ -451,8 +451,6 @@ def system_settings():
         'task_approved': current_app.config.get('TASK_APPROVED', 8),
         'task_rejected': current_app.config.get('TASK_REJECTED', 5),
         'task_request_review': current_app.config.get('TASK_REQUEST_REVIEW', 9),
-        'gpg_enabled': bool(current_app.config.get('GPG_KEY_ID')),
-        'gpg_key_id': current_app.config.get('GPG_KEY_ID', ''),
 
         # Entra ID SSO
         'entra_id_enabled': current_app.config.get('ENTRA_ID_ENABLED', False),

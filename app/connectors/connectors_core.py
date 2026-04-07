@@ -392,10 +392,15 @@ def delete_icon_core(iid):
         return False
 
 
-def check_misp_connectivity(instance):
+def check_misp_connectivity(instance, current_user=None):
     """Check connectivity to a MISP instance"""
     # Check if API key is set
-    user_api_key = get_user_instance_by_instance(instance.id)
+    if current_user:
+        user_api_key = User_Connector_Instance.query.filter_by(
+            user_id=current_user.id, instance_id=instance.id
+        ).first()
+    else:
+        user_api_key = get_user_instance_by_instance(instance.id)
     if not instance.global_api_key and (not user_api_key or not user_api_key.api_key):
         return {
             "success": False,
