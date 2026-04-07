@@ -750,12 +750,12 @@ def get_instance_module(cid):
             flowintel_log("audit", 403, "Get instance module of a case: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
-        if "module" in request.args:
-            module = request.args.get("module")
-        if "type" in request.args:
-            type_module = request.args.get("type")
-        else:
-            return{"message": "Module type error", 'toast_class': "danger-subtle"}, 400
+        if "module" not in request.args:
+            return {"message": "Need to pass 'module'", 'toast_class': "danger-subtle"}, 400
+        if "type" not in request.args:
+            return {"message": "Need to pass 'type'", 'toast_class': "danger-subtle"}, 400
+        module = request.args.get("module")
+        type_module = request.args.get("type")
         return {"instances": CaseModel.get_instance_module_core(module, type_module, cid, current_user.id)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -1083,8 +1083,8 @@ def change_hedgedoc_url(cid):
             if "hedgedoc_url" in request.json:
                 if CaseModel.change_hedgedoc_url(request.json, cid, current_user):
                     flowintel_log("audit", 200, "HedgeDoc URL changed", User=current_user.email, CaseId=cid)
-                    return {"message": "Link removed", "toast_class": "success-subtle"}, 200
-                return {"message": "Error removing link from case", "toast_class": "danger-subtle"}, 400
+                    return {"message": "HedgeDoc URL updated", "toast_class": "success-subtle"}, 200
+                return {"message": "Error updating HedgeDoc URL", "toast_class": "danger-subtle"}, 400
             return {"message": "Need to pass 'hedgedoc_url'", "toast_class": "warning-subtle"}, 400
         flowintel_log("audit", 403, "Change HedgeDoc URL: Action not allowed", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
