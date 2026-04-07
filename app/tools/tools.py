@@ -94,6 +94,7 @@ def reload():
 # Stats #
 #########
 from ..db_class.db import Case, Case_Org
+from ..case.common_core import check_user_in_private_cases
 
 @tools_blueprint.route("/stats")
 @login_required
@@ -113,6 +114,7 @@ def chart_dict_constructor(input_dict):
 @login_required
 def case_stats():
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
+    cases = check_user_in_private_cases(cases, current_user)
     res_dict = ToolsModel.stats_core(cases)
 
     return res_dict
