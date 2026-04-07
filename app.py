@@ -4,7 +4,7 @@ from app.utils.init_db import create_admin
 from app.utils.init_taxonomies import create_taxonomies, create_galaxies
 from app.utils.utils import get_modules_list, update_pymisp_objects
 from app.utils.init_misp_modules import create_modules_db
-from flask import jsonify, render_template, request, Response, send_from_directory
+from flask import flash, jsonify, redirect, render_template, request, Response, send_from_directory, url_for
 import json
 
 import os
@@ -64,8 +64,10 @@ from flask_wtf.csrf import CSRFError
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
-    response = {"error": "CSRF token expired", "csrf_token": True}
-    return jsonify(response), 400  # Code 400 pour erreur côté client
+    if request.is_json or request.path.startswith('/api/'):
+        return jsonify({"error": "CSRF token expired", "csrf_token": True}), 400
+    flash("Your session has expired. Please try again.", "warning")
+    return redirect(request.referrer or url_for('account.login'))
 
 @app.route('/favicon.ico') 
 def favicon(): 
