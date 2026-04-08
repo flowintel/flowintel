@@ -132,7 +132,7 @@ def test_remove_org_case(client):
                            headers={"X-API-KEY": API_KEY},
                            json={"oid": "1"})
     
-    response = client.get(f"/api/case/{case_id}/remove_org/2", headers={"X-API-KEY": API_KEY})
+    response = client.get(f"/api/case/{case_id}/remove_org/1", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 200
     assert b"Org deleted from case" in response.data
 
