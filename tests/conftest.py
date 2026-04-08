@@ -14,7 +14,8 @@ def app():
     app.config.update({
         "TESTING": True,
         "SERVER_NAME": f"{app.config.get('FLASK_URL')}:{app.config.get('FLASK_PORT')}",
-        "LIMIT_USER_VIEW_TO_ORG": True
+        "LIMIT_USER_VIEW_TO_ORG": True,
+        "ENFORCE_PRIVILEGED_CASE": False
     })
 
     # Set FLOWINTEL_TEST_LOG=1 to write audit logs to logs/record.log during tests.
