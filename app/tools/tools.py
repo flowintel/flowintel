@@ -5,6 +5,12 @@ from ..utils.note_variables import get_syntax_reference
 from ..decorators import editor_required, admin_required, template_editor_required
 from ..utils.utils import get_modules_list, reload_application
 from ..utils.logger import flowintel_log
+from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case
+from ..case.CaseCore import CaseModel, FILE_FOLDER
+import base64
+import csv
+import io
+import json
 import os
 import platform
 import getpass
@@ -12,6 +18,7 @@ import re
 import shutil
 from pathlib import Path
 from datetime import datetime
+from xml.etree.ElementTree import Element, SubElement, tostring
 
 tools_blueprint = Blueprint(
     'tools',
@@ -65,6 +72,154 @@ def importer():
     return {"message": "Need to give a type of import", "toast_class": "warning-subtle"}, 400
     
     
+############
+# Exporter #
+############
+
+@tools_blueprint.route("/exporter_view", methods=['GET'])
+@login_required
+def exporter_view():
+    """Exporter view"""
+    if not (current_user.is_admin() or current_user.is_case_admin()):
+        abort(403)
+    cases = common_get_all_cases(current_user)
+    cases_list = [{"id": c.id, "title": c.title} for c in cases]
+    return render_template("tools/exporter.html", cases=cases_list)
+
+
+@tools_blueprint.route("/exporter", methods=['POST'])
+@login_required
+def exporter():
+    """Export selected cases"""
+    if not (current_user.is_admin() or current_user.is_case_admin()):
+        abort(403)
+
+    data = request.get_json()
+    if not data:
+        return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
+
+    case_ids = data.get("case_ids", [])
+    export_format = data.get("format", "json")
+    include_files = data.get("include_files", False) and export_format != "csv"
+
+    if not case_ids:
+        return {"message": "No cases selected", "toast_class": "warning-subtle"}, 400
+
+    if export_format not in ("json", "csv", "xml"):
+        return {"message": "Invalid export format", "toast_class": "warning-subtle"}, 400
+
+    accessible_cases = common_get_all_cases(current_user)
+    accessible_ids = {c.id for c in accessible_cases}
+
+    export_data = []
+    for cid in case_ids:
+        case = common_get_case(cid)
+        if not case or case.id not in accessible_ids:
+            continue
+        case_dict = case.download()
+        tasks = list(case.tasks)
+        case_dict["tasks"] = [t.download() for t in tasks]
+        misp_objects = CaseModel.get_misp_object_by_case(cid)
+        case_dict["misp-objects"] = [obj.download() for obj in misp_objects]
+        if include_files:
+            case_dict["files"] = _encode_files(case.files)
+            for i, task in enumerate(tasks):
+                case_dict["tasks"][i]["files"] = _encode_files(task.files)
+        export_data.append(case_dict)
+
+    if not export_data:
+        return {"message": "No accessible cases found", "toast_class": "warning-subtle"}, 400
+
+    flowintel_log("audit", 200, f"Bulk export ({export_format}, {len(export_data)} cases)", User=current_user.email)
+
+    if export_format == "json":
+        output = json.dumps(export_data, indent=4)
+        mimetype = "application/json"
+        filename = "cases_export.json"
+    elif export_format == "csv":
+        output = _cases_to_csv(export_data)
+        mimetype = "text/csv"
+        filename = "cases_export.csv"
+    elif export_format == "xml":
+        output = _cases_to_xml(export_data)
+        mimetype = "application/xml"
+        filename = "cases_export.xml"
+
+    return output, 200, {
+        "Content-Type": mimetype,
+        "Content-Disposition": f"attachment; filename={filename}"
+    }
+
+
+def _encode_files(file_queryset):
+    """Base64-encode files from disk"""
+    result = []
+    for f in file_queryset:
+        entry = f.to_json()
+        file_path = os.path.join(FILE_FOLDER, f.uuid)
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as fh:
+                entry["content_base64"] = base64.b64encode(fh.read()).decode("ascii")
+        result.append(entry)
+    return result
+
+
+def _cases_to_csv(cases):
+    """Build CSV from case and task data"""
+    output = io.StringIO()
+    fields = ["type", "uuid", "title", "description", "deadline", "time_required",
+              "status", "tags", "recurring_type", "is_private", "ticket_id"]
+    writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
+    writer.writeheader()
+    for case in cases:
+        row = _csv_row(case, fields)
+        row["type"] = "case"
+        row["tags"] = _collect_tags(case)
+        writer.writerow(row)
+        for task in case.get("tasks", []):
+            row = _csv_row(task, fields)
+            row["type"] = "task"
+            row["tags"] = _collect_tags(task)
+            writer.writerow(row)
+    return output.getvalue()
+
+
+def _csv_row(source, fields):
+    """Extract fields from a dict, converting None to empty string"""
+    row = {}
+    for f in fields:
+        v = source.get(f)
+        row[f] = v if v is not None else ""
+    return row
+
+
+def _collect_tags(entry):
+    """Collect tags and custom tags into a semicolon-separated string"""
+    items = list(entry.get("tags", []))
+    items += [ct["name"] for ct in entry.get("custom_tags", [])]
+    return "; ".join(items)
+
+
+def _cases_to_xml(cases):
+    """Build XML from case data"""
+    root = Element("cases")
+    for case in cases:
+        _add_xml_element(root, "case", case)
+    return tostring(root, encoding="unicode", xml_declaration=True)
+
+
+def _add_xml_element(parent, tag, value):
+    el = SubElement(parent, tag)
+    if isinstance(value, dict):
+        for k, v in value.items():
+            _add_xml_element(el, k, v)
+    elif isinstance(value, list):
+        for item in value:
+            _add_xml_element(el, "item", item)
+    else:
+        el.text = str(value) if value is not None else ""
+
+
 ###########
 # Modules #
 ###########

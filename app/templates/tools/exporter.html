@@ -1,0 +1,207 @@
+<!-- 
+    Author: Koen Van Impe
+-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="case-core-style" style="border-radius: 0">
+        <h5 class="mb-0"><i class="fa-solid fa-file-export me-2"></i>Exporter</h5>
+    </div>
+
+    <hr class="fading-line mt-4 mb-4">
+
+    <div class="case-core-style">
+        <div class="alert alert-info py-2 px-3 mb-3" role="alert">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Individual cases can be exported to JSON via the <strong>Actions</strong> menu on each case.
+            This page allows you to generate a bulk export of multiple cases in JSON, CSV or XML.
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Export format</label>
+            <div class="d-flex gap-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="exportFormat" id="formatJson" value="json" v-model="exportFormat">
+                    <label class="form-check-label" for="formatJson">JSON (default)</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="exportFormat" id="formatXml" value="xml" v-model="exportFormat">
+                    <label class="form-check-label" for="formatXml">XML</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="exportFormat" id="formatCsv" value="csv" v-model="exportFormat">
+                    <label class="form-check-label" for="formatCsv">CSV</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="includeFiles" v-model="includeFiles" :disabled="exportFormat === 'csv'">
+                <label class="form-check-label" for="includeFiles">Include file attachments (will be base64 encoded; not available in CSV)</label>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Available cases -->
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header">
+                        <strong>Available cases</strong>
+                        <span class="badge bg-secondary ms-1">[[ availableCases.length ]]</span>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                        <div v-if="availableCases.length === 0" class="text-muted text-center py-3">
+                            No cases available
+                        </div>
+                        <div v-for="c in availableCases" :key="c.id"
+                             class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom"
+                             style="cursor: pointer;" @click="addToExport(c)">
+                            <div>
+                                <span class="fw-bold">#[[ c.id ]]</span> [[ c.title ]]
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" @click.stop="addToExport(c)" title="Add to export">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="col-md-2 d-flex flex-column align-items-center justify-content-center gap-2">
+                <button class="btn btn-outline-primary btn-sm" @click="addAll" title="Add all">
+                    <i class="fa-solid fa-angles-right"></i> Add all
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" @click="removeAll" title="Remove all">
+                    <i class="fa-solid fa-angles-left"></i> Remove all
+                </button>
+            </div>
+
+            <!-- Selected cases for export -->
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header">
+                        <strong>Cases to export</strong>
+                        <span class="badge bg-primary ms-1">[[ selectedCases.length ]]</span>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                        <div v-if="selectedCases.length === 0" class="text-muted text-center py-3">
+                            No cases selected
+                        </div>
+                        <div v-for="c in selectedCases" :key="c.id"
+                             class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom"
+                             style="cursor: pointer;" @click="removeFromExport(c)">
+                            <div>
+                                <span class="fw-bold">#[[ c.id ]]</span> [[ c.title ]]
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" @click.stop="removeFromExport(c)" title="Remove from export">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="mt-4 mb-3">
+
+        <div class="d-flex gap-2">
+            <a class="btn btn-secondary" href="/tools/exporter_view">Cancel</a>
+            <button class="btn btn-primary" :disabled="loading || selectedCases.length === 0" @click="doExport">
+                <span v-if="loading"><i class="fa-solid fa-spinner fa-spin me-1"></i>Exporting...</span>
+                <span v-else><i class="fa-solid fa-file-export me-1"></i>Export</span>
+            </button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block script %}
+    <script type="module">
+        const { createApp, ref, computed } = Vue
+        import {display_toast} from '/static/js/toaster.js'
+
+        const allCases = {{ cases | tojson }}
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const exportFormat = ref('json')
+                const includeFiles = ref(false)
+                const selectedIds = ref(new Set())
+                const loading = ref(false)
+
+                const availableCases = computed(() => {
+                    return allCases.filter(c => !selectedIds.value.has(c.id))
+                })
+
+                const selectedCases = computed(() => {
+                    return allCases.filter(c => selectedIds.value.has(c.id))
+                })
+
+                function addToExport(c) {
+                    selectedIds.value = new Set([...selectedIds.value, c.id])
+                }
+
+                function removeFromExport(c) {
+                    const s = new Set(selectedIds.value)
+                    s.delete(c.id)
+                    selectedIds.value = s
+                }
+
+                function addAll() {
+                    selectedIds.value = new Set(allCases.map(c => c.id))
+                }
+
+                function removeAll() {
+                    selectedIds.value = new Set()
+                }
+
+                async function doExport() {
+                    if (selectedIds.value.size === 0) return
+                    loading.value = true
+                    try {
+                        const res = await fetch('/tools/exporter', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json', 'X-CSRFToken': $("#csrf_token").val()},
+                            body: JSON.stringify({
+                                case_ids: Array.from(selectedIds.value),
+                                format: exportFormat.value,
+                                include_files: includeFiles.value && exportFormat.value !== 'csv'
+                            })
+                        })
+                        if (!res.ok) {
+                            const err = await res.json()
+                            display_toast(err)
+                            return
+                        }
+                        const disposition = res.headers.get('Content-Disposition')
+                        let filename = 'cases_export.' + exportFormat.value
+                        if (disposition) {
+                            const match = disposition.match(/filename=(.+)/)
+                            if (match) filename = match[1]
+                        }
+                        const blob = await res.blob()
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = filename
+                        a.click()
+                        URL.revokeObjectURL(url)
+                    } catch (e) {
+                        display_toast({message: 'Export failed: ' + e.message, toast_class: 'danger-subtle'})
+                    } finally {
+                        loading.value = false
+                    }
+                }
+
+                return {
+                    exportFormat, includeFiles, availableCases, selectedCases,
+                    addToExport, removeFromExport, addAll, removeAll,
+                    doExport, loading
+                }
+            }
+        }).mount('#main-container')
+    </script>
+{% endblock %}

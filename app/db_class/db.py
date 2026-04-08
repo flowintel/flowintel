@@ -339,6 +339,8 @@ class Task(db.Model):
         else:
             json_dict["deadline"] = self.deadline
 
+        status = Status.query.get(self.status_id) if self.status_id else None
+        json_dict["status"] = status.name if status else ""
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Task_Tags, Task_Tags.tag_id==Tags.id).filter_by(task_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id==self.id)\
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]

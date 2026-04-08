@@ -87,6 +87,9 @@
 				{% if current_user.is_admin() or current_user.is_importer() or current_user.is_template_editor() %}
 				<a class="collapse-item" href="/tools/importer_view"><i class="fa-solid fa-file-import fa-fw me-2"></i>Importer</a>
 				{% endif %}
+				{% if current_user.is_admin() or current_user.is_case_admin() %}
+				<a class="collapse-item" href="/tools/exporter_view"><i class="fa-solid fa-file-export fa-fw me-2"></i>Exporter</a>
+				{% endif %}
 				<a class="collapse-item" href="/tools/module"><i class="fa-solid fa-wrench fa-fw me-2"></i>Modules</a>
 				<a class="collapse-item" href="/tools/case_misp_event"><i class="fa-solid fa-plus fa-fw me-2"></i>Case from MISP</a>
 				<a class="collapse-item" href="/tools/search_attr"><i class="fa-solid fa-magnifying-glass-location fa-fw me-2"></i>Search Attr</a>
