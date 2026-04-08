@@ -85,6 +85,12 @@ def get_modules():
 @tools_blueprint.route("/reload_module")
 @login_required
 def reload():
+    # Clear the cached modules so subsequent calls reload them from disk
+    try:
+        get_modules_list.cache_clear()
+    except Exception:
+        # If the function isn't cached for some reason, fall back to calling it
+        pass
     get_modules_list()
     flowintel_log("audit", 200, "Modules reloaded", User=current_user.email)
     return {"message": "Modules reloaded", "toast_class": "success-subtle"}, 200

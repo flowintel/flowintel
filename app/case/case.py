@@ -782,7 +782,6 @@ def get_rulezet_rules(cid):
             except Exception:
                 pass
         rules = [r.to_json() for r in query.order_by(Rulezet_Rule.date_added.desc()).all()]
-        flowintel_log("audit", 200, "Get rulezet rules of a case", User=current_user.email, CaseId=cid)
         return {"rules": rules}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
@@ -803,7 +802,6 @@ def get_module_counts(cid):
         except Exception:
             counts['Rulezet'] = 0
 
-        flowintel_log("audit", 200, "Get module counts of a case", User=current_user.email, CaseId=cid)
         return {"counts": counts}, 200
     return {"message": "Case Not Found", 'toast_class': "danger-subtle"}, 404
 
