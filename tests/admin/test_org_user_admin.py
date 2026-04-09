@@ -10,7 +10,7 @@ def create_test_user(client):
     response = client.post("/api/admin/add_user", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
-                           json={"first_name": "test", "last_name": "test", "email": "test@test.test", "password": "test", "role": 2}
+                           json={"first_name": "test", "last_name": "test", "email": email, "password": "test", "role": 2}
                         )
     return response
 

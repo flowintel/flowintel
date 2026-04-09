@@ -173,10 +173,9 @@ def test_fork_case(client):
 ## TASK ##
 ##########
 
-def test_create_task_editor(client, flag=True):
-    if flag:
-        create_response = create_case_as_admin(client)
-        case_id = create_response.json["case_id"]
+def test_create_task_editor(client):
+    create_response = create_case_as_admin(client)
+    case_id = create_response.json["case_id"]
     response = client.post(f"/api/case/{case_id}/create_task",
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
