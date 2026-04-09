@@ -99,6 +99,8 @@ class Config:
     # Logo configuration
     MAIN_LOGO = os.getenv('MAIN_LOGO', '/static/image/flowintel.png')
     TOPRIGHT_LOGO = os.getenv('TOPRIGHT_LOGO', '')
+    FOOTER_1_LOGO = os.getenv('FOOTER_1_LOGO', '')
+    FOOTER_2_LOGO = os.getenv('FOOTER_2_LOGO', '')
     
     # Login page configuration
     WELCOME_TEXT_TOP = os.getenv('WELCOME_TEXT_TOP', '')

@@ -39,6 +39,9 @@
         {%endif%}
     </div>
     
-    {{form.submit(class='btn btn-primary')}}
+    <div class="d-flex gap-2">
+        <a href="/custom_tags/" class="btn btn-secondary">Cancel</a>
+        {{form.submit(class='btn btn-primary')}}
+    </div>
 </form>
 {% endblock %}

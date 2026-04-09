@@ -111,7 +111,7 @@
     </div>
 
     {% if config.SHOW_GDPR_NOTICE %}
-    <div class="alert alert-info d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
+    <div class="alert alert-gdpr d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
         <i class="fa-solid fa-info-circle me-2"></i>
         <span>{{ config.GDPR_NOTICE }}</span>
     </div>
@@ -265,7 +265,7 @@
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-misp-objects" @click="active_tab('misp-objects')">
-                <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title fs-6">MISP-objects </span> 
+                <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title fs-6">MISP objects </span> 
                 <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
             </button>
         </li>
@@ -624,11 +624,11 @@
         </div>
         
         <div class="col-auto" v-cloak>
-            <button v-if="is_open_cases" class="btn btn-outline-secondary btn-sm" @click="change_status_sort(false)" title="See Finished tasks">
-                <i class="fa-solid fa-folder-closed fa-sm me-1"></i> <span class="badge text-bg-secondary">[[open_closed.closed]]</span> closed
+            <button v-if="is_open_cases" class="btn btn-outline-danger btn-sm" @click="change_status_sort(false)" title="See finished tasks">
+                <i class="fa-solid fa-folder-closed fa-sm me-1"></i> Finished tasks <span class="badge text-bg-danger">[[open_closed.closed]]</span>
             </button>
-            <button v-else class="btn btn-outline-secondary btn-sm" @click="change_status_sort(true)" title="See Opened tasks">
-                <i class="fa-solid fa-folder-open fa-sm me-1"></i> <span class="badge text-bg-secondary">[[open_closed.open]]</span> open
+            <button v-else class="btn btn-outline-success btn-sm" @click="change_status_sort(true)" title="See open tasks">
+                <i class="fa-solid fa-folder-open fa-sm me-1"></i> Open tasks <span class="badge text-bg-success">[[open_closed.open]]</span>
             </button>
         </div>
 
@@ -646,7 +646,7 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="modalFilterLabel">Tasks Filter</h1>
+                    <h1 class="modal-title fs-5" id="modalFilterLabel">Tasks filter</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">

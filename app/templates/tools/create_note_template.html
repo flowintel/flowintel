@@ -14,12 +14,15 @@
 {%endblock%}
 
 {% block content %}
-<div style="margin-bottom: 10px;">
-    <h1>Create Note Template</h1>
-</div>
-<hr class="fading-line">
+    <div class="case-core-style" style="border-radius: 0;">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <h5 class="mb-0"><i class="fa-solid fa-note-sticky me-2"></i>Create a note template</h5>
+            </div>
+        </div>
+    </div>
+<hr class="fading-line-2 mt-4 mb-4">
 
-<button class="btn btn-primary" @click="submit">Submit</button>
 <div class="row">
     <div class="mb-3 w-50">
         <label for="title" class="col-form-label">Title:</label>

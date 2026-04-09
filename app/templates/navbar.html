@@ -11,10 +11,13 @@
         <!-- Search form -->
         <div id="search-form" class="d-none position-relative">
             <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-input-wrap">
-                <input autocomplete="off" @input="onInput" @keydown.arrow-down.prevent="selectNext" 
-                @keydown.arrow-up.prevent="selectPrev" @keydown.enter.prevent="activateSelected" 
-                @keydown.escape.prevent="hideResults" type="search" v-model="search_query" 
-                class="form-control rounded" placeholder='Search case by title' style="min-width: 350px;" aria-label="Search cases" />
+                <div class="position-relative">
+                    <input autocomplete="off" @input="onInput" @keydown.arrow-down.prevent="selectNext" 
+                    @keydown.arrow-up.prevent="selectPrev" @keydown.enter.prevent="activateSelected" 
+                    @keydown.escape.prevent="hideResults" type="search" v-model="search_query" 
+                    class="form-control rounded-pill pe-5" placeholder='Search case by title' style="min-width: 350px;" aria-label="Search cases" />
+                    <i class="fas fa-search search-icon"></i>
+                </div>
             </div>
 
             <!-- Inline card-style results panel -->
@@ -73,9 +76,16 @@
             </li>
             {% endif %}
             
+            <!-- Documentation -->
+            <li class="nav-item">
+                <a class="nav-link me-3 me-lg-0" href="https://flowintel.github.io/flowintel-doc/" target="_blank" rel="noopener noreferrer" title="Documentation">
+                    <i class="fas fa-question-circle"></i>
+                </a>
+            </li>
+
             <!-- Notification dropdown -->
             <li class="nav-item dropdown">
-                <a class="nav-link me-3 me-lg-0" href="/notification" id="notification_id">
+                <a class="nav-link me-3 me-lg-0" href="/notification" id="notification_id" title="Notifications">
                     <i class="fas fa-bell"></i>
                     <template v-if="notif_list && notif_list> 0">
                         <span v-if="notif_list < 100" class="position-absolute translate-middle badge rounded-pill bg-danger">[[notif_list]]</span>
@@ -84,35 +94,50 @@
                 </a>
             </li>
 
+            <!-- Settings -->
+            <li class="nav-item">
+                <a class="nav-link me-3 me-lg-0" href="/account" title="My profile">
+                    <i class="fas fa-cog"></i>
+                </a>
+            </li>
+
             <!-- Avatar -->
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle hidden-arrow d-flex align-items-center" href="#"
                     id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    {{current_user.first_name}} {{current_user.last_name}}
                     {% if current_user.is_admin() %}
-                        <span class="badge bg-danger ms-2" title="Admin role">
-                            <i class="fa-solid fa-shield-halved"></i>
-                        </span>
+                        <span class="badge bg-danger ms-1" title="Admin role"><i class="fa-solid fa-shield-halved"></i></span>
                     {% elif current_user.read_only() %}
-                        <span class="badge bg-info ms-2" title="Read Only role">
-                            <i class="fa-solid fa-eye"></i>
-                        </span>
+                        <span class="badge bg-info ms-1" title="Read Only role"><i class="fa-solid fa-eye"></i></span>
                     {% else %}
-                        <span class="badge bg-success ms-2" title="Editor role">
-                            <i class="fa-solid fa-pen"></i>
-                            {% if current_user.is_org_admin() %}
-                                <i class="fa-solid fa-users ms-1" title="Also Org Admin"></i>
-                            {% endif %}
-                            {% if current_user.is_queue_admin() %}
-                                <i class="fa-solid fa-clipboard-check ms-1" title="Also Queue Admin"></i>
-                            {% endif %}
-                            {% if current_user.is_queuer() %}
-                                <i class="fa-solid fa-list-check ms-1" title="Also Queuer"></i>
-                            {% endif %}
-                        </span>
+                        <span class="badge bg-success ms-1" title="Editor role"><i class="fa-solid fa-pen"></i></span>
                     {% endif %}
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownMenuLink">
+                    <li>
+                        <span class="dropdown-item-text fw-semibold">
+                            {{current_user.first_name}} {{current_user.last_name}}
+                            {% if current_user.is_admin() %}
+                                <span class="badge bg-danger ms-1" title="Admin role"><i class="fa-solid fa-shield-halved"></i></span>
+                            {% elif current_user.read_only() %}
+                                <span class="badge bg-info ms-1" title="Read Only role"><i class="fa-solid fa-eye"></i></span>
+                            {% else %}
+                                <span class="badge bg-success ms-1" title="Editor role">
+                                    <i class="fa-solid fa-pen"></i>
+                                    {% if current_user.is_org_admin() %}
+                                        <i class="fa-solid fa-users ms-1" title="Org Admin"></i>
+                                    {% endif %}
+                                    {% if current_user.is_queue_admin() %}
+                                        <i class="fa-solid fa-clipboard-check ms-1" title="Queue Admin"></i>
+                                    {% endif %}
+                                    {% if current_user.is_queuer() %}
+                                        <i class="fa-solid fa-list-check ms-1" title="Queuer"></i>
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </span>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item" href="/account" id="account_id">My profile</a>
                     </li>
