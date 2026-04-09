@@ -528,7 +528,7 @@ legend.analyzer-select-case {
 .case-index-list {
   box-shadow:
     #0000000d 0 2px 5px,
-    #0000000d 0 2px 10px;
+    #0000000d 0 2px 10px;    
   padding-top: 15px;
   padding-bottom: 15px;
   border-radius: 15px;
@@ -549,17 +549,17 @@ legend.analyzer-select-case {
   border: 0;
   border-bottom: 2px solid transparent;
   margin-right: 0;
-  color: #101D93;
+  color: #5e5e5e;
   padding: 2px 15px;
 }
 #case-main-nav .nav-tabs > li > button.active,
 #collapseTasks > .nav-tabs > li > button.active {
-  border-bottom: 2px solid #101D93;
-  color: #101D93;
+  border-bottom: 2px solid #007bff;
+  color: #007bff;
 }
 #case-main-nav .nav-tabs > li > button:hover,
 #collapseTasks > .nav-tabs > li > button:hover {
-  color: #D59B00;
+  color: #4c8ac0;
 }
 .dragging-ghost {
   background-color: #ffeeba !important;
@@ -754,52 +754,7 @@ a.case-content:hover {
   font-weight: 500;
   border-bottom: 2px solid #bee5eb;
 }
-.btn-primary {
-  --bs-btn-bg: #101d93;
-  --bs-btn-border-color: #101d93;
-  --bs-btn-hover-bg: #d59b00;
-  --bs-btn-hover-border-color: #d59b00;
-  --bs-btn-active-bg: #d59b00;
-  --bs-btn-active-border-color: #d59b00;
-}
-.btn-outline-primary {
-  --bs-btn-color: #101d93;
-  --bs-btn-border-color: #101d93;
-  --bs-btn-hover-bg: #d59b00;
-  --bs-btn-hover-border-color: #d59b00;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-active-bg: #d59b00;
-  --bs-btn-active-border-color: #d59b00;
-  --bs-btn-active-color: #fff;
-}
-.form-check-input:checked {
-  background-color: #101d93;
-  border-color: #101d93;
-}
-.form-check-input:focus {
-  border-color: #101d93;
-  box-shadow: 0 0 0 0.25rem rgba(16, 29, 147, 0.25);
-}
-.btn-outline-danger {
-  --bs-btn-color: #b38300;
-  --bs-btn-border-color: #b38300;
-  --bs-btn-hover-bg: #b38300;
-  --bs-btn-hover-border-color: #b38300;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-active-bg: #b38300;
-  --bs-btn-active-border-color: #b38300;
-  --bs-btn-active-color: #fff;
-}
-.btn-outline-success {
-  --bs-btn-color: #070d47;
-  --bs-btn-border-color: #070d47;
-  --bs-btn-hover-bg: #070d47;
-  --bs-btn-hover-border-color: #070d47;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-active-bg: #070d47;
-  --bs-btn-active-border-color: #070d47;
-  --bs-btn-active-color: #212529;
-}
+
 .alert-gdpr {
   background-color: #ffe499;
   border-color: #b38300;
@@ -808,14 +763,4 @@ a.case-content:hover {
 ::placeholder {
   color: #bbb !important;
   opacity: 1;
-}
-.badge.bg-primary {
-  background-color: #101d93 !important;
-}
-.badge.bg-info {
-  background-color: #a2aaf7 !important;
-  color: #070d47 !important;
-}
-.badge.bg-success {
-  background-color: #d59b00 !important;
 }
