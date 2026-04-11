@@ -187,3 +187,89 @@ def test_custom_tag_operations_no_api_key(client):
     response = client.get("/api/custom_tags/1/delete")
     assert response.status_code == 403
 
+
+#####################
+# Editor permission
+#####################
+
+EDITOR_KEY = "editor_api_key"
+
+def test_editor_create_custom_tag(client):
+    response = client.post("/api/custom_tags/add",
+                           content_type="application/json",
+                           headers={"X-API-KEY": EDITOR_KEY},
+                           json={"name": "Editor Tag", "color": "#AABBCC"})
+    assert response.status_code == 201
+
+
+def test_editor_edit_custom_tag(client):
+    create_custom_tag(client)
+
+    response = client.post("/api/custom_tags/1/edit",
+                           content_type="application/json",
+                           headers={"X-API-KEY": EDITOR_KEY},
+                           json={"name": "Editor Edited", "color": "#112233"})
+    assert response.status_code == 200
+
+
+def test_editor_delete_custom_tag(client):
+    create_custom_tag(client)
+
+    response = client.get("/api/custom_tags/1/delete", headers={"X-API-KEY": EDITOR_KEY})
+    assert response.status_code == 200
+
+
+def test_editor_get_all_custom_tags(client):
+    response = client.get("/api/custom_tags/all", headers={"X-API-KEY": EDITOR_KEY})
+    assert response.status_code == 200
+
+
+def test_editor_get_custom_tag(client):
+    create_custom_tag(client)
+
+    response = client.get("/api/custom_tags/1", headers={"X-API-KEY": EDITOR_KEY})
+    assert response.status_code == 200
+
+
+########################
+# Read-only permission
+########################
+
+READ_KEY = "read_api_key"
+
+def test_read_only_create_denied(client):
+    response = client.post("/api/custom_tags/add",
+                           content_type="application/json",
+                           headers={"X-API-KEY": READ_KEY},
+                           json={"name": "Read Tag", "color": "#000000"})
+    assert response.status_code == 403
+
+
+def test_read_only_edit_denied(client):
+    create_custom_tag(client)
+
+    response = client.post("/api/custom_tags/1/edit",
+                           content_type="application/json",
+                           headers={"X-API-KEY": READ_KEY},
+                           json={"name": "Read Edited", "color": "#111111"})
+    assert response.status_code == 403
+
+
+def test_read_only_delete_denied(client):
+    create_custom_tag(client)
+
+    response = client.get("/api/custom_tags/1/delete", headers={"X-API-KEY": READ_KEY})
+    assert response.status_code == 403
+
+
+def test_read_only_get_all(client):
+    response = client.get("/api/custom_tags/all", headers={"X-API-KEY": READ_KEY})
+    assert response.status_code == 200
+
+
+def test_read_only_get_custom_tag(client):
+    create_custom_tag(client)
+
+    response = client.get("/api/custom_tags/1", headers={"X-API-KEY": READ_KEY})
+    assert response.status_code == 200
+

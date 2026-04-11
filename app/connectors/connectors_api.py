@@ -72,8 +72,8 @@ class EditConnector(Resource):
         if request.json:
             verif_dict = ConnectorModelApi.verif_edit_connector(request.json, cid)
             if not "message" in verif_dict:
-                connector = ConnectorModel.edit_connector_core(cid, verif_dict)
-                return {"message": f"Connector created", "connector_id": connector.id}, 200
+                ConnectorModel.edit_connector_core(cid, verif_dict)
+                return {"message": "Connector edited", "connector_id": int(cid)}, 200
             return verif_dict, 400
         return {"message": "Please give data"}, 400
     
@@ -117,8 +117,8 @@ class EditInstance(Resource):
             if request.json:
                 verif_dict = ConnectorModelApi.verif_edit_instance(request.json, iid)
                 if not "message" in verif_dict:
-                    instance = ConnectorModel.edit_connector_instance_core(iid, verif_dict)
-                    return {"message": f"Instance created", "connector_id": instance.id}, 200
+                    ConnectorModel.edit_connector_instance_core(iid, verif_dict)
+                    return {"message": "Instance edited", "connector_id": int(iid)}, 200
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
         return {"message": "Connector not found"}, 404
