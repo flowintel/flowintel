@@ -26,11 +26,12 @@ def upload_file(client, url, api_key=API_KEY, filename="test.txt", content=b"hel
                        data=data)
 
 
-########################
-# Case file operations
-########################
+##########################
+## Case file operations ##
+##########################
 
 def test_upload_case_file(client):
+    """Editor should be able to upload a file to a case"""
     case_id = create_case(client).json["case_id"]
 
     response = upload_file(client, f"/api/case/{case_id}/upload_file")
@@ -39,6 +40,7 @@ def test_upload_case_file(client):
 
 
 def test_list_case_files(client):
+    """Editor should be able to list files on a case"""
     case_id = create_case(client).json["case_id"]
     upload_file(client, f"/api/case/{case_id}/upload_file")
 
@@ -49,6 +51,7 @@ def test_list_case_files(client):
 
 
 def test_download_case_file(client):
+    """Editor should be able to download a file from a case"""
     case_id = create_case(client).json["case_id"]
     upload_file(client, f"/api/case/{case_id}/upload_file")
 
@@ -62,6 +65,7 @@ def test_download_case_file(client):
 
 
 def test_delete_case_file(client):
+    """Editor should be able to delete a file from a case"""
     case_id = create_case(client).json["case_id"]
     upload_file(client, f"/api/case/{case_id}/upload_file")
 
@@ -75,6 +79,7 @@ def test_delete_case_file(client):
 
 
 def test_upload_case_file_no_content(client):
+    """Uploading a file with no content should fail"""
     case_id = create_case(client).json["case_id"]
 
     data = {"file": (io.BytesIO(b""), "")}
@@ -86,6 +91,7 @@ def test_upload_case_file_no_content(client):
 
 
 def test_upload_case_file_read_only_denied(client):
+    """Read-only user should not be able to upload files"""
     case_id = create_case(client).json["case_id"]
 
     response = upload_file(client, f"/api/case/{case_id}/upload_file", api_key=READ_KEY)
@@ -93,6 +99,7 @@ def test_upload_case_file_read_only_denied(client):
 
 
 def test_delete_case_file_read_only_denied(client):
+    """Read-only user should not be able to delete files"""
     case_id = create_case(client).json["case_id"]
     upload_file(client, f"/api/case/{case_id}/upload_file")
 
@@ -105,6 +112,7 @@ def test_delete_case_file_read_only_denied(client):
 
 
 def test_download_case_file_nonexistent(client):
+    """Downloading a non-existent file should return 404"""
     case_id = create_case(client).json["case_id"]
 
     response = client.get(f"/api/case/{case_id}/download_file/9999",
@@ -112,11 +120,12 @@ def test_download_case_file_nonexistent(client):
     assert response.status_code == 404
 
 
-########################
-# Task file operations
-########################
+##########################
+## Task file operations ##
+##########################
 
 def test_upload_task_file(client):
+    """Editor should be able to upload a file to a task"""
     case_id = create_case(client).json["case_id"]
     task_id = create_task(client, case_id).json["task_id"]
 
@@ -126,6 +135,7 @@ def test_upload_task_file(client):
 
 
 def test_list_task_files(client):
+    """Editor should be able to list files on a task"""
     case_id = create_case(client).json["case_id"]
     task_id = create_task(client, case_id).json["task_id"]
     upload_file(client, f"/api/task/{task_id}/upload_file")
@@ -137,6 +147,7 @@ def test_list_task_files(client):
 
 
 def test_download_task_file(client):
+    """Editor should be able to download a file from a task"""
     case_id = create_case(client).json["case_id"]
     task_id = create_task(client, case_id).json["task_id"]
     upload_file(client, f"/api/task/{task_id}/upload_file")
@@ -151,6 +162,7 @@ def test_download_task_file(client):
 
 
 def test_delete_task_file(client):
+    """Editor should be able to delete a file from a task"""
     case_id = create_case(client).json["case_id"]
     task_id = create_task(client, case_id).json["task_id"]
     upload_file(client, f"/api/task/{task_id}/upload_file")
@@ -165,6 +177,7 @@ def test_delete_task_file(client):
 
 
 def test_upload_task_file_read_only_denied(client):
+    """Read-only user should not be able to upload files to tasks"""
     case_id = create_case(client).json["case_id"]
     task_id = create_task(client, case_id).json["task_id"]
 
