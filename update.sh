@@ -71,20 +71,18 @@ fi
 
 echo ""
 echo "##########"
+echo "Python Dependencies"
+echo "##########"
+pip install -r requirements.txt
+
+echo ""
+echo "##########"
 echo "Submodule Update"
 echo "##########"
 git submodule update --remote
 
-pip install -U pytaxonomies pymispgalaxies pymisp
-
 python3 app.py -utg
 python3 app.py -py
-
-echo ""
-echo "################"
-echo "# MISP Modules #"
-echo "################"
-pip install -U misp-modules
 
 screen -dmS "misp_mod_flowintel"
 screen -S "misp_mod_flowintel" -X screen -t "misp_modules_server" bash -c "misp-modules -l 127.0.0.1; read x"
