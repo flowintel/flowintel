@@ -160,6 +160,7 @@ function init_db_prod {
 
 function reload_db {
     prepare_app_run
+    export FLASKENV="${FLASKENV:-development}"
     export HISTORY_DIR=$history_dir/history
     python3 app.py -r
 }
