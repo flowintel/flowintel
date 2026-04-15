@@ -332,9 +332,9 @@ footer.sticky-footer .copyright {
 .custom-sidebar-header {
   background-color: #fff;
   padding: 3px 30px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+  border-radius: 30px;
 }
 .sidebar.toggled .custom-sidebar-header {
   padding: 3px 20px;
+  margin-left: 15px;
 }
