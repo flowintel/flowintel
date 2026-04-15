@@ -103,7 +103,7 @@ def escape_markdown(text):
     if text is None:
         return ''
     text = str(text)
-    text = text.replace('|', '\|')
+    text = text.replace('|', r'\|')
     text = text.replace('\n', ' ')
     text = text.replace('\r', '')
     return text
