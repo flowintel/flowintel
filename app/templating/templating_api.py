@@ -247,8 +247,8 @@ class EditConnector(Resource):
         return {"message": "Case template not found"}, 404
     
     
-@templating_ns.route("<int:cid>/remove_connector/<int:ciid>")
-@templating_ns.doc(description='Add connector instances to a case', params={'cid': 'id of a case template', 'ciid': 'id of an instance'})
+@templating_ns.route("/<int:cid>/remove_connector/<int:ciid>")
+@templating_ns.doc(description='Remove a connector instance from a case template', params={'cid': 'id of a case template', 'ciid': 'id of an instance'})
 class RemoveConnector(Resource):
     method_decorators = [template_editor_required, api_required]
     def delete(self, cid, ciid):

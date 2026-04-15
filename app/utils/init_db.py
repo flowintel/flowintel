@@ -298,6 +298,9 @@ def create_user_test():
     create_editor_role()
     create_read_only_role()
 
+    # Default Icon
+    create_default_icon()
+
     # Admin user
     user = User(
         first_name="admin",
@@ -434,6 +437,151 @@ def create_user_test():
     db.session.add(user)
     db.session.commit()
     
+    # Org
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
+    # QueueAdmin user - Editor with queue_admin privilege
+    queue_admin_role = Role.query.filter_by(name="QueueAdmin").first()
+    if not queue_admin_role:
+        queue_admin_role = Role(
+            name="QueueAdmin",
+            description="Editor with queue admin privileges",
+            admin=False,
+            read_only=False,
+            queue_admin=True
+        )
+        db.session.add(queue_admin_role)
+        db.session.commit()
+
+    user = User(
+        first_name="queueadmin",
+        last_name="queueadmin",
+        email="queueadmin@queueadmin.queueadmin",
+        password="queueadmin",
+        role_id=queue_admin_role.id,
+        api_key="queue_admin_api_key"
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    # Org
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
+    # Queuer user - Editor with queuer privilege
+    queuer_role = Role.query.filter_by(name="Queuer").first()
+    if not queuer_role:
+        queuer_role = Role(
+            name="Queuer",
+            description="Editor with queuer privileges",
+            admin=False,
+            read_only=False,
+            queuer=True
+        )
+        db.session.add(queuer_role)
+        db.session.commit()
+
+    user = User(
+        first_name="queuer",
+        last_name="queuer",
+        email="queuer@queuer.queuer",
+        password="queuer",
+        role_id=queuer_role.id,
+        api_key="queuer_api_key"
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    # Org
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
+    # MispEditor user - Editor with misp_editor privilege
+    misp_editor_role = Role.query.filter_by(name="MispEditor").first()
+    if not misp_editor_role:
+        misp_editor_role = Role(
+            name="MispEditor",
+            description="Editor with MISP editor privileges",
+            admin=False,
+            read_only=False,
+            misp_editor=True
+        )
+        db.session.add(misp_editor_role)
+        db.session.commit()
+
+    user = User(
+        first_name="mispeditor",
+        last_name="mispeditor",
+        email="mispeditor@mispeditor.mispeditor",
+        password="mispeditor",
+        role_id=misp_editor_role.id,
+        api_key="misp_editor_api_key"
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    # Org
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
+    # Importer user - Editor with importer privilege
+    importer_role = Role.query.filter_by(name="Importer").first()
+    if not importer_role:
+        importer_role = Role(
+            name="Importer",
+            description="Editor with importer privileges",
+            admin=False,
+            read_only=False,
+            importer=True
+        )
+        db.session.add(importer_role)
+        db.session.commit()
+
+    user = User(
+        first_name="importer",
+        last_name="importer",
+        email="importer@importer.importer",
+        password="importer",
+        role_id=importer_role.id,
+        api_key="importer_api_key"
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    # Org
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
+    # AuditViewer user - Editor with audit_viewer privilege
+    audit_viewer_role = Role.query.filter_by(name="AuditViewer").first()
+    if not audit_viewer_role:
+        audit_viewer_role = Role(
+            name="AuditViewer",
+            description="Editor with audit viewer privileges",
+            admin=False,
+            read_only=False,
+            audit_viewer=True
+        )
+        db.session.add(audit_viewer_role)
+        db.session.commit()
+
+    user = User(
+        first_name="auditviewer",
+        last_name="auditviewer",
+        email="auditviewer@auditviewer.auditviewer",
+        password="auditviewer",
+        role_id=audit_viewer_role.id,
+        api_key="audit_viewer_api_key"
+    )
+    db.session.add(user)
+    db.session.commit()
+
     # Org
     org = create_user_org(user)
     user.org_id = org.id

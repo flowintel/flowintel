@@ -1014,7 +1014,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Modify notes of a case"""
         case = CommonModel.get_case(cid)
         if case:
-            case.notes += notes
+            if case.notes:
+                case.notes += notes
+            else:
+                case.notes = notes
             CommonModel.update_last_modif(cid)
             db.session.commit()
             CommonModel.save_history(case.uuid, current_user, f"Case's Notes modified")
@@ -1756,6 +1759,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         c = self.get_case_note_template(case_id)
         if not c:
             note_template = self.get_note_template_model(request_json["template_id"])
+            if not note_template:
+                return False
             case = CommonModel.get_case(case_id)
             values = request_json["values"]
             if not values:
