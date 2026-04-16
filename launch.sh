@@ -72,13 +72,13 @@ function killscript {
 
 function taxo_galaxy_update {
     prepare_app_run
-    export FLASKENV="development"
+    export FLASKENV="${FLASKENV:-development}"
     python3 app.py -utg
 }
 
 function misp_module_update {
     prepare_app_run
-    export FLASKENV="development"
+    export FLASKENV="${FLASKENV:-development}"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
     sleep 3
     python3 app.py -mm
@@ -160,6 +160,7 @@ function init_db_prod {
 
 function reload_db {
     prepare_app_run
+    export FLASKENV="${FLASKENV:-development}"
     export HISTORY_DIR=$history_dir/history
     python3 app.py -r
 }
