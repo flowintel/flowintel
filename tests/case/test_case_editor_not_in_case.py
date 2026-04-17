@@ -1,5 +1,3 @@
-from flask import url_for
-
 API_KEY = "editor_api_key"
 
 def create_case_as_admin(client):
@@ -15,13 +13,14 @@ def test_create_case_no_api(client):
     assert response.status_code == 403
 
 def test_create_case(client):
-    """Case created by an other user"""
+    """Case created by an other user."""
     response = create_case_as_admin(client)
     assert response.status_code == 201
     assert "case_id" in response.json
     assert response.json["case_id"] >= 1
 
 def test_edit_case_to_privileged_denied_not_in_case(client):
+    """Editor cannot promote a case to privileged if not in the case."""
     create_response = create_case_as_admin(client)
     case_id = create_response.json["case_id"]
     
@@ -271,7 +270,6 @@ def test_take_task(client):
 def test_remove_assign_task(client):
     test_take_task(client)
     response = client.get("/api/task/1/remove_assignment", headers={"X-API-KEY": API_KEY})
-    print(response.text)
     assert response.status_code == 403
 
 def test_assign_user_task(client):
