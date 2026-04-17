@@ -14,12 +14,14 @@ def create_privileged_case_as_admin(client):
                        json={"title": "Test Privileged Case admin", "privileged_case": True})
 
 def test_create_case_no_api(client):
+    """Request without API key should be denied."""
     response = client.post("/api/case/create", data={
         'title': "Test Case read"
     })
     assert response.status_code == 403
 
 def test_create_case_read(client):
+    """Read-only user should not be able to create cases."""
     response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": API_KEY},
@@ -188,6 +190,7 @@ def test_fork_case(client):
 ##########
 
 def test_create_task_read(client):
+    """Read-only user should not be able to create tasks."""
     create_response = create_case_as_admin(client)
     case_id = create_response.json["case_id"]
     response = client.post(f"/api/case/{case_id}/create_task",
@@ -201,6 +204,8 @@ def test_create_task(client, flag=True, multiple=False):
     if flag:
         create_response = create_case_as_admin(client)
         case_id = create_response.json["case_id"]
+    else:
+        case_id = 1
     response = client.post(f"/api/case/{case_id}/create_task",
                            content_type='application/json',
                            headers={"X-API-KEY": "admin_api_key"},

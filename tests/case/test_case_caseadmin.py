@@ -75,7 +75,6 @@ def test_get_privileged_case(client):
     assert response.json["privileged_case"] == True
 
 def test_edit_other_user_case_to_privileged(client):
-    from app.db_class.db import User
     response = client.post("/api/case/create", 
                            content_type='application/json',
                            headers={"X-API-KEY": "admin_api_key"},

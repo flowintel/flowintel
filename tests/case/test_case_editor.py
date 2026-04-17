@@ -1,5 +1,3 @@
-from flask import url_for
-
 API_KEY = "editor_api_key"
 
 def create_case(client):
