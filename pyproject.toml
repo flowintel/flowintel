@@ -1,4 +1,19 @@
-# pyproject.toml
+# pyproject.toml - Flowintel
+[project]
+name = "flowintel"
+version = "3.1.0"
+description = "Open-source case management platform for security analysts"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.uv]
+resolution-mode = "max"
+
 [tool.pytest.ini_options]
 filterwarnings = [
     "error",

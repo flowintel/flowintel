@@ -31,7 +31,7 @@ export default defineConfig({
         },
       ],
     },
-    minify: 'esbuild',
+    minify: 'terser',
   },
   resolve: {
     alias: {

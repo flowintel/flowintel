@@ -3,11 +3,12 @@ set -e
 
 isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1 || true`
 isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1 || true`
+isscripted_valkey=`screen -ls | egrep '[0-9]+.valkey' | cut -d. -f1 || true`
 
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Directory of the python virtualenv to use; can be overridden by env var
-VENV_DIR="${VENV_DIR:-env}"
+VENV_DIR="${VENV_DIR:-.venv}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
@@ -68,6 +69,9 @@ function killscript {
     if  [ $isscripted_misp_mod ]; then
         screen -X -S misp_mod_flowintel quit
     fi
+    if  [ $isscripted_valkey ]; then
+        screen -X -S valkey quit
+    fi
 }
 
 function taxo_galaxy_update {
@@ -92,11 +96,15 @@ function launch {
     killscript
 
     # Start screen sessions with logs
+    screen -L -Logfile logs/valkey.log -dmS "valkey" bash -c "valkey-server --port 6379"
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    # Wait for valkey to be ready
+    sleep 2
+
     # Display logs
-    tail -n 0 -F logs/fcm.log logs/misp.log &
+    tail -n 0 -F logs/valkey.log logs/fcm.log logs/misp.log &
     TAIL_PID=$!
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
@@ -118,10 +126,14 @@ function production {
     export HISTORY_DIR=$history_dir/history
     killscript
 
+    screen -L -Logfile logs/valkey.log -dmS "valkey" bash -c "valkey-server --port 6379"
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
-    tail -n 0 -F logs/fcm.log logs/misp.log &
+    # Wait for valkey to be ready
+    sleep 2
+
+    tail -n 0 -F logs/valkey.log logs/fcm.log logs/misp.log &
     TAIL_PID=$!
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
@@ -134,7 +146,11 @@ function init_db {
     export FLASKENV="development"
     export HISTORY_DIR=$history_dir/history
 
+    screen -L -Logfile logs/valkey.log -dmS "valkey" bash -c "valkey-server --port 6379"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+
+    # Wait for valkey to be ready
+    sleep 2
 
     python3 app.py -i
     python3 app.py -tg
@@ -149,13 +165,19 @@ function init_db_prod {
     export FLASKENV="production"
     export HISTORY_DIR=$history_dir/history
 
+    screen -L -Logfile logs/valkey.log -dmS "valkey" bash -c "valkey-server --port 6379"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+
+    # Wait for valkey to be ready
+    sleep 2
 
     python3 app.py -i
     python3 app.py -tg
     python3 app.py -mm
     # don't import test data for prod 
     #python3 app.py -td
+
+    killscript
 }
 
 function reload_db {
@@ -171,11 +193,15 @@ function launch_docker {
     export HISTORY_DIR=$history_dir/history
 
     # Start screen sessions with logs
+    screen -L -Logfile logs/valkey.log -dmS "valkey" bash -c "valkey-server --port 6379"
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    # Wait for valkey to be ready
+    sleep 2
+
     # Display logs
-    tail -n 0 -F logs/fcm.log logs/misp.log &
+    tail -n 0 -F logs/valkey.log logs/fcm.log logs/misp.log &
     TAIL_PID=$!
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
@@ -188,7 +214,11 @@ function init_db_docker {
     export FLASKENV="docker"
     export HISTORY_DIR=$history_dir/history
 
+    screen -L -Logfile logs/valkey.log -dmS "valkey" bash -c "valkey-server --port 6379"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+
+    # Wait for valkey to be ready
+    sleep 2
 
     python3 app.py -i
     python3 app.py -tg
