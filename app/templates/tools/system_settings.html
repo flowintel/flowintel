@@ -475,6 +475,81 @@
                 </div>
             </div>
 
+            <!-- ── Keycloak SSO ── -->
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-shield-halved me-2"></i>Keycloak SSO</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> Enabled <small class="fw-normal text-muted">(KEYCLOAK_ENABLED)</small></td>
+                                <td>
+                                    <span class="badge {% if system_info.keycloak_enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.keycloak_enabled }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% if system_info.keycloak_enabled %}
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Base URL <small class="fw-normal text-muted">(KEYCLOAK_BASE_URL)</small></td>
+                                <td><code>{{ system_info.keycloak_base_url }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Realm <small class="fw-normal text-muted">(KEYCLOAK_REALM)</small></td>
+                                <td><code>{{ system_info.keycloak_realm }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(KEYCLOAK_CLIENT_ID)</small></td>
+                                <td><code>{{ system_info.keycloak_client_id }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Redirect URL <small class="fw-normal text-muted">(KEYCLOAK_REDIRECT_URL)</small></td>
+                                <td><code style="font-size: 0.85em;">{{ system_info.keycloak_redirect_url }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group admin <small class="fw-normal text-muted">(KEYCLOAK_GROUP_ADMIN)</small></td>
+                                <td><code>{{ system_info.keycloak_group_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group editor <small class="fw-normal text-muted">(KEYCLOAK_GROUP_EDITOR)</small></td>
+                                <td><code>{{ system_info.keycloak_group_editor }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group read only <small class="fw-normal text-muted">(KEYCLOAK_GROUP_READONLY)</small></td>
+                                <td><code>{{ system_info.keycloak_group_readonly }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group case admin <small class="fw-normal text-muted">(KEYCLOAK_GROUP_CASE_ADMIN)</small></td>
+                                <td><code>{{ system_info.keycloak_group_case_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role case admin <small class="fw-normal text-muted">(KEYCLOAK_ROLE_CASE_ADMIN)</small></td>
+                                <td><code>{{ system_info.keycloak_role_case_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group queue admin <small class="fw-normal text-muted">(KEYCLOAK_GROUP_QUEUE_ADMIN)</small></td>
+                                <td><code>{{ system_info.keycloak_group_queue_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role queue admin <small class="fw-normal text-muted">(KEYCLOAK_ROLE_QUEUE_ADMIN)</small></td>
+                                <td><code>{{ system_info.keycloak_role_queue_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group queuer <small class="fw-normal text-muted">(KEYCLOAK_GROUP_QUEUER)</small></td>
+                                <td><code>{{ system_info.keycloak_group_queuer }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role queuer <small class="fw-normal text-muted">(KEYCLOAK_ROLE_QUEUER)</small></td>
+                                <td><code>{{ system_info.keycloak_role_queuer }}</code></td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- ── MISP integration ── -->
             <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
                 <div class="card-header py-3">

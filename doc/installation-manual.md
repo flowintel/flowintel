@@ -1032,9 +1032,171 @@ ENTRA_ROLE_QUEUER=Queuer
 
 When Entra ID SSO is enabled (`ENTRA_ID_ENABLED=true`), a **Sign in with Microsoft** button appears on the Flowintel login page. The first time a user signs in through SSO, Flowintel automatically creates a local account for them based on their Entra ID profile.
 
-Users whose highest-priority group is `FlowintelAdmin` are initially created with the **Editor** role rather than Admin. This is a deliberate safeguard: it ensures that no one receives full administrative access automatically, reducing the risk of accidental privilege escalation. All existing Flowintel administrators receive a notification so they can review the new account and promote the user to Admin once they have verified the request is legitimate.
+Users whose highest-priority group is `FlowintelAdmin` are initially created with the **Editor** role rather than Admin. This is a deliberate safeguard: it ensures that no one receives full administrative access automatically, reducing the risk of accidental privilege escalation.
+
+All existing Flowintel administrators receive a notification whenever a new SSO account is created. For users in the Admin group, the notification asks administrators to promote the user if appropriate. For all other users, the notification asks administrators to review the user's organisation assignment. New SSO users are placed in a personal organisation by default, so administrators may want to move them to a shared organisation.
 
 SSO accounts rely entirely on the organisation's Microsoft account for authentication. This means they cannot use the local password reset feature or change the email address associated with their Flowintel account. Administrators can still edit SSO user accounts through the web interface, for example to change a user's role or organisation, but they cannot set a local password for them.
+
+## Keycloak SSO (optional)
+
+Flowintel supports single sign-on via Keycloak. When enabled, users can sign in with their Keycloak account instead of a local password. Local accounts still work alongside SSO. The Keycloak integration follows the same role-mapping model as the Entra ID integration described above.
+
+### Keycloak server prerequisites
+
+You need a running Keycloak instance (version 20 or later) before configuring Flowintel. The examples below assume Keycloak is reachable at `https://keycloak.your-org-keycloak.com`. Replace this with the address of your own Keycloak server.
+
+### Create a realm
+
+If you do not already have a dedicated realm for Flowintel, create one:
+
+1. Open the Keycloak admin console at `https://keycloak.your-org-keycloak.com/admin/`
+2. In the top-left realm dropdown, click **Create realm**
+3. Set the **Realm name** to `flowintel`
+4. Make sure **Enabled** is on, then click **Create**
+
+All the steps below are carried out inside this `flowintel` realm.
+
+### Create an OpenID Connect client
+
+1. In the Keycloak admin console, go to **Clients → Create client**
+2. Set **Client type** to `OpenID Connect`
+3. Set **Client ID** to `flowintel` (you can pick a different name, but take note of it for the Flowintel configuration later)
+4. Click **Next**
+5. On the Capability config step:
+   - Enable **Client authentication** (this makes it a confidential client)
+   - Ensure **Standard flow** is enabled (Authorization Code flow)
+   - Disable **Direct access grants** unless you need them for testing
+6. Click **Next**
+7. On the Login settings step, configure the redirect URI:
+   ```
+   https://flowintel.yourdomain.com/account/keycloak/callback
+   ```
+   Set **Valid post logout redirect URIs** to:
+   ```
+   https://flowintel.yourdomain.com/*
+   ```
+   Set **Web origins** to:
+   ```
+   https://flowintel.yourdomain.com
+   ```
+8. Click **Save**
+
+After saving, go to the **Credentials** tab and copy the **Client secret**. You will need it when configuring Flowintel.
+
+Note down the following values:
+
+| Value | Where to find it | Example |
+|---|---|---|
+| Realm name | Top-left dropdown | `flowintel` |
+| Client ID | Clients → flowintel → Settings | `flowintel` |
+| Client secret | Clients → flowintel → Credentials | `AbCdEf...` |
+| Keycloak base URL | Your Keycloak address | `https://keycloak.your-org-keycloak.com` |
+
+### Create groups for role mapping
+
+Flowintel uses Keycloak group membership to assign roles, in the same way as it uses Entra ID groups. Create the following groups in your realm:
+
+1. In the Keycloak admin console, go to **Groups → Create group**
+2. Create each of the following groups:
+
+| Keycloak group | Flowintel role | Notes |
+|---|---|---|
+| `FlowintelAdmin` | Editor | Account is created as **Editor**; all admins receive a notification to promote the user to Admin manually |
+| `FlowintelEditor` | Editor | Standard analyst access |
+| `FlowintelCaseAdmin` | CaseAdmin | Can manage cases and approve tasks |
+| `FlowintelQueueAdmin` | QueueAdmin | Can manage queues and approve tasks |
+| `FlowintelQueuer` | Queuer | Can submit tasks for approval in privileged cases |
+| `FlowintelReadOnly` | Read Only | View-only access |
+
+When a user signs in for the first time, Flowintel checks their group memberships in the order listed above. The first matching group determines their role. Users not in any of these groups are denied access.
+
+### Assign users to groups
+
+1. Go to **Users** in the Keycloak admin console
+2. Select a user (or create one)
+3. Go to the **Groups** tab
+4. Click **Join Group** and select the appropriate Flowintel group
+
+### Add a group membership mapper
+
+Keycloak does not include group information in tokens by default. You need to add a client scope mapper so that Flowintel can read the user's groups from the token.
+
+1. Go to **Clients** in the left menu, then click on your `flowintel` client
+2. Go to the **Client scopes** tab
+3. Click on the `flowintel-dedicated` scope. Keycloak creates this scope automatically when you create a client, and names it `<client-id>-dedicated`. If you do not see it in the list, click **Add client scope**, select **flowintel-dedicated**, and add it as a **Default** scope. If no dedicated scope exists at all, you can create one manually: go to **Client scopes** in the left menu, click **Create client scope**, name it `flowintel-dedicated`, set the type to **Default**, and then assign it to your client from the client's **Client scopes** tab.
+4. Click **Configure a new mapper**
+4. Select **Group Membership**
+5. Configure the mapper:
+   - **Name**: `groups`
+   - **Token Claim Name**: `groups`
+   - **Full group path**: **OFF** (Flowintel expects flat group names, not paths like `/FlowintelAdmin`)
+   - **Add to ID token**: **ON**
+   - **Add to access token**: **ON**
+   - **Add to userinfo**: **ON**
+6. Click **Save**
+
+With this mapper in place, every token issued for the Flowintel client will include a `groups` claim with the user's group names.
+
+### Verify the token contains groups
+
+Before moving on to Flowintel, it is worth checking that the token contains the expected claims. In the Keycloak admin console:
+
+1. Go to **Clients → flowintel → Client scopes**
+2. Click **Evaluate**
+3. Select a user who is a member of one of the Flowintel groups
+4. Click **Generated ID token**
+5. Confirm the JSON contains:
+   - `preferred_username` or `email`
+   - `given_name` and `family_name` (or `name`). If these are empty, open the user in **Users**, fill in **First name** and **Last name**, and save. Keycloak does not require these fields when creating a user, but Flowintel needs them to set up the local account.
+   - `groups` array with the user's group names, for example `["FlowintelEditor"]`
+
+If the `groups` claim is missing, check that the mapper from the previous step is correctly configured and assigned to the `flowintel-dedicated` scope.
+
+### Flowintel configuration for Keycloak
+
+Add the following to your `.env` file (or set the equivalent environment variables):
+
+```bash
+# Keycloak SSO
+KEYCLOAK_ENABLED=true
+KEYCLOAK_BASE_URL=https://keycloak.your-org-keycloak.com
+KEYCLOAK_REALM=flowintel
+KEYCLOAK_CLIENT_ID=flowintel
+KEYCLOAK_CLIENT_SECRET=<your-client-secret>
+KEYCLOAK_REDIRECT_URL=https://flowintel.yourdomain.com/account/keycloak/callback
+```
+
+The `KEYCLOAK_REDIRECT_URL` must exactly match the redirect URI registered in Keycloak, including the scheme (`https://`). If Flowintel runs behind a reverse proxy, make sure this URL reflects the public-facing address rather than the internal `127.0.0.1` address.
+
+The group and role name mappings can be customised if your Keycloak groups are named differently:
+
+```bash
+# Keycloak group names
+KEYCLOAK_GROUP_ADMIN=FlowintelAdmin
+KEYCLOAK_GROUP_EDITOR=FlowintelEditor
+KEYCLOAK_GROUP_READONLY=FlowintelReadOnly
+KEYCLOAK_GROUP_CASE_ADMIN=FlowintelCaseAdmin
+KEYCLOAK_GROUP_QUEUE_ADMIN=FlowintelQueueAdmin
+KEYCLOAK_GROUP_QUEUER=FlowintelQueuer
+
+# Flowintel role names for the custom roles
+KEYCLOAK_ROLE_CASE_ADMIN=CaseAdmin
+KEYCLOAK_ROLE_QUEUE_ADMIN=QueueAdmin
+KEYCLOAK_ROLE_QUEUER=Queuer
+```
+
+### SSO behaviour
+
+When Keycloak SSO is enabled (`KEYCLOAK_ENABLED=true`), a **Sign in with Keycloak** button appears on the Flowintel login page. The first time a user signs in through SSO, Flowintel automatically creates a local account for them based on their Keycloak profile.
+
+Users whose highest-priority group is `FlowintelAdmin` are initially created with the **Editor** role rather than Admin. This is intentional: no one should receive full administrative access automatically.
+
+All existing Flowintel administrators receive a notification whenever a new SSO account is created. For users in the Admin group, the notification asks administrators to promote the user if appropriate. For all other users, the notification asks administrators to review the user's organisation assignment. New SSO users are placed in a personal organisation by default, so administrators may want to move them to a shared organisation.
+
+SSO accounts rely on the organisation's Keycloak instance for authentication. Users who sign in through Keycloak cannot use the local password reset feature or change the email address on their Flowintel account. Administrators can still edit SSO user accounts through the web interface, for example to change a user's role or organisation, but cannot set a local password for them.
+
+Flowintel synchronises roles on every SSO login. If a user's Keycloak group membership changes, their Flowintel role is updated the next time they sign in. If you manually promote an SSO user to a higher role within Flowintel, that change will be overwritten at their next login unless their Keycloak group membership has also been updated.
 
 ## GPG report signing (optional)
 
@@ -2002,6 +2164,16 @@ sudo nginx -t && sudo systemctl reload nginx
    mkdir -p /opt/flowintel/flowintel/uploads
    chmod 755 /opt/flowintel/flowintel/uploads
    ```
+
+## Keycloak SSO
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Redirect fails after clicking "Sign in with Keycloak" | `KEYCLOAK_REDIRECT_URL` does not match the URI registered in Keycloak | Ensure the URLs are identical, including trailing slashes and scheme |
+| User denied access despite being in a group | `groups` claim missing from the token | Add the Group Membership mapper as described in the Keycloak SSO section and set **Full group path** to OFF |
+| Token contains `/FlowintelEditor` instead of `FlowintelEditor` | **Full group path** is enabled in the mapper | Edit the mapper and set **Full group path** to OFF |
+| "Invalid client" error | Client authentication is disabled or wrong secret | Check the Credentials tab in Keycloak and verify `KEYCLOAK_CLIENT_SECRET` |
+| SSO works but user gets the wrong role | User is in multiple groups | The highest-priority group wins; check the group priority table in the Keycloak SSO section |
 
 ## General troubleshooting steps
 

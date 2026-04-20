@@ -10,6 +10,7 @@ from flask_login import (
 )
 from . import account_core as AccountModel
 from . import entra_core as EntraModel
+from . import keycloak_core as KeycloakModel
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel
@@ -17,6 +18,7 @@ import logging
 import time
 import secrets
 from urllib.parse import urlparse
+from itsdangerous import URLSafeTimedSerializer, BadData
 
 from wtforms.validators import Email, ValidationError
 
@@ -221,7 +223,7 @@ def request_password_reset():
             # SSO-managed accounts cannot reset their password here
             if user.auth_provider != 'local':
                 flowintel_log("audit", 400, "Password reset blocked for SSO user", Email=email, IP=get_client_ip())
-                flash('This account uses Microsoft Entra ID for authentication. Password management is handled by your organisation.', 'warning')
+                flash('This account uses single sign-on (SSO) for authentication. Password management is handled by your organisation.', 'warning')
                 session.pop('password_reset_token', None)
                 session.pop('password_reset_token_time', None)
                 session.pop('failed_login_email', None)
@@ -305,6 +307,69 @@ def entra_callback():
     login_user(user)
     flowintel_log("audit", 200, "Entra ID login successful", Email=user.email)
     flash('Logged in via Microsoft Entra ID.', 'success')
+    next_url = request.args.get('next') or '/'
+    if urlparse(next_url).netloc or urlparse(next_url).scheme:
+        next_url = '/'
+    return redirect(next_url)
+
+
+@account_blueprint.route('/keycloak/login')
+def keycloak_login():
+    """Redirect user to Keycloak for authentication."""
+    if not current_app.config.get('KEYCLOAK_ENABLED'):
+        abort(404)
+
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    state = s.dumps('keycloak-login')
+    redirect_uri = current_app.config.get('KEYCLOAK_REDIRECT_URL') or url_for('account.keycloak_callback', _external=True)
+    auth_url = KeycloakModel.get_auth_url(redirect_uri, state=state)
+    return redirect(auth_url)
+
+
+@account_blueprint.route('/keycloak/callback')
+def keycloak_callback():
+    """Handle the OAuth2 redirect from Keycloak."""
+    if not current_app.config.get('KEYCLOAK_ENABLED'):
+        abort(404)
+
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    try:
+        s.loads(request.args.get('state', ''), max_age=600)
+    except BadData:
+        flash('Authentication failed: invalid or expired state.', 'error')
+        flowintel_log("audit", 403, "Keycloak login failed - state mismatch", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    if 'error' in request.args:
+        error_desc = str(request.args.get('error_description', request.args.get('error', 'unknown error')))[:200]
+        flash(f'Keycloak authentication error: {error_desc}', 'error')
+        flowintel_log("audit", 401, "Keycloak login error", Error=request.args.get('error'), IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    code = request.args.get('code')
+    if not code:
+        flash('Authentication failed: no authorization code received.', 'error')
+        return redirect(url_for('account.login'))
+
+    redirect_uri = current_app.config.get('KEYCLOAK_REDIRECT_URL') or url_for('account.keycloak_callback', _external=True)
+    result = KeycloakModel.exchange_code(code, redirect_uri)
+
+    if 'error' in result:
+        error_desc = str(result.get('error_description', result.get('error', 'unknown error')))[:200]
+        flash(f'Keycloak authentication error: {error_desc}', 'error')
+        flowintel_log("audit", 401, "Keycloak token exchange failed", Error=result.get('error'), IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    user, error = KeycloakModel.get_or_create_sso_user(result)
+
+    if not user:
+        flash(f'Access denied: {error}', 'error')
+        flowintel_log("audit", 403, "Keycloak login denied", Reason=error, IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    login_user(user)
+    flowintel_log("audit", 200, "Keycloak login successful", Email=user.email)
+    flash('Logged in via Keycloak.', 'success')
     next_url = request.args.get('next') or '/'
     if urlparse(next_url).netloc or urlparse(next_url).scheme:
         next_url = '/'
