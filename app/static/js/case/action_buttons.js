@@ -346,7 +346,7 @@ export default {
                     </div>
                     <div class="modal-body">
                         <div class="alert alert-danger" role="alert">
-                            <i class="fa-solid fa-triangle-exclamation"></i> This will delete this Case !
+                            <i class="fa-solid fa-triangle-exclamation"></i> This will delete this case !
                         </div>
                         <input id="merge_case_input" placeholder="Enter case id or uuid (optional)" class="form-control mb-2" />
                         <select class="merge-case-ajax" name="merge_into" data-placeholder="Or search case by title"></select>

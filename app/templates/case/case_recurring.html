@@ -5,16 +5,16 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <h2 class="case-core-style mb-4" style="border-radius: 0;">Recurring case</h2>
+    <h5 class="mb-0 case-core-style" style="border-radius: 0;">Recurring case</h5>
 
     <form action="" method="post" class="case-core-style">
         {{ form.hidden_tag() }}
         <div class="modal-body">
             <div class="mb-3 w-50">
-                <label class="col-form-label" for="recurring">Type of Recurring: </label>
+                <label class="col-form-label" for="recurring">Type of recurring: </label>
                 <select data-placeholder="recurring option" class="form-control" name="recurring" id="recurring">
                     <option @click="recurring_mode=0" value="0"></option>
-                    <option @click="recurring_mode=1" value="1">One day</option>
+                    <option @click="recurring_mode=1" value="1">One day (once)</option>
                     <option @click="recurring_mode=2" value="2">Daily</option>
                     <option @click="recurring_mode=3" value="3">Weekly</option>
                     <option @click="recurring_mode=4" value="4">Monthly</option>
@@ -59,7 +59,7 @@
             </div>
             
             <hr>
-            <h4>Choose who to notify</h4>
+            <label class="col-form-label">Choose who to notify</label>
 
             {% for org in orgs %}
                 <div class="list-group w-50" style="margin-bottom: 10px;">
