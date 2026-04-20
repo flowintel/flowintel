@@ -60,6 +60,11 @@ class CaseEditForm(FlaskForm):
     privileged_case = BooleanField("Privileged case")
     submit = SubmitField('Save')
 
+    def validate_title(self, field):
+        existing = Case.query.filter_by(title=field.data).first()
+        if existing and existing.id != self._case_id:
+            raise ValidationError("The title already exist")
+
     def validate_deadline_time(self, field):
         if field.data and not self.deadline_date.data:
             raise ValidationError("Choose a date")

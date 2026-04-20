@@ -96,6 +96,7 @@ def edit_case(cid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             form = CaseEditForm()
+            form._case_id = int(cid)
 
             if form.validate_on_submit():
                 form_dict = form_to_dict(form)
