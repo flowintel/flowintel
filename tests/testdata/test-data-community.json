@@ -43,31 +43,31 @@
                 {
                     "first_name": "Alice",
                     "last_name": "Manager",
-                    "email": "alice.manager@lea-org.test",
+                    "email": "alice.manager@flowintel.org",
                     "role": "OrgAdmin"
                 },
                 {
                     "first_name": "Bob",
                     "last_name": "Officer",
-                    "email": "bob.officer@lea-org.test",
+                    "email": "bob.officer@flowintel.org",
                     "role": "CaseAdmin"
                 },
                 {
                     "first_name": "Carol",
                     "last_name": "Officer",
-                    "email": "carol.officer@lea-org.test",
+                    "email": "carol.officer@flowintel.org",
                     "role": "QueueAdmin"
                 },
                 {
                     "first_name": "Dave",
                     "last_name": "Deputy",
-                    "email": "dave.deputy@lea-org.test",
+                    "email": "dave.deputy@flowintel.org",
                     "role": "Queuer"
                 },
                 {
                     "first_name": "Eve",
                     "last_name": "Comms",
-                    "email": "eve.comms@lea-org.test",
+                    "email": "eve.comms@flowintel.org",
                     "role": "Read Only"
                 }
             ]
@@ -79,19 +79,19 @@
                 {
                     "first_name": "Frank",
                     "last_name": "TeamLead",
-                    "email": "frank.teamlead@csirt-org.test",
+                    "email": "frank.teamlead@flowintel.org",
                     "role": "OrgAdmin"
                 },
                 {
                     "first_name": "Grace",
                     "last_name": "Handler",
-                    "email": "grace.handler@csirt-org.test",
+                    "email": "grace.handler@flowintel.org",
                     "role": "CaseAdmin"
                 },
                 {
                     "first_name": "Hank",
                     "last_name": "Junior",
-                    "email": "hank.junior@csirt-org.test",
+                    "email": "hank.junior@flowintel.org",
                     "role": "Queuer"
                 }
             ]
