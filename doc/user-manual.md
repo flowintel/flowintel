@@ -2435,19 +2435,19 @@ The following user accounts are available. All accounts share the same password.
 
 | Name | Email | Role |
 |---|---|---|
-| Alice Manager | alice.manager@lea-org.test | OrgAdmin |
-| Bob Officer | bob.officer@lea-org.test | CaseAdmin |
-| Carol Officer | carol.officer@lea-org.test | QueueAdmin |
-| Dave Deputy | dave.deputy@lea-org.test | Queuer |
-| Eve Comms | eve.comms@lea-org.test | Read Only |
+| Alice Manager | alice.manager@flowintel.org | OrgAdmin |
+| Bob Officer | bob.officer@flowintel.org | CaseAdmin |
+| Carol Officer | carol.officer@flowintel.org | QueueAdmin |
+| Dave Deputy | dave.deputy@flowintel.org | Queuer |
+| Eve Comms | eve.comms@flowintel.org | Read Only |
 
 **CSIRT Organisation** (Computer security incident response team)
 
 | Name | Email | Role |
 |---|---|---|
-| Frank TeamLead | frank.teamlead@csirt-org.test | OrgAdmin |
-| Grace Handler | grace.handler@csirt-org.test | CaseAdmin |
-| Hank Junior | hank.junior@csirt-org.test | Queuer |
+| Frank TeamLead | frank.teamlead@flowintel.org | OrgAdmin |
+| Grace Handler | grace.handler@flowintel.org | CaseAdmin |
+| Hank Junior | hank.junior@flowintel.org | Queuer |
 
 **Admin access**
 
@@ -2543,7 +2543,7 @@ Navigate to the notification bell in the top bar and review any pending notifica
 
 ### Step 2: Password reset and initial exploration
 
-In the second browser window, attempt to log in as Grace Handler (`grace.handler@csirt-org.test`) but deliberately enter an incorrect password. After the failed attempt, Flowintel shows a link to request a password reset. Submit the request.
+In the second browser window, attempt to log in as Grace Handler (`grace.handler@flowintel.org`) but deliberately enter an incorrect password. After the failed attempt, Flowintel shows a link to request a password reset. Submit the request.
 
 Switch to the admin window. A notification appears informing you that Grace Handler has requested a password reset. Navigate to **Community > Users**, find Grace Handler's account, click **Edit** and set a new password. Share that password with the person playing Grace (or note it down for yourself).
 
@@ -2551,7 +2551,7 @@ Back in the second browser, log in as Grace Handler with the new password. From 
 
 ### Step 3: Create and enrich a case as the Queuer
 
-Log out of Grace Handler in the second browser and log in as Dave Deputy (`dave.deputy@lea-org.test`). Dave has the Queuer role, which means his tasks will go through the approval workflow.
+Log out of Grace Handler in the second browser and log in as Dave Deputy (`dave.deputy@flowintel.org`). Dave has the Queuer role, which means his tasks will go through the approval workflow.
 
 Create a new case. Give it a descriptive title and tick the **Privileged case** checkbox. On the case detail page:
 
@@ -2566,7 +2566,7 @@ Still logged in as Dave Deputy, create two tasks on the case. Because Dave has t
 
 ### Step 5: Approve a task as the Queue Admin
 
-Log out of Dave Deputy in the second browser and log in as Carol Officer (`carol.officer@lea-org.test`). Carol has the QueueAdmin role.
+Log out of Dave Deputy in the second browser and log in as Carol Officer (`carol.officer@flowintel.org`). Carol has the QueueAdmin role.
 
 Check the notification bell. Carol should see notifications about the two pending task requests. Open the case and review the tasks.
 
