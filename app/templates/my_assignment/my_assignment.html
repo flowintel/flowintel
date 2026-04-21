@@ -19,8 +19,19 @@
             <h5 class="mb-0"><i class="fa-solid fa-clipboard-check me-2"></i>My tasks assignments</h5>
         </div>
         <div class="col-auto">
-            <my_assignment_filter :tasks_list="tasks_list" @tasks_list="(tasks) => emit_result(tasks)" @current_filter="filter => current_filter = filter">
+            <my_assignment_filter ref="filter_ref" :tasks_list="tasks_list"
+                @tasks_list="(tasks) => emit_result(tasks)"
+                @current_filter="filter => current_filter = filter"
+                @active_mode="mode => active_mode = mode">
             </my_assignment_filter>
+        </div>
+        <div class="col-auto" v-if="active_mode && active_mode.mode !== 'ongoing'">
+            <span class="badge bg-warning text-dark p-2">
+                <i class="fa-solid fa-filter me-1"></i>
+                Filter: <strong>[[ active_mode.label ]]</strong>
+                <button type="button" class="btn-close btn-close-sm ms-2" aria-label="Clear filter"
+                        @click="filter_ref?.filter_tasks('ongoing')"></button>
+            </span>
         </div>
     </div>
 </div>
@@ -33,7 +44,7 @@
                 <i class="fa-solid fa-list-check me-1"></i>
                 <strong>[[ task_stats.total ]]</strong> total [[ task_stats.total === 1 ? 'task' : 'tasks' ]]
             </a>
-            <a v-if="task_stats.overdue > 0" @click.prevent="scrollToTasks" href="#" class="badge bg-danger text-white px-3 py-2 text-decoration-none" style="cursor: pointer;">
+            <a v-if="task_stats.overdue > 0" @click.prevent="activateOverdueFilter" href="#" class="badge bg-danger text-white px-3 py-2 text-decoration-none" style="cursor: pointer;" title="Show only overdue tasks">
                 <i class="fa-solid fa-clock-rotate-left me-1"></i>
                 <strong>[[ task_stats.overdue ]]</strong> overdue
             </a>
@@ -230,6 +241,8 @@
                 const current_page = ref(1)
                 const current_filter = ref("")
                 const task_stats = ref(null)
+                const active_mode = ref({ mode: 'ongoing', label: 'Ongoing tasks' })
+                const filter_ref = ref(null)
 
                 const expandedTasks = ref({})
                 const md = window.markdownit()
@@ -282,18 +295,28 @@
 
                 async function fetchAssignedTask(page) {
                     const filter = current_filter.value
-                    const url = filter 
-                        ? `/my_assignment/sort_tasks?status=true&page=${page}&filter=${filter}`
-                        : `/my_assignment/sort_tasks?status=true&page=${page}`
+                    const mode = active_mode.value?.mode || 'ongoing'
+                    const params = new URLSearchParams()
+                    params.set('page', page)
+                    params.set('status', mode === 'finished' ? 'false' : 'true')
+                    if (mode === 'inactive') params.set('inactive', 'true')
+                    if (mode === 'overdue') params.set('overdue', 'true')
+                    if (filter) params.set('filter', filter)
 
                     current_page.value = page
                     tasks_list.value = null
-                    
-                    const res = await fetch(url)
+
+                    const res = await fetch(`/my_assignment/sort_tasks?${params.toString()}`)
                     const data = await res.json()
-                    
+
                     tasks_list.value = data
                     task_stats.value = data.stats
+                }
+
+                function activateOverdueFilter() {
+                    if (filter_ref.value) {
+                        filter_ref.value.activate_overdue()
+                    }
                 }
 
                 async function fetchStatus() {
@@ -344,6 +367,9 @@
                     current_page,
                     emit_result,
                     current_filter,
+                    active_mode,
+                    filter_ref,
+                    activateOverdueFilter,
                     message_list,
                     getTextColor,
                     truncateText,

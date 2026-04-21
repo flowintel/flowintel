@@ -13,7 +13,7 @@ def get_user(uid):
 def _inactive_status_ids():
     return [s.id for s in Status.query.filter(Status.name.in_(_INACTIVE_STATUS_NAMES)).all()]
 
-def my_assignment_sort(user, completed, page, filter=None, inactive_only=False):
+def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, overdue_only=False):
     query = Task.query.join(Task_User, Task_User.task_id==Task.id)\
                       .where(Task_User.user_id==user.id, Task.completed==completed)
     inactive_ids = _inactive_status_ids()
@@ -23,6 +23,8 @@ def my_assignment_sort(user, completed, page, filter=None, inactive_only=False):
     elif not completed:
         if inactive_ids:
             query = query.filter(Task.status_id.notin_(inactive_ids))
+    if overdue_only:
+        query = query.filter(Task.deadline.isnot(None), Task.deadline < datetime.utcnow())
     if filter:
         query = query.order_by(desc(filter))
     query = query.paginate(page=page, per_page=20, max_per_page=50)
