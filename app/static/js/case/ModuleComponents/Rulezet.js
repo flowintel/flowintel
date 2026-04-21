@@ -13,6 +13,8 @@ export default {
         const selected_instance = ref(props.connector_instances && props.connector_instances.length ? props.connector_instances[0] : null)
         const query_input = ref('')
         const is_loading = ref(false)
+        const is_removing_id = ref(null)
+        const is_resyncing_id = ref(null)
         const results = ref([])
         const modules = ref({})
         const module_selected = ref('None')
@@ -66,6 +68,61 @@ export default {
             is_loading.value = false
         }
 
+        async function removeRule(r) {
+            if (!selected_instance.value) return display_toast({message: 'No connector instance selected', toast_class: 'warning-subtle'})
+            if (!confirm('Remove this rule locally?')) return
+            is_removing_id.value = r.id || r.uuid || (r.remote_id ? r.remote_id : null)
+            try {
+                const res = await fetch(`/case/${props.case_id}/rulezet_rule_remove`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': $('#csrf_token').val() },
+                    body: JSON.stringify({ id: r.id })
+                })
+                if (res.status === 200) {
+                    display_toast({message: 'Rule removed locally', toast_class: 'success-subtle'})
+                    await fetch_rules()
+                } else {
+                    try { const d = await res.json(); display_toast(d) } catch (e) { display_toast({message: 'Error removing rule', toast_class: 'danger-subtle'}) }
+                }
+            } catch (e) {
+                display_toast({message: 'Request failed', toast_class: 'danger-subtle'})
+            }
+            is_removing_id.value = null
+        }
+
+        async function resyncRule(r) {
+            if (!selected_instance.value) return display_toast({message: 'No connector instance selected', toast_class: 'warning-subtle'})
+            const queryVal = r.remote_id || r.id || r.uuid
+            if (!queryVal) return display_toast({message: 'No identifier available to resync', toast_class: 'warning-subtle'})
+
+            // ensure a module is selected (try to auto-select a rulezet module if available)
+            if (!module_selected.value || module_selected.value === 'None') {
+                for (const [key, m] of Object.entries(modules.value)) {
+                    if (m.config && m.config.connector == 'rulezet') { module_selected.value = key; break }
+                }
+                if (!module_selected.value || module_selected.value === 'None') return display_toast({message: 'Select a module', toast_class: 'warning-subtle'})
+            }
+
+            is_resyncing_id.value = r.id || r.uuid || queryVal
+            try {
+                const url = `/case/${props.case_id}/call_module_case`
+                const res2 = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': $('#csrf_token').val() },
+                    body: JSON.stringify({ module: module_selected.value, case_task_instance_id: selected_instance.value.case_task_instance_id, query: queryVal })
+                })
+                if (res2.status === 200) {
+                    display_toast({message: 'Resync triggered', toast_class: 'success-subtle'})
+                    await fetch_rules()
+                } else {
+                    try { const d2 = await res2.json(); display_toast(d2) } catch (e) { display_toast({message: 'Resync failed', toast_class: 'danger-subtle'}) }
+                }
+            } catch (e) {
+                display_toast({message: 'Request failed', toast_class: 'danger-subtle'})
+            }
+            is_resyncing_id.value = null
+        }
+
         function select_instance(ev) {
             const iid = parseInt(ev.target.value)
             const found = props.connector_instances.find(c => c.details.id === iid)
@@ -96,7 +153,11 @@ export default {
             selected_instance,
             query_input,
             is_loading,
+            is_removing_id,
+            is_resyncing_id,
             results,
+            removeRule,
+            resyncRule,
             run_query,
             select_instance,
             getOriginalUrl,
@@ -150,9 +211,19 @@ export default {
                                     [[ r.title || r.name || r.id || 'Result ' + (idx+1) ]]
                                 </a>
                             </h5>
-                            <button class="btn btn-sm btn-outline-secondary" type="button" :data-bs-toggle="'collapse'" :data-bs-target="'#rule-' + idx" aria-expanded="true" :aria-controls="'rule-' + idx">
-                                Toggle
-                            </button>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" :data-bs-toggle="'collapse'" :data-bs-target="'#rule-' + idx" aria-expanded="true" :aria-controls="'rule-' + idx">
+                                    Toggle
+                                </button>
+                                <button class="btn btn-sm btn-danger ms-2" type="button" @click="removeRule(r)" :disabled="is_removing_id === r.id || is_resyncing_id === r.id">
+                                    <span v-if="is_removing_id === r.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span v-else>Remove</span>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary ms-2" type="button" @click="resyncRule(r)" :disabled="is_resyncing_id === r.id || is_removing_id === r.id">
+                                    <span v-if="is_resyncing_id === r.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span v-else>Resync</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div :id="'rule-' + idx" class="collapse show mt-2">

@@ -11,7 +11,7 @@ from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
-from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule
+from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, db
 from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
@@ -783,6 +783,55 @@ def get_rulezet_rules(cid):
                 pass
         rules = [r.to_json() for r in query.order_by(Rulezet_Rule.date_added.desc()).all()]
         return {"rules": rules}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/rulezet_rule_remove", methods=['POST'])
+@login_required
+@misp_editor_required
+def remove_rulezet_rule(cid):
+    """Remove a stored Rulezet rule for a case."""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Remove rulezet rule: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
+        payload = request.get_json() or {}
+        rule = None
+
+        if "id" in payload:
+            try:
+                rule = Rulezet_Rule.query.get(int(payload.get("id")))
+            except Exception:
+                rule = None
+
+        if not rule and "uuid" in payload:
+            rule = Rulezet_Rule.query.filter_by(uuid=payload.get("uuid")).first()
+
+        if not rule and "remote_id" in payload and "instance_id" in payload:
+            try:
+                rule = Rulezet_Rule.query.filter_by(remote_id=str(payload.get("remote_id")), instance_id=int(payload.get("instance_id")), case_id=case.id).first()
+            except Exception:
+                rule = None
+
+        if not rule:
+            return {"message": "Rule not found", "toast_class": "warning-subtle"}, 404
+
+        if rule.case_id != case.id:
+            flowintel_log("audit", 403, "Remove rulezet rule: Action not allowed", User=current_user.email, CaseId=cid, RuleId=rule.id)
+            return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+        try:
+            db.session.delete(rule)
+            db.session.commit()
+            CommonModel.update_last_modif(case.id)
+            flowintel_log("audit", 200, "Rulezet rule removed", User=current_user.email, CaseId=cid, RuleId=rule.id)
+            return {"message": "Rule removed", "toast_class": "success-subtle"}, 200
+        except Exception:
+            db.session.rollback()
+            return {"message": "Error removing rule", "toast_class": "danger-subtle"}, 400
+
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 
