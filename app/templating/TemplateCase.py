@@ -267,7 +267,8 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
             owner_org_id=user.org_id,
             nb_tasks=len(case_tasks),
             notes=case_template.notes,
-            privileged_case=privileged_case
+            privileged_case=privileged_case,
+            time_required=case_template.time_required
         )
         db.session.add(case)
         db.session.commit()
