@@ -137,19 +137,36 @@
 
 <script>
 	$(document).ready(function() {
-		document.getElementById("home_link").addEventListener('click', function(){
-			localStorage.setItem("activePage", "");
-		})
-		document.querySelectorAll('.nav-item .nav-link, .collapse-item').forEach(link => {
-			link.addEventListener('click', function() {
-				localStorage.setItem("activePage", this.getAttribute("href"));
-			});
-		});
+		function normalizePath(path) {
+			if (!path) return "";
+			const normalized = path.replace(/\/+$/, "");
+			return normalized || "/";
+		}
 
-		const activePage = localStorage.getItem("activePage");
-		// When viewing a case (e.g. /case/2), highlight "Cases" in the sidebar
-		const currentPath = window.location.pathname;
-		const effectivePage = (currentPath.startsWith('/case/') && /^\/case\/\d/.test(currentPath)) ? '/case/' : activePage;
+		function getSidebarPathFromCurrentUrl() {
+			const currentPath = normalizePath(window.location.pathname);
+			const allLinks = Array.from(document.querySelectorAll('.nav-item .nav-link[href], .collapse-item[href]'))
+				.filter((link) => {
+					const href = link.getAttribute('href');
+					return href && href.startsWith('/');
+				});
+
+			const exactMatch = allLinks.find((link) => normalizePath(link.getAttribute('href')) === currentPath);
+			if (exactMatch) {
+				return exactMatch.getAttribute('href');
+			}
+
+			const prefixMatches = allLinks
+				.filter((link) => {
+					const linkPath = normalizePath(link.getAttribute('href'));
+					return currentPath.startsWith(linkPath + '/');
+				})
+				.sort((a, b) => b.getAttribute('href').length - a.getAttribute('href').length);
+
+			return prefixMatches.length ? prefixMatches[0].getAttribute('href') : null;
+		}
+
+		const effectivePage = getSidebarPathFromCurrentUrl();
 		if (!effectivePage) return;
 
 		// Find the matching link
