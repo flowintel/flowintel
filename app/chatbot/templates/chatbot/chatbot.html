@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h3><i class="fas fa-robot me-2"></i>Chatbot</h3>
+        <small class="text-muted">AI-powered assistant for Flowintel</small>
+        <hr>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10 col-12">
+        <div class="card shadow mb-4">
+            <div class="card-body p-0 d-flex flex-column" style="height: 70vh;">
+                <!-- Chat messages area -->
+                <div id="chat-messages" class="flex-grow-1 p-3" style="overflow-y: auto;">
+                    <div class="text-center text-muted my-5" id="chat-placeholder">
+                        <i class="fas fa-comments fa-3x mb-3"></i>
+                        <p>Start a conversation with the assistant</p>
+                    </div>
+                </div>
+
+                <!-- Input area -->
+                <div class="border-top p-3">
+                    <form id="chat-form" class="d-flex gap-2">
+                        <input type="text" id="chat-input" class="form-control"
+                               placeholder="Type your message..." autocomplete="off" maxlength="4000">
+                        <button type="submit" class="btn btn-primary" id="send-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+const chatMessages = document.getElementById('chat-messages');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const sendBtn = document.getElementById('send-btn');
+const placeholder = document.getElementById('chat-placeholder');
+const csrfToken = document.getElementById('csrf_token')?.value || '';
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function addMessage(content, isUser) {
+    if (placeholder) placeholder.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `d-flex mb-3 ${isUser ? 'justify-content-end' : 'justify-content-start'}`;
+
+    const bubble = document.createElement('div');
+    bubble.className = `p-3 rounded-3 ${isUser ? 'bg-primary text-white' : 'bg-light text-dark'}`;
+    bubble.style.maxWidth = '75%';
+    bubble.style.whiteSpace = 'pre-wrap';
+    bubble.style.wordBreak = 'break-word';
+    bubble.textContent = content;
+
+    wrapper.appendChild(bubble);
+    chatMessages.appendChild(wrapper);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addLoading() {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'd-flex mb-3 justify-content-start';
+    wrapper.id = 'loading-indicator';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'p-3 rounded-3 bg-light text-dark';
+    bubble.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Thinking...';
+
+    wrapper.appendChild(bubble);
+    chatMessages.appendChild(wrapper);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function removeLoading() {
+    const el = document.getElementById('loading-indicator');
+    if (el) el.remove();
+}
+
+chatForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    addMessage(message, true);
+    chatInput.value = '';
+    sendBtn.disabled = true;
+    chatInput.disabled = true;
+    addLoading();
+
+    try {
+        const resp = await fetch('/chatbot/ask', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ message: message })
+        });
+        const data = await resp.json();
+        removeLoading();
+
+        if (resp.ok) {
+            addMessage(data.response, false);
+        } else {
+            addMessage(data.error || 'An error occurred', false);
+        }
+    } catch (err) {
+        removeLoading();
+        addMessage('Failed to reach the server. Please try again.', false);
+    } finally {
+        sendBtn.disabled = false;
+        chatInput.disabled = false;
+        chatInput.focus();
+    }
+});
+</script>
+{% endblock %}
