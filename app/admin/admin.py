@@ -200,13 +200,13 @@ def get_users_page():
     from conf.config import Config
     
     page = request.args.get('page', 1, type=int)
-    lastname = request.args.get('lastname', None, type=str)
+    name = request.args.get('name', None, type=str)
     
     org_id = None
     if Config.LIMIT_USER_VIEW_TO_ORG and not current_user.is_admin():
         org_id = current_user.org_id
     
-    users = AdminModel.get_users_page(page, org_id=org_id, lastname=lastname)
+    users = AdminModel.get_users_page(page, org_id=org_id, name=name)
     if users:
         users_list = list()
         for user in users:

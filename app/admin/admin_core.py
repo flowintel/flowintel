@@ -16,16 +16,17 @@ def get_users_by_org(org_id):
     """Return all users filtered by organisation"""
     return User.query.filter_by(org_id=org_id).all()
 
-def get_users_page(page, org_id=None, lastname=None):
-    """Return users by page, optionally filtered by org_id and/or partial lastname match.
+def get_users_page(page, org_id=None, name=None):
+    """Return users by page, optionally filtered by org_id and/or partial name match.
 
-    - `lastname` performs a case-insensitive partial match against `User.last_name`.
+    - `name` performs a case-insensitive partial match against `User.first_name` or `User.last_name`.
     """
     query = User.query
     if org_id is not None:
         query = query.filter_by(org_id=org_id)
-    if lastname:
-        query = query.filter(User.last_name.ilike(f"%{lastname}%"))
+    if name:
+        query = query.filter(db.or_(User.first_name.ilike(f"%{name}%"), User.last_name.ilike(f"%{name}%")))
+    query = query.order_by(db.func.lower(User.first_name), db.func.lower(User.last_name))
     return query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_all_roles():
@@ -41,6 +42,7 @@ def get_orgs_page(page, name=None):
     query = Org.query
     if name:
         query = query.filter(Org.name.ilike(f"%{name}%"))
+    query = query.order_by(db.func.lower(Org.name))
     return query.paginate(page=page, per_page=20, max_per_page=50)
 
 def get_roles_page(page, name=None):

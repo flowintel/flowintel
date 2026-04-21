@@ -17,7 +17,7 @@
             <!-- Search bar -->
             <div class="col input-group w-auto">
                 <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Users by lastname' />
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Users by name' />
             </div>
             <!-- Search bar -->
         </div>
@@ -163,7 +163,7 @@
                     users_list.value = null
                     let url = 'get_users_page?page=' + page
                     if (search_query.value) {
-                        url += '&lastname=' + encodeURIComponent(search_query.value)
+                        url += '&name=' + encodeURIComponent(search_query.value)
                     }
                     const res = await fetch(url)
                     let loc = await res.json()
