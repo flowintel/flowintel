@@ -25,6 +25,7 @@ class User(UserMixin, db.Model):
     org_id = db.Column(db.Integer, db.ForeignKey('org.id', ondelete="CASCADE"))
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     auth_provider = db.Column(db.String(32), default='local', nullable=False, server_default='local')
+    last_login = db.Column(db.DateTime, index=True)
 
     def is_admin(self):
         r = Role.query.get(self.role_id)
@@ -580,6 +581,13 @@ class Task_User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer)
+
+
+class Login_Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, index=True)
+    login_date = db.Column(db.DateTime, index=True)
+
 
 class Case_Org(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

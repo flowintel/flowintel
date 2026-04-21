@@ -14,6 +14,7 @@ from sqlalchemy import or_
 from ..utils import misp_object_helper
 from  ..connectors import connectors_core as ConnectorModel
 from ..custom_tags import custom_tags_core as CustomModel
+from ..case.common_core import check_user_in_private_cases
 
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 
@@ -328,6 +329,21 @@ def chart_dict_constructor(input_dict):
         })
     return loc_dict
 
+def days_cutoff(days):
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        return None
+    if days <= 0:
+        return None
+    return datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
+
+
+def filter_cases_by_date(cases, cutoff):
+    if cutoff is None:
+        return cases
+    return [c for c in cases if c.creation_date and c.creation_date >= cutoff]
+
 def stats_core(cases):
     cases_opened_month = {month: 0 for month in calendar.month_name if month}
     cases_opened_year = {}
@@ -430,8 +446,9 @@ def stats_core(cases):
             "tasks-elapsed-time": loc_tasks_elapsed_time, "tasks-per-case": loc_tasks_per_case,
             "total_opened_tasks": total_opened_tasks, "total_closed_tasks": total_closed_tasks}
 
-def get_case_by_tags(current_user):
+def get_case_by_tags(current_user, cutoff=None):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
+    cases = filter_cases_by_date(cases, cutoff)
     dict_case_tag = {}
     dict_case_cluster_tag = {}
     dict_case_custom_tag = {}
@@ -486,8 +503,9 @@ def get_case_by_tags(current_user):
             "task_clusters": chart_dict_constructor(dict_task_cluster_tag)}
 
 
-def get_tag_galaxy_top_stats(current_user, limit=10):
+def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
+    cases = filter_cases_by_date(cases, cutoff)
 
     case_tag_map = {}
     case_cluster_map = {}
@@ -863,3 +881,125 @@ def get_community_stats():
         "cases_per_org": [{"org_name": row.org_name, "count": row.count} for row in cases_per_org],
         "tasks_per_user": [{"user_name": f"{row.first_name} {row.last_name}", "count": row.count} for row in tasks_per_user]
     }
+
+
+############################
+# Operational task widgets #
+############################
+
+def get_overdue_tasks(current_user, limit=20):
+    """Open tasks past their deadline for cases the user can see."""
+    now = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
+    cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
+        .where(Case_Org.org_id==current_user.org_id).all()
+    cases = check_user_in_private_cases(cases, current_user)
+    case_ids = [c.id for c in cases]
+    if not case_ids:
+        return {"count": 0, "tasks": []}
+
+    q = Task.query.filter(Task.case_id.in_(case_ids))\
+        .filter(Task.completed == False)\
+        .filter(Task.deadline != None)\
+        .filter(Task.deadline < now)\
+        .order_by(Task.deadline.asc())
+    total = q.count()
+    rows = q.limit(limit).all()
+    return {
+        "count": total,
+        "tasks": [{
+            "id": t.id,
+            "case_id": t.case_id,
+            "title": t.title,
+            "deadline": t.deadline.strftime(DATETIME_FORMAT_FULL),
+        } for t in rows],
+    }
+
+
+def get_unassigned_tasks(current_user, limit=20):
+    """Open tasks with no assignee for cases the user can see."""
+    cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
+        .where(Case_Org.org_id==current_user.org_id).all()
+    cases = check_user_in_private_cases(cases, current_user)
+    case_ids = [c.id for c in cases]
+    if not case_ids:
+        return {"count": 0, "tasks": []}
+
+    assigned_ids = db.session.query(Task_User.task_id).distinct().subquery()
+    q = Task.query.filter(Task.case_id.in_(case_ids))\
+        .filter(Task.completed == False)\
+        .filter(~Task.id.in_(assigned_ids))\
+        .order_by(Task.creation_date.desc())
+    total = q.count()
+    rows = q.limit(limit).all()
+    return {
+        "count": total,
+        "tasks": [{
+            "id": t.id,
+            "case_id": t.case_id,
+            "title": t.title,
+            "creation_date": t.creation_date.strftime(DATETIME_FORMAT_FULL) if t.creation_date else "",
+        } for t in rows],
+    }
+
+
+###############
+# Admin extra #
+###############
+
+def get_admin_extra_stats(days=90):
+    """Notification backlog + login activity per day for the last `days` days."""
+    notif_backlog = Notification.query.filter_by(is_read=False).count()
+
+    cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
+    rows = db.session.query(
+        db.func.date(Login_Event.login_date).label('day'),
+        db.func.count(Login_Event.id).label('count'),
+    ).filter(Login_Event.login_date >= cutoff)\
+     .group_by('day')\
+     .order_by('day')\
+     .all()
+    activity = [{"calendar": str(r.day), "count": r.count} for r in rows]
+
+    return {
+        "notification_backlog": notif_backlog,
+        "login_activity": activity,
+        "login_activity_days": days,
+    }
+
+
+##################
+# Inactive users #
+##################
+
+def get_inactive_users(days=90):
+    """Users who never logged in or whose last login is older than `days`."""
+    cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
+    users = User.query.filter(or_(User.last_login == None, User.last_login < cutoff))\
+        .order_by(User.last_login.is_(None).desc(), User.last_login.asc()).all()
+    return {
+        "days": days,
+        "count": len(users),
+        "users": [{
+            "id": u.id,
+            "name": f"{u.first_name} {u.last_name}",
+            "email": u.email,
+            "last_login": u.last_login.strftime(DATETIME_FORMAT_FULL) if u.last_login else None,
+        } for u in users],
+    }
+
+
+def get_recent_logins(limit=20):
+    """Most recent login events with user info."""
+    rows = db.session.query(Login_Event, User)\
+        .join(User, User.id == Login_Event.user_id)\
+        .order_by(Login_Event.login_date.desc())\
+        .limit(limit).all()
+    return {
+        "logins": [{
+            "user_id": u.id,
+            "name": f"{u.first_name} {u.last_name}",
+            "email": u.email,
+            "login_date": ev.login_date.strftime(DATETIME_FORMAT_FULL) if ev.login_date else None,
+        } for ev, u in rows],
+    }
+

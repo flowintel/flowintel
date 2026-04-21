@@ -1,4 +1,5 @@
-from ..db_class.db import User, Role
+from .. import db
+from ..db_class.db import User, Role, Login_Event
 from .form import LoginForm, EditUserFrom
 from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, session, abort
 from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
@@ -13,6 +14,7 @@ from . import entra_core as EntraModel
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel
+import datetime
 import logging
 import time
 import secrets
@@ -168,6 +170,14 @@ def login():
             if user is not None and user.password_hash is not None and \
                     user.verify_password(form.password.data):
                 login_user(user, form.remember_me.data)
+                now = datetime.datetime.now(tz=datetime.timezone.utc)
+                user.last_login = now
+                db.session.add(Login_Event(user_id=user.id, login_date=now))
+                try:
+                    db.session.commit()
+                except Exception as exc:
+                    db.session.rollback()
+                    flowintel_log("audit", 500, f"Login event persistence failed: {exc}", Email=form.email.data)
                 flowintel_log("audit", 200, "Successful login", Email=form.email.data)
                 # Clear rate limit on successful login
                 client_ip = get_client_ip()
