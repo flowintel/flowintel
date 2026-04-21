@@ -1,4 +1,4 @@
-import { display_toast } from '/static/js/toaster.js'
+import { display_toast, create_message } from '/static/js/toaster.js'
 
 export default {
 	delimiters: ['[[', ']]'],
@@ -71,15 +71,15 @@ export default {
 				headers: { "X-CSRFToken": $("#csrf_token").val() },
 				method: "POST"
 			})
-			if (await res.status == 200) {
+			const loc = await res.json()
+			if (res.status == 200) {
 				task.last_modif = Date.now()
-				let loc = await res.json()
 				if (loc.note) {
 					task.notes.push(loc.note)
 					task.nb_notes += 1
 				}
 			}
-			await display_toast(res)
+			await create_message(loc.message, loc.toast_class)
 		}
 
 		return {
