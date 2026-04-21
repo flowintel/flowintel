@@ -194,6 +194,17 @@ class Config:
     GPG_PASSPHRASE = ""  # Passphrase for the key (empty = no passphrase or use gpg-agent)
 
     # =============================================================================
+    # CHATBOT (DSPy)
+    # =============================================================================
+    # Language model configuration for the AI chatbot.
+    # DSPY_LM_MODEL: model identifier (e.g. "openai/gpt-4o-mini", "ollama_chat/llama3")
+    # DSPY_LM_API_KEY: API key for the provider (leave empty for local models)
+    # DSPY_LM_API_BASE: custom API base URL (e.g. "http://localhost:11434" for Ollama)
+    DSPY_LM_MODEL = os.getenv('DSPY_LM_MODEL', 'openai/gpt-4o-mini')
+    DSPY_LM_API_KEY = os.getenv('DSPY_LM_API_KEY', '')
+    DSPY_LM_API_BASE = os.getenv('DSPY_LM_API_BASE', 'http://localhost:11434')
+
+    # =============================================================================
     # CENTRAL TEMPLATE REPOSITORY
     # =============================================================================
     # Central template repository
