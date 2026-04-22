@@ -456,6 +456,12 @@ def case_misp_event():
         res = ToolsModel.check_case_misp_event(request.json, current_user)
         if not type(res) == str:
             case = ToolsModel.create_case_misp_event(request.json, current_user)
+            flowintel_log(
+                "audit", 200, "Case created from MISP event",
+                User=current_user.email, CaseId=case.id,
+                MispInstanceId=request.json.get("misp_instance_id"),
+                MispEventId=request.json.get("misp_event_id"),
+            )
             return {"case_id": case.id}, 200
         else:
             return {"message": res, "toast_class": "warning-subtle"}, 400
@@ -480,7 +486,7 @@ def check_misp_event():
     misp_event_id = request.args.get('misp_event_id', 1, type=str)
     res = ToolsModel.check_event(misp_event_id, misp_instance_id, current_user)
     if not type(res) == str:
-        return {"is_connection_okay": True, "event_info": res.info}
+        return {"is_connection_okay": True, "event_details": ToolsModel.summarize_misp_event(res)}
     return {"is_connection_okay": False}
 
 
