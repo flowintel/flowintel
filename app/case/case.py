@@ -521,7 +521,11 @@ def fork_case(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Fork case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Fork case: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
             flowintel_log("audit", 403, "Fork case: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
             return {"message": "Cannot fork privileged cases", 'toast_class': "danger-subtle"}, 403
@@ -548,7 +552,11 @@ def merge_case(cid, ocid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Merge case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Merge case: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
             flowintel_log("audit", 403, "Merge case: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
             return {"message": "Cannot merge privileged cases", 'toast_class': "danger-subtle"}, 403
@@ -560,7 +568,11 @@ def merge_case(cid, ocid):
         if not check_user_private_case(merging_case):
             flowintel_log("audit", 403, "Merge case: Permission denied for target case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
+        if not (CommonModel.get_present_in_case(ocid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Merge case: Org not assigned to target case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         if merging_case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
             flowintel_log("audit", 403, "Merge case: Target is a privileged case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
             return {"message": "Cannot merge into privileged cases", 'toast_class': "danger-subtle"}, 403
@@ -594,7 +606,11 @@ def create_template(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Create template from case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Create template from case: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
             flowintel_log("audit", 403, "Create template: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
             return {"message": "Cannot create template from privileged cases", 'toast_class': "danger-subtle"}, 403
@@ -817,7 +833,11 @@ def call_module_case(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Call module on case: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Call module on case: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         payload = request.get_json()
         case_instance_id = payload.get("case_task_instance_id")
         module = payload.get("module")
@@ -873,6 +893,7 @@ def modif_note(cid):
                 flowintel_log("audit", 200, "Note modified", User=current_user.email, CaseId=cid)
                 return {"message": "Note modified", "toast_class": "success-subtle"}, 200
             return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+        flowintel_log("audit", 403, "Modify note: Org not assigned to case", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
@@ -908,6 +929,11 @@ def run_computer_assistate_report(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Run computer assisted report: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Run computer assisted report: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         if not CaseModel.check_exist_task(case.uuid):
             flowintel_log("audit", 200, "Run computer assisted report", User=current_user.email, CaseId=cid)
             model = request.args.get('model') if request.args.get('model') else None
