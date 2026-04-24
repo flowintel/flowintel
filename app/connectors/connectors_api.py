@@ -5,6 +5,7 @@ from ..decorators import api_required, admin_required, misp_editor_required
 from . import connectors_core as ConnectorModel
 from . import connectors_core_api as ConnectorModelApi
 from ..utils import utils
+from ..utils.logger import flowintel_log
 
 connectors_ns = Namespace("connectors", description="Endpoints to manage connectors")
 
@@ -114,10 +115,15 @@ class EditInstance(Resource):
     })
     def post(self, cid, iid):
         if ConnectorModel.get_connector(cid):
+            current_user = utils.get_user_from_api(request.headers)
+            if not (ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=iid) or current_user.is_admin()):
+                flowintel_log("audit", 403, "API: Edit connector instance denied: not owner", User=current_user.email, ConnectorId=cid, InstanceId=iid)
+                return {"message": "Permission denied"}, 403
             if request.json:
                 verif_dict = ConnectorModelApi.verif_edit_instance(request.json, iid)
                 if not "message" in verif_dict:
                     ConnectorModel.edit_connector_instance_core(iid, verif_dict)
+                    flowintel_log("audit", 200, "API: Connector instance edited", User=current_user.email, ConnectorId=cid, InstanceId=iid)
                     return {"message": "Instance edited", "connector_id": int(iid)}, 200
                 return verif_dict, 400
             return {"message": "Please give data"}, 400
@@ -149,9 +155,14 @@ class DeleteInstanceConnector(Resource):
     def get(self, cid, iid):
         if ConnectorModel.get_connector(cid):
             if ConnectorModel.get_instance(iid):
+                current_user = utils.get_user_from_api(request.headers)
+                if not (ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=iid) or current_user.is_admin()):
+                    flowintel_log("audit", 403, "API: Delete connector instance denied: not owner", User=current_user.email, ConnectorId=cid, InstanceId=iid)
+                    return {"message": "Permission denied"}, 403
                 if ConnectorModel.instance_has_links(iid):
                     return {"message":"Instance is linked to a case or task"}, 400
                 if ConnectorModel.delete_connector_instance_core(iid):
+                    flowintel_log("audit", 200, "API: Connector instance deleted", User=current_user.email, ConnectorId=cid, InstanceId=iid)
                     return {"message":"Instance deleted"}, 200
                 return {"message":"Error connector deleted"}, 400
             return {"message":"Instance not found"}, 404
