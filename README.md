@@ -1,6 +1,6 @@
 <img title="" src="./doc/images/flowintel_logo.png" alt="" width="149" data-align="center">
 
-Flowintel is an open-source platform designed to assist analysts in organizing their cases and tasks. It features a range of tools and functionalities to enhance workflow efficiency. 
+Flowintel is an open-source platform designed to assist analysts in organizing their cases and tasks. It features a range of tools and functionalities to enhance workflow efficiency.
 
 ## Features
 
@@ -28,42 +28,87 @@ Flowintel is an open-source platform designed to assist analysts in organizing t
 
 ## Quick start
 
-Copy the **default configuration**:
+### Prerequisites
 
-```
+- Python 3.12+
+- PostgreSQL 17+
+- Valkey (or Redis)
+- Bun (for frontend build)
+- uv (for Python dependency management)
+
+### Installation
+
+1. **Copy the default configuration**:
+
+```bash
 cd flowintel
 cp conf/config.py.default conf/config.py
 cp conf/config_module.py.default conf/config_module.py
 ```
 
-Change the **configuration** in  `conf/config.py`
+2. **Configure** the application in `conf/config.py`
 
-Run the **installation** script `./install.sh`
+3. **Run the verification and installation script**:
 
-**Start** the application with `./launch.sh -l`
+```bash
+./launch.sh
+```
 
-### MacOS
-In `/bin` there's a script for installation and for launching
+This will:
+- Verify all dependencies
+- Generate lock files (uv.lock, bun.lock)
+- Install Python and Node.js dependencies
+- Launch the application
 
-#### Account
+### Alternative: Using launch.sh (legacy)
+
+```bash
+./install.sh
+./launch.sh -l
+```
+
+### Account
 
 - email: `admin@admin.admin`
-
 - password: `admin`
+
+## Available Commands
+
+### launch.sh
+
+```bash
+./launch.sh verify    # Verify environment and dependencies
+./launch.sh migrate   # Generate uv.lock and bun.lock
+./launch.sh install  # Install dependencies
+./launch.sh clean    # Remove temporary files
+./launch.sh launch   # Launch application
+./launch.sh          # Full: verify + install + launch (default)
+```
+
+### launch.sh
+
+```bash
+./launch.sh -l               # Development launch
+./launch.sh -ld              # Docker launch
+./launch.sh -i               # Initialize database
+./launch.sh -r               # Recreate database
+./launch.sh -p               # Production launch
+./launch.sh -t               # Run tests
+```
 
 ## Documentation
 
 A more detailed documentation can be found here: [https://flowintel.github.io/flowintel-doc](https://flowintel.github.io/flowintel-doc)
 
-There is also a recorded training [available on YouTube](https://www.youtube.com/watch?v=Dx03GqW1SN0) 
+There is also a recorded training [available on YouTube](https://www.youtube.com/watch?v=Dx03GqW1SN0)
 
-## Using vite
+## Building Assets
 
 To build assets using vite:
 
 ```bash
 cd app/assets
-npm run build:static
+bun run build:static
 ```
 
 ## Adding Custom Taxonomies/Galaxies

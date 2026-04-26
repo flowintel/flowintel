@@ -64,8 +64,7 @@ chmod +x $HOME/node_modules/.bin/mmdc
 
 # initialize flowintel
 
-# install python requirements
-# Use Python 3.12 if available (required for misp-modules compatibility)
+# install python requirements (using uv for better dependency management)
 if command -v python3.12 &> /dev/null; then
     PYTHON_CMD=python3.12
 elif command -v python3.11 &> /dev/null; then
@@ -78,9 +77,18 @@ fi
 
 $PYTHON_CMD -m venv .venv
 . .venv/bin/activate
-pip install --upgrade pip setuptools wheel
-pip install -r requirements.txt
+pip install --upgrade uv
+uv pip install -r requirements.txt
+
+# install node dependencies (using bun)
+if command -v bun &> /dev/null; then
+    cd app/assets
+    bun install
+    cd ../..
+fi
+
 # init submodules
 git submodule init && git submodule update
-# make launch script executable
+# make launch scripts executable
+chmod +x launch.sh
 ./launch.sh -i

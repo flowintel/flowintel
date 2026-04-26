@@ -11,8 +11,8 @@ dev = [
     "pytest",
 ]
 
-[tool.uv]
-resolution-mode = "max"
+[tool.uv.sources]
+# No custom sources for now
 
 [tool.pytest.ini_options]
 filterwarnings = [
