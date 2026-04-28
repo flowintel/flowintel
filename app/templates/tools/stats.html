@@ -11,10 +11,35 @@
 {%endblock%}
 
 {% block content %}
+{% macro chart_card(title, canvas_id, height='45vh') -%}
+<div class="d-flex align-items-center justify-content-between mt-4 mb-2">
+    <h3 class="mb-0">{{ title }}</h3>
+    <button type="button" class="btn btn-sm btn-outline-secondary" @click="download_csv('{{ canvas_id }}', '{{ canvas_id }}.csv')" title="Export as CSV">
+        <i class="fa-solid fa-download me-1"></i>CSV
+    </button>
+</div>
+<div class="card card-body p-4 mb-4">
+    <div class="chart-wrapper" style="position: relative; height:{{ height }}"><canvas id="{{ canvas_id }}"></canvas></div>
+</div>
+{%- endmacro %}
+
 <div class="case-core-style" style="border-radius: 0">
     <h5 class="mb-0"><i class="fa-solid fa-chart-line me-2"></i>Dashboard</h5>
 </div>
 <hr class="fading-line-2 mb-4 mt-4">
+
+<div class="d-flex align-items-center justify-content-end mb-3 flex-wrap gap-2">
+    <span class="small text-muted me-auto"><i class="fa-regular fa-clock me-1"></i>Generated on [[ generated_on ]]</span>
+    <label class="me-2 small text-muted mb-0" for="period-filter">Period:</label>
+    <select id="period-filter" class="form-select form-select-sm w-auto" v-model="period_days" @change="reload_all">
+        <option value="">All time</option>
+        <option value="1">Last 24 hours</option>
+        <option value="7">Last week</option>
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="365">Last year</option>
+    </select>
+</div>
 
 <ul class="nav nav-tabs" style="margin-bottom: 10px;">
     <li class="nav-item">
@@ -24,7 +49,7 @@
         <button class="nav-link" id="tab-task" @click="active_tab('task')">Tasks</button>
     </li>
     <li class="nav-item">
-        <button class="nav-link" id="tab-tags" @click="active_tab('tags')">Tags &amp; Galaxies</button>
+        <button class="nav-link" id="tab-tags" @click="active_tab('tags')">Context elements</button>
     </li>
     <li class="nav-item">
         {% if current_user.is_admin() %}
@@ -44,340 +69,353 @@
 
 <div class="case-core-style">
 <template v-if="main_tab == 'case'">
-    <i>Cases where the org is in</i>
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh"><canvas id="cases-month"></canvas></div>
-    </div>
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh"><canvas id="cases-year"></canvas></div>
-    </div>
+    <p class="mb-3"><i>Cases where <strong>{{ org_name|default('your organisation', true) }}</strong> is participating in</i></p>
 
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh"><canvas id="cases-elapsed-time"></canvas></div>
-    </div>
-
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:80vh">
-            <canvas id="case-custom-tags"></canvas>
-        </div>
-    </div>
-    <div class="card card-body p-4 m-5">
-        <div>
-            <canvas id="case-tags"></canvas>
-        </div>
-    </div>
-    <div class="card card-body p-4 m-5">
-        <div style="height:80vh">
-            <canvas id="case-clusters"></canvas>
-        </div>
-    </div>
-
-    <div class="card card-body">
-        <div class="d-flex w-100 justify-content-evenly">
-            <div>
-                <div><h3><u>Total Cases</u></h3></div>
-                <div>
-                    <h6>Open: [[case_stat.total_opened_cases]]</h6>
-                </div>
-                <div>
-                    <h6>Closed: [[case_stat.total_closed_cases]]</h6>
-                </div>
+    <div class="card card-body mb-4">
+        <div class="row text-center">
+            <div class="col">
+                <h6 class="text-muted mb-1">Open cases</h6>
+                <h3 class="mb-0">[[case_stat.total_opened_cases]]</h3>
+            </div>
+            <div class="col">
+                <h6 class="text-muted mb-1">Closed cases</h6>
+                <h3 class="mb-0">[[case_stat.total_closed_cases]]</h3>
             </div>
         </div>
     </div>
+
+    {{ chart_card('Cases per month', 'cases-month') }}
+    {{ chart_card('Cases per year', 'cases-year') }}
+    {{ chart_card('Elapsed time', 'cases-elapsed-time') }}
+    {{ chart_card('Cases per custom tag', 'case-custom-tags', '50vh') }}
+    {{ chart_card('Cases per taxonomy', 'case-tags') }}
+    {{ chart_card('Cases per galaxy cluster', 'case-clusters', '50vh') }}
 </template>
+
 <template v-else-if="main_tab == 'task'">
-    <i>Tasks where the org is in</i>
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh"><canvas id="tasks-month"></canvas></div>
-    </div>
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh"><canvas id="tasks-year"></canvas></div>
-    </div>
+    <p class="mb-3"><i>Tasks where <strong>{{ org_name|default('your organisation', true) }}</strong> is participating in</i></p>
 
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh"><canvas id="tasks-elapsed-time"></canvas></div>
-    </div>
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh"><canvas id="tasks-per-case"></canvas></div>
-    </div>
-
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:80vh">
-            <canvas id="task-custom-tags"></canvas>
-        </div>
-    </div>
-    <div class="card card-body p-4 m-5">
-        <div>
-            <canvas id="task-tags"></canvas>
-        </div>
-    </div>
-    <div class="card card-body p-4 m-5">
-        <div style="height:80vh">
-            <canvas id="task-clusters"></canvas>
-        </div>
-    </div>
-
-    <div class="card card-body">
-        <div class="d-flex w-100 justify-content-evenly">
-            <div>
-                <div><h3><u>Total Tasks</u></h3></div>
-                <div>
-                    <h6>Open: [[case_stat.total_opened_tasks]]</h6>
-                </div>
-                <div>
-                    <h6>Closed: [[case_stat.total_closed_tasks]]</h6>
-                </div>
+    <div class="card card-body mb-4">
+        <div class="row text-center">
+            <div class="col">
+                <h6 class="text-muted mb-1">Open tasks</h6>
+                <h3 class="mb-0">[[case_stat.total_opened_tasks]]</h3>
+            </div>
+            <div class="col">
+                <h6 class="text-muted mb-1">Closed tasks</h6>
+                <h3 class="mb-0">[[case_stat.total_closed_tasks]]</h3>
             </div>
         </div>
     </div>
-</template>
-<template v-else-if="main_tab == 'admin'">
-    <h3>Months</h3>
-    <div class="row card-stats">
-        <div class="col">
-            <canvas id="admin-cases-month"></canvas>
-        </div>
-        <div class="col">
-            <canvas id="admin-tasks-month"></canvas>
-        </div>
-    </div>
-
-    <h3 class="mt-3">Years</h3>
-    <div class="row card-stats">
-        <div class="col">
-            <canvas id="admin-cases-year"></canvas>
-        </div>
-        <div class="col">
-            <canvas id="admin-tasks-year"></canvas>
-        </div>
-    </div>
-
-    <h3 class="mt-3">Elapsed time</h3>
-    <div class="row card-stats">
-        <div class="col">
-            <canvas id="admin-cases-elapsed-time"></canvas>
-        </div>
-        <div class="col">
-            <canvas id="admin-tasks-elapsed-time"></canvas>
-        </div>
-    </div>
-
-    <h3 class="mt-3">Tasks per case</h3>
-    <div class="card card-body p-4 m-5">
-        <canvas id="admin-tasks-per-case"></canvas>
-    </div>
-
-
-    <div class="card card-body">
-        <div class="row">
-            <div class="d-flex w-100 justify-content-evenly col">
-                <div>
-                    <div><h3><u>Total Cases</u></h3></div>
-                    <div>
-                        <h6>Open: [[admin_stat.total_opened_cases]]</h6>
-                    </div>
-                    <div>
-                        <h6>Closed: [[admin_stat.total_closed_cases]]</h6>
-                    </div>
-                </div>
-            </div>
-            <div class="d-flex w-100 justify-content-evenly col">
-                <div>
-                    <div><h3><u>Total Tasks</u></h3></div>
-                    <div>
-                        <h6>Open: [[admin_stat.total_opened_tasks]]</h6>
-                    </div>
-                    <div>
-                        <h6>Closed: [[admin_stat.total_closed_tasks]]</h6>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-</template>
-<template v-else-if="main_tab == 'tags'">
 
     <div class="row mb-4">
-        <div class="col-12 col-xl-6">
-            <div class="card card-body">
-                <h5><i class="fa-solid fa-tag me-2"></i>Top tags on Cases</h5>
-                <table class="table table-hover mb-0">
-                    <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
-                    <tbody>
-                        <tr v-for="(row, idx) in tag_stats.case_tags" :key="'ct-'+idx"
-                            style="cursor:pointer"
-                            :class="selected_case_tag === row ? 'table-active' : ''"
-                            @click="selected_case_tag = (selected_case_tag === row ? null : row)">
-                            <td>[[ idx + 1 ]]</td>
-                            <td>[[ row.tag ]]</td>
-                            <td><span class="badge text-bg-primary">[[ row.count ]]</span></td>
-                        </tr>
-                        <tr v-if="!tag_stats.case_tags || tag_stats.case_tags.length === 0">
-                            <td colspan="3" class="text-muted">No tags found</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div v-if="selected_case_tag" class="mt-3 border-top pt-2">
-                    <small class="text-muted">Cases tagged <strong>[[ selected_case_tag.tag ]]</strong></small>
-                    <ul class="list-unstyled mt-1 mb-0">
-                        <li v-for="c in selected_case_tag.cases" :key="c.id">
-                            <a :href="'/case/' + c.id">[[ c.title ]]</a>
+        <div class="col-12 col-xl-6 mb-3 mb-xl-0">
+            <div class="card card-body h-100">
+                <h6 class="text-muted mb-1"><i class="fa-solid fa-clock-rotate-left me-1"></i>Overdue tasks</h6>
+                <h3 class="mb-2">[[ overdue.count ]]</h3>
+                <div v-if="overdue.tasks && overdue.tasks.length" class="small">
+                    <ul class="list-unstyled mb-0">
+                        <li v-for="t in overdue.tasks" :key="'ov-'+t.id">
+                            <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
+                            <span class="text-muted ms-1">— due [[ t.deadline ]]</span>
                         </li>
                     </ul>
+                    <p v-if="overdue.count > overdue.tasks.length" class="text-muted small mb-0 mt-1">
+                        Showing [[ overdue.tasks.length ]] of [[ overdue.count ]]
+                    </p>
                 </div>
+                <p v-else class="text-muted small mb-0">No overdue tasks.</p>
             </div>
         </div>
-
         <div class="col-12 col-xl-6">
-            <div class="card card-body">
-                <h5><i class="fa-solid fa-tag me-2"></i>Top tags on Tasks</h5>
-                <table class="table table-hover mb-0">
-                    <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
-                    <tbody>
-                        <tr v-for="(row, idx) in tag_stats.task_tags" :key="'tt-'+idx"
-                            style="cursor:pointer"
-                            :class="selected_task_tag === row ? 'table-active' : ''"
-                            @click="selected_task_tag = (selected_task_tag === row ? null : row)">
-                            <td>[[ idx + 1 ]]</td>
-                            <td>[[ row.tag ]]</td>
-                            <td><span class="badge text-bg-success">[[ row.count ]]</span></td>
-                        </tr>
-                        <tr v-if="!tag_stats.task_tags || tag_stats.task_tags.length === 0">
-                            <td colspan="3" class="text-muted">No tags found</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div v-if="selected_task_tag" class="mt-3 border-top pt-2">
-                    <small class="text-muted">Tasks tagged <strong>[[ selected_task_tag.tag ]]</strong></small>
-                    <ul class="list-unstyled mt-1 mb-0">
-                        <li v-for="t in selected_task_tag.tasks" :key="t.id">
+            <div class="card card-body h-100">
+                <h6 class="text-muted mb-1"><i class="fa-solid fa-user-slash me-1"></i>Tasks without assignee</h6>
+                <h3 class="mb-2">[[ unassigned.count ]]</h3>
+                <div v-if="unassigned.tasks && unassigned.tasks.length" class="small">
+                    <ul class="list-unstyled mb-0">
+                        <li v-for="t in unassigned.tasks" :key="'un-'+t.id">
                             <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
                         </li>
                     </ul>
+                    <p v-if="unassigned.count > unassigned.tasks.length" class="text-muted small mb-0 mt-1">
+                        Showing [[ unassigned.tasks.length ]] of [[ unassigned.count ]]
+                    </p>
                 </div>
+                <p v-else class="text-muted small mb-0">All open tasks have an assignee.</p>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12 col-xl-6">
-            <div class="card card-body">
-                <h5><i class="fa-solid fa-spider me-2"></i>Top galaxy clusters on Cases</h5>
-                <table class="table table-hover mb-0">
-                    <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
-                    <tbody>
-                        <tr v-for="(row, idx) in tag_stats.case_clusters" :key="'cc-'+idx"
-                            style="cursor:pointer"
-                            :class="selected_case_cluster === row ? 'table-active' : ''"
-                            @click="selected_case_cluster = (selected_case_cluster === row ? null : row)">
-                            <td>[[ idx + 1 ]]</td>
-                            <td>
-                                <span :title="row.tag">[[ row.name || row.tag ]]</span>
-                                <small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small>
-                            </td>
-                            <td><span class="badge text-bg-warning text-dark">[[ row.count ]]</span></td>
-                        </tr>
-                        <tr v-if="!tag_stats.case_clusters || tag_stats.case_clusters.length === 0">
-                            <td colspan="3" class="text-muted">No galaxy clusters found</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div v-if="selected_case_cluster" class="mt-3 border-top pt-2">
-                    <small class="text-muted">Cases with cluster <strong>[[ selected_case_cluster.name || selected_case_cluster.tag ]]</strong></small>
-                    <ul class="list-unstyled mt-1 mb-0">
-                        <li v-for="c in selected_case_cluster.cases" :key="c.id">
-                            <a :href="'/case/' + c.id">[[ c.title ]]</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-xl-6">
-            <div class="card card-body">
-                <h5><i class="fa-solid fa-spider me-2"></i>Top galaxy clusters on Tasks</h5>
-                <table class="table table-hover mb-0">
-                    <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
-                    <tbody>
-                        <tr v-for="(row, idx) in tag_stats.task_clusters" :key="'tc-'+idx"
-                            style="cursor:pointer"
-                            :class="selected_task_cluster === row ? 'table-active' : ''"
-                            @click="selected_task_cluster = (selected_task_cluster === row ? null : row)">
-                            <td>[[ idx + 1 ]]</td>
-                            <td>
-                                <span :title="row.tag">[[ row.name || row.tag ]]</span>
-                                <small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small>
-                            </td>
-                            <td><span class="badge text-bg-info text-dark">[[ row.count ]]</span></td>
-                        </tr>
-                        <tr v-if="!tag_stats.task_clusters || tag_stats.task_clusters.length === 0">
-                            <td colspan="3" class="text-muted">No galaxy clusters found</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div v-if="selected_task_cluster" class="mt-3 border-top pt-2">
-                    <small class="text-muted">Tasks with cluster <strong>[[ selected_task_cluster.name || selected_task_cluster.tag ]]</strong></small>
-                    <ul class="list-unstyled mt-1 mb-0">
-                        <li v-for="t in selected_task_cluster.tasks" :key="t.id">
-                            <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    {{ chart_card('Tasks per month', 'tasks-month') }}
+    {{ chart_card('Tasks per year', 'tasks-year') }}
+    {{ chart_card('Elapsed time', 'tasks-elapsed-time') }}
+    {{ chart_card('Tasks per case', 'tasks-per-case') }}
+    {{ chart_card('Tasks per custom tag', 'task-custom-tags', '50vh') }}
+    {{ chart_card('Tasks per taxonomy', 'task-tags') }}
+    {{ chart_card('Tasks per galaxy cluster', 'task-clusters', '50vh') }}
 </template>
+
+<template v-else-if="main_tab == 'tags'">
+    <p class="mb-3"><i>Top tags and galaxy clusters used in cases and tasks where <strong>{{ org_name|default('your organisation', true) }}</strong> is participating in</i></p>
+
+    <h3 class="mt-4 mb-2"><i class="fa-solid fa-tag me-2"></i>Top tags on cases</h3>
+    <div class="card card-body mb-4">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
+            <tbody>
+                <tr v-for="(row, idx) in tag_stats.case_tags" :key="'ct-'+idx"
+                    style="cursor:pointer"
+                    :class="selected_case_tag === row ? 'table-active' : ''"
+                    @click="selected_case_tag = (selected_case_tag === row ? null : row)">
+                    <td>[[ idx + 1 ]]</td>
+                    <td>[[ row.tag ]]</td>
+                    <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                </tr>
+                <tr v-if="!tag_stats.case_tags || tag_stats.case_tags.length === 0">
+                    <td colspan="3" class="text-muted">No tags found</td>
+                </tr>
+            </tbody>
+        </table>
+        <div v-if="selected_case_tag" class="mt-3 border-top pt-2">
+            <small class="text-muted">Cases tagged <strong>[[ selected_case_tag.tag ]]</strong></small>
+            <ul class="list-unstyled mt-1 mb-0">
+                <li v-for="c in selected_case_tag.cases" :key="c.id">
+                    <a :href="'/case/' + c.id">[[ c.title ]]</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <h3 class="mt-4 mb-2"><i class="fa-solid fa-tag me-2"></i>Top tags on tasks</h3>
+    <div class="card card-body mb-4">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
+            <tbody>
+                <tr v-for="(row, idx) in tag_stats.task_tags" :key="'tt-'+idx"
+                    style="cursor:pointer"
+                    :class="selected_task_tag === row ? 'table-active' : ''"
+                    @click="selected_task_tag = (selected_task_tag === row ? null : row)">
+                    <td>[[ idx + 1 ]]</td>
+                    <td>[[ row.tag ]]</td>
+                    <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                </tr>
+                <tr v-if="!tag_stats.task_tags || tag_stats.task_tags.length === 0">
+                    <td colspan="3" class="text-muted">No tags found</td>
+                </tr>
+            </tbody>
+        </table>
+        <div v-if="selected_task_tag" class="mt-3 border-top pt-2">
+            <small class="text-muted">Tasks tagged <strong>[[ selected_task_tag.tag ]]</strong></small>
+            <ul class="list-unstyled mt-1 mb-0">
+                <li v-for="t in selected_task_tag.tasks" :key="t.id">
+                    <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <h3 class="mt-4 mb-2"><i class="fa-solid fa-spider me-2"></i>Top galaxy clusters on cases</h3>
+    <div class="card card-body mb-4">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
+            <tbody>
+                <tr v-for="(row, idx) in tag_stats.case_clusters" :key="'cc-'+idx"
+                    style="cursor:pointer"
+                    :class="selected_case_cluster === row ? 'table-active' : ''"
+                    @click="selected_case_cluster = (selected_case_cluster === row ? null : row)">
+                    <td>[[ idx + 1 ]]</td>
+                    <td>
+                        <span :title="row.tag">[[ row.name || row.tag ]]</span>
+                        <small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small>
+                    </td>
+                    <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                </tr>
+                <tr v-if="!tag_stats.case_clusters || tag_stats.case_clusters.length === 0">
+                    <td colspan="3" class="text-muted">No galaxy clusters found</td>
+                </tr>
+            </tbody>
+        </table>
+        <div v-if="selected_case_cluster" class="mt-3 border-top pt-2">
+            <small class="text-muted">Cases with cluster <strong>[[ selected_case_cluster.name || selected_case_cluster.tag ]]</strong></small>
+            <ul class="list-unstyled mt-1 mb-0">
+                <li v-for="c in selected_case_cluster.cases" :key="c.id">
+                    <a :href="'/case/' + c.id">[[ c.title ]]</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <h3 class="mt-4 mb-2"><i class="fa-solid fa-spider me-2"></i>Top galaxy clusters on tasks</h3>
+    <div class="card card-body mb-4">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
+            <tbody>
+                <tr v-for="(row, idx) in tag_stats.task_clusters" :key="'tc-'+idx"
+                    style="cursor:pointer"
+                    :class="selected_task_cluster === row ? 'table-active' : ''"
+                    @click="selected_task_cluster = (selected_task_cluster === row ? null : row)">
+                    <td>[[ idx + 1 ]]</td>
+                    <td>
+                        <span :title="row.tag">[[ row.name || row.tag ]]</span>
+                        <small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small>
+                    </td>
+                    <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                </tr>
+                <tr v-if="!tag_stats.task_clusters || tag_stats.task_clusters.length === 0">
+                    <td colspan="3" class="text-muted">No galaxy clusters found</td>
+                </tr>
+            </tbody>
+        </table>
+        <div v-if="selected_task_cluster" class="mt-3 border-top pt-2">
+            <small class="text-muted">Tasks with cluster <strong>[[ selected_task_cluster.name || selected_task_cluster.tag ]]</strong></small>
+            <ul class="list-unstyled mt-1 mb-0">
+                <li v-for="t in selected_task_cluster.tasks" :key="t.id">
+                    <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</template>
+
+<template v-else-if="main_tab == 'admin'">
+    <p class="mb-3"><i>Statistics across the whole instance</i></p>
+
+    <div class="card card-body mb-4">
+        <div class="row text-center">
+            <div class="col">
+                <h6 class="text-muted mb-1">Open cases</h6>
+                <h3 class="mb-0">[[admin_stat.total_opened_cases]]</h3>
+            </div>
+            <div class="col">
+                <h6 class="text-muted mb-1">Closed cases</h6>
+                <h3 class="mb-0">[[admin_stat.total_closed_cases]]</h3>
+            </div>
+            <div class="col">
+                <h6 class="text-muted mb-1">Open tasks</h6>
+                <h3 class="mb-0">[[admin_stat.total_opened_tasks]]</h3>
+            </div>
+            <div class="col">
+                <h6 class="text-muted mb-1">Closed tasks</h6>
+                <h3 class="mb-0">[[admin_stat.total_closed_tasks]]</h3>
+            </div>
+            <div class="col">
+                <h6 class="text-muted mb-1"><i class="fa-regular fa-bell me-1"></i>Unread notifications</h6>
+                <h3 class="mb-0">[[admin_stat.notification_backlog || 0]]</h3>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="mt-4 mb-2">Cases &amp; tasks per month</h3>
+    <div class="row mb-4">
+        <div class="col-12 col-xl-6 mb-3 mb-xl-0">
+            <div class="card card-body p-4">
+                <div style="position: relative; height:45vh"><canvas id="admin-cases-month"></canvas></div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-6">
+            <div class="card card-body p-4">
+                <div style="position: relative; height:45vh"><canvas id="admin-tasks-month"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="mt-4 mb-2">Cases &amp; tasks per year</h3>
+    <div class="row mb-4">
+        <div class="col-12 col-xl-6 mb-3 mb-xl-0">
+            <div class="card card-body p-4">
+                <div style="position: relative; height:45vh"><canvas id="admin-cases-year"></canvas></div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-6">
+            <div class="card card-body p-4">
+                <div style="position: relative; height:45vh"><canvas id="admin-tasks-year"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="mt-4 mb-2">Elapsed time</h3>
+    <div class="row mb-4">
+        <div class="col-12 col-xl-6 mb-3 mb-xl-0">
+            <div class="card card-body p-4">
+                <div style="position: relative; height:45vh"><canvas id="admin-cases-elapsed-time"></canvas></div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-6">
+            <div class="card card-body p-4">
+                <div style="position: relative; height:45vh"><canvas id="admin-tasks-elapsed-time"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    {{ chart_card('Tasks per case', 'admin-tasks-per-case') }}
+    <div class="d-flex align-items-center justify-content-between mt-4 mb-2">
+        <h3 class="mb-0">Login activity (last [[ admin_stat.login_activity_days || 90 ]] days)</h3>
+        <button type="button" class="btn btn-sm btn-outline-secondary" @click="download_csv('admin-login-activity', 'admin-login-activity.csv')" title="Export as CSV">
+            <i class="fa-solid fa-download me-1"></i>CSV
+        </button>
+    </div>
+    <div class="card card-body p-4 mb-4">
+        <div class="chart-wrapper" style="position: relative; height:45vh"><canvas id="admin-login-activity"></canvas></div>
+    </div>
+</template>
+
 <template v-else-if="main_tab == 'community'">
-    <div class="card card-body">
-        <div class="row">
-            <div class="d-flex w-100 justify-content-evenly col">
-                <div>
-                    <div><h3><u>Organisations</u></h3></div>
-                    <div>
-                        <h6>Total: [[community_stat.total_orgs]]</h6>
-                    </div>
-                </div>
+    <p class="mb-3"><i>Statistics about organisations and users in the community</i></p>
+
+    <div class="card card-body mb-4">
+        <div class="row text-center">
+            <div class="col">
+                <h6 class="text-muted mb-1">Organisations</h6>
+                <h3 class="mb-0">[[community_stat.total_orgs]]</h3>
             </div>
-            <div class="d-flex w-100 justify-content-evenly col">
-                <div>
-                    <div><h3><u>Users</u></h3></div>
-                    <div>
-                        <h6>Total: [[community_stat.total_users]]</h6>
-                    </div>
-                </div>
+            <div class="col">
+                <h6 class="text-muted mb-1">Users</h6>
+                <h3 class="mb-0">[[community_stat.total_users]]</h3>
             </div>
         </div>
     </div>
 
-    <h3 class="mt-3">Users per organisation</h3>
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh">
-            <canvas id="community-users-per-org"></canvas>
+    {{ chart_card('Users per organisation', 'community-users-per-org') }}
+    {{ chart_card('Users per role', 'community-users-per-role') }}
+    {{ chart_card('Open cases per organisation', 'community-cases-per-org') }}
+    {{ chart_card('Open tasks per user', 'community-tasks-per-user', '50vh') }}
+
+    <h3 class="mt-4 mb-2"><i class="fa-solid fa-user-clock me-2"></i>Inactive users <small class="text-muted">(no login in the last [[ inactive_users.days || 90 ]] days)</small></h3>
+    <div class="card card-body mb-4">
+        <p class="mb-2"><strong>[[ inactive_users.count || 0 ]]</strong> inactive user(s)</p>
+        <div v-if="inactive_users.users && inactive_users.users.length">
+            <table class="table table-sm table-hover mb-0">
+                <thead><tr><th>Name</th><th>Email</th><th>Last login</th></tr></thead>
+                <tbody>
+                    <tr v-for="u in inactive_users.users" :key="'iu-'+u.id">
+                        <td>[[ u.name ]]</td>
+                        <td><span class="text-muted small">[[ u.email ]]</span></td>
+                        <td>
+                            <span v-if="u.last_login" class="small">[[ u.last_login ]]</span>
+                            <span v-else class="badge text-bg-secondary">never</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
+        <p v-else class="text-muted small mb-0">No inactive users.</p>
     </div>
 
-    <h3 class="mt-3">Users per role</h3>
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh">
-            <canvas id="community-users-per-role"></canvas>
+    <h3 class="mt-4 mb-2"><i class="fa-solid fa-right-to-bracket me-2"></i>20 last logins</h3>
+    <div class="card card-body mb-4">
+        <div v-if="recent_logins.logins && recent_logins.logins.length">
+            <table class="table table-sm table-hover mb-0">
+                <thead><tr><th>User</th><th>Email</th><th>Login time</th></tr></thead>
+                <tbody>
+                    <tr v-for="(l, i) in recent_logins.logins" :key="'rl-'+i">
+                        <td>[[ l.name ]]</td>
+                        <td><span class="text-muted small">[[ l.email ]]</span></td>
+                        <td><span class="small">[[ l.login_date ]]</span></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-    </div>
-
-    <h3 class="mt-3">Open cases per organisation</h3>
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:50vh">
-            <canvas id="community-cases-per-org"></canvas>
-        </div>
-    </div>
-
-    <h3 class="mt-3">Open tasks per user</h3>
-    <div class="card card-body p-4 m-5">
-        <div style="position: relative; height:60vh">
-            <canvas id="community-tasks-per-user"></canvas>
-        </div>
+        <p v-else class="text-muted small mb-0">No recent logins recorded.</p>
     </div>
 </template>
 </div>
@@ -385,327 +423,292 @@
 
 {% block script %}
 <script type="module">
-    const { ref, createApp, onMounted, nextTick} = Vue
-    import {message_list} from '/static/js/toaster.js'
+    const { ref, createApp, onMounted, nextTick } = Vue
+    import { message_list } from '/static/js/toaster.js'
+
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            const case_stat = ref([])
-            const admin_stat = ref([])
+            // Section headings are rendered as <h3> above each chart card so
+            // the layout stays consistent across all tabs; suppress the
+            // built-in Chart.js title to avoid showing the same label twice.
+            Chart.defaults.plugins.title.display = false
+
+            const case_stat = ref({})
+            const admin_stat = ref({})
             const community_stat = ref({})
-            const main_tab = ref("case")
-            const case_tags_stats = ref([])
+            const case_tags_stats = ref({})
             const tag_stats = ref({})
+            const overdue = ref({count: 0, tasks: []})
+            const unassigned = ref({count: 0, tasks: []})
+            const inactive_users = ref({days: 90, count: 0, users: []})
+            const recent_logins = ref({count: 0, logins: []})
+            const main_tab = ref('case')
+            const period_days = ref('')
+            const generated_on = ref('')
             const selected_case_tag = ref(null)
             const selected_task_tag = ref(null)
             const selected_case_cluster = ref(null)
             const selected_task_cluster = ref(null)
 
-            async function active_tab(tab_name){
-                if(tab_name == 'case'){
-                    main_tab.value = 'case'
-                    if ( !document.getElementById("tab-case").classList.contains("active") ){
-                        document.getElementById("tab-case").classList.add("active")
-                        document.getElementById("tab-task").classList.remove("active")
-                        document.getElementById("tab-tags").classList.remove("active")
-                        document.getElementById("tab-admin").classList.remove("active")
-                        document.getElementById("tab-community").classList.remove("active")
+            // Helpers
 
-                        await nextTick()
-                        init_chart_case()
-                    }
-                }else if(tab_name == 'task'){
-                    main_tab.value = 'task'
-                    if ( !document.getElementById("tab-task").classList.contains("active") ){
-                        document.getElementById("tab-task").classList.add("active")
-                        document.getElementById("tab-case").classList.remove("active")
-                        document.getElementById("tab-admin").classList.remove("active")
-                        document.getElementById("tab-tags").classList.remove("active")
-                        document.getElementById("tab-community").classList.remove("active")
+            function with_period(url) {
+                if (!period_days.value) return url
+                const sep = url.includes('?') ? '&' : '?'
+                return url + sep + 'days=' + encodeURIComponent(period_days.value)
+            }
 
-                        await nextTick()
-                        init_chart_task()
-                    }
-                }else if(tab_name == 'tags'){
-                    main_tab.value = 'tags'
-                    if ( !document.getElementById("tab-tags").classList.contains("active") ){
-                        document.getElementById("tab-tags").classList.add("active")
-                        document.getElementById("tab-case").classList.remove("active")
-                        document.getElementById("tab-task").classList.remove("active")
-                        document.getElementById("tab-admin").classList.remove("active")
-                        document.getElementById("tab-community").classList.remove("active")
-                        selected_case_tag.value = null
-                        selected_task_tag.value = null
-                        selected_case_cluster.value = null
-                        selected_task_cluster.value = null
-                    }
-                }else if(tab_name == 'admin'){
-                    main_tab.value = 'admin'
-                    if ( !document.getElementById("tab-admin").classList.contains("active") ){
-                        document.getElementById("tab-admin").classList.add("active")
-                        document.getElementById("tab-case").classList.remove("active")
-                        document.getElementById("tab-task").classList.remove("active")
-                        document.getElementById("tab-tags").classList.remove("active")
-                        document.getElementById("tab-community").classList.remove("active")
-                        
-                        await nextTick()
-
-                        create_chart_double(admin_stat.value, 'line', "admin-cases-month", 'Cases opened by month', 'Cases closed by month', 'cases-opened-month','cases-closed-month', 'Cases per Months')
-                        create_chart_double(admin_stat.value, 'bar', "admin-cases-year", 'Cases opened by year', 'Cases closed by year', 'cases-opened-year','cases-closed-year', 'Cases per Years')
-                        create_chart_simple(admin_stat.value, 'bar', 'admin-cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time', 'Weeks needed to close a case')
-
-                        create_chart_double(admin_stat.value, 'line', "admin-tasks-month", 'Tasks opened by month', 'Tasks closed by month', 'tasks-opened-month','tasks-closed-month', 'Tasks per Months')
-                        create_chart_double(admin_stat.value, 'bar', "admin-tasks-year", 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year','tasks-closed-year', 'Tasks per Years')
-                        create_chart_simple(admin_stat.value, 'bar', 'admin-tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time', 'Weeks needed to close a task')
-                        create_chart_simple(admin_stat.value, 'bar', 'admin-tasks-per-case', 'Number of tasks per case', 'tasks-per-case', 'Number of tasks per case')
-                    }
-                }else if(tab_name == 'community'){
-                    main_tab.value = 'community'
-                    if ( !document.getElementById("tab-community").classList.contains("active") ){
-                        document.getElementById("tab-community").classList.add("active")
-                        document.getElementById("tab-case").classList.remove("active")
-                        document.getElementById("tab-task").classList.remove("active")
-                        document.getElementById("tab-tags").classList.remove("active")
-                        document.getElementById("tab-admin").classList.remove("active")
-                        
-                        await nextTick()
-                        init_chart_community()
-                    }
+            function set_active_tab_class(tab_id) {
+                for (const id of ['tab-case', 'tab-task', 'tab-tags', 'tab-admin', 'tab-community']) {
+                    const el = document.getElementById(id)
+                    if (!el) continue
+                    el.classList.toggle('active', id === tab_id)
                 }
             }
 
-            function create_chart_double(stats_list, chart_type, id_balise, opened_label, closed_label, opened_key, closed_key, chart_title){
-                new Chart(
-                    document.getElementById(id_balise),
-                    {
-                        type: chart_type,
-                        data: {
-                            labels: stats_list[opened_key].map(row => row.calendar),
-                            datasets: [
-                                {
-                                    label: opened_label,
-                                    data: stats_list[opened_key].map(row => row.count),
-                                    borderWidth: 3,
-                                },
-                                {
-                                    label: closed_label,
-                                    data: stats_list[closed_key].map(row => row.count),
-                                    borderWidth: 3,
-                                },
-                            ]
-                        },
-                        options: {
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: (ctx) => chart_title
-                                }
-                            }
-                        }
+            function update_empty_overlay(canvas_id, is_empty, message) {
+                const canvas = document.getElementById(canvas_id)
+                if (!canvas) return
+                const wrapper = canvas.parentElement
+                let overlay = wrapper.querySelector('.chart-empty-state')
+                if (is_empty) {
+                    canvas.style.display = 'none'
+                    if (!overlay) {
+                        overlay = document.createElement('p')
+                        overlay.className = 'chart-empty-state text-muted text-center my-4 mb-0'
+                        overlay.innerHTML = '<i class="fa-regular fa-folder-open me-2"></i>' + (message || 'No data for the selected period')
+                        wrapper.appendChild(overlay)
                     }
-                );
-            }
-
-            function create_chart_simple(stats_list, chart_type, id_balise, label, dict_key, chart_title){
-                new Chart(
-                    document.getElementById(id_balise),
-                    {
-                        type: chart_type,
-                        data: {
-                            labels: stats_list[dict_key].map(row => row.calendar),
-                            datasets: [
-                                {
-                                    label: label,
-                                    data: stats_list[dict_key].map(row => row.count),
-                                    borderWidth: 3,
-                                },
-                            ]
-                        },
-                        options: {
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: (ctx) => chart_title
-                                },
-                                legend:{
-                                    display: true,
-                                    position: 'right'
-                                }
-                            },
-                            responsive: true,
-                        }
-                    }
-                );
-            }
-
-            function init_chart_case(){
-                create_chart_double(case_stat.value, 'line', "cases-month", 'Cases opened by month', 'Cases closed by month', 'cases-opened-month','cases-closed-month', 'Cases per Months')
-                create_chart_double(case_stat.value, 'bar', "cases-year", 'Cases opened by year', 'Cases closed by year', 'cases-opened-year','cases-closed-year', 'Cases per Years')
-                create_chart_simple(case_stat.value, 'bar', 'cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time', 'Weeks needed to close a case')
-                
-                create_chart_simple(case_tags_stats.value, 'pie', 'case-custom-tags', 'Case per Custom tags', 'case_custom_tags', 'Case per Custom tags for the org of current user')
-                create_chart_simple(case_tags_stats.value, 'polarArea', 'case-tags', 'Case per Taxonomies', 'case_tags', 'Case per Taxonomies for the org of current user')
-                create_chart_simple(case_tags_stats.value, 'polarArea', 'case-clusters', 'Case per Galaxies', 'case_clusters', 'Case per Galaxies for the org of current user')
-
-            }
-
-            function init_chart_task(){
-                create_chart_double(case_stat.value, 'line', "tasks-month", 'Tasks opened by month', 'Tasks closed by month', 'tasks-opened-month','tasks-closed-month', 'Tasks per Months')
-                create_chart_double(case_stat.value, 'bar', "tasks-year", 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year','tasks-closed-year', 'Tasks per Years')
-                create_chart_simple(case_stat.value, 'bar', 'tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time', 'Weeks needed to close a task')
-                create_chart_simple(case_stat.value, 'bar', 'tasks-per-case', 'Number of tasks per case', 'tasks-per-case', 'Number of tasks per case')
-
-                create_chart_simple(case_tags_stats.value, 'pie', 'task-custom-tags', 'Task per Custom tags', 'task_custom_tags', 'Task per Custom tags for the org of current user')
-                create_chart_simple(case_tags_stats.value, 'polarArea', 'task-tags', 'Task per Taxonomies', 'task_tags', 'Task per Taxonomies for the org of current user')
-                create_chart_simple(case_tags_stats.value, 'polarArea', 'task-clusters', 'Task per Galaxies', 'task_clusters', 'Task per Galaxies for the org of current user')
-
-            }
-
-            function init_chart_community(){
-                if (!community_stat.value.users_per_org || !community_stat.value.users_per_role || 
-                    !community_stat.value.cases_per_org || !community_stat.value.tasks_per_user) {
-                    return;
+                } else {
+                    canvas.style.display = ''
+                    if (overlay) overlay.remove()
                 }
-
-                new Chart(
-                    document.getElementById('community-users-per-org'),
-                    {
-                        type: 'bar',
-                        data: {
-                            labels: community_stat.value.users_per_org.map(row => row.org_name),
-                            datasets: [{
-                                label: 'Number of users',
-                                data: community_stat.value.users_per_org.map(row => row.count),
-                                borderWidth: 3,
-                            }]
-                        },
-                        options: {
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: 'Users per organisation'
-                                }
-                            }
-                        }
-                    }
-                );
-
-                new Chart(
-                    document.getElementById('community-users-per-role'),
-                    {
-                        type: 'pie',
-                        data: {
-                            labels: community_stat.value.users_per_role.map(row => row.role_name),
-                            datasets: [{
-                                label: 'Number of users',
-                                data: community_stat.value.users_per_role.map(row => row.count),
-                                borderWidth: 3,
-                            }]
-                        },
-                        options: {
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: 'Users per role'
-                                }
-                            }
-                        }
-                    }
-                );
-
-                new Chart(
-                    document.getElementById('community-cases-per-org'),
-                    {
-                        type: 'bar',
-                        data: {
-                            labels: community_stat.value.cases_per_org.map(row => row.org_name),
-                            datasets: [{
-                                label: 'Number of open cases',
-                                data: community_stat.value.cases_per_org.map(row => row.count),
-                                borderWidth: 3,
-                            }]
-                        },
-                        options: {
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: 'Open cases per organisation'
-                                }
-                            }
-                        }
-                    }
-                );
-
-                new Chart(
-                    document.getElementById('community-tasks-per-user'),
-                    {
-                        type: 'bar',
-                        data: {
-                            labels: community_stat.value.tasks_per_user.map(row => row.user_name),
-                            datasets: [{
-                                label: 'Number of open tasks',
-                                data: community_stat.value.tasks_per_user.map(row => row.count),
-                                borderWidth: 3,
-                            }]
-                        },
-                        options: {
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: 'Open tasks per user'
-                                }
-                            }
-                        }
-                    }
-                );
             }
+
+            function csv_escape(v) {
+                const s = String(v ?? '')
+                return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+            }
+
+            function download_csv(canvas_id, filename) {
+                const chart = Chart.getChart(canvas_id)
+                if (!chart) return
+                const labels = chart.data.labels || []
+                const datasets = chart.data.datasets || []
+                const header = ['label'].concat(datasets.map(d => d.label || ''))
+                const rows = [header.map(csv_escape).join(',')]
+                labels.forEach((lbl, i) => {
+                    const row = [csv_escape(lbl)]
+                    datasets.forEach(d => row.push(csv_escape(d.data[i] ?? '')))
+                    rows.push(row.join(','))
+                })
+                const blob = new Blob([rows.join('\n')], {type: 'text/csv;charset=utf-8'})
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = filename || (canvas_id + '.csv')
+                document.body.appendChild(a)
+                a.click()
+                a.remove()
+                URL.revokeObjectURL(url)
+            }
+
+            // Chart builders
+
+            function create_chart_double(stats_list, chart_type, id_balise, opened_label, closed_label, opened_key, closed_key) {
+                Chart.getChart(id_balise)?.destroy()
+                const opened = stats_list[opened_key] || []
+                const closed = stats_list[closed_key] || []
+                const has_data = opened.some(r => r.count > 0) || closed.some(r => r.count > 0)
+                update_empty_overlay(id_balise, !has_data)
+                if (!has_data) return
+                new Chart(document.getElementById(id_balise), {
+                    type: chart_type,
+                    data: {
+                        labels: opened.map(r => r.calendar),
+                        datasets: [
+                            {label: opened_label, data: opened.map(r => r.count), borderWidth: 3},
+                            {label: closed_label, data: closed.map(r => r.count), borderWidth: 3},
+                        ]
+                    }
+                })
+            }
+
+            function create_chart_simple(stats_list, chart_type, id_balise, label, dict_key) {
+                Chart.getChart(id_balise)?.destroy()
+                const data = stats_list[dict_key] || []
+                const has_data = data.some(r => r.count > 0)
+                update_empty_overlay(id_balise, !has_data)
+                if (!has_data) return
+                new Chart(document.getElementById(id_balise), {
+                    type: chart_type,
+                    data: {
+                        labels: data.map(r => r.calendar),
+                        datasets: [{label: label, data: data.map(r => r.count), borderWidth: 3}]
+                    },
+                    options: {
+                        plugins: {legend: {display: true, position: 'right'}},
+                        responsive: true,
+                    }
+                })
+            }
+
+            function create_named_bar(canvas_id, rows, name_key, label) {
+                Chart.getChart(canvas_id)?.destroy()
+                const data = rows || []
+                const has_data = data.some(r => r.count > 0)
+                update_empty_overlay(canvas_id, !has_data)
+                if (!has_data) return
+                new Chart(document.getElementById(canvas_id), {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(r => r[name_key]),
+                        datasets: [{label: label, data: data.map(r => r.count), borderWidth: 3}]
+                    }
+                })
+            }
+
+            function create_named_pie(canvas_id, rows, name_key, label) {
+                Chart.getChart(canvas_id)?.destroy()
+                const data = rows || []
+                const has_data = data.some(r => r.count > 0)
+                update_empty_overlay(canvas_id, !has_data)
+                if (!has_data) return
+                new Chart(document.getElementById(canvas_id), {
+                    type: 'pie',
+                    data: {
+                        labels: data.map(r => r[name_key]),
+                        datasets: [{label: label, data: data.map(r => r.count), borderWidth: 3}]
+                    }
+                })
+            }
+
+            // Per-tab init
+
+            function init_chart_case() {
+                create_chart_double(case_stat.value, 'line', 'cases-month', 'Cases opened by month', 'Cases closed by month', 'cases-opened-month', 'cases-closed-month')
+                create_chart_double(case_stat.value, 'bar', 'cases-year', 'Cases opened by year', 'Cases closed by year', 'cases-opened-year', 'cases-closed-year')
+                create_chart_simple(case_stat.value, 'bar', 'cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time')
+                create_chart_simple(case_tags_stats.value, 'pie', 'case-custom-tags', 'Cases per custom tag', 'case_custom_tags')
+                create_chart_simple(case_tags_stats.value, 'polarArea', 'case-tags', 'Cases per taxonomy', 'case_tags')
+                create_chart_simple(case_tags_stats.value, 'polarArea', 'case-clusters', 'Cases per galaxy cluster', 'case_clusters')
+            }
+
+            function init_chart_task() {
+                create_chart_double(case_stat.value, 'line', 'tasks-month', 'Tasks opened by month', 'Tasks closed by month', 'tasks-opened-month', 'tasks-closed-month')
+                create_chart_double(case_stat.value, 'bar', 'tasks-year', 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year', 'tasks-closed-year')
+                create_chart_simple(case_stat.value, 'bar', 'tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time')
+                create_chart_simple(case_stat.value, 'bar', 'tasks-per-case', 'Number of tasks per case', 'tasks-per-case')
+                create_chart_simple(case_tags_stats.value, 'pie', 'task-custom-tags', 'Tasks per custom tag', 'task_custom_tags')
+                create_chart_simple(case_tags_stats.value, 'polarArea', 'task-tags', 'Tasks per taxonomy', 'task_tags')
+                create_chart_simple(case_tags_stats.value, 'polarArea', 'task-clusters', 'Tasks per galaxy cluster', 'task_clusters')
+            }
+
+            function init_chart_admin() {
+                create_chart_double(admin_stat.value, 'line', 'admin-cases-month', 'Cases opened by month', 'Cases closed by month', 'cases-opened-month', 'cases-closed-month')
+                create_chart_double(admin_stat.value, 'bar', 'admin-cases-year', 'Cases opened by year', 'Cases closed by year', 'cases-opened-year', 'cases-closed-year')
+                create_chart_simple(admin_stat.value, 'bar', 'admin-cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time')
+                create_chart_double(admin_stat.value, 'line', 'admin-tasks-month', 'Tasks opened by month', 'Tasks closed by month', 'tasks-opened-month', 'tasks-closed-month')
+                create_chart_double(admin_stat.value, 'bar', 'admin-tasks-year', 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year', 'tasks-closed-year')
+                create_chart_simple(admin_stat.value, 'bar', 'admin-tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time')
+                create_chart_simple(admin_stat.value, 'bar', 'admin-tasks-per-case', 'Number of tasks per case', 'tasks-per-case')
+                create_chart_simple({login: admin_stat.value.login_activity || []}, 'bar', 'admin-login-activity', 'Logins per day', 'login')
+            }
+
+            function init_chart_community() {
+                create_named_bar('community-users-per-org', community_stat.value.users_per_org, 'org_name', 'Number of users')
+                create_named_pie('community-users-per-role', community_stat.value.users_per_role, 'role_name', 'Number of users')
+                create_named_bar('community-cases-per-org', community_stat.value.cases_per_org, 'org_name', 'Number of open cases')
+                create_named_bar('community-tasks-per-user', community_stat.value.tasks_per_user, 'user_name', 'Number of open tasks')
+            }
+
+            // Tab switching
+
+            async function active_tab(tab_name) {
+                main_tab.value = tab_name
+                set_active_tab_class('tab-' + tab_name)
+                await nextTick()
+                if (tab_name === 'case') init_chart_case()
+                else if (tab_name === 'task') init_chart_task()
+                else if (tab_name === 'admin') init_chart_admin()
+                else if (tab_name === 'community') init_chart_community()
+                else if (tab_name === 'tags') {
+                    selected_case_tag.value = null
+                    selected_task_tag.value = null
+                    selected_case_cluster.value = null
+                    selected_task_cluster.value = null
+                }
+            }
+
+            // Fetches
 
             async function fetch_case_stat() {
-                const res = await fetch('/tools/case_stats')
-                if (await res.status == 200){
-                    let loc = await res.json()
-                    case_stat.value = loc
-                    
-                    fetch_case_tag_stat()
-                }
+                const res = await fetch(with_period('/tools/case_stats'))
+                if (res.status === 200) case_stat.value = await res.json()
             }
             async function fetch_admin_stat() {
-                const res = await fetch('/tools/admin_stats')
-                if (await res.status == 200){
-                    let loc = await res.json()
-                    admin_stat.value = loc
-                }
+                const res = await fetch(with_period('/tools/admin_stats'))
+                if (res.status === 200) admin_stat.value = await res.json()
             }
             async function fetch_case_tag_stat() {
-                const res = await fetch('/tools/case_tags_stats')
-                if (await res.status == 200){
-                    let loc = await res.json()
-                    case_tags_stats.value = loc
-                    init_chart_case()
-                }
+                const res = await fetch(with_period('/tools/case_tags_stats'))
+                if (res.status === 200) case_tags_stats.value = await res.json()
             }
-
             async function fetch_community_stat() {
                 const res = await fetch('/tools/community_stats')
-                if (res.status == 200){
-                    let loc = await res.json()
-                    community_stat.value = loc
-                }
+                if (res.status === 200) community_stat.value = await res.json()
             }
-
             async function fetch_tag_galaxy_stats() {
-                const res = await fetch('/tools/tag_galaxy_stats')
-                if (res.status == 200) {
-                    let loc = await res.json()
-                    tag_stats.value = loc
-                }
+                const res = await fetch(with_period('/tools/tag_galaxy_stats'))
+                if (res.status === 200) tag_stats.value = await res.json()
+            }
+            async function fetch_overdue_tasks() {
+                const res = await fetch('/tools/overdue_tasks')
+                if (res.status === 200) overdue.value = await res.json()
+            }
+            async function fetch_unassigned_tasks() {
+                const res = await fetch('/tools/unassigned_tasks')
+                if (res.status === 200) unassigned.value = await res.json()
+            }
+            async function fetch_inactive_users() {
+                const res = await fetch('/tools/inactive_users')
+                if (res.status === 200) inactive_users.value = await res.json()
+            }
+            async function fetch_recent_logins() {
+                const res = await fetch('/tools/recent_logins?limit=20')
+                if (res.status === 200) recent_logins.value = await res.json()
             }
 
-            onMounted(() => {
-                fetch_case_stat()
-                fetch_admin_stat()
-                fetch_community_stat()
-                fetch_tag_galaxy_stats()
+            const IS_ADMIN = {{ 'true' if current_user.is_admin() else 'false' }}
+
+            async function reload_all() {
+                const tasks = [
+                    fetch_case_stat(),
+                    fetch_case_tag_stat(),
+                    fetch_tag_galaxy_stats(),
+                    fetch_overdue_tasks(),
+                    fetch_unassigned_tasks(),
+                ]
+                if (IS_ADMIN) {
+                    tasks.push(
+                        fetch_admin_stat(),
+                        fetch_community_stat(),
+                        fetch_inactive_users(),
+                        fetch_recent_logins(),
+                    )
+                }
+                await Promise.all(tasks)
+                generated_on.value = new Date().toLocaleString()
+                await nextTick()
+                if (main_tab.value === 'case') init_chart_case()
+                else if (main_tab.value === 'task') init_chart_task()
+                else if (main_tab.value === 'admin') init_chart_admin()
+                else if (main_tab.value === 'community') init_chart_community()
+            }
+
+            onMounted(async () => {
+                await reload_all()
             })
 
             return {
@@ -713,18 +716,24 @@
                 case_stat,
                 admin_stat,
                 community_stat,
-                main_tab,
                 case_tags_stats,
                 tag_stats,
+                overdue,
+                unassigned,
+                inactive_users,
+                recent_logins,
+                main_tab,
+                period_days,
+                generated_on,
                 selected_case_tag,
                 selected_task_tag,
                 selected_case_cluster,
                 selected_task_cluster,
-
-                active_tab
+                active_tab,
+                reload_all,
+                download_csv,
             }
         }
     }).mount('#main-container')
-
 </script>
 {% endblock %}

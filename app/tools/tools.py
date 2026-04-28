@@ -1,11 +1,12 @@
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, current_app
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
+from ..admin import admin_core as AdminModel
 from ..utils.note_variables import get_syntax_reference
 from ..decorators import editor_required, admin_required, template_editor_required, misp_editor_required
 from ..utils.utils import get_modules_list, reload_application
 from ..utils.logger import flowintel_log
-from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case
+from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case, check_user_in_private_cases
 from ..case.CaseCore import CaseModel, FILE_FOLDER
 import base64
 import csv
@@ -255,12 +256,13 @@ def reload():
 # Stats #
 #########
 from ..db_class.db import Case, Case_Org
-from ..case.common_core import check_user_in_private_cases
 
 @tools_blueprint.route("/stats")
 @login_required
 def stats():
-    return render_template("tools/stats.html")
+    org = AdminModel.get_org(current_user.org_id) if current_user.org_id else None
+    org_name = org.name if org else ""
+    return render_template("tools/stats.html", org_name=org_name)
 
 def chart_dict_constructor(input_dict):
     loc_dict = []
@@ -274,26 +276,34 @@ def chart_dict_constructor(input_dict):
 @tools_blueprint.route("/case_stats")
 @login_required
 def case_stats():
+    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
     cases = check_user_in_private_cases(cases, current_user)
-    res_dict = ToolsModel.stats_core(cases)
-
-    return res_dict
+    cases = ToolsModel.filter_cases_by_date(cases, cutoff)
+    return ToolsModel.stats_core(cases)
 
 @tools_blueprint.route("/admin_stats")
 @login_required
 def admin_stats():
-    if current_user.is_admin():
-        cases = Case.query.all()
-        res_dict = ToolsModel.stats_core(cases)
-
-        return res_dict
-    return {}
+    if not current_user.is_admin():
+        return {}
+    days_arg = request.args.get('days')
+    cutoff = ToolsModel.days_cutoff(days_arg)
+    cases = Case.query.all()
+    cases = ToolsModel.filter_cases_by_date(cases, cutoff)
+    res_dict = ToolsModel.stats_core(cases)
+    try:
+        days = int(days_arg) if days_arg else 90
+    except (TypeError, ValueError):
+        days = 90
+    res_dict.update(ToolsModel.get_admin_extra_stats(days=days))
+    return res_dict
 
 @tools_blueprint.route("/case_tags_stats")
 @login_required
 def get_case_by_tags():
-    res = ToolsModel.get_case_by_tags(current_user)
+    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
+    res = ToolsModel.get_case_by_tags(current_user, cutoff=cutoff)
     if res:
         return res
     return {}
@@ -301,16 +311,48 @@ def get_case_by_tags():
 @tools_blueprint.route("/tag_galaxy_stats")
 @login_required
 def get_tag_galaxy_stats():
-    res = ToolsModel.get_tag_galaxy_top_stats(current_user)
-    return res
+    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
+    return ToolsModel.get_tag_galaxy_top_stats(current_user, cutoff=cutoff)
 
 @tools_blueprint.route("/community_stats")
 @login_required
 def community_stats():
     if current_user.is_admin():
-        res = ToolsModel.get_community_stats()
-        return res
+        return ToolsModel.get_community_stats()
     return {}
+
+@tools_blueprint.route("/overdue_tasks")
+@login_required
+def overdue_tasks():
+    return ToolsModel.get_overdue_tasks(current_user)
+
+@tools_blueprint.route("/unassigned_tasks")
+@login_required
+def unassigned_tasks():
+    return ToolsModel.get_unassigned_tasks(current_user)
+
+@tools_blueprint.route("/inactive_users")
+@login_required
+def inactive_users():
+    if not current_user.is_admin():
+        return {}
+    try:
+        days = int(request.args.get('days') or 90)
+    except (TypeError, ValueError):
+        days = 90
+    return ToolsModel.get_inactive_users(days=days)
+
+
+@tools_blueprint.route("/recent_logins")
+@login_required
+def recent_logins():
+    if not current_user.is_admin():
+        return {}
+    try:
+        limit = int(request.args.get('limit') or 20)
+    except (TypeError, ValueError):
+        limit = 20
+    return ToolsModel.get_recent_logins(limit=limit)
 
 
 
