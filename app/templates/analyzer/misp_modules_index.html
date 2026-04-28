@@ -20,18 +20,33 @@
                 <h5 class="mb-0"><i class="fa-solid fa-puzzle-piece me-2"></i>Analyser - MISP modules</h5>
             </div>
             <div class="col-auto ms-auto">
+                {% if can_use_misp %}
                 <a class="btn btn-outline-primary btn-sm" href="/analyzer/misp-modules/history">
                     <i class="fa-solid fa-clock-rotate-left fa-sm"></i> History
                 </a>
                 <a class="btn btn-outline-primary btn-sm ms-2" href="/analyzer/misp-modules/config">
                     <i class="fa-solid fa-gear fa-sm"></i> Config
                 </a>
+                {% else %}
+                <button class="btn btn-outline-primary btn-sm" disabled title="Access Restricted: You need Admin or MISP Editor permission to use connectors.">
+                    <i class="fa-solid fa-clock-rotate-left fa-sm"></i> History
+                </button>
+                <button class="btn btn-outline-primary btn-sm ms-2" disabled title="Access Restricted: You need Admin or MISP Editor permission to use connectors.">
+                    <i class="fa-solid fa-gear fa-sm"></i> Config
+                </button>
+                {% endif %}
             </div>
         </div>
         <p class="text-muted mb-0 mt-1">The MISP module analyser allows you to use external enrichment modules. Be aware of any PAP restrictions that apply as you can be sending data to external services.</p>
     </div>
     <hr>
 
+    {% if not can_use_misp %}
+    <div class="alert alert-warning" role="alert">
+        <i class="fa-solid fa-lock me-2"></i>
+        <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
+    </div>
+    {% else %}
     {% set active_phase = 1 %}
     {% include 'analyzer/misp_modules_phase_indicator.html' %}
 
@@ -174,10 +189,12 @@
         
     </div>
     <div id="insert_form"></div>
+    {% endif %}
 {% endblock %}
 
 
 {% block script %}
+    {% if can_use_misp %}
     <script type="module">
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
@@ -455,4 +472,5 @@
         }).mount('#main-container')
 
     </script>
+    {% endif %}
 {% endblock %}

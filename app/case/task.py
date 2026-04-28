@@ -2,6 +2,8 @@ import ast
 import os
 import uuid
 
+import requests
+
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 
@@ -746,13 +748,18 @@ def call_module_task(cid, tid):
 
 @task_blueprint.route("/<cid>/task/<tid>/call_module_task_no_instance", methods=['GET', 'POST'])
 @login_required
+@misp_editor_required
 def call_module_task_no_instance(cid, tid):
     """Run a module"""
     case = CommonModel.get_case(cid)
     if not check_user_private_case(case):
         flowintel_log("audit", 403, "Call module on task: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
         return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-    
+
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Call module on task: Org not assigned to case", User=current_user.email, CaseId=cid, TaskId=tid)
+        return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
     task = CommonModel.get_task(tid)
     if task:
         module = request.args.get("module")
@@ -921,6 +928,28 @@ def delete_external_reference(cid, tid, erid):
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 
+def _probe_external_url(url):
+    """Probe a URL to detect common connection failures before invoking misp-modules."""
+    try:
+        requests.head(url, timeout=10, allow_redirects=True)
+    except requests.exceptions.ConnectionError as e:
+        message = str(e).lower()
+        if "name or service not known" in message or "nodename nor servname" in message or "failed to resolve" in message or "name resolution" in message:
+            return "The host likely doesn't exist (DNS resolution failed)"
+        if "remotedisconnected" in message or "connection aborted" in message or "connection reset" in message or "connection refused" in message:
+            return "The host refused our connection"
+        return "Could not connect to the host"
+    except requests.exceptions.Timeout:
+        return "The host did not respond in time"
+    except requests.exceptions.InvalidURL:
+        return "The URL is not valid"
+    except requests.exceptions.MissingSchema:
+        return "The URL is missing a scheme (e.g. https://)"
+    except requests.exceptions.RequestException:
+        return None
+    return None
+
+
 @task_blueprint.route("/<cid>/task/<tid>/convert_external_reference_to_note/<erid>", methods=['POST'])
 @login_required
 @editor_required
@@ -935,7 +964,12 @@ def convert_external_reference_to_note(cid, tid, erid):
             external_ref = TaskModel.get_external_reference(erid)
             if not external_ref or external_ref.task_id != int(tid):
                 return {"message": "External reference not found", 'toast_class': "danger-subtle"}, 404
-            
+
+            probe_error = _probe_external_url(external_ref.url)
+            if probe_error:
+                flowintel_log("audit", 400, "External reference conversion failed", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid, URL=external_ref.url, Error=probe_error)
+                return {"message": f"Conversion failed: {probe_error}", "toast_class": "danger-subtle"}, 400
+
             module_data = {
                 "module": "html_to_markdown",
                 "url": external_ref.url

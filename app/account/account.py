@@ -46,6 +46,24 @@ def get_client_ip():
     return request.remote_addr
 
 
+def is_safe_next_url(target):
+    """Return True if ``target`` is a safe local redirect target."""
+    if not target:
+        return False
+    parsed = urlparse(target)
+    if parsed.scheme or parsed.netloc:
+        return False
+    # Reject protocol-relative URLs like //evil and backslash variants.
+    return target.startswith('/') and not target.startswith('//') and not target.startswith('/\\')
+
+
+def _post_login_redirect(default='/'):
+    target = request.args.get('next')
+    if is_safe_next_url(target):
+        return redirect(target)
+    return redirect(default)
+
+
 def check_rate_limit(key_prefix, max_attempts, window):
     """Check if the request exceeds rate limit"""
     client_ip = get_client_ip()
@@ -141,6 +159,9 @@ def change_api_key():
 @account_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     """Log in an existing user."""
+    if current_user.is_authenticated:
+        return _post_login_redirect()
+
     form = LoginForm()
     show_reset_link = False
     
@@ -153,41 +174,39 @@ def login():
             flash(f'Too many login attempts. Please try again in {remaining_time} seconds.', 'error')
             return render_template('account/login.html', form=form, show_reset_link=False)
         
+        email = (form.email.data or '').strip().lower()
         try:
-            Email(form.email.data)
+            Email(email)
         except ValidationError:
             flash('Invalid email or password.', 'error')
-            flowintel_log("audit", 401, "Failed login attempt - Invalid email format", Email=form.email.data)
+            flowintel_log("audit", 401, "Failed login attempt - Invalid email format", Email=email)
             token = create_password_reset_token()
             session['password_reset_token'] = token
             session['password_reset_token_time'] = time.time()
-            session['failed_login_email'] = form.email.data  # Store for pre-filling
+            session['failed_login_email'] = email  # Store for pre-filling
             show_reset_link = True
         else:
-            user = User.query.filter_by(email=form.email.data).first()
+            user = User.query.filter_by(email=email).first()
             if user is not None and user.password_hash is not None and \
                     user.verify_password(form.password.data):
-                login_user(user, form.remember_me.data)
-                flowintel_log("audit", 200, "Successful login", Email=form.email.data)
-                # Clear rate limit on successful login
-                client_ip = get_client_ip()
-                session.pop(f'login_attempts_{client_ip}', None)
-                session.pop('password_reset_token', None)
-                session.pop('password_reset_token_time', None)
-                session.pop('failed_login_email', None)
+
+                remember = form.remember_me.data
+                session.clear()
+                login_user(user, remember)
+                flowintel_log("audit", 200, "Successful login", Email=email)
                 flash('You are now logged in. Welcome back!', 'success')
-                return redirect(request.args.get('next') or "/")
+                return _post_login_redirect()
             else:
                 flash('Invalid email or password.', 'error')
-                flowintel_log("audit", 401, "Failed login attempt - Invalid credentials", Email=form.email.data)
+                flowintel_log("audit", 401, "Failed login attempt - Invalid credentials", Email=email)
                 # Generate token for password reset access
                 token = create_password_reset_token()
                 session['password_reset_token'] = token
                 session['password_reset_token_time'] = time.time()
-                session['failed_login_email'] = form.email.data  # Store for pre-filling
+                session['failed_login_email'] = email  # Store for pre-filling
                 show_reset_link = True
                 
-                logger.warning(f"Failed login attempt for email: {form.email.data} from IP: {get_client_ip()}")
+                logger.warning(f"Failed login attempt for email: {email} from IP: {get_client_ip()}")
     
     return render_template('account/login.html', form=form, show_reset_link=show_reset_link)
 
@@ -214,7 +233,7 @@ def request_password_reset():
             flash(f'Too many password reset requests. Please try again in {remaining_time} seconds.', 'error')
             return render_template('account/request_password_reset.html', form=form)
         
-        email = form.email.data
+        email = (form.email.data or '').strip().lower()
         user = User.query.filter_by(email=email).first()
         
         if user:
@@ -252,6 +271,9 @@ def entra_login():
     """Redirect user to Microsoft Entra ID for authentication."""
     if not current_app.config.get('ENTRA_ID_ENABLED'):
         abort(404)
+
+    if current_user.is_authenticated:
+        return _post_login_redirect()
 
     state = secrets.token_urlsafe(16)
     session['entra_state'] = state
@@ -302,13 +324,11 @@ def entra_callback():
         flowintel_log("audit", 403, "Entra ID login denied", Reason=error, IP=get_client_ip())
         return redirect(url_for('account.login'))
 
+    session.clear()
     login_user(user)
     flowintel_log("audit", 200, "Entra ID login successful", Email=user.email)
     flash('Logged in via Microsoft Entra ID.', 'success')
-    next_url = request.args.get('next') or '/'
-    if urlparse(next_url).netloc or urlparse(next_url).scheme:
-        next_url = '/'
-    return redirect(next_url)
+    return _post_login_redirect()
 
 
 @account_blueprint.route('/logout')
@@ -317,6 +337,7 @@ def logout():
     user_email = current_user.email
     flowintel_log("audit", 200, "User logout", Email=user_email)
     logout_user()
+    session.clear()
     flash('You have been logged out.', 'info')
     return redirect(url_for('account.login'))
 

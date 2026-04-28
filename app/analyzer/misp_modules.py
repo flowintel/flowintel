@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, redirect, render_template, request, session as flask_session
 from flask_login import current_user, login_required
-from ..decorators import editor_required
+from ..decorators import misp_editor_required
 from ..utils.logger import flowintel_log
 from . import session_class as SessionModel
 from . import misp_modules_core as MispModuleModel
@@ -19,7 +19,6 @@ analyzer_blueprint = Blueprint(
 
 @analyzer_blueprint.route("/misp-modules", methods=['GET'])
 @login_required
-@editor_required
 def index():
     """Analyzer index page"""
     case_id = ""
@@ -31,11 +30,12 @@ def index():
         task_id = request.args.get('task_id')
     if "misp_object" in request.args:
         misp_object = True
-    return render_template("analyzer/misp_modules_index.html", case_id=case_id, task_id=task_id, misp_object=misp_object)
+    can_use_misp = current_user.is_admin() or current_user.is_misp_editor()
+    return render_template("analyzer/misp_modules_index.html", case_id=case_id, task_id=task_id, misp_object=misp_object, can_use_misp=can_use_misp)
 
 @analyzer_blueprint.route("/misp-modules/result_to_case", methods=['GET', 'POST'])
 @login_required
-@editor_required
+@misp_editor_required
 def result_to_case():
     """Enrich notes from previous selection"""
     flask_session["note_selected"] = request.form["note_selected"]
@@ -58,7 +58,7 @@ def get_misp_object_selected():
 
 @analyzer_blueprint.route("/misp-modules/manage_notes_selected", methods=['GET', 'POST'])
 @login_required
-@editor_required
+@misp_editor_required
 def manage_notes_selected():
     """Manage notes selected"""
     case_id = MispModuleModel.manage_notes_selected(request.json, current_user)
@@ -95,7 +95,7 @@ def get_modules():
 
 @analyzer_blueprint.route("/misp-modules/run", methods=['POST'])
 @login_required
-@editor_required
+@misp_editor_required
 def run_misp_modules():
     """Run modules"""
     if "query" in request.json:
@@ -123,12 +123,14 @@ def run_misp_modules():
 
 @analyzer_blueprint.route("/misp-modules/config", methods=['GET'])
 @login_required
+@misp_editor_required
 def misp_modules_config():
     """Configure misp-modules"""
     return render_template("analyzer/misp_modules_config.html")
 
 @analyzer_blueprint.route("/misp-modules/modules_config_data")
 @login_required
+@misp_editor_required
 def modules_config_data():
     """List all modules for configuration"""
 
@@ -141,6 +143,7 @@ def modules_config_data():
 
 @analyzer_blueprint.route("/misp-modules/change_config", methods=["POST"])
 @login_required
+@misp_editor_required
 def misp_modules_change_config():
     """Change configuation for a misp-module"""
     if "module_name" in request.json["result_dict"]:
@@ -201,12 +204,14 @@ def misp_module_result(sid):
 
 @analyzer_blueprint.route("/misp-modules/history", methods=['GET'])
 @login_required
+@misp_editor_required
 def misp_modules_history():
     """History of misp-modules"""
     return render_template("analyzer/misp_modules_history.html")
 
 @analyzer_blueprint.route("/misp-modules/history_data", methods=['GET'])
 @login_required
+@misp_editor_required
 def misp_modules_history_data():
     """Get all history"""
     page = request.args.get('page', 1, type=int)
@@ -215,6 +220,7 @@ def misp_modules_history_data():
 
 @analyzer_blueprint.route("/misp-modules/delete_history/<huuid>", methods=['GET'])
 @login_required
+@misp_editor_required
 def misp_modules_delete_history(huuid):
     """Delete history"""
     if MispModuleModel.delete_history(huuid, current_user):

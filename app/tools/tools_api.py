@@ -2,7 +2,7 @@ from flask import request
 from . import tools_core as ToolModel
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, importer_required, template_editor_required
+from ..decorators import api_required, importer_required, template_editor_required, misp_editor_required
 
 from ..utils import utils
 from ..utils.logger import flowintel_log
@@ -62,7 +62,7 @@ case_misp_ns = Namespace("case_misp", description="Endpoints to manage case crea
 @case_misp_ns.route('/')
 @case_misp_ns.doc(description='Create a Case from a MISP Event')
 class CaseMispEvent(Resource):
-    method_decorators = [api_required]
+    method_decorators = [misp_editor_required, api_required]
     @case_misp_ns.doc(params={
         "case_title": "Required. Title for the new case",
         "case_template_id": "Required. Id of a case template",

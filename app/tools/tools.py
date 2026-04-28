@@ -2,7 +2,7 @@ from flask import Blueprint, abort, flash, jsonify, redirect, render_template, r
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..utils.note_variables import get_syntax_reference
-from ..decorators import editor_required, admin_required, template_editor_required
+from ..decorators import editor_required, admin_required, template_editor_required, misp_editor_required
 from ..utils.utils import get_modules_list, reload_application
 from ..utils.logger import flowintel_log
 from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case
@@ -450,9 +450,11 @@ def delete_note_template(nid):
 
 @tools_blueprint.route("/case_misp_event", methods=["GET", "POST"])
 @login_required
-@editor_required
 def case_misp_event():
+    can_use_misp = current_user.is_admin() or current_user.is_misp_editor()
     if request.method == 'POST':
+        if not can_use_misp:
+            return {"message": "Action not Allowed", "toast_class": "warning-subtle"}, 403
         res = ToolsModel.check_case_misp_event(request.json, current_user)
         if not type(res) == str:
             case = ToolsModel.create_case_misp_event(request.json, current_user)
@@ -465,12 +467,12 @@ def case_misp_event():
             return {"case_id": case.id}, 200
         else:
             return {"message": res, "toast_class": "warning-subtle"}, 400
-    return render_template("tools/case_misp_event.html")
+    return render_template("tools/case_misp_event.html", can_use_misp=can_use_misp)
 
 
 @tools_blueprint.route("/check_connection", methods=["GET"])
 @login_required
-@editor_required
+@misp_editor_required
 def check_connection():
     misp_instance_id = request.args.get('misp_instance_id', 1, type=int)
     res = ToolsModel.check_connection_misp(misp_instance_id, current_user)
@@ -480,7 +482,7 @@ def check_connection():
 
 @tools_blueprint.route("/check_misp_event", methods=["GET"])
 @login_required
-@editor_required
+@misp_editor_required
 def check_misp_event():
     misp_instance_id = request.args.get('misp_instance_id', 1, type=int)
     misp_event_id = request.args.get('misp_event_id', 1, type=str)

@@ -44,7 +44,7 @@ export default {
 			if (await res.status == 200) {
 				let loc = await res.json()
 
-				task.subtasks.push({ "id": loc["id"], "description": description, "task_id": task.id, "completed": false })
+				task.subtasks.push({ "id": loc["id"], "description": description, "task_id": task.id, "completed": false, "task_order_id": task.subtasks.length })
 				task.nb_open_subtasks += 1
 				create_message("Subtask created", "success-subtle", false, "fas fa-plus")
 				$("#textarea-subtask-" + task.id).val("")
