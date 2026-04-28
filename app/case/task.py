@@ -748,13 +748,18 @@ def call_module_task(cid, tid):
 
 @task_blueprint.route("/<cid>/task/<tid>/call_module_task_no_instance", methods=['GET', 'POST'])
 @login_required
+@misp_editor_required
 def call_module_task_no_instance(cid, tid):
     """Run a module"""
     case = CommonModel.get_case(cid)
     if not check_user_private_case(case):
         flowintel_log("audit", 403, "Call module on task: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
         return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-    
+
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Call module on task: Org not assigned to case", User=current_user.email, CaseId=cid, TaskId=tid)
+        return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
     task = CommonModel.get_task(tid)
     if task:
         module = request.args.get("module")
