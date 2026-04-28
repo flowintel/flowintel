@@ -64,11 +64,31 @@ chmod +x $HOME/node_modules/.bin/mmdc
 
 # initialize flowintel
 
-# install python requirements
-python3 -m venv env
-. env/bin/activate
-pip install -r requirements.txt
+# install python requirements (using uv for better dependency management)
+if command -v python3.12 &> /dev/null; then
+    PYTHON_CMD=python3.12
+elif command -v python3.11 &> /dev/null; then
+    PYTHON_CMD=python3.11
+elif command -v python3.10 &> /dev/null; then
+    PYTHON_CMD=python3.10
+else
+    PYTHON_CMD=python3
+fi
+
+$PYTHON_CMD -m venv .venv
+. .venv/bin/activate
+pip install --upgrade uv
+uv pip install -r requirements.txt
+
+# install node dependencies (using bun)
+if command -v bun &> /dev/null; then
+    cd app/assets
+    bun install
+    cd ../..
+fi
+
 # init submodules
 git submodule init && git submodule update
-# make launch script executable
+# make launch scripts executable
+chmod +x launch.sh
 ./launch.sh -i

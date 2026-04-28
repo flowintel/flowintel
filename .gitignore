@@ -61,4 +61,6 @@ modules/repositories/*
 
 # Community test data API keys (generated at runtime)
 tests/testdata/.community-api-keys.json
-tests/testplan-use-cases.md
+
+# Redis dump files
+dump.rdb

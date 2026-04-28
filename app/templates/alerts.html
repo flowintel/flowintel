@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .alert-item { padding: 0.75rem 1rem; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 1rem; }
+    .alert-item:hover { background: #f8f9fa; }
+    .alert-item.unread { border-left: 3px solid #0d6efd; background: #f0f7ff; }
+    .alert-status-sent { color: #198754; }
+    .alert-status-error { color: #dc3545; }
+    .alert-status-pending { color: #ffc107; }
+    .config-card { margin-bottom: 1.5rem; }
+    .log-entry { font-family: monospace; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-bottom: 1px solid #eee; }
+    .log-entry:nth-child(odd) { background: #f8f9fa; }
+    #log-container { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <h1 class="h3 mb-0"><i class="fa-solid fa-bell me-2"></i>Alerts</h1>
+        <i class="fa-solid fa-circle-question text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+           title="Every new case created in Flowintel automatically appears here. If a webhook is configured, an HTTP POST is sent to the external URL and the alert status shows the result."></i>
+    </div>
+
+    <!-- How it works card -->
+    <div class="alert alert-info d-flex align-items-center gap-3 py-2 px-3 mb-3 small" role="alert">
+        <i class="fa-solid fa-info-circle fa-lg"></i>
+        <div>
+            <strong>How alerts work:</strong> Every time a case is created, it is automatically logged here.
+            If the webhook is enabled, an HTTP POST is also sent to the configured URL.
+            The status badge shows whether the webhook was sent successfully (<span class="badge bg-success">Sent</span>),
+            failed (<span class="badge bg-danger">Error</span>),
+            or pending (<span class="badge bg-warning text-dark">Pending</span>).
+        </div>
+    </div>
+
+    <!-- Alerts List -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Recent Case Alerts</h5>
+            <div>
+                <span class="badge bg-primary me-2" id="unread-count">{{ alerts|selectattr('is_read', 'equalto', false)|list|length }} unread</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
+            </div>
+        </div>
+        <div class="card-body p-0" id="alerts-container">
+            {% for alert in alerts %}
+            <div class="alert-item {{ 'unread' if not alert.is_read }}" data-id="{{ alert.id }}">
+                <div style="min-width: 80px;">
+                    {% if alert.status == 'sent' %}
+                    <span class="badge bg-success">Sent</span>
+                    {% elif alert.status == 'error' %}
+                    <span class="badge bg-danger">Error</span>
+                    {% else %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                    {% endif %}
+                </div>
+                <div class="flex-grow-1">
+                    <strong>{{ alert.case_title }}</strong>
+                    <div class="text-muted small">{{ alert.message }}</div>
+                    <div class="text-muted" style="font-size: 0.8rem;">{{ alert.creation_date[:19] }}</div>
+                </div>
+                <div class="text-end" style="min-width: 120px;">
+                    {% if alert.case_uuid %}
+                    <a href="/case/{{ alert.case_id }}" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-folder-open me-1"></i>View Case</a>
+                    {% endif %}
+                    {% if alert.webhook_status %}
+                    <div class="small text-muted">HTTP {{ alert.webhook_status }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-5">
+                <i class="fa-solid fa-bell-slash fa-3x mb-3"></i>
+                <p>No alerts yet. Alerts will appear here when new cases are created.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Webhook Config -->
+        <div class="col-md-6">
+            <div class="card config-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fa-solid fa-plug me-2"></i>Webhook Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="webhook-config">
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="webhook-enabled" {{ 'checked' if cfg.WEBHOOK_ENABLED else '' }}>
+                            <label class="form-check-label" for="webhook-enabled">Enable webhook</label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Webhook URL</label>
+                            <input type="url" class="form-control" id="webhook-url" value="{{ cfg.WEBHOOK_URL }}" placeholder="https://example.com/webhook">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Secret (HMAC-SHA256 signature)</label>
+                            <input type="text" class="form-control" id="webhook-secret" value="{{ cfg.WEBHOOK_SECRET }}" placeholder="Optional secret">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                            <button type="button" class="btn btn-outline-secondary" id="test-webhook"><i class="fa-solid fa-paper-plane me-1"></i>Test</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- IMAP Config -->
+        <div class="col-md-6">
+            <div class="card config-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fa-solid fa-envelope me-2"></i>Email IMAP</h5>
+                </div>
+                <div class="card-body">
+                    <form id="imap-config">
+                        <div class="mb-3">
+                            <label class="form-label">IMAP Server</label>
+                            <input type="text" class="form-control" id="imap-server" value="{{ cfg.IMAP_SERVER }}" placeholder="imap.gmail.com">
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Port</label>
+                                <input type="number" class="form-control" id="imap-port" value="{{ cfg.IMAP_PORT or 993 }}">
+                            </div>
+                            <div class="col-6 d-flex align-items-end">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="imap-ssl" {{ 'checked' if cfg.IMAP_USE_SSL else '' }}>
+                                    <label class="form-check-label" for="imap-ssl">SSL</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" id="imap-user" value="{{ cfg.IMAP_USER }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" id="imap-password" value="{{ cfg.IMAP_PASSWORD }}">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                            <button type="button" class="btn btn-outline-secondary" id="test-imap"><i class="fa-solid fa-paper-plane me-1"></i>Test</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs -->
+    <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Webhook Logs</h5>
+            <button class="btn btn-sm btn-outline-secondary" id="refresh-logs"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
+        </div>
+        <div class="card-body" id="log-container">
+            {% for log in alert_logs %}
+            <div class="log-entry">{{ log }}</div>
+            {% else %}
+            <div class="text-muted p-3">No logs yet</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script>
+// Initialize Bootstrap tooltips
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+// Webhook config save
+document.getElementById('webhook-config').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        WEBHOOK_ENABLED: document.getElementById('webhook-enabled').checked,
+        WEBHOOK_URL: document.getElementById('webhook-url').value,
+        WEBHOOK_SECRET: document.getElementById('webhook-secret').value,
+    };
+    const resp = await fetch('/alerts/config', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const result = await resp.json();
+    alert(result.status === 'ok' ? 'Webhook configuration saved' : 'Error: ' + (result.message || 'unknown'));
+});
+
+// IMAP config save
+document.getElementById('imap-config').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        IMAP_SERVER: document.getElementById('imap-server').value,
+        IMAP_PORT: parseInt(document.getElementById('imap-port').value) || 993,
+        IMAP_USE_SSL: document.getElementById('imap-ssl').checked,
+        IMAP_USER: document.getElementById('imap-user').value,
+        IMAP_PASSWORD: document.getElementById('imap-password').value,
+    };
+    const resp = await fetch('/alerts/config', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const result = await resp.json();
+    alert(result.status === 'ok' ? 'IMAP configuration saved' : 'Error: ' + (result.message || 'unknown'));
+});
+
+// Test webhook
+document.getElementById('test-webhook').addEventListener('click', async () => {
+    const resp = await fetch('/alerts/test/webhook');
+    const result = await resp.json();
+    alert('Webhook test: ' + JSON.stringify(result, null, 2));
+});
+
+// Test IMAP
+document.getElementById('test-imap').addEventListener('click', async () => {
+    const resp = await fetch('/alerts/test/imap');
+    const result = await resp.json();
+    alert('IMAP test: ' + JSON.stringify(result, null, 2));
+});
+
+// Refresh logs
+document.getElementById('refresh-logs').addEventListener('click', async () => {
+    const resp = await fetch('/alerts/logs');
+    const result = await resp.json();
+    const container = document.getElementById('log-container');
+    if (result.logs && result.logs.length) {
+        container.innerHTML = result.logs.map(l => `<div class="log-entry">${l}</div>`).join('');
+    } else {
+        container.innerHTML = '<div class="text-muted p-3">No logs yet</div>';
+    }
+});
+
+// Mark alert as read when clicked
+document.querySelectorAll('.alert-item').forEach(el => {
+    el.addEventListener('click', async () => {
+        const id = el.dataset.id;
+        await fetch(`/alerts/api/alerts/${id}/read`);
+        el.classList.remove('unread');
+        // Update unread count
+        const count = document.querySelectorAll('.alert-item.unread').length;
+        document.getElementById('unread-count').textContent = count + ' unread';
+    });
+});
+</script>
+{% endblock %}

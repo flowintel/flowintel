@@ -99,6 +99,7 @@ def create_app():
     from .analyzer.misp_modules import analyzer_blueprint
     from .custom_tags.custom_tags import custom_tags_blueprint
     from .templating.templating import templating_blueprint
+    from .alerts import alerts_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -112,6 +113,8 @@ def create_app():
     app.register_blueprint(analyzer_blueprint, url_prefix="/analyzer")
     csrf.exempt(analyzer_blueprint)
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
+    app.register_blueprint(alerts_blueprint, url_prefix="/alerts")
+    csrf.exempt(alerts_blueprint)
 
     from .api import api_blueprint
     csrf.exempt(api_blueprint)

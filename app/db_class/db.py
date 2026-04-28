@@ -621,6 +621,30 @@ class Notification(db.Model):
         
         return json_dict
     
+    
+class Alert(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    message = db.Column(db.String, index=True)
+    status = db.Column(db.String(30), default="pending")
+    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    is_read = db.Column(db.Boolean, default=False)
+    webhook_url = db.Column(db.String, nullable=True)
+    webhook_status = db.Column(db.Integer, nullable=True)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "case_id": self.case_id,
+            "message": self.message,
+            "status": self.status,
+            "creation_date": self.creation_date.isoformat(),
+            "is_read": self.is_read,
+            "webhook_url": self.webhook_url,
+            "webhook_status": self.webhook_status,
+        }
+
+
 class Recurring_Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, index=True)
