@@ -2,7 +2,7 @@ from flask import request, jsonify
 from ..utils.utils import get_user_from_api
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required
+from ..decorators import api_required, misp_editor_required
 from . import session_class as SessionModel
 from . import misp_modules_core as MispModuleModel
 
@@ -12,7 +12,7 @@ analyzer_ns = Namespace("analyzer", description="Endpoints to manage analyzer")
 @analyzer_ns.route('/misp-modules/query', methods=['POST'])
 @analyzer_ns.doc(description='Receive a result from an external tool')
 class Query(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     @analyzer_ns.doc(params={
         "query": "Required. List of queries",
         "input": "Required. Type of attributes in entry.Can be only one type",

@@ -12,6 +12,14 @@
 
     <hr class="fading-line-2 mt-4 mb-4">
 
+    {% if not can_use_misp %}
+    <div class="container-fluid w-75">
+        <div class="alert alert-warning" role="alert">
+            <i class="fa-solid fa-lock me-2"></i>
+            <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
+        </div>
+    </div>
+    {% else %}
     <div class="container-fluid w-75 case-core-style">
         <div class="row mt-5">
             <div class="col">
@@ -76,11 +84,13 @@
             <span v-else>Submit</span>
         </button>
     </div>
+    {% endif %}
 
 {% endblock %}
 
 
 {% block script %}
+    {% if can_use_misp %}
     <script type="module">
         const { createApp, ref, onMounted } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
@@ -227,4 +237,5 @@
         }).mount('#main-container')
 
     </script>
+    {% endif %}
 {% endblock %}

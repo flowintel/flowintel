@@ -265,7 +265,7 @@
         </li>
         <li class="nav-item">
             <button class="nav-link" id="tab-misp-objects" @click="active_tab('misp-objects')">
-                <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title fs-6">MISP objects </span> 
+                <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i><i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title fs-6">MISP objects </span> 
                 <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
             </button>
         </li>
@@ -498,7 +498,11 @@
         </template>
 
         <template v-else-if="main_tab == 'misp-objects'">
-            <misp_object :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
+            <div v-if="!can_use_connectors" class="alert alert-warning" role="alert">
+                <i class="fa-solid fa-lock me-2"></i>
+                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
+            </div>
+            <misp_object v-else :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
         </template>
 
         <template v-else-if="main_tab == 'connectors'">
