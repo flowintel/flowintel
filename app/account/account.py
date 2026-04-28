@@ -11,6 +11,7 @@ from flask_login import (
 )
 from . import account_core as AccountModel
 from . import entra_core as EntraModel
+from . import keycloak_core as KeycloakModel
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel
@@ -19,6 +20,7 @@ import logging
 import time
 import secrets
 from urllib.parse import urlparse
+from itsdangerous import URLSafeTimedSerializer, BadData
 
 from wtforms.validators import Email, ValidationError
 
@@ -46,6 +48,24 @@ def get_client_ip():
     elif request.headers.get('X-Real-IP'):
         return request.headers.get('X-Real-IP')
     return request.remote_addr
+
+
+def is_safe_next_url(target):
+    """Return True if ``target`` is a safe local redirect target."""
+    if not target:
+        return False
+    parsed = urlparse(target)
+    if parsed.scheme or parsed.netloc:
+        return False
+    # Reject protocol-relative URLs like //evil and backslash variants.
+    return target.startswith('/') and not target.startswith('//') and not target.startswith('/\\')
+
+
+def _post_login_redirect(default='/'):
+    target = request.args.get('next')
+    if is_safe_next_url(target):
+        return redirect(target)
+    return redirect(default)
 
 
 def check_rate_limit(key_prefix, max_attempts, window):
@@ -143,6 +163,9 @@ def change_api_key():
 @account_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     """Log in an existing user."""
+    if current_user.is_authenticated:
+        return _post_login_redirect()
+
     form = LoginForm()
     show_reset_link = False
     
@@ -155,21 +178,24 @@ def login():
             flash(f'Too many login attempts. Please try again in {remaining_time} seconds.', 'error')
             return render_template('account/login.html', form=form, show_reset_link=False)
         
+        email = (form.email.data or '').strip().lower()
         try:
-            Email(form.email.data)
+            Email(email)
         except ValidationError:
             flash('Invalid email or password.', 'error')
-            flowintel_log("audit", 401, "Failed login attempt - Invalid email format", Email=form.email.data)
+            flowintel_log("audit", 401, "Failed login attempt - Invalid email format", Email=email)
             token = create_password_reset_token()
             session['password_reset_token'] = token
             session['password_reset_token_time'] = time.time()
-            session['failed_login_email'] = form.email.data  # Store for pre-filling
+            session['failed_login_email'] = email  # Store for pre-filling
             show_reset_link = True
         else:
-            user = User.query.filter_by(email=form.email.data).first()
+            user = User.query.filter_by(email=email).first()
             if user is not None and user.password_hash is not None and \
                     user.verify_password(form.password.data):
-                login_user(user, form.remember_me.data)
+                remember = form.remember_me.data
+                session.clear()
+                login_user(user, remember)
                 now = datetime.datetime.now(tz=datetime.timezone.utc)
                 user.last_login = now
                 db.session.add(Login_Event(user_id=user.id, login_date=now))
@@ -179,25 +205,19 @@ def login():
                     db.session.rollback()
                     flowintel_log("audit", 500, f"Login event persistence failed: {exc}", Email=form.email.data)
                 flowintel_log("audit", 200, "Successful login", Email=form.email.data)
-                # Clear rate limit on successful login
-                client_ip = get_client_ip()
-                session.pop(f'login_attempts_{client_ip}', None)
-                session.pop('password_reset_token', None)
-                session.pop('password_reset_token_time', None)
-                session.pop('failed_login_email', None)
                 flash('You are now logged in. Welcome back!', 'success')
-                return redirect(request.args.get('next') or "/")
+                return _post_login_redirect()
             else:
                 flash('Invalid email or password.', 'error')
-                flowintel_log("audit", 401, "Failed login attempt - Invalid credentials", Email=form.email.data)
+                flowintel_log("audit", 401, "Failed login attempt - Invalid credentials", Email=email)
                 # Generate token for password reset access
                 token = create_password_reset_token()
                 session['password_reset_token'] = token
                 session['password_reset_token_time'] = time.time()
-                session['failed_login_email'] = form.email.data  # Store for pre-filling
+                session['failed_login_email'] = email  # Store for pre-filling
                 show_reset_link = True
                 
-                logger.warning(f"Failed login attempt for email: {form.email.data} from IP: {get_client_ip()}")
+                logger.warning(f"Failed login attempt for email: {email} from IP: {get_client_ip()}")
     
     return render_template('account/login.html', form=form, show_reset_link=show_reset_link)
 
@@ -224,14 +244,14 @@ def request_password_reset():
             flash(f'Too many password reset requests. Please try again in {remaining_time} seconds.', 'error')
             return render_template('account/request_password_reset.html', form=form)
         
-        email = form.email.data
+        email = (form.email.data or '').strip().lower()
         user = User.query.filter_by(email=email).first()
         
         if user:
             # SSO-managed accounts cannot reset their password here
             if user.auth_provider != 'local':
                 flowintel_log("audit", 400, "Password reset blocked for SSO user", Email=email, IP=get_client_ip())
-                flash('This account uses Microsoft Entra ID for authentication. Password management is handled by your organisation.', 'warning')
+                flash('This account uses single sign-on (SSO) for authentication. Password management is handled by your organisation.', 'warning')
                 session.pop('password_reset_token', None)
                 session.pop('password_reset_token_time', None)
                 session.pop('failed_login_email', None)
@@ -262,6 +282,9 @@ def entra_login():
     """Redirect user to Microsoft Entra ID for authentication."""
     if not current_app.config.get('ENTRA_ID_ENABLED'):
         abort(404)
+
+    if current_user.is_authenticated:
+        return _post_login_redirect()
 
     state = secrets.token_urlsafe(16)
     session['entra_state'] = state
@@ -312,9 +335,70 @@ def entra_callback():
         flowintel_log("audit", 403, "Entra ID login denied", Reason=error, IP=get_client_ip())
         return redirect(url_for('account.login'))
 
+    session.clear()
     login_user(user)
     flowintel_log("audit", 200, "Entra ID login successful", Email=user.email)
     flash('Logged in via Microsoft Entra ID.', 'success')
+    return _post_login_redirect()
+
+
+@account_blueprint.route('/keycloak/login')
+def keycloak_login():
+    """Redirect user to Keycloak for authentication."""
+    if not current_app.config.get('KEYCLOAK_ENABLED'):
+        abort(404)
+
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    state = s.dumps('keycloak-login')
+    redirect_uri = current_app.config.get('KEYCLOAK_REDIRECT_URL') or url_for('account.keycloak_callback', _external=True)
+    auth_url = KeycloakModel.get_auth_url(redirect_uri, state=state)
+    return redirect(auth_url)
+
+
+@account_blueprint.route('/keycloak/callback')
+def keycloak_callback():
+    """Handle the OAuth2 redirect from Keycloak."""
+    if not current_app.config.get('KEYCLOAK_ENABLED'):
+        abort(404)
+
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    try:
+        s.loads(request.args.get('state', ''), max_age=600)
+    except BadData:
+        flash('Authentication failed: invalid or expired state.', 'error')
+        flowintel_log("audit", 403, "Keycloak login failed - state mismatch", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    if 'error' in request.args:
+        error_desc = str(request.args.get('error_description', request.args.get('error', 'unknown error')))[:200]
+        flash(f'Keycloak authentication error: {error_desc}', 'error')
+        flowintel_log("audit", 401, "Keycloak login error", Error=request.args.get('error'), IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    code = request.args.get('code')
+    if not code:
+        flash('Authentication failed: no authorization code received.', 'error')
+        return redirect(url_for('account.login'))
+
+    redirect_uri = current_app.config.get('KEYCLOAK_REDIRECT_URL') or url_for('account.keycloak_callback', _external=True)
+    result = KeycloakModel.exchange_code(code, redirect_uri)
+
+    if 'error' in result:
+        error_desc = str(result.get('error_description', result.get('error', 'unknown error')))[:200]
+        flash(f'Keycloak authentication error: {error_desc}', 'error')
+        flowintel_log("audit", 401, "Keycloak token exchange failed", Error=result.get('error'), IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    user, error = KeycloakModel.get_or_create_sso_user(result)
+
+    if not user:
+        flash(f'Access denied: {error}', 'error')
+        flowintel_log("audit", 403, "Keycloak login denied", Reason=error, IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    login_user(user)
+    flowintel_log("audit", 200, "Keycloak login successful", Email=user.email)
+    flash('Logged in via Keycloak.', 'success')
     next_url = request.args.get('next') or '/'
     if urlparse(next_url).netloc or urlparse(next_url).scheme:
         next_url = '/'
@@ -327,6 +411,7 @@ def logout():
     user_email = current_user.email
     flowintel_log("audit", 200, "User logout", Email=user_email)
     logout_user()
+    session.clear()
     flash('You have been logged out.', 'info')
     return redirect(url_for('account.login'))
 

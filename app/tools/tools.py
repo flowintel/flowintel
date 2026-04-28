@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
 from ..admin import admin_core as AdminModel
 from ..utils.note_variables import get_syntax_reference
-from ..decorators import editor_required, admin_required, template_editor_required
+from ..decorators import editor_required, admin_required, template_editor_required, misp_editor_required
 from ..utils.utils import get_modules_list, reload_application
 from ..utils.logger import flowintel_log
 from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case, check_user_in_private_cases
@@ -492,21 +492,29 @@ def delete_note_template(nid):
 
 @tools_blueprint.route("/case_misp_event", methods=["GET", "POST"])
 @login_required
-@editor_required
 def case_misp_event():
+    can_use_misp = current_user.is_admin() or current_user.is_misp_editor()
     if request.method == 'POST':
+        if not can_use_misp:
+            return {"message": "Action not Allowed", "toast_class": "warning-subtle"}, 403
         res = ToolsModel.check_case_misp_event(request.json, current_user)
         if not type(res) == str:
             case = ToolsModel.create_case_misp_event(request.json, current_user)
+            flowintel_log(
+                "audit", 200, "Case created from MISP event",
+                User=current_user.email, CaseId=case.id,
+                MispInstanceId=request.json.get("misp_instance_id"),
+                MispEventId=request.json.get("misp_event_id"),
+            )
             return {"case_id": case.id}, 200
         else:
             return {"message": res, "toast_class": "warning-subtle"}, 400
-    return render_template("tools/case_misp_event.html")
+    return render_template("tools/case_misp_event.html", can_use_misp=can_use_misp)
 
 
 @tools_blueprint.route("/check_connection", methods=["GET"])
 @login_required
-@editor_required
+@misp_editor_required
 def check_connection():
     misp_instance_id = request.args.get('misp_instance_id', 1, type=int)
     res = ToolsModel.check_connection_misp(misp_instance_id, current_user)
@@ -516,13 +524,13 @@ def check_connection():
 
 @tools_blueprint.route("/check_misp_event", methods=["GET"])
 @login_required
-@editor_required
+@misp_editor_required
 def check_misp_event():
     misp_instance_id = request.args.get('misp_instance_id', 1, type=int)
     misp_event_id = request.args.get('misp_event_id', 1, type=str)
     res = ToolsModel.check_event(misp_event_id, misp_instance_id, current_user)
     if not type(res) == str:
-        return {"is_connection_okay": True, "event_info": res.info}
+        return {"is_connection_okay": True, "event_details": ToolsModel.summarize_misp_event(res)}
     return {"is_connection_okay": False}
 
 
@@ -669,6 +677,22 @@ def system_settings():
         'entra_group_queuer': current_app.config.get('ENTRA_GROUP_QUEUER', ''),
         'entra_role_queuer': current_app.config.get('ENTRA_ROLE_QUEUER', ''),
         'entra_redirect_url': current_app.config.get('ENTRA_REDIRECT_URL', ''),
+
+        # Keycloak SSO
+        'keycloak_enabled': current_app.config.get('KEYCLOAK_ENABLED', False),
+        'keycloak_base_url': current_app.config.get('KEYCLOAK_BASE_URL', ''),
+        'keycloak_realm': current_app.config.get('KEYCLOAK_REALM', ''),
+        'keycloak_client_id': current_app.config.get('KEYCLOAK_CLIENT_ID', ''),
+        'keycloak_group_admin': current_app.config.get('KEYCLOAK_GROUP_ADMIN', ''),
+        'keycloak_group_editor': current_app.config.get('KEYCLOAK_GROUP_EDITOR', ''),
+        'keycloak_group_readonly': current_app.config.get('KEYCLOAK_GROUP_READONLY', ''),
+        'keycloak_group_case_admin': current_app.config.get('KEYCLOAK_GROUP_CASE_ADMIN', ''),
+        'keycloak_role_case_admin': current_app.config.get('KEYCLOAK_ROLE_CASE_ADMIN', ''),
+        'keycloak_group_queue_admin': current_app.config.get('KEYCLOAK_GROUP_QUEUE_ADMIN', ''),
+        'keycloak_role_queue_admin': current_app.config.get('KEYCLOAK_ROLE_QUEUE_ADMIN', ''),
+        'keycloak_group_queuer': current_app.config.get('KEYCLOAK_GROUP_QUEUER', ''),
+        'keycloak_role_queuer': current_app.config.get('KEYCLOAK_ROLE_QUEUER', ''),
+        'keycloak_redirect_url': current_app.config.get('KEYCLOAK_REDIRECT_URL', ''),
 
         # Database
         'db_type': db_type,

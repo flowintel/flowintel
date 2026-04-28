@@ -3,24 +3,49 @@ export default {
 	props: {
 		tasks_list: Object
 	},
-	emits: ['tasks_list', 'current_filter'],
-	setup(props, { emit }) {
-		let active_filter = 'ongoing'
+	emits: ['tasks_list', 'current_filter', 'active_mode'],
+	setup(props, { emit, expose }) {
+		const { ref } = Vue
+		const active_filter = ref('ongoing')
 		let current_filter = ""
 		let asc_desc = true
 
-		async function filter_tasks(mode) {
-			active_filter = mode
-			let url
-			if (mode === 'ongoing') {
-				url = `/my_assignment/sort_tasks?status=true&page=1`
-			} else if (mode === 'finished') {
-				url = `/my_assignment/sort_tasks?status=false&page=1`
+		const FILTER_LABELS = {
+			ongoing: 'Ongoing tasks',
+			finished: 'Finished tasks',
+			inactive: 'Rejected / Unavailable',
+			overdue: 'Overdue tasks'
+		}
+
+		function build_url(mode, page = 1, sort_field = "") {
+			let url = `/my_assignment/sort_tasks?page=${page}`
+			if (mode === 'finished') {
+				url += '&status=false'
 			} else {
-				url = `/my_assignment/sort_tasks?status=true&inactive=true&page=1`
+				url += '&status=true'
 			}
-			const res = await fetch(url)
-			let loc = await res.json()
+			if (mode === 'inactive') {
+				url += '&inactive=true'
+			}
+			if (mode === 'overdue') {
+				url += '&overdue=true'
+			}
+			if (sort_field) {
+				url += `&filter=${sort_field}`
+			}
+			return url
+		}
+
+		async function filter_tasks(mode) {
+			active_filter.value = mode
+			emit('active_mode', { mode, label: FILTER_LABELS[mode] || '' })
+			const res = await fetch(build_url(mode, 1, current_filter))
+			const loc = await res.json()
+			if (current_filter && !asc_desc) {
+				for (let key in loc.tasks) {
+					loc.tasks[key] = loc.tasks[key].reverse()
+				}
+			}
 			emit('tasks_list', loc)
 		}
 
@@ -50,22 +75,30 @@ export default {
 				asc_desc = !asc_desc
 
 			if (current_filter) {
-				let status_param = active_filter === 'finished' ? 'false' : 'true'
-				let inactive_param = active_filter === 'inactive' ? '&inactive=true' : ''
-				let res = await fetch(`/my_assignment/sort_tasks?status=${status_param}&page=1&filter=${current_filter}${inactive_param}`)
-				let loc = await res.json()
+				const res = await fetch(build_url(active_filter.value, 1, current_filter))
+				const loc = await res.json()
 				if (!asc_desc) {
-					for (let key in loc["tasks"]) {
-						loc["tasks"][key] = loc["tasks"][key].reverse()
+					for (let key in loc.tasks) {
+						loc.tasks[key] = loc.tasks[key].reverse()
 					}
 				}
 				emit('tasks_list', loc)
 			}
-
 		}
 
+		function activate_overdue() {
+			// Programmatically activate the overdue filter (called from the parent badge)
+			filter_tasks('overdue')
+			const collapse = document.getElementById('collapsefiltertask')
+			if (collapse && !collapse.classList.contains('show')) {
+				collapse.classList.add('show')
+			}
+		}
+
+		expose({ activate_overdue, filter_tasks, active_filter })
 
 		return {
+			active_filter,
 			filter_tasks,
 			sort_by_last_modif,
 			sort_by_title,
@@ -75,23 +108,36 @@ export default {
 		}
 	},
 	template: `
-	<button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask" aria-expanded="false" aria-controls="collapsefiltertask">
+	<button class="btn position-relative"
+			:class="active_filter === 'ongoing' ? 'btn-outline-primary' : 'btn-primary'"
+			type="button" data-bs-toggle="collapse" data-bs-target="#collapsefiltertask"
+			aria-expanded="false" aria-controls="collapsefiltertask"
+			:title="active_filter === 'ongoing' ? 'Filter tasks' : 'Filter active'">
 		<i class="fa-solid fa-filter"></i>
+		<span v-if="active_filter !== 'ongoing'"
+			  class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle"
+			  style="width: 12px; height: 12px;">
+			<span class="visually-hidden">Filter active</span>
+		</span>
 	</button>
 	<div class="collapse" id="collapsefiltertask">
 		<div class="card card-body">
 			<div class="d-flex w-100 justify-content-between">
 				<div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" @click="filter_tasks('ongoing')" checked>
-						<label class="form-check-label" for="radioStatusOngoing"><i class="fa-solid fa-spinner fa-sm me-1"></i>Ongoing Tasks</label>
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOngoing" :checked="active_filter === 'ongoing'" @click="filter_tasks('ongoing')">
+						<label class="form-check-label" for="radioStatusOngoing"><i class="fa-solid fa-spinner fa-sm me-1"></i>Ongoing tasks</label>
 					</div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" @click="filter_tasks('finished')">
-						<label class="form-check-label" for="radioStatusFinished"><i class="fa-solid fa-check-circle fa-sm me-1"></i>Finished Tasks</label>
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusOverdue" :checked="active_filter === 'overdue'" @click="filter_tasks('overdue')">
+						<label class="form-check-label" for="radioStatusOverdue"><i class="fa-solid fa-clock-rotate-left fa-sm me-1 text-danger"></i>Overdue tasks</label>
 					</div>
 					<div class="form-check">
-						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusInactive" @click="filter_tasks('inactive')">
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusFinished" :checked="active_filter === 'finished'" @click="filter_tasks('finished')">
+						<label class="form-check-label" for="radioStatusFinished"><i class="fa-solid fa-check-circle fa-sm me-1"></i>Finished tasks</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="radioStatus" id="radioStatusInactive" :checked="active_filter === 'inactive'" @click="filter_tasks('inactive')">
 						<label class="form-check-label" for="radioStatusInactive"><i class="fa-solid fa-ban fa-sm me-1"></i>Rejected / Unavailable</label>
 					</div>
 				</div>

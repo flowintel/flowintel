@@ -42,5 +42,15 @@ def validate_case_from_misp(request_json: dict, current_user: User):
         event = misp.get_event(request_json["misp_event_id"], pythonify=True)
         if 'errors' in event:
             return {"message": "Event not found on this MISP instance"}
-        
+
+    for key in ("selected_object_uuids", "selected_attribute_uuids"):
+        value = request_json.get(key)
+        if value is not None and not (isinstance(value, list) and all(isinstance(v, str) for v in value)):
+            return {"message": f"'{key}' must be a list of UUID strings"}
+
+    for key in ("import_event_info_note", "import_attributes_note", "import_misp_reports", "import_misp_files"):
+        value = request_json.get(key)
+        if value is not None and not isinstance(value, bool):
+            return {"message": f"'{key}' must be a boolean"}
+
     return {}

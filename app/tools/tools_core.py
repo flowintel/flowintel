@@ -1,6 +1,8 @@
 import calendar
+from io import BytesIO
 
 from pymisp import PyMISP
+from werkzeug.datastructures import FileStorage
 from ..db_class.db import *
 import uuid
 import json
@@ -611,7 +613,178 @@ def check_event(event_id: str, misp_instance_id: int, current_user: User):
         return event
     else:
         return misp
-    
+
+
+_MISP_THREAT_LEVELS = {"1": "High", "2": "Medium", "3": "Low", "4": "Undefined"}
+_MISP_ANALYSIS = {"0": "Initial", "1": "Ongoing", "2": "Completed"}
+_MISP_DISTRIBUTIONS = {
+    "0": "Your organisation only",
+    "1": "This community only",
+    "2": "Connected communities",
+    "3": "All communities",
+    "4": "Sharing group",
+    "5": "Inherit event",
+}
+
+
+_MISP_FILE_ATTR_TYPES = ("attachment", "malware-sample")
+
+
+def summarize_misp_event(event):
+    """Return a JSON-friendly snapshot of a MISPEvent for the UI preview."""
+    data = event.to_dict()
+
+    def _org(key):
+        org = data.get(key) or {}
+        return {"id": org.get("id"), "name": org.get("name")} if org else None
+
+    galaxies = []
+    for galaxy in data.get("Galaxy", []):
+        clusters = galaxy.get("GalaxyCluster", [])
+        if clusters:
+            galaxies.extend(c["value"] for c in clusters if c.get("value"))
+        elif galaxy.get("name"):
+            galaxies.append(galaxy["name"])
+
+    attributes = [
+        {
+            "uuid": a.get("uuid"),
+            "type": a.get("type"),
+            "category": a.get("category"),
+            "value": a.get("value"),
+            "comment": a.get("comment") or "",
+        }
+        for a in data.get("Attribute", [])
+    ]
+
+    objects = [
+        {
+            "uuid": o.get("uuid"),
+            "name": o.get("name"),
+            "comment": o.get("comment") or "",
+            "nb_attributes": len(o.get("Attribute", [])),
+            "attributes": [
+                {"type": a.get("type"), "value": a.get("value")}
+                for a in o.get("Attribute", [])
+            ],
+        }
+        for o in data.get("Object", [])
+    ]
+
+    nb_files = sum(1 for a in data.get("Attribute", []) if a.get("type") in _MISP_FILE_ATTR_TYPES)
+    nb_files += sum(
+        1
+        for o in data.get("Object", [])
+        for a in o.get("Attribute", [])
+        if a.get("type") in _MISP_FILE_ATTR_TYPES
+    )
+
+    return {
+        "id": data.get("id"),
+        "info": data.get("info"),
+        "published": bool(data.get("published")),
+        "creator_org": _org("Orgc"),
+        "owner_org": _org("Org"),
+        "nb_attributes": len(attributes),
+        "nb_objects": len(objects),
+        "nb_object_attributes": sum(o["nb_attributes"] for o in objects),
+        "nb_reports": len(data.get("EventReport", [])),
+        "nb_files": nb_files,
+        "tags": [t["name"] for t in data.get("Tag", []) if t.get("name")],
+        "galaxies": galaxies,
+        "attributes": attributes,
+        "objects": objects,
+    }
+
+
+def _build_event_info_markdown(event) -> str:
+    data = event.to_dict()
+    creator = (data.get("Orgc") or {}).get("name") or ""
+    owner = (data.get("Org") or {}).get("name") or ""
+    return (
+        f"Event: {data.get('info', '')}\n"
+        f"Creator org: {creator}\n"
+        f"Owner org: {owner}\n"
+        f"Date: {data.get('date', '')}\n"
+        f"Threat level: {_MISP_THREAT_LEVELS.get(str(data.get('threat_level_id', '')), '')}\n"
+        f"Analysis: {_MISP_ANALYSIS.get(str(data.get('analysis', '')), '')}\n"
+        f"Distribution level: {_MISP_DISTRIBUTIONS.get(str(data.get('distribution', '')), '')}\n"
+    )
+
+
+def _build_attributes_markdown(event, selected_uuids) -> str:
+    attrs = event.to_dict().get("Attribute", [])
+    if selected_uuids is not None:
+        wanted = set(selected_uuids)
+        attrs = [a for a in attrs if a.get("uuid") in wanted]
+    if not attrs:
+        return "No individual attributes selected."
+    lines = [
+        "| Type | Category | Value | to_ids | Correlation | Comment |",
+        "|------|----------|-------|--------|-------------|---------|",
+    ]
+    for a in attrs:
+        value = (a.get("value") or "").replace("|", "\\|").replace("\n", " ")
+        comment = (a.get("comment") or "").replace("|", "\\|").replace("\n", " ")
+        to_ids = "Yes" if a.get("to_ids") else "No"
+        # MISP stores the inverse flag (`disable_correlation`); show the user-facing one.
+        correlation = "No" if a.get("disable_correlation") else "Yes"
+        lines.append(
+            f"| {a.get('type', '')} | {a.get('category', '')} | {value} | {to_ids} | {correlation} | {comment} |"
+        )
+    return "\n".join(lines)
+
+
+def _add_markdown_task(case, title, description, note_markdown, current_user):
+    """Create a task on ``case`` containing a single markdown note."""
+    task_form = {
+        "title": title,
+        "description": description,
+        "deadline_date": None,
+        "deadline_time": None,
+        "time_required": 0,
+    }
+    task = TaskModel.create_task(task_form, case.id, current_user)
+    note = TaskModel.create_note(task.id, current_user)
+    TaskModel.modif_note_core(task.id, current_user, note_markdown, note.id)
+    return task
+
+
+def _import_misp_attribute_files(misp, event_id, current_user, case):
+    """Re-fetch the event with attachments and attach every file attribute to ``case``."""
+    results = misp.search(
+        controller="events",
+        eventid=event_id,
+        with_attachments=True,
+        pythonify=True,
+    )
+    if not results:
+        return
+    event_with_data = results[0]
+    file_attrs = [a for a in event_with_data.attributes if a.type in _MISP_FILE_ATTR_TYPES]
+    for obj in event_with_data.objects:
+        file_attrs.extend(a for a in obj.attributes if a.type in _MISP_FILE_ATTR_TYPES)
+    if not file_attrs:
+        return
+
+    files_dict = {}
+    for idx, attr in enumerate(file_attrs):
+        data = getattr(attr, "data", None)
+        if not data:
+            continue
+        # MISPAttribute.data exposes a BytesIO. For malware-sample, attr.value is "filename|md5".
+        data.seek(0)
+        raw_name = (attr.value or "").split("|", 1)[0].strip()
+        filename = raw_name or f"misp_attachment_{idx + 1}"
+        files_dict[f"misp_file_{idx}"] = FileStorage(
+            stream=data,
+            filename=filename,
+            content_type="application/octet-stream",
+        )
+    if files_dict:
+        CaseModel.add_file_core(case, files_dict, current_user)
+
+
 
 def check_case_misp_event(request_form, current_user) -> str:
     if request_form.get("case_title"):
@@ -660,8 +833,13 @@ def create_case_misp_event(request_form, current_user):
             if cluster and not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
                 CaseModel.add_cluster(cluster, case.id)
 
+    raw_object_uuids = request_form.get("selected_object_uuids")
+    selected_object_uuids = set(raw_object_uuids) if isinstance(raw_object_uuids, list) else None
+
     object_uuid_list = {}
     for obje in event.objects:
+        if selected_object_uuids is not None and obje.uuid not in selected_object_uuids:
+            continue
         def append_dict(base, new):
             for key, value in new.items():
                 if key in base:
@@ -674,7 +852,49 @@ def create_case_misp_event(request_form, current_user):
         loc = misp_object_helper.create_misp_object(case.id, obje)
         object_uuid_list = append_dict(object_uuid_list, loc)
 
-    CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
+    if object_uuid_list:
+        CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
+
+    event_label = f'event {event.id} "{event.info}"'
+
+    if request_form.get("import_event_info_note"):
+        _add_markdown_task(
+            case,
+            "MISP event information",
+            f"Metadata of the {event_label}",
+            _build_event_info_markdown(event),
+            current_user,
+        )
+
+    if request_form.get("import_attributes_note"):
+        raw_attribute_uuids = request_form.get("selected_attribute_uuids")
+        selected_attribute_uuids = raw_attribute_uuids if isinstance(raw_attribute_uuids, list) else None
+        _add_markdown_task(
+            case,
+            "MISP attributes",
+            f"Attributes from {event_label}",
+            _build_attributes_markdown(event, selected_attribute_uuids),
+            current_user,
+        )
+
+    if request_form.get("import_misp_reports"):
+        reports = event.to_dict().get("EventReport", [])
+        if reports:
+            files_dict = {}
+            for idx, report in enumerate(reports):
+                content = (report.get("content") or "").encode("utf-8")
+                name = (report.get("name") or "").strip() or f"event_report_{idx + 1}"
+                if not name.lower().endswith(".md"):
+                    name = f"{name}.md"
+                files_dict[f"report_{idx}"] = FileStorage(
+                    stream=BytesIO(content),
+                    filename=name,
+                    content_type="text/markdown",
+                )
+            CaseModel.add_file_core(case, files_dict, current_user)
+
+    if request_form.get("import_misp_files"):
+        _import_misp_attribute_files(misp, misp_event_id, current_user, case)
 
     case_connector_instance = Case_Connector_Instance(
         case_id=case.id,

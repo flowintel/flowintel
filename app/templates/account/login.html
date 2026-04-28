@@ -135,6 +135,15 @@
             </div>
             {% endif %}
 
+            {% if config.KEYCLOAK_ENABLED %}
+            <div class="mt-3">
+                <a href="{{ url_for('account.keycloak_login') }}" class="btn btn-outline-light w-100">
+                    <i class="fa-solid fa-shield-halved" style="margin-right:6px"></i>
+                    Sign in with Keycloak
+                </a>
+            </div>
+            {% endif %}
+
             {% if show_reset_link %}
             <div class="mt-3" style="text-align: center;">
                 <a href="{{ url_for('account.request_password_reset') }}" style="color: #ccddff;">Request password reset from administrator</a>

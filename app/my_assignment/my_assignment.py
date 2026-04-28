@@ -29,6 +29,7 @@ def my_assignment_sort_tasks():
     page = request.args.get('page', 1, type=int)
     show_completed = request.args.get('status', default=False, type=is_it_true)
     inactive_only = request.args.get('inactive', default=False, type=is_it_true)
+    overdue_only = request.args.get('overdue', default=False, type=is_it_true)
     completed = not show_completed
     filter_value = request.args.get('filter', type=str)
     
@@ -37,7 +38,8 @@ def my_assignment_sort_tasks():
         completed=completed, 
         page=page, 
         filter=filter_value,
-        inactive_only=inactive_only
+        inactive_only=inactive_only,
+        overdue_only=overdue_only
     )
     
     stats = AssignModel.calculate_task_stats(current_user) if not completed and not inactive_only else None
