@@ -636,6 +636,22 @@ def system_settings():
         'entra_role_queuer': current_app.config.get('ENTRA_ROLE_QUEUER', ''),
         'entra_redirect_url': current_app.config.get('ENTRA_REDIRECT_URL', ''),
 
+        # Keycloak SSO
+        'keycloak_enabled': current_app.config.get('KEYCLOAK_ENABLED', False),
+        'keycloak_base_url': current_app.config.get('KEYCLOAK_BASE_URL', ''),
+        'keycloak_realm': current_app.config.get('KEYCLOAK_REALM', ''),
+        'keycloak_client_id': current_app.config.get('KEYCLOAK_CLIENT_ID', ''),
+        'keycloak_group_admin': current_app.config.get('KEYCLOAK_GROUP_ADMIN', ''),
+        'keycloak_group_editor': current_app.config.get('KEYCLOAK_GROUP_EDITOR', ''),
+        'keycloak_group_readonly': current_app.config.get('KEYCLOAK_GROUP_READONLY', ''),
+        'keycloak_group_case_admin': current_app.config.get('KEYCLOAK_GROUP_CASE_ADMIN', ''),
+        'keycloak_role_case_admin': current_app.config.get('KEYCLOAK_ROLE_CASE_ADMIN', ''),
+        'keycloak_group_queue_admin': current_app.config.get('KEYCLOAK_GROUP_QUEUE_ADMIN', ''),
+        'keycloak_role_queue_admin': current_app.config.get('KEYCLOAK_ROLE_QUEUE_ADMIN', ''),
+        'keycloak_group_queuer': current_app.config.get('KEYCLOAK_GROUP_QUEUER', ''),
+        'keycloak_role_queuer': current_app.config.get('KEYCLOAK_ROLE_QUEUER', ''),
+        'keycloak_redirect_url': current_app.config.get('KEYCLOAK_REDIRECT_URL', ''),
+
         # Database
         'db_type': db_type,
         'db_name': db_name,
