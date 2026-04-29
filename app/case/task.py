@@ -120,8 +120,9 @@ def complete_task(tid):
                 return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
             
             if TaskModel.complete_task(tid, current_user):
-                flowintel_log("audit", 200, "Task completed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-                return {"message": "Task completed", "toast_class": "success-subtle"}, 200
+                action = "completed" if task.completed else "revived"
+                flowintel_log("audit", 200, f"Task {action}", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                return {"message": f"Task {action}", "toast_class": "success-subtle"}, 200
             return {"message": "Error task completed", "toast_class": "danger-subtle"}, 400
         flowintel_log("audit", 403, "Task completed: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
