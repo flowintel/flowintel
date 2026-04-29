@@ -522,10 +522,6 @@ def fork_case(cid):
             flowintel_log("audit", 403, "Fork case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
 
-        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
-            flowintel_log("audit", 403, "Fork case: Org not assigned to case", User=current_user.email, CaseId=cid)
-            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-
         if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
             flowintel_log("audit", 403, "Fork case: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
             return {"message": "Cannot fork privileged cases", 'toast_class': "danger-subtle"}, 403
