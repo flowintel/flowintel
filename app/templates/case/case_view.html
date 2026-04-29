@@ -500,7 +500,7 @@
         <template v-else-if="main_tab == 'misp-objects'">
             <div v-if="!can_use_connectors" class="alert alert-warning" role="alert">
                 <i class="fa-solid fa-lock me-2"></i>
-                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
+                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use MISP objects.
             </div>
             <misp_object v-else :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
         </template>
