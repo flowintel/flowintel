@@ -150,7 +150,13 @@
                             </td>
                             <td class="text-muted small">[[ r.filename ]]</td>
                             <td><strong>[[ r.title ]]</strong></td>
-                            <td class="small">[[ r.status === 'success' ? 'Imported' : r.message ]]</td>
+                            <td class="small">
+                                <span v-if="r.status !== 'success'">[[ r.message ]]</span>
+                                <a v-else-if="r.id" :href="'/case/' + r.id" target="_blank" class="btn btn-sm btn-outline-success py-0">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>View
+                                </a>
+                                <span v-else>Imported</span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>

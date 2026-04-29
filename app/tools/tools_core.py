@@ -161,6 +161,8 @@ def case_creation_from_importer(case, current_user):
         misp_object["object-template"] = {"name": misp_object["name"], "uuid": misp_object["template_uuid"]}
         CaseModel.create_misp_object(case_created.id, misp_object, current_user)
 
+    return {"id": case_created.id}
+
 
 def case_template_creation_from_importer(template):
     if not utils.validate_importer_json(template, jsonschema_flowintel.caseTemplateSchema):
@@ -316,10 +318,13 @@ def importer_core(files_list, current_user, importer_type, create_custom_tags=Fa
                         res = case_template_creation_from_importer(item)
                     else:
                         res = None
-                    if res:
+                    if res and "message" in res:
                         results.append({"status": "error", "filename": filename, "title": title, "message": res["message"]})
                     else:
-                        results.append({"status": "success", "filename": filename, "title": title})
+                        entry = {"status": "success", "filename": filename, "title": title}
+                        if res and "id" in res:
+                            entry["id"] = res["id"]
+                        results.append(entry)
             except Exception as e:
                 print(e)
                 results.append({"status": "error", "filename": filename, "title": filename, "message": "Something went wrong"})
