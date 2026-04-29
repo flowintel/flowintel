@@ -33,6 +33,7 @@
                     <i class="fa-solid fa-folder-open me-1"></i>
                     Loading...
                 </span>
+                
                 <template v-if="home_stats">
                     <a v-if="home_stats.assigned_tasks > 0" href="/my_assignment/" class="badge bg-warning text-dark px-3 py-2 text-decoration-none">
                         <i class="fa-solid fa-list-check me-1"></i>
@@ -51,6 +52,12 @@
                         No waiting notifications
                     </span>
                 </template>
+
+                {% if not current_user.read_only() %}
+                <a href="/case/create_case" class="badge bg-primary text-white px-3 py-2 text-decoration-none">
+                    <i class="fa-solid fa-plus me-1"></i>Create a case
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
