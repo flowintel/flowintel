@@ -14,6 +14,7 @@ from flask_login import login_required, current_user
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
+from ..connectors import connectors_core as ConnectorModel
 from ..decorators import editor_required, misp_editor_required
 from ..utils.utils import form_to_dict, validate_file_size, query_post_query
 from ..utils.formHelper import prepare_tags
@@ -1253,3 +1254,40 @@ def edit_connector(tid, ciid):
         flowintel_log("audit", 403, "Edit task connector: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/task/<tid>/connectors/<ciid>/search_in_misp", methods=['POST'])
+@login_required
+@misp_editor_required
+def search_in_misp_task(tid, ciid):
+    """Search attributes in MISP using a receive_from MISP connector attached to a task."""
+    task = CommonModel.get_task(tid)
+    if not task:
+        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Search in MISP: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+        flowintel_log("audit", 403, "Search in MISP denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+        return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+
+    task_connector = CommonModel.get_task_connectors_by_id(ciid)
+    if not task_connector or task_connector.task_id != task.id:
+        return {"message": "Connector not attached to this task", "toast_class": "warning-subtle"}, 404
+
+    instance = CommonModel.get_instance(task_connector.instance_id)
+    misp_connector = CommonModel.get_connector_by_name("MISP")
+    if not instance or not misp_connector or instance.connector_id != misp_connector.id or instance.type != "receive_from":
+        return {"message": "Connector is not a MISP receive_from connector", "toast_class": "warning-subtle"}, 400
+
+    query = ((request.json or {}).get("query") or "").strip()
+    if not query:
+        return {"message": "Search query is required", "toast_class": "warning-subtle"}, 400
+
+    res = ConnectorModel.search_misp_attributes(instance, current_user, query)
+    if not res.get("success"):
+        flowintel_log("audit", 400, f"Search in MISP failed: {res.get('message')}", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
+        return {"message": res.get("message", "MISP search failed"), "toast_class": "danger-subtle"}, 400
+
+    flowintel_log("audit", 200, "Searched attributes in MISP", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid, Query=query)
+    return {"results": res["results"]}, 200

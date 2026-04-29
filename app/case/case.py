@@ -19,6 +19,7 @@ from ..utils.logger import flowintel_log
 from ..utils.file_converter import convert_file_to_note_content
 from ..utils.gpg import sign_text
 from ..utils.note_variables import resolve_variables, get_syntax_reference
+from ..connectors import connectors_core as ConnectorModel
 
 case_blueprint = Blueprint(
     'case',
@@ -1566,6 +1567,60 @@ def edit_connector(cid, ciid):
         flowintel_log("audit", 403, "Edit connector: Action not allowed", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/connectors/<ciid>/search_in_misp", methods=['POST'])
+@login_required
+@misp_editor_required
+def search_in_misp_case(cid, ciid):
+    """Search attributes in MISP using a receive_from MISP connector attached to a case."""
+    if not CommonModel.get_case(cid):
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Search in MISP: Action not allowed", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    case_connector = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_connector or str(case_connector.case_id) != str(cid):
+        return {"message": "Connector not attached to this case", "toast_class": "warning-subtle"}, 404
+
+    instance = CommonModel.get_instance(case_connector.instance_id)
+    misp_connector = CommonModel.get_connector_by_name("MISP")
+    if not instance or not misp_connector or instance.connector_id != misp_connector.id or instance.type != "receive_from":
+        return {"message": "Connector is not a MISP receive_from connector", "toast_class": "warning-subtle"}, 400
+
+    query = ((request.json or {}).get("query") or "").strip()
+    if not query:
+        return {"message": "Search query is required", "toast_class": "warning-subtle"}, 400
+
+    res = ConnectorModel.search_misp_attributes(instance, current_user, query)
+    if not res.get("success"):
+        flowintel_log("audit", 400, f"Search in MISP failed: {res.get('message')}", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
+        return {"message": res.get("message", "MISP search failed"), "toast_class": "danger-subtle"}, 400
+
+    flowintel_log("audit", 200, "Searched attributes in MISP", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid, Query=query)
+    return {"results": res["results"]}, 200
+
+
+@case_blueprint.route("/<cid>/append_note_case", methods=['POST'])
+@login_required
+@editor_required
+def append_note_case(cid):
+    """Append text to the case note (used by Search-in-MISP results)."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Append note: Org not assigned to case", User=current_user.email, CaseId=cid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    notes = (request.json or {}).get("notes")
+    if not notes:
+        return {"message": "Key 'notes' missing", "toast_class": "warning-subtle"}, 400
+    if CaseModel.append_note_core(cid, current_user, notes):
+        flowintel_log("audit", 200, "Note appended", User=current_user.email, CaseId=cid)
+        return {"notes": case.notes, "message": "Note appended", "toast_class": "success-subtle"}, 200
+    return {"message": "Error appending note", "toast_class": "danger-subtle"}, 400
 
 
 #################
