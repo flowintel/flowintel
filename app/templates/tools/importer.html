@@ -129,6 +129,32 @@
                     </div>
                 </div>
             </div>
+
+            <div class="mt-4" v-if="importResults.length">
+                <h6 class="mb-2"><i class="fa-solid fa-list-check me-2"></i>Import results</h6>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:36px;"></th>
+                            <th>File</th>
+                            <th>Title</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="r in importResults" :key="r.filename + r.title"
+                            :class="r.status === 'success' ? 'table-success' : 'table-danger'">
+                            <td class="text-center">
+                                <i v-if="r.status === 'success'" class="fa-solid fa-check text-success"></i>
+                                <i v-else class="fa-solid fa-xmark text-danger"></i>
+                            </td>
+                            <td class="text-muted small">[[ r.filename ]]</td>
+                            <td><strong>[[ r.title ]]</strong></td>
+                            <td class="small">[[ r.status === 'success' ? 'Imported' : r.message ]]</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
     </div>
@@ -155,11 +181,13 @@
                 const progress = ref(0)
                 const dragOver = ref(false)
                 const createCustom = ref(false)
+                const importResults = ref([])
 
                 function active_tab(tab_name){
                     if (tab_name === 'import_case' && !can_import_cases) return
                     if (tab_name === 'import_template' && !can_import_templates) return
                     main_tab.value = tab_name
+                    importResults.value = []
                 }
 
                 function openFilePicker(){
@@ -179,6 +207,7 @@
 
                 function clearFiles(){
                     files.value = []
+                    importResults.value = []
                 }
 
                 function onDragOver(){ dragOver.value = true }
@@ -217,6 +246,9 @@
                             progress.value = 0
                             try{
                                 const json = JSON.parse(xhr.responseText || '{}')
+                                if(json.results){
+                                    importResults.value = json.results
+                                }
                                 display_toast(new Response(JSON.stringify(json), {status: xhr.status}))
                             }catch(err){
                                 display_toast(new Response(JSON.stringify({message: 'Invalid response from server'}), {status: xhr.status}))
@@ -238,6 +270,7 @@
                     progress,
                     dragOver,
                     createCustom,
+                    importResults,
                     active_tab,
                     openFilePicker,
                     onFilesSelected,

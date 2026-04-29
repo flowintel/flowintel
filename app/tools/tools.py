@@ -63,12 +63,26 @@ def importer():
             # Create custom tags present in JSON if they don't exist
             create_custom_tags = request.form.get('create_custom_tags', 'false')
             create_custom_tags = True if str(create_custom_tags).lower() == 'true' else False
-            message = ToolsModel.importer_core(request.files, current_user, importer_type, create_custom_tags)
-            if message:
-                message["toast_class"] = "danger-subtle"
-                return message, 400
-            flowintel_log("audit", 200, f"Import successful (type={importer_type})", User=current_user.email)
-            return {"message": "All created", "toast_class": "success-subtle"}, 200
+            result = ToolsModel.importer_core(request.files, current_user, importer_type, create_custom_tags)
+            results = result.get("results", [])
+            n_ok = sum(1 for r in results if r["status"] == "success")
+            n_err = sum(1 for r in results if r["status"] == "error")
+            if n_err == 0:
+                flowintel_log("audit", 200, f"Import successful (type={importer_type})", User=current_user.email)
+                toast_class = "success-subtle"
+                msg = f"All imported successfully ({n_ok})"
+                status = 200
+            elif n_ok == 0:
+                flowintel_log("audit", 400, f"Import failed (type={importer_type})", User=current_user.email)
+                toast_class = "danger-subtle"
+                msg = f"All imports failed ({n_err})"
+                status = 400
+            else:
+                flowintel_log("audit", 207, f"Import partial (type={importer_type}, ok={n_ok}, err={n_err})", User=current_user.email)
+                toast_class = "warning-subtle"
+                msg = f"Import complete: {n_ok} succeeded, {n_err} failed"
+                status = 207
+            return {"message": msg, "toast_class": toast_class, "results": results}, status
         return {"message": "Need to give a least a file", "toast_class": "warning-subtle"}, 400
     return {"message": "Need to give a type of import", "toast_class": "warning-subtle"}, 400
     

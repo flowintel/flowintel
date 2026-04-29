@@ -293,8 +293,10 @@ def importer_core(files_list, current_user, importer_type, create_custom_tags=Fa
                         except Exception:
                             pass
 
+    results = []
     for file in files_list:
-        if files_list[file].filename:
+        filename = files_list[file].filename
+        if filename:
             try:
                 file_data = json.loads(files_list[file].read().decode())
                 # Create missing custom tags
@@ -305,21 +307,23 @@ def importer_core(files_list, current_user, importer_type, create_custom_tags=Fa
                     elif isinstance(file_data, dict):
                         _create_missing_custom_tags_in_case(file_data)
 
-                if type(file_data) == list:
-                    for case in file_data:
-                        if importer_type == 'case':
-                            res = case_creation_from_importer(case, current_user)
-                        elif importer_type == 'template':
-                            res = case_template_creation_from_importer(case)
-                        if res: return res
-                else:
+                items = file_data if isinstance(file_data, list) else [file_data]
+                for item in items:
+                    title = item.get("title", filename)
                     if importer_type == 'case':
-                        return case_creation_from_importer(file_data, current_user)
+                        res = case_creation_from_importer(item, current_user)
                     elif importer_type == 'template':
-                        return case_template_creation_from_importer(file_data)
+                        res = case_template_creation_from_importer(item)
+                    else:
+                        res = None
+                    if res:
+                        results.append({"status": "error", "filename": filename, "title": title, "message": res["message"]})
+                    else:
+                        results.append({"status": "success", "filename": filename, "title": title})
             except Exception as e:
                 print(e)
-                return {"message": "Something went wrong"}
+                results.append({"status": "error", "filename": filename, "title": filename, "message": "Something went wrong"})
+    return {"results": results}
 
 
 def chart_dict_constructor(input_dict):
