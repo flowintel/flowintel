@@ -1,5 +1,5 @@
 import {display_toast, create_message} from '../toaster.js'
-const { ref, onMounted, watch } = Vue
+const { ref, onMounted, watch, computed } = Vue
 export default {
     delimiters: ['[[', ']]'],
 	props: {
@@ -24,6 +24,16 @@ export default {
         const addingAttrToObject = ref(null)
         const newAttrState = ref({})
         const compactView = ref(true)
+
+        const can_edit = computed(() => {
+            if (!props.cases_info) return false
+            const permission = props.cases_info.permission
+            const present_in_case = props.cases_info.present_in_case
+            if (permission && permission.read_only) return false
+            if (permission && permission.admin) return true
+            if (present_in_case) return true
+            return false
+        })
 
         const defaultObjectTemplates = {
             'domain/ip': '43b3b146-77eb-4931-b4cc-b66c60f28734',
@@ -472,13 +482,14 @@ export default {
             cancelAddAttribute,
             saveNewAttribute,
             compactView,
-            toggleCompactView
+            toggleCompactView,
+            can_edit
 		}
     },
 
 	template: `
     <div class="mb-1">
-        <button class="btn btn-primary" title="Add a new object" @click="toggleAddObject()">
+        <button v-if="can_edit" class="btn btn-primary" title="Add a new object" @click="toggleAddObject()">
             <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
         </button>
         <a v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" 
@@ -724,11 +735,11 @@ export default {
                 </h2>
                 <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
                     <div class="accordion-body">
-                        <button type="button" class="btn btn-primary btn-sm" title="Add new attributes" 
+                        <button v-if="can_edit" type="button" class="btn btn-primary btn-sm" title="Add new attributes" 
                             @click="startAddingAttribute(misp_object.object_id, misp_object.object_uuid)" >
                             <i class="fa-solid fa-plus"></i>
                         </button>
-                        <button type="button" class="btn btn-danger btn-sm" @click="delete_object(misp_object.object_id)" title="Delete object">
+                        <button v-if="can_edit" type="button" class="btn btn-danger btn-sm" @click="delete_object(misp_object.object_id)" title="Delete object">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                         <div class="table-responsive">
@@ -799,11 +810,11 @@ export default {
                                                 <i v-else>none</i>
                                             </td>
                                             <td style="white-space: nowrap;">
-                                                <button type="button" class="btn btn-primary btn-sm" title="Edit attribute"
+                                                <button v-if="can_edit" type="button" class="btn btn-primary btn-sm" title="Edit attribute"
                                                 @click="enterEditMode(attribute, misp_object.object_uuid)">
                                                     <i class="fa-solid fa-fw fa-pen-to-square"></i>
                                                 </button>
-                                                <button type="button" class="btn btn-danger btn-sm" title="Delete attribute"
+                                                <button v-if="can_edit" type="button" class="btn btn-danger btn-sm" title="Delete attribute"
                                                 @click="delete_attribute(attribute.id, misp_object.object_id)">
                                                     <i class="fa-solid fa-fw fa-trash"></i>
                                                 </button>
