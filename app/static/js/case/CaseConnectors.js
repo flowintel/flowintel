@@ -1,6 +1,6 @@
 import { display_toast } from '../toaster.js'
 import MispSyncPanel from './MispSyncPanel.js'
-const { ref, onMounted, nextTick } = Vue
+const { ref, reactive, onMounted, computed, nextTick } = Vue
 export default {
     delimiters: ['[[', ']]'],
     props: {
@@ -11,7 +11,7 @@ export default {
         object_id: Number,
         cases_info: Object
     },
-    emits: ['case_connectors', 'task_connectors'],
+    emits: ['case_connectors', 'task_connectors', 'note_change', 'task_note_added'],
     components: { 'misp-sync-panel': MispSyncPanel },
     setup(props, { emit }) {
         const is_sending = ref(false)
@@ -37,6 +37,117 @@ export default {
         // Sync log expansion
         const expanded_log_row = ref(null)
         const sync_logs_map = ref({})   // keyed by case_task_instance_id
+        const misp_search_state = reactive({})
+
+        const can_edit_object = computed(() => {
+            if (!props.cases_info) return false
+            const permission = props.cases_info.permission || {}
+            const present_in_case = props.cases_info.present_in_case
+            if (permission.admin) return true
+            if (!props.is_case && props.object_id && props.cases_info.tasks) {
+                const task = props.cases_info.tasks.find(t => t.id === props.object_id)
+                return !!(task && task.can_edit && present_in_case)
+            }
+            if (permission.read_only) return false
+            return !!present_in_case
+        })
+
+        function get_misp_search(instance_id) {
+            if (!misp_search_state[instance_id]) {
+                misp_search_state[instance_id] = {
+                    open: false,
+                    query: '',
+                    loading: false,
+                    has_searched: false,
+                    results: [],
+                    appending: false
+                }
+            }
+            return misp_search_state[instance_id]
+        }
+
+        function toggle_misp_search(instance) {
+            const state = get_misp_search(instance.case_task_instance_id)
+            state.open = !state.open
+        }
+
+        function build_search_url(instance) {
+            if (props.is_case) {
+                return "/case/" + props.object_id + "/connectors/" + instance.case_task_instance_id + "/search_in_misp"
+            }
+            return "/case/task/" + props.object_id + "/connectors/" + instance.case_task_instance_id + "/search_in_misp"
+        }
+
+        function build_add_note_url() {
+            if (props.is_case) {
+                return "/case/" + props.object_id + "/append_note_case"
+            }
+            // Reuse the existing 'create or modify task note' endpoint with note_id=-1 to create a new note.
+            return "/case/" + props.cases_info.case.id + "/modif_note/" + props.object_id + "?note_id=-1"
+        }
+
+        async function submit_misp_search(instance) {
+            const state = get_misp_search(instance.case_task_instance_id)
+            const query = (state.query || '').trim()
+            if (!query) return
+            state.loading = true
+            state.has_searched = true
+            const res = await fetch(build_search_url(instance), {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": $("#csrf_token").val(),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ "query": query })
+            })
+            state.loading = false
+            if (res.status == 200) {
+                const loc = await res.json()
+                state.results = loc.results || []
+            } else {
+                state.results = []
+                display_toast(res)
+            }
+        }
+
+        function format_search_results_as_note(instance, state) {
+            const cell = (v) => (v === null || v === undefined || v === '') ? '' : String(v).replace(/\|/g, '\\|').replace(/\n/g, ' ')
+            const lines = [
+                `## MISP search on ${instance.details.name} - "${state.query || ''}"`,
+                '',
+                '| Event ID | Published | Organisation | Event title | Date | Type | Category | Value | IDS | Comment | Tags |',
+                '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
+            ]
+            for (const r of state.results) {
+                lines.push(`| ${cell(r.event_id)} | ${r.event_published ? 'yes' : 'no'} | ${cell(r.organisation)} | ${cell(r.event_info)} | ${cell(r.date)} | ${cell(r.attribute_type)} | ${cell(r.attribute_category)} | ${cell(r.attribute_value)} | ${r.to_ids ? 'yes' : 'no'} | ${cell(r.comment)} | ${cell((r.tags || []).join(', '))} |`)
+            }
+            return '\n\n' + lines.join('\n') + '\n'
+        }
+
+        async function add_results_to_note(instance) {
+            const state = get_misp_search(instance.case_task_instance_id)
+            if (!state.results || !state.results.length) return
+            state.appending = true
+            const res = await fetch(build_add_note_url(), {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": $("#csrf_token").val(),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ "notes": format_search_results_as_note(instance, state) })
+            })
+            state.appending = false
+            if (res.status == 200) {
+                const loc = await res.clone().json()
+                if (props.is_case && loc.notes !== undefined) {
+                    emit('note_change', loc.notes)
+                } else if (!props.is_case && loc.note) {
+                    emit('task_note_added', loc.note)
+                    document.getElementById('tab-task-notes-' + props.object_id)?.click()
+                }
+            }
+            display_toast(res)
+        }
 
         let modal_identifier = ""
         if (props.is_case) {
@@ -424,6 +535,7 @@ export default {
             sync_panel_ref,
             expanded_log_row,
             sync_logs_map,
+            can_edit_object,
 
             save_connector,
             remove_connector,
@@ -435,7 +547,11 @@ export default {
             submit_module,
             submit_receive_module,
             toggle_sync_logs,
-            on_sync_done
+            on_sync_done,
+            get_misp_search,
+            toggle_misp_search,
+            submit_misp_search,
+            add_results_to_note
         }
     },
     css: `
@@ -496,7 +612,7 @@ export default {
                         <span v-else class="text-muted small"><i>Never</i></span>
                     </td>
 
-                    <td v-if="(!is_case && object_id && cases_info.tasks) ? (cases_info.tasks.find(t => t.id === object_id)?.can_edit && cases_info.present_in_case || cases_info.permission.admin) : (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)">
+                    <td v-if="can_edit_object">
                         <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button> 
@@ -513,6 +629,9 @@ export default {
                                 <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                                 <span role="status">Loading...</span>
                             </button>
+                            <button v-if="instance.is_misp_connector" class="btn btn-outline-info mx-1" @click="toggle_misp_search(instance)" title="Search attributes in MISP">
+                                <i class="fa-solid fa-magnifying-glass"></i> Search in MISP
+                            </button>
                         </template>
                         <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)">
                             <i class="fa-solid fa-trash"></i>
@@ -522,6 +641,92 @@ export default {
                                 @click="toggle_sync_logs(instance.case_task_instance_id)">
                             <i :class="expanded_log_row === instance.case_task_instance_id ? 'fa-solid fa-chevron-up' : 'fa-solid fa-clock-rotate-left'"></i>
                         </button>
+                    </td>
+                </tr>
+                
+                <tr v-if="can_edit_object && instance.is_misp_connector && instance.details.type == 'receive_from' && get_misp_search(instance.case_task_instance_id).open">
+                    <td colspan="6" style="background-color: #f8f9fa;">
+                        <div class="p-2">
+                            <div class="alert alert-info border-0 py-2 px-3 mb-2 d-flex align-items-start" style="background-color: #eaf4fb;">
+                                <i class="fa-solid fa-circle-info mt-1 me-2 text-primary"></i>
+                                <small class="mb-0">
+                                    Searches <strong>attributes</strong> on this MISP instance using a <strong>partial match</strong> (e.g. <code>example.com</code> matches <code>https://example.com/foo</code>).
+                                    Use <code>%</code> for explicit wildcard patterns.
+                                    Results include attributes from both published and unpublished events &mdash; you can then append the table to your notes in one click.
+                                </small>
+                            </div>
+                            <form @submit.prevent="submit_misp_search(instance)" class="d-flex align-items-center mb-2">
+                                <input type="text" class="form-control me-2" placeholder="Search attributes in MISP..." v-model="get_misp_search(instance.case_task_instance_id).query" :disabled="get_misp_search(instance.case_task_instance_id).loading">
+                                <button type="submit" class="btn btn-primary" :disabled="get_misp_search(instance.case_task_instance_id).loading || !get_misp_search(instance.case_task_instance_id).query.trim()">
+                                    <template v-if="get_misp_search(instance.case_task_instance_id).loading">
+                                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                        <span role="status">Searching...</span>
+                                    </template>
+                                    <template v-else>Submit</template>
+                                </button>
+                            </form>
+
+                            <template v-if="get_misp_search(instance.case_task_instance_id).has_searched && !get_misp_search(instance.case_task_instance_id).loading">
+                                <template v-if="get_misp_search(instance.case_task_instance_id).results.length">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Event ID</th>
+                                                    <th title="Whether the event has been published in MISP">Published</th>
+                                                    <th>Organisation</th>
+                                                    <th>Event title</th>
+                                                    <th>Date</th>
+                                                    <th>Attribute Type</th>
+                                                    <th>Attribute category</th>
+                                                    <th>Value</th>
+                                                    <th title="to_ids flag in MISP">IDS</th>
+                                                    <th>Comment</th>
+                                                    <th>Tags</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="r in get_misp_search(instance.case_task_instance_id).results">
+                                                    <td>
+                                                        <a :href="(instance.details.url.endsWith('/') ? instance.details.url : instance.details.url + '/') + 'events/view/' + r.event_id" target="_blank">[[r.event_id]]</a>
+                                                    </td>
+                                                    <td>
+                                                        <span v-if="r.event_published" class="badge bg-success">yes</span>
+                                                        <span v-else class="badge bg-warning text-dark">no</span>
+                                                    </td>
+                                                    <td>[[r.organisation]]</td>
+                                                    <td>[[r.event_info]]</td>
+                                                    <td>[[r.date]]</td>
+                                                    <td>[[r.attribute_type]]</td>
+                                                    <td>[[r.attribute_category]]</td>
+                                                    <td>[[r.attribute_value]]</td>
+                                                    <td>
+                                                        <span v-if="r.to_ids" class="badge bg-success" title="to_ids = true">yes</span>
+                                                        <span v-else class="badge bg-secondary" title="to_ids = false">no</span>
+                                                    </td>
+                                                    <td>[[r.comment]]</td>
+                                                    <td>
+                                                        <span v-for="t in r.tags" class="badge bg-secondary me-1">[[t]]</span>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="d-flex justify-content-end">
+                                        <button class="btn btn-outline-success btn-sm" @click="add_results_to_note(instance)" :disabled="get_misp_search(instance.case_task_instance_id).appending">
+                                            <template v-if="get_misp_search(instance.case_task_instance_id).appending">
+                                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                                Adding...
+                                            </template>
+                                            <template v-else>
+                                                <i class="fa-solid fa-plus"></i> Add as a [[ is_case ? 'case' : 'task' ]] note
+                                            </template>
+                                        </button>
+                                    </div>
+                                </template>
+                                <div v-else class="text-muted"><i>No results found.</i></div>
+                            </template>
+                        </div>
                     </td>
                 </tr>
                 <!-- Inline sync log row -->

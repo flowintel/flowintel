@@ -128,8 +128,9 @@ class CompleteTask(Resource):
                     return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin"}, 403
                 
                 if TaskModel.complete_task(tid, current_user):
-                    flowintel_log("audit", 200, "Task completed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-                    return {"message": f"Task {tid} completed"}, 200
+                    action = "completed" if task.completed else "revived"
+                    flowintel_log("audit", 200, f"Task {action}", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                    return {"message": f"Task {tid} {action}"}, 200
                 return {"message": f"Error task {tid} completed"}, 400
             return {"message": "Permission denied"}, 403
         return {"message": "Task not found"}, 404

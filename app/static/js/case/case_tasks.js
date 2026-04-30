@@ -590,7 +590,8 @@ export default {
 						:object_id="task.id"
 						:cases_info="cases_info"
 						@case_connectors=""
-						@task_connectors="(msg) => fetch_task_connectors()">
+						@task_connectors="(msg) => fetch_task_connectors()"
+						@task_note_added="(note) => { task.notes.push(note) }">
 					</caseconnectors>
 				</div>
 			</template>

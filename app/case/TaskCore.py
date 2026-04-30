@@ -600,12 +600,17 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def change_task_status(self, status, task, current_user):
         """Return the status of a task"""
         old_status_id = task.status_id
-        task.status_id = status
 
         new_status = CommonModel.get_status(status)
         new_status_name = new_status.name if new_status else str(status)
+
+        should_be_completed = new_status is not None and new_status.name == "Finished"
+        if task.completed != should_be_completed:
+            self.complete_task(task.id, current_user)
+
+        task.status_id = status
         self.update_task_time_modification(task, current_user, f"Status changed to '{new_status_name}' for task '{task.id}-{task.title}'")
-        
+
         case = CommonModel.get_case(task.case_id)
         if case and case.privileged_case:
             if status == current_app.config['TASK_APPROVED'] and old_status_id == current_app.config['TASK_REQUESTED']:

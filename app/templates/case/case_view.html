@@ -500,7 +500,7 @@
         <template v-else-if="main_tab == 'misp-objects'">
             <div v-if="!can_use_connectors" class="alert alert-warning" role="alert">
                 <i class="fa-solid fa-lock me-2"></i>
-                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
+                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use MISP objects.
             </div>
             <misp_object v-else :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
         </template>
@@ -519,6 +519,7 @@
                     :object_id="cases_info.case.id"
                     :cases_info="cases_info"
                     @case_connectors="(msg) => fetch_case_connectors()"
+                    @note_change="on_connector_note_change"
                     @task_connectors="">
                 </caseconnectors>
             </div>
@@ -1543,6 +1544,13 @@
                 }
                 fetch_custom_tags()
 
+                async function on_connector_note_change(notes) {
+                    cases_info.value.case.notes = notes
+                    try { FlowintelNoteVariables.clearVariableCache() } catch (e) {}
+                    await resolveAndSetNotes()
+                    await active_tab('notes')
+                }
+
                 async function save_note_case(){
                     let notes_loc = editor.state.doc.toString()
                     if(notes_loc.trim().length == 0){
@@ -1892,6 +1900,7 @@
                     export_notes,
                     fetch_case_connectors,
                     fetch_case_files,
+                    on_connector_note_change,
                     get_all_users_case,
 
                     change_status_sort,
