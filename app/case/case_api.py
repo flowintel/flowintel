@@ -178,9 +178,6 @@ class ForkCase(Resource):
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
 
-            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
-                return {"message": "Permission denied"}, 403
-
             if case.privileged_case:
                 error = check_privileged_case_permission(current_user, operation="forking")
                 if error:

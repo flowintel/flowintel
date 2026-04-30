@@ -23,11 +23,11 @@ class ImportCase(Resource):
             if type(request.json) == list:
                 for case in request.json:
                     res = ToolModel.case_creation_from_importer(case, current_user)
-                    if res:
+                    if res and "message" in res:
                         return res
             else:
                 res = ToolModel.case_creation_from_importer(request.json, current_user)
-                if res:
+                if res and "message" in res:
                     return res
             flowintel_log("audit", 200, "Case imported via API", User=current_user.email)
             return {"message": "All created"}
@@ -44,11 +44,11 @@ class ImportCaseTemplate(Resource):
             if type(request.json) == list:
                 for case in request.json:
                     res = ToolModel.case_template_creation_from_importer(case)
-                    if res:
+                    if res and "message" in res:
                         return res
             else:
                 res = ToolModel.case_template_creation_from_importer(request.json)
-                if res:
+                if res and "message" in res:
                     return res
             flowintel_log("audit", 200, "Template imported via API", User=current_user.email)
             return {"message": "All created"}
