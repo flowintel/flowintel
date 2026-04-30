@@ -62,6 +62,7 @@ def manage_object_creation(misp, event, object, object_uuid_list):
     return "", object_uuid_list
 
 def all_object_to_misp(misp, event, objects, object_uuid_list):
+    details = []
     for object in objects:
         try:
             loc_object = event.get_object_by_uuid(object["uuid"])
@@ -104,7 +105,8 @@ def all_object_to_misp(misp, event, objects, object_uuid_list):
                     if flag_modif:
                         res = misp.update_attribute(attribute)
                         if "errors" in res:
-                            return res, object_uuid_list
+                            details.append({"name": object.get("name", str(object.get("id", ""))), "status": "error", "error": str(res.get("errors", "update failed"))})
+                            continue
                 except (InvalidMISPObjectAttribute, NewAttributeError):
                     # Object exist but not this attribute, or value type mismatch
                     try:
@@ -117,21 +119,25 @@ def all_object_to_misp(misp, event, objects, object_uuid_list):
                     })
                     res = misp.update_object(loc_object)
                     if "errors" in res:
-                        return res, object_uuid_list
+                        details.append({"name": object.get("name", str(object.get("id", ""))), "status": "error", "error": str(res.get("errors", "update failed"))})
+                        continue
             if attr_uuid_list:
                 object_uuid_list[object["id"]] = {
                     "attributes": attr_uuid_list,
                     "uuid": loc_object.uuid
                 }
+            details.append({"name": object.get("name", str(object.get("id", ""))), "status": "success", "error": None})
         except InvalidMISPObject:
             # Object not found or not exist, Create a new one
             res, object_uuid_list = manage_object_creation(misp, event, object, object_uuid_list)
             if "errors" in res:
-                return res, object_uuid_list
-    return "", object_uuid_list
+                details.append({"name": object.get("name", str(object.get("id", ""))), "status": "error", "error": str(res.get("errors", "creation failed"))})
+            else:
+                details.append({"name": object.get("name", str(object.get("id", ""))), "status": "success", "error": None})
+    return details, object_uuid_list
 
 
-def handler(instance, case, user, case_model=None, db_session=None):
+def handler(instance, case, user, case_model=None, db_session=None, payload=None):
     """
     instance: name, url, description, uuid, connector_id, type, api_key, identifier
 
@@ -142,6 +148,8 @@ def handler(instance, case, user, case_model=None, db_session=None):
                    completed, deadline, finish_date, tags, clusters, connectors
 
     user: id, first_name, last_name, email, role_id, password_hash, api_key, org_id
+
+    payload: optional dict; if payload["selected_objects"] is a list of local object IDs, only those are synced
     """
     try:
         misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
@@ -149,15 +157,20 @@ def handler(instance, case, user, case_model=None, db_session=None):
         return {"message": "Error connecting to MISP"}
     flag = False
     object_uuid_list = {}
-    
+
+    # Optional filter: only send objects whose id is in selected_objects
+    objects = case["objects"]
+    if payload and isinstance(payload.get("selected_objects"), list):
+        selected_ids = set(str(i) for i in payload["selected_objects"])
+        objects = [o for o in objects if str(o.get("object_id", o.get("id", ""))) in selected_ids]
+
+    details = []
     if "identifier" in instance and instance["identifier"]:
         event = misp.get_event(instance["identifier"], pythonify=True)
         if 'errors' in event:
             flag = True
         else:
-            res, object_uuid_list = all_object_to_misp(misp, event, case["objects"], object_uuid_list)
-            if "errors" in res:
-                return {"message": res.get("errors", "Error syncing objects")}
+            details, object_uuid_list = all_object_to_misp(misp, event, objects, object_uuid_list)
 
     ## No identifier for this connector or the event doesn't exist anymore
     else: 
@@ -170,10 +183,12 @@ def handler(instance, case, user, case_model=None, db_session=None):
         event.info = f"Case: {case['title']}"  # Required
         event = misp.add_event(event, pythonify=True)
 
-        for object in case["objects"]:
+        for object in objects:
             res, object_uuid_list = manage_object_creation(misp, event, object, object_uuid_list)
             if "errors" in res:
-                return {"message": res.get("errors", "Error creating object")}
+                details.append({"name": object.get("name", ""), "status": "error", "error": str(res.get("errors", "creation failed"))})
+            else:
+                details.append({"name": object.get("name", ""), "status": "success", "error": None})
 
     if "errors" in event:
         return {"message": event.get("errors", "Error with MISP event")}
@@ -182,7 +197,14 @@ def handler(instance, case, user, case_model=None, db_session=None):
     if case_model and object_uuid_list:
         case_model.result_misp_object_module(object_uuid_list, instance["id"], case["id"])
 
-    return {"identifier": event.get("uuid")}
+    synced = sum(1 for d in details if d["status"] == "success")
+    failed = sum(1 for d in details if d["status"] == "error")
+    return {
+        "identifier": event.get("uuid"),
+        "synced_count": synced,
+        "failed_count": failed,
+        "details": details
+    }
 
 def introspection():
     return module_config

@@ -1450,15 +1450,61 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             # fallback for handlers that don't accept a payload parameter
             result = modules[module].handler(instance, case, user, case_model=self, db_session=db)
 
+        # Determine direction from module config
+        module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
+        direction = "receive" if module_cfg.get("case_task") == "case" and "receive" in module.lower() else "send"
+
         # Module returns None for success, or a dict.
         # Dict with "message" key means error.
         # Dict with "identifier" key means update the connector identifier.
         if isinstance(result, dict):
             if "message" in result:
+                # Write error log
+                try:
+                    sync_log = Connector_Sync_Log(
+                        case_id=case["id"],
+                        case_connector_instance_id=case_instance_id,
+                        direction=direction,
+                        timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
+                        status="error",
+                        message=result["message"],
+                        objects_synced=0,
+                        objects_failed=0,
+                        details=None
+                    )
+                    db.session.add(sync_log)
+                    db.session.commit()
+                except Exception:
+                    pass
                 return result
             if "identifier" in result and case_instance.identifier != result["identifier"]:
                 case_instance.identifier = result["identifier"]
                 db.session.commit()
+
+        # Write success/partial sync log
+        try:
+            synced = result.get("synced_count", 0) if isinstance(result, dict) else 0
+            failed = result.get("failed_count", 0) if isinstance(result, dict) else 0
+            details = result.get("details", None) if isinstance(result, dict) else None
+            status = "success" if failed == 0 else ("partial" if synced > 0 else "error")
+            sync_log = Connector_Sync_Log(
+                case_id=case["id"],
+                case_connector_instance_id=case_instance_id,
+                direction=direction,
+                timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
+                status=status,
+                message=None,
+                objects_synced=synced,
+                objects_failed=failed,
+                details=details
+            )
+            db.session.add(sync_log)
+        except Exception:
+            pass
+
+        # Record last sync time on successful module execution
+        case_instance.last_sync = datetime.datetime.now(tz=datetime.timezone.utc)
+        db.session.commit()
 
         CommonModel.save_history(case["uuid"], user, f"Case Module {module} used on instance: {instance['name']}")
 
@@ -1641,7 +1687,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 return obj
             else:
                 loc_instance_obj = CommonModel.get_instance(obj.instance_id)
-                if loc_instance.url == loc_instance_obj.url:
+                if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return obj
         return None
 
@@ -1653,7 +1699,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 return attr
             else:
                 loc_instance_obj = CommonModel.get_instance(attr.instance_id)
-                if loc_instance.url == loc_instance_obj.url:
+                if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return attr
         return None
         # return Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr_id, instance_id=instance_id, case_id=case_id).first()
@@ -1666,7 +1712,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 return obj
             else:
                 loc_instance_obj = CommonModel.get_instance(obj.instance_id)
-                if loc_instance.url == loc_instance_obj.url:
+                if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return obj
         return None
     
@@ -1678,7 +1724,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 return attr
             else:
                 loc_instance_obj = CommonModel.get_instance(attr.instance_id)
-                if loc_instance.url == loc_instance_obj.url:
+                if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return attr
         return None
         # return Misp_Attribute_Instance_Uuid.query.filter_by(attribute_instance_uuid=attribute_uuid, instance_id=instance_id, case_id=case_id).first()

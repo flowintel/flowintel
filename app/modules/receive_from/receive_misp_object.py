@@ -12,7 +12,7 @@ module_config = {
 }
 
 
-def handler(instance, case, user, case_model=None, db_session=None):
+def handler(instance, case, user, case_model=None, db_session=None, payload=None):
     """
     instance: name, url, description, uuid, connector_id, type, api_key, identifier
 
@@ -26,6 +26,7 @@ def handler(instance, case, user, case_model=None, db_session=None):
 
     case_model: CaseCore instance for DB helper access
     db_session: SQLAlchemy db session
+    payload: optional dict; if payload["selected_objects"] is a list of UUIDs, only those objects are synced
     """
     if not instance.get("identifier"):
         return {"message": "Need to give an identifier for this instance"}
@@ -45,64 +46,77 @@ def handler(instance, case, user, case_model=None, db_session=None):
     from app.utils import misp_object_helper
     from app.case import common_core as CommonModel
 
+    # Optional filter: only sync objects whose UUID is in selected_objects
+    selected_uuids = None
+    if payload and isinstance(payload.get("selected_objects"), list):
+        selected_uuids = set(payload["selected_objects"])
+
     object_uuid_list = {}
+    details = []
     for obje in event.objects:
-        # Check if object already exists for this instance
-        object_exist = case_model.get_misp_object_instance_by_instance_uuid(obje.uuid, instance["id"], case["id"])
-        if object_exist:
-            db_misp_object = case_model.get_misp_object(object_exist.misp_object_id)
-            if not db_misp_object.name == obje.name:
-                db_misp_object.name = obje.name
-                db_misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
-                db_session.session.commit()
+        if selected_uuids is not None and obje.uuid not in selected_uuids:
+            continue
+        try:
+            # Check if object already exists for this instance
+            object_exist = case_model.get_misp_object_instance_by_instance_uuid(obje.uuid, instance["id"], case["id"])
+            if object_exist:
+                db_misp_object = case_model.get_misp_object(object_exist.misp_object_id)
+                if not db_misp_object.name == obje.name:
+                    db_misp_object.name = obje.name
+                    db_misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+                    db_session.session.commit()
 
-            for attr in obje.attributes:
-                attr_exist = case_model.get_misp_attribute_instance_by_instance_uuid(attr.uuid, instance["id"], case["id"])
-                if attr_exist:
-                    db_misp_attr = case_model.get_misp_attribute(attr_exist.misp_attribute_id)
-                    flag = False
-                    if not db_misp_attr.value == attr.value:
-                        db_misp_attr.value = attr.value
-                        flag = True
-                    if not db_misp_attr.type == attr.type:
-                        db_misp_attr.type = attr.type
-                        flag = True
-                    if not db_misp_attr.object_relation == attr.object_relation:
-                        db_misp_attr.object_relation = attr.object_relation
-                        flag = True
-                    if not db_misp_attr.first_seen == attr.get("first_seen"):
-                        if type(attr.first_seen) == datetime.datetime:
-                            db_misp_attr.first_seen = attr.first_seen
+                for attr in obje.attributes:
+                    attr_exist = case_model.get_misp_attribute_instance_by_instance_uuid(attr.uuid, instance["id"], case["id"])
+                    if attr_exist:
+                        db_misp_attr = case_model.get_misp_attribute(attr_exist.misp_attribute_id)
+                        flag = False
+                        if not db_misp_attr.value == attr.value:
+                            db_misp_attr.value = attr.value
+                            flag = True
+                        if not db_misp_attr.type == attr.type:
+                            db_misp_attr.type = attr.type
+                            flag = True
+                        if not db_misp_attr.object_relation == attr.object_relation:
+                            db_misp_attr.object_relation = attr.object_relation
+                            flag = True
+                        if not db_misp_attr.first_seen == attr.get("first_seen"):
+                            if type(attr.first_seen) == datetime.datetime:
+                                db_misp_attr.first_seen = attr.first_seen
+                            else:
+                                db_misp_attr.first_seen = datetime.datetime.strptime(attr.get("first_seen"), DATETIME_FORMAT)
+                            flag = True
+                        if not db_misp_attr.last_seen == attr.get("last_seen"):
+                            if type(attr.last_seen) == datetime.datetime:
+                                db_misp_attr.last_seen = attr.last_seen
+                            else:
+                                db_misp_attr.last_seen = datetime.datetime.strptime(attr.get("last_seen"), DATETIME_FORMAT)
+                            flag = True
+                        if not db_misp_attr.comment == attr.comment:
+                            db_misp_attr.comment = attr.comment
+                            flag = True
+                        if not db_misp_attr.ids_flag == attr.to_ids:
+                            db_misp_attr.ids_flag = attr.to_ids
+                            flag = True
+
+                        if flag:
+                            db_misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+                            db_session.session.commit()
+
+                details.append({"name": obje.name, "status": "success", "error": None})
+            else:
+                def append_dict(base, new):
+                    for key, value in new.items():
+                        if key in base:
+                            base[key]['attributes'].extend(value.get('attributes', []))
                         else:
-                            db_misp_attr.first_seen = datetime.datetime.strptime(attr.get("first_seen"), DATETIME_FORMAT)
-                        flag = True
-                    if not db_misp_attr.last_seen == attr.get("last_seen"):
-                        if type(attr.last_seen) == datetime.datetime:
-                            db_misp_attr.last_seen = attr.last_seen
-                        else:
-                            db_misp_attr.last_seen = datetime.datetime.strptime(attr.get("last_seen"), DATETIME_FORMAT)
-                        flag = True
-                    if not db_misp_attr.comment == attr.comment:
-                        db_misp_attr.comment = attr.comment
-                        flag = True
-                    if not db_misp_attr.ids_flag == attr.to_ids:
-                        db_misp_attr.ids_flag = attr.to_ids
-                        flag = True
-
-                    if flag:
-                        db_misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
-                        db_session.session.commit()
-
-        else:
-            def append_dict(base, new):
-                for key, value in new.items():
-                    if key in base:
-                        base[key]['attributes'].extend(value.get('attributes', []))
-                    else:
-                        base[key] = value
-                return base
-            loc = misp_object_helper.create_misp_object(case["id"], obje)
-            object_uuid_list = append_dict(object_uuid_list, loc)
+                            base[key] = value
+                    return base
+                loc = misp_object_helper.create_misp_object(case["id"], obje)
+                object_uuid_list = append_dict(object_uuid_list, loc)
+                details.append({"name": obje.name, "status": "success", "error": None})
+        except Exception as e:
+            details.append({"name": getattr(obje, 'name', str(obje)), "status": "error", "error": str(e)})
 
     case_model.result_misp_object_module(object_uuid_list, instance_id=instance["id"], case_id=case["id"])
 
@@ -112,6 +126,14 @@ def handler(instance, case, user, case_model=None, db_session=None):
     db_session.session.commit()
 
     CommonModel.update_last_modif(case["id"])
+
+    synced = sum(1 for d in details if d["status"] == "success")
+    failed = sum(1 for d in details if d["status"] == "error")
+    return {
+        "synced_count": synced,
+        "failed_count": failed,
+        "details": details
+    }
 
 
 def introspection():

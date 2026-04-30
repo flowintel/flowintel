@@ -1,7 +1,9 @@
 import {display_toast, create_message} from '../toaster.js'
-const { ref, onMounted, watch } = Vue
+import MispObjectLink from './MispObjectLink.js'
+const { ref, computed, onMounted, watch, nextTick } = Vue
 export default {
     delimiters: ['[[', ']]'],
+    components: { 'misp-object-link': MispObjectLink },
 	props: {
 		case_id: Number,
 		cases_info: Object
@@ -24,6 +26,45 @@ export default {
         const addingAttrToObject = ref(null)
         const newAttrState = ref({})
         const compactView = ref(true)
+
+        // Object linking
+        const link_modal_object = ref(null)   // the object currently open in the link modal
+        const link_modal_ref = ref(null)
+        // Search / filter / pagination
+        const search_query = ref('')
+        const type_filter = ref('')
+        const current_page = ref(1)
+        const per_page = 10
+
+        const filtered_objects = computed(() => {
+            let objs = case_misp_objects.value
+            const q = search_query.value.trim().toLowerCase()
+            const t = type_filter.value
+            if (q) {
+                objs = objs.filter(o => {
+                    if (o.object_name.toLowerCase().includes(q)) return true
+                    return o.attributes.some(a => String(a.value).toLowerCase().includes(q) || a.object_relation.toLowerCase().includes(q))
+                })
+            }
+            if (t) {
+                objs = objs.filter(o => o.object_name === t)
+            }
+            return objs
+        })
+
+        const total_pages = computed(() => Math.max(1, Math.ceil(filtered_objects.value.length / per_page)))
+
+        const paged_objects = computed(() => {
+            const start = (current_page.value - 1) * per_page
+            return filtered_objects.value.slice(start, start + per_page)
+        })
+
+        const object_type_options = computed(() => {
+            const names = [...new Set(case_misp_objects.value.map(o => o.object_name))]
+            return names.sort()
+        })
+
+        watch([search_query, type_filter], () => { current_page.value = 1 })
 
         const defaultObjectTemplates = {
             'domain/ip': '43b3b146-77eb-4931-b4cc-b66c60f28734',
@@ -432,6 +473,24 @@ export default {
                 activeTemplate.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === defaultObjectTemplates[newValue]);
             }
         });
+
+        async function open_link_modal(misp_object) {
+            link_modal_object.value = misp_object
+            await nextTick()
+            await link_modal_ref.value?.on_show()
+            const el = document.getElementById('modal-link-object')
+            if (el) new bootstrap.Modal(el).show()
+        }
+
+        async function on_link_updated() {
+            // Refresh objects so synced_instances badges update
+            await fetch_case_misp_object()
+            // Keep the modal open with the refreshed object
+            if (link_modal_object.value) {
+                const refreshed = case_misp_objects.value.find(o => o.object_id === link_modal_object.value.object_id)
+                if (refreshed) link_modal_object.value = refreshed
+            }
+        }
         
 
 		onMounted(() => {
@@ -472,7 +531,19 @@ export default {
             cancelAddAttribute,
             saveNewAttribute,
             compactView,
-            toggleCompactView
+            toggleCompactView,
+            search_query,
+            type_filter,
+            current_page,
+            per_page,
+            filtered_objects,
+            paged_objects,
+            total_pages,
+            object_type_options,
+            link_modal_object,
+            link_modal_ref,
+            open_link_modal,
+            on_link_updated
 		}
     },
 
@@ -714,12 +785,40 @@ export default {
         </div>
     </div>
 
+    <div class="row g-2 align-items-end mb-2 mt-2">
+        <div class="col-md-5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                <input v-model="search_query" class="form-control" type="text" placeholder="Search objects by name or attribute value…">
+                <button v-if="search_query" class="btn btn-outline-secondary" type="button" @click="search_query=''"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select v-model="type_filter" class="form-select form-select-sm">
+                <option value="">All types</option>
+                <option v-for="t in object_type_options" :key="t" :value="t">[[ t ]]</option>
+            </select>
+        </div>
+        <div class="col-md-4 text-muted small">
+            [[ filtered_objects.length ]] object(s)
+            <span v-if="search_query || type_filter"> matching filter</span>
+        </div>
+    </div>
+
     <div class="row">
-        <div v-for="misp_object, key_obj in case_misp_objects" class="accordion col-6 p-1" :id="'accordion-'+key_obj">
+        <div v-for="misp_object, key_obj in paged_objects" class="accordion col-6 p-1" :id="'accordion-'+key_obj">
             <div class="accordion-item">
                 <h2 class="accordion-header">
                 <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
                     [[ misp_object.object_name ]]
+                    <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
+                        <span v-for="si in misp_object.synced_instances" :key="si.instance_id"
+                              class="badge bg-info text-dark ms-2"
+                              style="font-size:0.7em; cursor:default;"
+                              :title="'Synced with ' + si.instance_name + ' — remote UUID: ' + si.object_uuid">
+                            <i class="fa-solid fa-cloud me-1"></i>[[ si.instance_name ]]
+                        </span>
+                    </template>
                 </button>
                 </h2>
                 <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
@@ -730,6 +829,10 @@ export default {
                         </button>
                         <button type="button" class="btn btn-danger btn-sm" @click="delete_object(misp_object.object_id)" title="Delete object">
                             <i class="fa-solid fa-trash"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-info btn-sm" title="Link to remote MISP object"
+                                @click="open_link_modal(misp_object)">
+                            <i class="fa-solid fa-link"></i>
                         </button>
                         <div class="table-responsive">
                             <table class="table">
@@ -927,6 +1030,30 @@ export default {
 
         </div>
     </div>
+
+    <nav v-if="total_pages > 1" class="mt-2" aria-label="Objects pagination">
+        <ul class="pagination pagination-sm justify-content-center">
+            <li class="page-item" :class="{disabled: current_page === 1}">
+                <button class="page-link" @click="current_page--">&laquo;</button>
+            </li>
+            <li v-for="p in total_pages" :key="p" class="page-item" :class="{active: p === current_page}">
+                <button class="page-link" @click="current_page = p">[[ p ]]</button>
+            </li>
+            <li class="page-item" :class="{disabled: current_page === total_pages}">
+                <button class="page-link" @click="current_page++">&raquo;</button>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- MispObjectLink modal (single shared instance) -->
+    <misp-object-link
+        v-if="link_modal_object"
+        :ref="el => link_modal_ref = el"
+        :case_id="case_id"
+        :local_object="link_modal_object"
+        modal_id="modal-link-object"
+        @link_updated="on_link_updated">
+    </misp-object-link>
 
     `
 }

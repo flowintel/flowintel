@@ -11,7 +11,8 @@ from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
-from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule
+from ..connectors import connectors_core as ConnectorsModel
+from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, db
 from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
@@ -1206,13 +1207,25 @@ def get_case_misp_object(cid):
                 loc_attr["correlation_list"] = res
                 loc_attr_list.append(loc_attr)
 
+            # Collect synced instance info for badge display
+            synced_instances = []
+            for uuid_row in Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=object.id, case_id=int(cid)).all():
+                inst = CommonModel.get_instance(uuid_row.instance_id)
+                synced_instances.append({
+                    "instance_id": uuid_row.instance_id,
+                    "instance_name": inst.name if inst else str(uuid_row.instance_id),
+                    "instance_url": inst.url if inst else None,
+                    "object_uuid": uuid_row.object_instance_uuid
+                })
+
             loc_object.append({
                 "object_name": object.name,
                 "attributes": loc_attr_list,
                 "object_id": object.id,
                 "object_uuid": object.template_uuid,
                 "object_creation_date": object.creation_date.strftime('%Y-%m-%d %H:%M'),
-                "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M')
+                "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M'),
+                "synced_instances": synced_instances
             })
         return {"misp-object": loc_object}
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -1512,7 +1525,8 @@ def get_case_connectors(cid):
                 "details": CommonModel.get_instance_with_icon(case_connector.instance_id),
                 "identifier": case_connector.identifier,
                 "is_updating_case": case_connector.is_updating_case,
-                "is_misp_connector": is_misp_connector
+                "is_misp_connector": is_misp_connector,
+                "last_sync": case_connector.last_sync.strftime('%Y-%m-%d %H:%M') if case_connector.last_sync else None
             })
         return {"case_connectors": instance_list}, 200
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -1568,8 +1582,158 @@ def edit_connector(cid, ciid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-#################
-# Note Template #
+@case_blueprint.route("/<int:cid>/connectors/<int:ciid>/misp_objects_preview", methods=['GET'])
+@login_required
+@misp_editor_required
+def misp_objects_preview(cid, ciid):
+    """Fetch the list of MISP objects from the remote event for a connector (preview before sync)."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+
+    case_instance = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_instance or case_instance.case_id != int(cid):
+        return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+    if not case_instance.identifier:
+        return {"message": "No identifier set for this connector", "toast_class": "warning-subtle"}, 400
+
+    loc_instance = CommonModel.get_instance(case_instance.instance_id)
+    if not loc_instance:
+        return {"message": "Connector instance not found", "toast_class": "danger-subtle"}, 404
+
+    user_instance = CommonModel.get_user_instance_both(current_user.id, loc_instance.id)
+    api_key = loc_instance.global_api_key or (user_instance.api_key if user_instance else None)
+    if not api_key:
+        return {"message": "No API key configured for this connector", "toast_class": "warning-subtle"}, 400
+
+    objects, error = ConnectorsModel.misp_get_event_objects(loc_instance, api_key, case_instance.identifier)
+    if error:
+        return {"message": error["message"], "toast_class": error["toast_class"]}, error["status"]
+    return {"objects": objects}, 200
+
+
+@case_blueprint.route("/<int:cid>/connectors/<int:ciid>/sync_logs", methods=['GET'])
+@login_required
+@misp_editor_required
+def get_sync_logs(cid, ciid):
+    """Get sync history for a connector instance."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+
+    case_instance = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_instance or case_instance.case_id != int(cid):
+        return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+
+    return {"sync_logs": ConnectorsModel.get_connector_sync_logs(cid, ciid)}, 200
+
+
+@case_blueprint.route("/<int:cid>/connectors/<int:ciid>/import_event_report", methods=['POST'])
+@login_required
+@misp_editor_required
+def import_event_report(cid, ciid):
+    """Fetch MISP event reports and import them as a case note."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    case_instance = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_instance or case_instance.case_id != int(cid):
+        return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+    if not case_instance.identifier:
+        return {"message": "No identifier set for this connector", "toast_class": "warning-subtle"}, 400
+
+    loc_instance = CommonModel.get_instance(case_instance.instance_id)
+    if not loc_instance:
+        return {"message": "Connector instance not found", "toast_class": "danger-subtle"}, 404
+
+    user_instance = CommonModel.get_user_instance_both(current_user.id, loc_instance.id)
+    api_key = loc_instance.global_api_key or (user_instance.api_key if user_instance else None)
+    if not api_key:
+        return {"message": "No API key configured for this connector", "toast_class": "warning-subtle"}, 400
+
+    note_content, error = ConnectorsModel.misp_get_event_reports(loc_instance, api_key, case_instance.identifier)
+    if error:
+        return {"message": error["message"], "toast_class": error["toast_class"]}, error["status"]
+
+    existing = case.notes or ""
+    separator = "\n\n---\n\n" if existing.strip() else ""
+    CaseModel.modify_note_core(cid, current_user, existing + separator + note_content)
+    flowintel_log("audit", 200, "MISP event report imported as case note", User=current_user.email, CaseId=cid)
+    return {"message": "Report(s) imported as case note", "toast_class": "success-subtle"}, 200
+
+
+@case_blueprint.route("/<int:cid>/misp_object/<int:oid>/link_remote", methods=['POST'])
+@login_required
+@misp_editor_required
+def link_remote_misp_object(cid, oid):
+    """Manually link a local MISP object to a remote object UUID on a specific connector instance."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    data = request.get_json(silent=True) or {}
+    instance_id = data.get("instance_id")
+    remote_uuid = data.get("remote_uuid", "").strip()
+    if not instance_id or not remote_uuid:
+        return {"message": "Need 'instance_id' and 'remote_uuid'", "toast_class": "warning-subtle"}, 400
+
+    loc_object = CaseModel.get_misp_object(oid)
+    if not loc_object or loc_object.case_id != int(cid):
+        return {"message": "Object not found", "toast_class": "danger-subtle"}, 404
+
+    # Enforce one link per object — remove all existing links before creating the new one
+    Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=oid, case_id=int(cid)).delete()
+    link = Misp_Object_Instance_Uuid(
+        instance_id=int(instance_id),
+        misp_object_id=oid,
+        object_instance_uuid=remote_uuid,
+        case_id=int(cid)
+    )
+    db.session.add(link)
+    db.session.commit()
+    flowintel_log("audit", 200, f"Linked local object {oid} to remote UUID {remote_uuid}", User=current_user.email, CaseId=cid)
+    return {"message": "Object linked to remote MISP object", "toast_class": "success-subtle"}, 200
+
+
+@case_blueprint.route("/<int:cid>/misp_object/<int:oid>/unlink_remote/<int:instance_id>", methods=['DELETE'])
+@login_required
+@misp_editor_required
+def unlink_remote_misp_object(cid, oid, instance_id):
+    """Remove the link between a local MISP object and a remote object on a connector instance."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    link = Misp_Object_Instance_Uuid.query.filter_by(
+        misp_object_id=oid, instance_id=int(instance_id), case_id=int(cid)
+    ).first()
+    if not link:
+        return {"message": "Link not found", "toast_class": "warning-subtle"}, 404
+
+    db.session.delete(link)
+    db.session.commit()
+    flowintel_log("audit", 200, f"Unlinked local object {oid} from instance {instance_id}", User=current_user.email, CaseId=cid)
+    return {"message": "Link removed", "toast_class": "success-subtle"}, 200
+
+
+
 #################
 
 @case_blueprint.route("/<cid>/get_note_template", methods=['GET'])

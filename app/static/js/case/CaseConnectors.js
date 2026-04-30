@@ -1,5 +1,6 @@
 import { display_toast } from '../toaster.js'
-const { ref, onMounted } = Vue
+import MispSyncPanel from './MispSyncPanel.js'
+const { ref, onMounted, nextTick } = Vue
 export default {
     delimiters: ['[[', ']]'],
     props: {
@@ -11,6 +12,7 @@ export default {
         cases_info: Object
     },
     emits: ['case_connectors', 'task_connectors'],
+    components: { 'misp-sync-panel': MispSyncPanel },
     setup(props, { emit }) {
         const is_sending = ref(false)
         const connectors_selected = ref([])
@@ -19,6 +21,22 @@ export default {
         const receive_from_instance = ref()
         const module_selected = ref({})
         const is_loading_update = ref(false)
+        const case_misp_objects = ref([])
+        const remote_misp_objects = ref([])
+        const selected_send_ids = ref([])
+        const selected_receive_uuids = ref([])
+        const is_loading_objects = ref(false)
+        const selected_send_module_name = ref('')
+        const selected_receive_module_name = ref('')
+
+        // MispSyncPanel state
+        const sync_panel_instance = ref(null)
+        const sync_panel_direction = ref('send')
+        const sync_panel_ref = ref(null)
+
+        // Sync log expansion
+        const expanded_log_row = ref(null)
+        const sync_logs_map = ref({})   // keyed by case_task_instance_id
 
         let modal_identifier = ""
         if (props.is_case) {
@@ -128,16 +146,101 @@ export default {
 
         }
 
-        function send_to_modal(instance) {
+        async function send_to_modal(instance) {
+            if (props.is_case && instance.is_misp_connector) {
+                // Use MispSyncPanel for MISP case connectors
+                sync_panel_instance.value = instance
+                sync_panel_direction.value = 'send'
+                await nextTick()
+                await sync_panel_ref.value?.on_show()
+                const el = document.getElementById('modal-misp-sync-' + modal_identifier)
+                if (el) new bootstrap.Modal(el).show()
+                return
+            }
             send_to_instance.value = instance
+            case_misp_objects.value = []
+            selected_send_ids.value = []
+            selected_send_module_name.value = ''
+            if (props.is_case) {
+                const res = await fetch("/case/" + props.object_id + "/get_case_misp_object")
+                if (res.status == 200) {
+                    const loc = await res.json()
+                    case_misp_objects.value = loc["misp-object"] || []
+                    selected_send_ids.value = case_misp_objects.value.map(o => o.object_id)
+                }
+            }
             var myModal = new bootstrap.Modal(document.getElementById("modal-send-to-" + modal_identifier), {});
             myModal.show();
         }
 
-        function receive_from_modal(instance) {
+        async function receive_from_modal(instance) {
+            if (props.is_case && instance.is_misp_connector) {
+                // Use MispSyncPanel for MISP case connectors
+                sync_panel_instance.value = instance
+                sync_panel_direction.value = 'receive'
+                await nextTick()
+                await sync_panel_ref.value?.on_show()
+                const el = document.getElementById('modal-misp-sync-' + modal_identifier)
+                if (el) new bootstrap.Modal(el).show()
+                return
+            }
             receive_from_instance.value = instance
+            remote_misp_objects.value = []
+            selected_receive_uuids.value = []
+            selected_receive_module_name.value = ''
             var myModal = new bootstrap.Modal(document.getElementById("modal-receive-from-" + modal_identifier), {});
             myModal.show();
+        }
+
+        async function fetch_remote_objects() {
+            if (!receive_from_instance.value || !props.is_case) return
+            is_loading_objects.value = true
+            remote_misp_objects.value = []
+            selected_receive_uuids.value = []
+            const res = await fetch("/case/" + props.object_id + "/connectors/" + receive_from_instance.value.case_task_instance_id + "/misp_objects_preview")
+            is_loading_objects.value = false
+            if (res.status == 200) {
+                const loc = await res.json()
+                remote_misp_objects.value = loc["objects"] || []
+                selected_receive_uuids.value = remote_misp_objects.value.map(o => o.uuid)
+            } else {
+                display_toast(res)
+            }
+        }
+
+        async function toggle_sync_logs(instance_id) {
+            if (expanded_log_row.value === instance_id) {
+                expanded_log_row.value = null
+                return
+            }
+            expanded_log_row.value = instance_id
+            if (sync_logs_map.value[instance_id]) return  // already loaded
+            sync_logs_map.value[instance_id] = { loading: true, logs: [] }
+            try {
+                const res = await fetch("/case/" + props.object_id + "/connectors/" + instance_id + "/sync_logs")
+                if (res.status === 200) {
+                    const data = await res.json()
+                    sync_logs_map.value[instance_id] = { loading: false, logs: data.sync_logs || [] }
+                } else {
+                    sync_logs_map.value[instance_id] = { loading: false, logs: [] }
+                    display_toast(res)
+                }
+            } catch (e) {
+                sync_logs_map.value[instance_id] = { loading: false, logs: [] }
+            }
+        }
+
+        function on_sync_done({ direction, instance }) {
+            // Refresh connector list to pick up updated last_sync
+            if (props.is_case) {
+                emit("case_connectors", true)
+            } else {
+                emit("task_connectors", true)
+            }
+            // Clear cached logs for this connector so they reload on next expand
+            if (instance) {
+                delete sync_logs_map.value[instance.case_task_instance_id]
+            }
         }
 
         async function submit_module() {
@@ -159,12 +262,16 @@ export default {
                 url = "/case/" + props.cases_info.case.id + "/task/" + props.object_id + "/call_module_task"
             }
 
+            const body = {
+                "module": modules_select,
+                "case_task_instance_id": send_to_instance.value.case_task_instance_id
+            }
+            if (modules_select === "misp_object_event" && case_misp_objects.value.length > 0) {
+                body["selected_objects"] = selected_send_ids.value
+            }
             const res = await fetch(url, {
                 method: "POST",
-                body: JSON.stringify({
-                    "module": modules_select,
-                    "case_task_instance_id": send_to_instance.value.case_task_instance_id
-                }),
+                body: JSON.stringify(body),
                 headers: {
                     "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
                 }
@@ -203,12 +310,16 @@ export default {
                 url = "/case/" + props.cases_info.case.id + "/task/" + props.object_id + "/call_module_task"
             }
 
+            const body = {
+                "module": modules_select,
+                "case_task_instance_id": receive_from_instance.value.case_task_instance_id
+            }
+            if (modules_select === "receive_misp_object" && remote_misp_objects.value.length > 0) {
+                body["selected_objects"] = selected_receive_uuids.value
+            }
             const res = await fetch(url, {
                 method: "POST",
-                body: JSON.stringify({
-                    "module": modules_select,
-                    "case_task_instance_id": receive_from_instance.value.case_task_instance_id
-                }),
+                body: JSON.stringify(body),
                 headers: {
                     "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
                 }
@@ -263,6 +374,16 @@ export default {
                     }
                 }
 
+                selected_receive_module_name.value = loc[0] || ''
+                if (loc[0] !== 'receive_misp_object') {
+                    remote_misp_objects.value = []
+                    selected_receive_uuids.value = []
+                }
+            })
+
+            $("#modules_select_" + modal_identifier).on('change.select2.objsel', function (e) {
+                let loc = $(this).select2('data').map(item => item.id)
+                selected_send_module_name.value = loc[0] || ''
             })
 
             $('#connectors_select_' + modal_identifier).on('change.select2', function (e) {
@@ -291,6 +412,18 @@ export default {
             modal_identifier,
             module_selected,
             is_loading_update,
+            case_misp_objects,
+            remote_misp_objects,
+            selected_send_ids,
+            selected_receive_uuids,
+            is_loading_objects,
+            selected_send_module_name,
+            selected_receive_module_name,
+            sync_panel_instance,
+            sync_panel_direction,
+            sync_panel_ref,
+            expanded_log_row,
+            sync_logs_map,
 
             save_connector,
             remove_connector,
@@ -298,8 +431,11 @@ export default {
             edit_connector,
             send_to_modal,
             receive_from_modal,
+            fetch_remote_objects,
             submit_module,
-            submit_receive_module
+            submit_receive_module,
+            toggle_sync_logs,
+            on_sync_done
         }
     },
     css: `
@@ -323,12 +459,14 @@ export default {
                     <th>Instance url</th>
                     <th>Type</th>
                     <th>Identifier on the instance</th>
+                    <th>Last sync</th>
                     <th></th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="instance in case_task_connectors_list">
+                <template v-for="instance in case_task_connectors_list" :key="instance.case_task_instance_id">
+                <tr>
                     <td>
                         <div :title="instance.details.description">
                             <img :src="'/static/icons/'+instance.details.icon" style="max-width: 30px;">
@@ -353,6 +491,10 @@ export default {
                         </template>
                     </td>
                     <td v-else><i>None</i></td>
+                    <td>
+                        <span v-if="instance.last_sync" :title="'Last synced: ' + instance.last_sync" class="text-muted small"><i class="fa-solid fa-rotate me-1"></i>[[instance.last_sync]]</span>
+                        <span v-else class="text-muted small"><i>Never</i></span>
+                    </td>
 
                     <td v-if="(!is_case && object_id && cases_info.tasks) ? (cases_info.tasks.find(t => t.id === object_id)?.can_edit && cases_info.present_in_case || cases_info.permission.admin) : (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)">
                         <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)">
@@ -375,10 +517,78 @@ export default {
                         <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)">
                             <i class="fa-solid fa-trash"></i>
                         </button>
+                        <button v-if="is_case" type="button" class="btn btn-outline-secondary ms-1"
+                                :title="expanded_log_row === instance.case_task_instance_id ? 'Hide sync history' : 'Show sync history'"
+                                @click="toggle_sync_logs(instance.case_task_instance_id)">
+                            <i :class="expanded_log_row === instance.case_task_instance_id ? 'fa-solid fa-chevron-up' : 'fa-solid fa-clock-rotate-left'"></i>
+                        </button>
                     </td>
                 </tr>
+                <!-- Inline sync log row -->
+                <tr v-if="is_case && expanded_log_row === instance.case_task_instance_id">
+                    <td colspan="7" class="p-0">
+                        <div class="p-3 bg-body-secondary border-top border-bottom">
+                            <div v-if="sync_logs_map[instance.case_task_instance_id]?.loading" class="text-muted small">
+                                <span class="spinner-border spinner-border-sm me-2"></span>Loading sync history…
+                            </div>
+                            <div v-else-if="!sync_logs_map[instance.case_task_instance_id]?.logs?.length" class="text-muted small">
+                                No sync history yet for this connector.
+                            </div>
+                            <div v-else>
+                                <table class="table table-sm table-borderless mb-0">
+                                    <thead>
+                                        <tr class="text-muted" style="font-size:0.8em;">
+                                            <th>Time</th>
+                                            <th>Direction</th>
+                                            <th>Status</th>
+                                            <th>Synced</th>
+                                            <th>Failed</th>
+                                            <th>Message</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="log in sync_logs_map[instance.case_task_instance_id].logs" :key="log.id" style="font-size:0.85em;">
+                                            <td class="text-muted">[[log.timestamp]]</td>
+                                            <td>
+                                                <span v-if="log.direction === 'send'" class="badge bg-secondary"><i class="fa-solid fa-arrow-up me-1"></i>Send</span>
+                                                <span v-else class="badge bg-info text-dark"><i class="fa-solid fa-arrow-down me-1"></i>Receive</span>
+                                            </td>
+                                            <td>
+                                                <span v-if="log.status === 'success'" class="badge bg-success">success</span>
+                                                <span v-else-if="log.status === 'partial'" class="badge bg-warning text-dark">partial</span>
+                                                <span v-else class="badge bg-danger">error</span>
+                                            </td>
+                                            <td>[[log.objects_synced]]</td>
+                                            <td>[[log.objects_failed]]</td>
+                                            <td class="text-muted">
+                                                <span v-if="log.message">[[log.message]]</span>
+                                                <span v-else-if="log.details && log.details.length">
+                                                    <span v-for="d in log.details.filter(d=>d.status==='error').slice(0,3)" :key="d.name" class="text-danger me-2" :title="d.error">[[d.name]]</span>
+                                                    <span v-if="log.details.filter(d=>d.status==='error').length > 3" class="text-muted">…</span>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                </template>
             </tbody>
         </table>
+
+        <!-- MispSyncPanel for MISP case connectors -->
+        <misp-sync-panel v-if="is_case && sync_panel_instance"
+            :ref="el => sync_panel_ref = el"
+            :case_id="object_id"
+            :instance="sync_panel_instance"
+            :direction="sync_panel_direction"
+            :modules="modules"
+            :modal_id="'modal-misp-sync-' + modal_identifier"
+            @sync_done="on_sync_done">
+        </misp-sync-panel>
+
 
         <!-- Add Connectors -->
         <div class="modal fade" :id="'modal-add-connectors-'+modal_identifier" tabindex="-1" aria-labelledby="AddConnectorsLabel" aria-hidden="true">
@@ -476,6 +686,21 @@ export default {
                                 </div>
                             </div>
                         </div>
+                        <template v-if="selected_send_module_name === 'misp_object_event' && case_misp_objects.length > 0">
+                            <hr>
+                            <div>
+                                <b>Select objects to send:</b>
+                                <div class="mt-1">
+                                    <div v-for="obj in case_misp_objects" :key="obj.object_id" class="form-check">
+                                        <input class="form-check-input" type="checkbox" :value="obj.object_id" v-model="selected_send_ids" :id="'send-obj-'+modal_identifier+'-'+obj.object_id">
+                                        <label class="form-check-label" :for="'send-obj-'+modal_identifier+'-'+obj.object_id">
+                                            <span class="fw-semibold">[[obj.object_name]]</span>
+                                            <span class="text-muted ms-2 small">([[obj.attributes.length]] attribute<template v-if="obj.attributes.length !== 1">s</template>)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                     <div class="modal-footer">
                         <button v-if="is_sending" class="btn btn-primary" type="button" disabled>
@@ -514,6 +739,32 @@ export default {
                                 </div>
                             </div>
                         </div>
+                        <template v-if="selected_receive_module_name === 'receive_misp_object'">
+                            <hr>
+                            <div class="mb-2">
+                                <button v-if="!is_loading_objects" type="button" class="btn btn-sm btn-outline-secondary" @click="fetch_remote_objects()">
+                                    <i class="fa-solid fa-rotate me-1"></i>Load objects from MISP
+                                </button>
+                                <button v-else type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                    <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading...
+                                </button>
+                            </div>
+                            <div v-if="is_loading_objects" class="text-muted"><span class="spinner-border spinner-border-sm me-1"></span>Loading objects from MISP...</div>
+                            <div v-else-if="remote_misp_objects.length > 0">
+                                <b>Select objects to receive:</b>
+                                <div class="mt-1">
+                                    <div v-for="obj in remote_misp_objects" :key="obj.uuid" class="form-check">
+                                        <input class="form-check-input" type="checkbox" :value="obj.uuid" v-model="selected_receive_uuids" :id="'recv-obj-'+modal_identifier+'-'+obj.uuid">
+                                        <label class="form-check-label" :for="'recv-obj-'+modal_identifier+'-'+obj.uuid">
+                                            <span class="fw-semibold">[[obj.name]]</span>
+                                            <span class="text-muted ms-2 small">([[obj.attribute_count]] attribute<template v-if="obj.attribute_count !== 1">s</template>)</span>
+                                            <span v-if="obj.attributes_preview.length" class="text-muted ms-2 small">&mdash; <template v-for="(a, i) in obj.attributes_preview"><template v-if="i > 0">, </template>[[a.relation]]: [[a.value]]</template></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else-if="!is_loading_objects" class="text-muted small">No objects found in the remote event, or no identifier configured.</div>
+                        </template>
                     </div>
                     <div class="modal-footer">
                         <button v-if="is_sending" class="btn btn-primary" type="button" disabled>

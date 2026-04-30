@@ -1,6 +1,7 @@
+import datetime
 import os
 from .. import db
-from ..db_class.db import Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance
+from ..db_class.db import Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance, Connector_Sync_Log
 import uuid
 from werkzeug.utils import secure_filename
 
@@ -390,6 +391,69 @@ def delete_icon_core(iid):
         return True
     else:
         return False
+
+
+####################
+# MISP Core helpers #
+####################
+
+def misp_get_event_objects(loc_instance, api_key, event_identifier):
+    """Fetch objects from a remote MISP event and return a preview list.
+
+    Returns a tuple (objects_list, error_dict).  On success error_dict is None.
+    """
+    try:
+        from pymisp import PyMISP
+        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        event = misp.get_event(event_identifier, pythonify=True)
+        if isinstance(event, dict) and "errors" in event:
+            return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
+        objects = []
+        for obj in event.objects:
+            attrs = [{"relation": a.object_relation, "type": a.type, "value": str(a.value)[:80]}
+                     for a in obj.attributes[:5]]
+            objects.append({
+                "uuid": obj.uuid,
+                "name": obj.name,
+                "attributes_preview": attrs,
+                "attribute_count": len(obj.attributes)
+            })
+        return objects, None
+    except Exception as e:
+        return None, {"message": f"Error connecting to MISP: {e}", "toast_class": "danger-subtle", "status": 500}
+
+
+def misp_get_event_reports(loc_instance, api_key, event_identifier):
+    """Fetch event reports from a remote MISP event.
+
+    Returns a tuple (note_content_str, error_dict).  On success error_dict is None.
+    """
+    try:
+        from pymisp import PyMISP
+        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        event = misp.get_event(event_identifier, pythonify=True)
+        if isinstance(event, dict) and "errors" in event:
+            return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
+        reports = getattr(event, "event_reports", []) or []
+        if not reports:
+            return None, {"message": "No event reports found in this MISP event", "toast_class": "warning-subtle", "status": 404}
+        now_str = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        parts = [f"# Imported from MISP: {loc_instance.name} \u2014 {now_str}\n"]
+        for rpt in reports:
+            name = getattr(rpt, "name", "Report")
+            content = getattr(rpt, "content", "") or ""
+            parts.append(f"## {name}\n\n{content}")
+        return "\n\n---\n\n".join(parts), None
+    except Exception as e:
+        return None, {"message": f"Error importing event report: {e}", "toast_class": "danger-subtle", "status": 500}
+
+
+def get_connector_sync_logs(case_id, case_connector_instance_id, limit=50):
+    """Return recent sync logs for a connector instance as a list of dicts."""
+    logs = Connector_Sync_Log.query.filter_by(
+        case_id=int(case_id), case_connector_instance_id=int(case_connector_instance_id)
+    ).order_by(Connector_Sync_Log.timestamp.desc()).limit(limit).all()
+    return [log.to_json() for log in logs]
 
 
 def check_misp_connectivity(instance, current_user=None):

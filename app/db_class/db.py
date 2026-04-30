@@ -1056,6 +1056,34 @@ class Case_Connector_Instance(db.Model):
     instance_id = db.Column(db.Integer, index=True)
     identifier = db.Column(db.String)
     is_updating_case = db.Column(db.Boolean, default=False)
+    last_sync = db.Column(db.DateTime, nullable=True)
+
+
+class Connector_Sync_Log(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    case_connector_instance_id = db.Column(db.Integer, index=True)
+    direction = db.Column(db.String(10))   # 'send' or 'receive'
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.datetime.now)
+    status = db.Column(db.String(10))      # 'success', 'error', 'partial'
+    message = db.Column(db.Text, nullable=True)
+    objects_synced = db.Column(db.Integer, default=0)
+    objects_failed = db.Column(db.Integer, default=0)
+    details = db.Column(db.JSON, nullable=True)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "case_id": self.case_id,
+            "case_connector_instance_id": self.case_connector_instance_id,
+            "direction": self.direction,
+            "timestamp": self.timestamp.strftime(DATETIME_FORMAT_FULL) if self.timestamp else None,
+            "status": self.status,
+            "message": self.message,
+            "objects_synced": self.objects_synced,
+            "objects_failed": self.objects_failed,
+            "details": self.details
+        }
 
 
 class Case_Template_Connector_Instance(db.Model):
