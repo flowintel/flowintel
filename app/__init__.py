@@ -94,6 +94,7 @@ def create_app():
     from .calendar.calendar import calendar_blueprint
     from .notification.notification import notification_blueprint
     from .tools.tools import tools_blueprint
+    from .tools.audit_logs import audit_logs_blueprint
     from .my_assignment.my_assignment import my_assignment_blueprint
     from .connectors.connectors import connector_blueprint
     from .analyzer.misp_modules import analyzer_blueprint
@@ -106,6 +107,7 @@ def create_app():
     app.register_blueprint(calendar_blueprint, url_prefix="/calendar")
     app.register_blueprint(notification_blueprint, url_prefix="/notification")
     app.register_blueprint(tools_blueprint, url_prefix="/tools")
+    app.register_blueprint(audit_logs_blueprint, url_prefix="/tools/audit_logs")
     app.register_blueprint(templating_blueprint, url_prefix="/templating")
     app.register_blueprint(my_assignment_blueprint, url_prefix="/my_assignment")
     app.register_blueprint(connector_blueprint, url_prefix="/connectors")

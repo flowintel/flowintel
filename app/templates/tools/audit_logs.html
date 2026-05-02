@@ -1,0 +1,450 @@
+<!--
+    Author: Koen Van Impe
+-->
+
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Audit logs - {{ config.APP_NAME }}</title>
+{{ super() }}
+<style>
+    .audit-activity {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--bs-border-color, rgba(0,0,0,0.1));
+        border-radius: 0.375rem;
+        background: var(--bs-tertiary-bg, #f8f9fa);
+    }
+    .audit-activity-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        width: 100%;
+        height: 56px;
+        border-bottom: 1px solid var(--bs-border-color, rgba(0,0,0,0.1));
+    }
+    .audit-activity-chart > div {
+        flex: 1 1 0;
+        min-width: 0;
+        background-color: var(--bs-primary, #0d6efd);
+        opacity: 0.7;
+        transition: opacity 0.15s ease;
+        border-radius: 2px 2px 0 0;
+    }
+    .audit-activity-chart > div:hover {
+        opacity: 1;
+    }
+    .audit-activity-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="case-core-style" style="border-radius: 0">
+    <h5 class="mb-0"><i class="fa-solid fa-scroll me-2"></i>Audit logs</h5>
+</div>
+
+<hr class="fading-line mt-4 mb-4">
+
+<div class="case-core-style">
+    <div class="alert alert-info py-2 px-3 mb-3" role="alert">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        Per-case audit history is also available individually. Open a case, then go to the
+        <strong>History</strong> tab for the entries that belong to that single case.
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" :class="active_tab === 'logs' ? 'active' : ''"
+                    type="button" @click="select_tab('logs')">
+                <i class="fa-solid fa-clock-rotate-left me-1"></i>Logs
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" :class="active_tab === 'audit' ? 'active' : ''"
+                    type="button" @click="select_tab('audit')">
+                <i class="fa-solid fa-shield-halved me-1"></i>Audit
+            </button>
+        </li>
+    </ul>
+
+    <div v-if="active_tab === 'audit'" class="alert alert-secondary py-2 px-3 mb-3" role="alert">
+        <i class="fa-solid fa-terminal me-1"></i>
+        This view is parsed from <code>logs/record.log</code> &mdash; equivalent to running
+        <code>tail -f logs/record.log | grep AUDIT</code>.
+    </div>
+
+    <div v-if="rows && rows.length > 0" class="audit-activity mb-3">
+        <div class="d-flex justify-content-between align-items-baseline mb-1 small text-muted">
+            <span><i class="fa-solid fa-chart-column me-1"></i>Activity per day</span>
+            <span>
+                [[rows.length]] entries over
+                [[activity.length]] day[[activity.length === 1 ? '' : 's']]
+                &middot; peak [[activity_peak]]
+            </span>
+        </div>
+        <div class="audit-activity-chart" role="img" aria-label="Activity per day">
+            <div v-for="d in activity" :key="d.day"
+                 :style="{ height: activity_bar_height(d.count) + '%' }"
+                 :title="`${d.day}: ${d.count} entries`"></div>
+        </div>
+        <div class="audit-activity-labels small text-muted">
+            <span>[[activity[0].day]]</span>
+            <span v-if="activity.length > 1">[[activity[activity.length - 1].day]]</span>
+        </div>
+    </div>
+
+    <form @submit.prevent="load()">
+        <div class="row g-2 align-items-end mb-2">
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label form-label-sm mb-1">Start date</label>
+                <input type="date" class="form-control form-control-sm" v-model="start_date">
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label form-label-sm mb-1">End date</label>
+                <input type="date" class="form-control form-control-sm" v-model="end_date">
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label form-label-sm mb-1">User</label>
+                <input type="text" class="form-control form-control-sm" v-model="user_filter"
+                       placeholder="email or name">
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label form-label-sm mb-1">Action type</label>
+                <input type="text" class="form-control form-control-sm" v-model="action_filter"
+                       placeholder="e.g. Created, Login, Deleted">
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label form-label-sm mb-1">
+                    Exclude
+                    <i class="fa-solid fa-circle-question text-muted"
+                       title="Hide entries containing this text in user, action or details (case-insensitive)."></i>
+                </label>
+                <input type="text" class="form-control form-control-sm" v-model="exclude_filter"
+                       placeholder="text to exclude">
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center mb-3" style="gap: 0.5rem;">
+            <span class="text-muted small me-1">Quick range:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    @click="apply_preset('today')">Today</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    @click="apply_preset('7d')">Last 7 days</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    @click="apply_preset('30d')">Last 30 days</button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap" style="gap: 0.5rem;">
+            <div>
+                <button type="submit" class="btn btn-sm btn-primary me-2">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i>Apply filters
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @click="reset_filters()">
+                    Reset
+                </button>
+                <span v-if="rows" class="badge bg-secondary ms-2">[[rows.length]] entries</span>
+            </div>
+            <div class="btn-group">
+                <a class="btn btn-sm btn-outline-success" :href="export_url('csv')" download>
+                    <i class="fa-solid fa-file-csv me-1"></i>Export CSV
+                </a>
+                <a class="btn btn-sm btn-outline-success" :href="export_url('json')" download>
+                    <i class="fa-solid fa-file-code me-1"></i>Export JSON
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-striped table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 140px;">Timestamp</th>
+                    <th style="width: 220px;">User</th>
+                    <th>Action</th>
+                    <th v-if="active_tab === 'audit'" style="width: 80px;">Severity</th>
+                    <th style="width: 100px;">Case</th>
+                    <th v-if="active_tab === 'logs'" style="width: 110px;">Source</th>
+                    <th v-if="active_tab === 'audit'">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template v-if="loading">
+                    <tr><td :colspan="column_count" class="text-center text-muted py-3">
+                        <span class="spinner-border spinner-border-sm me-2"></span>Loading...
+                    </td></tr>
+                </template>
+                <template v-else-if="!rows || rows.length === 0">
+                    <tr><td :colspan="column_count" class="text-center text-muted py-3">
+                        No entries match the current filters.
+                    </td></tr>
+                </template>
+                <template v-else>
+                    <tr v-for="(r, idx) in rows" :key="idx" @click="open_detail(r)" style="cursor: pointer;">
+                        <td><small>[[r.timestamp]]</small></td>
+                        <td><small>[[r.user]]</small></td>
+                        <td>[[r.action]]</td>
+                        <td v-if="active_tab === 'audit'">
+                            <span class="badge" :class="severity_class(r.severity)">[[r.severity]]</span>
+                        </td>
+                        <td>
+                            <a v-if="r.case_id" :href="'/case/' + r.case_id" @click.stop>#[[r.case_id]]</a>
+                            <span v-else class="text-muted">&mdash;</span>
+                        </td>
+                        <td v-if="active_tab === 'logs'">
+                            <span class="badge bg-light text-dark">[[r.source]]</span>
+                        </td>
+                        <td v-if="active_tab === 'audit'"><small class="text-muted">[[r.extra]]</small></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Detail offcanvas (row drill-down) -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="auditDetailOffcanvas"
+         aria-labelledby="auditDetailLabel" style="width: 540px; max-width: 90vw;">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="auditDetailLabel">
+                <i class="fa-solid fa-magnifying-glass me-1"></i>Log entry
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body" v-if="detail">
+            <dl class="row mb-3 small">
+                <dt class="col-4">Timestamp</dt><dd class="col-8">[[detail.timestamp]]</dd>
+                <dt class="col-4">User</dt><dd class="col-8">[[detail.user || '—']]</dd>
+                <dt class="col-4">Action</dt><dd class="col-8">[[detail.action]]</dd>
+                <template v-if="detail.severity !== undefined">
+                    <dt class="col-4">Severity</dt>
+                    <dd class="col-8">
+                        <span class="badge" :class="severity_class(detail.severity)">[[detail.severity]]</span>
+                    </dd>
+                </template>
+                <template v-if="detail.case_id">
+                    <dt class="col-4">Case</dt>
+                    <dd class="col-8"><a :href="'/case/' + detail.case_id">#[[detail.case_id]]</a></dd>
+                </template>
+                <template v-if="detail.case_uuid">
+                    <dt class="col-4">Case UUID</dt><dd class="col-8"><code>[[detail.case_uuid]]</code></dd>
+                </template>
+                <dt class="col-4">Source</dt><dd class="col-8">[[detail.source]]</dd>
+            </dl>
+
+            <div v-if="detail.extra" class="mb-3">
+                <div class="text-muted small mb-1">Extras</div>
+                <ul class="list-group list-group-flush small">
+                    <li v-for="(kv, i) in parse_extras(detail.extra)" :key="i" class="list-group-item px-0 py-1">
+                        <strong>[[kv.key]]</strong>: [[kv.value]]
+                    </li>
+                </ul>
+            </div>
+
+            <div class="text-muted small mb-1">Raw line</div>
+            <pre class="bg-light p-2 rounded small" style="white-space: pre-wrap; word-break: break-word;">[[detail.raw]]</pre>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block script %}
+<script type="module">
+    const { createApp, ref, computed, onMounted } = Vue
+    import {display_toast} from '/static/js/toaster.js'
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const active_tab = ref('logs')
+            const rows = ref(null)
+            const loading = ref(false)
+
+            const start_date = ref('')
+            const end_date = ref('')
+            const user_filter = ref('')
+            const action_filter = ref('')
+            const exclude_filter = ref('')
+
+            const detail = ref(null)
+            let detail_offcanvas = null
+
+            const column_count = computed(() => {
+                return active_tab.value === 'audit' ? 6 : 5
+            })
+
+            // Bucket rows by day, filling missing days so the timeline is continuous.
+            const activity = computed(() => {
+                if (!rows.value || rows.value.length === 0) return []
+                const counts = new Map()
+                for (const r of rows.value) {
+                    const day = (r.timestamp || '').slice(0, 10)
+                    if (!day) continue
+                    counts.set(day, (counts.get(day) || 0) + 1)
+                }
+                if (counts.size === 0) return []
+                const days = Array.from(counts.keys()).sort()
+                const out = []
+                const cur = new Date(days[0] + 'T00:00:00')
+                const end = new Date(days[days.length - 1] + 'T00:00:00')
+                while (cur <= end) {
+                    const key = cur.toISOString().slice(0, 10)
+                    out.push({ day: key, count: counts.get(key) || 0 })
+                    cur.setDate(cur.getDate() + 1)
+                }
+                return out
+            })
+
+            const activity_peak = computed(() =>
+                activity.value.reduce((m, d) => Math.max(m, d.count), 0)
+            )
+
+            function activity_bar_height(count) {
+                if (!activity_peak.value) return 0
+                return Math.max(2, (count / activity_peak.value) * 100)
+            }
+
+            function build_query() {
+                const params = new URLSearchParams()
+                if (start_date.value) params.set('start_date', start_date.value)
+                if (end_date.value) params.set('end_date', end_date.value)
+                if (user_filter.value) params.set('user', user_filter.value)
+                if (action_filter.value) params.set('action', action_filter.value)
+                if (exclude_filter.value) params.set('exclude', exclude_filter.value)
+                return params
+            }
+
+            async function load() {
+                loading.value = true
+                rows.value = null
+                const endpoint = active_tab.value === 'audit'
+                    ? '/tools/audit_logs/audit'
+                    : '/tools/audit_logs/data'
+                const params = build_query()
+                const url = params.toString() ? `${endpoint}?${params}` : endpoint
+                try {
+                    const res = await fetch(url)
+                    if (!res.ok) {
+                        display_toast(res)
+                        rows.value = []
+                        return
+                    }
+                    const data = await res.json()
+                    rows.value = data.rows || []
+                } catch (e) {
+                    rows.value = []
+                } finally {
+                    loading.value = false
+                }
+            }
+
+            function select_tab(tab) {
+                if (active_tab.value === tab) return
+                active_tab.value = tab
+                load()
+            }
+
+            function reset_filters() {
+                start_date.value = ''
+                end_date.value = ''
+                user_filter.value = ''
+                action_filter.value = ''
+                exclude_filter.value = ''
+                load()
+            }
+
+            function fmt_date(d) {
+                const yyyy = d.getFullYear()
+                const mm = String(d.getMonth() + 1).padStart(2, '0')
+                const dd = String(d.getDate()).padStart(2, '0')
+                return `${yyyy}-${mm}-${dd}`
+            }
+
+            function apply_preset(preset) {
+                const now = new Date()
+                if (preset === 'today') {
+                    start_date.value = fmt_date(now)
+                    end_date.value = fmt_date(now)
+                } else if (preset === '7d') {
+                    const past = new Date(now)
+                    past.setDate(past.getDate() - 6)
+                    start_date.value = fmt_date(past)
+                    end_date.value = fmt_date(now)
+                } else if (preset === '30d') {
+                    const past = new Date(now)
+                    past.setDate(past.getDate() - 29)
+                    start_date.value = fmt_date(past)
+                    end_date.value = fmt_date(now)
+                }
+                load()
+            }
+
+            function export_url(fmt) {
+                const params = build_query()
+                params.set('source', active_tab.value === 'audit' ? 'audit' : 'logs')
+                params.set('format', fmt || 'csv')
+                return `/tools/audit_logs/export?${params}`
+            }
+
+            function severity_class(sev) {
+                if (sev >= 500) return 'bg-danger'
+                if (sev >= 400) return 'bg-warning text-dark'
+                return 'bg-success'
+            }
+
+            function parse_extras(extra) {
+                if (!extra) return []
+                const out = []
+                const re = /(\w+):\s*(\S+)/g
+                let m
+                while ((m = re.exec(extra)) !== null) {
+                    out.push({ key: m[1], value: m[2] })
+                }
+                return out
+            }
+
+            function open_detail(row) {
+                detail.value = row
+                if (!detail_offcanvas) {
+                    const el = document.getElementById('auditDetailOffcanvas')
+                    detail_offcanvas = bootstrap.Offcanvas.getOrCreateInstance(el)
+                }
+                detail_offcanvas.show()
+            }
+
+            onMounted(() => {
+                load()
+            })
+
+            return {
+                active_tab,
+                rows,
+                loading,
+                start_date,
+                end_date,
+                user_filter,
+                action_filter,
+                exclude_filter,
+                column_count,
+                detail,
+                activity,
+                activity_peak,
+                activity_bar_height,
+                load,
+                select_tab,
+                reset_filters,
+                apply_preset,
+                export_url,
+                severity_class,
+                parse_extras,
+                open_detail,
+            }
+        }
+    }).mount('#main-container')
+</script>
+{% endblock %}
