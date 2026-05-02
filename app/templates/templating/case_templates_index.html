@@ -53,25 +53,17 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="modalCaseFilterLabel">Cases Filter</h1>
+                    <h1 class="modal-title fs-5" id="modalCaseFilterLabel">Case templates filter</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="d-flex w-100 justify-content-evenly">
-                        <div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="radioOther" id="radioOtherTitle" @click="sort_by_title()">
-                                <label class="form-check-label" for="radioOtherTitle">Title</label>
-                            </div>
-                        </div>
-
-                        <div style="display:flex">
-                        <span style="margin-right: 10px">Asc</span>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
-                                <label class="form-check-label" for="flexSwitchCheckDefault">Desc</label>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="caseSortSelect" class="form-label"><i class="fa-solid fa-arrow-down-a-z fa-sm me-1"></i>Sort by</label>
+                        <select id="caseSortSelect" class="form-select form-select-sm" v-model="sort_mode" @change="apply_sort">
+                            <option value="none">None (default order)</option>
+                            <option value="asc">Title (A &rarr; Z)</option>
+                            <option value="desc">Title (Z &rarr; A)</option>
+                        </select>
                     </div>
                     <hr>
                     <div>Taxonomies:</div>
@@ -319,6 +311,7 @@
                 const templates_list = ref([])
                 const current_page = ref(1)
                 const search_query = ref('')
+                const sort_mode = ref('none')
                 let searchTimer = null
 
                 let title_filter = false
@@ -394,13 +387,13 @@
                     display_toast(res)
                 }
 
-                function sort_by_title(){
-                    title_filter = !title_filter
+                function apply_sort(){
+                    title_filter = sort_mode.value !== 'none'
+                    asc_desc = sort_mode.value !== 'desc'
                     fetch_templates(1)
                 }
 
                 function change_switch_check(change=false, changeOperator=false, changeOperatorGalaxies=false){
-                    if (change) asc_desc = !asc_desc
                     if (changeOperator) or_and_taxo = !or_and_taxo
                     if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
 
@@ -541,9 +534,10 @@
 
                     delete_case,
                     fetch_templates,
-                    sort_by_title,
                     onInput,
-                    change_switch_check
+                    change_switch_check,
+                    sort_mode,
+                    apply_sort
                 }
             }
         }).mount('#main-container')

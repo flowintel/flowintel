@@ -929,9 +929,14 @@ def get_all_note_template():
     """Get all note template"""
     return Note_Template_Model.query.all()
 
-def get_note_template_by_page(page: int):
+def get_note_template_by_page(page: int, title_search: str = None, title_sort: bool = False):
     """Get note template by page"""
-    return Note_Template_Model.query.paginate(page=page, per_page=20, max_per_page=50)
+    query = Note_Template_Model.query
+    if title_search:
+        query = query.filter(Note_Template_Model.title.ilike(f"%{title_search}%"))
+    if title_sort:
+        query = query.order_by(Note_Template_Model.title)
+    return query.paginate(page=page, per_page=20, max_per_page=50)
 
 import re
 
