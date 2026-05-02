@@ -37,6 +37,8 @@ class DeleteCustomTag(Resource):
         user = utils.get_user_from_api(request.headers)
         custom_tag = CustomModel.get_custom_tag(ctid)
         if custom_tag:
+            if CustomModel.is_custom_tag_in_use(ctid):
+                return {"message": "Custom tag is in use and cannot be deleted"}, 409
             tag_name = custom_tag.name
             if CustomModel.delete_custom_tag(ctid):
                 flowintel_log("audit", 200, "API: Custom tag deleted", User=user.email, CustomTagId=ctid, CustomTagName=tag_name)

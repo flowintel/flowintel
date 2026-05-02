@@ -280,3 +280,21 @@ def test_read_only_get_custom_tag(client):
     response = client.get("/api/custom_tags/1", headers={"X-API-KEY": READ_KEY})
     assert response.status_code == 200
 
+
+def test_delete_custom_tag_in_use(client, app):
+    """A custom tag attached to a case cannot be deleted"""
+    from app import db
+    from app.db_class.db import Case_Custom_Tags
+
+    assert create_custom_tag(client).status_code == 201
+    with app.app_context():
+        db.session.add(Case_Custom_Tags(case_id=1, custom_tag_id=1))
+        db.session.commit()
+
+    response = client.get("/api/custom_tags/1/delete", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 409
+    assert "in use" in response.json["message"].lower()
+
+    # The tag must still exist
+    assert client.get("/api/custom_tags/1", headers={"X-API-KEY": API_KEY}).status_code == 200
+
