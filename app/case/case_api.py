@@ -90,7 +90,7 @@ class CreateCase(Resource):
 @case_ns.route('/create_with_event', methods=['POST'])
 @case_ns.doc(description='Create a case')
 class CreateCaseEvent(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     @case_ns.doc(params={
         "title": "Required. Title for a case", 
         "event": "Required, Json of a misp event",
