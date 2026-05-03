@@ -56,11 +56,15 @@ def test_delete_user_forbidden(client):
     response = client.get(f"/api/admin/delete_user/{user_id}", headers={"X-API-KEY": API_KEY})
     assert response.status_code == 403
 
-def test_get_users_forbidden(client):
-    """Editor should NOT be able to list all users (depends on LIMIT_USER_VIEW_TO_ORG config)"""
+def test_get_users(client):
+    """Editor can list users in their own organisation (LIMIT_USER_VIEW_TO_ORG=True in tests)."""
     response = client.get("/api/admin/users", headers={"X-API-KEY": API_KEY})
-    # Return 200 or 403 depending on configuration
-    assert response.status_code in [200, 403]
+    assert response.status_code == 200
+    assert "users" in response.json
+    with client.application.app_context():
+        own = get_user_api(API_KEY)
+        for u in response.json["users"]:
+            assert u["org_id"] == own.org_id
 
 def test_get_specific_user(client):
     """Editor should be able to get their own user details"""

@@ -57,10 +57,14 @@ def test_delete_user_forbidden(client):
     assert response.status_code == 403
 
 def test_get_users(client):
-    """Read-only user should be able to list users (depends on LIMIT_USER_VIEW_TO_ORG config)"""
+    """Read-only user can list users in their own organisation (LIMIT_USER_VIEW_TO_ORG=True in tests)."""
     response = client.get("/api/admin/users", headers={"X-API-KEY": API_KEY})
-    # This might return 200 or 403 depending on configuration
-    assert response.status_code in [200, 403]
+    assert response.status_code == 200
+    assert "users" in response.json
+    with client.application.app_context():
+        own = get_user_api(API_KEY)
+        for u in response.json["users"]:
+            assert u["org_id"] == own.org_id
 
 def test_get_specific_user(client):
     """Read-only user should be able to get their own user details"""
@@ -73,13 +77,13 @@ def test_get_specific_user(client):
     assert response.json["email"] == "read@read.read"
 
 def test_get_other_user(client):
-    """Read-only user should be able to view other users (if permissions allow)"""
+    """Read-only user can fetch a specific user by id (no org check on this endpoint)."""
     create_response = create_user_as_admin(client)
     user_id = create_response.json["id"]
-    
+
     response = client.get(f"/api/admin/user/{user_id}", headers={"X-API-KEY": API_KEY})
-    # Might be allowed or forbidden depending on config
-    assert response.status_code in [200, 403]
+    assert response.status_code == 200
+    assert response.json["id"] == user_id
 
 #########
 ## Org ##

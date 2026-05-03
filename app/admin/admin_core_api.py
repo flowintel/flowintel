@@ -1,4 +1,5 @@
 from ..db_class.db import User, Role, Org
+from ..utils.utils import validate_password_strength
 
 
 def verif_add_user(data_dict, api_user=None):
@@ -59,7 +60,15 @@ def verif_edit_user(data_dict, user_id, api_user=None):
     user = User.query.get(user_id)
     if not user:
         return {"message": "User not found"}
-    
+
+    if "password" in data_dict:
+        if not data_dict["password"]:
+            data_dict.pop("password")
+        else:
+            error = validate_password_strength(data_dict["password"])
+            if error:
+                return {"message": error}
+
     if "first_name" not in data_dict or not data_dict["first_name"]:
         data_dict["first_name"] = user.first_name
 
