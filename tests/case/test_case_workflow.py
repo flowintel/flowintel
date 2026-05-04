@@ -1,4 +1,5 @@
 API_KEY = "editor_api_key"
+ADMIN_KEY = "admin_api_key"
 READ_KEY = "read_api_key"
 
 
@@ -164,11 +165,11 @@ def test_check_title_missing_field(client):
 #############
 
 def test_history(client):
-    """Editor should be able to view case history"""
+    """Admin should be able to view case history (editor needs audit-viewer permission)"""
     case_id = create_case(client).json["case_id"]
 
     response = client.get(f"/api/case/{case_id}/history",
-                          headers={"X-API-KEY": API_KEY})
+                          headers={"X-API-KEY": ADMIN_KEY})
     assert response.status_code == 200
     assert "history" in response.json
 
@@ -176,7 +177,7 @@ def test_history(client):
 def test_history_nonexistent_case(client):
     """Viewing history of a non-existent case should return 404"""
     response = client.get("/api/case/9999/history",
-                          headers={"X-API-KEY": API_KEY})
+                          headers={"X-API-KEY": ADMIN_KEY})
     assert response.status_code == 404
 
 

@@ -1074,6 +1074,9 @@ def download_file(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Download case history: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Download case history: Access restricted", User=current_user.email, CaseId=cid)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
         flowintel_log("audit", 200, "Download case history", User=current_user.email, CaseId=cid)
         return CaseModel.download_history(case)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -1088,6 +1091,9 @@ def download_history_md(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Download case markdown: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Download case markdown: Access restricted", User=current_user.email, CaseId=cid)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
         flowintel_log("audit", 200, "Download case markdown", User=current_user.email, CaseId=cid)
         return CaseModel.download_history_md(case)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -1102,6 +1108,9 @@ def download_audit_logs(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Download audit logs: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Download audit logs: Access restricted", User=current_user.email, CaseId=cid)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
         flowintel_log("audit", 200, "Download audit logs", User=current_user.email, CaseId=cid)
         return CommonModel.download_audit_logs(case)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -1116,6 +1125,9 @@ def download_audit_logs_md(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Download audit logs markdown: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Download audit logs markdown: Access restricted", User=current_user.email, CaseId=cid)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
         flowintel_log("audit", 200, "Download audit logs markdown", User=current_user.email, CaseId=cid)
         return CommonModel.download_audit_logs_md(case)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404

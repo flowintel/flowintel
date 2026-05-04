@@ -543,7 +543,7 @@ class AddConnectorsTask(Resource):
                     return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin"}, 403
                 
                 if "connectors" in request.json:
-                    if TaskModel.add_connector(tid, request.json):
+                    if TaskModel.add_connector(tid, request.json, current_user):
                         return {"message": "Connector added"}, 200
                     return {"message": "Error Connector added"}, 400
                 return {"message": "Please give a list of connectors"}, 400
@@ -801,3 +801,76 @@ class DeleteUrlTool(Resource):
             return {"message": "Permission denied"}, 403
         return {"message": "Task Not found"}, 404
     
+
+######################
+# External reference #
+######################
+
+@task_ns.route('/<tid>/create_external_reference', methods=['POST'])
+@task_ns.doc(description='Create an external reference for a task')
+class CreateExternalReferenceTask(Resource):
+    method_decorators = [editor_required, api_required]
+    @task_ns.doc(params={"url": "Required. URL of the external reference"})
+    def post(self, tid):
+        task = CommonModel.get_task(tid)
+        if not task:
+            return {"message": "Task not found"}, 404
+        current_user = utils.get_user_from_api(request.headers)
+        if not (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
+            return {"message": "Permission denied"}, 403
+        if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+            flowintel_log("audit", 403, "Create external reference denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+            return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+        if not request.json or "url" not in request.json:
+            return {"message": "Need to pass 'url'"}, 400
+        external_ref = TaskModel.create_external_reference(tid, request.json["url"], current_user)
+        if external_ref:
+            flowintel_log("audit", 201, "External reference created for task", User=current_user.email, CaseId=task.case_id, TaskId=tid, ExternalRefId=external_ref.id, URL=external_ref.url)
+            return {"message": "External reference created", "external_ref_id": external_ref.id}, 201
+        return {"message": "Error creating external reference"}, 400
+
+
+@task_ns.route('/<tid>/edit_external_reference/<erid>', methods=['POST'])
+@task_ns.doc(description='Edit an external reference of a task')
+class EditExternalReferenceTask(Resource):
+    method_decorators = [editor_required, api_required]
+    @task_ns.doc(params={"url": "Required. URL of the external reference"})
+    def post(self, tid, erid):
+        task = CommonModel.get_task(tid)
+        if not task:
+            return {"message": "Task not found"}, 404
+        current_user = utils.get_user_from_api(request.headers)
+        if not (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
+            return {"message": "Permission denied"}, 403
+        if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+            flowintel_log("audit", 403, "Edit external reference denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid, ExternalRefId=erid)
+            return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+        if not request.json or "url" not in request.json:
+            return {"message": "Need to pass 'url'"}, 400
+        if TaskModel.edit_external_reference(tid, erid, request.json["url"], current_user):
+            flowintel_log("audit", 200, "External reference edited for task", User=current_user.email, CaseId=task.case_id, TaskId=tid, ExternalRefId=erid, URL=request.json["url"])
+            return {"message": "External reference edited"}, 200
+        return {"message": "External reference not found"}, 404
+
+
+@task_ns.route('/<tid>/delete_external_reference/<erid>', methods=['GET'])
+@task_ns.doc(description='Delete an external reference of a task')
+class DeleteExternalReferenceTask(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, tid, erid):
+        task = CommonModel.get_task(tid)
+        if not task:
+            return {"message": "Task not found"}, 404
+        current_user = utils.get_user_from_api(request.headers)
+        if not (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
+            return {"message": "Permission denied"}, 403
+        if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+            flowintel_log("audit", 403, "Delete external reference denied: Task in Requested or Rejected status", User=current_user.email, CaseId=task.case_id, TaskId=tid, ExternalRefId=erid)
+            return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin"}, 403
+        external_ref = TaskModel.get_external_reference(erid)
+        if not external_ref or external_ref.task_id != int(tid):
+            return {"message": "External reference not found"}, 404
+        url = external_ref.url
+        TaskModel.delete_external_reference(external_ref, current_user)
+        flowintel_log("audit", 200, "External reference deleted from task", User=current_user.email, CaseId=task.case_id, TaskId=tid, ExternalRefId=erid, URL=url)
+        return {"message": "External reference deleted"}, 200
