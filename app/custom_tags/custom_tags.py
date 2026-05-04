@@ -73,6 +73,8 @@ def delete_custom_tag(ctid):
     from ..utils.logger import flowintel_log
     custom_tag = CustomCore.get_custom_tag(ctid)
     if custom_tag:
+        if CustomCore.is_custom_tag_in_use(ctid):
+            return {"message": "Custom tag is in use and cannot be deleted", "toast_class": "warning-subtle"}, 409
         tag_name = custom_tag.name
         if CustomCore.delete_custom_tag(ctid):
             flowintel_log("audit", 200, "Custom tag deleted", User=current_user.email, CustomTagId=ctid, CustomTagName=tag_name)
