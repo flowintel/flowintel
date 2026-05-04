@@ -815,4 +815,3 @@ def system_settings_reload():
 
     flowintel_log("audit", 200, "Application reload requested", User=current_user.email)
     return jsonify({"message": message}), status
-

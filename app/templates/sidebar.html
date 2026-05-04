@@ -97,6 +97,9 @@
 				{% if current_user.is_admin() %}
 				<a class="collapse-item" href="/tools/system_settings"><i class="fa-solid fa-gears fa-fw me-2"></i>System settings</a>
 				{% endif %}
+				{% if current_user.is_admin() or current_user.is_audit_viewer() %}
+				<a class="collapse-item" href="/tools/audit_logs"><i class="fa-solid fa-scroll fa-fw me-2"></i>Audit logs</a>
+				{% endif %}
 			</div>
 		</div>
 	</li>
