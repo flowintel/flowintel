@@ -420,7 +420,9 @@ def note_template_id(nid):
 @login_required
 def note_template_by_page():
     page = request.args.get('page', 1, type=int)
-    notes = ToolsModel.get_note_template_by_page(page)
+    q = request.args.get('q', None, type=str)
+    title_sort = request.args.get('title', 'false', type=str) == 'true'
+    notes = ToolsModel.get_note_template_by_page(page, title_search=q, title_sort=title_sort)
     if notes:
         notes_list = list()
         for note in notes:
