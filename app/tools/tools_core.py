@@ -815,10 +815,13 @@ def check_case_misp_event(request_form, current_user) -> str:
 
 def create_case_misp_event(request_form, current_user):
     """Create a case from a MISP Event"""
+    misp = check_connection_misp(request_form.get("misp_instance_id"), current_user)
+    if not isinstance(misp, PyMISP):
+        # check_connection_misp returns an error string when the instance is missing
+        # or the user has neither a global nor a personal API key configured.
+        return None
     instance = Connector_Instance.query.get(request_form.get("misp_instance_id"))
-    user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
-    misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
-    
+
     event = misp.get_event(request_form.get("misp_event_id"), pythonify=True)
 
     case = TemplateModel.create_case_from_template(request_form.get("case_template_id"), request_form.get("case_title"), current_user)

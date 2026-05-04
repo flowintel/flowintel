@@ -516,6 +516,8 @@ def case_misp_event():
         res = ToolsModel.check_case_misp_event(request.json, current_user)
         if not type(res) == str:
             case = ToolsModel.create_case_misp_event(request.json, current_user)
+            if case is None:
+                return {"message": "No MISP API key configured for this instance", "toast_class": "warning-subtle"}, 400
             flowintel_log(
                 "audit", 200, "Case created from MISP event",
                 User=current_user.email, CaseId=case.id,
