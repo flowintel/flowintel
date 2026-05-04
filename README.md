@@ -30,11 +30,11 @@ Flowintel is an open-source platform designed to assist analysts in organizing t
 
 ### Prerequisites
 
-- Python 3.12+
-- PostgreSQL 17+
+- Python 3.10+
+- PostgreSQL (or SQLite, MySQL, MariaDB)
 - Valkey (or Redis)
-- Bun (for frontend build)
 - uv (for Python dependency management)
+- Bun (for Node.js dependency management)
 
 ### Installation
 
@@ -48,26 +48,22 @@ cp conf/config_module.py.default conf/config_module.py
 
 2. **Configure** the application in `conf/config.py`
 
-3. **Run the verification and installation script**:
-
-```bash
-./launch.sh
-```
-
-This will:
-- Verify all dependencies
-- Generate lock files (uv.lock, bun.lock)
-- Install Python and Node.js dependencies
-- Launch the application
-
-### Alternative: Using launch.sh (legacy)
+3. **Run the installation script**:
 
 ```bash
 ./install.sh
+```
+
+4. **Start** the application:
+
+```bash
 ./launch.sh -l
 ```
 
-### Account
+### MacOS
+In `/bin` there's a script for installation and for launching
+
+#### Account
 
 - email: `admin@admin.admin`
 - password: `admin`
@@ -77,38 +73,36 @@ This will:
 ### launch.sh
 
 ```bash
-./launch.sh verify    # Verify environment and dependencies
-./launch.sh migrate   # Generate uv.lock and bun.lock
-./launch.sh install  # Install dependencies
-./launch.sh clean    # Remove temporary files
-./launch.sh launch   # Launch application
-./launch.sh          # Full: verify + install + launch (default)
-```
-
-### launch.sh
-
-```bash
 ./launch.sh -l               # Development launch
 ./launch.sh -ld              # Docker launch
 ./launch.sh -i               # Initialize database
+./launch.sh -ip              # Production database initialization
 ./launch.sh -r               # Recreate database
 ./launch.sh -p               # Production launch
 ./launch.sh -t               # Run tests
+./launch.sh -ks              # Kill running sessions
+./launch.sh -tg              # Update taxonomies and galaxies
+./launch.sh -mm              # Update MISP modules
+./launch.sh -tdc <key>       # Create community test data
+./launch.sh -dtdc <key>      # Delete community test data
+./launch.sh -tdcc            # Create test cases
+./launch.sh -dtdcc           # Delete test cases
 ```
 
-## Documentation
-
-A more detailed documentation can be found here: [https://flowintel.github.io/flowintel-doc](https://flowintel.github.io/flowintel-doc)
-
-There is also a recorded training [available on YouTube](https://www.youtube.com/watch?v=Dx03GqW1SN0)
-
-## Building Assets
+## Using vite
 
 To build assets using vite:
 
 ```bash
 cd app/assets
 bun run build:static
+```
+
+Or with npm:
+
+```bash
+cd app/assets
+npm run build:static
 ```
 
 ## Adding Custom Taxonomies/Galaxies

@@ -80,12 +80,13 @@ $PYTHON_CMD -m venv .venv
 pip install --upgrade uv
 uv pip install -r requirements.txt
 
-# install node dependencies (using bun)
-if command -v bun &> /dev/null; then
-    cd app/assets
-    bun install
-    cd ../..
+# install bun for faster node dependency management
+if ! command -v bun &> /dev/null; then
+    curl -fsSL https://bun.sh/install | bash
 fi
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+cd app/assets && bun install && cd ../..
 
 # init submodules
 git submodule init && git submodule update
