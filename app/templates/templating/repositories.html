@@ -47,6 +47,9 @@
                 <code class="d-block mt-1 mb-2 user-select-all">git clone &lt;URL&gt; modules/repositories/&lt;name&gt;</code>
                 Then click <i class="fa-solid fa-plus fa-sm mx-1"></i> above, enter a name and the local path (e.g. <code>modules/repositories/my-repo</code>).
                 Use <i class="fa-solid fa-arrows-rotate fa-xs mx-1"></i> <strong>Sync</strong> on a repository to scan its templates and make them available for import.
+                <div class="mt-2">
+                    <strong>Note:</strong> you cannot directly add a template to a remote repository. To contribute one, open a pull request on the remote repository with the template file (JSON export) from your local instance.
+                </div>
             </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -62,19 +65,19 @@
                     <div class="d-flex flex-column gap-2" style="font-size: 0.82rem;">
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-outline-secondary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-tower-broadcast fa-xs fa-fw"></i></button>
-                            <span><strong>Check</strong> — verify the local path and validate <code>manifest.json</code></span>
+                            <span><strong>Check</strong>: verify the local path and validate <code>manifest.json</code></span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-outline-info btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-arrows-rotate fa-xs fa-fw"></i></button>
-                            <span><strong>Sync</strong> — re-scan the repository and refresh the template list</span>
+                            <span><strong>Sync</strong>: re-scan the repository and refresh the template list</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-primary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-pen-to-square fa-xs fa-fw"></i></button>
-                            <span><strong>Edit</strong> — update the repository name, URL or local path</span>
+                            <span><strong>Edit</strong>: update the repository name, URL or local path</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-danger btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-trash fa-xs fa-fw"></i></button>
-                            <span><strong>Delete</strong> — remove the repository from Flowintel</span>
+                            <span><strong>Delete</strong>: remove the repository from Flowintel</span>
                         </div>
                     </div>
                 </div>
@@ -89,19 +92,19 @@
                     <div class="d-flex flex-column gap-2" style="font-size: 0.82rem;">
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-outline-secondary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-eye fa-xs fa-fw"></i></button>
-                            <span><strong>View</strong> — preview the raw template JSON from the repository</span>
+                            <span><strong>View</strong>: preview the raw template JSON from the repository</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-outline-secondary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-code-compare fa-xs fa-fw"></i></button>
-                            <span><strong>Diff</strong> — compare the repository version with your local copy</span>
+                            <span><strong>Diff</strong>: compare the repository version with your local copy</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-outline-primary btn-sm py-0 px-2 flex-shrink-0 disabled" style="min-width:28px;pointer-events:none;"><i class="fa-solid fa-arrows-rotate fa-xs fa-fw"></i></button>
-                            <span><strong>Refresh</strong> — re-import to update an already-imported template</span>
+                            <span><strong>Refresh</strong>: re-import to update an already-imported template</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-outline-success btn-sm py-0 px-2 flex-shrink-0 disabled" style="pointer-events:none;font-size:0.72rem;"><i class="fa-solid fa-cloud-arrow-down fa-xs me-1"></i>Import</button>
-                            <span><strong>Import</strong> — add this template to Flowintel for the first time</span>
+                            <span><strong>Import</strong>: add this template to Flowintel for the first time</span>
                         </div>
                     </div>
                 </div>
