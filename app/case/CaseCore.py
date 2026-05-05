@@ -130,6 +130,32 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         CommonModel.save_history(case.uuid, user, "Case Created")
 
+        # Trigger webhook and create alert for new cases
+        try:
+            webhook_status = None
+            from app.utils.utils import get_modules_list
+            modules, _ = get_modules_list()
+            case_json = case.to_json()
+            case_json["status"] = CommonModel.get_status(case.status_id).name
+            case_json["org_name"] = user.Org.name if user.Org else ""
+            dummy_task = {"id": 0, "title": "", "case_id": case.id}
+            if "webhook" in modules and ConfigModule.WEBHOOK_ENABLED:
+                webhook_status = modules["webhook"].handler(dummy_task, case_json, user, user)
+
+            from app.db_class.db import Alert
+            status = "sent" if webhook_status and webhook_status < 300 else "error" if webhook_status is None else "pending"
+            alert = Alert(
+                case_id=case.id,
+                message=f"New case created: {case.title}",
+                status=status,
+                webhook_url=ConfigModule.WEBHOOK_URL if hasattr(ConfigModule, 'WEBHOOK_URL') else "",
+                webhook_status=webhook_status,
+            )
+            db.session.add(alert)
+            db.session.commit()
+        except Exception as e:
+            print(f"Alert/Webhook error: {e}")
+
         return case
 
     

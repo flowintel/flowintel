@@ -1,6 +1,6 @@
 <img title="" src="./doc/images/flowintel_logo.png" alt="" width="149" data-align="center">
 
-Flowintel is an open-source platform designed to assist analysts in organizing their cases and tasks. It features a range of tools and functionalities to enhance workflow efficiency. 
+Flowintel is an open-source platform designed to assist analysts in organizing their cases and tasks. It features a range of tools and functionalities to enhance workflow efficiency.
 
 ## Features
 
@@ -28,19 +28,37 @@ Flowintel is an open-source platform designed to assist analysts in organizing t
 
 ## Quick start
 
-Copy the **default configuration**:
+### Prerequisites
 
-```
+- Python 3.10+
+- PostgreSQL (or SQLite, MySQL, MariaDB)
+- Valkey (or Redis)
+- uv (for Python dependency management)
+- Bun (for Node.js dependency management)
+
+### Installation
+
+1. **Copy the default configuration**:
+
+```bash
 cd flowintel
 cp conf/config.py.default conf/config.py
 cp conf/config_module.py.default conf/config_module.py
 ```
 
-Change the **configuration** in  `conf/config.py`
+2. **Configure** the application in `conf/config.py`
 
-Run the **installation** script `./install.sh`
+3. **Run the installation script**:
 
-**Start** the application with `./launch.sh -l`
+```bash
+./install.sh
+```
+
+4. **Start** the application:
+
+```bash
+./launch.sh -l
+```
 
 ### MacOS
 In `/bin` there's a script for installation and for launching
@@ -48,18 +66,39 @@ In `/bin` there's a script for installation and for launching
 #### Account
 
 - email: `admin@admin.admin`
-
 - password: `admin`
 
-## Documentation
+## Available Commands
 
-A more detailed documentation can be found here: [https://flowintel.github.io/flowintel-doc](https://flowintel.github.io/flowintel-doc)
+### launch.sh
 
-There is also a recorded training [available on YouTube](https://www.youtube.com/watch?v=Dx03GqW1SN0) 
+```bash
+./launch.sh -l               # Development launch
+./launch.sh -ld              # Docker launch
+./launch.sh -i               # Initialize database
+./launch.sh -ip              # Production database initialization
+./launch.sh -r               # Recreate database
+./launch.sh -p               # Production launch
+./launch.sh -t               # Run tests
+./launch.sh -ks              # Kill running sessions
+./launch.sh -tg              # Update taxonomies and galaxies
+./launch.sh -mm              # Update MISP modules
+./launch.sh -tdc <key>       # Create community test data
+./launch.sh -dtdc <key>      # Delete community test data
+./launch.sh -tdcc            # Create test cases
+./launch.sh -dtdcc           # Delete test cases
+```
 
 ## Using vite
 
 To build assets using vite:
+
+```bash
+cd app/assets
+bun run build:static
+```
+
+Or with npm:
 
 ```bash
 cd app/assets

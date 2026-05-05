@@ -12,6 +12,18 @@ MATRIX_USER = ""
 MATRIX_PASSWORD = ""
 MATRIX_ROOM_ID = ""
 
+# Webhook
+WEBHOOK_URL = ""
+WEBHOOK_ENABLED = False
+WEBHOOK_SECRET = ""
+
+# Email IMAP (for archiving sent notifications)
+IMAP_SERVER = ""
+IMAP_PORT = 993
+IMAP_USER = ""
+IMAP_PASSWORD = ""
+IMAP_USE_SSL = True
+
 # Computer assistate Parameters
 OLLAMA_URL = "http://localhost:11434"
 OLLAMA_KEY = ""
