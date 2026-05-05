@@ -28,7 +28,8 @@
             <div class="case-core-style">
                 <div v-for="module in modules_config" class="list-group" style="margin-bottom: 10px;">
                     <div style="display:flex; border-radius: 10px;">
-                        <a class="list-group-item list-group-item-action case-index-list" style="cursor: pointer;" @click="display_config(module)">
+                       <a class="list-group-item list-group-item-action case-index-list" style="cursor: pointer;"  @click="display_config(module)" 
+                       :class="current_config['module_name'] === module.name ? 'list-group-item-primary' : ''">
                             <div class="d-flex w-100 justify-content-between">
                                 <h5 class="mb-1">
                                     <input v-if="module.is_active || module.is_active == null" type="checkbox" class="form-check-input me-2" checked @click.stop="change_status(module)">
@@ -52,7 +53,7 @@
             </div>
         </div>
         <!-- Right panel -->
-        <div v-if="Object.keys(current_config).length" class="col">
+        <div v-if="Object.keys(current_config).length" class="col" style="position: sticky; top: 20px; max-height: calc(100vh - 100px); overflow-y: auto;">
             <div class="case-core-style">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0"><i class="fa-solid fa-sliders me-2"></i>[[ current_config['module_name'] ]]</h5>
@@ -152,6 +153,11 @@
                                     })
                                 })
                 display_toast(res)
+
+                if(res.status == 200){
+                    close_panel()
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                }
             }
 
 
