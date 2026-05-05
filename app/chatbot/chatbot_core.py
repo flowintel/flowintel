@@ -6,6 +6,7 @@ import threading
 from flask_login import current_user
 import dspy
 import litellm
+import conf.config_module as ConfigModule
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from flask import current_app
@@ -108,24 +109,35 @@ docs_tool = dspy.Tool(get_docs_wrapper)
 chatbot_module = dspy.ReAct(FlowintelQA, tools=[docs_tool, flow_tool])
 
 
-def configure_lm():
-    """Configure the DSPy language model from Flask app config in a thread-safe way.
-    Avoid reconfiguring in other threads (dspy enforces settings change only by the
-    thread that initially configured it)."""
+def _get_ollama_base() -> str:
+    """Return the Ollama base URL from config_module."""
+    return getattr(ConfigModule, 'OLLAMA_URL', None) or "http://localhost:11434"
+
+
+def configure_lm(model: str = None):
+    """Configure (or reconfigure) the DSPy language model.
+
+    Uses ConfigModule.OLLAMA_URL as the Ollama base URL.
+    If *model* is provided the LM is always reconfigured with that model.
+    Otherwise a one-time default configuration is applied.
+    """
     global _dspy_configured
-    if _dspy_configured:
-        return
 
     with _dspy_config_lock:
-        if _dspy_configured:
-            return
+        # Build kwargs for the requested (or default) model
+        if model:
+            # Use 'ollama_chat/' prefix for Ollama models with the DSPy LiteLLM backend
+            full_model = model if "/" in model else f"ollama_chat/{model}"
+        else:
+            if _dspy_configured:
+                return
+            model_name = getattr(ConfigModule, 'OLLAMA_MODEL', None) or 'qwen3:0.6b'
+            full_model = model_name if '/' in model_name else f'ollama_chat/{model_name}'
 
-        # Use 'ollama_chat/' prefix for Ollama models with the DSPy LiteLLM backend
-        model = current_app.config.get("DSPY_LM_MODEL", "ollama_chat/qwen3:0.6b")
-        api_key = current_app.config.get("DSPY_LM_API_KEY", "")
-        api_base = current_app.config.get("DSPY_LM_API_BASE", "http://localhost:11434")
+        api_key = getattr(ConfigModule, 'OLLAMA_KEY', None) or ""
+        api_base = _get_ollama_base()
 
-        kwargs = {"model": model}
+        kwargs = {"model": full_model}
         if api_key:
             kwargs["api_key"] = api_key
         if api_base:
@@ -138,20 +150,25 @@ def configure_lm():
         except Exception as e:
             msg = str(e).lower()
             if "dspy.settings can only be changed" in msg or "can only be changed by the thread" in msg:
-                # Another thread already configured dspy; consider configured.
                 _dspy_configured = True
-                return
+                return full_model
             raise
+        return full_model
 
 
-def get_chatbot_response(message: str, history: list = None) -> str:
+def get_chatbot_response(message: str, history: list = None, model: str = None) -> str:
     """Send a message to the DSPy chatbot and return the response.
 
     Args:
         message: The current user message.
         history: Optional list of previous messages as dicts with 'role' and 'content'.
+        model:   Optional Ollama model name to use for this request.
     """
-    configure_lm()
+    configure_lm(model=model)
+    # Resolve the display model name (strip ollama_chat/ prefix if present)
+    lm_settings = dspy.settings.lm
+    raw_model = getattr(lm_settings, 'model', '') if lm_settings else ''
+    display_model = raw_model.split('/')[-1] if '/' in raw_model else raw_model
     if history:
         history_text = "\n".join(
             f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
@@ -161,4 +178,4 @@ def get_chatbot_response(message: str, history: list = None) -> str:
     else:
         full_question = message
     result = chatbot_module(question=full_question)
-    return result.answer
+    return result.answer, display_model

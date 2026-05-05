@@ -43,6 +43,17 @@
 
                 <!-- Input area -->
                 <div class="border-top p-3">
+                    <div class="d-flex justify-content-end mb-2">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                    id="model-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-microchip me-1"></i><span id="model-label">Default model</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" id="model-list">
+                                <li><span class="dropdown-item text-muted small">Loading models...</span></li>
+                            </ul>
+                        </div>
+                    </div>
                     <form id="chat-form" class="d-flex gap-2 align-items-end">
                         <textarea id="chat-input" class="form-control" rows="1"
                                   placeholder="Type your message... (Ctrl+Enter to send)"
@@ -71,6 +82,7 @@ const convListEmpty = document.getElementById('conv-list-empty');
 const csrfToken = document.getElementById('csrf_token')?.value || '';
 
 let currentConvId = null;
+let selectedModel = null;  // null = use server default
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -80,21 +92,40 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function addMessage(content, isUser) {
+function addMessage(content, isUser, modelName, createdAt) {
     const placeholder = document.getElementById('chat-placeholder');
     if (placeholder) placeholder.remove();
 
     const wrapper = document.createElement('div');
     wrapper.className = `d-flex mb-3 ${isUser ? 'justify-content-end' : 'justify-content-start'}`;
 
+    const col = document.createElement('div');
+    col.style.maxWidth = '75%';
+
     const bubble = document.createElement('div');
     bubble.className = `p-3 rounded-3 ${isUser ? 'bg-primary text-white' : 'bg-light text-dark'}`;
-    bubble.style.maxWidth = '75%';
     bubble.style.whiteSpace = 'pre-wrap';
     bubble.style.wordBreak = 'break-word';
     bubble.textContent = content;
+    col.appendChild(bubble);
 
-    wrapper.appendChild(bubble);
+    // Meta line: datetime (and model for assistant)
+    const meta = document.createElement('div');
+    meta.className = `text-muted mt-1 d-flex gap-2 ${isUser ? 'justify-content-end' : 'justify-content-start'}`;
+    meta.style.fontSize = '0.72em';
+    if (createdAt) {
+        const dt = document.createElement('span');
+        dt.innerHTML = `<i class="fas fa-clock me-1"></i>${escapeHtml(createdAt)}`;
+        meta.appendChild(dt);
+    }
+    if (!isUser && modelName) {
+        const mdl = document.createElement('span');
+        mdl.innerHTML = `<i class="fas fa-microchip me-1"></i>${escapeHtml(modelName)}`;
+        meta.appendChild(mdl);
+    }
+    if (meta.children.length) col.appendChild(meta);
+
+    wrapper.appendChild(col);
     chatMessages.appendChild(wrapper);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -141,10 +172,37 @@ function renderConversationList(convs) {
         if (c.id === currentConvId) li.classList.add('active');
 
         const textDiv = document.createElement('div');
-        textDiv.className = 'text-truncate me-2';
-        textDiv.style.maxWidth = '80%';
-        textDiv.innerHTML = `<span class="d-block text-truncate fw-semibold" style="font-size:.85rem">${escapeHtml(c.title)}</span>
-            <small class="text-muted">${escapeHtml(c.updated_at || '')}</small>`;
+        textDiv.className = 'text-truncate me-2 flex-grow-1';
+        textDiv.style.minWidth = '0';
+
+        // Title row: label + pencil button
+        const titleRow = document.createElement('div');
+        titleRow.className = 'd-flex align-items-center gap-1';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'd-block text-truncate fw-semibold conv-title-label';
+        titleSpan.style.fontSize = '.85rem';
+        titleSpan.style.cursor = 'pointer';
+        titleSpan.textContent = c.title;
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-sm btn-link p-0 flex-shrink-0 edit-title-btn';
+        editBtn.style.fontSize = '.7rem';
+        editBtn.style.opacity = '0.5';
+        editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+        editBtn.title = 'Rename';
+
+        titleRow.appendChild(titleSpan);
+        titleRow.appendChild(editBtn);
+        textDiv.appendChild(titleRow);
+
+        // UUID + date meta
+        const meta = document.createElement('div');
+        meta.className = 'text-muted';
+        meta.style.fontSize = '.7rem';
+        meta.innerHTML = `<span class="font-monospace" title="Conversation UUID">${escapeHtml(c.uuid || '')}</span><br>
+            <small>${escapeHtml(c.updated_at || '')}</small>`;
+        textDiv.appendChild(meta);
 
         const delBtn = document.createElement('button');
         delBtn.className = 'btn btn-sm btn-link text-danger p-0 flex-shrink-0 del-conv-btn';
@@ -156,8 +214,48 @@ function renderConversationList(convs) {
         li.appendChild(delBtn);
         convList.appendChild(li);
 
-        textDiv.addEventListener('click', () => openConversation(c.id));
+        textDiv.addEventListener('click', (e) => {
+            if (!e.target.closest('.edit-title-btn')) openConversation(c.id);
+        });
         delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteConversation(c.id); });
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startTitleEdit(c.id, titleSpan, editBtn);
+        });
+    });
+}
+
+function startTitleEdit(convId, titleSpan, editBtn) {
+    const current = titleSpan.textContent;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control form-control-sm py-0 px-1';
+    input.style.fontSize = '.85rem';
+    input.style.height = '1.5rem';
+    input.value = current;
+    titleSpan.replaceWith(input);
+    editBtn.style.display = 'none';
+    input.focus();
+    input.select();
+
+    async function save() {
+        const newTitle = input.value.trim() || current;
+        if (newTitle !== current) {
+            await fetch(`/chatbot/conversation/${convId}/title`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ title: newTitle })
+            });
+        }
+        input.replaceWith(titleSpan);
+        titleSpan.textContent = newTitle;
+        editBtn.style.display = '';
+    }
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { input.value = current; input.blur(); }
     });
 }
 
@@ -183,7 +281,7 @@ async function openConversation(id) {
             <p>Start a conversation or load one from the history</p>
         </div>`;
     } else {
-        data.messages.forEach(m => addMessage(m.content, m.role === 'user'));
+        data.messages.forEach(m => addMessage(m.content, m.role === 'user', m.model_name, m.created_at));
     }
     chatInput.focus();
 }
@@ -237,7 +335,7 @@ chatForm.addEventListener('submit', async function(e) {
     const message = chatInput.value.trim();
     if (!message) return;
 
-    addMessage(message, true);
+    addMessage(message, true, null, new Date().toLocaleString());
     chatInput.value = '';
     chatInput.style.height = 'auto';
     sendBtn.disabled = true;
@@ -245,8 +343,25 @@ chatForm.addEventListener('submit', async function(e) {
     addLoading();
 
     try {
+        // For new conversations: create the conversation record immediately so
+        // it appears in the sidebar right away, without waiting for AI inference.
+        if (!currentConvId) {
+            const newResp = await fetch('/chatbot/conversation/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ title: message.substring(0, 80) })
+            });
+            if (newResp.ok) {
+                const newConv = await newResp.json();
+                currentConvId = newConv.id;
+                await loadConversationList();
+                setActiveConv(currentConvId);
+            }
+        }
+
         const body = { message };
         if (currentConvId) body.conversation_id = currentConvId;
+        if (selectedModel) body.model = selectedModel;
 
         const resp = await fetch('/chatbot/ask', {
             method: 'POST',
@@ -257,12 +372,10 @@ chatForm.addEventListener('submit', async function(e) {
         removeLoading();
 
         if (resp.ok) {
-            addMessage(data.response, false);
-            // Update or set current conversation
-            if (!currentConvId || currentConvId !== data.conversation_id) {
-                currentConvId = data.conversation_id;
-            }
-            // Refresh sidebar to show updated title / order
+            const now = new Date().toLocaleString();
+            addMessage(data.response, false, data.model_name, now);
+            currentConvId = data.conversation_id;
+            // Refresh to update title / order after AI response
             loadConversationList().then(() => setActiveConv(currentConvId));
         } else {
             addMessage(data.error || 'An error occurred', false);
@@ -279,5 +392,48 @@ chatForm.addEventListener('submit', async function(e) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadConversationList();
+
+// Load available Ollama models
+(async () => {
+    const modelList = document.getElementById('model-list');
+    const modelLabel = document.getElementById('model-label');
+    try {
+        const resp = await fetch('/chatbot/models');
+        const data = await resp.json();
+        modelList.innerHTML = '';
+
+        // "Default" option
+        const defaultLi = document.createElement('li');
+        defaultLi.innerHTML = '<a class="dropdown-item active" href="#" data-model="">Default model</a>';
+        modelList.appendChild(defaultLi);
+        if (data.models && data.models.length) {
+            const divLi = document.createElement('li');
+            divLi.innerHTML = '<hr class="dropdown-divider">';
+            modelList.appendChild(divLi);
+            data.models.forEach(name => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a class="dropdown-item" href="#" data-model="${escapeHtml(name)}">${escapeHtml(name)}</a>`;
+                modelList.appendChild(li);
+            });
+        } else {
+            const li = document.createElement('li');
+            li.innerHTML = '<span class="dropdown-item text-muted small">No models found</span>';
+            modelList.appendChild(li);
+        }
+
+        // Click handler
+        modelList.addEventListener('click', e => {
+            const a = e.target.closest('[data-model]');
+            if (!a) return;
+            e.preventDefault();
+            selectedModel = a.dataset.model || null;
+            modelLabel.textContent = selectedModel || 'Default model';
+            modelList.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('active'));
+            a.classList.add('active');
+        });
+    } catch {
+        modelList.innerHTML = '<li><span class="dropdown-item text-muted small">Could not load models</span></li>';
+    }
+})();
 </script>
 {% endblock %}
