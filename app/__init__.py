@@ -81,6 +81,18 @@ def create_app():
     db.init_app(app)
     csrf.init_app(app)
     migrate.init_app(app, db, render_as_batch=True)
+
+    # Enable WAL mode and a 30-second busy timeout for SQLite so concurrent
+    # requests queue rather than immediately raising "database is locked".
+    if app.config.get('SQLALCHEMY_DATABASE_URI', '').startswith('sqlite'):
+        from sqlalchemy import event as _sa_event
+        with app.app_context():
+            @_sa_event.listens_for(db.engine, 'connect')
+            def _set_sqlite_pragmas(dbapi_conn, _rec):
+                cur = dbapi_conn.cursor()
+                cur.execute('PRAGMA journal_mode=WAL')
+                cur.execute('PRAGMA busy_timeout=30000')
+                cur.close()
     if not config_name == 'testing':
         app.config["SESSION_REDIS"] = redis.from_url(f'redis://{app.config.get("VALKEY_IP")}:{app.config.get("VALKEY_PORT")}')
         session.init_app(app)
@@ -100,6 +112,7 @@ def create_app():
     from .analyzer.misp_modules import analyzer_blueprint
     from .custom_tags.custom_tags import custom_tags_blueprint
     from .templating.templating import templating_blueprint
+    from .chatbot.chatbot import chatbot_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -114,6 +127,7 @@ def create_app():
     app.register_blueprint(analyzer_blueprint, url_prefix="/analyzer")
     csrf.exempt(analyzer_blueprint)
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
+    app.register_blueprint(chatbot_blueprint, url_prefix="/chatbot")
 
     from .api import api_blueprint
     csrf.exempt(api_blueprint)
