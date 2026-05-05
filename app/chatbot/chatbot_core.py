@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import threading
+
+from flask_login import current_user
 import dspy
 import litellm
 from mcp import ClientSession, StdioServerParameters
@@ -38,9 +40,9 @@ _mcp_thread: threading.Thread = None
 _mcp_ready = threading.Event()
 
 
-async def _run_mcp_session():
+async def _run_mcp_session(env: dict):
     global _mcp_session
-    server_params = StdioServerParameters(command="flowintel-mcp", args=[], env=dict(os.environ))
+    server_params = StdioServerParameters(command="flowintel-mcp", args=[], env=env)
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
@@ -50,21 +52,30 @@ async def _run_mcp_session():
             await asyncio.Event().wait()
 
 
-def _start_mcp_background():
+def _start_mcp_background(env: dict):
     global _mcp_loop
     _mcp_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(_mcp_loop)
-    _mcp_loop.run_until_complete(_run_mcp_session())
+    _mcp_loop.run_until_complete(_run_mcp_session(env))
 
 
 def _ensure_mcp():
-    """Start the MCP background thread if it is not already running."""
+    """Start the MCP background thread if it is not already running.
+    Must be called from within a Flask application context."""
     global _mcp_thread
     with _mcp_thread_lock:
         if _mcp_thread is None or not _mcp_thread.is_alive():
+            # Capture config values here, while we still have an app context
+            # env = dict(os.environ)
+            env = dict()
+            env["FLOWINTEL_URL"] = (
+                f'http://{current_app.config.get("FLASK_URL")}'
+                f':{current_app.config.get("FLASK_PORT")}/api'
+            )
+            env["FLOWINTEL_API_KEY"] = current_user.api_key
             _mcp_ready.clear()
             _mcp_thread = threading.Thread(
-                target=_start_mcp_background, daemon=True, name="mcp-session"
+                target=_start_mcp_background, args=(env,), daemon=True, name="mcp-session"
             )
             _mcp_thread.start()
     _mcp_ready.wait(timeout=15)

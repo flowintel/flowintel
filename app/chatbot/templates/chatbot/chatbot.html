@@ -9,7 +9,7 @@
     </div>
 </div>
 
-<div class="row" style="height: 75vh;">
+<div class="row" style="height: calc(100vh - 180px); min-height: 400px;">
     <!-- Sidebar: conversation history -->
     <div class="col-lg-3 col-md-4 d-flex flex-column pe-0" style="height: 100%;">
         <div class="card shadow h-100">
@@ -19,8 +19,8 @@
                     <i class="fas fa-plus"></i>
                 </button>
             </div>
-            <div class="card-body p-0" style="overflow-y: auto;">
-                <ul class="list-group list-group-flush" id="conv-list">
+            <div class="card-body p-0 d-flex flex-column" style="min-height: 0;">
+                <ul class="list-group list-group-flush" id="conv-list" style="overflow-y: auto; flex: 1 1 0;">
                     <li class="list-group-item text-muted text-center small py-3" id="conv-list-empty">
                         No conversations yet
                     </li>
@@ -32,7 +32,7 @@
     <!-- Main chat area -->
     <div class="col-lg-9 col-md-8 d-flex flex-column ps-2" style="height: 100%;">
         <div class="card shadow h-100">
-            <div class="card-body p-0 d-flex flex-column">
+            <div class="card-body p-0 d-flex flex-column" style="min-height: 0;">
                 <!-- Chat messages area -->
                 <div id="chat-messages" class="flex-grow-1 p-3" style="overflow-y: auto;">
                     <div class="text-center text-muted my-5" id="chat-placeholder">
