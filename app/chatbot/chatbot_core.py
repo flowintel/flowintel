@@ -1,13 +1,25 @@
-import dspy
-import json
-import re
+import asyncio
+import logging
+import os
 import threading
+import dspy
+import litellm
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 from flask import current_app
-from flask_login import current_user
+
+# Suppress verbose output from DSPy / LiteLLM / httpx
+litellm.suppress_debug_info = True
+litellm.set_verbose = False
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+logging.getLogger("litellm").setLevel(logging.WARNING)
+logging.getLogger("dspy").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 class FlowintelQA(dspy.Signature):
-    """Answer questions as a helpful cybersecurity and incident response assistant for the Flowintel platform."""
+    """Analyze and manage security cases using FlowIntel API tools."""
 
     question: str = dspy.InputField(desc="The user's question")
     answer: str = dspy.OutputField(desc="A helpful and concise answer")
@@ -18,279 +30,71 @@ _dspy_config_lock = threading.Lock()
 _dspy_configured = False
 
 
-# --- FlowIntel action tools exposed to the ReAct agent ---
-def _parse_payload(payload):
-    if payload is None:
-        return {}
-    if isinstance(payload, dict):
-        return payload
-    try:
-        return json.loads(payload)
-    except Exception:
-        # treat as title string
-        return {"title": str(payload)}
+# --- MCP session: persistent background asyncio event loop ---
+_mcp_loop: asyncio.AbstractEventLoop = None
+_mcp_session: ClientSession = None
+_mcp_thread_lock = threading.Lock()
+_mcp_thread: threading.Thread = None
+_mcp_ready = threading.Event()
 
 
-def _get_api_key():
-    """Resolve an API key to use when calling internal REST APIs.
-
-    Priority:
-    1. `DSPY_TOOL_API_KEY` config
-    2. `current_user.api_key` if available
-    3. Bot user from `INIT_BOT_USER.email` -> lookup api_key in DB
-    """
-    # 1) explicit override in config
-    api_key = current_app.config.get('DSPY_TOOL_API_KEY', "")
-    if api_key:
-        return api_key
-
-    # 2) try the current logged-in user (preferred)
-    try:
-        if hasattr(current_user, 'api_key') and current_user.api_key:
-            return current_user.api_key
-    except RuntimeError:
-        # no active request context or current_user not available
-        pass
-
-    # 3) fallback to INIT_BOT_USER email lookup
-    bot_conf = current_app.config.get('INIT_BOT_USER') or {}
-    bot_email = bot_conf.get('email')
-    if bot_email:
-        try:
-            from ..db_class.db import User
-            bot_user = User.query.filter_by(email=bot_email).first()
-            if bot_user and getattr(bot_user, 'api_key', None):
-                return bot_user.api_key
-        except Exception:
-            pass
-
-    return None
+async def _run_mcp_session():
+    global _mcp_session
+    server_params = StdioServerParameters(command="flowintel-mcp", args=[], env=dict(os.environ))
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            _mcp_session = session
+            _mcp_ready.set()
+            # Keep the session alive until the background thread is stopped
+            await asyncio.Event().wait()
 
 
-def tool_create_case(payload: str) -> str:
-    """Create a case. Payload: JSON or simple title string."""
-    try:
-        from ..case.CaseCore import CaseModel
-    except Exception as e:
-        return f"Error: cannot import CaseModel: {e}"
-
-    form = _parse_payload(payload)
-    title = form.get("title") or form.get("case_title")
-    if not title:
-        return "Error: 'title' is required to create a case"
-
-    form_dict = {
-        "title": title.strip(),
-        "description": form.get("description", ""),
-        "deadline_date": None,
-        "deadline_time": None,
-        "time_required": form.get("time_required", 0),
-        "is_private": bool(form.get("is_private", False)),
-        "ticket_id": form.get("ticket_id", ""),
-        "tags": form.get("tags", []),
-        "clusters": form.get("clusters", []),
-        "custom_tags": form.get("custom_tags", []),
-    }
-
-    # Try to call the REST API endpoint instead of the core function
-    api_key = _get_api_key()
-    if not api_key:
-        return "Error: no API key available to call internal API"
-
-    try:
-        # Use Flask test client to avoid external HTTP dependencies
-        with current_app.test_client() as client:
-            resp = client.post('/api/case/create', json=form_dict, headers={'X-API-KEY': api_key})
-            data = resp.get_json(silent=True) or {}
-            if resp.status_code in (200, 201):
-                # API returns case_id and message
-                cid = data.get('case_id') or data.get('case', {}).get('id')
-                title = form_dict.get('title')
-                return f"Case created via API: {title} (ID: {cid})"
-            return f"API error creating case: {data.get('message') or resp.status_code}"
-    except Exception as e:
-        # Fallback: try direct core function if API call failed
-        try:
-            user = current_user
-            case = CaseModel.create_case(form_dict, user)
-            return f"Case created (fallback): {case.title} (ID: {case.id})"
-        except Exception as e2:
-            return f"Error creating case via API and fallback: {e}; {e2}"
+def _start_mcp_background():
+    global _mcp_loop
+    _mcp_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(_mcp_loop)
+    _mcp_loop.run_until_complete(_run_mcp_session())
 
 
-def tool_list_cases(_payload: str = None) -> str:
-    """Return a short list of open cases visible to the current user."""
-    try:
-        from ..case import common_core as CommonCaseModel
-    except Exception as e:
-        return f"Error: cannot import Case helpers: {e}"
-
-    api_key = _get_api_key()
-    if not api_key:
-        return "Error: no API key available to call internal API"
-
-    try:
-        with current_app.test_client() as client:
-            resp = client.get('/api/case/all', headers={'X-API-KEY': api_key})
-            data = resp.get_json(silent=True) or {}
-            if resp.status_code == 200 and 'cases' in data:
-                cases = data['cases']
-                if not cases:
-                    return "No open cases found"
-                lines = [f"{c.get('id')}: {c.get('title')}" for c in cases[:20]]
-                return "\n".join(lines)
-            return f"API error listing cases: {data.get('message') or resp.status_code}"
-    except Exception as e:
-        return f"Error listing cases via API: {e}"
+def _ensure_mcp():
+    """Start the MCP background thread if it is not already running."""
+    global _mcp_thread
+    with _mcp_thread_lock:
+        if _mcp_thread is None or not _mcp_thread.is_alive():
+            _mcp_ready.clear()
+            _mcp_thread = threading.Thread(
+                target=_start_mcp_background, daemon=True, name="mcp-session"
+            )
+            _mcp_thread.start()
+    _mcp_ready.wait(timeout=15)
 
 
-def tool_create_task(payload: str) -> str:
-    """Create a task in a case. Payload JSON must include 'case_id' and 'title'."""
-    try:
-        from ..case.TaskCore import TaskModel
-        from ..case import common_core as CommonCaseModel
-    except Exception as e:
-        return f"Error: cannot import TaskModel: {e}"
+# --- Sync wrappers around MCP tools (mirrors flowintel_dspy.py pattern) ---
 
-    form = _parse_payload(payload)
-    case_id = form.get("case_id") or form.get("cid")
-    title = form.get("title")
-    if not case_id or not title:
-        return "Error: 'case_id' and 'title' are required to create a task"
-
-    # Prefer calling an API endpoint to create tasks if available. There is no
-    # dedicated API create-task endpoint in the codebase, so attempt a fallback
-    # to the core function after verifying the case via the API.
-    api_key = _get_api_key()
-    case = None
-    try:
-        case = CommonCaseModel.get_case(case_id)
-    except Exception:
-        pass
-
-    if api_key and case:
-        try:
-            with current_app.test_client() as client:
-                # No dedicated task-create API; try to call case edit or other
-                # endpoints are not appropriate. We'll fall back to core.
-                pass
-        except Exception:
-            pass
-
-    # Fallback: create task using core function
-    try:
-        user = current_user
-        form_dict = {
-            "title": title.strip(),
-            "description": form.get("description", ""),
-            "deadline_date": None,
-            "deadline_time": None,
-            "time_required": form.get("time_required", 0),
-            "is_private": bool(form.get("is_private", False)),
-            "tags": form.get("tags", []),
-            "clusters": form.get("clusters", []),
-            "custom_tags": form.get("custom_tags", []),
-        }
-
-        task = TaskModel.create_task(form_dict, case.id if case else case_id, user)
-        if task:
-            return f"Task created: {task.title} (ID: {task.id}) in case {task.case_id}"
-        return "Error: task creation failed"
-    except Exception as e:
-        return f"Error creating task: {e}"
+def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
+    """Call the FlowIntel API via MCP. Args: method (GET/POST/...), path (/api/...), body (optional JSON dict)."""
+    print(f"DEBUG: LLM requested tool -> {method} {path}...")
+    _ensure_mcp()
+    coro = _mcp_session.call_tool("call_flowintel_api", {"method": method, "path": path, "body": body})
+    future = asyncio.run_coroutine_threadsafe(coro, _mcp_loop)
+    return str(future.result(timeout=30))
 
 
-def tool_add_tag(payload: str) -> str:
-    """Add a tag to a case. Payload can be JSON {case_id: <id>, tag: <name>} or a simple 'id:tag' string."""
-    try:
-        from ..case.CaseCore import CaseModel
-        from ..case import common_core as CommonCaseModel
-    except Exception as e:
-        return f"Error: cannot import CaseModel: {e}"
-
-    form = _parse_payload(payload)
-    if not form.get("case_id"):
-        if isinstance(payload, str) and ":" in payload:
-            cid, tag = payload.split(":", 1)
-            form = {"case_id": cid.strip(), "tag": tag.strip()}
-
-    case_id = form.get("case_id")
-    tag_name = form.get("tag") or form.get("tag_name")
-    if not case_id or not tag_name:
-        return "Error: 'case_id' and 'tag' required"
-
-    api_key = _get_api_key()
-    if not api_key:
-        return "Error: no API key available to call internal API"
-
-    try:
-        with current_app.test_client() as client:
-            # Get case JSON to preserve existing tags
-            resp = client.get(f'/api/case/{case_id}', headers={'X-API-KEY': api_key})
-            if resp.status_code != 200:
-                data = resp.get_json(silent=True) or {}
-                return f"API error fetching case: {data.get('message') or resp.status_code}"
-            case_json = resp.get_json()
-            tags = case_json.get('tags', []) if isinstance(case_json, dict) else []
-            if tag_name not in tags:
-                tags.append(tag_name)
-            # Call edit endpoint with updated tags
-            edit_resp = client.post(f'/api/case/{case_id}/edit', json={'tags': tags}, headers={'X-API-KEY': api_key})
-            edit_data = edit_resp.get_json(silent=True) or {}
-            if edit_resp.status_code in (200, 201):
-                return f"Tag '{tag_name}' added to case {case_id} via API"
-            return f"API error editing case: {edit_data.get('message') or edit_resp.status_code}"
-    except Exception as e:
-        # Fallback to core function
-        try:
-            case = CommonCaseModel.get_case(case_id)
-            tag = CommonCaseModel.get_tag(tag_name)
-            if not case:
-                return f"Error: case {case_id} not found"
-            if not tag:
-                return f"Error: tag '{tag_name}' not found"
-            CaseModel.add_tag(tag, case.id)
-            return f"Tag '{tag_name}' added to case {case.id} (fallback)"
-        except Exception as e2:
-            return f"Error adding tag via API and fallback: {e}; {e2}"
+def get_docs_wrapper() -> str:
+    """ALWAYS call this tool FIRST if you don't know the exact API paths or required payload.
+    Returns the Swagger/OpenAPI documentation showing all valid endpoints."""
+    print("DEBUG: LLM requested tool -> get_api_documentation...")
+    _ensure_mcp()
+    coro = _mcp_session.call_tool("get_api_documentation", {})
+    future = asyncio.run_coroutine_threadsafe(coro, _mcp_loop)
+    return str(future.result(timeout=30))
 
 
-# Register tools with DSPy ReAct (best-effort, with fallbacks)
-_tools = []
-if hasattr(dspy, "Tool"):
-    try:
-        _tools = [
-            dspy.Tool(fn=tool_create_case, name="create_case", description="Create a case. Input: JSON or title"),
-            dspy.Tool(fn=tool_list_cases, name="list_cases", description="List visible open cases"),
-            dspy.Tool(fn=tool_create_task, name="create_task", description="Create a task in a case (JSON with case_id and title)"),
-            dspy.Tool(fn=tool_add_tag, name="add_tag", description="Add a tag to a case (JSON or 'id:tag')"),
-        ]
-    except Exception:
-        _tools = []
-
-try:
-    if _tools:
-        chatbot_module = dspy.ReAct(FlowintelQA, tools=_tools)
-    else:
-        simple_tools = [
-            tool_create_case,
-            tool_list_cases,
-            tool_create_task,
-            tool_add_tag,
-        ]
-        try:
-            chatbot_module = dspy.ReAct(FlowintelQA, tools=simple_tools)
-        except Exception:
-            chatbot_module = dspy.ReAct(FlowintelQA)
-            if hasattr(dspy, "register_tool"):
-                try:
-                    for fn in simple_tools:
-                        dspy.register_tool(fn.__name__, fn)
-                except Exception:
-                    pass
-except Exception as e:
-    print(e)
-    chatbot_module = dspy.ReAct(FlowintelQA)
+# --- Register tools and build ReAct agent ---
+flow_tool = dspy.Tool(call_api_wrapper)
+docs_tool = dspy.Tool(get_docs_wrapper)
+chatbot_module = dspy.ReAct(FlowintelQA, tools=[docs_tool, flow_tool])
 
 
 def configure_lm():
@@ -305,7 +109,8 @@ def configure_lm():
         if _dspy_configured:
             return
 
-        model = current_app.config.get("DSPY_LM_MODEL", "ollama/qwen3:0.6b")
+        # Use 'ollama_chat/' prefix for Ollama models with the DSPy LiteLLM backend
+        model = current_app.config.get("DSPY_LM_MODEL", "ollama_chat/qwen3:0.6b")
         api_key = current_app.config.get("DSPY_LM_API_KEY", "")
         api_base = current_app.config.get("DSPY_LM_API_BASE", "http://localhost:11434")
 
@@ -328,8 +133,21 @@ def configure_lm():
             raise
 
 
-def get_chatbot_response(message: str) -> str:
-    """Send a message to the DSPy chatbot and return the response."""
+def get_chatbot_response(message: str, history: list = None) -> str:
+    """Send a message to the DSPy chatbot and return the response.
+
+    Args:
+        message: The current user message.
+        history: Optional list of previous messages as dicts with 'role' and 'content'.
+    """
     configure_lm()
-    result = chatbot_module(question=message)
+    if history:
+        history_text = "\n".join(
+            f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+            for m in history
+        )
+        full_question = f"Previous conversation:\n{history_text}\n\nUser: {message}"
+    else:
+        full_question = message
+    result = chatbot_module(question=full_question)
     return result.answer
