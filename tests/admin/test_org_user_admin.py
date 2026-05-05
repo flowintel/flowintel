@@ -201,6 +201,68 @@ def test_delete_org(client):
     assert response.status_code == 200
     assert b"Org deleted" in response.data
 
+def test_delete_org_with_users(client):
+    """Admin should NOT be able to delete an organisation that still has users"""
+    org_id = create_test_org(client).json["org_id"]
+    email = f"orguser{int(time.time() * 1000000)}@test.test"
+    add = client.post("/api/admin/add_user",
+                      content_type='application/json',
+                      headers={"X-API-KEY": API_KEY},
+                      json={"first_name": "u", "last_name": "u", "email": email,
+                            "password": "password", "role": 2, "org": org_id})
+    assert add.status_code == 201
+
+    response = client.get(f"/api/admin/delete_org/{org_id}", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 403
+    assert b"has users" in response.data
+
+def test_delete_org_with_users_and_cases(client):
+    """Admin should NOT be able to delete an organisation that has users and owns cases"""
+    org_id = create_test_org(client).json["org_id"]
+    email = f"orguser{int(time.time() * 1000000)}@test.test"
+    add = client.post("/api/admin/add_user",
+                      content_type='application/json',
+                      headers={"X-API-KEY": API_KEY},
+                      json={"first_name": "u", "last_name": "u", "email": email,
+                            "password": "password", "role": 2, "org": org_id})
+    assert add.status_code == 201
+    new_user_api_key = add.json["api_key"]
+
+    case = client.post("/api/case/create",
+                       content_type='application/json',
+                       headers={"X-API-KEY": new_user_api_key},
+                       json={"title": "Case owned by new org"})
+    assert case.status_code == 201
+
+    response = client.get(f"/api/admin/delete_org/{org_id}", headers={"X-API-KEY": API_KEY})
+    assert response.status_code == 403
+    assert b"has users" in response.data
+    assert b"owns cases" in response.data
+
+def test_edit_user_password_reset(client):
+    """Admin should be able to reset a local user's password via the API"""
+    create_response = create_test_user(client)
+    user_id = create_response.json["id"]
+
+    response = client.post(f"/api/admin/edit_user/{user_id}",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"password": "NewPassword123"})
+    assert response.status_code == 200
+    assert b"User edited" in response.data
+
+def test_edit_user_password_too_short(client):
+    """Admin password reset must enforce the password policy"""
+    create_response = create_test_user(client)
+    user_id = create_response.json["id"]
+
+    response = client.post(f"/api/admin/edit_user/{user_id}",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"password": "short"})
+    assert response.status_code == 400
+    assert b"between 8 and 64 characters" in response.data
+
 def test_get_orgs(client):
     """Admin should be able to list all organisations"""
     response = client.get("/api/admin/orgs", headers={"X-API-KEY": API_KEY})

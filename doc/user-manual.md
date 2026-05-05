@@ -1694,7 +1694,7 @@ When a user clicks **Sign in with Microsoft**, they are redirected to the Micros
 
 Entra ID group membership determines the user's role. The administrator maps Entra ID groups to Flowintel roles in the server configuration. The mapping follows a priority order: Admin, Editor, Case Admin, Queue Admin, Queuer, then Read Only. A user who belongs to multiple groups receives the highest-priority role. If a user is not a member of any mapped group, login is denied.
 
-Because Flowintel creates accounts automatically on first SSO login, there is no need for the administrator to create user records in advance. New users are assigned to the default organisation and receive the role that matches their Entra ID group membership. Administrators are notified when a user in the Admin group logs in for the first time, so they can review the account.
+Because Flowintel creates accounts automatically on first SSO login, there is no need for the administrator to create user records in advance. New users are placed in a personal organisation and receive the role that matches their Entra ID group membership. Administrators are notified whenever a new SSO user is created, so they can review the account and move the user to the appropriate shared organisation if needed.
 
 SSO and local authentication can coexist. Users who do not have a Microsoft account can still log in with their email and password. SSO configuration, including the Azure tenant ID, client ID, client secret and group mappings, is managed in the server configuration file (`conf/config.py`). Refer to the [installation manual](installation-manual.md) for detailed setup instructions.
 

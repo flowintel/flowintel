@@ -97,6 +97,9 @@
 				{% if current_user.is_admin() %}
 				<a class="collapse-item" href="/tools/system_settings"><i class="fa-solid fa-gears fa-fw me-2"></i>System settings</a>
 				{% endif %}
+				{% if current_user.is_admin() or current_user.is_audit_viewer() %}
+				<a class="collapse-item" href="/tools/audit_logs"><i class="fa-solid fa-scroll fa-fw me-2"></i>Audit logs</a>
+				{% endif %}
 			</div>
 		</div>
 	</li>
@@ -128,6 +131,13 @@
 			<span>Alerts</span>
 			<span id="alert-badge" class="badge bg-danger ms-1" style="display:none;">0</span>
 			<i class="fa-solid fa-circle-question ms-1" data-bs-toggle="tooltip" data-bs-placement="right" title="Alerts are triggered automatically when a new case is created. Each case creation sends a notification and optionally fires a webhook." style="font-size:0.75rem; opacity:0.6;"></i>
+		</a>
+	</li>
+
+	<li class="nav-item">
+		<a class="nav-link" href="/chatbot/">
+			<i class="fas fa-fw fa-robot"></i>
+			<span>Chatbot</span>
 		</a>
 	</li>
 

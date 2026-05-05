@@ -243,18 +243,17 @@ export default {
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-file-lines"></i></span> Create case report
                         </a>
                     </li>
+                    <li v-if="!cases_info.permission.read_only">
+                        <button type="button" 
+                                class="dropdown-item" 
+                                title="Fork this case" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#fork_case_modal"
+                                :disabled="!canModifyCase">
+                            <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
+                        </button>
+                    </li>
                     <template v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">
-                        <li>
-                            <a class="dropdown-item" 
-                               :href="'/case/'+cases_info.case.id+'/recurring'" 
-                               type="button" 
-                               title="Recurring Case"
-                               :class="{'disabled': !canModifyCase}"
-                               :aria-disabled="!canModifyCase"
-                               @click="!canModifyCase ? $event.preventDefault() : null">
-                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-clock"></i></span> Recurring
-                            </a>
-                        </li>
                         <li>
                             <button type="button" 
                                     class="dropdown-item" 
@@ -265,14 +264,15 @@ export default {
                             </button>
                         </li>
                         <li>
-                            <button type="button" 
-                                    class="dropdown-item" 
-                                    title="Fork this case" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#fork_case_modal"
-                                    :disabled="!canModifyCase">
-                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
-                            </button>
+                            <a class="dropdown-item" 
+                               :href="'/case/'+cases_info.case.id+'/recurring'" 
+                               type="button" 
+                               title="Recurring Case"
+                               :class="{'disabled': !canModifyCase}"
+                               :aria-disabled="!canModifyCase"
+                               @click="!canModifyCase ? $event.preventDefault() : null">
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-clock"></i></span> Recurring
+                            </a>
                         </li>
                         <li>
                             <button type="button" 

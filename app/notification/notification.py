@@ -50,6 +50,9 @@ def read_notification(nid):
     """Read Notification"""
     notif = NotifModel.get_notif(nid)
     if notif:
+        if notif.user_id != current_user.id:
+            flowintel_log("audit", 403, "Read notification denied: not owner", User=current_user.email, NotifId=nid)
+            return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
         if NotifModel.read_notification_core(nid):
             return {"message": "Notification read", "toast_class": "success-subtle"}, 200
         return {"message": "Error Notification read", "toast_class": "danger-subtle"}, 400
@@ -61,6 +64,9 @@ def delete_notification(nid):
     """Delete Notification"""
     notif = NotifModel.get_notif(nid)
     if notif:
+        if notif.user_id != current_user.id:
+            flowintel_log("audit", 403, "Delete notification denied: not owner", User=current_user.email, NotifId=nid)
+            return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
         if NotifModel.delete_notification_core(nid):
             return {"message": "Notification deleted", "toast_class": "success-subtle"}, 200
         return {"message": "Error Notification deleted", "toast_class": "danger-subtle"}, 400
@@ -80,10 +86,18 @@ def mark_all_read():
 @login_required
 def mark_password_reset_notifs_as_read(uid):
     """Mark all password reset notifications for a user as read"""
+    if not (current_user.is_admin() or current_user.is_org_admin()):
+        flowintel_log("audit", 403, "Mark password reset notifications as read denied: not admin", User=current_user.email, TargetUserId=uid)
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+
     user = User.query.get(uid)
     if not user:
         return {"message": "User not found", "toast_class": "danger-subtle"}, 404
-    
+
+    if current_user.is_pure_org_admin() and user.org_id != current_user.org_id:
+        flowintel_log("audit", 403, "Mark password reset notifications as read denied: cross-org", User=current_user.email, TargetUserId=uid)
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+
     if NotifModel.mark_password_reset_notifications_as_read(uid):
         flowintel_log("audit", 200, "Password reset notifications marked as read", User=user.email, UserId=uid, By=current_user.email)
         return {"message": "Password reset notifications marked as read for all admins", "toast_class": "success-subtle"}, 200

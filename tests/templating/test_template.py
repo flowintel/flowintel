@@ -100,6 +100,24 @@ def test_admin_create_task_template(client):
     assert response.status_code == 201
     assert b"Template created" in response.data
 
+def test_admin_create_task_template_empty_title(client):
+    """Admin should get error with empty title"""
+    response = client.post("/api/templating/create_task",
+                           content_type='application/json',
+                           headers={"X-API-KEY": ADMIN_API_KEY},
+                           json={"title": ""})
+    assert response.status_code == 400
+    assert b"Please give a title" in response.data
+
+def test_admin_create_task_template_no_data(client):
+    """Admin should get error with no data"""
+    response = client.post("/api/templating/create_task",
+                           content_type='application/json',
+                           headers={"X-API-KEY": ADMIN_API_KEY},
+                           json={})
+    assert response.status_code == 400
+    assert b"Please give data" in response.data
+
 def test_admin_edit_task_template(client):
     """Admin should be able to edit task templates"""
     create_task_template(client)

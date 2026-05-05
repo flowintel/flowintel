@@ -32,7 +32,7 @@ def edit_user_core(form_dict, id, is_sso=False):
     user.first_name=form_dict["first_name"]
     user.last_name=form_dict["last_name"]
     user.nickname=form_dict["nickname"]
-    # SSO accounts have their identity managed by Entra ID; disallow email changes.
+    # SSO accounts have their identity managed externally; disallow email changes.
     if not is_sso:
         user.email=form_dict["email"]
     user.matrix_id=matrix_id

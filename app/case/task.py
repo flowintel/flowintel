@@ -2,6 +2,8 @@ import ast
 import os
 import uuid
 
+import requests
+
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 
@@ -12,6 +14,7 @@ from flask_login import login_required, current_user
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
+from ..connectors import connectors_core as ConnectorModel
 from ..decorators import editor_required, misp_editor_required
 from ..utils.utils import form_to_dict, validate_file_size, query_post_query
 from ..utils.formHelper import prepare_tags
@@ -118,8 +121,9 @@ def complete_task(tid):
                 return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
             
             if TaskModel.complete_task(tid, current_user):
-                flowintel_log("audit", 200, "Task completed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-                return {"message": "Task completed", "toast_class": "success-subtle"}, 200
+                action = "completed" if task.completed else "revived"
+                flowintel_log("audit", 200, f"Task {action}", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                return {"message": f"Task {action}", "toast_class": "success-subtle"}, 200
             return {"message": "Error task completed", "toast_class": "danger-subtle"}, 400
         flowintel_log("audit", 403, "Task completed: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -746,13 +750,18 @@ def call_module_task(cid, tid):
 
 @task_blueprint.route("/<cid>/task/<tid>/call_module_task_no_instance", methods=['GET', 'POST'])
 @login_required
+@misp_editor_required
 def call_module_task_no_instance(cid, tid):
     """Run a module"""
     case = CommonModel.get_case(cid)
     if not check_user_private_case(case):
         flowintel_log("audit", 403, "Call module on task: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
         return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-    
+
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Call module on task: Org not assigned to case", User=current_user.email, CaseId=cid, TaskId=tid)
+        return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
     task = CommonModel.get_task(tid)
     if task:
         module = request.args.get("module")
@@ -921,6 +930,28 @@ def delete_external_reference(cid, tid, erid):
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 
+def _probe_external_url(url):
+    """Probe a URL to detect common connection failures before invoking misp-modules."""
+    try:
+        requests.head(url, timeout=10, allow_redirects=True)
+    except requests.exceptions.ConnectionError as e:
+        message = str(e).lower()
+        if "name or service not known" in message or "nodename nor servname" in message or "failed to resolve" in message or "name resolution" in message:
+            return "The host likely doesn't exist (DNS resolution failed)"
+        if "remotedisconnected" in message or "connection aborted" in message or "connection reset" in message or "connection refused" in message:
+            return "The host refused our connection"
+        return "Could not connect to the host"
+    except requests.exceptions.Timeout:
+        return "The host did not respond in time"
+    except requests.exceptions.InvalidURL:
+        return "The URL is not valid"
+    except requests.exceptions.MissingSchema:
+        return "The URL is missing a scheme (e.g. https://)"
+    except requests.exceptions.RequestException:
+        return None
+    return None
+
+
 @task_blueprint.route("/<cid>/task/<tid>/convert_external_reference_to_note/<erid>", methods=['POST'])
 @login_required
 @editor_required
@@ -935,7 +966,12 @@ def convert_external_reference_to_note(cid, tid, erid):
             external_ref = TaskModel.get_external_reference(erid)
             if not external_ref or external_ref.task_id != int(tid):
                 return {"message": "External reference not found", 'toast_class': "danger-subtle"}, 404
-            
+
+            probe_error = _probe_external_url(external_ref.url)
+            if probe_error:
+                flowintel_log("audit", 400, "External reference conversion failed", User=current_user.email, CaseId=cid, TaskId=tid, ExternalRefId=erid, URL=external_ref.url, Error=probe_error)
+                return {"message": f"Conversion failed: {probe_error}", "toast_class": "danger-subtle"}, 400
+
             module_data = {
                 "module": "html_to_markdown",
                 "url": external_ref.url
@@ -1218,3 +1254,40 @@ def edit_connector(tid, ciid):
         flowintel_log("audit", 403, "Edit task connector: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/task/<tid>/connectors/<ciid>/search_in_misp", methods=['POST'])
+@login_required
+@misp_editor_required
+def search_in_misp_task(tid, ciid):
+    """Search attributes in MISP using a receive_from MISP connector attached to a task."""
+    task = CommonModel.get_task(tid)
+    if not task:
+        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Search in MISP: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+        flowintel_log("audit", 403, "Search in MISP denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+        return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+
+    task_connector = CommonModel.get_task_connectors_by_id(ciid)
+    if not task_connector or task_connector.task_id != task.id:
+        return {"message": "Connector not attached to this task", "toast_class": "warning-subtle"}, 404
+
+    instance = CommonModel.get_instance(task_connector.instance_id)
+    misp_connector = CommonModel.get_connector_by_name("MISP")
+    if not instance or not misp_connector or instance.connector_id != misp_connector.id or instance.type != "receive_from":
+        return {"message": "Connector is not a MISP receive_from connector", "toast_class": "warning-subtle"}, 400
+
+    query = ((request.json or {}).get("query") or "").strip()
+    if not query:
+        return {"message": "Search query is required", "toast_class": "warning-subtle"}, 400
+
+    res = ConnectorModel.search_misp_attributes(instance, current_user, query)
+    if not res.get("success"):
+        flowintel_log("audit", 400, f"Search in MISP failed: {res.get('message')}", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
+        return {"message": res.get("message", "MISP search failed"), "toast_class": "danger-subtle"}, 400
+
+    flowintel_log("audit", 200, "Searched attributes in MISP", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid, Query=query)
+    return {"results": res["results"]}, 200

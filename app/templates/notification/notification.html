@@ -64,6 +64,11 @@
                 <option value="other">Other</option>
             </select>
         </div>
+
+        <div class="col-auto">
+            <input type="number" min="1" class="form-control form-control-sm" v-model="case_id_filter"
+                   placeholder="Filter case ID" style="width: 140px;" title="Show only notifications for this case ID">
+        </div>
     </div>
 </div>
 
@@ -144,6 +149,7 @@
             const notif_list = ref(null)
             const time_filter = ref('all')
             const type_filter = ref('all')
+            const case_id_filter = ref('')
             const show_password_reset_prompt = ref(false)
             const password_reset_user_id = ref(null)
 
@@ -191,11 +197,20 @@
                     })
                 }
 
+                const cid = parseInt(case_id_filter.value, 10)
+                if (!isNaN(cid) && cid > 0) {
+                    const msg_marker = `case '${cid}-`
+                    list = list.filter(notif => {
+                        if (notif.case_id === cid) return true
+                        return notif.message && notif.message.includes(msg_marker)
+                    })
+                }
+
                 return list
             })
 
             const has_filters = computed(() => {
-                return time_filter.value !== 'all' || type_filter.value !== 'all'
+                return time_filter.value !== 'all' || type_filter.value !== 'all' || case_id_filter.value !== ''
             })
 
             // Check URL parameters for password reset completion
@@ -306,6 +321,7 @@
                 flag_is_read,
                 time_filter,
                 type_filter,
+                case_id_filter,
                 read_notification,
                 select_unread_read,
                 delete_notif,

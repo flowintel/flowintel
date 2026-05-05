@@ -29,12 +29,42 @@
                 </button>
             {% endif %}
         </div>
+
+        <!-- Search bar -->
+        <div class="col input-group w-auto">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNoteFilter">
+                <i class="fa-solid fa-filter fa-sm"></i>
+            </button>
+            <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search note by title' />
+        </div>
+        <!-- Search bar -->
     </div>
     {% if not can_manage_templates %}
         <div class="alert alert-warning py-1 px-2 mt-2 mb-0" role="alert">
             You do not have the Template Editor permissions and are not allowed to create or edit templates.
         </div>
     {% endif %}
+</div>
+
+<div class="modal fade" id="modalNoteFilter" tabindex="-1" aria-labelledby="modalNoteFilterLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="modalNoteFilterLabel">Note templates filter</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="noteSortSelect" class="form-label"><i class="fa-solid fa-arrow-down-a-z fa-sm me-1"></i>Sort by</label>
+                    <select id="noteSortSelect" class="form-select form-select-sm" v-model="sort_mode" @change="apply_sort">
+                        <option value="none">None (default order)</option>
+                        <option value="asc">Title (A &rarr; Z)</option>
+                        <option value="desc">Title (Z &rarr; A)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 <hr class="fading-line">
 
@@ -105,15 +135,36 @@
             setup() {
                 const notes_list = ref(null)
                 const current_page = ref(1)
+                const search_query = ref('')
+                const sort_mode = ref('none')
+                let title_sort = false
+                let asc_desc = true
+                let searchTimer = null
 
                 async function fetchNoteTemplate(page) {
-                    let url = '/tools/note_template/get_by_page?page='+page
+                    let url = '/tools/note_template/get_by_page?page=' + page + '&title=' + title_sort
+                    if (search_query.value) url += '&q=' + encodeURIComponent(search_query.value)
 
                     current_page.value = page
                     notes_list.value = null
                     const res = await fetch(url)
                     let loc = await res.json()
+                    if (loc && loc.notes && !asc_desc) {
+                        loc.notes = loc.notes.reverse()
+                    }
                     notes_list.value = loc
+                }
+
+                function onInput(e) {
+                    clearTimeout(searchTimer)
+                    search_query.value = e.target.value
+                    searchTimer = setTimeout(() => fetchNoteTemplate(1), 300)
+                }
+
+                function apply_sort() {
+                    title_sort = sort_mode.value !== 'none'
+                    asc_desc = sort_mode.value !== 'desc'
+                    fetchNoteTemplate(1)
                 }
                 
                 fetchNoteTemplate(1)
@@ -144,6 +195,9 @@
                     current_page,
                     visiblePages,
                     fetchNoteTemplate,
+                    onInput,
+                    sort_mode,
+                    apply_sort,
                 }
             }
         }).mount('#main-container')

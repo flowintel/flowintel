@@ -11,7 +11,8 @@ from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
-from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule
+from ..connectors import connectors_core as ConnectorsModel
+from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, db
 from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
@@ -19,6 +20,7 @@ from ..utils.logger import flowintel_log
 from ..utils.file_converter import convert_file_to_note_content
 from ..utils.gpg import sign_text
 from ..utils.note_variables import resolve_variables, get_syntax_reference
+from ..connectors import connectors_core as ConnectorModel
 
 case_blueprint = Blueprint(
     'case',
@@ -521,7 +523,7 @@ def fork_case(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Fork case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
         if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
             flowintel_log("audit", 403, "Fork case: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
             return {"message": "Cannot fork privileged cases", 'toast_class': "danger-subtle"}, 403
@@ -548,7 +550,11 @@ def merge_case(cid, ocid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Merge case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Merge case: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
             flowintel_log("audit", 403, "Merge case: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
             return {"message": "Cannot merge privileged cases", 'toast_class': "danger-subtle"}, 403
@@ -560,7 +566,11 @@ def merge_case(cid, ocid):
         if not check_user_private_case(merging_case):
             flowintel_log("audit", 403, "Merge case: Permission denied for target case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
+        if not (CommonModel.get_present_in_case(ocid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Merge case: Org not assigned to target case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         if merging_case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
             flowintel_log("audit", 403, "Merge case: Target is a privileged case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
             return {"message": "Cannot merge into privileged cases", 'toast_class': "danger-subtle"}, 403
@@ -594,7 +604,11 @@ def create_template(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Create template from case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Create template from case: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         if case.privileged_case and not (current_user.is_admin() or current_user.is_case_admin()):
             flowintel_log("audit", 403, "Create template: Privileged case requires admin permissions", User=current_user.email, CaseId=cid)
             return {"message": "Cannot create template from privileged cases", 'toast_class': "danger-subtle"}, 403
@@ -787,6 +801,55 @@ def get_rulezet_rules(cid):
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<cid>/rulezet_rule_remove", methods=['POST'])
+@login_required
+@misp_editor_required
+def remove_rulezet_rule(cid):
+    """Remove a stored Rulezet rule for a case."""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Remove rulezet rule: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
+        payload = request.get_json() or {}
+        rule = None
+
+        if "id" in payload:
+            try:
+                rule = Rulezet_Rule.query.get(int(payload.get("id")))
+            except Exception:
+                rule = None
+
+        if not rule and "uuid" in payload:
+            rule = Rulezet_Rule.query.filter_by(uuid=payload.get("uuid")).first()
+
+        if not rule and "remote_id" in payload and "instance_id" in payload:
+            try:
+                rule = Rulezet_Rule.query.filter_by(remote_id=str(payload.get("remote_id")), instance_id=int(payload.get("instance_id")), case_id=case.id).first()
+            except Exception:
+                rule = None
+
+        if not rule:
+            return {"message": "Rule not found", "toast_class": "warning-subtle"}, 404
+
+        if rule.case_id != case.id:
+            flowintel_log("audit", 403, "Remove rulezet rule: Action not allowed", User=current_user.email, CaseId=cid, RuleId=rule.id)
+            return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+        try:
+            db.session.delete(rule)
+            db.session.commit()
+            CommonModel.update_last_modif(case.id)
+            flowintel_log("audit", 200, "Rulezet rule removed", User=current_user.email, CaseId=cid, RuleId=rule.id)
+            return {"message": "Rule removed", "toast_class": "success-subtle"}, 200
+        except Exception:
+            db.session.rollback()
+            return {"message": "Error removing rule", "toast_class": "danger-subtle"}, 400
+
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
 @case_blueprint.route("/<cid>/module_counts", methods=['GET'])
 @login_required
 def get_module_counts(cid):
@@ -817,7 +880,11 @@ def call_module_case(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Call module on case: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Call module on case: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         payload = request.get_json()
         case_instance_id = payload.get("case_task_instance_id")
         module = payload.get("module")
@@ -873,6 +940,7 @@ def modif_note(cid):
                 flowintel_log("audit", 200, "Note modified", User=current_user.email, CaseId=cid)
                 return {"message": "Note modified", "toast_class": "success-subtle"}, 200
             return {"message": "Error add/modify note", "toast_class": "danger-subtle"}, 400
+        flowintel_log("audit", 403, "Modify note: Org not assigned to case", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
@@ -908,6 +976,11 @@ def run_computer_assistate_report(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Run computer assisted report: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Run computer assisted report: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         if not CaseModel.check_exist_task(case.uuid):
             flowintel_log("audit", 200, "Run computer assisted report", User=current_user.email, CaseId=cid)
             model = request.args.get('model') if request.args.get('model') else None
@@ -939,6 +1012,10 @@ def get_computer_assistate_report(cid):
     """Create a report from all case information"""
     case = CommonModel.get_case(cid)
     if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Get computer assisted report: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
         flowintel_log("audit", 200, "Get computer assisted report", User=current_user.email, CaseId=cid)
 
         resp = {"report": case.computer_assistate_report}
@@ -1043,10 +1120,14 @@ def download_file(cid):
     """Download the file"""
     case = CommonModel.get_case(cid)
     if case:
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            flowintel_log("audit", 200, "Download case history", User=current_user.email, CaseId=cid)
-            return CaseModel.download_history(case)
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Download case history: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Download case history: Access restricted", User=current_user.email, CaseId=cid)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
+        flowintel_log("audit", 200, "Download case history", User=current_user.email, CaseId=cid)
+        return CaseModel.download_history(case)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
@@ -1056,10 +1137,14 @@ def download_history_md(cid):
     """Download the file"""
     case = CommonModel.get_case(cid)
     if case:
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            flowintel_log("audit", 200, "Download case markdown", User=current_user.email, CaseId=cid)
-            return CaseModel.download_history_md(case)
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Download case markdown: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Download case markdown: Access restricted", User=current_user.email, CaseId=cid)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
+        flowintel_log("audit", 200, "Download case markdown", User=current_user.email, CaseId=cid)
+        return CaseModel.download_history_md(case)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
@@ -1069,9 +1154,14 @@ def download_audit_logs(cid):
     """Download the audit logs as text file"""
     case = CommonModel.get_case(cid)
     if case:
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            return CommonModel.download_audit_logs(case)
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Download audit logs: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Download audit logs: Access restricted", User=current_user.email, CaseId=cid)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
+        flowintel_log("audit", 200, "Download audit logs", User=current_user.email, CaseId=cid)
+        return CommonModel.download_audit_logs(case)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
@@ -1081,9 +1171,14 @@ def download_audit_logs_md(cid):
     """Download the audit logs as markdown file"""
     case = CommonModel.get_case(cid)
     if case:
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            return CommonModel.download_audit_logs_md(case)
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Download audit logs markdown: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Download audit logs markdown: Access restricted", User=current_user.email, CaseId=cid)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
+        flowintel_log("audit", 200, "Download audit logs markdown", User=current_user.email, CaseId=cid)
+        return CommonModel.download_audit_logs_md(case)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 @case_blueprint.route("/<cid>/add_new_link", methods=['GET', 'POST'])
@@ -1174,13 +1269,25 @@ def get_case_misp_object(cid):
                 loc_attr["correlation_list"] = res
                 loc_attr_list.append(loc_attr)
 
+            # Collect synced instance info for badge display
+            synced_instances = []
+            for uuid_row in Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=object.id, case_id=int(cid)).all():
+                inst = CommonModel.get_instance(uuid_row.instance_id)
+                synced_instances.append({
+                    "instance_id": uuid_row.instance_id,
+                    "instance_name": inst.name if inst else str(uuid_row.instance_id),
+                    "instance_url": inst.url if inst else None,
+                    "object_uuid": uuid_row.object_instance_uuid
+                })
+
             loc_object.append({
                 "object_name": object.name,
                 "attributes": loc_attr_list,
                 "object_id": object.id,
                 "object_uuid": object.template_uuid,
                 "object_creation_date": object.creation_date.strftime('%Y-%m-%d %H:%M'),
-                "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M')
+                "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M'),
+                "synced_instances": synced_instances
             })
         return {"misp-object": loc_object}
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -1188,6 +1295,11 @@ def get_case_misp_object(cid):
 @case_blueprint.route("/<int:cid>/get_correlation_attr/<int:aid>", methods=['GET'])
 @login_required
 def get_correlation_attr(cid, aid):
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"correlation_list": []}, 200
+    if not check_user_private_case(case):
+        return {"correlation_list": []}, 200
     attribute = CaseModel.get_misp_attribute(aid)
     res = CaseModel.check_correlation_attr(cid, attribute)
     return {"correlation_list": res}, 200
@@ -1475,7 +1587,8 @@ def get_case_connectors(cid):
                 "details": CommonModel.get_instance_with_icon(case_connector.instance_id),
                 "identifier": case_connector.identifier,
                 "is_updating_case": case_connector.is_updating_case,
-                "is_misp_connector": is_misp_connector
+                "is_misp_connector": is_misp_connector,
+                "last_sync": case_connector.last_sync.strftime('%Y-%m-%d %H:%M') if case_connector.last_sync else None
             })
         return {"case_connectors": instance_list}, 200
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -1529,6 +1642,212 @@ def edit_connector(cid, ciid):
         flowintel_log("audit", 403, "Edit connector: Action not allowed", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<int:cid>/connectors/<int:ciid>/misp_objects_preview", methods=['GET'])
+@login_required
+@misp_editor_required
+def misp_objects_preview(cid, ciid):
+    """Fetch the list of MISP objects from the remote event for a connector (preview before sync)."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+
+    case_instance = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_instance or case_instance.case_id != int(cid):
+        return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+    if not case_instance.identifier:
+        return {"message": "No identifier set for this connector", "toast_class": "warning-subtle"}, 400
+
+    loc_instance = CommonModel.get_instance(case_instance.instance_id)
+    if not loc_instance:
+        return {"message": "Connector instance not found", "toast_class": "danger-subtle"}, 404
+
+    user_instance = CommonModel.get_user_instance_both(current_user.id, loc_instance.id)
+    api_key = loc_instance.global_api_key or (user_instance.api_key if user_instance else None)
+    if not api_key:
+        return {"message": "No API key configured for this connector", "toast_class": "warning-subtle"}, 400
+
+    objects, error = ConnectorsModel.misp_get_event_objects(loc_instance, api_key, case_instance.identifier)
+    if error:
+        return {"message": error["message"], "toast_class": error["toast_class"]}, error["status"]
+    return {"objects": objects}, 200
+
+
+@case_blueprint.route("/<int:cid>/connectors/<int:ciid>/sync_logs", methods=['GET'])
+@login_required
+@misp_editor_required
+def get_sync_logs(cid, ciid):
+    """Get sync history for a connector instance."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+
+    case_instance = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_instance or case_instance.case_id != int(cid):
+        return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+
+    return {"sync_logs": ConnectorsModel.get_connector_sync_logs(cid, ciid)}, 200
+
+
+@case_blueprint.route("/<int:cid>/connectors/<int:ciid>/import_event_report", methods=['POST'])
+@login_required
+@misp_editor_required
+def import_event_report(cid, ciid):
+    """Fetch MISP event reports and import them as a case note."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    case_instance = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_instance or case_instance.case_id != int(cid):
+        return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+    if not case_instance.identifier:
+        return {"message": "No identifier set for this connector", "toast_class": "warning-subtle"}, 400
+
+    loc_instance = CommonModel.get_instance(case_instance.instance_id)
+    if not loc_instance:
+        return {"message": "Connector instance not found", "toast_class": "danger-subtle"}, 404
+
+    user_instance = CommonModel.get_user_instance_both(current_user.id, loc_instance.id)
+    api_key = loc_instance.global_api_key or (user_instance.api_key if user_instance else None)
+    if not api_key:
+        return {"message": "No API key configured for this connector", "toast_class": "warning-subtle"}, 400
+
+    note_content, error = ConnectorsModel.misp_get_event_reports(loc_instance, api_key, case_instance.identifier)
+    if error:
+        return {"message": error["message"], "toast_class": error["toast_class"]}, error["status"]
+
+    existing = case.notes or ""
+    separator = "\n\n---\n\n" if existing.strip() else ""
+    CaseModel.modify_note_core(cid, current_user, existing + separator + note_content)
+    flowintel_log("audit", 200, "MISP event report imported as case note", User=current_user.email, CaseId=cid)
+    return {"message": "Report(s) imported as case note", "toast_class": "success-subtle"}, 200
+
+
+@case_blueprint.route("/<int:cid>/misp_object/<int:oid>/link_remote", methods=['POST'])
+@login_required
+@misp_editor_required
+def link_remote_misp_object(cid, oid):
+    """Manually link a local MISP object to a remote object UUID on a specific connector instance."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    data = request.get_json(silent=True) or {}
+    instance_id = data.get("instance_id")
+    remote_uuid = data.get("remote_uuid", "").strip()
+    if not instance_id or not remote_uuid:
+        return {"message": "Need 'instance_id' and 'remote_uuid'", "toast_class": "warning-subtle"}, 400
+
+    loc_object = CaseModel.get_misp_object(oid)
+    if not loc_object or loc_object.case_id != int(cid):
+        return {"message": "Object not found", "toast_class": "danger-subtle"}, 404
+
+    # Enforce one link per object — remove all existing links before creating the new one
+    Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=oid, case_id=int(cid)).delete()
+    link = Misp_Object_Instance_Uuid(
+        instance_id=int(instance_id),
+        misp_object_id=oid,
+        object_instance_uuid=remote_uuid,
+        case_id=int(cid)
+    )
+    db.session.add(link)
+    db.session.commit()
+    flowintel_log("audit", 200, f"Linked local object {oid} to remote UUID {remote_uuid}", User=current_user.email, CaseId=cid)
+    return {"message": "Object linked to remote MISP object", "toast_class": "success-subtle"}, 200
+
+
+@case_blueprint.route("/<int:cid>/misp_object/<int:oid>/unlink_remote/<int:instance_id>", methods=['DELETE'])
+@login_required
+@misp_editor_required
+def unlink_remote_misp_object(cid, oid, instance_id):
+    """Remove the link between a local MISP object and a remote object on a connector instance."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    link = Misp_Object_Instance_Uuid.query.filter_by(
+        misp_object_id=oid, instance_id=int(instance_id), case_id=int(cid)
+    ).first()
+    if not link:
+        return {"message": "Link not found", "toast_class": "warning-subtle"}, 404
+
+    db.session.delete(link)
+    db.session.commit()
+    flowintel_log("audit", 200, f"Unlinked local object {oid} from instance {instance_id}", User=current_user.email, CaseId=cid)
+    return {"message": "Link removed", "toast_class": "success-subtle"}, 200
+
+
+
+@case_blueprint.route("/<cid>/connectors/<ciid>/search_in_misp", methods=['POST'])
+@login_required
+@misp_editor_required
+def search_in_misp_case(cid, ciid):
+    """Search attributes in MISP using a receive_from MISP connector attached to a case."""
+    if not CommonModel.get_case(cid):
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Search in MISP: Action not allowed", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    case_connector = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_connector or str(case_connector.case_id) != str(cid):
+        return {"message": "Connector not attached to this case", "toast_class": "warning-subtle"}, 404
+
+    instance = CommonModel.get_instance(case_connector.instance_id)
+    misp_connector = CommonModel.get_connector_by_name("MISP")
+    if not instance or not misp_connector or instance.connector_id != misp_connector.id or instance.type != "receive_from":
+        return {"message": "Connector is not a MISP receive_from connector", "toast_class": "warning-subtle"}, 400
+
+    query = ((request.json or {}).get("query") or "").strip()
+    if not query:
+        return {"message": "Search query is required", "toast_class": "warning-subtle"}, 400
+
+    res = ConnectorModel.search_misp_attributes(instance, current_user, query)
+    if not res.get("success"):
+        flowintel_log("audit", 400, f"Search in MISP failed: {res.get('message')}", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
+        return {"message": res.get("message", "MISP search failed"), "toast_class": "danger-subtle"}, 400
+
+    flowintel_log("audit", 200, "Searched attributes in MISP", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid, Query=query)
+    return {"results": res["results"]}, 200
+
+
+@case_blueprint.route("/<cid>/append_note_case", methods=['POST'])
+@login_required
+@editor_required
+def append_note_case(cid):
+    """Append text to the case note (used by Search-in-MISP results)."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Append note: Org not assigned to case", User=current_user.email, CaseId=cid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    notes = (request.json or {}).get("notes")
+    if not notes:
+        return {"message": "Key 'notes' missing", "toast_class": "warning-subtle"}, 400
+    if CaseModel.append_note_core(cid, current_user, notes):
+        flowintel_log("audit", 200, "Note appended", User=current_user.email, CaseId=cid)
+        return {"notes": case.notes, "message": "Note appended", "toast_class": "success-subtle"}, 200
+    return {"message": "Error appending note", "toast_class": "danger-subtle"}, 400
 
 
 #################

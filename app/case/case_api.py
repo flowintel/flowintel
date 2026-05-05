@@ -90,7 +90,7 @@ class CreateCase(Resource):
 @case_ns.route('/create_with_event', methods=['POST'])
 @case_ns.doc(description='Create a case')
 class CreateCaseEvent(Resource):
-    method_decorators = [editor_required, api_required]
+    method_decorators = [misp_editor_required, api_required]
     @case_ns.doc(params={
         "title": "Required. Title for a case", 
         "event": "Required, Json of a misp event",
@@ -177,7 +177,7 @@ class ForkCase(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
-            
+
             if case.privileged_case:
                 error = check_privileged_case_permission(current_user, operation="forking")
                 if error:
@@ -205,7 +205,10 @@ class MergeCase(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
-            
+
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied"}, 403
+
             if case.privileged_case:
                 error = check_privileged_case_permission(current_user, operation="merging")
                 if error:
@@ -217,7 +220,10 @@ class MergeCase(Resource):
             
             if not check_user_private_case(merging_case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
-            
+
+            if not (CommonModel.get_present_in_case(ocid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied"}, 403
+
             if merging_case.privileged_case:
                 error = check_privileged_case_permission(current_user, operation="merging into")
                 if error:
@@ -369,13 +375,56 @@ class History(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
-            if not check_user_private_case(case, request.headers):
+            current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
+            if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+                return {"message": "Access restricted"}, 403
             history = CommonModel.get_history(case.uuid)
             if history:
                 return {"history": history}, 200
             return {"history": None}, 200
-        return {"message": "Case Not found"}, 404
+        return {"message": "Case not found"}, 404
+
+
+@case_ns.route('/<cid>/add_link', methods=['POST'])
+@case_ns.doc(description='Link one or more cases to this case', params={'cid': 'id of a case'})
+class AddCaseLink(Resource):
+    method_decorators = [editor_required, api_required]
+    @case_ns.doc(params={"case_id": "Required. List of case ids to link to this case"})
+    def post(self, cid):
+        case = CommonModel.get_case(cid)
+        if not case:
+            return {"message": "Case not found"}, 404
+        current_user = utils.get_user_from_api(request.headers)
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Add case link: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied"}, 403
+        if not request.json or "case_id" not in request.json:
+            return {"message": "Need to pass 'case_id'"}, 400
+        if CaseModel.add_new_link(request.json, cid, current_user):
+            flowintel_log("audit", 200, "Case link added", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
+            return {"message": "Link added"}, 200
+        return {"message": "Case doesn't exist"}, 404
+
+
+@case_ns.route('/<cid>/remove_link/<clid>', methods=['GET'])
+@case_ns.doc(description='Remove a case link', params={'cid': 'id of a case', 'clid': 'id of the linked case'})
+class RemoveCaseLink(Resource):
+    method_decorators = [editor_required, api_required]
+    def get(self, cid, clid):
+        case = CommonModel.get_case(cid)
+        if not case:
+            return {"message": "Case not found"}, 404
+        current_user = utils.get_user_from_api(request.headers)
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Remove case link: Action not allowed", User=current_user.email, CaseId=cid, LinkId=clid)
+            return {"message": "Permission denied"}, 403
+        if CaseModel.remove_case_link(cid, clid, current_user):
+            flowintel_log("audit", 200, "Case link removed", User=current_user.email, CaseId=cid, LinkId=clid)
+            return {"message": "Link removed"}, 200
+        return {"message": "Error removing link from case"}, 400
+
 
 @case_ns.route('/<cid>/create_template', methods=["POST"])
 @case_ns.doc(description='Create a template form case', params={'cid': 'id of a case'})
@@ -390,7 +439,10 @@ class CreateTemplate(Resource):
                 current_user = utils.get_user_from_api(request.headers)
                 if not check_user_private_case(case, request.headers, current_user):
                     return {"message": "Permission denied"}, 403
-                
+
+                if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                    return {"message": "Permission denied"}, 403
+
                 if case.privileged_case:
                     error = check_privileged_case_permission(current_user, operation="template creation")
                     if error:
@@ -528,7 +580,7 @@ class GetTaxonomiesCase(Resource):
             if tags:
                 taxonomies = [tag.split(":")[0] for tag in tags]
             return {"tags": tags, "taxonomies": taxonomies}, 200
-        return {"message": "Case Not found"}, 404
+        return {"message": "Case not found"}, 404
 
 @case_ns.route('/get_galaxies', methods=['GET'])
 @case_ns.doc(description='Get all galaxies')
@@ -557,7 +609,7 @@ class GetGalaxiesCase(Resource):
                     index = clusters.index(cluster)
                     clusters[index] = cluster.tag
             return {"clusters": clusters, "galaxies": galaxies}, 200
-        return {"message": "Case Not found"}, 404
+        return {"message": "Case not found"}, 404
     
 
 
@@ -586,7 +638,7 @@ class GetInstanceModules(Resource):
             module = request.args.get("module")
             type_module = request.args.get("type")
             return {"instances": CaseModel.get_instance_module_core(module, type_module, case.id, current_user.id)}, 200
-        return {"message": "Case Not found"}, 404
+        return {"message": "Case not found"}, 404
     
 
 @case_ns.route('/<cid>/call_module_case', methods=['POST'])
@@ -692,7 +744,7 @@ class GetConnectorsCase(Resource):
                     "identifier": case_instance.identifier
                 })
             return {"connectors": instance_list}, 200
-        return {"message": "Case Not found"}, 404
+        return {"message": "Case not found"}, 404
     
 @case_ns.route('/<cid>/add_connectors', methods=['POST'])
 @case_ns.doc(description='Add connectors to a case')
@@ -921,9 +973,9 @@ class ChangeOrder(Resource):
                             return {"message": "Order changed"}, 200
                         return {"message": "New index is not one of an other task"}, 400
                     return {"message": "'new-index' need to be passed"}, 400
-                return {"message": "Task Not found"}, 404
+                return {"message": "Task not found"}, 404
             return {"message": "Permission denied"}, 403
-        return {"message": "Case Not found"}, 404
+        return {"message": "Case not found"}, 404
     
 
 @case_ns.route('/<cid>/all_notes')

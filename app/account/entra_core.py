@@ -168,11 +168,19 @@ def get_or_create_sso_user(id_token_claims, access_token):
             db.session.commit()
         return user, None
 
-    # Provision a new user account on first login.
-    name = id_token_claims.get("name", "")
-    parts = name.split(" ", 1)
-    first_name = parts[0] if parts else ""
-    last_name = parts[1] if len(parts) > 1 else ""
+    # Build user name from token claims, with sensible fallbacks.
+    first_name = (id_token_claims.get("given_name") or "").strip()
+    last_name = (id_token_claims.get("family_name") or "").strip()
+    if not first_name and not last_name:
+        full_name = (id_token_claims.get("name") or "").strip()
+        if full_name:
+            parts = full_name.split(" ", 1)
+            first_name = parts[0]
+            last_name = parts[1] if len(parts) > 1 else ""
+    if not first_name:
+        first_name = email.split("@")[0]
+    if not last_name:
+        last_name = ""
     nick = f"{email.split('@')[0]} - via EntraID"
 
     user = User(
@@ -196,14 +204,21 @@ def get_or_create_sso_user(id_token_claims, access_token):
     logger.info("Provisioned new Entra ID user: %s (role: %s)", email, target_role.name)
 
     if notify_admin:
-        NotifModel.create_notification_for_admins(
-            message=(
-                f"Entra ID user '{email}' is a member of '{matched_group}' and has been "
-                f"provisioned with the '{target_role.name}' role. "
-                "Please promote them to Admin if appropriate."
-            ),
-            html_icon="fa-solid fa-user-shield",
-            user_id_for_redirect=user.id,
+        msg = (
+            f"Entra ID user '{email}' is a member of '{matched_group}' and has been "
+            f"provisioned with the '{target_role.name}' role. "
+            "Please promote them to Admin if appropriate."
         )
+    else:
+        msg = (
+            f"A new Entra ID user '{email}' has been provisioned with the "
+            f"'{target_role.name}' role (group '{matched_group}'). "
+            "Please review their organisation assignment."
+        )
+    NotifModel.create_notification_for_admins(
+        message=msg,
+        html_icon="fa-solid fa-user-shield",
+        user_id_for_redirect=user.id,
+    )
 
     return user, None

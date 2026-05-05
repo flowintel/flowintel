@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h3><i class="fas fa-robot me-2"></i>Chatbot</h3>
+        <small class="text-muted">AI-powered assistant for Flowintel</small>
+        <hr>
+    </div>
+</div>
+
+<div class="row" style="height: calc(100vh - 180px); min-height: 400px;">
+    <!-- Sidebar: conversation history -->
+    <div class="col-lg-3 col-md-4 d-flex flex-column pe-0" style="height: 100%;">
+        <div class="card shadow h-100">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <span class="fw-semibold">History</span>
+                <button class="btn btn-sm btn-primary" id="new-conv-btn" title="New conversation">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="card-body p-0 d-flex flex-column" style="min-height: 0;">
+                <ul class="list-group list-group-flush" id="conv-list" style="overflow-y: auto; flex: 1 1 0;">
+                    <li class="list-group-item text-muted text-center small py-3" id="conv-list-empty">
+                        No conversations yet
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main chat area -->
+    <div class="col-lg-9 col-md-8 d-flex flex-column ps-2" style="height: 100%;">
+        <div class="card shadow h-100">
+            <div class="card-body p-0 d-flex flex-column" style="min-height: 0;">
+                <!-- Chat messages area -->
+                <div id="chat-messages" class="flex-grow-1 p-3" style="overflow-y: auto;">
+                    <div class="text-center text-muted my-5" id="chat-placeholder">
+                        <i class="fas fa-comments fa-3x mb-3"></i>
+                        <p>Start a conversation or load one from the history</p>
+                    </div>
+                </div>
+
+                <!-- Input area -->
+                <div class="border-top p-3">
+                    <div class="d-flex justify-content-end mb-2">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                    id="model-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-microchip me-1"></i><span id="model-label">Default model</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" id="model-list">
+                                <li><span class="dropdown-item text-muted small">Loading models...</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <form id="chat-form" class="d-flex gap-2 align-items-end">
+                        <textarea id="chat-input" class="form-control" rows="1"
+                                  placeholder="Type your message... (Ctrl+Enter to send)"
+                                  autocomplete="off" maxlength="4000"
+                                  style="resize: none; overflow-y: hidden;"></textarea>
+                        <button type="submit" class="btn btn-primary" id="send-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                    <small class="text-muted mt-1 d-block">Ctrl+Enter to send &nbsp;&middot;&nbsp; Enter for new line</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+const chatMessages = document.getElementById('chat-messages');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const sendBtn = document.getElementById('send-btn');
+const convList = document.getElementById('conv-list');
+const convListEmpty = document.getElementById('conv-list-empty');
+const csrfToken = document.getElementById('csrf_token')?.value || '';
+
+let currentConvId = null;
+let selectedModel = null;  // null = use server default
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function addMessage(content, isUser, modelName, createdAt) {
+    const placeholder = document.getElementById('chat-placeholder');
+    if (placeholder) placeholder.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `d-flex mb-3 ${isUser ? 'justify-content-end' : 'justify-content-start'}`;
+
+    const col = document.createElement('div');
+    col.style.maxWidth = '75%';
+
+    const bubble = document.createElement('div');
+    bubble.className = `p-3 rounded-3 ${isUser ? 'bg-primary text-white' : 'bg-light text-dark'}`;
+    bubble.style.whiteSpace = 'pre-wrap';
+    bubble.style.wordBreak = 'break-word';
+    bubble.textContent = content;
+    col.appendChild(bubble);
+
+    // Meta line: datetime (and model for assistant)
+    const meta = document.createElement('div');
+    meta.className = `text-muted mt-1 d-flex gap-2 ${isUser ? 'justify-content-end' : 'justify-content-start'}`;
+    meta.style.fontSize = '0.72em';
+    if (createdAt) {
+        const dt = document.createElement('span');
+        dt.innerHTML = `<i class="fas fa-clock me-1"></i>${escapeHtml(createdAt)}`;
+        meta.appendChild(dt);
+    }
+    if (!isUser && modelName) {
+        const mdl = document.createElement('span');
+        mdl.innerHTML = `<i class="fas fa-microchip me-1"></i>${escapeHtml(modelName)}`;
+        meta.appendChild(mdl);
+    }
+    if (meta.children.length) col.appendChild(meta);
+
+    wrapper.appendChild(col);
+    chatMessages.appendChild(wrapper);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addLoading() {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'd-flex mb-3 justify-content-start';
+    wrapper.id = 'loading-indicator';
+    const bubble = document.createElement('div');
+    bubble.className = 'p-3 rounded-3 bg-light text-dark';
+    bubble.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Thinking...';
+    wrapper.appendChild(bubble);
+    chatMessages.appendChild(wrapper);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function removeLoading() {
+    const el = document.getElementById('loading-indicator');
+    if (el) el.remove();
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+
+async function loadConversationList() {
+    const resp = await fetch('/chatbot/conversations');
+    const convs = await resp.json();
+    renderConversationList(convs);
+}
+
+function renderConversationList(convs) {
+    // Remove existing items (keep the empty placeholder)
+    convList.querySelectorAll('.conv-item').forEach(el => el.remove());
+
+    if (convs.length === 0) {
+        convListEmpty.style.display = '';
+        return;
+    }
+    convListEmpty.style.display = 'none';
+
+    convs.forEach(c => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-start conv-item py-2';
+        li.dataset.id = c.id;
+        if (c.id === currentConvId) li.classList.add('active');
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'text-truncate me-2 flex-grow-1';
+        textDiv.style.minWidth = '0';
+
+        // Title row: label + pencil button
+        const titleRow = document.createElement('div');
+        titleRow.className = 'd-flex align-items-center gap-1';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'd-block text-truncate fw-semibold conv-title-label';
+        titleSpan.style.fontSize = '.85rem';
+        titleSpan.style.cursor = 'pointer';
+        titleSpan.textContent = c.title;
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-sm btn-link p-0 flex-shrink-0 edit-title-btn';
+        editBtn.style.fontSize = '.7rem';
+        editBtn.style.opacity = '0.5';
+        editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+        editBtn.title = 'Rename';
+
+        titleRow.appendChild(titleSpan);
+        titleRow.appendChild(editBtn);
+        textDiv.appendChild(titleRow);
+
+        // UUID + date meta
+        const meta = document.createElement('div');
+        meta.className = 'text-muted';
+        meta.style.fontSize = '.7rem';
+        meta.innerHTML = `<span class="font-monospace" title="Conversation UUID">${escapeHtml(c.uuid || '')}</span><br>
+            <small>${escapeHtml(c.updated_at || '')}</small>`;
+        textDiv.appendChild(meta);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-sm btn-link text-danger p-0 flex-shrink-0 del-conv-btn';
+        delBtn.innerHTML = '<i class="fas fa-trash-alt fa-xs"></i>';
+        delBtn.title = 'Delete';
+        delBtn.dataset.id = c.id;
+
+        li.appendChild(textDiv);
+        li.appendChild(delBtn);
+        convList.appendChild(li);
+
+        textDiv.addEventListener('click', (e) => {
+            if (!e.target.closest('.edit-title-btn')) openConversation(c.id);
+        });
+        delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteConversation(c.id); });
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startTitleEdit(c.id, titleSpan, editBtn);
+        });
+    });
+}
+
+function startTitleEdit(convId, titleSpan, editBtn) {
+    const current = titleSpan.textContent;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control form-control-sm py-0 px-1';
+    input.style.fontSize = '.85rem';
+    input.style.height = '1.5rem';
+    input.value = current;
+    titleSpan.replaceWith(input);
+    editBtn.style.display = 'none';
+    input.focus();
+    input.select();
+
+    async function save() {
+        const newTitle = input.value.trim() || current;
+        if (newTitle !== current) {
+            await fetch(`/chatbot/conversation/${convId}/title`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ title: newTitle })
+            });
+        }
+        input.replaceWith(titleSpan);
+        titleSpan.textContent = newTitle;
+        editBtn.style.display = '';
+    }
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { input.value = current; input.blur(); }
+    });
+}
+
+function setActiveConv(id) {
+    convList.querySelectorAll('.conv-item').forEach(el => {
+        el.classList.toggle('active', parseInt(el.dataset.id) === id);
+    });
+}
+
+async function openConversation(id) {
+    const resp = await fetch(`/chatbot/conversation/${id}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+
+    currentConvId = id;
+    setActiveConv(id);
+
+    // Clear chat area and re-render messages
+    chatMessages.innerHTML = '';
+    if (data.messages.length === 0) {
+        chatMessages.innerHTML = `<div class="text-center text-muted my-5" id="chat-placeholder">
+            <i class="fas fa-comments fa-3x mb-3"></i>
+            <p>Start a conversation or load one from the history</p>
+        </div>`;
+    } else {
+        data.messages.forEach(m => addMessage(m.content, m.role === 'user', m.model_name, m.created_at));
+    }
+    chatInput.focus();
+}
+
+async function deleteConversation(id) {
+    if (!confirm('Delete this conversation?')) return;
+    const resp = await fetch(`/chatbot/conversation/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': csrfToken }
+    });
+    if (resp.ok) {
+        if (currentConvId === id) {
+            currentConvId = null;
+            chatMessages.innerHTML = `<div class="text-center text-muted my-5" id="chat-placeholder">
+                <i class="fas fa-comments fa-3x mb-3"></i>
+                <p>Start a conversation or load one from the history</p>
+            </div>`;
+        }
+        loadConversationList();
+    }
+}
+
+document.getElementById('new-conv-btn').addEventListener('click', () => {
+    currentConvId = null;
+    setActiveConv(null);
+    chatMessages.innerHTML = `<div class="text-center text-muted my-5" id="chat-placeholder">
+        <i class="fas fa-comments fa-3x mb-3"></i>
+        <p>Start a conversation or load one from the history</p>
+    </div>`;
+    chatInput.focus();
+});
+
+// ── Textarea auto-resize ──────────────────────────────────────────────────────
+
+chatInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+});
+
+chatInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.ctrlKey) {
+        e.preventDefault();
+        chatForm.requestSubmit();
+    }
+});
+
+// ── Send message ──────────────────────────────────────────────────────────────
+
+chatForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    addMessage(message, true, null, new Date().toLocaleString());
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    sendBtn.disabled = true;
+    chatInput.disabled = true;
+    addLoading();
+
+    try {
+        // For new conversations: create the conversation record immediately so
+        // it appears in the sidebar right away, without waiting for AI inference.
+        if (!currentConvId) {
+            const newResp = await fetch('/chatbot/conversation/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ title: message.substring(0, 80) })
+            });
+            if (newResp.ok) {
+                const newConv = await newResp.json();
+                currentConvId = newConv.id;
+                await loadConversationList();
+                setActiveConv(currentConvId);
+            }
+        }
+
+        const body = { message };
+        if (currentConvId) body.conversation_id = currentConvId;
+        if (selectedModel) body.model = selectedModel;
+
+        const resp = await fetch('/chatbot/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(body)
+        });
+        const data = await resp.json();
+        removeLoading();
+
+        if (resp.ok) {
+            const now = new Date().toLocaleString();
+            addMessage(data.response, false, data.model_name, now);
+            currentConvId = data.conversation_id;
+            // Refresh to update title / order after AI response
+            loadConversationList().then(() => setActiveConv(currentConvId));
+        } else {
+            addMessage(data.error || 'An error occurred', false);
+        }
+    } catch (err) {
+        removeLoading();
+        addMessage('Failed to reach the server. Please try again.', false);
+    } finally {
+        sendBtn.disabled = false;
+        chatInput.disabled = false;
+        chatInput.focus();
+    }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadConversationList();
+
+// Load available Ollama models
+(async () => {
+    const modelList = document.getElementById('model-list');
+    const modelLabel = document.getElementById('model-label');
+    try {
+        const resp = await fetch('/chatbot/models');
+        const data = await resp.json();
+        modelList.innerHTML = '';
+
+        // "Default" option
+        const defaultLi = document.createElement('li');
+        defaultLi.innerHTML = '<a class="dropdown-item active" href="#" data-model="">Default model</a>';
+        modelList.appendChild(defaultLi);
+        if (data.models && data.models.length) {
+            const divLi = document.createElement('li');
+            divLi.innerHTML = '<hr class="dropdown-divider">';
+            modelList.appendChild(divLi);
+            data.models.forEach(name => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a class="dropdown-item" href="#" data-model="${escapeHtml(name)}">${escapeHtml(name)}</a>`;
+                modelList.appendChild(li);
+            });
+        } else {
+            const li = document.createElement('li');
+            li.innerHTML = '<span class="dropdown-item text-muted small">No models found</span>';
+            modelList.appendChild(li);
+        }
+
+        // Click handler
+        modelList.addEventListener('click', e => {
+            const a = e.target.closest('[data-model]');
+            if (!a) return;
+            e.preventDefault();
+            selectedModel = a.dataset.model || null;
+            modelLabel.textContent = selectedModel || 'Default model';
+            modelList.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('active'));
+            a.classList.add('active');
+        });
+    } catch {
+        modelList.innerHTML = '<li><span class="dropdown-item text-muted small">Could not load models</span></li>';
+    }
+})();
+</script>
+{% endblock %}

@@ -1,6 +1,8 @@
 import calendar
+from io import BytesIO
 
 from pymisp import PyMISP
+from werkzeug.datastructures import FileStorage
 from ..db_class.db import *
 import uuid
 import json
@@ -14,6 +16,7 @@ from sqlalchemy import or_
 from ..utils import misp_object_helper
 from  ..connectors import connectors_core as ConnectorModel
 from ..custom_tags import custom_tags_core as CustomModel
+from ..case.common_core import check_user_in_private_cases
 
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 
@@ -158,6 +161,8 @@ def case_creation_from_importer(case, current_user):
         misp_object["object-template"] = {"name": misp_object["name"], "uuid": misp_object["template_uuid"]}
         CaseModel.create_misp_object(case_created.id, misp_object, current_user)
 
+    return {"id": case_created.id}
+
 
 def case_template_creation_from_importer(template):
     if not utils.validate_importer_json(template, jsonschema_flowintel.caseTemplateSchema):
@@ -290,8 +295,10 @@ def importer_core(files_list, current_user, importer_type, create_custom_tags=Fa
                         except Exception:
                             pass
 
+    results = []
     for file in files_list:
-        if files_list[file].filename:
+        filename = files_list[file].filename
+        if filename:
             try:
                 file_data = json.loads(files_list[file].read().decode())
                 # Create missing custom tags
@@ -302,21 +309,26 @@ def importer_core(files_list, current_user, importer_type, create_custom_tags=Fa
                     elif isinstance(file_data, dict):
                         _create_missing_custom_tags_in_case(file_data)
 
-                if type(file_data) == list:
-                    for case in file_data:
-                        if importer_type == 'case':
-                            res = case_creation_from_importer(case, current_user)
-                        elif importer_type == 'template':
-                            res = case_template_creation_from_importer(case)
-                        if res: return res
-                else:
+                items = file_data if isinstance(file_data, list) else [file_data]
+                for item in items:
+                    title = item.get("title", filename)
                     if importer_type == 'case':
-                        return case_creation_from_importer(file_data, current_user)
+                        res = case_creation_from_importer(item, current_user)
                     elif importer_type == 'template':
-                        return case_template_creation_from_importer(file_data)
+                        res = case_template_creation_from_importer(item)
+                    else:
+                        res = None
+                    if res and "message" in res:
+                        results.append({"status": "error", "filename": filename, "title": title, "message": res["message"]})
+                    else:
+                        entry = {"status": "success", "filename": filename, "title": title}
+                        if res and "id" in res:
+                            entry["id"] = res["id"]
+                        results.append(entry)
             except Exception as e:
                 print(e)
-                return {"message": "Something went wrong"}
+                results.append({"status": "error", "filename": filename, "title": filename, "message": "Something went wrong"})
+    return {"results": results}
 
 
 def chart_dict_constructor(input_dict):
@@ -327,6 +339,21 @@ def chart_dict_constructor(input_dict):
             "count": input_dict[elem]
         })
     return loc_dict
+
+def days_cutoff(days):
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        return None
+    if days <= 0:
+        return None
+    return datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
+
+
+def filter_cases_by_date(cases, cutoff):
+    if cutoff is None:
+        return cases
+    return [c for c in cases if c.creation_date and c.creation_date >= cutoff]
 
 def stats_core(cases):
     cases_opened_month = {month: 0 for month in calendar.month_name if month}
@@ -430,8 +457,9 @@ def stats_core(cases):
             "tasks-elapsed-time": loc_tasks_elapsed_time, "tasks-per-case": loc_tasks_per_case,
             "total_opened_tasks": total_opened_tasks, "total_closed_tasks": total_closed_tasks}
 
-def get_case_by_tags(current_user):
+def get_case_by_tags(current_user, cutoff=None):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
+    cases = filter_cases_by_date(cases, cutoff)
     dict_case_tag = {}
     dict_case_cluster_tag = {}
     dict_case_custom_tag = {}
@@ -486,8 +514,9 @@ def get_case_by_tags(current_user):
             "task_clusters": chart_dict_constructor(dict_task_cluster_tag)}
 
 
-def get_tag_galaxy_top_stats(current_user, limit=10):
+def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
+    cases = filter_cases_by_date(cases, cutoff)
 
     case_tag_map = {}
     case_cluster_map = {}
@@ -593,7 +622,178 @@ def check_event(event_id: str, misp_instance_id: int, current_user: User):
         return event
     else:
         return misp
-    
+
+
+_MISP_THREAT_LEVELS = {"1": "High", "2": "Medium", "3": "Low", "4": "Undefined"}
+_MISP_ANALYSIS = {"0": "Initial", "1": "Ongoing", "2": "Completed"}
+_MISP_DISTRIBUTIONS = {
+    "0": "Your organisation only",
+    "1": "This community only",
+    "2": "Connected communities",
+    "3": "All communities",
+    "4": "Sharing group",
+    "5": "Inherit event",
+}
+
+
+_MISP_FILE_ATTR_TYPES = ("attachment", "malware-sample")
+
+
+def summarize_misp_event(event):
+    """Return a JSON-friendly snapshot of a MISPEvent for the UI preview."""
+    data = event.to_dict()
+
+    def _org(key):
+        org = data.get(key) or {}
+        return {"id": org.get("id"), "name": org.get("name")} if org else None
+
+    galaxies = []
+    for galaxy in data.get("Galaxy", []):
+        clusters = galaxy.get("GalaxyCluster", [])
+        if clusters:
+            galaxies.extend(c["value"] for c in clusters if c.get("value"))
+        elif galaxy.get("name"):
+            galaxies.append(galaxy["name"])
+
+    attributes = [
+        {
+            "uuid": a.get("uuid"),
+            "type": a.get("type"),
+            "category": a.get("category"),
+            "value": a.get("value"),
+            "comment": a.get("comment") or "",
+        }
+        for a in data.get("Attribute", [])
+    ]
+
+    objects = [
+        {
+            "uuid": o.get("uuid"),
+            "name": o.get("name"),
+            "comment": o.get("comment") or "",
+            "nb_attributes": len(o.get("Attribute", [])),
+            "attributes": [
+                {"type": a.get("type"), "value": a.get("value")}
+                for a in o.get("Attribute", [])
+            ],
+        }
+        for o in data.get("Object", [])
+    ]
+
+    nb_files = sum(1 for a in data.get("Attribute", []) if a.get("type") in _MISP_FILE_ATTR_TYPES)
+    nb_files += sum(
+        1
+        for o in data.get("Object", [])
+        for a in o.get("Attribute", [])
+        if a.get("type") in _MISP_FILE_ATTR_TYPES
+    )
+
+    return {
+        "id": data.get("id"),
+        "info": data.get("info"),
+        "published": bool(data.get("published")),
+        "creator_org": _org("Orgc"),
+        "owner_org": _org("Org"),
+        "nb_attributes": len(attributes),
+        "nb_objects": len(objects),
+        "nb_object_attributes": sum(o["nb_attributes"] for o in objects),
+        "nb_reports": len(data.get("EventReport", [])),
+        "nb_files": nb_files,
+        "tags": [t["name"] for t in data.get("Tag", []) if t.get("name")],
+        "galaxies": galaxies,
+        "attributes": attributes,
+        "objects": objects,
+    }
+
+
+def _build_event_info_markdown(event) -> str:
+    data = event.to_dict()
+    creator = (data.get("Orgc") or {}).get("name") or ""
+    owner = (data.get("Org") or {}).get("name") or ""
+    return (
+        f"Event: {data.get('info', '')}\n"
+        f"Creator org: {creator}\n"
+        f"Owner org: {owner}\n"
+        f"Date: {data.get('date', '')}\n"
+        f"Threat level: {_MISP_THREAT_LEVELS.get(str(data.get('threat_level_id', '')), '')}\n"
+        f"Analysis: {_MISP_ANALYSIS.get(str(data.get('analysis', '')), '')}\n"
+        f"Distribution level: {_MISP_DISTRIBUTIONS.get(str(data.get('distribution', '')), '')}\n"
+    )
+
+
+def _build_attributes_markdown(event, selected_uuids) -> str:
+    attrs = event.to_dict().get("Attribute", [])
+    if selected_uuids is not None:
+        wanted = set(selected_uuids)
+        attrs = [a for a in attrs if a.get("uuid") in wanted]
+    if not attrs:
+        return "No individual attributes selected."
+    lines = [
+        "| Type | Category | Value | to_ids | Correlation | Comment |",
+        "|------|----------|-------|--------|-------------|---------|",
+    ]
+    for a in attrs:
+        value = (a.get("value") or "").replace("|", "\\|").replace("\n", " ")
+        comment = (a.get("comment") or "").replace("|", "\\|").replace("\n", " ")
+        to_ids = "Yes" if a.get("to_ids") else "No"
+        # MISP stores the inverse flag (`disable_correlation`); show the user-facing one.
+        correlation = "No" if a.get("disable_correlation") else "Yes"
+        lines.append(
+            f"| {a.get('type', '')} | {a.get('category', '')} | {value} | {to_ids} | {correlation} | {comment} |"
+        )
+    return "\n".join(lines)
+
+
+def _add_markdown_task(case, title, description, note_markdown, current_user):
+    """Create a task on ``case`` containing a single markdown note."""
+    task_form = {
+        "title": title,
+        "description": description,
+        "deadline_date": None,
+        "deadline_time": None,
+        "time_required": 0,
+    }
+    task = TaskModel.create_task(task_form, case.id, current_user)
+    note = TaskModel.create_note(task.id, current_user)
+    TaskModel.modif_note_core(task.id, current_user, note_markdown, note.id)
+    return task
+
+
+def _import_misp_attribute_files(misp, event_id, current_user, case):
+    """Re-fetch the event with attachments and attach every file attribute to ``case``."""
+    results = misp.search(
+        controller="events",
+        eventid=event_id,
+        with_attachments=True,
+        pythonify=True,
+    )
+    if not results:
+        return
+    event_with_data = results[0]
+    file_attrs = [a for a in event_with_data.attributes if a.type in _MISP_FILE_ATTR_TYPES]
+    for obj in event_with_data.objects:
+        file_attrs.extend(a for a in obj.attributes if a.type in _MISP_FILE_ATTR_TYPES)
+    if not file_attrs:
+        return
+
+    files_dict = {}
+    for idx, attr in enumerate(file_attrs):
+        data = getattr(attr, "data", None)
+        if not data:
+            continue
+        # MISPAttribute.data exposes a BytesIO. For malware-sample, attr.value is "filename|md5".
+        data.seek(0)
+        raw_name = (attr.value or "").split("|", 1)[0].strip()
+        filename = raw_name or f"misp_attachment_{idx + 1}"
+        files_dict[f"misp_file_{idx}"] = FileStorage(
+            stream=data,
+            filename=filename,
+            content_type="application/octet-stream",
+        )
+    if files_dict:
+        CaseModel.add_file_core(case, files_dict, current_user)
+
+
 
 def check_case_misp_event(request_form, current_user) -> str:
     if request_form.get("case_title"):
@@ -615,10 +815,13 @@ def check_case_misp_event(request_form, current_user) -> str:
 
 def create_case_misp_event(request_form, current_user):
     """Create a case from a MISP Event"""
+    misp = check_connection_misp(request_form.get("misp_instance_id"), current_user)
+    if not isinstance(misp, PyMISP):
+        # check_connection_misp returns an error string when the instance is missing
+        # or the user has neither a global nor a personal API key configured.
+        return None
     instance = Connector_Instance.query.get(request_form.get("misp_instance_id"))
-    user_connector_instance = User_Connector_Instance.query.filter_by(user_id=current_user.id,instance_id=instance.id).first()
-    misp = PyMISP(instance.url, user_connector_instance.api_key, ssl=False, timeout=20)
-    
+
     event = misp.get_event(request_form.get("misp_event_id"), pythonify=True)
 
     case = TemplateModel.create_case_from_template(request_form.get("case_template_id"), request_form.get("case_title"), current_user)
@@ -642,8 +845,13 @@ def create_case_misp_event(request_form, current_user):
             if cluster and not Case_Galaxy_Tags.query.filter_by(cluster_id=cluster.id, case_id=case.id).first():
                 CaseModel.add_cluster(cluster, case.id)
 
+    raw_object_uuids = request_form.get("selected_object_uuids")
+    selected_object_uuids = set(raw_object_uuids) if isinstance(raw_object_uuids, list) else None
+
     object_uuid_list = {}
     for obje in event.objects:
+        if selected_object_uuids is not None and obje.uuid not in selected_object_uuids:
+            continue
         def append_dict(base, new):
             for key, value in new.items():
                 if key in base:
@@ -656,7 +864,49 @@ def create_case_misp_event(request_form, current_user):
         loc = misp_object_helper.create_misp_object(case.id, obje)
         object_uuid_list = append_dict(object_uuid_list, loc)
 
-    CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
+    if object_uuid_list:
+        CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
+
+    event_label = f'event {event.id} "{event.info}"'
+
+    if request_form.get("import_event_info_note"):
+        _add_markdown_task(
+            case,
+            "MISP event information",
+            f"Metadata of the {event_label}",
+            _build_event_info_markdown(event),
+            current_user,
+        )
+
+    if request_form.get("import_attributes_note"):
+        raw_attribute_uuids = request_form.get("selected_attribute_uuids")
+        selected_attribute_uuids = raw_attribute_uuids if isinstance(raw_attribute_uuids, list) else None
+        _add_markdown_task(
+            case,
+            "MISP attributes",
+            f"Attributes from {event_label}",
+            _build_attributes_markdown(event, selected_attribute_uuids),
+            current_user,
+        )
+
+    if request_form.get("import_misp_reports"):
+        reports = event.to_dict().get("EventReport", [])
+        if reports:
+            files_dict = {}
+            for idx, report in enumerate(reports):
+                content = (report.get("content") or "").encode("utf-8")
+                name = (report.get("name") or "").strip() or f"event_report_{idx + 1}"
+                if not name.lower().endswith(".md"):
+                    name = f"{name}.md"
+                files_dict[f"report_{idx}"] = FileStorage(
+                    stream=BytesIO(content),
+                    filename=name,
+                    content_type="text/markdown",
+                )
+            CaseModel.add_file_core(case, files_dict, current_user)
+
+    if request_form.get("import_misp_files"):
+        _import_misp_attribute_files(misp, misp_event_id, current_user, case)
 
     case_connector_instance = Case_Connector_Instance(
         case_id=case.id,
@@ -682,9 +932,14 @@ def get_all_note_template():
     """Get all note template"""
     return Note_Template_Model.query.all()
 
-def get_note_template_by_page(page: int):
+def get_note_template_by_page(page: int, title_search: str = None, title_sort: bool = False):
     """Get note template by page"""
-    return Note_Template_Model.query.paginate(page=page, per_page=20, max_per_page=50)
+    query = Note_Template_Model.query
+    if title_search:
+        query = query.filter(Note_Template_Model.title.ilike(f"%{title_search}%"))
+    if title_sort:
+        query = query.order_by(Note_Template_Model.title)
+    return query.paginate(page=page, per_page=20, max_per_page=50)
 
 import re
 
@@ -863,3 +1118,125 @@ def get_community_stats():
         "cases_per_org": [{"org_name": row.org_name, "count": row.count} for row in cases_per_org],
         "tasks_per_user": [{"user_name": f"{row.first_name} {row.last_name}", "count": row.count} for row in tasks_per_user]
     }
+
+
+############################
+# Operational task widgets #
+############################
+
+def get_overdue_tasks(current_user, limit=20):
+    """Open tasks past their deadline for cases the user can see."""
+    now = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
+    cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
+        .where(Case_Org.org_id==current_user.org_id).all()
+    cases = check_user_in_private_cases(cases, current_user)
+    case_ids = [c.id for c in cases]
+    if not case_ids:
+        return {"count": 0, "tasks": []}
+
+    q = Task.query.filter(Task.case_id.in_(case_ids))\
+        .filter(Task.completed == False)\
+        .filter(Task.deadline != None)\
+        .filter(Task.deadline < now)\
+        .order_by(Task.deadline.asc())
+    total = q.count()
+    rows = q.limit(limit).all()
+    return {
+        "count": total,
+        "tasks": [{
+            "id": t.id,
+            "case_id": t.case_id,
+            "title": t.title,
+            "deadline": t.deadline.strftime(DATETIME_FORMAT_FULL),
+        } for t in rows],
+    }
+
+
+def get_unassigned_tasks(current_user, limit=20):
+    """Open tasks with no assignee for cases the user can see."""
+    cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
+        .where(Case_Org.org_id==current_user.org_id).all()
+    cases = check_user_in_private_cases(cases, current_user)
+    case_ids = [c.id for c in cases]
+    if not case_ids:
+        return {"count": 0, "tasks": []}
+
+    assigned_ids = db.session.query(Task_User.task_id).distinct().subquery()
+    q = Task.query.filter(Task.case_id.in_(case_ids))\
+        .filter(Task.completed == False)\
+        .filter(~Task.id.in_(assigned_ids))\
+        .order_by(Task.creation_date.desc())
+    total = q.count()
+    rows = q.limit(limit).all()
+    return {
+        "count": total,
+        "tasks": [{
+            "id": t.id,
+            "case_id": t.case_id,
+            "title": t.title,
+            "creation_date": t.creation_date.strftime(DATETIME_FORMAT_FULL) if t.creation_date else "",
+        } for t in rows],
+    }
+
+
+###############
+# Admin extra #
+###############
+
+def get_admin_extra_stats(days=90):
+    """Notification backlog + login activity per day for the last `days` days."""
+    notif_backlog = Notification.query.filter_by(is_read=False).count()
+
+    cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
+    rows = db.session.query(
+        db.func.date(Login_Event.login_date).label('day'),
+        db.func.count(Login_Event.id).label('count'),
+    ).filter(Login_Event.login_date >= cutoff)\
+     .group_by('day')\
+     .order_by('day')\
+     .all()
+    activity = [{"calendar": str(r.day), "count": r.count} for r in rows]
+
+    return {
+        "notification_backlog": notif_backlog,
+        "login_activity": activity,
+        "login_activity_days": days,
+    }
+
+
+##################
+# Inactive users #
+##################
+
+def get_inactive_users(days=90):
+    """Users who never logged in or whose last login is older than `days`."""
+    cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
+    users = User.query.filter(or_(User.last_login == None, User.last_login < cutoff))\
+        .order_by(User.last_login.is_(None).desc(), User.last_login.asc()).all()
+    return {
+        "days": days,
+        "count": len(users),
+        "users": [{
+            "id": u.id,
+            "name": f"{u.first_name} {u.last_name}",
+            "email": u.email,
+            "last_login": u.last_login.strftime(DATETIME_FORMAT_FULL) if u.last_login else None,
+        } for u in users],
+    }
+
+
+def get_recent_logins(limit=20):
+    """Most recent login events with user info."""
+    rows = db.session.query(Login_Event, User)\
+        .join(User, User.id == Login_Event.user_id)\
+        .order_by(Login_Event.login_date.desc())\
+        .limit(limit).all()
+    return {
+        "logins": [{
+            "user_id": u.id,
+            "name": f"{u.first_name} {u.last_name}",
+            "email": u.email,
+            "login_date": ev.login_date.strftime(DATETIME_FORMAT_FULL) if ev.login_date else None,
+        } for ev, u in rows],
+    }
+

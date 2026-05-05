@@ -27,3 +27,5 @@ psycopg2-binary
 msal
 requests
 python-gnupg
+dspy
+git+https://github.com/flowintel/flowintel-mcp@4de28c57fe44eca15d4eba0cd2b020ae43b182ab

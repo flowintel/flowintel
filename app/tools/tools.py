@@ -1,11 +1,12 @@
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, current_app
 from flask_login import login_required, current_user
 from . import tools_core as ToolsModel
+from ..admin import admin_core as AdminModel
 from ..utils.note_variables import get_syntax_reference
-from ..decorators import editor_required, admin_required, template_editor_required
+from ..decorators import editor_required, admin_required, template_editor_required, misp_editor_required
 from ..utils.utils import get_modules_list, reload_application
 from ..utils.logger import flowintel_log
-from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case
+from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case, check_user_in_private_cases
 from ..case.CaseCore import CaseModel, FILE_FOLDER
 import base64
 import csv
@@ -62,12 +63,26 @@ def importer():
             # Create custom tags present in JSON if they don't exist
             create_custom_tags = request.form.get('create_custom_tags', 'false')
             create_custom_tags = True if str(create_custom_tags).lower() == 'true' else False
-            message = ToolsModel.importer_core(request.files, current_user, importer_type, create_custom_tags)
-            if message:
-                message["toast_class"] = "danger-subtle"
-                return message, 400
-            flowintel_log("audit", 200, f"Import successful (type={importer_type})", User=current_user.email)
-            return {"message": "All created", "toast_class": "success-subtle"}, 200
+            result = ToolsModel.importer_core(request.files, current_user, importer_type, create_custom_tags)
+            results = result.get("results", [])
+            n_ok = sum(1 for r in results if r["status"] == "success")
+            n_err = sum(1 for r in results if r["status"] == "error")
+            if n_err == 0:
+                flowintel_log("audit", 200, f"Import successful (type={importer_type})", User=current_user.email)
+                toast_class = "success-subtle"
+                msg = f"All imported successfully ({n_ok})"
+                status = 200
+            elif n_ok == 0:
+                flowintel_log("audit", 400, f"Import failed (type={importer_type})", User=current_user.email)
+                toast_class = "danger-subtle"
+                msg = f"All imports failed ({n_err})"
+                status = 400
+            else:
+                flowintel_log("audit", 207, f"Import partial (type={importer_type}, ok={n_ok}, err={n_err})", User=current_user.email)
+                toast_class = "warning-subtle"
+                msg = f"Import complete: {n_ok} succeeded, {n_err} failed"
+                status = 207
+            return {"message": msg, "toast_class": toast_class, "results": results}, status
         return {"message": "Need to give a least a file", "toast_class": "warning-subtle"}, 400
     return {"message": "Need to give a type of import", "toast_class": "warning-subtle"}, 400
     
@@ -255,12 +270,13 @@ def reload():
 # Stats #
 #########
 from ..db_class.db import Case, Case_Org
-from ..case.common_core import check_user_in_private_cases
 
 @tools_blueprint.route("/stats")
 @login_required
 def stats():
-    return render_template("tools/stats.html")
+    org = AdminModel.get_org(current_user.org_id) if current_user.org_id else None
+    org_name = org.name if org else ""
+    return render_template("tools/stats.html", org_name=org_name)
 
 def chart_dict_constructor(input_dict):
     loc_dict = []
@@ -274,26 +290,34 @@ def chart_dict_constructor(input_dict):
 @tools_blueprint.route("/case_stats")
 @login_required
 def case_stats():
+    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
     cases = check_user_in_private_cases(cases, current_user)
-    res_dict = ToolsModel.stats_core(cases)
-
-    return res_dict
+    cases = ToolsModel.filter_cases_by_date(cases, cutoff)
+    return ToolsModel.stats_core(cases)
 
 @tools_blueprint.route("/admin_stats")
 @login_required
 def admin_stats():
-    if current_user.is_admin():
-        cases = Case.query.all()
-        res_dict = ToolsModel.stats_core(cases)
-
-        return res_dict
-    return {}
+    if not current_user.is_admin():
+        return {}
+    days_arg = request.args.get('days')
+    cutoff = ToolsModel.days_cutoff(days_arg)
+    cases = Case.query.all()
+    cases = ToolsModel.filter_cases_by_date(cases, cutoff)
+    res_dict = ToolsModel.stats_core(cases)
+    try:
+        days = int(days_arg) if days_arg else 90
+    except (TypeError, ValueError):
+        days = 90
+    res_dict.update(ToolsModel.get_admin_extra_stats(days=days))
+    return res_dict
 
 @tools_blueprint.route("/case_tags_stats")
 @login_required
 def get_case_by_tags():
-    res = ToolsModel.get_case_by_tags(current_user)
+    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
+    res = ToolsModel.get_case_by_tags(current_user, cutoff=cutoff)
     if res:
         return res
     return {}
@@ -301,16 +325,48 @@ def get_case_by_tags():
 @tools_blueprint.route("/tag_galaxy_stats")
 @login_required
 def get_tag_galaxy_stats():
-    res = ToolsModel.get_tag_galaxy_top_stats(current_user)
-    return res
+    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
+    return ToolsModel.get_tag_galaxy_top_stats(current_user, cutoff=cutoff)
 
 @tools_blueprint.route("/community_stats")
 @login_required
 def community_stats():
     if current_user.is_admin():
-        res = ToolsModel.get_community_stats()
-        return res
+        return ToolsModel.get_community_stats()
     return {}
+
+@tools_blueprint.route("/overdue_tasks")
+@login_required
+def overdue_tasks():
+    return ToolsModel.get_overdue_tasks(current_user)
+
+@tools_blueprint.route("/unassigned_tasks")
+@login_required
+def unassigned_tasks():
+    return ToolsModel.get_unassigned_tasks(current_user)
+
+@tools_blueprint.route("/inactive_users")
+@login_required
+def inactive_users():
+    if not current_user.is_admin():
+        return {}
+    try:
+        days = int(request.args.get('days') or 90)
+    except (TypeError, ValueError):
+        days = 90
+    return ToolsModel.get_inactive_users(days=days)
+
+
+@tools_blueprint.route("/recent_logins")
+@login_required
+def recent_logins():
+    if not current_user.is_admin():
+        return {}
+    try:
+        limit = int(request.args.get('limit') or 20)
+    except (TypeError, ValueError):
+        limit = 20
+    return ToolsModel.get_recent_logins(limit=limit)
 
 
 
@@ -364,7 +420,9 @@ def note_template_id(nid):
 @login_required
 def note_template_by_page():
     page = request.args.get('page', 1, type=int)
-    notes = ToolsModel.get_note_template_by_page(page)
+    q = request.args.get('q', None, type=str)
+    title_sort = request.args.get('title', 'false', type=str) == 'true'
+    notes = ToolsModel.get_note_template_by_page(page, title_search=q, title_sort=title_sort)
     if notes:
         notes_list = list()
         for note in notes:
@@ -450,21 +508,31 @@ def delete_note_template(nid):
 
 @tools_blueprint.route("/case_misp_event", methods=["GET", "POST"])
 @login_required
-@editor_required
 def case_misp_event():
+    can_use_misp = current_user.is_admin() or current_user.is_misp_editor()
     if request.method == 'POST':
+        if not can_use_misp:
+            return {"message": "Action not Allowed", "toast_class": "warning-subtle"}, 403
         res = ToolsModel.check_case_misp_event(request.json, current_user)
         if not type(res) == str:
             case = ToolsModel.create_case_misp_event(request.json, current_user)
+            if case is None:
+                return {"message": "No MISP API key configured for this instance", "toast_class": "warning-subtle"}, 400
+            flowintel_log(
+                "audit", 200, "Case created from MISP event",
+                User=current_user.email, CaseId=case.id,
+                MispInstanceId=request.json.get("misp_instance_id"),
+                MispEventId=request.json.get("misp_event_id"),
+            )
             return {"case_id": case.id}, 200
         else:
             return {"message": res, "toast_class": "warning-subtle"}, 400
-    return render_template("tools/case_misp_event.html")
+    return render_template("tools/case_misp_event.html", can_use_misp=can_use_misp)
 
 
 @tools_blueprint.route("/check_connection", methods=["GET"])
 @login_required
-@editor_required
+@misp_editor_required
 def check_connection():
     misp_instance_id = request.args.get('misp_instance_id', 1, type=int)
     res = ToolsModel.check_connection_misp(misp_instance_id, current_user)
@@ -474,13 +542,13 @@ def check_connection():
 
 @tools_blueprint.route("/check_misp_event", methods=["GET"])
 @login_required
-@editor_required
+@misp_editor_required
 def check_misp_event():
     misp_instance_id = request.args.get('misp_instance_id', 1, type=int)
     misp_event_id = request.args.get('misp_event_id', 1, type=str)
     res = ToolsModel.check_event(misp_event_id, misp_instance_id, current_user)
     if not type(res) == str:
-        return {"is_connection_okay": True, "event_info": res.info}
+        return {"is_connection_okay": True, "event_details": ToolsModel.summarize_misp_event(res)}
     return {"is_connection_okay": False}
 
 
@@ -628,6 +696,22 @@ def system_settings():
         'entra_role_queuer': current_app.config.get('ENTRA_ROLE_QUEUER', ''),
         'entra_redirect_url': current_app.config.get('ENTRA_REDIRECT_URL', ''),
 
+        # Keycloak SSO
+        'keycloak_enabled': current_app.config.get('KEYCLOAK_ENABLED', False),
+        'keycloak_base_url': current_app.config.get('KEYCLOAK_BASE_URL', ''),
+        'keycloak_realm': current_app.config.get('KEYCLOAK_REALM', ''),
+        'keycloak_client_id': current_app.config.get('KEYCLOAK_CLIENT_ID', ''),
+        'keycloak_group_admin': current_app.config.get('KEYCLOAK_GROUP_ADMIN', ''),
+        'keycloak_group_editor': current_app.config.get('KEYCLOAK_GROUP_EDITOR', ''),
+        'keycloak_group_readonly': current_app.config.get('KEYCLOAK_GROUP_READONLY', ''),
+        'keycloak_group_case_admin': current_app.config.get('KEYCLOAK_GROUP_CASE_ADMIN', ''),
+        'keycloak_role_case_admin': current_app.config.get('KEYCLOAK_ROLE_CASE_ADMIN', ''),
+        'keycloak_group_queue_admin': current_app.config.get('KEYCLOAK_GROUP_QUEUE_ADMIN', ''),
+        'keycloak_role_queue_admin': current_app.config.get('KEYCLOAK_ROLE_QUEUE_ADMIN', ''),
+        'keycloak_group_queuer': current_app.config.get('KEYCLOAK_GROUP_QUEUER', ''),
+        'keycloak_role_queuer': current_app.config.get('KEYCLOAK_ROLE_QUEUER', ''),
+        'keycloak_redirect_url': current_app.config.get('KEYCLOAK_REDIRECT_URL', ''),
+
         # Database
         'db_type': db_type,
         'db_name': db_name,
@@ -731,4 +815,3 @@ def system_settings_reload():
 
     flowintel_log("audit", 200, "Application reload requested", User=current_user.email)
     return jsonify({"message": message}), status
-

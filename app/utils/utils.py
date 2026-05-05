@@ -16,6 +16,26 @@ from flask import current_app
 from conf.config import Config
 from pymisp.tools import update_objects
 
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 64
+
+
+def validate_password_strength(password):
+    """Return None if `password` meets the policy, otherwise an error message.
+
+    Mirrors the rules defined on `RegistrationForm`/`AdminEditUserFrom` so the
+    REST API and the web forms reject the same inputs with the same wording.
+    """
+    if not (MIN_PASSWORD_LENGTH <= len(password) <= MAX_PASSWORD_LENGTH):
+        return f"Password must be between {MIN_PASSWORD_LENGTH} and {MAX_PASSWORD_LENGTH} characters."
+    if not any(c.isupper() for c in password):
+        return "Password must contain at least one uppercase letter."
+    if not any(c.islower() for c in password):
+        return "Password must contain at least one lowercase letter."
+    if not any(c.isdigit() for c in password):
+        return "Password must contain at least one digit."
+    return None
+
 
 def validate_file_size(file, max_size=None):
     """Validate file size against maximum allowed size."""

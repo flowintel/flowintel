@@ -4,6 +4,11 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/case_misp_event.css') }}">
+{% endblock %}
+
 {% block content %}
 
     <div class="case-core-style" style="border-radius: 0">
@@ -12,10 +17,18 @@
 
     <hr class="fading-line-2 mt-4 mb-4">
 
+    {% if not can_use_misp %}
+    <div class="container-fluid w-75">
+        <div class="alert alert-warning" role="alert">
+            <i class="fa-solid fa-lock me-2"></i>
+            <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
+        </div>
+    </div>
+    {% else %}
     <div class="container-fluid w-75 case-core-style">
         <div class="row mt-5">
             <div class="col">
-                <label for="case_title">Case title:</label>
+                <label for="case_title">Case title: <span style="color: red;">*</span></label>
                 <input class="form-control" type="text" id="case_title" name="case_title"/>
 
                 <div class="mt-1">
@@ -25,8 +38,8 @@
             </div>
 
             <div class="col">
-                <label for="case_template">Case Templates:</label>
-                <select data-placeholder="Case Templates" class="select2-select form-control" name="case_template_select" id="case_template_select" >
+                <label for="case_template">Case templates: <span style="color: red;">*</span></label>
+                <select data-placeholder="Case templates" class="select2-select form-control" name="case_template_select" id="case_template_select" >
                     <option></option>
                     <template v-for="c_t in case_templates">
                         <option :value="[[c_t.id]]">[[c_t.title]]</option>
@@ -34,17 +47,17 @@
                 </select>
             </div>
         </div>
-        <div class="row mt-5 mb-5">
+        <div class="row mt-4 mb-4">
             <div class="col">
-                <label for="misp_connectors_select">MISP Connectors:</label>
-                <select data-placeholder="MISP Connectors" class="select2-select form-control" name="misp_connectors_select" id="misp_connectors_select" >
+                <label for="misp_connectors_select">MISP connectors: <span style="color: red;">*</span></label>
+                <select data-placeholder="MISP connectors" class="select2-select form-control" name="misp_connectors_select" id="misp_connectors_select" >
                     <option></option>
                     <template v-for="m_c in misp_connectors">
                         <option :value="[[m_c.id]]">[[m_c.name]]</option>
                     </template>
                 </select>
                 <div class="mt-1">
-                    <button class="btn btn-primary" @click="check_connection()">Check Connection</button>
+                    <button class="btn btn-primary" @click="check_connection()">Check connection</button>
                     <span class="ms-1" v-if="is_loading_misp_connector">
                         <div class="spinner-border" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -55,10 +68,10 @@
             </div>
 
             <div class="col">
-                <label for="misp_event_id">MISP Event id/UUID:</label>
-                <input class="form-control" type="text" id="misp_event_id" name="misp_event_id"/>
+                <label for="misp_event_id">MISP event id/UUID: <span style="color: red;">*</span></label>
+                <input class="form-control" type="text" id="misp_event_id" name="misp_event_id" :disabled="!is_connection_ok"/>
                 <div class="mt-1">
-                    <button class="btn btn-primary" @click="check_event()">Check Event</button>
+                    <button class="btn btn-primary" @click="check_event()" :disabled="!is_connection_ok">Check event</button>
                     <span class="ms-1" v-if="is_loading_misp_event">
                         <div class="spinner-border" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -66,23 +79,201 @@
                     </span>
                     <span class="ms-1" id="misp_event_message"></span>
                 </div>
-                <div v-if="event_info">Event info: [[event_info]]</div>
+                <div v-if="event_details" class="mt-2 small">
+                    <div>
+                        Event info: <strong>[[event_details.info]]</strong>
+                        <span class="badge ms-1" :class="event_details.published ? 'text-bg-success' : 'text-bg-warning'">
+                            [[event_details.published ? 'Published' : 'Not published']]
+                        </span>
+                    </div>
+                    <div v-if="event_details.creator_org">
+                        Creator org: <strong>[[event_details.creator_org.name]] (id [[event_details.creator_org.id]])</strong>
+                    </div>
+                    <div v-if="event_details.owner_org">
+                        Owner org: <strong>[[event_details.owner_org.name]] (id [[event_details.owner_org.id]])</strong>
+                    </div>
+                    <div>
+                        Individual attributes: <strong>[[event_details.nb_attributes]]</strong> &middot;
+                        Objects: <strong>[[event_details.nb_objects]]</strong> &middot;
+                        Total attributes in objects: <strong>[[event_details.nb_object_attributes]]</strong>
+                    </div>
+                    <div v-if="event_details.tags && event_details.tags.length">
+                        Tags:
+                        <span v-for="t in event_details.tags" class="badge text-bg-secondary me-1">[[t]]</span>
+                    </div>
+                    <div v-if="event_details.galaxies && event_details.galaxies.length">
+                        Galaxies:
+                        <span v-for="g in event_details.galaxies" class="badge text-bg-info me-1">[[g]]</span>
+                    </div>
+                </div>
             </div>
             
         </div>
-        <button class="btn btn-primary" @click="submit" :disabled="is_submitting" style="margin-top: 10px;">
-            <span v-if="is_submitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            <span v-if="is_submitting">Submitting...</span>
-            <span v-else>Submit</span>
-        </button>
+
+        <div v-if="event_details" class="mt-3">
+            <hr class="fading-line-2 mb-3">
+            <h6>Import options</h6>
+
+            <div class="misp-import-toggles mb-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="import_event_info_note" v-model="import_event_info_note">
+                    <label class="form-check-label" for="import_event_info_note">
+                        Create a case task with a note containing the event info
+                    </label>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="import_attributes_note" v-model="import_attributes_note"
+                           :disabled="event_details.attributes.length === 0">
+                    <label class="form-check-label" for="import_attributes_note">
+                        Import individual attributes as a case task with a note
+                        <span v-if="event_details.attributes.length === 0" class="text-muted">(no individual attributes on this event)</span>
+                    </label>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="import_misp_reports" v-model="import_misp_reports"
+                           :disabled="event_details.nb_reports === 0">
+                    <label class="form-check-label" for="import_misp_reports">
+                        Import the MISP reports as Markdown file attachments
+                        <span class="text-muted">([[event_details.nb_reports]] available)</span>
+                    </label>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="import_misp_files" v-model="import_misp_files"
+                           :disabled="event_details.nb_files === 0">
+                    <label class="form-check-label" for="import_misp_files">
+                        Import files attached to the MISP event
+                        <span class="text-muted">([[event_details.nb_files]] available)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="misp-import-panel">
+                        <div class="misp-import-panel-header">
+                            <strong>Objects to import</strong>
+                            <span class="text-muted small">[[event_details.nb_objects]] in event</span>
+                        </div>
+                        <div v-if="event_details.objects.length === 0" class="small text-muted px-2 py-2">
+                            No objects on this event.
+                        </div>
+                        <template v-else>
+                            <div class="misp-import-select-all">
+                                <div class="form-check m-0">
+                                    <input class="form-check-input" type="checkbox" id="select_all_objects"
+                                           :checked="all_objects_selected"
+                                           :indeterminate.prop="some_objects_selected && !all_objects_selected"
+                                           @change="toggle_all_objects($event.target.checked)">
+                                    <label class="form-check-label fw-semibold" for="select_all_objects">
+                                        Select all ([[selected_objects_count]]/[[event_details.nb_objects]])
+                                    </label>
+                                </div>
+                            </div>
+                            <ul class="misp-import-list">
+                                <li v-for="o in visible_objects" :key="o.uuid" class="misp-import-item">
+                                    <div class="form-check m-0">
+                                        <input class="form-check-input" type="checkbox"
+                                               :id="'obj_' + o.uuid" v-model="selected_objects[o.uuid]">
+                                        <label class="form-check-label" :for="'obj_' + o.uuid">
+                                            <code>[[o.name]]</code>
+                                            <span class="text-muted ms-1">([[o.nb_attributes]] attributes)</span>
+                                            <span v-if="o.comment" class="text-muted ms-1">&mdash; [[o.comment]]</span>
+                                        </label>
+                                    </div>
+                                    <ul v-if="o.attributes.length" class="misp-import-sublist">
+                                        <li v-for="(a, i) in o.attributes" :key="i">
+                                            <span class="text-muted">[[a.type]]:</span>
+                                            <span class="misp-attr-value">[[a.value]]</span>
+                                        </li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            <div v-if="event_details.objects.length > 20 && !show_all_objects" class="misp-import-more">
+                                <button class="btn btn-sm btn-outline-secondary" @click="show_all_objects = true">
+                                    There are more than 20 objects, display them all?
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="misp-import-panel" :class="{ 'is-disabled': !import_attributes_note }">
+                        <div class="misp-import-panel-header">
+                            <strong>Individual attributes to import</strong>
+                            <span class="text-muted small">[[event_details.nb_attributes]] in event</span>
+                        </div>
+                        <div v-if="!import_attributes_note" class="small text-muted px-2 py-2">
+                            Tick <em>Import individual attributes</em> above to choose which ones to include.
+                        </div>
+                        <template v-else-if="event_details.attributes.length === 0">
+                            <div class="small text-muted px-2 py-2">No individual attributes on this event.</div>
+                        </template>
+                        <template v-else>
+                            <div class="misp-import-select-all">
+                                <div class="form-check m-0">
+                                    <input class="form-check-input" type="checkbox" id="select_all_attributes"
+                                           :checked="all_attributes_selected"
+                                           :indeterminate.prop="some_attributes_selected && !all_attributes_selected"
+                                           @change="toggle_all_attributes($event.target.checked)">
+                                    <label class="form-check-label fw-semibold" for="select_all_attributes">
+                                        Select all ([[selected_attributes_count]]/[[event_details.nb_attributes]])
+                                    </label>
+                                </div>
+                            </div>
+                            <ul class="misp-import-list">
+                                <li v-for="a in visible_attributes" :key="a.uuid" class="misp-import-item">
+                                    <div class="form-check m-0">
+                                        <input class="form-check-input" type="checkbox"
+                                               :id="'attr_' + a.uuid" v-model="selected_attributes[a.uuid]">
+                                        <label class="form-check-label" :for="'attr_' + a.uuid">
+                                            <code>[[a.type]]</code>
+                                            <span class="text-muted ms-1">([[a.category]])</span>:
+                                            <span class="misp-attr-value">[[a.value]]</span>
+                                        </label>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div v-if="event_details.attributes.length > 20 && !show_all_attributes" class="misp-import-more">
+                                <button class="btn btn-sm btn-outline-secondary" @click="show_all_attributes = true">
+                                    There are more than 20 attributes, display them all?
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+            <a href="/case" class="btn btn-secondary">Cancel</a>
+            <button class="btn btn-primary" @click="submit" :disabled="is_submitting || !can_submit">
+                <span v-if="is_submitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span v-if="is_submitting">Submitting...</span>
+                <span v-else>Submit</span>
+            </button>
+        </div>
     </div>
+
+    <div class="case-core-style mt-4">
+        <h6 class="mb-2">How a case is created from a MISP event</h6>
+        <ul class="mb-0 small">
+            <li>The case is created from the chosen template, with the title you provided, marked as private and linked to the MISP instance so it can be re-synced later.</li>
+            <li>Description is set to the MISP event <em>info</em>; ticket id is set to <code>MISP Event: &lt;event id&gt;</code>.</li>
+            <li>Tags and galaxy clusters that already exist in Flowintel are attached to the case; the rest are ignored.</li>
+            <li>Only the MISP objects you ticked are converted into Flowintel MISP objects (their attributes come along).</li>
+            <li>The four switches above optionally add a task with an event-info note, a task with a markdown table of the (selected) individual attributes, the MISP event reports as <code>.md</code> attachments, and the files attached to the MISP event (<code>attachment</code> / <code>malware-sample</code> attributes).</li>
+        </ul>
+    </div>
+    {% endif %}
 
 {% endblock %}
 
 
 {% block script %}
+    {% if can_use_misp %}
     <script type="module">
-        const { createApp, ref, onMounted } = Vue
+        const { createApp, ref, computed, onMounted } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         
         createApp({
@@ -93,8 +284,73 @@
                 const case_templates = ref([])
                 const is_loading_misp_connector = ref(false)
                 const is_loading_misp_event = ref(false)
-                const event_info = ref("")
+                const is_connection_ok = ref(false)
+                const event_details = ref(null)
                 const is_submitting = ref(false)
+
+                const case_title_value = ref("")
+                const case_template_value = ref("")
+                const misp_event_id_value = ref("")
+                const can_submit = computed(() =>
+                    !!case_title_value.value.trim() &&
+                    !!case_template_value.value &&
+                    !!misp_event_id_value.value.trim()
+                )
+
+                // Import options shown after "Check event"
+                const import_event_info_note = ref(true)
+                const import_attributes_note = ref(false)
+                const import_misp_reports = ref(false)
+                const import_misp_files = ref(false)
+                const selected_objects = ref({})
+                const selected_attributes = ref({})
+                const show_all_objects = ref(false)
+                const show_all_attributes = ref(false)
+
+                const visible_objects = computed(() =>
+                    !event_details.value ? [] :
+                    show_all_objects.value ? event_details.value.objects : event_details.value.objects.slice(0, 20)
+                )
+                const visible_attributes = computed(() =>
+                    !event_details.value ? [] :
+                    show_all_attributes.value ? event_details.value.attributes : event_details.value.attributes.slice(0, 20)
+                )
+                const selected_objects_count = computed(() =>
+                    !event_details.value ? 0 :
+                    event_details.value.objects.filter(o => selected_objects.value[o.uuid]).length
+                )
+                const selected_attributes_count = computed(() =>
+                    !event_details.value ? 0 :
+                    event_details.value.attributes.filter(a => selected_attributes.value[a.uuid]).length
+                )
+                const all_objects_selected = computed(() =>
+                    !!event_details.value && event_details.value.objects.length > 0
+                    && event_details.value.objects.every(o => selected_objects.value[o.uuid])
+                )
+                const some_objects_selected = computed(() =>
+                    !!event_details.value
+                    && event_details.value.objects.some(o => selected_objects.value[o.uuid])
+                )
+                const all_attributes_selected = computed(() =>
+                    !!event_details.value && event_details.value.attributes.length > 0
+                    && event_details.value.attributes.every(a => selected_attributes.value[a.uuid])
+                )
+                const some_attributes_selected = computed(() =>
+                    !!event_details.value
+                    && event_details.value.attributes.some(a => selected_attributes.value[a.uuid])
+                )
+                function toggle_all_objects(checked) {
+                    if (!event_details.value) return
+                    for (const o of event_details.value.objects) {
+                        selected_objects.value[o.uuid] = checked
+                    }
+                }
+                function toggle_all_attributes(checked) {
+                    if (!event_details.value) return
+                    for (const a of event_details.value.attributes) {
+                        selected_attributes.value[a.uuid] = checked
+                    }
+                }
 
                 async function fetch_misp_connectors(){
                     const res = await fetch("/tools/misp_connectors")
@@ -137,11 +393,13 @@
                 async function check_connection() {
                     $("#misp_connectors_message").text("")
                     is_loading_misp_connector.value = true
+                    is_connection_ok.value = false
                     if($("#misp_connectors_select").val()){
                         const res = await fetch("/tools/check_connection?misp_instance_id="+$("#misp_connectors_select").val())
                         let loc = await res.json()
                         if(loc["is_connection_okay"]){
-                            $("#misp_connectors_message").text("Connection to MISP okay").css("color", "green")
+                            is_connection_ok.value = true
+                            $("#misp_connectors_message").text("Connection to MISP OK").css("color", "green")
                         }else{
                             $("#misp_connectors_message").text("Error connecting to MISP").css("color", "brown")
                         }
@@ -154,16 +412,25 @@
                 async function check_event() {
                     $("#misp_event_message").text("")
                     $("#misp_connectors_message").text("")
-                    event_info.value = ""
+                    event_details.value = null
                     is_loading_misp_event.value = true
                     if($("#misp_connectors_select").val()){
                         if($("#misp_event_id").val()){
                             const res = await fetch("/tools/check_misp_event?misp_instance_id="+$("#misp_connectors_select").val()+"&misp_event_id="+$("#misp_event_id").val())
                             let loc = await res.json()
                             if(loc["is_connection_okay"]){
-                                if("event_info" in loc)
-                                    event_info.value = loc["event_info"]
-                                $("#misp_connectors_message").text("Connection to MISP okay").css("color", "green")
+                                if("event_details" in loc) {
+                                    event_details.value = loc["event_details"]
+                                    selected_objects.value = Object.fromEntries(
+                                        loc["event_details"].objects.map(o => [o.uuid, true])
+                                    )
+                                    selected_attributes.value = Object.fromEntries(
+                                        loc["event_details"].attributes.map(a => [a.uuid, true])
+                                    )
+                                    show_all_objects.value = false
+                                    show_all_attributes.value = false
+                                }
+                                $("#misp_connectors_message").text("Connection to MISP OK").css("color", "green")
                                 $("#misp_event_message").text("The event is present on the instance").css("color", "green")
                             }else{
                                 $("#misp_event_message").text("The event is not found on the instance").css("color", "brown")
@@ -180,16 +447,31 @@
 
                 async function submit() {
                     is_submitting.value = true
+                    const body = {
+                        "case_title": $("#case_title").val(),
+                        "misp_instance_id": $("#misp_connectors_select").val(),
+                        "misp_event_id": $("#misp_event_id").val(),
+                        "case_template_id": $("#case_template_select").val(),
+                        "import_event_info_note": import_event_info_note.value,
+                        "import_attributes_note": import_attributes_note.value,
+                        "import_misp_reports": import_misp_reports.value,
+                        "import_misp_files": import_misp_files.value
+                    }
+                    if (event_details.value) {
+                        body["selected_object_uuids"] = event_details.value.objects
+                            .filter(o => selected_objects.value[o.uuid])
+                            .map(o => o.uuid)
+                        if (import_attributes_note.value) {
+                            body["selected_attribute_uuids"] = event_details.value.attributes
+                                .filter(a => selected_attributes.value[a.uuid])
+                                .map(a => a.uuid)
+                        }
+                    }
                     const res_msg = await fetch(
                         '/tools/case_misp_event',{ 
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
-                            body: JSON.stringify({
-                                "case_title": $("#case_title").val(),
-                                "misp_instance_id": $("#misp_connectors_select").val(),
-                                "misp_event_id": $("#misp_event_id").val(),
-                                "case_template_id": $("#case_template_select").val()
-                            })
+                            body: JSON.stringify(body)
                         }
                     )
                     if(await res_msg.status == 200){
@@ -206,6 +488,15 @@
                         theme: 'bootstrap-5',
                         closeOnSelect: false
                     })
+                    $('#misp_connectors_select').on('change', () => {
+                        is_connection_ok.value = false
+                        event_details.value = null
+                        $("#misp_connectors_message").text("")
+                        $("#misp_event_message").text("")
+                    })
+                    $('#case_title').on('input', e => { case_title_value.value = e.target.value })
+                    $('#misp_event_id').on('input', e => { misp_event_id_value.value = e.target.value })
+                    $('#case_template_select').on('change', e => { case_template_value.value = e.target.value || "" })
                 })
                 
     
@@ -215,8 +506,29 @@
                     case_templates,
                     is_loading_misp_connector,
                     is_loading_misp_event,
-                    event_info,
+                    is_connection_ok,
+                    event_details,
                     is_submitting,
+                    can_submit,
+
+                    import_event_info_note,
+                    import_attributes_note,
+                    import_misp_reports,
+                    import_misp_files,
+                    selected_objects,
+                    selected_attributes,
+                    show_all_objects,
+                    show_all_attributes,
+                    visible_objects,
+                    visible_attributes,
+                    selected_objects_count,
+                    selected_attributes_count,
+                    all_objects_selected,
+                    some_objects_selected,
+                    all_attributes_selected,
+                    some_attributes_selected,
+                    toggle_all_objects,
+                    toggle_all_attributes,
 
                     check_title,
                     check_connection,
@@ -227,4 +539,5 @@
         }).mount('#main-container')
 
     </script>
+    {% endif %}
 {% endblock %}

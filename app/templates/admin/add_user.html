@@ -22,10 +22,10 @@
         </div>
     {% endif %}
 
-    {% if edit_mode and from_notif_entra %}
+    {% if edit_mode and from_notif_sso %}
         <div class="alert alert-primary mt-3 mb-0" role="alert">
             <i class="fa-solid fa-user-shield me-2"></i>
-            <strong>Entra ID promotion request:</strong> This user signed in via Microsoft Entra ID and is a member of the admin group. Review their role and promote if appropriate.
+            <strong>New SSO user:</strong> This user was provisioned via single sign-on. Review their role and organisation assignment.
         </div>
     {% endif %}
 
@@ -97,7 +97,7 @@
                 {% if is_sso %}
                 <div class="alert alert-info py-2 mb-0">
                     <i class="fa-solid fa-shield-halved me-1"></i>
-                    This account is managed via <strong>Microsoft Entra ID</strong>. Password management is handled externally and cannot be changed here.
+                    This account is managed via <strong>single sign-on (SSO)</strong>. Password management is handled externally and cannot be changed here.
                 </div>
                 {% else %}
                 <div class="form-check">

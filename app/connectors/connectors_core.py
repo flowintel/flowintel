@@ -1,6 +1,7 @@
+import datetime
 import os
 from .. import db
-from ..db_class.db import Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance
+from ..db_class.db import Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance, Connector_Sync_Log
 import uuid
 from werkzeug.utils import secure_filename
 
@@ -392,6 +393,69 @@ def delete_icon_core(iid):
         return False
 
 
+####################
+# MISP Core helpers #
+####################
+
+def misp_get_event_objects(loc_instance, api_key, event_identifier):
+    """Fetch objects from a remote MISP event and return a preview list.
+
+    Returns a tuple (objects_list, error_dict).  On success error_dict is None.
+    """
+    try:
+        from pymisp import PyMISP
+        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        event = misp.get_event(event_identifier, pythonify=True)
+        if isinstance(event, dict) and "errors" in event:
+            return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
+        objects = []
+        for obj in event.objects:
+            attrs = [{"relation": a.object_relation, "type": a.type, "value": str(a.value)[:80]}
+                     for a in obj.attributes[:5]]
+            objects.append({
+                "uuid": obj.uuid,
+                "name": obj.name,
+                "attributes_preview": attrs,
+                "attribute_count": len(obj.attributes)
+            })
+        return objects, None
+    except Exception as e:
+        return None, {"message": f"Error connecting to MISP: {e}", "toast_class": "danger-subtle", "status": 500}
+
+
+def misp_get_event_reports(loc_instance, api_key, event_identifier):
+    """Fetch event reports from a remote MISP event.
+
+    Returns a tuple (note_content_str, error_dict).  On success error_dict is None.
+    """
+    try:
+        from pymisp import PyMISP
+        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        event = misp.get_event(event_identifier, pythonify=True)
+        if isinstance(event, dict) and "errors" in event:
+            return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
+        reports = getattr(event, "event_reports", []) or []
+        if not reports:
+            return None, {"message": "No event reports found in this MISP event", "toast_class": "warning-subtle", "status": 404}
+        now_str = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        parts = [f"# Imported from MISP: {loc_instance.name} \u2014 {now_str}\n"]
+        for rpt in reports:
+            name = getattr(rpt, "name", "Report")
+            content = getattr(rpt, "content", "") or ""
+            parts.append(f"## {name}\n\n{content}")
+        return "\n\n---\n\n".join(parts), None
+    except Exception as e:
+        return None, {"message": f"Error importing event report: {e}", "toast_class": "danger-subtle", "status": 500}
+
+
+def get_connector_sync_logs(case_id, case_connector_instance_id, limit=50):
+    """Return recent sync logs for a connector instance as a list of dicts."""
+    logs = Connector_Sync_Log.query.filter_by(
+        case_id=int(case_id), case_connector_instance_id=int(case_connector_instance_id)
+    ).order_by(Connector_Sync_Log.timestamp.desc()).limit(limit).all()
+    return [log.to_json() for log in logs]
+
+
 def check_misp_connectivity(instance, current_user=None):
     """Check connectivity to a MISP instance"""
     # Check if API key is set
@@ -430,3 +494,61 @@ def check_misp_connectivity(instance, current_user=None):
             "success": False,
             "message": f"Error connecting to MISP: {str(e)}"
         }
+
+
+def search_misp_attributes(instance, current_user, query):
+    """Search attributes in a MISP instance and return rows ready for UI rendering."""
+    if current_user:
+        user_api_key = User_Connector_Instance.query.filter_by(
+            user_id=current_user.id, instance_id=instance.id
+        ).first()
+    else:
+        user_api_key = get_user_instance_by_instance(instance.id)
+    if not instance.global_api_key and (not user_api_key or not user_api_key.api_key):
+        return {"success": False, "message": "API key is not configured for this instance"}
+    api_key = instance.global_api_key or user_api_key.api_key
+
+    try:
+        from pymisp import PyMISP
+        import urllib3
+        urllib3.disable_warnings()
+
+        misp = PyMISP(instance.url, api_key, ssl=False, timeout=30)
+        search_value = query if "%" in query else f"%{query}%"
+        response = misp.search(
+            controller="attributes",
+            value=search_value,
+            to_ids=None,
+            published=None,
+            include_context=True,
+            pythonify=False
+        )
+    except Exception as e:
+        return {"success": False, "message": f"Error querying MISP: {str(e)}"}
+
+    attributes = []
+    if isinstance(response, dict):
+        attributes = response.get("response", {}).get("Attribute") or response.get("Attribute") or []
+
+    results = []
+    for attr in attributes:
+        event = attr.get("Event") or {}
+        org = attr.get("Orgc") or event.get("Orgc") or event.get("Org") or {}
+        org_name = org.get("name") if isinstance(org, dict) else org
+        tags = [t.get("name") for t in (attr.get("Tag") or []) if isinstance(t, dict) and t.get("name")]
+        results.append({
+            "event_id": event.get("id"),
+            "event_uuid": event.get("uuid"),
+            "event_published": str(event.get("published")).lower() in ("1", "true"),
+            "organisation": org_name,
+            "event_info": event.get("info"),
+            "date": event.get("date"),
+            "attribute_type": attr.get("type"),
+            "attribute_category": attr.get("category"),
+            "attribute_value": attr.get("value"),
+            "to_ids": str(attr.get("to_ids")).lower() in ("1", "true"),
+            "comment": attr.get("comment"),
+            "tags": tags,
+        })
+
+    return {"success": True, "results": results}

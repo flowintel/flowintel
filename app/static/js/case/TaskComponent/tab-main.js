@@ -93,6 +93,8 @@ export default {
 						if (created) props.cases_info.case.status_id = created.id
 						props.cases_info.case.finish_date = null
 					}
+					let index = props.cases_info.tasks.indexOf(task)
+					if (index > -1) props.cases_info.tasks.splice(index, 1)
 				} else if (!wasCompleted && isFinished) {
 					props.open_closed["open"] -= 1
 					props.open_closed["closed"] += 1

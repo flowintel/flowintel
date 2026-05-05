@@ -28,7 +28,8 @@ edit_user_model = admin_ns.model('EditUser', {
     'last_name': fields.String(required=False, description='Last name for the user'),
     'email': fields.String(required=False, description='Email for the user'),
     'role': fields.Integer(required=False, description='Role ID (integer) for the user'),
-    'org': fields.Integer(required=False, description='Organisation ID (integer) for the user')
+    'org': fields.Integer(required=False, description='Organisation ID (integer) for the user'),
+    'password': fields.String(required=False, description='New password for the user (local auth only). Resets the user password.')
 })
 
 add_org_model = admin_ns.model('AddOrg', {
@@ -107,8 +108,8 @@ class GetUserMatrix(Resource):
             user = AdminModel.get_user_by_matrix_id(request.args.get("matrix_id"))
             if user:
                 return user.to_json(), 200
-            return {"message": "No user found for this matrix id"}
-        return {"message": "Need to pass a last name"}, 400
+            return {"message": "No user found for this matrix id"}, 404
+        return {"message": "Need to pass a matrix id"}, 400
 
 @admin_ns.route('/add_user')
 @admin_ns.doc(description='Add new user')

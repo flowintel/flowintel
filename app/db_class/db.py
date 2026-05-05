@@ -25,6 +25,7 @@ class User(UserMixin, db.Model):
     org_id = db.Column(db.Integer, db.ForeignKey('org.id', ondelete="CASCADE"))
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     auth_provider = db.Column(db.String(32), default='local', nullable=False, server_default='local')
+    last_login = db.Column(db.DateTime, index=True)
 
     def is_admin(self):
         r = Role.query.get(self.role_id)
@@ -581,6 +582,13 @@ class Task_User(db.Model):
     task_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer)
 
+
+class Login_Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, index=True)
+    login_date = db.Column(db.DateTime, index=True)
+
+
 class Case_Org(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer)
@@ -830,6 +838,48 @@ class Task_Template_Url_Tool(db.Model):
             "name": self.name
         }
         return json_dict
+
+
+class ChatConversation(db.Model):
+    __tablename__ = 'chat_conversation'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True, unique=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False, default='New Conversation')
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    messages = db.relationship('ChatMessage', backref='conversation', cascade=CASCADE_DELETE_ORPHAN,
+                               order_by='ChatMessage.id', lazy=True)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "uuid": self.uuid,
+            "title": self.title,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT_FULL) if self.created_at else None,
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT_FULL) if self.updated_at else None,
+            "message_count": len(self.messages),
+        }
+
+
+class ChatMessage(db.Model):
+    __tablename__ = 'chat_message'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('chat_conversation.id', ondelete='CASCADE'),
+                                nullable=False, index=True)
+    role = db.Column(db.String(10), nullable=False)  # 'user' or 'assistant'
+    content = db.Column(db.Text, nullable=False)
+    model_name = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(tz=datetime.timezone.utc))
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "role": self.role,
+            "content": self.content,
+            "model_name": self.model_name,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT_FULL) if self.created_at else None,
+        }
     
 
 class Case_Task_Template(db.Model):
@@ -1072,6 +1122,34 @@ class Case_Connector_Instance(db.Model):
     instance_id = db.Column(db.Integer, index=True)
     identifier = db.Column(db.String)
     is_updating_case = db.Column(db.Boolean, default=False)
+    last_sync = db.Column(db.DateTime, nullable=True)
+
+
+class Connector_Sync_Log(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    case_connector_instance_id = db.Column(db.Integer, index=True)
+    direction = db.Column(db.String(10))   # 'send' or 'receive'
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.datetime.now)
+    status = db.Column(db.String(10))      # 'success', 'error', 'partial'
+    message = db.Column(db.Text, nullable=True)
+    objects_synced = db.Column(db.Integer, default=0)
+    objects_failed = db.Column(db.Integer, default=0)
+    details = db.Column(db.JSON, nullable=True)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "case_id": self.case_id,
+            "case_connector_instance_id": self.case_connector_instance_id,
+            "direction": self.direction,
+            "timestamp": self.timestamp.strftime(DATETIME_FORMAT_FULL) if self.timestamp else None,
+            "status": self.status,
+            "message": self.message,
+            "objects_synced": self.objects_synced,
+            "objects_failed": self.objects_failed,
+            "details": self.details
+        }
 
 
 class Case_Template_Connector_Instance(db.Model):

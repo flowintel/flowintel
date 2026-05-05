@@ -12,7 +12,7 @@ from wtforms.fields import (
 )
 from wtforms.validators import Email, EqualTo, InputRequired, Length, Optional, Regexp
 from ..db_class.db import User, Org
-from ..utils.utils import isUUID
+from ..utils.utils import isUUID, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, validate_password_strength
 
 
 class RegistrationForm(FlaskForm):
@@ -23,7 +23,7 @@ class RegistrationForm(FlaskForm):
     password = PasswordField('Password', validators=[
             InputRequired(),
             EqualTo('password2', 'Passwords must match'),
-            Length(min=8, max=64, message="Password must be between 8 and 64 characters."),
+            Length(min=MIN_PASSWORD_LENGTH, max=MAX_PASSWORD_LENGTH, message=f"Password must be between {MIN_PASSWORD_LENGTH} and {MAX_PASSWORD_LENGTH} characters."),
             Regexp(r'.*[A-Z].*', message="Password must contain at least one uppercase letter."),
             Regexp(r'.*[a-z].*', message="Password must contain at least one lowercase letter."),
             Regexp(r'.*\d.*', message="Password must contain at least one digit.")
@@ -67,14 +67,9 @@ class AdminEditUserFrom(FlaskForm):
         if self.change_password.data:
             if not field.data:
                 raise ValidationError('Password is required when changing password.')
-            if len(field.data) < 8 or len(field.data) > 64:
-                raise ValidationError('Password must be between 8 and 64 characters.')
-            if not any(c.isupper() for c in field.data):
-                raise ValidationError('Password must contain at least one uppercase letter.')
-            if not any(c.islower() for c in field.data):
-                raise ValidationError('Password must contain at least one lowercase letter.')
-            if not any(c.isdigit() for c in field.data):
-                raise ValidationError('Password must contain at least one digit.')
+            error = validate_password_strength(field.data)
+            if error:
+                raise ValidationError(error)
     
     def validate_password2(self, field):
         """Validate password confirmation only if change_password is checked"""
