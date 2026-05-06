@@ -7,6 +7,7 @@ from ..db_class.db import *
 import uuid
 import json
 import datetime
+import traceback
 from ..utils import utils, jsonschema_flowintel
 from ..case.TaskCore import TaskModel
 from ..case.CaseCore import CaseModel
@@ -24,17 +25,20 @@ DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 def case_creation_from_importer(case, current_user):
     if not utils.validate_importer_json(case, jsonschema_flowintel.caseSchema):
         return {"message": f"Case '{case['title']}' format not okay"}
-    for task in case["tasks"]:
+    for task in case.get("tasks", []):
         if not utils.validate_importer_json(task, jsonschema_flowintel.taskSchema):
             return {"message": f"Task '{task['title']}' format not okay"}
         
-    for misp_obj in case["misp-objects"]:
+    for misp_obj in case.get("misp-objects", []):
         if not utils.validate_importer_json(misp_obj, jsonschema_flowintel.mispObjectSchema):
             return {"message": f"MISP-OBject '{misp_obj['name']}' format not okay"}
 
-        for attr in misp_obj["attributes"]:
-            if not utils.validate_importer_json(misp_obj, jsonschema_flowintel.mispAttrSchema):
+        for attr in misp_obj.get("attributes", []):
+            if not utils.validate_importer_json(attr, jsonschema_flowintel.mispAttrSchema):
                 return {"message": f"MISP-Attribute '{attr['value']}' format not okay"}
+            
+    if "tasks_template" in case:
+        return {"message": "'tasks_template' field is not allowed in case import, only 'tasks'."}
 
 
     #######################
@@ -326,8 +330,15 @@ def importer_core(files_list, current_user, importer_type, create_custom_tags=Fa
                             entry["id"] = res["id"]
                         results.append(entry)
             except Exception as e:
-                print(e)
-                results.append({"status": "error", "filename": filename, "title": filename, "message": "Something went wrong"})
+                tb = traceback.format_exc()
+                print(tb)
+                results.append({
+                    "status": "error",
+                    "filename": filename,
+                    "title": filename,
+                    "message": str(e),
+                    "traceback": tb,
+                })
     return {"results": results}
 
 
