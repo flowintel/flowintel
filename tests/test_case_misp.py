@@ -22,7 +22,9 @@ def create_case(app):
             "ticket_id": ""
         }
         case = CaseModel.create_case(form, user)
-        return case, user
+        # keep the app context (and DB session) active for the duration
+        # of the test by yielding the created objects
+        yield case, user
 
 
 def create_object_via_api(client, cid, api_key, template, attributes):
