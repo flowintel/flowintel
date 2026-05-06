@@ -1728,6 +1728,8 @@ For security monitoring and compliance, forward these log files to your SIEM or 
         - Audit entries are prefixed with `AUDIT` and can be filtered with `grep AUDIT record.log`
         - Useful for compliance, forensic analysis, and tracking user actions such as case creation, task updates, and user changes
 
+Administrators (and users with the **Audit Viewer** role) do not need shell access to inspect the audit trail. The same `AUDIT` entries from `record.log`, together with the per-case history files, are exposed in Flowintel under **Tools > Audit logs**. The page lets you filter by date range, user, action and an exclude string, and download the filtered result as CSV or JSON straight from the browser.
+
 ### Log rotation (optional)
 
 Log rotation prevents log files from growing indefinitely and filling up the disk. Setting up rotation is optional, but recommended for any long-running installation.
