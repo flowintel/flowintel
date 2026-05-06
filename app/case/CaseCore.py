@@ -246,6 +246,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
             Recurring_Notification.query.filter_by(case_id=case.id).delete()
             Case_Note_Template_Model.query.filter_by(case_id=case.id).delete()
+            Rulezet_Rule.query.filter_by(case_id=case.id).delete()
+            Alert.query.filter_by(case_id=case.id).delete()
+            Case_Timeline_Event_Link.query.filter_by(case_id=case.id).delete()
+            Case_Timeline_Event.query.filter_by(case_id=case.id).delete()
 
             for file in case.files:
                 file_path = os.path.join(FILE_FOLDER, file.uuid)
