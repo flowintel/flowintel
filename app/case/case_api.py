@@ -154,6 +154,7 @@ class EditCase(Resource):
 
                     if "message" not in verif_dict:
                         CaseModel.edit(verif_dict, cid, current_user)
+                        CaseModel.edit_tags(verif_dict, cid, current_user)
                         case = CommonModel.get_case(cid)
                         flowintel_log("audit", 200, "Case edited", User=current_user.email, CaseId=cid, CaseTitle=case.title, IsPrivate=verif_dict["is_private"], IsPrivileged=verif_dict["privileged_case"])
                         return {"message": f"Case {cid} edited"}, 200
