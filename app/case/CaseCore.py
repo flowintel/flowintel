@@ -236,6 +236,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
             Case_Org.query.filter_by(case_id=case.id).delete()
             Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
+            Connector_Sync_Log.query.filter_by(case_id=case.id).delete()
             Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
             Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
             Case_Link_Case.query.filter_by(case_id_2=case.id).delete()

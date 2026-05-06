@@ -1009,6 +1009,7 @@ def delete_note_template(note_id: int) -> bool:
     if not note_template:
         return False
     
+    Case_Note_Template_Model.query.filter_by(note_template_id=note_id).delete()
     db.session.delete(note_template)
     db.session.commit()
     return True

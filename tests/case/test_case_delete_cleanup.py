@@ -77,6 +77,7 @@ def test_delete_case_cleans_up_all_features(client, app):
             Case_Galaxy_Tags,
             Case_Custom_Tags,
             Case_Connector_Instance,
+            Connector_Sync_Log,
             Recurring_Notification,
             Case_Note_Template_Model,
             Rulezet_Rule,
@@ -91,7 +92,10 @@ def test_delete_case_cleans_up_all_features(client, app):
         db.session.add(Case_Custom_Tags(custom_tag_id=999, case_id=case_id))
         # Case_Org already contains a valid row from case creation; do not insert a
         # fake org_id here as the notification system would dereference it.
-        db.session.add(Case_Connector_Instance(case_id=case_id, instance_id=999, identifier="test"))
+        cci = Case_Connector_Instance(case_id=case_id, instance_id=999, identifier="test")
+        db.session.add(cci)
+        db.session.flush()
+        db.session.add(Connector_Sync_Log(case_id=case_id, case_connector_instance_id=cci.id, direction="send", status="success"))
         db.session.add(Recurring_Notification(user_id=999, case_id=case_id))
         db.session.add(Case_Note_Template_Model(case_id=case_id, note_template_id=999, values={}, content=""))
         db.session.add(Rulezet_Rule(case_id=case_id, instance_id=999, remote_id="rule-1"))
@@ -130,6 +134,7 @@ def test_delete_case_cleans_up_all_features(client, app):
             Case_Custom_Tags,
             Case_Org,
             Case_Connector_Instance,
+            Connector_Sync_Log,
             Case_Link_Case,
             Recurring_Notification,
             Case_Note_Template_Model,
@@ -148,6 +153,7 @@ def test_delete_case_cleans_up_all_features(client, app):
         assert Case_Custom_Tags.query.filter_by(case_id=case_id).count() == 0, "Case_Custom_Tags should be deleted"
         assert Case_Org.query.filter_by(case_id=case_id).count() == 0, "Case_Org should be deleted"
         assert Case_Connector_Instance.query.filter_by(case_id=case_id).count() == 0, "Case_Connector_Instance should be deleted"
+        assert Connector_Sync_Log.query.filter_by(case_id=case_id).count() == 0, "Connector_Sync_Log should be deleted"
         assert Case_Link_Case.query.filter_by(case_id_1=case_id).count() == 0, "Case_Link_Case (side 1) should be deleted"
         assert Case_Link_Case.query.filter_by(case_id_2=case_id).count() == 0, "Case_Link_Case (side 2) should be deleted"
         assert Recurring_Notification.query.filter_by(case_id=case_id).count() == 0, "Recurring_Notification should be deleted"

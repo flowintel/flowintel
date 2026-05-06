@@ -3,7 +3,7 @@ import os
 import msgspec
 from flask import current_app
 from .. import db
-from ..db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy, Notification, Recurring_Notification
+from ..db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy, Notification, Recurring_Notification, Login_Event, User_Connector_Instance, Misp_Module_Config, Misp_Module_Result
 from ..utils.utils import generate_api_key
 import uuid
 
@@ -268,6 +268,10 @@ def delete_user_core(id):
         Task_User.query.filter_by(user_id=user.id).delete()
         Notification.query.filter_by(user_id=user.id).delete()
         Recurring_Notification.query.filter_by(user_id=user.id).delete()
+        Login_Event.query.filter_by(user_id=user.id).delete()
+        User_Connector_Instance.query.filter_by(user_id=user.id).delete()
+        Misp_Module_Config.query.filter_by(user_id=user.id).delete()
+        Misp_Module_Result.query.filter_by(user_id=user.id).delete()
         if not delete_default_org(user.org_id):
             db.session.delete(user)
         db.session.commit()
@@ -371,6 +375,12 @@ def delete_org_core(oid):
             for task_user in tasks_users:
                 db.session.delete(task_user)
                 db.session.commit()
+            Notification.query.filter_by(user_id=user.id).delete()
+            Recurring_Notification.query.filter_by(user_id=user.id).delete()
+            Login_Event.query.filter_by(user_id=user.id).delete()
+            User_Connector_Instance.query.filter_by(user_id=user.id).delete()
+            Misp_Module_Config.query.filter_by(user_id=user.id).delete()
+            Misp_Module_Result.query.filter_by(user_id=user.id).delete()
         
         for case_org in Case_Org.query.filter_by(org_id=org.id):
             db.session.delete(case_org)
