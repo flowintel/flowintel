@@ -145,6 +145,15 @@ class Config:
     PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST = os.getenv('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST', 'false').lower() == 'true'
 
     # =============================================================================
+    # CHATBOT
+    # =============================================================================
+    # Toggle the in-app chatbot (sidebar entry and /chatbot/* routes).
+    # When False, the menu item is hidden and the routes return 404.
+    # The chatbot also requires a reachable Ollama instance and the OLLAMA_*
+    # values in conf/config_module.py before it can answer questions.
+    ENABLE_CHATBOT = os.getenv('ENABLE_CHATBOT', 'false').lower() == 'true'
+
+    # =============================================================================
     # ENTRA ID
     # =============================================================================
     # Microsoft Entra ID (Azure AD) SSO configuration

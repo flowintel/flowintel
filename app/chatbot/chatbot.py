@@ -1,6 +1,6 @@
 import datetime
 import requests as http_requests
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, abort, current_app, render_template, request, jsonify
 from flask_login import login_required, current_user
 import conf.config_module as ConfigModule
 from .chatbot_core import get_chatbot_response
@@ -14,6 +14,13 @@ chatbot_blueprint = Blueprint(
     template_folder='templates',
     static_folder='static'
 )
+
+
+@chatbot_blueprint.before_request
+def _chatbot_enabled_guard():
+    """Block all chatbot routes when ENABLE_CHATBOT is not set."""
+    if not current_app.config.get("ENABLE_CHATBOT", False):
+        abort(404)
 
 @chatbot_blueprint.route("/", methods=['GET'])
 @login_required
