@@ -424,6 +424,7 @@ class MoveTaskDown(Resource):
 @templating_ns.doc(description='Change the order of the task', params={"cid": "id of a case", "tid": "id of a task"})
 class ChangeOrder(Resource):
     method_decorators = [template_editor_required, api_required]
+    @templating_ns.doc(params={"new-index": "Required. New 1-based index position for the task within the template"})
     def post(self, cid, tid):
         case = CommonModel.get_case_template(cid)
         if case:

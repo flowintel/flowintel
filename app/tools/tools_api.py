@@ -17,6 +17,7 @@ importer_ns = Namespace("importer", description="Endpoints to manage importer")
 @importer_ns.doc(description='Import a case. JSON is required')
 class ImportCase(Resource):
     method_decorators = [importer_required, api_required]
+    @importer_ns.doc(description='Pass a case JSON object or a list of case JSON objects to import. Each case must include a "title" field and may contain "tasks", "tags", "clusters", "custom_tags", and other case fields.')
     def post(self):
         if request.json:
             current_user = utils.get_user_api(request.headers["X-API-KEY"])
@@ -38,6 +39,7 @@ class ImportCase(Resource):
 @importer_ns.doc(description='Import a case template. JSON is required')
 class ImportCaseTemplate(Resource):
     method_decorators = [template_editor_required, api_required]
+    @importer_ns.doc(description='Pass a case template JSON object or a list of case template JSON objects to import. Each template must include a "title" field and may contain "tasks", "tags", "clusters", and other template fields.')
     def post(self):
         if request.json:
             current_user = utils.get_user_api(request.headers["X-API-KEY"])

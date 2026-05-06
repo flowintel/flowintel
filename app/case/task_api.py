@@ -380,7 +380,7 @@ class DownloadFile(Resource):
 @task_ns.doc(description='Upload a file')
 class UploadFile(Resource):
     method_decorators = [editor_required, api_required]
-    @task_ns.doc(params={})
+    @task_ns.doc(description='Send multipart/form-data with one or more file fields to upload files to the task.')
     def post(self, tid):
         from ..utils.utils import validate_file_size
         from ..utils.logger import flowintel_log
