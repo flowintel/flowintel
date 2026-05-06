@@ -1,13 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h3><i class="fas fa-robot me-2"></i>Chatbot</h3>
-        <small class="text-muted">AI-powered assistant for Flowintel</small>
-        <hr>
+<div class="case-core-style" style="border-radius: 0">
+    <div class="row align-items-center">
+        <div class="col-auto d-flex align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-robot me-2"></i>Chatbot</h5>
+            <i class="fa-solid fa-circle-question text-muted ms-2" data-bs-toggle="tooltip" data-bs-placement="right"
+               title="AI-powered assistant for Flowintel"></i>
+        </div>
     </div>
 </div>
+
+<hr class="fading-line-2 mt-4 mb-4">
 
 <div class="row" style="height: calc(100vh - 180px); min-height: 400px;">
     <!-- Sidebar: conversation history -->
