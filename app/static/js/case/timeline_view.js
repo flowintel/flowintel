@@ -17,6 +17,12 @@ export default {
         const edit_description = ref('')
         const sort_asc = ref(true)
 
+        // Import modal state
+        const show_import_modal = ref(false)
+        const misp_objects = ref([])
+        const selected_ids = ref([])
+        const select_all = ref(false)
+
         const sorted_events = computed(() => {
             const list = [...timeline_events.value]
             list.sort((a, b) => {
@@ -46,13 +52,11 @@ export default {
         }
 
         function parseDateForTimeline(date_text, date_parsed) {
-            // Use date_parsed if available (already in YYYY-MM-DD HH:MM format)
             let d = null
             if (date_parsed) {
                 d = new Date(date_parsed.replace(' ', 'T'))
             }
             if (!d || isNaN(d.getTime())) {
-                // Try to parse the raw date text
                 d = new Date(date_text)
             }
             if (!d || isNaN(d.getTime())) {
@@ -86,7 +90,7 @@ export default {
                 if (ev.misp_object_id) {
                     let loc = text.split('—')[0].split(']')[1].trim()
                     headline = '<i class="fa-solid fa-cubes me-1"></i> ' + loc
-                }else{
+                } else {
                     headline = text
                 }
 
@@ -97,7 +101,7 @@ export default {
                         text: '<div style="max-width:500px">' + text + '</div>'
                     }
                 })
-            }            
+            }
 
             if (events.length === 0) {
                 const container = document.getElementById('case-timeline-embed')
@@ -114,7 +118,7 @@ export default {
                         width: '100%',
                         height: 500
                     })
-                } catch(e) {
+                } catch (e) {
                     console.error('Timeline render error:', e)
                 }
             }
@@ -187,16 +191,52 @@ export default {
             await display_toast(res)
         }
 
-        async function import_misp_objects() {
+        // --- Import modal helpers ---
+        async function open_import_modal() {
+            const res = await fetch('/case/' + props.case_id + '/get_case_misp_object')
+            if (res.status === 200) {
+                const loc = await res.json()
+                misp_objects.value = loc['misp-object'] || []
+                selected_ids.value = []
+                select_all.value = false
+                show_import_modal.value = true
+            } else {
+                display_toast(res)
+            }
+        }
+
+        function toggle_select_all() {
+            // `select_all` is already updated by v-model when this handler runs,
+            // so act based on its current value.
+            if (select_all.value) {
+                // select only those that are not already imported
+                selected_ids.value = misp_objects.value.filter(o => !o.is_imported).map(o => o.object_id)
+            } else {
+                selected_ids.value = []
+            }
+        }
+
+        async function perform_import() {
+            if (!selected_ids.value || selected_ids.value.length === 0) {
+                create_message('Select at least one object to import', 'warning-subtle')
+                return
+            }
             const res = await fetch('/case/' + props.case_id + '/import_misp_to_timeline', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
-                body: JSON.stringify({})
+                body: JSON.stringify({object_ids: selected_ids.value})
             })
             if (res.status === 200) {
+                show_import_modal.value = false
                 await fetch_timeline_events()
             }
             await display_toast(res)
+        }
+
+        function close_import_modal() {
+            show_import_modal.value = false
+            selected_ids.value = []
+            select_all.value = false
         }
 
         onMounted(() => {
@@ -219,7 +259,14 @@ export default {
             cancel_edit,
             save_edit,
             delete_event,
-            import_misp_objects,
+            open_import_modal,
+            perform_import,
+            show_import_modal,
+            misp_objects,
+            selected_ids,
+            select_all,
+            toggle_select_all,
+            close_import_modal,
             fetch_timeline_events
         }
     },
@@ -230,7 +277,7 @@ export default {
                 <button class="btn btn-primary btn-sm me-2" @click="show_add_form = !show_add_form">
                     <i class="fa-solid fa-plus me-1"></i>Add Event
                 </button>
-                <button class="btn btn-outline-secondary btn-sm" @click="import_misp_objects()" title="Import MISP objects as timeline events">
+                <button class="btn btn-outline-secondary btn-sm" @click="open_import_modal()" title="Import MISP objects as timeline events">
                     <i class="fa-solid fa-cubes me-1"></i>Import MISP Objects
                 </button>
             </div>
@@ -258,6 +305,45 @@ export default {
                         <i class="fa-solid fa-check me-1"></i>Save
                     </button>
                     <button class="btn btn-outline-secondary btn-sm" @click="show_add_form = false">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Selection Modal -->
+        <div v-if="show_import_modal" class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Import MISP Objects</h5>
+                        <button type="button" class="btn-close" @click="close_import_modal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-2">
+                            <input type="checkbox" id="select_all" v-model="select_all" @change="toggle_select_all()">
+                            <label for="select_all" class="ms-1">Select all</label>
+                        </div>
+                        <div v-if="misp_objects.length === 0" class="text-muted">No MISP objects found for this case.</div>
+                        <div v-else class="list-group" style="max-height:400px; overflow:auto;">
+                            <label v-for="o in misp_objects" :key="o.object_id" class="list-group-item d-flex justify-content-between align-items-start">
+                                <div class="d-flex align-items-start">
+                                    <input type="checkbox" class="form-check-input me-2 mt-1" :value="o.object_id" v-model="selected_ids" :disabled="o.is_imported">
+                                    <div>
+                                        <strong>[[ o.object_name ]]</strong>
+                                        <div class="text-muted small">Created: [[ o.object_creation_date ]]</div>
+                                        <div class="small" v-if="o.attributes && o.attributes.length">[[ o.attributes.map(a => a.object_relation + ': ' + a.value).slice(0,3).join(', ') ]]</div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span v-if="o.is_imported" class="badge bg-success me-2">Imported</span>
+                                    <span v-else class="badge bg-secondary rounded-pill">[[ o.attributes.length ]] attrs</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" @click="close_import_modal()">Cancel</button>
+                        <button class="btn btn-primary" @click="perform_import()">Import selected ([[ selected_ids.length ]])</button>
+                    </div>
                 </div>
             </div>
         </div>
