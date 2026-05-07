@@ -187,7 +187,7 @@ document.getElementById('webhook-config').addEventListener('submit', async (e) =
     };
     const resp = await fetch('/alerts/config', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token').value},
         body: JSON.stringify(data)
     });
     const result = await resp.json();
@@ -206,7 +206,7 @@ document.getElementById('imap-config').addEventListener('submit', async (e) => {
     };
     const resp = await fetch('/alerts/config', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token').value},
         body: JSON.stringify(data)
     });
     const result = await resp.json();
@@ -215,14 +215,20 @@ document.getElementById('imap-config').addEventListener('submit', async (e) => {
 
 // Test webhook
 document.getElementById('test-webhook').addEventListener('click', async () => {
-    const resp = await fetch('/alerts/test/webhook');
+    const resp = await fetch('/alerts/test/webhook', {
+        method: 'POST',
+        headers: {'X-CSRFToken': document.getElementById('csrf_token').value}
+    });
     const result = await resp.json();
     alert('Webhook test: ' + JSON.stringify(result, null, 2));
 });
 
 // Test IMAP
 document.getElementById('test-imap').addEventListener('click', async () => {
-    const resp = await fetch('/alerts/test/imap');
+    const resp = await fetch('/alerts/test/imap', {
+        method: 'POST',
+        headers: {'X-CSRFToken': document.getElementById('csrf_token').value}
+    });
     const result = await resp.json();
     alert('IMAP test: ' + JSON.stringify(result, null, 2));
 });
@@ -243,7 +249,10 @@ document.getElementById('refresh-logs').addEventListener('click', async () => {
 document.querySelectorAll('.alert-item').forEach(el => {
     el.addEventListener('click', async () => {
         const id = el.dataset.id;
-        await fetch(`/alerts/api/alerts/${id}/read`);
+        await fetch(`/alerts/api/alerts/${id}/read`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': document.getElementById('csrf_token').value}
+        });
         el.classList.remove('unread');
         // Update unread count
         const count = document.querySelectorAll('.alert-item.unread').length;

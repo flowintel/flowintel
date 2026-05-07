@@ -4,12 +4,14 @@ import json
 import hashlib
 import hmac
 import datetime
+import os
 
 module_config = {
     "case_task": "case"
 }
 
-ALERT_LOG_FILE = "logs/webhook_alerts.log"
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+ALERT_LOG_FILE = os.path.join(_PROJECT_ROOT, "logs", "webhook_alerts.log")
 
 
 def _sign_payload(payload: bytes) -> str:
