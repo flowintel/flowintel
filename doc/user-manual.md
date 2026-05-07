@@ -166,7 +166,7 @@ Notifications are created automatically when something relevant happens. The mai
 
 ![user-manual-diagrams/filtering-notifications.png](user-manual-diagrams/filtering-notifications.png)
 
-At the top of the notification page, you can switch between unread and read notifications. A time filter lets you narrow the list to notifications from today, this week, or all time. You can also filter by type or category. When a filter is active, a count shows how many notifications match out of the total.
+At the top of the notification page, you can switch between unread and read notifications. A time filter lets you narrow the list to notifications from today, this week, or all time. You can also filter by type or category. A small numeric input next to the filters accepts a case ID and limits the list to notifications related to that single case, which is handy when you are catching up on a long-running investigation. When a filter is active, a count shows how many notifications match out of the total.
 
 ### Acting on notifications
 
@@ -380,6 +380,31 @@ Only users with the **Admin** system role or the **Importer** permission can acc
 
 During import, Flowintel validates the JSON against its case schema and applies the same constraints as when creating a case manually. The case title must be unique; if a case with the same title already exists, the import is rejected. If the JSON contains a UUID that already exists in the database, Flowintel generates a new one rather than overwriting the existing case. Tags and galaxy clusters referenced in the file must already exist on your instance, with one exception: a toggle labelled **Create custom tags from JSON** lets the importer automatically create any custom tags that are present in the file but missing from your instance.
 
+## Exporting several cases at once
+
+The download option on a case page covers a single case. To export a batch of cases in one go, navigate to **Tools > Exporter**. Pick the cases you want to include, choose the output format and click **Export**.
+
+The exporter is reserved for platform administrators and team leads: you need either the **Admin** system role or the **Case Admin** permission to open the page or run an export. If neither applies to your account, the menu entry is hidden. The list itself is also filtered by the usual case visibility rules, so even an eligible user only sees the cases they would normally have access to (their own organisation's cases, public cases, and any case where their organisation is assigned).
+
+Three formats are available:
+
+- **JSON**: the same schema produced by the per-case download, wrapped in an archive when you export more than one case.
+- **CSV**: a flat tabular summary suitable for spreadsheets. Uploaded files are not included in CSV exports.
+- **XML**: a structured representation of the same data as the JSON export.
+
+For JSON and XML exports, a tick box labelled **Include uploaded files** packs the file attachments into the resulting archive. Leave it unticked when you only need the case metadata.
+
+## Forking a case
+
+Forking creates a brand-new case from an existing one. The new case keeps the structure of the original (tasks, MISP objects, tags, galaxy clusters, custom tags, subtasks and URL tools) but starts with a fresh UUID, an empty history and the forking user's organisation as the only assigned organisation. Notes, files and user assignments are not copied over.
+
+To fork a case, open it and pick **Fork** from the **Actions** menu. The new case opens in edit mode so you can adjust the title and description before saving.
+
+Forking is open to any user with at least the **Editor** role, even when their organisation is not assigned to the source case. Two restrictions still apply:
+
+- **Private** cases can only be forked by users who already have access to them, that is, members of the assigned organisations and administrators.
+- **Privileged** cases can only be forked by an Admin, Case Admin or Queue Admin.
+
 ## Case history, info and audit trail
 
 ![user-manual-diagrams/case-history.png](user-manual-diagrams/case-history.png)
@@ -453,6 +478,8 @@ In a privileged case, three additional statuses apply. Privileged cases are cove
 To change the status of a task, open the case, click on the task pane and select a new status from the dropdown in the Status section. The assigned users are notified when the status changes. In a privileged case, moving a task to **Requested** or **Request Review** triggers a notification to all approvers. Moving a task from **Requested** to **Approved** or **Rejected** notifies the assigned users.
 
 To mark a task as finished, you can either set its status to **Finished** or click the **Complete** button. Completing a task records the finish date and moves the task to the list of completed tasks. To revive a completed task, click the same button again. This sets the task back to the **Created** status and places it at the end of the open task list.
+
+If the parent case has already been closed, reviving a task also revives the case automatically. The case is moved out of the completed state, its finish date is cleared, its status is reset to **Created**, all assigned organisations receive a notification telling them the case is now active again, and a *Case revived* entry is appended to the case history. This avoids the situation where a case is marked completed while one of its tasks is still being worked on.
 
 ## Assigning users
 
@@ -660,7 +687,7 @@ To manage custom tags, navigate to **Tags > Custom Tags**. From this page you ca
 
 - **Create a custom tag**: click the **Plus** button and provide a name and a colour (in hexadecimal format, for example `#FF5733`). Optionally, select a FontAwesome icon to display alongside the tag. Click **Save** to create the tag.
 - **Edit a custom tag**: click the edit button on an existing tag to change its name, colour or icon.
-- **Delete a custom tag**: click the delete button to remove a custom tag. Deleting a custom tag removes it from all cases and tasks where it was applied.
+- **Delete a custom tag**: click the delete button to remove a custom tag. Flowintel only allows the deletion when the tag is no longer attached to any case, task, case template or task template. If the tag is still in use, the action is refused with the message *Custom tag is in use and cannot be deleted*. Detach the tag from the items that still reference it (or deactivate it) before trying again.
 
 Custom tags are available to all authenticated users when tagging cases and tasks. Creating, editing and deleting custom tags requires at least the **Editor** role.
 
@@ -721,6 +748,18 @@ To run a search, open the **Tools** section in the sidebar and select **Search A
 Click **Search** to run the query. Flowintel returns a list of cases that contain at least one matching attribute. For each case, the results show the title, description, privacy status, case status and creation date, with a link to open the case. The search respects access control: non-administrators only see public cases and cases where their organisation is assigned.
 
 Note that the search covers MISP object attributes on cases only; it does not search task-level data. The results show which cases matched, not the individual attributes within them. To inspect which specific object or attribute triggered the match, open the case and review its MISP objects.
+
+## Creating a case from a MISP event
+
+Flowintel can build a fresh case from an existing MISP event without you having to copy and paste anything. Open **Tools > Case from MISP**, select a *unique* title, pick the case template and the MISP instance to query and paste the MISP event UUID. The page first checks the connection and then displays a preview of the event: title, info field, threat level, analysis status, distribution and the list of objects and attributes the event contains.
+
+From the preview you can fine-tune what ends up in the case:
+
+- Tick the **objects** that should be imported as MISP objects on the new case. Their attributes are converted directly.
+- Tick individual **attributes** that do not belong to a selected object; the importer collects them into a single task note so they are not lost.
+- Enable **Add MISP event info** to copy the event metadata (info field, tags, dates) into a note attached to the new case.
+
+When you confirm, Flowintel creates the case under your organisation, attaches the requested objects, attributes and notes, and stores the MISP event UUID on the case so you can push updates back to the same event later. The action requires the **MISP Editor** role.
 
 ## Analysing objects
 
@@ -876,6 +915,8 @@ Taxonomy tags and galaxy clusters are synchronised to the MISP event. Custom tag
 If the connector instance is configured as a **receive_from** type, you can pull data from MISP into a case. Flowintel fetches the MISP event using the identifier and creates or updates local MISP objects and their attributes to match. As with send connectors, you can attach multiple receive connectors to the same case to pull from different MISP instances.
 
 The receive operation synchronises MISP objects and attributes only. It does not pull event-level metadata such as tags or galaxies back into the case. If you need those, add them to the case manually.
+
+A receive_from MISP connector also gives you a **Search in MISP** input on the case or task. Type a value (for example an IP address, domain name or hash), run the search and Flowintel queries the connected MISP instance for matching attributes. Each result shows the source event, the attribute type and value, and a button to **Save as note** that appends the matching attributes (with a link back to the MISP event) to the case note or to the task note you are working on. This is convenient for capturing intelligence from MISP straight into the investigation, without leaving Flowintel.
 
 
 # Templates
@@ -1943,6 +1984,23 @@ grep '^AUDIT' record.log
 
 Change the prefix if your log aggregation system expects a different format, or if you run multiple Flowintel instances and need to distinguish their audit streams.
 
+## Audit log
+
+The audit log gives administrators a single view of every security-relevant action recorded in Flowintel, without needing shell access to the server. Open it from **Tools > Audit log**. Access is limited to users with the **Admin** system role or the dedicated **Audit Viewer** permission.
+
+The page combines two sources: the `AUDIT` entries written to the application log file (`record.log` by default) and the per-case history files maintained alongside each case. Each row shows the timestamp, the user who triggered the action, the affected case (when relevant), the HTTP status code and a description of what happened.
+
+Four filters are available at the top of the page:
+
+- **Start date** and **End date** restrict the result to a time window.
+- **User** narrows the list to actions performed by a specific account.
+- **Action** matches a substring of the description, for example `delete` or `case`.
+- **Exclude** removes any entry whose description contains the given substring, which is useful for filtering out routine background activity.
+
+A small graph above the table summarises activity over the chosen window. The **Export** button downloads the filtered result as CSV or JSON for archival or for handing over to an external SIEM.
+
+The audit log is a community-wide view. It complements, but does not replace, the per-case history visible from the **History** tab on each case: the case history is scoped to a single case and follows the same access rules as the case itself, while the audit log shows every recorded action on the platform.
+
 
 ## MISP integration settings
 
@@ -2150,9 +2208,9 @@ Yes. You can download a case as a JSON file from the case detail page. The expor
 
 Navigate to **Tools > Importer**.  The JSON format must match the structure Flowintel expects, which is the same format produced by the template and case export.
 
-**I deleted a custom tag. Will it be removed from all cases and tasks?**
+**I tried to delete a custom tag and Flowintel refused. Why?**
 
-Yes. Deleting a custom tag removes it from every case, task, case template and task template where it was used. This action cascades and cannot be undone. If you want to keep the tag on existing items but prevent it from being assigned to new ones, consider deactivating it instead of deleting it.
+Flowintel protects custom tags that are still attached to a case, task, case template or task template. The delete action returns *Custom tag is in use and cannot be deleted* until the last reference is removed. Either detach the tag from every item that still uses it, or deactivate the tag if you want to keep it on the existing items but prevent further use. Once nothing references the tag any more, the delete button works as expected.
 
 **How do I create a case report?**
 
