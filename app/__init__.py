@@ -125,10 +125,9 @@ def create_app():
     app.register_blueprint(my_assignment_blueprint, url_prefix="/my_assignment")
     app.register_blueprint(connector_blueprint, url_prefix="/connectors")
     app.register_blueprint(analyzer_blueprint, url_prefix="/analyzer")
-    csrf.exempt(analyzer_blueprint)
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
     app.register_blueprint(alerts_blueprint, url_prefix="/alerts")
-    csrf.exempt(alerts_blueprint)
+
     if app.config.get("ENABLE_CHATBOT", False):
         # Import lazily so the heavy chatbot dependencies (dspy, litellm, mcp)
         # are not loaded when the feature is disabled.

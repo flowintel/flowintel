@@ -14,6 +14,13 @@ class Config:
     SECRET_KEY = 'SECRET_KEY_ENV_VAR_NOT_SET'
     
     # =============================================================================
+    # CSRF PROTECTION
+    # =============================================================================
+    # CSRF token lifetime (hours). Default: 8 hours.
+    # Flask-WTF expects the value in seconds via `WTF_CSRF_TIME_LIMIT`.
+    WTF_CSRF_TIME_LIMIT = 8 * 3600
+    
+    # =============================================================================
     # FLASK APPLICATION BINDING
     # =============================================================================
     # FLASK_URL: IP address Flask binds to
