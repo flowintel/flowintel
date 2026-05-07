@@ -129,7 +129,6 @@ def create_app():
     csrf.exempt(analyzer_blueprint)
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
     app.register_blueprint(alerts_blueprint, url_prefix="/alerts")
-    csrf.exempt(alerts_blueprint)
     app.register_blueprint(chatbot_blueprint, url_prefix="/chatbot")
 
     from .api import api_blueprint

@@ -139,7 +139,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             case_json["status"] = CommonModel.get_status(case.status_id).name
             case_json["org_name"] = user.Org.name if user.Org else ""
             dummy_task = {"id": 0, "title": "", "case_id": case.id}
-            if "webhook" in modules and ConfigModule.WEBHOOK_ENABLED:
+            webhook_enabled = getattr(ConfigModule, "WEBHOOK_ENABLED", False)
+            webhook_url = getattr(ConfigModule, "WEBHOOK_URL", "") or ""
+            if "webhook" in modules and webhook_enabled:
                 webhook_status = modules["webhook"].handler(dummy_task, case_json, user, user)
 
             from app.db_class.db import Alert
@@ -148,13 +150,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 case_id=case.id,
                 message=f"New case created: {case.title}",
                 status=status,
-                webhook_url=ConfigModule.WEBHOOK_URL if hasattr(ConfigModule, 'WEBHOOK_URL') else "",
+                webhook_url=webhook_url,
                 webhook_status=webhook_status,
             )
             db.session.add(alert)
             db.session.commit()
         except Exception as e:
-            print(f"Alert/Webhook error: {e}")
+            current_app.logger.exception("Alert/Webhook error on case creation: %s", e)
 
         return case
 
