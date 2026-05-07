@@ -47,8 +47,10 @@ tmp/
 
 # Ignore config files
 conf/config.py
+conf/config.py.backup
 conf/config_modules.py
 conf/config_module.py
+conf/config_module.py.backup
 /data
 
 # Ignore temp files

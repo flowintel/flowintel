@@ -404,6 +404,46 @@
                 </div>
             </div>
 
+            <!-- ── Chatbot ── -->
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-robot me-2"></i>Chatbot</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">Enable chatbot <small class="fw-normal text-muted">(ENABLE_CHATBOT)</small></td>
+                                <td>{{ bool_edit('enable_chatbot') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Ollama URL <small class="fw-normal text-muted">(OLLAMA_URL)</small></td>
+                                <td>
+                                    {% if system_info.ollama_url %}<code>{{ system_info.ollama_url }}</code>{% else %}<span class="text-muted">Not configured</span>{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Ollama model <small class="fw-normal text-muted">(OLLAMA_MODEL)</small></td>
+                                <td>
+                                    {% if system_info.ollama_model %}<code>{{ system_info.ollama_model }}</code>{% else %}<span class="text-muted">Not set</span>{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Ollama API key <small class="fw-normal text-muted">(OLLAMA_KEY)</small></td>
+                                <td>
+                                    <span class="badge {% if system_info.ollama_key_set %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {% if system_info.ollama_key_set %}Configured{% else %}Not set{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <small class="text-muted d-block mt-2">
+                        OLLAMA_* settings are defined in <code>conf/config_module.py</code> and are read-only here.
+                    </small>
+                </div>
+            </div>
+
             <!-- ── Entra ID SSO ── -->
             <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
                 <div class="card-header py-3">
@@ -644,6 +684,7 @@
             const editing = reactive({
                 limit_user_view_to_org: false,
                 enforce_privileged_case: false,
+                enable_chatbot: false,
                 misp_export_files: false,
                 show_gdpr_notice: false,
                 log_file: false,
@@ -665,6 +706,7 @@
             const editValues = reactive({
                 limit_user_view_to_org: {{ system_info.limit_user_view_to_org | tojson }},
                 enforce_privileged_case: {{ system_info.enforce_privileged_case | tojson }},
+                enable_chatbot: {{ system_info.enable_chatbot | tojson }},
                 misp_export_files: {{ system_info.misp_export_files | tojson }},
                 show_gdpr_notice: {{ system_info.show_gdpr_notice | tojson }},
                 log_file: {{ (system_info.log_file or '') | tojson }},

@@ -113,7 +113,6 @@ def create_app():
     from .custom_tags.custom_tags import custom_tags_blueprint
     from .templating.templating import templating_blueprint
     from .alerts import alerts_blueprint
-    from .chatbot.chatbot import chatbot_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -130,7 +129,11 @@ def create_app():
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
     app.register_blueprint(alerts_blueprint, url_prefix="/alerts")
     csrf.exempt(alerts_blueprint)
-    app.register_blueprint(chatbot_blueprint, url_prefix="/chatbot")
+    if app.config.get("ENABLE_CHATBOT", False):
+        # Import lazily so the heavy chatbot dependencies (dspy, litellm, mcp)
+        # are not loaded when the feature is disabled.
+        from .chatbot.chatbot import chatbot_blueprint
+        app.register_blueprint(chatbot_blueprint, url_prefix="/chatbot")
 
     from .api import api_blueprint
     csrf.exempt(api_blueprint)
