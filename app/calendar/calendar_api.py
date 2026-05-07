@@ -8,6 +8,7 @@ calendar_api = Namespace('calendar', description='Calendar operations')
 
 
 @calendar_api.route('/feed')
+@calendar_api.doc(description='Get full calendar feed in ICS format for the authenticated user')
 class CalendarFeed(Resource):
     """Get full calendar feed in ICS format"""
     method_decorators = [api_required]

@@ -9,9 +9,10 @@ my_assignment_ns = Namespace("my_assignment", description="Endpoints to manage a
 
     
 @my_assignment_ns.route('/user')
-@my_assignment_ns.doc(description='Get all cases')
+@my_assignment_ns.doc(description='Get all task assignments for a user')
 class MyAssignment(Resource):
     method_decorators = [api_required]
+    @my_assignment_ns.doc(params={"user_id": "Required. Id of the user whose assignments to retrieve", "page": "Page number for pagination (default: 1)"})
     def get(self):
         if "user_id" in request.args:
             if "page" in request.args:

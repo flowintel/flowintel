@@ -10,7 +10,7 @@ from flask import send_file, current_app
 import pymisp
 import requests
 
-from sqlalchemy import desc, and_, func
+from sqlalchemy import desc, and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from dateutil import relativedelta
 
@@ -131,32 +131,35 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.save_history(case.uuid, user, "Case Created")
 
         # Trigger webhook and create alert for new cases
+        webhook_status = None
         try:
-            webhook_status = None
-            from app.utils.utils import get_modules_list
-            modules, _ = get_modules_list()
-            case_json = case.to_json()
-            case_json["status"] = CommonModel.get_status(case.status_id).name
-            case_json["org_name"] = user.Org.name if user.Org else ""
-            dummy_task = {"id": 0, "title": "", "case_id": case.id}
-            webhook_enabled = getattr(ConfigModule, "WEBHOOK_ENABLED", False)
-            webhook_url = getattr(ConfigModule, "WEBHOOK_URL", "") or ""
-            if "webhook" in modules and webhook_enabled:
-                webhook_status = modules["webhook"].handler(dummy_task, case_json, user, user)
+            if getattr(ConfigModule, "WEBHOOK_ENABLED", False):
+                from app.utils.utils import get_modules_list
+                modules, _ = get_modules_list()
+                if "webhook" in modules:
+                    case_json = case.to_json()
+                    case_json["status"] = CommonModel.get_status(case.status_id).name
+                    case_json["org_name"] = user.Org.name if user.Org else ""
+                    dummy_task = {"id": 0, "title": "", "case_id": case.id}
+                    webhook_status = modules["webhook"].handler(dummy_task, case_json, user, user)
+        except Exception:
+            current_app.logger.exception("Webhook delivery failed for case %s", case.id)
 
+        try:
             from app.db_class.db import Alert
             status = "sent" if webhook_status and webhook_status < 300 else "error" if webhook_status is None else "pending"
             alert = Alert(
                 case_id=case.id,
                 message=f"New case created: {case.title}",
                 status=status,
-                webhook_url=webhook_url,
+                webhook_url=getattr(ConfigModule, "WEBHOOK_URL", ""),
                 webhook_status=webhook_status,
             )
             db.session.add(alert)
             db.session.commit()
-        except Exception as e:
-            current_app.logger.exception("Alert/Webhook error on case creation: %s", e)
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Failed to create Alert for case %s", case.id)
 
         return case
 
@@ -233,6 +236,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
             Case_Org.query.filter_by(case_id=case.id).delete()
             Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
+            Connector_Sync_Log.query.filter_by(case_id=case.id).delete()
             Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
             Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
             Case_Link_Case.query.filter_by(case_id_2=case.id).delete()
@@ -243,6 +247,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
             Recurring_Notification.query.filter_by(case_id=case.id).delete()
             Case_Note_Template_Model.query.filter_by(case_id=case.id).delete()
+            Rulezet_Rule.query.filter_by(case_id=case.id).delete()
+            Alert.query.filter_by(case_id=case.id).delete()
+            Case_Timeline_Event_Link.query.filter_by(case_id=case.id).delete()
+            Case_Timeline_Event.query.filter_by(case_id=case.id).delete()
 
             for file in case.files:
                 file_path = os.path.join(FILE_FOLDER, file.uuid)
@@ -1579,6 +1587,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Delete a misp object"""
         misp_object = self.get_misp_object(oid)
         if int(cid) == misp_object.case_id:
+            # Remove any timeline events (and their links) that reference this object
+            event_list = Case_Timeline_Event.query.filter_by(case_id=cid, misp_object_id=oid).all()
+            if event_list:
+                event_ids = [e.id for e in event_list]
+                # Delete links pointing to these events
+                Case_Timeline_Event_Link.query.filter(
+                    or_(Case_Timeline_Event_Link.source_event_id.in_(event_ids), Case_Timeline_Event_Link.target_event_id.in_(event_ids))
+                ).delete(synchronize_session=False)
+                # Delete the events themselves
+                Case_Timeline_Event.query.filter(Case_Timeline_Event.id.in_(event_ids)).delete(synchronize_session=False)
+                db.session.commit()
             # Delete attributes of the object
             for attribute in misp_object.attributes:
                 misp_attrs = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attribute.id, case_id=cid).all()
@@ -2046,11 +2065,27 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 continue
         return None
 
-    def import_misp_objects_to_timeline(self, cid, current_user):
-        """Import MISP objects with first_seen dates as timeline events"""
+    def import_misp_objects_to_timeline(self, cid, current_user, object_ids=None):
+        """Import MISP objects with first_seen dates as timeline events.
+
+        If `object_ids` is provided (list of ints), only those objects will be
+        considered for import.
+        """
         misp_objects = self.get_misp_object_by_case(cid)
+        # Filter to selected objects if provided
+        if object_ids is not None:
+            try:
+                object_ids = [int(i) for i in object_ids]
+            except Exception:
+                object_ids = []
+            misp_objects = [obj for obj in misp_objects if obj.id in object_ids]
+
         imported = 0
         for obj in misp_objects:
+            # Skip if this object has already been imported to the timeline
+            existing_event = Case_Timeline_Event.query.filter_by(case_id=cid, misp_object_id=obj.id).first()
+            if existing_event:
+                continue
             earliest_date = None
             for attr in obj.attributes:
                 if attr.first_seen and (earliest_date is None or attr.first_seen < earliest_date):

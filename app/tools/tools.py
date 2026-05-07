@@ -8,6 +8,7 @@ from ..utils.utils import get_modules_list, reload_application
 from ..utils.logger import flowintel_log
 from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case, check_user_in_private_cases
 from ..case.CaseCore import CaseModel, FILE_FOLDER
+import conf.config_module as ConfigModule
 import base64
 import csv
 import io
@@ -653,6 +654,12 @@ def system_settings():
         'limit_user_view_to_org': current_app.config.get('LIMIT_USER_VIEW_TO_ORG'),
         'enforce_privileged_case': current_app.config.get('ENFORCE_PRIVILEGED_CASE', False),
 
+        # Chatbot (ENABLE_CHATBOT lives in conf/config.py; OLLAMA_* live in conf/config_module.py)
+        'enable_chatbot': current_app.config.get('ENABLE_CHATBOT', False),
+        'ollama_url': getattr(ConfigModule, 'OLLAMA_URL', ''),
+        'ollama_model': getattr(ConfigModule, 'OLLAMA_MODEL', ''),
+        'ollama_key_set': bool(getattr(ConfigModule, 'OLLAMA_KEY', '')),
+
         # Logging & theming
         'log_file': getattr(config_class, 'LOG_FILE', None),
         'audit_log_prefix': current_app.config.get('AUDIT_LOG_PREFIX', 'AUDIT'),
@@ -736,6 +743,7 @@ def system_settings_save():
     key_types = {
         'LIMIT_USER_VIEW_TO_ORG': 'bool',
         'ENFORCE_PRIVILEGED_CASE': 'bool',
+        'ENABLE_CHATBOT': 'bool',
         'MISP_EXPORT_FILES': 'bool',
         'SHOW_GDPR_NOTICE': 'bool',
         'TASK_REQUESTED': 'int',

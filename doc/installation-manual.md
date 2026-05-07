@@ -1427,6 +1427,39 @@ You only need to edit `config_module.py` if you're using:
 
 If you're not using these features, leave the file unchanged.
 
+## Chatbot (optional)
+
+Flowintel ships with an conversational assistant that can answer questions about the cases and tasks you have access to. It is **disabled by default** to keep the base installation light and to avoid pointing the platform at an external language model without an explicit decision from the operator.
+
+### Enabling the chatbot
+
+The chatbot is controlled by a single flag in `conf/config.py`:
+
+```python
+ENABLE_CHATBOT = True
+```
+
+When the flag is set to `False` (the default), the **Chatbot** entry is hidden from the sidebar and every `/chatbot/` route returns a 404. Setting it to `True` re-exposes the menu item and the routes.
+
+The chatbot itself talks to an Ollama instance, so you also need to point Flowintel at it. These values live in `conf/config_module.py`:
+
+```python
+OLLAMA_URL = "http://localhost:11434"   # URL of the Ollama server
+OLLAMA_KEY = ""                         # Optional bearer token
+OLLAMA_MODEL = ""                       # Default model name (optional)
+```
+
+If `OLLAMA_URL` is not reachable, the chatbot page still loads but the model dropdown stays empty and queries fail with a clear error. Restart Flowintel after changing either configuration file.
+
+### Technical background
+
+The chatbot is a thin Flask blueprint (`app/chatbot/`) that wires three external pieces together:
+
+- **Ollama** runs the actual large language model. It is a separate service, hosted by you, and Flowintel never sends prompts anywhere else. Install it from <https://ollama.com> and pull at least one model, for example `ollama pull llama3`.
+- **LiteLLM** (`litellm` Python package) provides the uniform client used to talk to Ollama. It abstracts the model-specific request format so the same code works against different back-ends.
+- **DSPy** (`dspy` Python package) defines the question/answer signature and orchestrates the call. It gives the chatbot a structured prompt rather than a free-form one.
+- **MCP** (Model Context Protocol, `mcp` package together with the `flowintel-mcp` server) lets the model call back into Flowintel's REST API to look up cases, tasks and other data on your behalf. The MCP server is started in a background thread on the first chatbot request and uses your personal API key, so the assistant only sees what you would see in the web interface.
+
 # Installing Flowintel
 
 ## Run the installation script

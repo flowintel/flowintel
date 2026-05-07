@@ -15,11 +15,17 @@
 </style>
 
 <div class="container-fluid">
-    <div class="d-flex align-items-center gap-2 mb-3">
-        <h1 class="h3 mb-0"><i class="fa-solid fa-bell me-2"></i>Alerts</h1>
-        <i class="fa-solid fa-circle-question text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
-           title="Every new case created in Flowintel automatically appears here. If a webhook is configured, an HTTP POST is sent to the external URL and the alert status shows the result."></i>
+    <div class="case-core-style" style="border-radius: 0">
+        <div class="row align-items-center">
+            <div class="col-auto d-flex align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-bell me-2"></i>Alerts</h5>
+                <i class="fa-solid fa-circle-question text-muted ms-2" data-bs-toggle="tooltip" data-bs-placement="right"
+                   title="Every new case created in Flowintel automatically appears here. If a webhook is configured, an HTTP POST is sent to the external URL and the alert status shows the result."></i>
+            </div>
+        </div>
     </div>
+
+    <hr class="fading-line-2 mt-4 mb-4">
 
     <!-- How it works card -->
     <div class="alert alert-info d-flex align-items-center gap-3 py-2 px-3 mb-3 small" role="alert">

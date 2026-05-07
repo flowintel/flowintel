@@ -1,5 +1,8 @@
 # https://github.com/flowintel/flowintel
 
+# Install variables
+VENV_DIR="env"
+
 if apt -v &> /dev/null ; then
     sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget valkey
     # install pandoc from git 
@@ -75,8 +78,8 @@ else
     PYTHON_CMD=python3
 fi
 
-$PYTHON_CMD -m venv .venv
-. .venv/bin/activate
+$PYTHON_CMD -m venv "$VENV_DIR"
+. "$VENV_DIR/bin/activate"
 pip install --upgrade uv
 uv pip install -r requirements.txt
 

@@ -12,7 +12,7 @@ from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from ..connectors import connectors_core as ConnectorsModel
-from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, db
+from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, Case_Timeline_Event, db
 from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
@@ -1287,7 +1287,9 @@ def get_case_misp_object(cid):
                 "object_uuid": object.template_uuid,
                 "object_creation_date": object.creation_date.strftime('%Y-%m-%d %H:%M'),
                 "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M'),
-                "synced_instances": synced_instances
+                "synced_instances": synced_instances,
+                # Mark whether this object already has a timeline event
+                "is_imported": True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=object.id).first() else False
             })
         return {"misp-object": loc_object}
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -1482,7 +1484,11 @@ def import_misp_to_timeline(cid):
     case = CommonModel.get_case(cid)
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            count = CaseModel.import_misp_objects_to_timeline(cid, current_user)
+            data = request.get_json(silent=True) or {}
+            object_ids = data.get('object_ids', None)
+            if object_ids is not None and not isinstance(object_ids, list):
+                return {"message": "'object_ids' must be a list", "toast_class": "warning-subtle"}, 400
+            count = CaseModel.import_misp_objects_to_timeline(cid, current_user, object_ids)
             return {"message": f"{count} MISP object(s) imported to timeline", "toast_class": "success-subtle"}, 200
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404

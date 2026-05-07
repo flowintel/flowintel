@@ -20,6 +20,8 @@ logging.getLogger("dspy").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
+logger = logging.getLogger(__name__)
+
 
 class FlowintelQA(dspy.Signature):
     """Analyze and manage security cases using FlowIntel API tools."""
@@ -86,7 +88,7 @@ def _ensure_mcp():
 
 def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
     """Call the FlowIntel API via MCP. Args: method (GET/POST/...), path (/api/...), body (optional JSON dict)."""
-    print(f"DEBUG: LLM requested tool -> {method} {path}...")
+    logger.debug("LLM requested tool -> %s %s", method, path)
     _ensure_mcp()
     coro = _mcp_session.call_tool("call_flowintel_api", {"method": method, "path": path, "body": body})
     future = asyncio.run_coroutine_threadsafe(coro, _mcp_loop)
@@ -96,7 +98,7 @@ def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
 def get_docs_wrapper() -> str:
     """ALWAYS call this tool FIRST if you don't know the exact API paths or required payload.
     Returns the Swagger/OpenAPI documentation showing all valid endpoints."""
-    print("DEBUG: LLM requested tool -> get_api_documentation...")
+    logger.debug("LLM requested tool -> get_api_documentation")
     _ensure_mcp()
     coro = _mcp_session.call_tool("get_api_documentation", {})
     future = asyncio.run_coroutine_threadsafe(coro, _mcp_loop)

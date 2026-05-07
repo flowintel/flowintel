@@ -960,6 +960,7 @@ class CreateTask(Resource):
 @case_ns.doc(description='Change the order of the task', params={"cid": "id of a case", "tid": "id of a task"})
 class ChangeOrder(Resource):
     method_decorators = [editor_required, api_required]
+    @case_ns.doc(params={"new-index": "Required. New 1-based index position for the task within the case"})
     def post(self, cid, tid):
         case = CommonModel.get_case(cid)
         if case:
@@ -1071,6 +1072,7 @@ class ModifNoteCase(Resource):
     @case_ns.doc(description='Create misp object')
     class CreateMispObject(Resource):
         method_decorators = [editor_required, api_required]
+        @case_ns.doc(params={"object-template": "Required. Name of the MISP object template to use", "attributes": "Required. Dict of attribute type to value mappings"})
         def post(self, cid):
             if CommonModel.get_case(cid):
                 current_user = utils.get_user_from_api(request.headers)
@@ -1106,6 +1108,7 @@ class ModifNoteCase(Resource):
     @case_ns.doc(description='Add attributes to an existing object')
     class AddAttributes(Resource):
         method_decorators = [editor_required, api_required]
+        @case_ns.doc(params={"object-template": "Required. Name of the MISP object template", "attributes": "Required. Dict of attribute type to value mappings"})
         def post(self, cid, oid):
             if CommonModel.get_case(cid):
                 current_user = utils.get_user_from_api(request.headers)
@@ -1127,6 +1130,7 @@ class ModifNoteCase(Resource):
     @case_ns.doc(description='Edit misp object attribute')
     class EditMispAttr(Resource):
         method_decorators = [editor_required, api_required]
+        @case_ns.doc(params={"value": "Required. New value for the attribute", "type": "Required. Type of the attribute"})
         def post(self, cid, oid, aid):
             if CommonModel.get_case(cid):
                 current_user = utils.get_user_from_api(request.headers)
@@ -1197,7 +1201,7 @@ class GetCaseFiles(Resource):
 @case_ns.doc(description='Upload a file to a case')
 class UploadCaseFile(Resource):
     method_decorators = [editor_required, api_required]
-    @case_ns.doc(params={})
+    @case_ns.doc(description='Send multipart/form-data with one or more file fields to upload files to the case.')
     def post(self, cid):
         from ..utils.utils import validate_file_size
         from ..utils.logger import flowintel_log

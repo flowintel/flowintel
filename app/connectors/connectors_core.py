@@ -350,6 +350,8 @@ def delete_connector_core(cid):
 
 def delete_connector_instance_core(iid):
     User_Connector_Instance.query.filter_by(instance_id=iid).delete()
+    for ci in Case_Connector_Instance.query.filter_by(instance_id=iid).all():
+        Connector_Sync_Log.query.filter_by(case_connector_instance_id=ci.id).delete()
     Case_Connector_Instance.query.filter_by(instance_id=iid).delete()
     Task_Connector_Instance.query.filter_by(instance_id=iid).delete()
 
