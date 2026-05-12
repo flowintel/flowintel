@@ -502,7 +502,7 @@
                 <i class="fa-solid fa-lock me-2"></i>
                 <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use MISP objects.
             </div>
-            <misp_object v-else :case_id="{{case.id}}" :cases_info="cases_info" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
+            <misp_object v-else :case_id="{{case.id}}" :cases_info="cases_info" :spotlight_id="misp_spotlight_id" @clear_spotlight="misp_spotlight_id = null" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
         </template>
 
         <template v-else-if="main_tab == 'connectors'">
@@ -958,6 +958,7 @@
                 const case_files_list = ref([])
 
                 const nb_misp_objects = ref(0)
+                const misp_spotlight_id = ref(null)
 
                 // Dynamic connector module components
                 const loaded_module_components = ref({})
@@ -1824,6 +1825,12 @@
                     }
 
                     // (users refreshed via Vue event emitted by child component)
+
+                    window.addEventListener('navigate-to-misp-object', async (e) => {
+                        misp_spotlight_id.value = e.detail.object_id
+                        await active_tab('misp-objects')
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                    })
                 })
 
                 const total_pages = computed(() => Math.ceil(total_tasks.value / per_page))
@@ -1868,6 +1875,7 @@
                     tasks_tab,
                     is_exporting,
                     nb_misp_objects,
+                    misp_spotlight_id,
                     can_edit_case,
                     can_use_connectors,
                     onInput,

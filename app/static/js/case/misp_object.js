@@ -6,9 +6,10 @@ export default {
     components: { 'misp-object-link': MispObjectLink },
 	props: {
 		case_id: Number,
-		cases_info: Object
+		cases_info: Object,
+		spotlight_id: { type: Number, default: null }
 	},
-    emits: ['modif_misp_objects'],
+    emits: ['modif_misp_objects', 'clear_spotlight'],
 	setup(props, {emit}) {
         const case_misp_objects = ref([])
         const misp_objects = ref([])
@@ -37,6 +38,10 @@ export default {
         const per_page = 10
 
         const filtered_objects = computed(() => {
+            // Spotlight mode: show only the highlighted object
+            if (props.spotlight_id != null) {
+                return case_misp_objects.value.filter(o => o.object_id === props.spotlight_id)
+            }
             let objs = case_misp_objects.value
             const q = search_query.value.trim().toLowerCase()
             const t = type_filter.value
@@ -65,6 +70,7 @@ export default {
         })
 
         watch([search_query, type_filter], () => { current_page.value = 1 })
+        watch(() => props.spotlight_id, () => { current_page.value = 1 })
 
         const can_edit = computed(() => {
             if (!props.cases_info) return false
@@ -571,6 +577,15 @@ export default {
         <button type="button" class="btn btn-outline-secondary ms-3" @click="toggleCompactView()" :title="compactView ? 'Show all columns' : 'Show compact view'">
             <i :class="compactView ? 'fa-solid fa-expand' : 'fa-solid fa-compress'"></i>
             <span class="d-none d-sm-inline ms-1">[[ compactView ? 'Detailed' : 'Compact' ]]</span>
+        </button>
+    </div>
+
+    <!-- Spotlight banner -->
+    <div v-if="spotlight_id != null" class="alert alert-info d-flex align-items-center mb-2 mt-2 py-2" role="alert">
+        <i class="fa-solid fa-magnifying-glass me-2"></i>
+        <span>Showing only the selected object.</span>
+        <button type="button" class="btn btn-sm btn-outline-info ms-auto" @click="$emit('clear_spotlight')">
+            <i class="fa-solid fa-xmark me-1"></i>Show all objects
         </button>
     </div>
 

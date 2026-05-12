@@ -7,7 +7,8 @@ from .. import db
 from ..db_class.db import (
     Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
-    Task_Tags, Task_Url_Tool, Task_External_Reference, Task_User, User, Galaxy
+    Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_User, User, Galaxy,
+    Case_Misp_Object
 )
 from ..utils.utils import create_specific_dir, isUUID
 
@@ -1002,7 +1003,54 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             self.update_task_time_modification(task, current_user, f"External reference '{external_ref.url}' edited for '{task.title}'")
             return True
         return False
-    
+
+    ######################
+    # MISP Object links  #
+    ######################
+
+    def get_misp_object_links(self, task_id):
+        """Return all Case_Misp_Object records linked to a task."""
+        links = Task_Misp_Object.query.filter_by(task_id=task_id).all()
+        result = []
+        for link in links:
+            obj = Case_Misp_Object.query.get(link.misp_object_id)
+            if obj:
+                d = obj.to_json()
+                d["link_id"] = link.id
+                result.append(d)
+        return result
+
+    def link_misp_object(self, task_id, misp_object_id, current_user):
+        """Link a MISP object to a task. Returns the link or None on error."""
+        task = CommonModel.get_task(task_id)
+        if not task:
+            return None
+        obj = Case_Misp_Object.query.get(misp_object_id)
+        if not obj or obj.case_id != task.case_id:
+            return None
+        existing = Task_Misp_Object.query.filter_by(task_id=task_id, misp_object_id=misp_object_id).first()
+        if existing:
+            return existing
+        link = Task_Misp_Object(task_id=task_id, misp_object_id=misp_object_id)
+        db.session.add(link)
+        db.session.commit()
+        self.update_task_time_modification(task, current_user, f"MISP object '{obj.name}' linked to task '{task.title}'")
+        return link
+
+    def unlink_misp_object(self, task_id, misp_object_id, current_user):
+        """Remove the link between a MISP object and a task."""
+        link = Task_Misp_Object.query.filter_by(task_id=task_id, misp_object_id=misp_object_id).first()
+        if not link:
+            return False
+        task = CommonModel.get_task(task_id)
+        obj = Case_Misp_Object.query.get(misp_object_id)
+        obj_name = obj.name if obj else str(misp_object_id)
+        db.session.delete(link)
+        db.session.commit()
+        if task:
+            self.update_task_time_modification(task, current_user, f"MISP object '{obj_name}' unlinked from task '{task.title}'")
+        return True
+
     ############
     # Subtasks #
     ############

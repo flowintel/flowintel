@@ -1028,6 +1028,63 @@ def convert_external_reference_to_note(cid, tid, erid):
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 
+######################
+# MISP Object links  #
+######################
+
+@task_blueprint.route("/<cid>/task/<tid>/get_misp_object_links", methods=['GET'])
+@login_required
+def get_misp_object_links(cid, tid):
+    """Get all MISP objects linked to a task"""
+    task = CommonModel.get_task(tid)
+    if task:
+        case = CommonModel.get_case(cid)
+        if not case:
+            return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+        if case.is_private and not CommonModel.get_present_in_case(cid, current_user) and not current_user.is_admin():
+            return {"message": "Action not Allowed", "toast_class": "warning-subtle"}, 403
+        links = TaskModel.get_misp_object_links(tid)
+        return {"misp_object_links": links}, 200
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/task/<tid>/link_misp_object", methods=['POST'])
+@login_required
+@editor_required
+def link_misp_object(cid, tid):
+    """Link a MISP object (from the current case) to a task"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "misp_object_id" not in request.json:
+                return {"message": "Need to pass 'misp_object_id'", 'toast_class': "warning-subtle"}, 400
+            link = TaskModel.link_misp_object(tid, request.json["misp_object_id"], current_user)
+            if link:
+                flowintel_log("audit", 200, "MISP object linked to task", User=current_user.email, CaseId=cid, TaskId=tid, MispObjectId=request.json["misp_object_id"])
+                return {"message": "MISP object linked", "link": link.to_json(), 'toast_class': "success-subtle"}, 200
+            return {"message": "MISP object not found or does not belong to this case", 'toast_class': "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Link MISP object to task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
+        return {"message": "Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/task/<tid>/unlink_misp_object/<oid>", methods=['GET'])
+@login_required
+@editor_required
+def unlink_misp_object(cid, tid, oid):
+    """Remove the link between a MISP object and a task"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if TaskModel.unlink_misp_object(tid, oid, current_user):
+                flowintel_log("audit", 200, "MISP object unlinked from task", User=current_user.email, CaseId=cid, TaskId=tid, MispObjectId=oid)
+                return {"message": "MISP object unlinked", 'toast_class': "success-subtle"}, 200
+            return {"message": "Link not found", 'toast_class': "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Unlink MISP object from task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
+        return {"message": "Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
 ###########
 # Subtask #
 ###########

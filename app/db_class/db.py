@@ -272,6 +272,7 @@ class Task(db.Model):
     urls_tools = db.relationship('Task_Url_Tool', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     external_references = db.relationship('Task_External_Reference', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     notes = db.relationship('Note', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    misp_object_links = db.relationship('Task_Misp_Object', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
@@ -324,6 +325,7 @@ class Task(db.Model):
                                                         .where(Task_Connector_Instance.task_id==self.id).all()]
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Task_Custom_Tags.task_id==self.id).all()]
+        json_dict["misp_object_links"] = [link.to_json() for link in self.misp_object_links]
 
         return json_dict
     
@@ -351,6 +353,7 @@ class Task(db.Model):
         json_dict["external_references"] = [ext_ref.download() for ext_ref in self.external_references]
         json_dict["custom_tags"] = [custom_tag.download() for custom_tag in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Task_Custom_Tags.task_id==self.id).all()]
+        json_dict["misp_object_links"] = [link.to_json() for link in self.misp_object_links]
 
         return json_dict
     
@@ -1172,6 +1175,24 @@ class Task_Connector_Instance(db.Model):
     task_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
     identifier = db.Column(db.String)
+
+
+class Task_Misp_Object(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"), index=True)
+    misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"), index=True)
+
+    def to_json(self):
+        from .db import Case_Misp_Object
+        obj = Case_Misp_Object.query.get(self.misp_object_id)
+        json_dict = {
+            "id": self.id,
+            "task_id": self.task_id,
+            "misp_object_id": self.misp_object_id,
+            "misp_object_name": obj.name if obj else None,
+            "misp_object_template_uuid": obj.template_uuid if obj else None,
+        }
+        return json_dict
 
 
 class User_Connector_Instance(db.Model):
