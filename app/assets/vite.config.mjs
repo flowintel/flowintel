@@ -11,10 +11,7 @@ export default defineConfig({
     assetsDir: '',
     rollupOptions: {
       input: {
-        codemirror: path.resolve(__dirname, 'src/js/codemirror.js'),
-        core: path.resolve(__dirname, 'src/css/core.css'),
-        sidebar: path.resolve(__dirname, 'src/css/sidebar.css'),
-        timeline: path.resolve(__dirname, 'src/css/timeline.css'),
+        codemirror: path.resolve(__dirname, 'src/js/codemirror.js')
       },
       output: [
         {
