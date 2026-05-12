@@ -66,6 +66,9 @@
                         <button type="submit" class="btn btn-primary" id="send-btn">
                             <i class="fas fa-paper-plane"></i>
                         </button>
+                        <button type="button" class="btn btn-danger d-none" id="stop-btn" title="Stop generation">
+                            <i class="fas fa-stop"></i>
+                        </button>
                     </form>
                     <small class="text-muted mt-1 d-block">Ctrl+Enter to send &nbsp;&middot;&nbsp; Enter for new line</small>
                 </div>
@@ -81,12 +84,14 @@ const chatMessages = document.getElementById('chat-messages');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
+const stopBtn = document.getElementById('stop-btn');
 const convList = document.getElementById('conv-list');
 const convListEmpty = document.getElementById('conv-list-empty');
 const csrfToken = document.getElementById('csrf_token')?.value || '';
 
 let currentConvId = null;
 let selectedModel = null;  // null = use server default
+let _currentAskController = null;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -344,7 +349,17 @@ chatForm.addEventListener('submit', async function(e) {
     chatInput.style.height = 'auto';
     sendBtn.disabled = true;
     chatInput.disabled = true;
+    // show stop button while waiting
+    stopBtn.classList.remove('d-none');
+    stopBtn.disabled = false;
     addLoading();
+
+    // AbortController to allow aborting the client-side fetch
+    if (window.AbortController) {
+        _currentAskController = new AbortController();
+    } else {
+        _currentAskController = null;
+    }
 
     try {
         // For new conversations: create the conversation record immediately so
@@ -367,11 +382,14 @@ chatForm.addEventListener('submit', async function(e) {
         if (currentConvId) body.conversation_id = currentConvId;
         if (selectedModel) body.model = selectedModel;
 
-        const resp = await fetch('/chatbot/ask', {
+        const fetchOpts = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
             body: JSON.stringify(body)
-        });
+        };
+        if (_currentAskController && _currentAskController.signal) fetchOpts.signal = _currentAskController.signal;
+
+        const resp = await fetch('/chatbot/ask', fetchOpts);
         const data = await resp.json();
         removeLoading();
 
@@ -386,8 +404,36 @@ chatForm.addEventListener('submit', async function(e) {
         }
     } catch (err) {
         removeLoading();
-        addMessage('Failed to reach the server. Please try again.', false);
+        // Aborted by user
+        if (err && err.name === 'AbortError') {
+            addMessage('Generation stopped', false);
+        } else {
+            addMessage('Failed to reach the server. Please try again.', false);
+        }
     } finally {
+        sendBtn.disabled = false;
+        chatInput.disabled = false;
+        stopBtn.classList.add('d-none');
+        _currentAskController = null;
+        chatInput.focus();
+    }
+});
+
+// Stop button handler: call server to cancel and abort client fetch
+stopBtn.addEventListener('click', async function() {
+    try {
+        stopBtn.disabled = true;
+        // Fire stop to server (best-effort)
+        fetch('/chatbot/stop', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } }).catch(() => {});
+        // Abort the client-side fetch so UI is responsive
+        if (_currentAskController && _currentAskController.abort) {
+            try { _currentAskController.abort(); } catch (e) {}
+        }
+        removeLoading();
+        addMessage('Generation stopped', false);
+    } finally {
+        stopBtn.classList.add('d-none');
+        stopBtn.disabled = false;
         sendBtn.disabled = false;
         chatInput.disabled = false;
         chatInput.focus();

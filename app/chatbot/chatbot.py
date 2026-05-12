@@ -3,7 +3,7 @@ import requests as http_requests
 from flask import Blueprint, abort, current_app, render_template, request, jsonify
 from flask_login import login_required, current_user
 import conf.config_module as ConfigModule
-from .chatbot_core import get_chatbot_response
+from .chatbot_core import get_chatbot_response, cancel_current_generation
 from ..utils.logger import flowintel_log
 from .. import db
 from ..db_class.db import ChatConversation, ChatMessage
@@ -170,7 +170,7 @@ def ask():
     db.session.remove()
 
     try:
-        response, model_name = get_chatbot_response(message, history=history, model=model)
+        response, model_name = get_chatbot_response(message, history=history, model=model, user_id=user_id_saved)
         flowintel_log("audit", 200, "Chatbot query", User=user_email_saved)
     except Exception as e:
         return jsonify({"error": f"Chatbot error: {str(e)}"}), 500
@@ -195,3 +195,17 @@ def ask():
 
     db.session.commit()
     return jsonify({"response": response, "model_name": model_name, "conversation_id": conv.id, "conversation_title": conv.title})
+
+
+
+@chatbot_blueprint.route("/stop", methods=['POST'])
+@login_required
+def stop_generation():
+    """Attempt to stop the current in-flight generation for this user."""
+    try:
+        ok = cancel_current_generation(current_user.id)
+        if ok:
+            return jsonify({"stopped": True}), 200
+        return jsonify({"stopped": False, "message": "No active generation or stop not supported"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
