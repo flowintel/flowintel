@@ -198,90 +198,97 @@ export default {
 		A task in Requested, Rejected or Request Review status in a privileged case can only be modified by Admin, Case Admin or Queue Admin
 	</div>
 	<div class="row">
-        <div class="col" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-            <fieldset class="analyzer-select-case">
-                <legend class="analyzer-select-case"><i class="fa-solid fa-user fa-sm me-1"></i><span class="section-title" style="font-size: 0.85em;">Assign</span></legend>
-                <div v-if="users_in_case">
-					<select data-placeholder="Users" multiple :class="['select2-selectUser'+task.id, 'select2-selectUser']" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
-                        <template v-for="user in users_in_case.users_list">
-                            <option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]] [[user.last_name]]</option>
-                        </template>
-                    </select>
-                    <button class="btn btn-primary" @click="assign_user_task()">Assign</button>
-                </div>
-                <hr>
-                <div v-if="task.users.length">
-                    <div v-for="user in task.users">
-                        <span style="margin-right: 5px"><i class="fa-solid fa-user"></i> [[user.first_name]] [[user.last_name]]</span>
-                        <button v-if="(cases_info.current_user.id != user.id) && (task.can_edit && cases_info.present_in_case || cases_info.permission.admin)" class="btn btn-primary btn-sm" data-bs-toggle="modal" :data-bs-target="'#notify_modal_'+task.id+'_'+user.id" title="Use a module to notify user"><i class="fa-solid fa-bell"></i></button>
-                        <button v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin" class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
-                    
-                        <div class="modal fade" :id="'notify_modal_'+task.id+'_'+user.id" tabindex="-1" aria-labelledby="notify_modalLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h1 class="modal-title fs-5" id="notify_modalLabel">Notify user</h1>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="d-flex w-100 justify-content-center">
-                                            <label :for="'modules_select_'+task.id+'_'+user.id">Modules:</label>
-                                        </div>
-                                        <div class="d-flex w-100 justify-content-center">
-                                            
-                                            <select data-placeholder="Modules" class="select2-select form-control" style="min-width: 100px; max-width: 300px;" :name="'modules_select_'+task.id+'_'+user.id" :id="'modules_select_'+task.id+'_'+user.id" >
-                                                <option value="None">--</option>
-                                                <option value="flowintel">flowintel</option>
-                                                <template v-for="module, key in task_modules">
-                                                    <option v-if="module.type == 'notify_user' && module.config.case_task == 'task'" :value="[[key]]">[[key]]</option>
-                                                </template>
-                                            </select>
-                                            <div id="modules_errors" class="invalid-feedback"></div>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button v-if="is_module_loading" class="btn btn-primary" type="button" disabled>
-                                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                            <span role="status">Loading...</span>
-                                        </button>
-                                        <button v-else type="button" @click="submit_module_task(user.id)" class="btn btn-primary">Submit</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </fieldset>
-        </div>
+		<div class="col" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+			<div class="task-section">
+				<div class="task-section-header">
+					<i class="fa-solid fa-user fa-sm me-1"></i><span class="section-title" style="font-size: 0.85em;">Assign</span>
+				</div>
+				<div class="task-section-body">
+					<div v-if="users_in_case">
+						<select data-placeholder="Users" multiple :class="['select2-selectUser'+task.id, 'select2-selectUser']" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
+							<template v-for="user in users_in_case.users_list">
+								<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]] [[user.last_name]]</option>
+							</template>
+						</select>
+						<button class="btn btn-primary" @click="assign_user_task()">Assign</button>
+					</div>
+					<hr>
+					<div v-if="task.users.length">
+						<div v-for="user in task.users">
+							<span style="margin-right: 5px"><i class="fa-solid fa-user"></i> [[user.first_name]] [[user.last_name]]</span>
+							<button v-if="(cases_info.current_user.id != user.id) && (task.can_edit && cases_info.present_in_case || cases_info.permission.admin)" class="btn btn-primary btn-sm" data-bs-toggle="modal" :data-bs-target="'#notify_modal_'+task.id+'_'+user.id" title="Use a module to notify user"><i class="fa-solid fa-bell"></i></button>
+							<button v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin" class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
+
+							<div class="modal fade" :id="'notify_modal_'+task.id+'_'+user.id" tabindex="-1" aria-labelledby="notify_modalLabel" aria-hidden="true">
+								<div class="modal-dialog modal-lg">
+									<div class="modal-content">
+										<div class="modal-header">
+											<h1 class="modal-title fs-5" id="notify_modalLabel">Notify user</h1>
+											<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+										</div>
+										<div class="modal-body">
+											<div class="d-flex w-100 justify-content-center">
+												<label :for="'modules_select_'+task.id+'_'+user.id">Modules:</label>
+											</div>
+											<div class="d-flex w-100 justify-content-center">
+												<select data-placeholder="Modules" class="select2-select form-control" style="min-width: 100px; max-width: 300px;" :name="'modules_select_'+task.id+'_'+user.id" :id="'modules_select_'+task.id+'_'+user.id" >
+													<option value="None">--</option>
+													<option value="flowintel">flowintel</option>
+													<template v-for="module, key in task_modules">
+														<option v-if="module.type == 'notify_user' && module.config.case_task == 'task'" :value="[[key]]">[[key]]</option>
+													</template>
+												</select>
+												<div id="modules_errors" class="invalid-feedback"></div>
+											</div>
+										</div>
+										<div class="modal-footer">
+											<button v-if="is_module_loading" class="btn btn-primary" type="button" disabled>
+												<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+												<span role="status">Loading...</span>
+											</button>
+											<button v-else type="button" @click="submit_module_task(user.id)" class="btn btn-primary">Submit</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
 		<TaskUrlTool :task="task" :cases_info="cases_info" :is_template="false"></TaskUrlTool>
 
-        <div class="col" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-            <fieldset class="analyzer-select-case">
-                <legend class="analyzer-select-case"><i class="fa-solid fa-temperature-three-quarters fa-sm me-1"></i><span class="section-title">Status</span></legend>
-                <div>
-                    <div class="dropdown" :id="'dropdown_status_'+task.id">
-                        <template v-if="status_info">
-                            <button class="btn btn-secondary dropdown-toggle" 
-                                    :id="'button_'+task.id" 
-                                    type="button" 
-                                    data-bs-toggle="dropdown" 
-                                    aria-expanded="false"
-                                    :disabled="statusDropdownDisabled"
-                                    :title="statusDropdownTooltip">
-                                [[ status_info.status.find(s => s.id === task.status_id)?.name ]]
-                            </button>
-                            <ul class="dropdown-menu" :id="'dropdown_ul_status_'+task.id">
-                                <li v-for="(status, idx) in availableStatuses" :key="status.id">
-                                    <hr v-if="idx > 0 && status.order > 7 && availableStatuses[idx-1].order <= 7" class="dropdown-divider">
-                                    <button class="dropdown-item" @click="change_status(status.id, task)" :disabled="status.disabled" :class="{ 'text-muted': status.disabled }">[[ status.name ]]</button>
-                                </li>
-                            </ul>
-                        </template>
-                    </div>
-                </div>
-            </fieldset>
-        </div>
+		<div class="col" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+			<div class="task-section">
+				<div class="task-section-header">
+					<i class="fa-solid fa-temperature-three-quarters fa-sm me-1"></i><span class="section-title">Status</span>
+				</div>
+				<div class="task-section-body">
+					<div>
+						<div class="dropdown" :id="'dropdown_status_'+task.id">
+							<template v-if="status_info">
+								<button class="btn btn-secondary dropdown-toggle" 
+										:id="'button_'+task.id" 
+										type="button" 
+										data-bs-toggle="dropdown" 
+										aria-expanded="false"
+										:disabled="statusDropdownDisabled"
+										:title="statusDropdownTooltip">
+									[[ status_info.status.find(s => s.id === task.status_id)?.name ]]
+								</button>
+								<ul class="dropdown-menu" :id="'dropdown_ul_status_'+task.id">
+									<li v-for="(status, idx) in availableStatuses" :key="status.id">
+										<hr v-if="idx > 0 && status.order > 7 && availableStatuses[idx-1].order <= 7" class="dropdown-divider">
+										<button class="dropdown-item" @click="change_status(status.id, task)" :disabled="status.disabled" :class="{ 'text-muted': status.disabled }">[[ status.name ]]</button>
+									</li>
+								</ul>
+							</template>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
         
     </div>
     <hr>

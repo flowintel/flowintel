@@ -883,3 +883,30 @@ a.case-content:hover {
   color: #bbb !important;
   opacity: 1;
 }
+
+/* New task section styles (modern replacement for analyzer-select-case fieldsets) */
+.task-section {
+  background-color: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  margin-bottom: 1rem;
+  padding: 0.6rem;
+}
+
+.task-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.task-section-header .section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.task-section-body {
+  padding-top: 0.6rem;
+}

@@ -135,67 +135,71 @@ export default {
 	},
 	template: `
 	<div>
-        <fieldset class="analyzer-select-case">
-            <legend class="analyzer-select-case">
-                <i class="fa-solid fa-list fa-sm me-1"></i><span class="section-title">Subtasks</span>
+		<div class="task-section">
+			<div class="task-section-header">
+				<i class="fa-solid fa-list fa-sm me-1"></i><span class="section-title">Subtasks</span>
 				<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-					<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" :data-bs-target="'#create_subtask_'+task.id" style="float: right; margin-left:3px;">
-						<i class="fa-solid fa-plus"></i>
-					</button>
+					<div class="ms-auto">
+						<button class="btn btn-primary btn-sm" title="Add new subtask" data-bs-toggle="modal" :data-bs-target="'#create_subtask_'+task.id">
+							<i class="fa-solid fa-plus"></i>
+						</button>
+					</div>
 				</template>
-            </legend>
-            <template v-for="subtask in task.subtasks">
-                <div>
-                    <div v-if="subtask.completed">
-						<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-                        	<input type="checkbox" checked @click="complete_subtask(task, subtask.id, false)"/>
-						</template>
-                        <span style="text-decoration-line: line-through; margin-left: 3px">[[subtask.description]]</span>
-                    </div>
-                    <div v-else>
-						<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-                        	<input type="checkbox" @click="complete_subtask(task, subtask.id, true)"/>
-						</template>
-                        [[subtask.description]]
-						<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-							<button class="btn btn-secondary btn-sm" title="Move subtask down" @click="move_subtask(task,subtask,false)" style="float: right;">
-								<i class="fa-solid fa-arrow-down"></i>
-							</button>
-							<button class="btn btn-secondary btn-sm" title="Move subtask up" @click="move_subtask(task,subtask,true)" style="float: right;">
-								<i class="fa-solid fa-arrow-up"></i>
-							</button>
-							<button @click="delete_subtask(task, subtask.id)" class="btn btn-danger btn-sm" style="float: right;">
-								<i class="fa-solid fa-trash"></i>
-							</button>
-							<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" :data-bs-target="'#edit_subtask_'+subtask.id" style="float: right;">
-								<i class="fa-solid fa-pen-to-square"></i>
-							</button>
-						</template>
-                    </div>
-                    
-                </div>
-                <hr>
-                <!-- Modal edit subtask -->
-                <div class="modal fade" :id="'edit_subtask_'+subtask.id" tabindex="-1" aria-labelledby="edit_subtask_modal" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h1 class="modal-title fs-5" id="edit_subtask_modal">Edit subtask</h1>
-                                <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <textarea class="form-control" :value="subtask.description" :id="'edit-subtask-'+subtask.id"/>
-                                <div :id="'edit-subtask-error-'+subtask.id"></div>
-                            </div>
-                            <div class="modal-footer">
-                                <button @click="edit_subtask(task, subtask.id)" class="btn btn-primary">Submit</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </template>
-        </fieldset>
-    </div>
+			</div>
+			<div class="task-section-body">
+				<template v-for="subtask in task.subtasks">
+					<div>
+						<div v-if="subtask.completed">
+							<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+								<input type="checkbox" checked @click="complete_subtask(task, subtask.id, false)"/>
+							</template>
+							<span style="text-decoration-line: line-through; margin-left: 3px">[[subtask.description]]</span>
+						</div>
+						<div v-else>
+							<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+								<input type="checkbox" @click="complete_subtask(task, subtask.id, true)"/>
+							</template>
+							[[subtask.description]]
+							<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+								<button class="btn btn-secondary btn-sm" title="Move subtask down" @click="move_subtask(task,subtask,false)" style="float: right;">
+									<i class="fa-solid fa-arrow-down"></i>
+								</button>
+								<button class="btn btn-secondary btn-sm" title="Move subtask up" @click="move_subtask(task,subtask,true)" style="float: right;">
+									<i class="fa-solid fa-arrow-up"></i>
+								</button>
+								<button @click="delete_subtask(task, subtask.id)" class="btn btn-danger btn-sm" style="float: right;">
+									<i class="fa-solid fa-trash"></i>
+								</button>
+								<button class="btn btn-primary btn-sm" title="Edit subtask" data-bs-toggle="modal" :data-bs-target="'#edit_subtask_'+subtask.id" style="float: right;">
+									<i class="fa-solid fa-pen-to-square"></i>
+								</button>
+							</template>
+						</div>
+						
+					</div>
+					<hr>
+					<!-- Modal edit subtask -->
+					<div class="modal fade" :id="'edit_subtask_'+subtask.id" tabindex="-1" aria-labelledby="edit_subtask_modal" aria-hidden="true">
+						<div class="modal-dialog modal-lg">
+							<div class="modal-content">
+								<div class="modal-header">
+									<h1 class="modal-title fs-5" id="edit_subtask_modal">Edit subtask</h1>
+									<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+								</div>
+								<div class="modal-body">
+									<textarea class="form-control" :value="subtask.description" :id="'edit-subtask-'+subtask.id"/>
+									<div :id="'edit-subtask-error-'+subtask.id"></div>
+								</div>
+								<div class="modal-footer">
+									<button @click="edit_subtask(task, subtask.id)" class="btn btn-primary">Submit</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</template>
+			</div>
+		</div>
+	</div>
 
     <!-- Modal create subtask -->
     <div class="modal fade" :id="'create_subtask_'+task.id" tabindex="-1" aria-labelledby="create_subtask_modal" aria-hidden="true">

@@ -104,52 +104,56 @@ export default {
         }
     },
     template: `
-	<div class="col">
-        <fieldset class="analyzer-select-case">
-            <legend class="analyzer-select-case">
+    <div class="col">
+        <div class="task-section">
+            <div class="task-section-header">
                 <i class="fa-solid fa-link fa-sm me-1"></i><span class="section-title">External references</span>
-				<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-					<button class="btn btn-primary btn-sm" title="Add new external reference" data-bs-toggle="modal" :data-bs-target="'#create_external_ref_'+task.id" style="float: right; margin-left:3px;">
-						<i class="fa-solid fa-plus"></i>
-					</button>
-				</template>
-            </legend>
-            <template v-for="external_ref in task.external_references">
-                <div>
-                    <a :href="external_ref.url" target="_blank" rel="noopener noreferrer">[[external_ref.url]]</a>
+                <div class="ms-auto">
                     <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-                        <button @click="delete_external_reference(task, external_ref.id)" class="btn btn-danger btn-sm" style="float: right;">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                        <button @click="convert_to_note(task, external_ref.id)" class="btn btn-success btn-sm" title="Visit external reference and convert HTML to Markdown" style="float: right; margin-right: 2px;">
-                            <i class="fa-solid fa-file-import"></i>
-                        </button>
-                        <button class="btn btn-primary btn-sm" title="Edit external reference" data-bs-toggle="modal" :data-bs-target="'#edit_external_ref_'+external_ref.id" style="float: right; margin-right: 2px;">
-                            <i class="fa-solid fa-pen-to-square"></i>
+                        <button class="btn btn-primary btn-sm" title="Add new external reference" data-bs-toggle="modal" :data-bs-target="'#create_external_ref_'+task.id">
+                            <i class="fa-solid fa-plus"></i>
                         </button>
                     </template>
                 </div>
-                <hr>
-                <!-- Modal edit external reference -->
-                <div class="modal fade" :id="'edit_external_ref_'+external_ref.id" tabindex="-1" aria-labelledby="edit_external_ref_modal" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h1 class="modal-title fs-5" id="edit_external_ref_modal">Edit External Reference</h1>
-                                <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <textarea class="form-control" :value="external_ref.url" :id="'edit-external-ref-'+external_ref.id"/>
-                                <div :id="'edit-external-ref-error-'+external_ref.id"></div>
-                            </div>
-                            <div class="modal-footer">
-                                <button @click="edit_external_reference(task, external_ref.id)" class="btn btn-primary">Submit</button>
+            </div>
+            <div class="task-section-body">
+                <template v-for="external_ref in task.external_references">
+                    <div>
+                        <a :href="external_ref.url" target="_blank" rel="noopener noreferrer">[[external_ref.url]]</a>
+                        <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+                            <button @click="delete_external_reference(task, external_ref.id)" class="btn btn-danger btn-sm" style="float: right;">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            <button @click="convert_to_note(task, external_ref.id)" class="btn btn-success btn-sm" title="Visit external reference and convert HTML to Markdown" style="float: right; margin-right: 2px;">
+                                <i class="fa-solid fa-file-import"></i>
+                            </button>
+                            <button class="btn btn-primary btn-sm" title="Edit external reference" data-bs-toggle="modal" :data-bs-target="'#edit_external_ref_'+external_ref.id" style="float: right; margin-right: 2px;">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        </template>
+                    </div>
+                    <hr>
+                    <!-- Modal edit external reference -->
+                    <div class="modal fade" :id="'edit_external_ref_'+external_ref.id" tabindex="-1" aria-labelledby="edit_external_ref_modal" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="edit_external_ref_modal">Edit External Reference</h1>
+                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <textarea class="form-control" :value="external_ref.url" :id="'edit-external-ref-'+external_ref.id"/>
+                                    <div :id="'edit-external-ref-error-'+external_ref.id"></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button @click="edit_external_reference(task, external_ref.id)" class="btn btn-primary">Submit</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </template>
-        </fieldset>
+                </template>
+            </div>
+        </div>
 
         <!-- Modal create external reference -->
         <div class="modal fade" :id="'create_external_ref_'+task.id" tabindex="-1" aria-labelledby="create_external_ref_modal" aria-hidden="true">

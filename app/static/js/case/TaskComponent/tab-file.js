@@ -89,54 +89,58 @@ export default {
 		}
 	},
 	template: `
-	<fieldset class="analyzer-select-case">
-        <legend class="analyzer-select-case"><i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title">Files</span></legend>
-        <div style="display: flex;" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-            <input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
-            <button class="btn btn-primary btn-sm" @click="add_file(task)" style="margin-left: 2px;">Submit</button>
-        </div>
-        <br/>
-        <template v-if="task.files.length">
-            <div class="table-responsive">
-                <table class="table table-sm table-hover">
-                    <thead>
-                        <tr>
-                            <th>Filename</th>
-                            <th>Upload Date</th>
-                            <th>Size</th>
-                            <th>Type</th>
-                            <th v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="file in task.files" :key="file.id">
-                            <td>
-                                <a :href="'/case/task/'+task.id+'/download_file/'+file.id">
-                                    <i class="fa-solid fa-download me-1"></i>[[ file.name ]]
-                                </a>
-                            </td>
-                            <td>[[ file.upload_date ]]</td>
-                            <td><template v-if="file.file_size !== 'Unknown'">[[ (file.file_size / 1024).toFixed(2) ]] KB</template><template v-else>Unknown</template></td>
-                            <td>[[ file.file_type ]]</td>
-                            <td v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-                                <button v-if="file.name.toLowerCase().endsWith('.txt') || file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.json')" 
-                                        class="btn btn-primary btn-sm me-1" 
-                                        @click="convert_to_note(file, task)" 
-                                        title="Attempt to convert TXT, CSV or JSON to a task note">
-                                    <i class="fa-solid fa-file-export"></i>
-                                </button>
-                                <span v-else class="btn btn-sm me-1" style="visibility: hidden;">
-                                    <i class="fa-solid fa-file-export"></i>
-                                </span>
-                                <button class="btn btn-danger btn-sm" @click="delete_file(file, task)" title="Delete file">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </template>
-    </fieldset>
+	<div class="task-section">
+		<div class="task-section-header">
+			<i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title">Files</span>
+		</div>
+		<div class="task-section-body">
+			<div style="display: flex;" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+				<input class="form-control" type="file" :id="'formFileMultiple'+task.id" multiple/>
+				<button class="btn btn-primary btn-sm" @click="add_file(task)" style="margin-left: 2px;">Submit</button>
+			</div>
+			<br/>
+			<template v-if="task.files.length">
+				<div class="table-responsive">
+					<table class="table table-sm table-hover">
+						<thead>
+							<tr>
+								<th>Filename</th>
+								<th>Upload Date</th>
+								<th>Size</th>
+								<th>Type</th>
+								<th v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="file in task.files" :key="file.id">
+								<td>
+									<a :href="'/case/task/'+task.id+'/download_file/'+file.id">
+										<i class="fa-solid fa-download me-1"></i>[[ file.name ]]
+									</a>
+								</td>
+								<td>[[ file.upload_date ]]</td>
+								<td><template v-if="file.file_size !== 'Unknown'">[[ (file.file_size / 1024).toFixed(2) ]] KB</template><template v-else>Unknown</template></td>
+								<td>[[ file.file_type ]]</td>
+								<td v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+									<button v-if="file.name.toLowerCase().endsWith('.txt') || file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.json')" 
+											class="btn btn-primary btn-sm me-1" 
+											@click="convert_to_note(file, task)" 
+											title="Attempt to convert TXT, CSV or JSON to a task note">
+										<i class="fa-solid fa-file-export"></i>
+									</button>
+									<span v-else class="btn btn-sm me-1" style="visibility: hidden;">
+										<i class="fa-solid fa-file-export"></i>
+									</span>
+									<button class="btn btn-danger btn-sm" @click="delete_file(file, task)" title="Delete file">
+										<i class="fa-solid fa-trash"></i>
+									</button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</template>
+		</div>
+	</div>
     `
 }

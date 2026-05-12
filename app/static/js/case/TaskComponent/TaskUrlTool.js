@@ -107,49 +107,53 @@ export default {
         }
     },
     template: `
-	<div class="col">
-        <fieldset class="analyzer-select-case">
-            <legend class="analyzer-select-case">
+    <div class="col">
+        <div class="task-section">
+            <div class="task-section-header">
                 <i class="fa-solid fa-screwdriver-wrench fa-sm me-1"></i><span class="section-title">Urls/Tools</span>
-				<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-					<button class="btn btn-primary btn-sm" title="Add new url/tool" data-bs-toggle="modal" :data-bs-target="'#create_url_tool_'+task.id" style="float: right; margin-left:3px;">
-						<i class="fa-solid fa-plus"></i>
-					</button>
-				</template>
-            </legend>
-            <template v-for="url_tool in task.urls_tools">
-                <div>
-                    [[url_tool.name]]
-                    <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-                        <button @click="delete_url_tool(task, url_tool.id)" class="btn btn-danger btn-sm" style="float: right;">
-                            <i class="fa-solid fa-trash"></i>
+                <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+                    <div class="ms-auto">
+                        <button class="btn btn-primary btn-sm" title="Add new url/tool" data-bs-toggle="modal" :data-bs-target="'#create_url_tool_'+task.id">
+                            <i class="fa-solid fa-plus"></i>
                         </button>
-                        <button class="btn btn-primary btn-sm" title="Edit Url/Tool" data-bs-toggle="modal" :data-bs-target="'#edit_url_tool_'+url_tool.id" style="float: right;">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
-                    </template>
-                </div>
-                <hr>
-                <!-- Modal edit url/tool -->
-                <div class="modal fade" :id="'edit_url_tool_'+url_tool.id" tabindex="-1" aria-labelledby="edit_url_tool_modal" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h1 class="modal-title fs-5" id="edit_url_tool_modal">Edit Url/Tool</h1>
-                                <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <textarea class="form-control" :value="url_tool.name" :id="'edit-url_tool-'+url_tool.id"/>
-                                <div :id="'edit-url_tool-error-'+url_tool.id"></div>
-                            </div>
-                            <div class="modal-footer">
-                                <button @click="edit_url_tool(task, url_tool.id)" class="btn btn-primary">Submit</button>
+                    </div>
+                </template>
+            </div>
+            <div class="task-section-body">
+                <template v-for="url_tool in task.urls_tools">
+                    <div>
+                        [[url_tool.name]]
+                        <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+                            <button @click="delete_url_tool(task, url_tool.id)" class="btn btn-danger btn-sm" style="float: right;">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            <button class="btn btn-primary btn-sm" title="Edit Url/Tool" data-bs-toggle="modal" :data-bs-target="'#edit_url_tool_'+url_tool.id" style="float: right;">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        </template>
+                    </div>
+                    <hr>
+                    <!-- Modal edit url/tool -->
+                    <div class="modal fade" :id="'edit_url_tool_'+url_tool.id" tabindex="-1" aria-labelledby="edit_url_tool_modal" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="edit_url_tool_modal">Edit Url/Tool</h1>
+                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <textarea class="form-control" :value="url_tool.name" :id="'edit-url_tool-'+url_tool.id"/>
+                                    <div :id="'edit-url_tool-error-'+url_tool.id"></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button @click="edit_url_tool(task, url_tool.id)" class="btn btn-primary">Submit</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </template>
-        </fieldset>
+                </template>
+            </div>
+        </div>
     </div>
 
     <!-- Modal create Url/Tool -->
