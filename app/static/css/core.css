@@ -34,7 +34,7 @@ main {
 }
 
 [v-cloak] {
-  display: none;
+  display: none !important;
 }
 
 pre.description {
@@ -882,8 +882,4 @@ a.case-content:hover {
 ::placeholder {
   color: #bbb !important;
   opacity: 1;
-}
-
-[v-cloak] {
-  display: none !important;
 }
