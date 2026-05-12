@@ -57,7 +57,7 @@ export default {
                 let color = ev.misp_object_id ? '#17a2b8' : '#6c757d'
                 return {
                     id: String(ev.id),
-                    data: { label: label, event_id: ev.id },
+                    data: { label: label, event_id: String(ev.id) },
                     style: { color: color }
                 }
             })
@@ -66,50 +66,17 @@ export default {
                 id: String(lk.id),
                 from: String(lk.source_event_id),
                 to: String(lk.target_event_id),
-                data: { label: lk.label || '', link_id: lk.id }
+                data: { label: lk.label || '', link_id: String(lk.id) }
             }))
 
             const data = { nodes: nodes, edges: edges }
 
             const options = {
                 isDirected: true,
-                layout: { type: 'force' },
-                simulation: {
-                    useWorker: false,
-                    d3ManyBodyStrength: -300
-                },
-                render: {
-                    defaultEdgeStyle: {
-                        markerEnd: 'arrow'
-                    }
-                },
-                callbacks: {
-                    onEdgeClick: (event, edge) => {
-                        selected_node.value = null
-                        const lk = graph_links.value.find(l => String(l.id) === edge.id)
-                        if (lk) {
-                            selected_edge.value = lk
-                            edit_link_label.value = lk.label || ''
-                        }
-                    },
-                    onNodeClick: (event, node) => {
-                        selected_edge.value = null
-                        edit_link_label.value = ''
-                        const ev = graph_events.value.find(e => String(e.id) === node.id)
-                        if (ev) {
-                            selected_node.value = ev
-                        }
-                    },
-                    onCanvasClick: () => {
-                        selected_edge.value = null
-                        selected_node.value = null
-                        edit_link_label.value = ''
-                    }
-                },
                 UI: { mode: 'full' }
             }
 
-            graph = new Pivotick.Pivotick(container, data, options)
+            graph = new Pivotick(container, data, options)
         }
 
         async function add_graph_event() {
