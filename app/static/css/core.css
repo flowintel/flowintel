@@ -367,10 +367,6 @@ legend.analyzer-select-case {
   flex-wrap: wrap;
 }
 
-.case-header-main {
-  margin-bottom: 1rem;
-}
-
 .case-title-row {
   display: flex;
   flex-wrap: wrap;

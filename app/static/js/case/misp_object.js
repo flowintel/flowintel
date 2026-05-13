@@ -28,6 +28,11 @@ export default {
         const newAttrState = ref({})
         const compactView = ref(true)
 
+        // Task assignment state
+        const assigningTasks = ref(null) // object_id currently editing assignments
+        const assign_task_state = ref({}) // map object_id -> [task_ids]
+        const new_object_task_ids = ref([]) // for creation form
+
         // Object linking
         const link_modal_object = ref(null)   // the object currently open in the link modal
         const link_modal_ref = ref(null)
@@ -108,6 +113,49 @@ export default {
                 let loc = await res.json()
                 misp_objects.value = loc["misp-object"]
             }
+        }
+
+        function scroll_to_task(task_id){
+            const el = document.getElementById('task-' + task_id)
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            } else {
+                // fallback: navigate to task collapse
+                window.location.hash = 'task-' + task_id
+            }
+        }
+
+        function toggleAssignTasks(misp_object){
+            if(assigningTasks.value === misp_object.object_id){
+                assigningTasks.value = null
+                return
+            }
+            // initialize selected ids from object.tasks if present
+            assign_task_state.value[misp_object.object_id] = (misp_object.tasks || []).map(t => t.id)
+            assigningTasks.value = misp_object.object_id
+        }
+
+        async function saveAssignTasks(misp_object_id){
+            const sel = assign_task_state.value[misp_object_id] || []
+            const res = await fetch(`/case/${props.case_id}/misp_object/${misp_object_id}/set_tasks`, {
+                method: 'POST',
+                headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                body: JSON.stringify({ task_ids: sel })
+            })
+            if (await res.status == 200) {
+                // Update local object tasks using props.cases_info.tasks titles
+                const objIdx = case_misp_objects.value.findIndex(o => o.object_id === misp_object_id)
+                if (objIdx > -1) {
+                    const tasksMap = {}
+                    if (props.cases_info && props.cases_info.tasks) {
+                        for (const t of props.cases_info.tasks) tasksMap[t.id] = t
+                    }
+                    case_misp_objects.value[objIdx].tasks = sel.map(id => ({ id: id, title: tasksMap[id] ? tasksMap[id].title : `Task ${id}` }))
+                }
+                assigningTasks.value = null
+                emit('modif_misp_objects', true)
+            }
+            display_toast(res)
         }
 
         function toggleAddObject() {
@@ -210,7 +258,8 @@ export default {
                     },
                     body: JSON.stringify({
                         "object-template": activeTemplate.value,
-                        "attributes": list_attr.value
+                        "attributes": list_attr.value,
+                        "task_ids": new_object_task_ids.value
                     })
                 });
                 if(await res.status==200){
@@ -560,7 +609,14 @@ export default {
             link_modal_ref,
             open_link_modal,
             on_link_updated,
-            can_edit
+            on_link_updated,
+            can_edit,
+            assigningTasks,
+            assign_task_state,
+            new_object_task_ids,
+            toggleAssignTasks,
+            saveAssignTasks,
+            scroll_to_task
 		}
     },
 
@@ -646,6 +702,12 @@ export default {
             </div>
 
             <div v-if="activeTemplate.uuid">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Assign to tasks (optional)</label>
+                    <select v-model="new_object_task_ids" class="form-select form-select-sm" multiple size="4">
+                        <option v-for="t in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :value="t.id">[[ t.title ]]</option>
+                    </select>
+                </div>
                 <div class="mb-2">
                     <span class="fw-bold">[[ activeTemplate.name ]] </span>
                     <span class="badge bg-light text-dark">[[activeTemplate.uuid]] </span>
@@ -845,6 +907,11 @@ export default {
                             <i class="fa-solid fa-cloud me-1"></i>[[ si.instance_name ]]
                         </span>
                     </template>
+                            <template v-if="misp_object.tasks && misp_object.tasks.length">
+                                <span v-for="t in misp_object.tasks" :key="t.id" class="badge bg-light text-dark ms-2" style="font-size:0.75em; cursor:pointer;" :title="'Open task: ' + t.title" @click="scroll_to_task(t.id)">
+                                    <i class="fa-solid fa-list-check me-1"></i>[[ t.title ]]
+                                </span>
+                            </template>
                 </button>
                 </h2>
                 <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
@@ -860,6 +927,22 @@ export default {
                                 @click="open_link_modal(misp_object)">
                             <i class="fa-solid fa-link"></i>
                         </button>
+                        <button v-if="can_edit" type="button" class="btn btn-outline-secondary btn-sm ms-1" @click="toggleAssignTasks(misp_object)" title="Assign tasks to this object">
+                            <i class="fa-solid fa-tasks"></i>
+                        </button>
+                        <div v-if="assigningTasks === misp_object.object_id" class="card mt-2 p-2" style="background-color:#f8f9fa;">
+                            <div v-if="cases_info && cases_info.tasks && cases_info.tasks.length">
+                                <div v-for="task in cases_info.tasks" :key="task.id" class="form-check">
+                                    <input class="form-check-input" type="checkbox" :id="'assign-'+misp_object.object_id+'-'+task.id" :value="task.id" v-model="assign_task_state[misp_object.object_id]">
+                                    <label class="form-check-label" :for="'assign-'+misp_object.object_id+'-'+task.id">[[ task.title ]]</label>
+                                </div>
+                                <div class="mt-2">
+                                    <button class="btn btn-primary btn-sm" @click="saveAssignTasks(misp_object.object_id)">Save</button>
+                                    <button class="btn btn-secondary btn-sm ms-2" @click="assigningTasks = null">Cancel</button>
+                                </div>
+                            </div>
+                            <div v-else class="text-muted">No tasks available in this case.</div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>

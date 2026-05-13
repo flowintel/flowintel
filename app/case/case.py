@@ -12,7 +12,7 @@ from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from ..connectors import connectors_core as ConnectorsModel
-from ..db_class.db import Case, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, Case_Timeline_Event, db
+from ..db_class.db import Case, Task, Task_Misp_Object, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, Case_Timeline_Event, db
 from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
@@ -1290,6 +1290,12 @@ def get_case_misp_object(cid):
                 "synced_instances": synced_instances,
                 # Mark whether this object already has a timeline event
                 "is_imported": True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=object.id).first() else False
+                ,
+                # Tasks assigned to this object
+                "tasks": [
+                    {"id": t.task_id, "title": (Task.query.get(t.task_id).title if Task.query.get(t.task_id) else None)}
+                    for t in Task_Misp_Object.query.filter_by(misp_object_id=object.id).all()
+                ]
             })
         return {"misp-object": loc_object}
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -1405,6 +1411,60 @@ def nb_objects(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         return {"nb_objects": len(CaseModel.get_misp_object_by_case(cid))}, 200
     return {"message": "Case not found"}, 404
+
+
+@case_blueprint.route("/<int:cid>/misp_object/<int:oid>/set_tasks", methods=['POST'])
+@login_required
+@editor_required
+def set_misp_object_tasks(cid, oid):
+    """Assign tasks to a MISP object (replace current assignments)."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Set MISP object tasks: Action not allowed", User=current_user.email, CaseId=cid, ObjectId=oid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    misp_object = CaseModel.get_misp_object(oid)
+    if not misp_object or int(misp_object.case_id) != int(cid):
+        return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
+
+    task_ids = request.json.get('task_ids', []) if request.is_json else []
+    if not isinstance(task_ids, list):
+        return {"message": "task_ids must be a list", "toast_class": "warning-subtle"}, 400
+
+    # Normalize and validate tasks
+    valid_new_ids = set()
+    for tid in task_ids:
+        try:
+            tid_int = int(tid)
+        except Exception:
+            continue
+        t = Task.query.get(tid_int)
+        if t and int(t.case_id) == int(cid):
+            valid_new_ids.add(tid_int)
+
+    # Current assignments
+    existing_links = Task_Misp_Object.query.filter_by(misp_object_id=oid).all()
+    existing_ids = set([l.task_id for l in existing_links])
+
+    to_add = valid_new_ids - existing_ids
+    to_remove = existing_ids - valid_new_ids
+
+    try:
+        for tid in to_add:
+            link = Task_Misp_Object(task_id=tid, misp_object_id=oid)
+            db.session.add(link)
+        if to_remove:
+            Task_Misp_Object.query.filter(Task_Misp_Object.misp_object_id == oid, Task_Misp_Object.task_id.in_(list(to_remove))).delete(synchronize_session=False)
+        db.session.commit()
+
+        CommonModel.save_history(case.uuid, current_user, f"Updated tasks for MISP object {misp_object.id}")
+        CommonModel.update_last_modif(cid)
+        return {"message": "Tasks updated", "toast_class": "success-subtle"}, 200
+    except Exception:
+        db.session.rollback()
+        return {"message": "Error updating tasks", "toast_class": "danger-subtle"}, 500
 
 
 
