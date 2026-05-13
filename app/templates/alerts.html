@@ -1,19 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    .alert-item { padding: 0.75rem 1rem; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 1rem; }
-    .alert-item:hover { background: #f8f9fa; }
-    .alert-item.unread { border-left: 3px solid #0d6efd; background: #f0f7ff; }
-    .alert-status-sent { color: #198754; }
-    .alert-status-error { color: #dc3545; }
-    .alert-status-pending { color: #ffc107; }
-    .config-card { margin-bottom: 1.5rem; }
-    .log-entry { font-family: monospace; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-bottom: 1px solid #eee; }
-    .log-entry:nth-child(odd) { background: #f8f9fa; }
-    #log-container { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
-</style>
-
 <div class="container-fluid">
     <div class="case-core-style" style="border-radius: 0">
         <div class="row align-items-center">
@@ -44,42 +31,33 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Recent Case Alerts</h5>
             <div>
-                <span class="badge bg-primary me-2" id="unread-count">{{ alerts|selectattr('is_read', 'equalto', false)|list|length }} unread</span>
-                <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
+                <span class="badge bg-primary me-2" id="unread-count">[[ unreadCount ]] unread</span>
+                <button class="btn btn-sm btn-outline-secondary" @click="loadAlerts"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
             </div>
         </div>
         <div class="card-body p-0" id="alerts-container">
-            {% for alert in alerts %}
-            <div class="alert-item {{ 'unread' if not alert.is_read }}" data-id="{{ alert.id }}">
-                <div style="min-width: 80px;">
-                    {% if alert.status == 'sent' %}
-                    <span class="badge bg-success">Sent</span>
-                    {% elif alert.status == 'error' %}
-                    <span class="badge bg-danger">Error</span>
-                    {% else %}
-                    <span class="badge bg-warning text-dark">Pending</span>
-                    {% endif %}
-                </div>
-                <div class="flex-grow-1">
-                    <strong>{{ alert.case_title }}</strong>
-                    <div class="text-muted small">{{ alert.message }}</div>
-                    <div class="text-muted" style="font-size: 0.8rem;">{{ alert.creation_date[:19] }}</div>
-                </div>
-                <div class="text-end" style="min-width: 120px;">
-                    {% if alert.case_uuid %}
-                    <a href="/case/{{ alert.case_id }}" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-folder-open me-1"></i>View Case</a>
-                    {% endif %}
-                    {% if alert.webhook_status %}
-                    <div class="small text-muted">HTTP {{ alert.webhook_status }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            {% else %}
-            <div class="text-center text-muted py-5">
+            <div v-if="alerts.length === 0" class="text-center text-muted py-5">
                 <i class="fa-solid fa-bell-slash fa-3x mb-3"></i>
                 <p>No alerts yet. Alerts will appear here when new cases are created.</p>
             </div>
-            {% endfor %}
+            <template v-else>
+                <div v-for="a in alerts" :key="a.id" class="alert-item" :class="{unread: !a.is_read}" @click="markRead(a)">
+                    <div style="min-width: 80px;">
+                        <span v-if="a.status === 'sent'" class="badge bg-success">Sent</span>
+                        <span v-else-if="a.status === 'error'" class="badge bg-danger">Error</span>
+                        <span v-else class="badge bg-warning text-dark">Pending</span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <strong>[[ a.case_title ]]</strong>
+                        <div class="text-muted small">[[ a.message ]]</div>
+                        <div class="text-muted" style="font-size: 0.8rem;">[[ (a.creation_date || '').slice(0,19) ]]</div>
+                    </div>
+                    <div class="text-end" style="min-width: 120px;">
+                        <a v-if="a.case_uuid" :href="`/case/${a.case_id}`" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-folder-open me-1"></i>View Case</a>
+                        <div v-if="a.webhook_status" class="small text-muted">HTTP [[ a.webhook_status ]]</div>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 
@@ -91,22 +69,22 @@
                     <h5 class="mb-0"><i class="fa-solid fa-plug me-2"></i>Webhook Configuration</h5>
                 </div>
                 <div class="card-body">
-                    <form id="webhook-config">
+                    <form @submit.prevent="saveWebhook">
                         <div class="mb-3 form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="webhook-enabled" {{ 'checked' if cfg.WEBHOOK_ENABLED else '' }}>
+                            <input class="form-check-input" type="checkbox" id="webhook-enabled" v-model="cfg.WEBHOOK_ENABLED">
                             <label class="form-check-label" for="webhook-enabled">Enable webhook</label>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Webhook URL</label>
-                            <input type="url" class="form-control" id="webhook-url" value="{{ cfg.WEBHOOK_URL }}" placeholder="https://example.com/webhook">
+                            <input type="url" class="form-control" id="webhook-url" v-model="cfg.WEBHOOK_URL" placeholder="https://example.com/webhook">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Secret (HMAC-SHA256 signature)</label>
-                            <input type="text" class="form-control" id="webhook-secret" value="{{ cfg.WEBHOOK_SECRET }}" placeholder="Optional secret">
+                            <input type="text" class="form-control" id="webhook-secret" v-model="cfg.WEBHOOK_SECRET" placeholder="Optional secret">
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
-                            <button type="button" class="btn btn-outline-secondary" id="test-webhook"><i class="fa-solid fa-paper-plane me-1"></i>Test</button>
+                            <button type="submit" class="btn btn-primary" :disabled="sending"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                            <button type="button" class="btn btn-outline-secondary" @click="testWebhook"><i class="fa-solid fa-paper-plane me-1"></i>Test</button>
                         </div>
                     </form>
                 </div>
@@ -120,34 +98,34 @@
                     <h5 class="mb-0"><i class="fa-solid fa-envelope me-2"></i>Email IMAP</h5>
                 </div>
                 <div class="card-body">
-                    <form id="imap-config">
+                    <form @submit.prevent="saveImap">
                         <div class="mb-3">
                             <label class="form-label">IMAP Server</label>
-                            <input type="text" class="form-control" id="imap-server" value="{{ cfg.IMAP_SERVER }}" placeholder="imap.gmail.com">
+                            <input type="text" class="form-control" id="imap-server" v-model="cfg.IMAP_SERVER" placeholder="imap.gmail.com">
                         </div>
                         <div class="row mb-3">
                             <div class="col-6">
                                 <label class="form-label">Port</label>
-                                <input type="number" class="form-control" id="imap-port" value="{{ cfg.IMAP_PORT or 993 }}">
+                                <input type="number" class="form-control" id="imap-port" v-model.number="cfg.IMAP_PORT">
                             </div>
                             <div class="col-6 d-flex align-items-end">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="imap-ssl" {{ 'checked' if cfg.IMAP_USE_SSL else '' }}>
+                                    <input class="form-check-input" type="checkbox" id="imap-ssl" v-model="cfg.IMAP_USE_SSL">
                                     <label class="form-check-label" for="imap-ssl">SSL</label>
                                 </div>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Username</label>
-                            <input type="text" class="form-control" id="imap-user" value="{{ cfg.IMAP_USER }}">
+                            <input type="text" class="form-control" id="imap-user" v-model="cfg.IMAP_USER">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input type="password" class="form-control" id="imap-password" value="{{ cfg.IMAP_PASSWORD }}">
+                            <input type="password" class="form-control" id="imap-password" v-model="cfg.IMAP_PASSWORD">
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
-                            <button type="button" class="btn btn-outline-secondary" id="test-imap"><i class="fa-solid fa-paper-plane me-1"></i>Test</button>
+                            <button type="submit" class="btn btn-primary" :disabled="sending"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                            <button type="button" class="btn btn-outline-secondary" @click="testImap"><i class="fa-solid fa-paper-plane me-1"></i>Test</button>
                         </div>
                     </form>
                 </div>
@@ -159,14 +137,13 @@
     <div class="card mt-3">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Webhook Logs</h5>
-            <button class="btn btn-sm btn-outline-secondary" id="refresh-logs"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
+            <button class="btn btn-sm btn-outline-secondary" @click="loadLogs"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
         </div>
         <div class="card-body" id="log-container">
-            {% for log in alert_logs %}
-            <div class="log-entry">{{ log }}</div>
-            {% else %}
-            <div class="text-muted p-3">No logs yet</div>
-            {% endfor %}
+            <div v-if="logs.length === 0" class="text-muted p-3">No logs yet</div>
+            <div v-else>
+                <div class="log-entry" v-for="(l, idx) in logs" :key="idx">[[ l ]]</div>
+            </div>
         </div>
     </div>
 </div>
@@ -174,90 +151,131 @@
 {% endblock %}
 
 {% block script %}
-<script>
-// Initialize Bootstrap tooltips
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-// Webhook config save
-document.getElementById('webhook-config').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const data = {
-        WEBHOOK_ENABLED: document.getElementById('webhook-enabled').checked,
-        WEBHOOK_URL: document.getElementById('webhook-url').value,
-        WEBHOOK_SECRET: document.getElementById('webhook-secret').value,
-    };
-    const resp = await fetch('/alerts/config', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token').value},
-        body: JSON.stringify(data)
-    });
-    const result = await resp.json();
-    alert(result.status === 'ok' ? 'Webhook configuration saved' : 'Error: ' + (result.message || 'unknown'));
-});
+<script type="module">
+const initialAlerts = {{ alerts|tojson|safe }};
+const initialLogs = {{ alert_logs|tojson|safe }};
+const initialCfg = {
+    WEBHOOK_ENABLED: {{ 'true' if cfg.WEBHOOK_ENABLED else 'false' }},
+    WEBHOOK_URL: {{ cfg.WEBHOOK_URL|tojson }},
+    WEBHOOK_SECRET: {{ cfg.WEBHOOK_SECRET|tojson }},
+    IMAP_SERVER: {{ cfg.IMAP_SERVER|tojson }},
+    IMAP_PORT: {{ cfg.IMAP_PORT|default(993)|tojson }},
+    IMAP_USE_SSL: {{ 'true' if cfg.IMAP_USE_SSL else 'false' }},
+    IMAP_USER: {{ cfg.IMAP_USER|tojson }},
+    IMAP_PASSWORD: {{ cfg.IMAP_PASSWORD|tojson }}
+};
 
-// IMAP config save
-document.getElementById('imap-config').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const data = {
-        IMAP_SERVER: document.getElementById('imap-server').value,
-        IMAP_PORT: parseInt(document.getElementById('imap-port').value) || 993,
-        IMAP_USE_SSL: document.getElementById('imap-ssl').checked,
-        IMAP_USER: document.getElementById('imap-user').value,
-        IMAP_PASSWORD: document.getElementById('imap-password').value,
-    };
-    const resp = await fetch('/alerts/config', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token').value},
-        body: JSON.stringify(data)
-    });
-    const result = await resp.json();
-    alert(result.status === 'ok' ? 'IMAP configuration saved' : 'Error: ' + (result.message || 'unknown'));
-});
+const { createApp, ref, onMounted, computed, nextTick } = Vue;
 
-// Test webhook
-document.getElementById('test-webhook').addEventListener('click', async () => {
-    const resp = await fetch('/alerts/test/webhook', {
-        method: 'POST',
-        headers: {'X-CSRFToken': document.getElementById('csrf_token').value}
-    });
-    const result = await resp.json();
-    alert('Webhook test: ' + JSON.stringify(result, null, 2));
-});
+import {message_list} from '/static/js/toaster.js'
 
-// Test IMAP
-document.getElementById('test-imap').addEventListener('click', async () => {
-    const resp = await fetch('/alerts/test/imap', {
-        method: 'POST',
-        headers: {'X-CSRFToken': document.getElementById('csrf_token').value}
-    });
-    const result = await resp.json();
-    alert('IMAP test: ' + JSON.stringify(result, null, 2));
-});
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+        const alerts = ref(initialAlerts || []);
+        const logs = ref(initialLogs || []);
+        const cfg = ref(Object.assign({}, initialCfg));
+        const sending = ref(false);
+        const csrfToken = document.getElementById('csrf_token')?.value || '';
 
-// Refresh logs
-document.getElementById('refresh-logs').addEventListener('click', async () => {
-    const resp = await fetch('/alerts/logs');
-    const result = await resp.json();
-    const container = document.getElementById('log-container');
-    if (result.logs && result.logs.length) {
-        container.innerHTML = result.logs.map(l => `<div class="log-entry">${l}</div>`).join('');
-    } else {
-        container.innerHTML = '<div class="text-muted p-3">No logs yet</div>';
-    }
-});
+        const unreadCount = computed(() => alerts.value.filter(a => !a.is_read).length);
 
-// Mark alert as read when clicked
-document.querySelectorAll('.alert-item').forEach(el => {
-    el.addEventListener('click', async () => {
-        const id = el.dataset.id;
-        await fetch(`/alerts/api/alerts/${id}/read`, {
-            method: 'POST',
-            headers: {'X-CSRFToken': document.getElementById('csrf_token').value}
+        async function loadAlerts() {
+            try {
+                const resp = await fetch('/alerts/api/alerts');
+                if (resp.ok) alerts.value = await resp.json();
+            } catch (e) { }
+        }
+
+        async function loadLogs() {
+            try {
+                const resp = await fetch('/alerts/logs');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    logs.value = data.logs || [];
+                }
+            } catch (e) { }
+        }
+
+        async function markRead(a) {
+            if (!a || a.is_read) return;
+            try {
+                await fetch(`/alerts/api/alerts/${a.id}/read`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+                a.is_read = true;
+            } catch (e) { }
+        }
+
+        async function saveConfig(data) {
+            sending.value = true;
+            try {
+                const resp = await fetch('/alerts/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify(data)
+                });
+                const result = await resp.json();
+                alert(result.status === 'ok' ? 'Configuration saved' : 'Error: ' + (result.message || 'unknown'));
+                // reload config from server-side file if needed by reloading page or leaving as-is
+            } catch (e) {
+                alert('Error: ' + e);
+            } finally {
+                sending.value = false;
+            }
+        }
+
+        function saveWebhook() {
+            return saveConfig({
+                WEBHOOK_ENABLED: !!cfg.value.WEBHOOK_ENABLED,
+                WEBHOOK_URL: cfg.value.WEBHOOK_URL,
+                WEBHOOK_SECRET: cfg.value.WEBHOOK_SECRET
+            });
+        }
+
+        function saveImap() {
+            return saveConfig({
+                IMAP_SERVER: cfg.value.IMAP_SERVER,
+                IMAP_PORT: parseInt(cfg.value.IMAP_PORT) || 993,
+                IMAP_USE_SSL: !!cfg.value.IMAP_USE_SSL,
+                IMAP_USER: cfg.value.IMAP_USER,
+                IMAP_PASSWORD: cfg.value.IMAP_PASSWORD
+            });
+        }
+
+        async function testWebhook() {
+            try {
+                const resp = await fetch('/alerts/test/webhook', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } });
+                const result = await resp.json();
+                alert('Webhook test: ' + JSON.stringify(result, null, 2));
+            } catch (e) { alert('Error: ' + e); }
+        }
+
+        async function testImap() {
+            try {
+                const resp = await fetch('/alerts/test/imap', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } });
+                const result = await resp.json();
+                alert('IMAP test: ' + JSON.stringify(result, null, 2));
+            } catch (e) { alert('Error: ' + e); }
+        }
+
+        onMounted(() => {
+            // Initialize bootstrap tooltips
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+            // Ensure DOM-synced refs
+            nextTick(() => {
+                // Optionally refresh from API to ensure latest
+                loadAlerts();
+                loadLogs();
+            });
         });
-        el.classList.remove('unread');
-        // Update unread count
-        const count = document.querySelectorAll('.alert-item.unread').length;
-        document.getElementById('unread-count').textContent = count + ' unread';
-    });
-});
+
+        return {
+            message_list, alerts, logs, cfg, sending, unreadCount,
+            loadAlerts, loadLogs, markRead, saveWebhook, saveImap, testWebhook, testImap
+        };
+    }
+}).mount('#main-container');
 </script>
 {% endblock %}

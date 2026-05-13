@@ -910,3 +910,15 @@ a.case-content:hover {
 .task-section-body {
   padding-top: 0.6rem;
 }
+
+/* Alerts page styles (moved from app/templates/alerts.html) */
+.alert-item { padding: 0.75rem 1rem; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 1rem; }
+.alert-item:hover { background: #f8f9fa; }
+.alert-item.unread { border-left: 3px solid #0d6efd; background: #f0f7ff; }
+.alert-status-sent { color: #198754; }
+.alert-status-error { color: #dc3545; }
+.alert-status-pending { color: #ffc107; }
+.config-card { margin-bottom: 1.5rem; }
+.log-entry { font-family: monospace; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-bottom: 1px solid #eee; }
+.log-entry:nth-child(odd) { background: #f8f9fa; }
+#log-container { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
