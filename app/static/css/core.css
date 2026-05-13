@@ -34,7 +34,7 @@ main {
 }
 
 [v-cloak] {
-  display: none !important;
+  visibility: hidden !important;
 }
 
 pre.description {
