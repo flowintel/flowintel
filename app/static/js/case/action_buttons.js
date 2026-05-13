@@ -201,10 +201,10 @@ export default {
 		}
     },
 	template: `
-        <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" style="margin-right:10px;">
+        <div v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)">
             <span v-if="cases_info.case.completed" 
                   :title="!canModifyCase ? 'You cannot revive a privileged case' : 'Revive the case'"
-                  style="margin-right:10px; display:inline-block;">
+                  style="margin-right:10px;">
                 <button class="btn btn-secondary" 
                         @click="complete_case(cases_info.case)" 
                         :disabled="!canModifyCase"
@@ -214,7 +214,7 @@ export default {
             </span>
             <span v-else 
                   :title="!canModifyCase ? 'You cannot complete a privileged case' : 'Complete the case'"
-                  style="margin-right:10px; display:inline-block;">
+                  style="margin-right:10px;">
                 <button class="btn btn-success" 
                         @click="complete_case(cases_info.case)" 
                         :disabled="!canModifyCase"
