@@ -39,32 +39,12 @@
                                 <div class="small text-muted">ID: [[case_search.id]]</div>
                                 <div class="btn-group btn-group-sm mt-1" role="group">
                                     <a :href="'/case/'+case_search.id" class="btn btn-sm btn-primary">Open</a>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" @click.prevent="previewCase(case_search)">Preview</button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div v-else class="text-center text-muted small py-2">No cases found</div>
-            </div>
-        </div>
-
-        <!-- Preview modal -->
-        <div v-if="preview_case" class="modal-backdrop d-flex align-items-start justify-content-center d-none" 
-        style="position:fixed;inset:0;z-index:1060;background-color: rgba(108,117,125,0.5);" id="modal-search">
-            <div class="card mt-5" style="width:720px;max-width:95%;">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">[[preview_case.title]]</div>
-                    <div>
-                        <a :href="'/case/'+preview_case.id" class="btn btn-sm btn-primary me-1">Open</a>
-                        <button class="btn btn-sm btn-outline-secondary" @click="closePreview">Close</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted">ID: [[preview_case.id]]</p>
-                    <p>[[preview_case.description || 'No description available.']]</p>
-                    <pre v-if="preview_case.raw" class="small bg-light p-2" style="white-space:pre-wrap;">[[preview_case.raw]]</pre>
-                </div>
             </div>
         </div>
 
@@ -165,7 +145,6 @@
             const search_query = ref('')
             const selectedIndex = ref(-1)
             const show_results = ref(false)
-            const preview_case = ref(null)
             let searchTimer = null
 
             async function fetchSearch(text){
@@ -223,14 +202,6 @@
                 }
             }
 
-            function previewCase(item){
-                preview_case.value = item
-            }
-
-            function closePreview(){
-                preview_case.value = null
-            }
-
             function hideResults(){
                 show_results.value = false
             }
@@ -261,7 +232,6 @@
             onMounted(() => {
                 // show search input
                 $('#search-form').removeClass('d-none')
-                $('#modal-search').removeClass('d-none')
                 const el = document.getElementById('search-input-wrap')
                 if(el) el.classList.remove('d-none')
                 document.addEventListener('mouseup', onDocClick)
@@ -292,9 +262,7 @@
                 selectNext,
                 selectPrev,
                 activateSelected,
-                preview_case,
-                previewCase,
-                closePreview,
+                /* preview removed */
                 hideResults,
                 clearSearch
             }
