@@ -20,9 +20,12 @@
         <div>
             <strong>How alerts work:</strong> Every time a case is created, it is automatically logged here.
             If the webhook is enabled, an HTTP POST is also sent to the configured URL.
-            The status badge shows whether the webhook was sent successfully (<span class="badge bg-success">Sent</span>),
-            failed (<span class="badge bg-danger">Error</span>),
-            or pending (<span class="badge bg-warning text-dark">Pending</span>).
+            The status badge shows the webhook delivery result:
+            <span class="badge bg-success">Sent</span> (2xx),
+            <span class="badge bg-danger">Failed</span> (4xx/5xx),
+            <span class="badge bg-danger">Error</span> (delivery exception),
+            <span class="badge bg-secondary">Disabled</span> (webhook off),
+            or <span class="badge bg-warning text-dark">Pending</span>.
         </div>
     </div>
 
@@ -44,7 +47,9 @@
                 <div v-for="a in alerts" :key="a.id" class="alert-item" :class="{unread: !a.is_read}" @click="markRead(a)">
                     <div style="min-width: 80px;">
                         <span v-if="a.status === 'sent'" class="badge bg-success">Sent</span>
+                        <span v-else-if="a.status === 'failed'" class="badge bg-danger">Failed</span>
                         <span v-else-if="a.status === 'error'" class="badge bg-danger">Error</span>
+                        <span v-else-if="a.status === 'disabled'" class="badge bg-secondary">Disabled</span>
                         <span v-else class="badge bg-warning text-dark">Pending</span>
                     </div>
                     <div class="flex-grow-1">
