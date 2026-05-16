@@ -376,6 +376,8 @@ The export includes the case title, description, deadline, time required, ticket
 
 You can import a previously exported case, or any JSON file that follows the Flowintel case schema, back into the platform. Navigate to the **Tools** section in the sidebar and choose **Importer**. Select the **Case** tab, then pick a file by browsing or by dragging it into the upload area. You can upload multiple files at once. Click **Upload cases** to start the import.
 
+![user-manual-diagrams/flowintel-case-importer.png](user-manual-diagrams/flowintel-case-importer.png)
+
 Only users with the **Admin** system role or the **Importer** permission can access the importer.
 
 During import, Flowintel validates the JSON against its case schema and applies the same constraints as when creating a case manually. The case title must be unique; if a case with the same title already exists, the import is rejected. If the JSON contains a UUID that already exists in the database, Flowintel generates a new one rather than overwriting the existing case. Tags and galaxy clusters referenced in the file must already exist on your instance, with one exception: a toggle labelled **Create custom tags from JSON** lets the importer automatically create any custom tags that are present in the file but missing from your instance.
@@ -383,6 +385,8 @@ During import, Flowintel validates the JSON against its case schema and applies 
 ## Exporting several cases at once
 
 The download option on a case page covers a single case. To export a batch of cases in one go, navigate to **Tools > Exporter**. Pick the cases you want to include, choose the output format and click **Export**.
+
+![user-manual-diagrams/flowintel-multi-case-export.png](user-manual-diagrams/flowintel-multi-case-export.png)
 
 The exporter is reserved for platform administrators and team leads: you need either the **Admin** system role or the **Case Admin** permission to open the page or run an export. If neither applies to your account, the menu entry is hidden. The list itself is also filtered by the usual case visibility rules, so even an eligible user only sees the cases they would normally have access to (their own organisation's cases, public cases, and any case where their organisation is assigned).
 
@@ -751,7 +755,11 @@ Note that the search covers MISP object attributes on cases only; it does not se
 
 ## Creating a case from a MISP event
 
-Flowintel can build a fresh case from an existing MISP event without you having to copy and paste anything. Open **Tools > Case from MISP**, select a *unique* title, pick the case template and the MISP instance to query and paste the MISP event UUID. The page first checks the connection and then displays a preview of the event: title, info field, threat level, analysis status, distribution and the list of objects and attributes the event contains.
+Flowintel can build a fresh case from an existing MISP event without you having to copy and paste anything. You need a working connector and a case template.
+
+Open **Tools > Case from MISP**, select a *unique* title, pick the case template and the MISP instance to query and paste the MISP event UUID. The page first checks the connection and then displays a preview of the event: title, info field, threat level, analysis status, distribution and the list of objects and attributes the event contains.
+
+![user-manual-diagrams/create-case-from-misp.png](user-manual-diagrams/create-case-from-misp.png)
 
 From the preview you can fine-tune what ends up in the case:
 
@@ -1946,7 +1954,6 @@ When `SHOW_GDPR_NOTICE` is enabled, Flowintel displays an informational banner o
 
 You can customise the notice text to reference your organisation's own data handling policies. To remove the notice entirely, disable `SHOW_GDPR_NOTICE`.
 
-
 ## Report signing with GPG
 
 Flowintel can sign generated case reports with a GPG key (digital report signing). When configured, every report includes a detached ASCII-armoured signature, the identity of the signing key and the signing timestamp. Recipients can verify the signature to confirm that the report was produced by your Flowintel instance and has not been altered.
@@ -1987,6 +1994,8 @@ Change the prefix if your log aggregation system expects a different format, or 
 ## Audit log
 
 The audit log gives administrators a single view of every security-relevant action recorded in Flowintel, without needing shell access to the server. Open it from **Tools > Audit log**. Access is limited to users with the **Admin** system role or the dedicated **Audit Viewer** permission.
+
+![user-manual-diagrams/audit-logs.png](user-manual-diagrams/audit-logs.png)
 
 The page combines two sources: the `AUDIT` entries written to the application log file (`record.log` by default) and the per-case history files maintained alongside each case. Each row shows the timestamp, the user who triggered the action, the affected case (when relevant), the HTTP status code and a description of what happened.
 
@@ -2227,6 +2236,10 @@ Yes. If a task has an external reference (a URL), you can convert the content of
 **Does Flowintel support email or Matrix notifications?**
 
 Flowintel can send notifications through email (SMTP) and Matrix messaging. These are configured as connector instances of the **notify_user** type. An administrator needs to set up the SMTP or Matrix server details in the configuration. Once configured, notifications such as task assignments and deadline reminders can be pushed to users through those channels.
+
+**Why is Flowintel not using the DD/MM/YYYY date format?**
+
+Flowintel does not specify a date format, it uses the date format that is set by your operating system or browser.
 
 **Who can see case history and audit logs?**
 
