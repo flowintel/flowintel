@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 import conf.config_module as ConfigModule
 from app.db_class.db import Alert, Case, db
 from app.decorators import admin_required
+from app.case.common_core import check_user_in_private_cases
 from app.modules.notify_user.webhook import ALERT_LOG_FILE as LOG_FILE
 import os
 import json
@@ -21,18 +22,40 @@ def read_alert_log(lines=50):
         return []
 
 
+def _user_visible_alerts(alerts):
+    case_ids = {a.case_id for a in alerts}
+    cases_by_id = {
+        c.id: c for c in Case.query.filter(Case.id.in_(case_ids)).all()
+    } if case_ids else {}
+    allowed_ids = {
+        c.id for c in check_user_in_private_cases(
+            list(cases_by_id.values()), current_user
+        )
+    }
+    visible = []
+    for a in alerts:
+        case = cases_by_id.get(a.case_id)
+        if case is None or case.id in allowed_ids:
+            visible.append((a, case))
+    return visible
+
+
+def _alerts_to_json(alerts):
+    result = []
+    for a, case in _user_visible_alerts(alerts):
+        item = a.to_json()
+        item["case_title"] = case.title if case else "(deleted)"
+        item["case_uuid"] = case.uuid if case else ""
+        result.append(item)
+    return result
+
+
 @alerts_blueprint.route("/")
 @login_required
 def index():
     alert_logs = read_alert_log(50)
     alerts = Alert.query.order_by(Alert.creation_date.desc()).limit(50).all()
-    alerts_json = []
-    for a in alerts:
-        item = a.to_json()
-        case = Case.query.get(a.case_id)
-        item["case_title"] = case.title if case else "(deleted)"
-        item["case_uuid"] = case.uuid if case else ""
-        alerts_json.append(item)
+    alerts_json = _alerts_to_json(alerts)
     return render_template("alerts.html",
                            cfg=ConfigModule,
                            alert_logs=alert_logs,
@@ -43,20 +66,14 @@ def index():
 @login_required
 def api_alerts():
     alerts = Alert.query.order_by(Alert.creation_date.desc()).limit(50).all()
-    result = []
-    for a in alerts:
-        item = a.to_json()
-        case = Case.query.get(a.case_id)
-        item["case_title"] = case.title if case else "(deleted)"
-        item["case_uuid"] = case.uuid if case else ""
-        result.append(item)
-    return jsonify(result)
+    return jsonify(_alerts_to_json(alerts))
 
 
 @alerts_blueprint.route("/api/alerts/unread")
 @login_required
 def api_alerts_unread():
-    count = Alert.query.filter_by(is_read=False).count()
+    unread = Alert.query.filter_by(is_read=False).all()
+    count = len(_user_visible_alerts(unread))
     return jsonify({"count": count})
 
 
@@ -68,6 +85,30 @@ def api_alert_read(aid):
         alert.is_read = True
         db.session.commit()
     return jsonify({"status": "ok"})
+
+
+@alerts_blueprint.route("/api/alerts/read_all", methods=["POST"])
+@login_required
+def api_alerts_read_all():
+    unread = Alert.query.filter_by(is_read=False).all()
+    visible = [a for a, _ in _user_visible_alerts(unread)]
+    for a in visible:
+        a.is_read = True
+    if visible:
+        db.session.commit()
+    return jsonify({"status": "ok", "count": len(visible)})
+
+
+@alerts_blueprint.route("/api/alerts/delete_read", methods=["POST"])
+@login_required
+def api_alerts_delete_read():
+    read_alerts = Alert.query.filter_by(is_read=True).all()
+    visible = [a for a, _ in _user_visible_alerts(read_alerts)]
+    for a in visible:
+        db.session.delete(a)
+    if visible:
+        db.session.commit()
+    return jsonify({"status": "ok", "count": len(visible)})
 
 
 @alerts_blueprint.route("/config", methods=["POST"])
