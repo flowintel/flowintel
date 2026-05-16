@@ -114,7 +114,39 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/delete_note/' + task.id + '?note_id=' + note_id)
 
 			if (await res.status == 200) {
-				props.task.notes.splice(key, 1);
+				// Tear down the editor bound to this slot and drop the slot's state.
+				// note_preview_html and _previewResolvers are keyed by array index, so
+				// reset them wholesale; the deep watcher on note_editor_render will
+				// repopulate the preview for surviving notes.
+				try { editor_list[key] && editor_list[key].destroy() } catch (e) {}
+				editor_list.splice(key, 1)
+				note_editor_render.value.splice(key, 1)
+				note_preview_html.value = {}
+				for (const k in _previewResolvers) delete _previewResolvers[k]
+				delete resolved_notes.value[note_id]
+				delete resolved_notes_html.value[note_id]
+
+				props.task.notes.splice(key, 1)
+
+				if (!props.task.notes.length) {
+					// The template switches to the v-else "empty" branch which renders
+					// a fresh editor_0_<task.id> element that needs a new EditorView.
+					note_editor_render.value = [""]
+					await nextTick()
+					const targetElement = document.getElementById('editor_0_' + props.task.id)
+					if (targetElement && targetElement.innerHTML === "") {
+						let editor = new EditorView({
+							doc: "\n\n",
+							extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
+								if (v.docChanged) {
+									note_editor_render.value[0] = editor.state.doc.toString()
+								}
+							})],
+							parent: targetElement
+						})
+						editor_list[0] = editor
+					}
+				}
 			}
 			display_toast(res)
 		}
@@ -422,5 +454,6 @@ export default {
 				</div>
 			</div>
 		</div>
+	</div>
     `
 }
