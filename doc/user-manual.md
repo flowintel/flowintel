@@ -428,6 +428,8 @@ Tasks are listed on the case detail page. By default, they appear in the order t
 
 At the top of the task list, you can switch between open and finished tasks. You can also filter and sort tasks by title, status, deadline, last modification or assignment. A title search lets you find a specific task by name. Additionally, you can filter by contextual elements such as taxonomy tags, galaxy clusters and custom tags.
 
+A dedicated **Overdue** button at the top of the list narrows the view to tasks whose deadline has already passed and that are not yet finished. Overdue tasks are also visually highlighted in the list, so you can spot them at a glance even when no filter is applied.
+
 ## Creating a task
 
 ![user-manual-diagrams/create-task.png](user-manual-diagrams/create-task.png)
@@ -478,6 +480,8 @@ In a privileged case, three additional statuses apply. Privileged cases are cove
 To change the status of a task, open the case, click on the task pane and select a new status from the dropdown in the Status section. The assigned users are notified when the status changes. In a privileged case, moving a task to **Requested** or **Request Review** triggers a notification to all approvers. Moving a task from **Requested** to **Approved** or **Rejected** notifies the assigned users.
 
 To mark a task as finished, you can either set its status to **Finished** or click the **Complete** button. Completing a task records the finish date and moves the task to the list of completed tasks. To revive a completed task, click the same button again. This sets the task back to the **Created** status and places it at the end of the open task list.
+
+A finished task is also revived automatically if you change its status to anything other than **Finished** from the status dropdown. The task is moved out of the finished list, its finish date is cleared and it returns to the open task list with the new status you selected. This avoids having to click **Complete** twice when you only want to switch a finished task back to **Ongoing** or another active status.
 
 If the parent case has already been closed, reviving a task also revives the case automatically. The case is moved out of the completed state, its finish date is cleared, its status is reset to **Created**, all assigned organisations receive a notification telling them the case is now active again, and a *Case revived* entry is appended to the case history. This avoids the situation where a case is marked completed while one of its tasks is still being worked on.
 
@@ -670,9 +674,9 @@ Open the task from the case detail page. At the bottom of the task edit form you
 
 Flowintel ships with the full library of MISP taxonomies and galaxies, but not all of them need to be active at the same time. An administrator can enable or disable individual taxonomies and galaxies to keep the selection relevant to your team's work.
 
-To manage taxonomies, navigate to **Tags > Taxonomies**. The page lists all available taxonomies with their name, description and current status. Use the toggle button to enable or disable a taxonomy. A disabled taxonomy no longer appears in the tag selection dropdowns when users create or edit cases and tasks. Any tags that were already applied from a disabled taxonomy remain on the cases and tasks where they were added; disabling a taxonomy does not remove existing tags.
+To manage taxonomies, navigate to **Context > Taxonomies**. The page lists all available taxonomies with their name, description and current status. Use the toggle button to enable or disable a taxonomy. A disabled taxonomy no longer appears in the tag selection dropdowns when users create or edit cases and tasks. Any tags that were already applied from a disabled taxonomy remain on the cases and tasks where they were added; disabling a taxonomy does not remove existing tags.
 
-Galaxy management works in the same way. Navigate to **Tags > Galaxies** to see the list of available galaxies and their clusters. Use the toggle to enable or disable a galaxy. Disabled galaxies no longer appear in the cluster selection menus, but clusters already attached to cases and tasks are preserved.
+Galaxy management works in the same way. Navigate to **Context > Galaxies** to see the list of available galaxies and their clusters. Use the toggle to enable or disable a galaxy. Disabled galaxies no longer appear in the cluster selection menus, but clusters already attached to cases and tasks are preserved.
 
 Both the taxonomy and galaxy management pages support pagination and a name filter. If you are looking for a specific taxonomy or galaxy, type part of its name in the search field to narrow the list.
 
@@ -683,7 +687,7 @@ Only users with the **Admin** system role can enable or disable taxonomies and g
 
 Custom tags are tags that exist only within your Flowintel instance and are not part of any MISP taxonomy. They are useful for labels that are specific to your team, organisation or workflows, for example internal priority levels, department names or project codes.
 
-To manage custom tags, navigate to **Tags > Custom Tags**. From this page you can:
+To manage custom tags, navigate to **Context > Custom Tags**. From this page you can:
 
 - **Create a custom tag**: click the **Plus** button and provide a name and a colour (in hexadecimal format, for example `#FF5733`). Optionally, select a FontAwesome icon to display alongside the tag. Click **Save** to create the tag.
 - **Edit a custom tag**: click the edit button on an existing tag to change its name, colour or icon.
@@ -696,7 +700,7 @@ Custom tags are available to all authenticated users when tagging cases and task
 
 MISP objects let you attach **structured data** directly to a case. Where tags and galaxies provide classification labels, MISP objects store the actual details: technical **indicators** such as file hashes, IP addresses, domain names and URLs, but also broader investigation data such as persons of interest, financial records, or even physical elements such as vehicles, vessels and drones (uav). Each object follows a standardised structure from the MISP project, making the data portable and consistent across tools.
 
-MISP objects can only be added to cases, not to individual tasks.
+MISP objects belong to a case rather than to an individual task. New objects are created at the case level, but you can then **link** an existing case object to one or more of the case's tasks. This is covered in *Linking a MISP object to a task* below.
 
 A MISP object is based on an **object template**. Flowintel ships with the full library of MISP object templates, which define what attributes an object of a given type can hold. The **file** template, for instance, has attributes for filename, MD5, SHA-1, SHA-256, file size and more. The **ip-port** template covers IP address, port, protocol and domain. The **email** template includes sender, recipient, subject line and header fields.
 
@@ -735,6 +739,14 @@ Each attribute within an object can be edited or deleted individually. Open the 
 ## Deleting an object
 
 To delete an entire MISP object, open the object and click the **Delete** button. This removes the object and all its attributes from the case. The deletion cannot be undone.
+
+## Linking a MISP object to a task
+
+A MISP object lives on the case, but the same indicator is often only relevant to one specific task in the investigation. To make that connection explicit, you can link any of the case's MISP objects to one or more tasks within the same case.
+
+Open the task and switch to the **MISP objects** tab. The tab lists every MISP object attached to the parent case. Tick an object to link it to the task and untick it to remove the link. Linking does not duplicate the object; the same object remains stored at the case level and any edits made there are reflected on every linked task.
+
+From the case-level MISP object view, the panel for each object also lists the tasks it is currently linked to, with a link to open each task. This makes it easy to see, for a given object or indicator, which tasks are working with it.
 
 ## Searching for attribute values
 
@@ -1739,6 +1751,20 @@ Because Flowintel creates accounts automatically on first SSO login, there is no
 
 SSO and local authentication can coexist. Users who do not have a Microsoft account can still log in with their email and password. SSO configuration, including the Azure tenant ID, client ID, client secret and group mappings, is managed in the server configuration file (`conf/config.py`). Refer to the [installation manual](installation-manual.md) for detailed setup instructions.
 
+### Keycloak single sign-on (optional)
+
+If your organisation runs a Keycloak identity provider, Flowintel can authenticate users through it in the same way as it does for Entra ID. When the Keycloak integration is enabled, a **Sign in with Keycloak** button appears on the login page alongside the email and password fields and any other configured SSO buttons.
+
+When a user clicks **Sign in with Keycloak**, they are redirected to the Keycloak login page for the realm you configured. After successful authentication, Keycloak sends them back to Flowintel. Flowintel reads the user's email, first name, last name and group memberships from the token and either signs them into an existing account or creates a new one automatically.
+
+Keycloak group membership determines the user's role. The administrator maps Keycloak groups to Flowintel roles in the server configuration. The mapping follows the same priority order as for Entra ID: Admin, Editor, Case Admin, Queue Admin, Queuer, then Read Only. A user who belongs to several mapped groups receives the highest-priority role. A user who is not a member of any mapped group is denied access.
+
+Accounts created through Keycloak are placed in a personal organisation by default and receive the role that matches their Keycloak group membership. Administrators are notified whenever a new SSO account is created so they can review the role and move the user to the appropriate shared organisation. Roles are re-evaluated on every Keycloak login: if a user's group membership changes in Keycloak, their Flowintel role is updated the next time they sign in.
+
+Users who sign in through Keycloak cannot use the local password reset feature or change the email address on their Flowintel account, because authentication is delegated to Keycloak. Administrators can still edit other fields on an SSO account through the web interface, for example to change the role or organisation, but cannot set a local password for them.
+
+Keycloak and local authentication can coexist. Users without a Keycloak account can still sign in with their email and password. Keycloak configuration, including the realm, client ID, client secret, redirect URL and group mappings, is managed in the server configuration file (`conf/config.py`) and the environment file. Refer to the [installation manual](installation-manual.md) for detailed setup instructions.
+
 
 ## Roles
 
@@ -1827,11 +1853,24 @@ Your API key is shown on the profile page in a blurred state. You can reveal it 
 
 All changes to your profile take effect straight away without needing to log out and log back in.
 
-## Community statistics
+## Statistics
 
-Administrators can view statistics about the Flowintel community under **Tools > Stats** on the **Community** tab. This page shows the total number of organisations and users, along with charts for users per organisation, users per role, open cases per organisation and tasks per user.
+Flowintel exposes a single statistics page under **Tools > Stats**. The page is organised into tabs so different audiences can find what is relevant to them. Every tab respects the same controls at the top of the page:
 
-This tab is only accessible to users with the Admin system role.
+- A **Period** dropdown lets you scope the figures to *All time*, the last *24 hours*, the last *week*, the last *30 days*, the last *90 days* or the last *year*. Changing the period reloads every chart on every tab.
+- A *Generated on* timestamp shows when the data on screen was last refreshed.
+- Each chart card has a small **Download CSV** button so you can export the underlying numbers for reporting.
+
+The tabs available depend on your role:
+
+- **Cases** and **Tasks** are visible to every logged-in user. The Cases tab shows case counts, statuses and activity over time. The Tasks tab shows task counts, statuses and activity, and includes two highlight cards for **Overdue** and **Unassigned** tasks so you can quickly spot work that needs attention.
+- **Context elements** is also visible to everyone. It shows usage of taxonomy tags, galaxy clusters and custom tags across cases and tasks.
+- **Admin** is only visible to users with the Admin system role. It adds a card for **Unread notifications** across the platform and a **Login activity** bar chart that shows how many distinct users have signed in over the selected period.
+- **Community** is only visible to users with the Admin system role. It shows the total number of organisations and users, charts for users per organisation, users per role, open cases per organisation and tasks per user, an **Inactive users** table listing accounts that have not signed in recently, and a list of the **20 last logins**.
+
+Figures that aggregate per-user activity (such as tasks per user or open cases per user) deliberately exclude private cases. A user's contribution to a private case is only visible to other members of the assigned organisations, never on a global statistics page.
+
+The Admin and Community tabs rely on the login tracking introduced for this page. Flowintel records each successful sign-in with a timestamp, which is what powers the login activity chart, the inactive users table and the *Last login* column on the user list.
 
 ## Password reset
 
@@ -1983,6 +2022,35 @@ grep '^AUDIT' record.log
 ```
 
 Change the prefix if your log aggregation system expects a different format, or if you run multiple Flowintel instances and need to distinguish their audit streams.
+
+## Alerts
+
+Flowintel can notify the outside world when activity happens on the platform, in addition to the internal notifications already covered. This is handled by the **Alerts** page, which is reachable from the **Alerts** entry in the sidebar. A small badge on the sidebar entry shows the number of unread alerts. The page is open to all users for browsing recent alerts, but the configuration and test actions described below are restricted to the Admin system role.
+
+Alerts are currently triggered when a **new case is created**. Each new case generates an alert with the case title and a link back to it, marks the alert as unread until someone opens it, and optionally fires an outbound webhook. Recent alerts are listed at the top of the page, with the most recent first, so administrators can quickly verify that outbound notifications are flowing.
+
+### Outbound webhook
+
+The **Webhook configuration** card lets administrators send case-creation events to an external system, for example a SIEM, a ticketing tool or a chat bot. Three settings are exposed:
+
+- **Enabled**: turns the webhook on or off without losing the URL or secret.
+- **URL**: the HTTPS endpoint that will receive the events.
+- **Secret** (optional but recommended): a shared secret used to sign the request body.
+
+When the webhook fires, Flowintel sends an HTTP `POST` with a JSON body describing the event (`event`, `case`, `triggered_by`, `timestamp`). If a secret is set, Flowintel computes an HMAC-SHA256 of the request body using that secret and includes it in an `X-Webhook-Signature` header. The receiving system can recompute the same HMAC to verify that the request really came from Flowintel and was not tampered with in transit.
+
+Use the **Test** button next to the webhook configuration to send a small synthetic payload to the configured URL. The HTTP status code returned by the endpoint is shown next to each entry in the recent alerts list, so failed deliveries are easy to spot. The **Webhook Logs** card at the bottom of the page shows the most recent webhook attempts, including their target URL, status code and any error returned by the underlying request.
+
+### IMAP archiving of email notifications
+
+The **Email IMAP** card configures a mailbox where Flowintel can archive a copy of every internal email notification it sends out. This is useful when your organisation needs an auditable trail of what notifications left the platform, who they went to and when. Settings include the IMAP server, port, SSL toggle, user and password, with a **Test** button to verify that Flowintel can connect with the supplied credentials.
+
+When IMAP archiving is configured, every outbound email notification is also appended to the configured mailbox. The mailbox is read-only from Flowintel's perspective: Flowintel only adds new messages, it never reads or deletes them.
+
+### Configuration storage
+
+All the values you set on the Alerts page are written to `conf/config_module.py` so they survive a restart. The same values are also exposed as environment variables (`WEBHOOK_ENABLED`, `WEBHOOK_URL`, `WEBHOOK_SECRET`, `IMAP_SERVER`, `IMAP_PORT`, `IMAP_USE_SSL`, `IMAP_USER`, `IMAP_PASSWORD`) so they can be set from your `.env` file at install time. See the [installation manual](installation-manual.md) for the full list of environment variables.
+
 
 ## Audit log
 
