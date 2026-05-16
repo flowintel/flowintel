@@ -25,10 +25,10 @@
             </div>
 
             <div class="col-auto">
-                <button v-if="is_open_cases" class="btn btn-outline-danger btn-sm" @click="change_status_sort(false)" title="See Finished cases">
+                <button v-if="is_open_cases" class="btn btn-outline-danger btn-sm" @click="change_status_sort(false)" title="See finished cases">
                     <i class="fa-solid fa-folder-closed fa-sm me-1"></i> Finished cases
                 </button>
-                <button v-else class="btn btn-outline-success btn-sm" @click="change_status_sort(true)" title="See Open cases">
+                <button v-else class="btn btn-outline-success btn-sm" @click="change_status_sort(true)" title="See open cases">
                     <i class="fa-solid fa-folder-open fa-sm me-1"></i> Open cases
                 </button>
             </div>
@@ -60,7 +60,7 @@
             <div class="col-auto">
                 <div class="form-check mb-0">
                     <input class="form-check-input" type="checkbox" id="topCheckMyOrg" @click="sort_by_filter(current_filter === 'my_org' ? 'last_modif' : 'my_org')" :checked="current_filter === 'my_org'">
-                    <label class="form-check-label" for="topCheckMyOrg"><i class="fa-solid fa-building fa-sm me-1"></i>My Org</label>
+                    <label class="form-check-label" for="topCheckMyOrg"><i class="fa-solid fa-building fa-sm me-1"></i>My org</label>
                 </div>
             </div>
             <!-- Sort buttons -->
@@ -180,7 +180,7 @@
                     <div>Custom Tags:</div>
                     <div>
                         <template v-if="custom_tags">
-                            <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
+                            <select data-placeholder="Custom tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
                                 <template v-for="custom_tag, key in custom_tags">
                                     <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
                                 </template>

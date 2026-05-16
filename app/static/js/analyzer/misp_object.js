@@ -294,7 +294,7 @@ export default {
                                         <div class="modal-dialog modal-xl">
                                             <div class="modal-content">
                                             <div class="modal-header">
-                                                <h1 class="modal-title fs-5" id="EditObjectLabel">Edit Attribute</h1>
+                                                <h1 class="modal-title fs-5" id="EditObjectLabel">Edit attribute</h1>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body">
@@ -368,7 +368,7 @@ export default {
                         <div class="modal-dialog modal-xl">
                             <div class="modal-content">
                             <div class="modal-header">
-                                <h1 class="modal-title fs-5" id="EditObjectLabel">Add Attributes</h1>
+                                <h1 class="modal-title fs-5" id="EditObjectLabel">Add attributes</h1>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
@@ -396,7 +396,7 @@ export default {
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="EditObjectLabel">Add Object</h1>
+                    <h1 class="modal-title fs-5" id="EditObjectLabel">Add object</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 

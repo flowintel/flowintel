@@ -222,7 +222,7 @@ export default {
         <!-- Add Event Form -->
         <div v-if="show_add_event" class="card mb-3">
             <div class="card-body">
-                <h6 class="card-title mb-3">New Event Node</h6>
+                <h6 class="card-title mb-3">New event node</h6>
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Date / Time</label>
@@ -248,17 +248,17 @@ export default {
         <!-- Add Link Form -->
         <div v-if="show_add_link" class="card mb-3">
             <div class="card-body">
-                <h6 class="card-title mb-3">New Link Between Events</h6>
+                <h6 class="card-title mb-3">New link between events</h6>
                 <div class="row g-3">
                     <div class="col-md-5">
-                        <label class="form-label">Source Event</label>
+                        <label class="form-label">Source event</label>
                         <select class="form-select form-select-sm" v-model="link_source">
                             <option value="">-- Select source --</option>
                             <option v-for="ev in graph_events" :key="ev.id" :value="ev.id">[[ event_label(ev) ]]</option>
                         </select>
                     </div>
                     <div class="col-md-5">
-                        <label class="form-label">Target Event</label>
+                        <label class="form-label">Target event</label>
                         <select class="form-select form-select-sm" v-model="link_target">
                             <option value="">-- Select target --</option>
                             <option v-for="ev in graph_events" :key="ev.id" :value="ev.id">[[ event_label(ev) ]]</option>

@@ -84,7 +84,7 @@ export default {
                     <thead>
                         <tr>
                             <th>Filename</th>
-                            <th>Upload Date</th>
+                            <th>Upload date</th>
                             <th>Size</th>
                             <th>Type</th>
                             <th v-if="!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin">Actions</th>

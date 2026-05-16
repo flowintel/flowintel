@@ -22,7 +22,7 @@
         <div class="collapse" id="collapseTemplate">
             <div class="card card-body">
                 <div class="mb-3">
-                    <select data-placeholder="Task Template" multiple class="select2-select form-control" name="tasks" id="tasks">
+                    <select data-placeholder="Task template" multiple class="select2-select form-control" name="tasks" id="tasks">
                         {% for choice in form.tasks.choices %}
                             <option value="{{choice[0]}}">{{choice[1]}}</option>
                         {% endfor %}
@@ -53,9 +53,9 @@
             </div>
             <hr>
             
-            <h5>Custom Tags</h5>
+            <h5>Custom tags</h5>
             <div v-if="custom_tags" class="col-6">
-                <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
+                <select data-placeholder="Custom tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
                     <template v-for="c_t, key in custom_tags">
                         <option :value="[[c_t.id]]" :disabled="!c_t.is_active">[[c_t.name]]</option>
                     </template>

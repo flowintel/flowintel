@@ -286,7 +286,7 @@ export default {
         <!-- Add Event Form -->
         <div v-if="show_add_form" class="card mb-3">
             <div class="card-body">
-                <h6 class="card-title mb-3">New Timeline Event</h6>
+                <h6 class="card-title mb-3">New timeline event</h6>
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Date / Time</label>
