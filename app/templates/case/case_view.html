@@ -573,7 +573,7 @@
                     :case_files_list="case_files_list"
                     :cases_info="cases_info"
                     @files_change="(msg) => fetch_case_files()"
-                    @note_change="(notes) => { cases_info.case.notes = notes }">
+                    @note_change="on_connector_note_change">
                 </casefiles>
             </div>
         </template>

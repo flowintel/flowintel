@@ -15,6 +15,8 @@ export default defineConfig({
       },
       output: [
         {
+          format: 'iife',
+          name: 'CodeMirrorBundle',
           entryFileNames: chunk =>
             chunk.name === 'codemirror'
               ? 'js/vendor/codemirror.js'
