@@ -32,6 +32,8 @@
             <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Recent Case Alerts</h5>
             <div>
                 <span class="badge bg-primary me-2" id="unread-count">[[ unreadCount ]] unread</span>
+                <button class="btn btn-sm btn-outline-secondary me-1" @click="markAllRead" :disabled="unreadCount === 0"><i class="fa-solid fa-check-double me-1"></i>Mark all as read</button>
+                <button class="btn btn-sm btn-outline-danger me-1" @click="deleteRead" :disabled="readCount === 0"><i class="fa-solid fa-trash me-1"></i>Remove read alerts</button>
                 <button class="btn btn-sm btn-outline-secondary" @click="loadAlerts"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
             </div>
         </div>
@@ -53,7 +55,7 @@
                         <div class="text-muted" style="font-size: 0.8rem;">[[ (a.creation_date || '').slice(0,19) ]]</div>
                     </div>
                     <div class="text-end" style="min-width: 120px;">
-                        <a v-if="a.case_uuid" :href="`/case/${a.case_id}`" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-folder-open me-1"></i>View Case</a>
+                        <a v-if="a.case_uuid" :href="`/case/${a.case_id}`" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-folder-open me-1"></i>View case</a>
                         <div v-if="a.webhook_status" class="small text-muted">HTTP [[ a.webhook_status ]]</div>
                     </div>
                 </div>
@@ -179,6 +181,14 @@ createApp({
         const csrfToken = document.getElementById('csrf_token')?.value || '';
 
         const unreadCount = computed(() => alerts.value.filter(a => !a.is_read).length);
+        const readCount = computed(() => alerts.value.filter(a => a.is_read).length);
+
+        function refreshSidebarBadge(count) {
+            const badge = document.getElementById('alert-badge');
+            if (!badge) return;
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = count > 0 ? 'inline-block' : 'none';
+        }
 
         async function loadAlerts() {
             try {
@@ -202,9 +212,38 @@ createApp({
             try {
                 await fetch(`/alerts/api/alerts/${a.id}/read`, {
                     method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken }
+                    headers: { 'X-CSRFToken': csrfToken },
+                    keepalive: true
                 });
                 a.is_read = true;
+                refreshSidebarBadge(unreadCount.value);
+            } catch (e) { }
+        }
+
+        async function markAllRead() {
+            if (unreadCount.value === 0) return;
+            try {
+                const resp = await fetch('/alerts/api/alerts/read_all', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+                if (resp.ok) {
+                    alerts.value.forEach(a => { a.is_read = true; });
+                    refreshSidebarBadge(0);
+                }
+            } catch (e) { }
+        }
+
+        async function deleteRead() {
+            if (readCount.value === 0) return;
+            try {
+                const resp = await fetch('/alerts/api/alerts/delete_read', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+                if (resp.ok) {
+                    alerts.value = alerts.value.filter(a => !a.is_read);
+                }
             } catch (e) { }
         }
 
@@ -272,8 +311,8 @@ createApp({
         });
 
         return {
-            message_list, alerts, logs, cfg, sending, unreadCount,
-            loadAlerts, loadLogs, markRead, saveWebhook, saveImap, testWebhook, testImap
+            message_list, alerts, logs, cfg, sending, unreadCount, readCount,
+            loadAlerts, loadLogs, markRead, markAllRead, deleteRead, saveWebhook, saveImap, testWebhook, testImap
         };
     }
 }).mount('#main-container');
