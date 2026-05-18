@@ -147,7 +147,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         try:
             from app.db_class.db import Alert
-            status = "sent" if webhook_status and webhook_status < 300 else "error" if webhook_status is None else "pending"
+            if not getattr(ConfigModule, "WEBHOOK_ENABLED", False) or not getattr(ConfigModule, "WEBHOOK_URL", ""):
+                status = "disabled"
+            elif webhook_status is None:
+                status = "error"
+            elif 200 <= webhook_status < 300:
+                status = "sent"
+            else:
+                status = "failed"
             alert = Alert(
                 case_id=case.id,
                 message=f"New case created: {case.title}",
