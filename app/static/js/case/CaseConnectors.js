@@ -1,6 +1,6 @@
-import { display_toast } from '../toaster.js'
+import { display_toast, create_message } from '../toaster.js'
 import MispSyncPanel from './MispSyncPanel.js'
-const { ref, reactive, onMounted, computed, nextTick } = Vue
+const { ref, reactive, onMounted, computed, nextTick, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
     props: {
@@ -15,6 +15,10 @@ export default {
     components: { 'misp-sync-panel': MispSyncPanel },
     setup(props, { emit }) {
         const is_sending = ref(false)
+        const show_add_page = ref(false)
+        const show_edit_page = ref(false)
+        const show_send_page = ref(false)
+        const show_receive_page = ref(false)
         const connectors_selected = ref([])
         const edit_instance = ref()
         const send_to_instance = ref()
@@ -69,6 +73,25 @@ export default {
         function toggle_misp_search(instance) {
             const state = get_misp_search(instance.case_task_instance_id)
             state.open = !state.open
+        }
+
+        // Feature-detection flags for Select2/jQuery availability
+        let hasJQuery = false
+        let hasSelect2 = false
+
+        // Initialize the connectors select2 when options are available
+        async function initConnectorsSelect2() {
+            await nextTick()
+            try {
+                hasJQuery = (typeof $ !== 'undefined')
+                hasSelect2 = hasJQuery && $.fn && $.fn.select2
+                const sel = document.getElementById('connectors_select_' + modal_identifier)
+                if (!sel) return
+                if (hasSelect2) {
+                    try { if ($(sel).data('select2')) $(sel).select2('destroy') } catch (e) {}
+                    $(sel).select2({ theme: 'bootstrap-5', dropdownParent: $('body') })
+                }
+            } catch (e) {}
         }
 
         function build_search_url(instance) {
@@ -157,44 +180,46 @@ export default {
         }
 
         async function save_connector() {
-            let connector_dict = []
-            for (let i in connectors_selected.value) {
-                let loc = $("#identifier_" + connectors_selected.value[i].id).val()
+            try {
+                // Build selected connectors from the select element (more robust than relying on connectors_selected)
+                const sel = document.getElementById('connectors_select_' + modal_identifier)
+                const selectedIds = sel ? Array.from(sel.selectedOptions).map(o => String(o.value)) : []
 
-                let loc_key = connectors_selected.value[i].name
-                connector_dict.push({
-                    "name": loc_key,
-                    "identifier": loc
-                })
-            }
-
-            let url
-            if (props.is_case) {
-                url = "/case/" + props.object_id + "/add_connector"
-            } else {
-                url = "/case/task/" + props.object_id + "/add_connector"
-            }
-
-            const res = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    "connectors": connector_dict
-                })
-            });
-            if (await res.status == 200) {
-                connectors_selected.value = []
-                if (props.is_case) {
-                    emit("case_connectors", true)
-                } else {
-                    emit("task_connectors", true)
+                const connector_dict = []
+                if (props.all_connectors_list && selectedIds.length) {
+                    // props.all_connectors_list is keyed by connector type/name and contains arrays of instances
+                    for (const [_groupName, instances] of Object.entries(props.all_connectors_list)) {
+                        for (const instance of instances) {
+                            if (selectedIds.includes(String(instance.id))) {
+                                const identEl = document.getElementById('identifier_' + instance.id)
+                                const identifier = identEl ? identEl.value : ''
+                                // IMPORTANT: backend expects the instance name (Connector_Instance.name), not the group key
+                                connector_dict.push({ name: instance.name, identifier: identifier })
+                            }
+                        }
+                    }
                 }
-                $("#modal-add-connectors-" + modal_identifier).modal("hide");
-            }
-            display_toast(res)
 
+                let url = props.is_case ? ("/case/" + props.object_id + "/add_connector") : ("/case/task/" + props.object_id + "/add_connector")
+
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ connectors: connector_dict })
+                })
+
+                if (res.status == 200) {
+                    // clear UI selections
+                    try { $(sel).val(null).trigger('change') } catch(e) {}
+                    connectors_selected.value = []
+                    show_add_page.value = false
+                    if (props.is_case) emit('case_connectors', true)
+                    else emit('task_connectors', true)
+                }
+                display_toast(res)
+            } catch (e) {
+                create_message('Error while adding connector', 'danger-subtle')
+            }
         }
 
         async function remove_connector(element_instance_id) {
@@ -221,8 +246,7 @@ export default {
 
         function edit_instance_open_modal(instance) {
             edit_instance.value = instance
-            var myModal = new bootstrap.Modal(document.getElementById("modal-edit-connectors-" + modal_identifier), {});
-            myModal.show();
+            show_edit_page.value = true
         }
 
         async function edit_connector() {
@@ -249,7 +273,7 @@ export default {
                         props.case_task_connectors_list[i].identifier = loc_identifier
                     }
                 }
-                $("#modal-edit-connectors-" + modal_identifier).modal("hide");
+                show_edit_page.value = false
                 edit_instance.value = null
 
             }
@@ -259,19 +283,19 @@ export default {
 
         async function send_to_modal(instance) {
             if (props.is_case && instance.is_misp_connector) {
-                // Use MispSyncPanel for MISP case connectors
                 sync_panel_instance.value = instance
                 sync_panel_direction.value = 'send'
+                send_to_instance.value = instance
+                show_send_page.value = true
                 await nextTick()
                 await sync_panel_ref.value?.on_show()
-                const el = document.getElementById('modal-misp-sync-' + modal_identifier)
-                if (el) new bootstrap.Modal(el).show()
                 return
             }
             send_to_instance.value = instance
             case_misp_objects.value = []
             selected_send_ids.value = []
             selected_send_module_name.value = ''
+            module_selected.value = {}
             if (props.is_case) {
                 const res = await fetch("/case/" + props.object_id + "/get_case_misp_object")
                 if (res.status == 200) {
@@ -280,27 +304,25 @@ export default {
                     selected_send_ids.value = case_misp_objects.value.map(o => o.object_id)
                 }
             }
-            var myModal = new bootstrap.Modal(document.getElementById("modal-send-to-" + modal_identifier), {});
-            myModal.show();
+            show_send_page.value = true
         }
 
         async function receive_from_modal(instance) {
             if (props.is_case && instance.is_misp_connector) {
-                // Use MispSyncPanel for MISP case connectors
                 sync_panel_instance.value = instance
                 sync_panel_direction.value = 'receive'
+                receive_from_instance.value = instance
+                show_receive_page.value = true
                 await nextTick()
                 await sync_panel_ref.value?.on_show()
-                const el = document.getElementById('modal-misp-sync-' + modal_identifier)
-                if (el) new bootstrap.Modal(el).show()
                 return
             }
             receive_from_instance.value = instance
             remote_misp_objects.value = []
             selected_receive_uuids.value = []
             selected_receive_module_name.value = ''
-            var myModal = new bootstrap.Modal(document.getElementById("modal-receive-from-" + modal_identifier), {});
-            myModal.show();
+            module_selected.value = {}
+            show_receive_page.value = true
         }
 
         async function fetch_remote_objects() {
@@ -390,7 +412,7 @@ export default {
             is_sending.value = false
 
             if (await res.status == 200) {
-                $("#modal-send-to-" + modal_identifier).modal("hide");
+                show_send_page.value = false
                 if (props.is_case) {
                     emit("case_connectors", true)
                 } else {
@@ -438,7 +460,7 @@ export default {
             is_sending.value = false
 
             if (await res.status == 200) {
-                $("#modal-receive-from-" + modal_identifier).modal("hide");
+                show_receive_page.value = false
                 if (props.is_case) {
                     emit("case_connectors", true)
                 } else {
@@ -449,22 +471,34 @@ export default {
             display_toast(res)
         }
 
-        onMounted(() => {
-            $('.select2-connect').select2({
-                theme: 'bootstrap-5',
-                dropdownParent: $("#modal-add-connectors-" + modal_identifier)
-            })
-            $('.select2-module').select2({
-                theme: 'bootstrap-5',
-                dropdownParent: $("#modal-send-to-" + modal_identifier)
-            })
-            $('.select2-module-receive').select2({
-                theme: 'bootstrap-5',
-                dropdownParent: $("#modal-receive-from-" + modal_identifier)
-            })
+        onMounted(async () => {
+            await nextTick()
+            hasJQuery = (typeof $ !== 'undefined')
+            hasSelect2 = hasJQuery && $.fn && $.fn.select2
+            if (!hasSelect2) {}
 
-            $("#modules_select_" + modal_identifier).on('change.select2', function (e) {
-                let loc = $(this).select2('data').map(item => item.id)
+            try {
+                if (hasSelect2) {
+                    // .select2-connect is now inline (no separate modal), so use body as parent
+                    $('.select2-connect').select2({ theme: 'bootstrap-5', dropdownParent: $('body') })
+                    $('.select2-module').select2({ theme: 'bootstrap-5', dropdownParent: $('body') })
+                    $('.select2-module-receive').select2({ theme: 'bootstrap-5', dropdownParent: $('body') })
+                }
+            } catch (e) {}
+
+            const modulesSelectEl = document.getElementById('modules_select_' + modal_identifier)
+            const modulesSelectReceiveEl = document.getElementById('modules_select_receive_' + modal_identifier)
+            const connectorsSelectEl = document.getElementById('connectors_select_' + modal_identifier)
+
+            const handleModulesChange = function (e) {
+                const el = e.target || this
+                let loc = []
+                try {
+                    if (hasSelect2 && $(el).data('select2')) loc = $(el).select2('data').map(item => item.id)
+                    else loc = Array.from(el.selectedOptions || []).map(o => o.value)
+                } catch (err) {
+                    loc = Array.from(el.selectedOptions || []).map(o => o.value)
+                }
 
                 for (let i in props.modules) {
                     if (loc == i) {
@@ -472,11 +506,17 @@ export default {
                         break
                     }
                 }
+            }
 
-            })
-
-            $("#modules_select_receive_" + modal_identifier).on('change.select2', function (e) {
-                let loc = $(this).select2('data').map(item => item.id)
+            const handleModulesReceiveChange = function (e) {
+                const el = e.target || this
+                let loc = []
+                try {
+                    if (hasSelect2 && $(el).data('select2')) loc = $(el).select2('data').map(item => item.id)
+                    else loc = Array.from(el.selectedOptions || []).map(o => o.value)
+                } catch (err) {
+                    loc = Array.from(el.selectedOptions || []).map(o => o.value)
+                }
 
                 for (let i in props.modules) {
                     if (loc == i) {
@@ -490,20 +530,34 @@ export default {
                     remote_misp_objects.value = []
                     selected_receive_uuids.value = []
                 }
-            })
+            }
 
-            $("#modules_select_" + modal_identifier).on('change.select2.objsel', function (e) {
-                let loc = $(this).select2('data').map(item => item.id)
+            const handleModulesObjSel = function (e) {
+                const el = e.target || this
+                let loc = []
+                try {
+                    if (hasSelect2 && $(el).data('select2')) loc = $(el).select2('data').map(item => item.id)
+                    else loc = Array.from(el.selectedOptions || []).map(o => o.value)
+                } catch (err) {
+                    loc = Array.from(el.selectedOptions || []).map(o => o.value)
+                }
                 selected_send_module_name.value = loc[0] || ''
-            })
+            }
 
-            $('#connectors_select_' + modal_identifier).on('change.select2', function (e) {
+            const handleConnectorsChange = function (e) {
+                const el = e.target || this
                 connectors_selected.value = []
-                let loc = $(this).select2('data').map(item => item.id)
+                let loc = []
+                try {
+                    if (hasSelect2 && $(el).data('select2')) loc = $(el).select2('data').map(item => item.id)
+                    else loc = Array.from(el.selectedOptions || []).map(o => o.value)
+                } catch (err) {
+                    loc = Array.from(el.selectedOptions || []).map(o => o.value)
+                }
                 for (let element in loc) {
                     for (let connectors in props.all_connectors_list) {
                         for (let connector in props.all_connectors_list[connectors]) {
-                            if (loc[element] == props.all_connectors_list[connectors][connector].id) {
+                            if (String(loc[element]) == String(props.all_connectors_list[connectors][connector].id)) {
                                 connectors_selected.value.push({
                                     "id": props.all_connectors_list[connectors][connector].id,
                                     "name": props.all_connectors_list[connectors][connector].name
@@ -512,14 +566,107 @@ export default {
                         }
                     }
                 }
-            })
+            }
 
+            try {
+                if (modulesSelectEl) {
+                    modulesSelectEl.addEventListener('change', handleModulesChange)
+                    if (hasJQuery) $(modulesSelectEl).on('change.select2', handleModulesChange)
+                    if (hasJQuery) $(modulesSelectEl).on('change.select2.objsel', handleModulesObjSel)
+                }
+                if (modulesSelectReceiveEl) {
+                    modulesSelectReceiveEl.addEventListener('change', handleModulesReceiveChange)
+                    if (hasJQuery) $(modulesSelectReceiveEl).on('change.select2', handleModulesReceiveChange)
+                }
+                if (connectorsSelectEl) {
+                    connectorsSelectEl.addEventListener('change', handleConnectorsChange)
+                    if (hasJQuery) $(connectorsSelectEl).on('change.select2', handleConnectorsChange)
+                }
+            } catch (err) {}
+
+
+        })
+
+        // Re-initialize connectors select when the available connectors list is populated/updated
+        watch(() => props.all_connectors_list, async (nv) => {
+            if (!nv || Object.keys(nv).length === 0) return
+            await nextTick()
+            await initConnectorsSelect2()
+        }, { immediate: true, deep: true })
+
+        // Re-initialize connectors select2 when the add-connector page opens
+        watch(show_add_page, async (nv) => {
+            if (!nv) return
+            await nextTick()
+            await initConnectorsSelect2()
+        })
+
+        async function initModuleSelect2() {
+            await nextTick()
+            try {
+                if (typeof $ !== 'undefined' && $.fn && $.fn.select2) {
+                    const el = document.getElementById('modules_select_' + modal_identifier)
+                    if (el) {
+                        try { if ($(el).data('select2')) $(el).select2('destroy') } catch(e) {}
+                        $(el).select2({ theme: 'bootstrap-5', dropdownParent: $('body') })
+                        $(el).on('change.select2', function() {
+                            const val = $(el).val()
+                            selected_send_module_name.value = val || ''
+                            for (let i in props.modules) {
+                                if (val == i) { module_selected.value = props.modules[i].config; break }
+                            }
+                        })
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function initModuleReceiveSelect2() {
+            await nextTick()
+            try {
+                if (typeof $ !== 'undefined' && $.fn && $.fn.select2) {
+                    const el = document.getElementById('modules_select_receive_' + modal_identifier)
+                    if (el) {
+                        try { if ($(el).data('select2')) $(el).select2('destroy') } catch(e) {}
+                        $(el).select2({ theme: 'bootstrap-5', dropdownParent: $('body') })
+                        $(el).on('change.select2', function() {
+                            const val = $(el).val()
+                            selected_receive_module_name.value = val || ''
+                            for (let i in props.modules) {
+                                if (val == i) { module_selected.value = props.modules[i].config; break }
+                            }
+                            if (val !== 'receive_misp_object') {
+                                remote_misp_objects.value = []
+                                selected_receive_uuids.value = []
+                            }
+                        })
+                    }
+                }
+            } catch(e) {}
+        }
+
+        watch(show_send_page, async (nv) => {
+            if (!nv) return
+            await nextTick()
+            await initModuleSelect2()
+        })
+
+        watch(show_receive_page, async (nv) => {
+            if (!nv) return
+            await nextTick()
+            await initModuleReceiveSelect2()
         })
 
         return {
             is_sending,
+            show_add_page,
+            show_edit_page,
+            show_send_page,
+            show_receive_page,
             connectors_selected,
             edit_instance,
+            send_to_instance,
+            receive_from_instance,
             modal_identifier,
             module_selected,
             is_loading_update,
@@ -563,8 +710,10 @@ export default {
         }
     `,
     template: `
-        <div v-if="(!is_case && object_id && cases_info.tasks) ? (cases_info.tasks.find(t => t.id === object_id)?.can_edit && cases_info.present_in_case || cases_info.permission.admin) : (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)">
-            <button class="btn btn-outline-primary" data-bs-toggle="modal" :data-bs-target="'#modal-add-connectors-'+modal_identifier">
+        <!-- PAGE 1: connector list -->
+        <template v-if="!show_add_page && !show_edit_page && !show_send_page && !show_receive_page">
+        <div v-if="can_edit_object">
+            <button class="btn btn-outline-primary" @click="show_add_page = true" title="Add connector">
                 <i class="fa-solid fa-plus"></i>
             </button>
         </div>
@@ -782,204 +931,226 @@ export default {
                 </template>
             </tbody>
         </table>
+        </template><!-- end page 1 -->
 
-        <!-- MispSyncPanel for MISP case connectors -->
-        <misp-sync-panel v-if="is_case && sync_panel_instance"
-            :ref="el => sync_panel_ref = el"
-            :case_id="object_id"
-            :instance="sync_panel_instance"
-            :direction="sync_panel_direction"
-            :modules="modules"
-            :modal_id="'modal-misp-sync-' + modal_identifier"
-            @sync_done="on_sync_done">
-        </misp-sync-panel>
-
-
-        <!-- Add Connectors -->
-        <div class="modal fade" :id="'modal-add-connectors-'+modal_identifier" tabindex="-1" aria-labelledby="AddConnectorsLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="AddConnectorsLabel">Add Connectors</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="w-50">
-                            <select data-placeholder="Connectors" class="select2-connect form-control" multiple name="connectors_select" :id="'connectors_select_'+modal_identifier" >
-                                <template v-if="all_connectors_list">
-                                    <template v-for="(instances, connector) in all_connectors_list">
-                                        <optgroup :label="[[connector]]">
-                                            <option :value="[[instance.id]]" v-for="instance in instances">[[instance.name]]</option>
-                                        </optgroup>
-                                    </template>
-                                </template>
-                            </select>
-                        </div>
-                        <div class="row" v-if="connectors_selected">
-                            <div class="mb-3 w-25" v-for="instance in connectors_selected" >
-                                <label :for="'identifier_' + instance.id">[[instance.name]] Complement</label>
-                                <input :id="'identifier_' + instance.id" class="form-control" :name="'identifier_' + instance.id" type="text">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" @click="save_connector()">
-                            Save
-                        </button>
-                    </div>
-                </div>
+        <!-- PAGE 2: Add connector form (inline, no separate modal) -->
+        <template v-else-if="show_add_page">
+            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
+                <button type="button" class="btn btn-link p-0 me-3 text-decoration-none text-body" @click="show_add_page = false" title="Back to connectors list">
+                    <i class="fa-solid fa-arrow-left fa-lg"></i>
+                </button>
+                <span class="fw-semibold">Add Connectors</span>
             </div>
-        </div>
-
-
-        <!-- Edit Connectors -->
-        <div class="modal fade" :id="'modal-edit-connectors-'+modal_identifier" tabindex="-1" aria-labelledby="EditConnectorsLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="EditConnectorsLabel">Edit Connectors</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
-                    </div>
-                    <div class="modal-body" v-if="edit_instance">
-                        <div class="mb-3">
-                            <small class="text-muted">Instance name</small>
-                            <div class="fw-semibold">[[ edit_instance.details.name ]]</div>
-                        </div>
-                        <div class="mb-3">
-                            <small class="text-muted">Instance URL</small>
-                            <div class="fw-semibold">[[ edit_instance.details.url ]]</div>
-                        </div>
-                        <div class="form-floating col">
-                            <input :id="'input-edit-connector-'+modal_identifier" class="form-control" :value="edit_instance.identifier">
-                            <label>Identifier</label>
-                        </div>
-
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" @click="edit_connector()">
-                            Save
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal send to -->
-        <div class="modal fade" :id="'modal-send-to-'+modal_identifier" tabindex="-1" aria-labelledby="modal-send-toLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="modal-send-toLabel">Send to modules</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div style="display: flex;">
-                            <div>
-                                <label for="modules_select">Modules:</label>
-                                <select data-placeholder="Modules" class="select2-module form-control" name="modules_select" :id="'modules_select_'+modal_identifier">
-                                    <option value="None">--</option>
-                                    <template v-for="module, key in modules">
-                                        <option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
-                                    </template>
-                                </select>
-                                <div id="modules_errors" class="invalid-feedback"></div>
-                                <div class="case-core-style mt-3" v-if="Object.keys(module_selected).length">
-                                    <b>Module Description:</b><br>
-                                    <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[module_selected.description]]</p>
-                                </div>
-                            </div>
-                        </div>
-                        <template v-if="selected_send_module_name === 'misp_object_event' && case_misp_objects.length > 0">
-                            <hr>
-                            <div>
-                                <b>Select objects to send:</b>
-                                <div class="mt-1">
-                                    <div v-for="obj in case_misp_objects" :key="obj.object_id" class="form-check">
-                                        <input class="form-check-input" type="checkbox" :value="obj.object_id" v-model="selected_send_ids" :id="'send-obj-'+modal_identifier+'-'+obj.object_id">
-                                        <label class="form-check-label" :for="'send-obj-'+modal_identifier+'-'+obj.object_id">
-                                            <span class="fw-semibold">[[obj.object_name]]</span>
-                                            <span class="text-muted ms-2 small">([[obj.attributes.length]] attribute<template v-if="obj.attributes.length !== 1">s</template>)</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
+            <div class="w-50">
+                <select data-placeholder="Connectors" class="select2-connect form-control" multiple name="connectors_select" :id="'connectors_select_'+modal_identifier">
+                    <template v-if="all_connectors_list">
+                        <template v-for="(instances, connector) in all_connectors_list">
+                            <optgroup :label="[[connector]]">
+                                <option :value="[[instance.id]]" v-for="instance in instances">[[instance.name]]</option>
+                            </optgroup>
                         </template>
-                    </div>
-                    <div class="modal-footer">
-                        <button v-if="is_sending" class="btn btn-primary" type="button" disabled>
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            <span role="status">Loading...</span>
-                        </button>
-                        <button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
-                    </div>
+                    </template>
+                </select>
+            </div>
+            <div class="row mt-3" v-if="connectors_selected && connectors_selected.length">
+                <div class="mb-3 col-md-3" v-for="instance in connectors_selected">
+                    <label :for="'identifier_' + instance.id">[[instance.name]] Complement</label>
+                    <input :id="'identifier_' + instance.id" class="form-control" :name="'identifier_' + instance.id" type="text">
                 </div>
             </div>
-        </div>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-secondary" @click="show_add_page = false">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" @click="save_connector()">
+                    Save
+                </button>
+            </div>
+        </template><!-- end page 2 -->
 
+        <!-- PAGE 3: Edit connector form (inline) -->
+        <template v-else-if="show_edit_page && edit_instance">
+            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
+                <button type="button" class="btn btn-link p-0 me-3 text-decoration-none text-body" @click="show_edit_page = false; edit_instance = null" title="Back to connectors list">
+                    <i class="fa-solid fa-arrow-left fa-lg"></i>
+                </button>
+                <span class="fw-semibold">Edit Connector</span>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Instance name</small>
+                <div class="fw-semibold">[[ edit_instance.details.name ]]</div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Instance URL</small>
+                <div class="fw-semibold">[[ edit_instance.details.url ]]</div>
+            </div>
+            <div class="form-floating col-md-6">
+                <input :id="'input-edit-connector-'+modal_identifier" class="form-control" :value="edit_instance.identifier">
+                <label>Identifier</label>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-secondary" @click="show_edit_page = false; edit_instance = null">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" @click="edit_connector()">
+                    Save
+                </button>
+            </div>
+        </template><!-- end page 3 -->
 
-        <!-- Modal receive from -->
-        <div class="modal fade" :id="'modal-receive-from-'+modal_identifier" tabindex="-1" aria-labelledby="modal-receive-fromLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="modal-receive-fromLabel">Receive from modules</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div style="display: flex;">
-                            <div>
-                                <label for="modules_select_receive">Modules:</label>
-                                <select data-placeholder="Modules" class="select2-module-receive form-control" name="modules_select_receive" :id="'modules_select_receive_'+modal_identifier">
-                                    <option value="None">--</option>
-                                    <template v-for="module, key in modules">
-                                        <option v-if="module.type == 'receive_from'" :value="[[key]]">[[key]]</option>
-                                    </template>
-                                </select>
-                                <div id="modules_errors_receive" class="invalid-feedback"></div>
-                                <div class="case-core-style mt-3" v-if="Object.keys(module_selected).length">
-                                    <b>Module Description:</b><br>
-                                    <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[module_selected.description]]</p>
-                                </div>
-                            </div>
+        <!-- PAGE 4: Send to modules (inline) -->
+        <template v-else-if="show_send_page && send_to_instance">
+            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
+                <button type="button" class="btn btn-link p-0 me-3 text-decoration-none text-body" @click="show_send_page = false" title="Back to connectors list">
+                    <i class="fa-solid fa-arrow-left fa-lg"></i>
+                </button>
+                <span class="fw-semibold">Send to</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-3 p-2 border rounded bg-body-secondary">
+                <img :src="'/static/icons/'+send_to_instance.details.icon" style="max-width:32px;">
+                <div>
+                    <div class="fw-semibold">[[ send_to_instance.details.name ]]</div>
+                    <a :href="send_to_instance.details.url" class="text-muted small" target="_blank">[[ send_to_instance.details.url ]]</a>
+                </div>
+            </div>
+            <!-- MISP connector: use full MispSyncPanel -->
+            <template v-if="send_to_instance.is_misp_connector">
+                <misp-sync-panel
+                    :ref="el => sync_panel_ref = el"
+                    :case_id="object_id"
+                    :instance="sync_panel_instance"
+                    :direction="sync_panel_direction"
+                    :modules="modules"
+                    @sync_done="(e) => { on_sync_done(e); show_send_page = false }"
+                    @close="show_send_page = false">
+                </misp-sync-panel>
+            </template>
+            <!-- Non-MISP connector: simple module select -->
+            <template v-else>
+            <div>
+                <label :for="'modules_select_'+modal_identifier">Modules:</label>
+                <select data-placeholder="Modules" class="select2-module form-control" name="modules_select" :id="'modules_select_'+modal_identifier">
+                    <option value="None">--</option>
+                    <template v-for="module, key in modules">
+                        <option v-if="module.type == 'send_to'" :value="[[key]]">[[key]]</option>
+                    </template>
+                </select>
+                <div id="modules_errors" class="invalid-feedback"></div>
+                <div class="case-core-style mt-3" v-if="Object.keys(module_selected).length">
+                    <b>Module Description:</b><br>
+                    <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[module_selected.description]]</p>
+                </div>
+            </div>
+            <template v-if="selected_send_module_name === 'misp_object_event' && case_misp_objects.length > 0">
+                <hr>
+                <div>
+                    <b>Select objects to send:</b>
+                    <div class="mt-1">
+                        <div v-for="obj in case_misp_objects" :key="obj.object_id" class="form-check">
+                            <input class="form-check-input" type="checkbox" :value="obj.object_id" v-model="selected_send_ids" :id="'send-obj-'+modal_identifier+'-'+obj.object_id">
+                            <label class="form-check-label" :for="'send-obj-'+modal_identifier+'-'+obj.object_id">
+                                <span class="fw-semibold">[[obj.object_name]]</span>
+                                <span class="text-muted ms-2 small">([[obj.attributes.length]] attribute<template v-if="obj.attributes.length !== 1">s</template>)</span>
+                            </label>
                         </div>
-                        <template v-if="selected_receive_module_name === 'receive_misp_object'">
-                            <hr>
-                            <div class="mb-2">
-                                <button v-if="!is_loading_objects" type="button" class="btn btn-sm btn-outline-secondary" @click="fetch_remote_objects()">
-                                    <i class="fa-solid fa-rotate me-1"></i>Load objects from MISP
-                                </button>
-                                <button v-else type="button" class="btn btn-sm btn-outline-secondary" disabled>
-                                    <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading...
-                                </button>
-                            </div>
-                            <div v-if="is_loading_objects" class="text-muted"><span class="spinner-border spinner-border-sm me-1"></span>Loading objects from MISP...</div>
-                            <div v-else-if="remote_misp_objects.length > 0">
-                                <b>Select objects to receive:</b>
-                                <div class="mt-1">
-                                    <div v-for="obj in remote_misp_objects" :key="obj.uuid" class="form-check">
-                                        <input class="form-check-input" type="checkbox" :value="obj.uuid" v-model="selected_receive_uuids" :id="'recv-obj-'+modal_identifier+'-'+obj.uuid">
-                                        <label class="form-check-label" :for="'recv-obj-'+modal_identifier+'-'+obj.uuid">
-                                            <span class="fw-semibold">[[obj.name]]</span>
-                                            <span class="text-muted ms-2 small">([[obj.attribute_count]] attribute<template v-if="obj.attribute_count !== 1">s</template>)</span>
-                                            <span v-if="obj.attributes_preview.length" class="text-muted ms-2 small">&mdash; <template v-for="(a, i) in obj.attributes_preview"><template v-if="i > 0">, </template>[[a.relation]]: [[a.value]]</template></span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div v-else-if="!is_loading_objects" class="text-muted small">No objects found in the remote event, or no identifier configured.</div>
-                        </template>
-                    </div>
-                    <div class="modal-footer">
-                        <button v-if="is_sending" class="btn btn-primary" type="button" disabled>
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            <span role="status">Loading...</span>
-                        </button>
-                        <button v-else type="button" @click="submit_receive_module()" class="btn btn-primary">Submit</button>
                     </div>
                 </div>
+            </template>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-secondary" @click="show_send_page = false">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Cancel
+                </button>
+                <button v-if="is_sending" class="btn btn-primary" type="button" disabled>
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    <span role="status">Loading...</span>
+                </button>
+                <button v-else type="button" @click="submit_module()" class="btn btn-primary">Submit</button>
             </div>
-        </div>
+            </template><!-- end non-MISP -->
+        </template><!-- end page 4 -->
+
+        <!-- PAGE 5: Receive from modules (inline) -->
+        <template v-else-if="show_receive_page && receive_from_instance">
+            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
+                <button type="button" class="btn btn-link p-0 me-3 text-decoration-none text-body" @click="show_receive_page = false" title="Back to connectors list">
+                    <i class="fa-solid fa-arrow-left fa-lg"></i>
+                </button>
+                <span class="fw-semibold">Receive from</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-3 p-2 border rounded bg-body-secondary">
+                <img :src="'/static/icons/'+receive_from_instance.details.icon" style="max-width:32px;">
+                <div>
+                    <div class="fw-semibold">[[ receive_from_instance.details.name ]]</div>
+                    <a :href="receive_from_instance.details.url" class="text-muted small" target="_blank">[[ receive_from_instance.details.url ]]</a>
+                </div>
+            </div>
+            <!-- MISP connector: use full MispSyncPanel -->
+            <template v-if="receive_from_instance.is_misp_connector">
+                <misp-sync-panel
+                    :ref="el => sync_panel_ref = el"
+                    :case_id="object_id"
+                    :instance="sync_panel_instance"
+                    :direction="sync_panel_direction"
+                    :modules="modules"
+                    @sync_done="(e) => { on_sync_done(e); show_receive_page = false }"
+                    @close="show_receive_page = false">
+                </misp-sync-panel>
+            </template>
+            <!-- Non-MISP connector: simple module select -->
+            <template v-else>
+            <div>
+                <label :for="'modules_select_receive_'+modal_identifier">Modules:</label>
+                <select data-placeholder="Modules" class="select2-module-receive form-control" name="modules_select_receive" :id="'modules_select_receive_'+modal_identifier">
+                    <option value="None">--</option>
+                    <template v-for="module, key in modules">
+                        <option v-if="module.type == 'receive_from'" :value="[[key]]">[[key]]</option>
+                    </template>
+                </select>
+                <div id="modules_errors_receive" class="invalid-feedback"></div>
+                <div class="case-core-style mt-3" v-if="Object.keys(module_selected).length">
+                    <b>Module Description:</b><br>
+                    <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[module_selected.description]]</p>
+                </div>
+            </div>
+            <template v-if="selected_receive_module_name === 'receive_misp_object'">
+                <hr>
+                <div class="mb-2">
+                    <button v-if="!is_loading_objects" type="button" class="btn btn-sm btn-outline-secondary" @click="fetch_remote_objects()">
+                        <i class="fa-solid fa-rotate me-1"></i>Load objects from MISP
+                    </button>
+                    <button v-else type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                        <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading...
+                    </button>
+                </div>
+                <div v-if="is_loading_objects" class="text-muted"><span class="spinner-border spinner-border-sm me-1"></span>Loading objects from MISP...</div>
+                <div v-else-if="remote_misp_objects.length > 0">
+                    <b>Select objects to receive:</b>
+                    <div class="mt-1">
+                        <div v-for="obj in remote_misp_objects" :key="obj.uuid" class="form-check">
+                            <input class="form-check-input" type="checkbox" :value="obj.uuid" v-model="selected_receive_uuids" :id="'recv-obj-'+modal_identifier+'-'+obj.uuid">
+                            <label class="form-check-label" :for="'recv-obj-'+modal_identifier+'-'+obj.uuid">
+                                <span class="fw-semibold">[[obj.name]]</span>
+                                <span class="text-muted ms-2 small">([[obj.attribute_count]] attribute<template v-if="obj.attribute_count !== 1">s</template>)</span>
+                                <span v-if="obj.attributes_preview.length" class="text-muted ms-2 small">&mdash; <template v-for="(a, i) in obj.attributes_preview"><template v-if="i > 0">, </template>[[a.relation]]: [[a.value]]</template></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div v-else-if="!is_loading_objects" class="text-muted small">No objects found in the remote event, or no identifier configured.</div>
+            </template>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-secondary" @click="show_receive_page = false">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Cancel
+                </button>
+                <button v-if="is_sending" class="btn btn-primary" type="button" disabled>
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    <span role="status">Loading...</span>
+                </button>
+                <button v-else type="button" @click="submit_receive_module()" class="btn btn-primary">Submit</button>
+            </div>
+            </template><!-- end non-MISP -->
+        </template><!-- end page 5 -->
+
+
     `
 }
