@@ -8,9 +8,8 @@ export default {
         instance: Object,      // connector instance (from case_task_connectors_list)
         direction: String,     // 'send' or 'receive'
         modules: Object,
-        modal_id: String
     },
-    emits: ['sync_done'],
+    emits: ['sync_done', 'close'],
     setup(props, { emit }) {
         const local_objects = ref([])
         const local_search = ref('')
@@ -172,7 +171,7 @@ export default {
             is_submitting.value = false
             if (res.status === 200) {
                 emit('sync_done', { direction: props.direction, instance: props.instance })
-                bootstrap.Modal.getInstance(document.getElementById(props.modal_id))?.hide()
+                emit('close')
             }
             display_toast(res)
         }
@@ -198,19 +197,7 @@ export default {
         }
     },
     template: `
-    <div class="modal fade" :id="modal_id" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i v-if="direction === 'send'" class="fa-solid fa-arrow-up me-2"></i>
-                        <i v-else class="fa-solid fa-arrow-down me-2"></i>
-                        [[ direction === 'send' ? 'Send to MISP' : 'Receive from MISP' ]]
-                        <span v-if="instance" class="ms-2 text-muted small">[[ instance.details.name ]]</span>
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
+    <div>
                     <!-- Module selector -->
                     <div class="row mb-3">
                         <div class="col-md-5">
@@ -260,9 +247,9 @@ export default {
                                              :class="{ 'bg-body-secondary': direction === 'receive' }">
                                             <div class="form-check mb-0">
                                                 <input class="form-check-input" type="checkbox" :value="obj.object_id"
-                                                       v-model="selected_local_ids" :id="'lobj-'+modal_id+'-'+obj.object_id"
+                                                       v-model="selected_local_ids" :id="'lobj-'+instance.case_task_instance_id+'-'+obj.object_id"
                                                        :disabled="direction === 'receive'">
-                                                <label class="form-check-label" :for="'lobj-'+modal_id+'-'+obj.object_id">
+                                                <label class="form-check-label" :for="'lobj-'+instance.case_task_instance_id+'-'+obj.object_id">
                                                     <span class="fw-semibold">[[ obj.object_name ]]</span>
                                                     <span class="text-muted ms-1" style="font-size:0.8em;">([[ obj.attributes.length ]] attrs)</span>
                                                     <template v-if="obj.synced_instances && obj.synced_instances.length">
@@ -328,9 +315,9 @@ export default {
                                              :class="{ 'bg-body-secondary': direction === 'send' }">
                                             <div class="form-check mb-0">
                                                 <input class="form-check-input" type="checkbox" :value="obj.uuid"
-                                                       v-model="selected_remote_uuids" :id="'robj-'+modal_id+'-'+obj.uuid"
+                                                       v-model="selected_remote_uuids" :id="'robj-'+instance.case_task_instance_id+'-'+obj.uuid"
                                                        :disabled="direction === 'send'">
-                                                <label class="form-check-label" :for="'robj-'+modal_id+'-'+obj.uuid">
+                                                <label class="form-check-label" :for="'robj-'+instance.case_task_instance_id+'-'+obj.uuid">
                                                     <span class="fw-semibold">[[ obj.name ]]</span>
                                                     <span class="text-muted ms-1" style="font-size:0.8em;">([[ obj.attribute_count ]] attrs)</span>
                                                     <span v-if="is_synced_locally(obj.uuid)" class="badge bg-success text-white ms-1" style="font-size:0.65em;" title="Already synced locally">
@@ -363,8 +350,7 @@ export default {
                             <span class="text-muted small">Appends the MISP event's report(s) to the case note.</span>
                         </div>
                     </template>
-                </div>
-                <div class="modal-footer">
+    <div class="d-flex align-items-center justify-content-end gap-2 mt-3 pt-2 border-top">
                     <div class="text-muted small me-auto">
                         <template v-if="direction === 'send'">
                             <i class="fa-solid fa-arrow-up me-1"></i>[[ selected_local_ids.length ]] local object(s) selected
@@ -373,14 +359,12 @@ export default {
                             <i class="fa-solid fa-arrow-down me-1"></i>[[ selected_remote_uuids.length ]] remote object(s) selected
                         </template>
                     </div>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
                     <button type="button" class="btn btn-primary" :disabled="is_submitting" @click="submit()">
                         <span v-if="is_submitting" class="spinner-border spinner-border-sm me-1" style="width:0.75rem;height:0.75rem;"></span>
                         [[ direction === 'send' ? 'Send to MISP' : 'Receive from MISP' ]]
                     </button>
                 </div>
-            </div>
-        </div>
     </div>
     `
 }
