@@ -67,7 +67,7 @@
         </div>
     </div>
     
-    <div class="mb-3">
+    <div class="mb-3" style="display: flex; justify-content: space-between;">
         {% if case.ticket_id %}
         <div class="case-ticket-row">
             <span class="ticket-badge" title="Ticket ID">
@@ -75,6 +75,9 @@
             </span>
         </div>
         {% endif %}
+        <template v-if="cases_info">
+            {% include 'case/_connectors_button.html' %}
+        </template>
     </div>
 
     <!-- Case Meta Information -->
@@ -252,6 +255,7 @@
             style="float: right;">
         <i class="fa-solid fa-chevron-up fa-sm"></i>
     </button>
+    
     <ul class="nav nav-tabs" style="margin-bottom: 10px;">
         <li class="nav-item">
             <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')" style="min-width: 100px;">
@@ -270,7 +274,7 @@
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="tab-connectors" @click="active_tab('connectors')">
+            <button class="nav-link d-none" id="tab-connectors" @click="active_tab('connectors')">
                 <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i><i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title fs-6">Connectors </span>
                 <span class="badge text-bg-secondary" id="id-nb-connectors" v-if="case_connectors_list && case_connectors_list.length">[[case_connectors_list.length]]</span>
             </button>
@@ -1861,6 +1865,32 @@
                     return false
                 })
 
+                    // Open connectors UI (modal or inline collapse).
+                    function openConnectors(event){
+                        const btn = event && event.currentTarget ? event.currentTarget : null
+                        const explicit = btn && btn.dataset && btn.dataset.connectorDisplay ? btn.dataset.connectorDisplay : null
+                        // default heuristic: prefer modal when inside main nav
+                        let mode = explicit || (btn && btn.closest && btn.closest('#case-main-nav') ? 'modal' : 'modal')
+
+                        try{
+                            if (mode === 'modal'){
+                                const modalEl = document.getElementById('connectorsModal')
+                                if (!modalEl) return
+                                if (typeof fetch_case_connectors === 'function') fetch_case_connectors()
+                                const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl)
+                                bsModal.show()
+                            } else {
+                                const collapseEl = document.getElementById('connectorsCollapseInline')
+                                if (!collapseEl) return
+                                if (typeof fetch_case_connectors === 'function') fetch_case_connectors()
+                                const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl)
+                                bsCollapse.toggle()
+                            }
+                        }catch(e){
+                            console.warn('openConnectors error', e)
+                        }
+                    }
+
                 
     
                 return {
@@ -1907,6 +1937,7 @@
                     edit_note,
                     export_notes,
                     fetch_case_connectors,
+                    openConnectors,
                     fetch_case_files,
                     on_connector_note_change,
                     get_all_users_case,
