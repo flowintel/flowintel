@@ -1,0 +1,56 @@
+{# Partial: Connectors button + modal/collapse. Use data-connector-display attribute to force mode ("modal" or "collapse"). #}
+<div id="connectors-button-wrapper" class="d-inline-flex align-items-center ms-2">
+  <button id="btn-connectors-toggle" type="button" class="btn btn-outline-secondary btn-sm" title="Open Connectors" aria-label="Open Connectors" @click="openConnectors($event)">
+    <i class="fa-solid fa-plug fa-sm me-1"></i>
+    <span class="section-title d-none d-sm-inline">Connectors</span>
+    <span class="badge text-bg-secondary ms-2" v-if="case_connectors_list && case_connectors_list.length">[[case_connectors_list.length]]</span>
+  </button>
+</div>
+
+<!-- Connectors Modal -->
+<div class="modal fade" id="connectorsModal" tabindex="-1" aria-labelledby="connectorsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="connectorsModalLabel"><i class="fa-solid fa-plug me-2"></i>Connectors</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div v-if="cases_info">
+          <caseconnectors 
+              :case_task_connectors_list="case_connectors_list"
+              :all_connectors_list="all_connectors_list"
+              :modules="modules"
+              :is_case="true"
+              :object_id="cases_info.case.id"
+              :cases_info="cases_info"
+              @case_connectors="(msg) => fetch_case_connectors()"
+              @note_change="on_connector_note_change"
+              @task_connectors="">
+          </caseconnectors>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Inline collapse (can be toggled instead of modal) -->
+<div class="collapse" id="connectorsCollapseInline">
+  <div class="card card-body connectors-inline p-0">
+    <div v-if="cases_info">
+      <caseconnectors 
+          :case_task_connectors_list="case_connectors_list"
+          :all_connectors_list="all_connectors_list"
+          :modules="modules"
+          :is_case="true"
+          :object_id="cases_info.case.id"
+          :cases_info="cases_info"
+          @case_connectors="(msg) => fetch_case_connectors()"
+          @note_change="on_connector_note_change"
+          @task_connectors="">
+      </caseconnectors>
+    </div>
+  </div>
+</div>
+
+<!-- Controlled by Vue via `openConnectors` in the main component. -->
