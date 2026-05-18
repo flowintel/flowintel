@@ -11,7 +11,7 @@ class Config:
     # The SECRET_KEY is used for session encryption and CSRF protection.
     # Generate a strong random key using:
     #   python3 -c 'import secrets; print(secrets.token_hex(32))'
-    SECRET_KEY = 'SECRET_KEY_ENV_VAR_NOT_SET'
+    SECRET_KEY = os.getenv('SECRET_KEY', 'SECRET_KEY_ENV_VAR_NOT_SET')
     
     # =============================================================================
     # CSRF PROTECTION
@@ -131,7 +131,7 @@ class Config:
     # When True: Users can only see other users within their own organisation
     # When False: All users can see all other users
     # Administrators always see all users regardless of this setting.
-    LIMIT_USER_VIEW_TO_ORG = False # False is the previous default ; alt.: True 
+    LIMIT_USER_VIEW_TO_ORG = False
 
     # =============================================================================
     # GDPR
@@ -228,9 +228,9 @@ class Config:
     # =============================================================================
     # GPG report signing (leave GPG_KEY_ID empty to disable)
     GPG_BINARY = "/usr/bin/gpg"  # Absolute path to the gpg binary
-    GPG_HOME = "/home/yourusername/.gnupg"        # Path to the GPG keyring directory (empty = default ~/.gnupg)
-    GPG_KEY_ID = ""      # Fingerprint or email of the signing key (empty = signing disabled)
-    GPG_PASSPHRASE = ""  # Passphrase for the key (empty = no passphrase or use gpg-agent)
+    GPG_HOME = os.getenv('GPG_HOME', '')        # Path to the GPG keyring directory (empty = default ~/.gnupg)
+    GPG_KEY_ID = os.getenv('GPG_KEY_ID', '')      # Fingerprint or email of the signing key (empty = signing disabled)
+    GPG_PASSPHRASE = os.getenv('GPG_PASSPHRASE', '')  # Passphrase for the key (empty = no passphrase or use gpg-agent)
 
     # =============================================================================
     # CENTRAL TEMPLATE REPOSITORY

@@ -15,20 +15,45 @@ This installation manual is part of a broader documentation set that covers inst
 
 ### Technical components
 
-Flowintel is built with:
+Flowintel is a Python web application written on top of the Flask framework. It runs as a service on a Linux server and is reached by users through a standard web browser. The platform is built from a small number of well established open-source components, each with a clear role. This keeps the operating cost predictable and avoids tying the organisation to a single vendor.
 
-- **Flask**: Python web framework
-- **PostgreSQL**: Production database (SQLite supported for development)
-- **Valkey**: Session storage
-- **MISP modules**: Analysis and enrichment engine
+- **Flask application**: the Flowintel codebase itself, written in Python. It implements the case workflow, user interface, permissions, and the integrations with external systems.
+- **Gunicorn application server**: runs the Flask application as a set of worker processes. The number of workers is sized to the available CPU cores so that several users can work in parallel without slowing each other down.
+- **NGINX reverse proxy**: the public entry point. It terminates HTTPS, serves static assets, and exposes both the user interface and the REST API to the network.
+- **PostgreSQL database**: the database system to record cases, tasks, users, audit information, and configuration. SQLite is supported for development and demonstrations only; production deployments use PostgreSQL.
+- **Valkey session store**: an in-memory store, compatible with Redis, that holds user session data. Keeping sessions out of the database keeps the user experience responsive and makes it easier to scale the application tier later if needed.
+- **MISP modules service**: an enrichment engine that lets analysts pull additional context on observables (IP addresses, domains, files, and similar) from third-party sources such as VirusTotal or CIRCL. It runs as a separate service and is consulted on demand.
+- **MISP taxonomies and galaxies**: open vocabularies maintained by the wider CTI community. Flowintel uses them so that classifications and threat actor labels stay aligned with what other security teams use across the sector.
+- **Notifications service**: a background worker that produces real-time updates and alerts inside the user interface, so analysts see new assignments and changes without having to refresh.
+- **Template repositories**: case and task templates live in Git repositories that Flowintel pulls into a local folder. Teams can keep their own playbooks under version control, share them between Flowintel instances, and bring in templates published by other organisations without copying files by hand.
+- **GPG support**: Flowintel can sign and encrypt outbound notifications and accept encrypted input where the workflow requires it. The server holds its own key, and analysts can attach their public keys so that sensitive material stays protected end to end.
+- **Optional integrations**: single sign-on with Keycloak and Microsoft Entra ID, mailbox ingestion over IMAP, outbound webhooks, and links to MISP, AIL or Matrix. None of these are required to run Flowintel; they are turned on only when the organisation has the matching infrastructure.
 
-Flowintel follows a common pattern for Python web applications. The Flask application runs behind an application server and is exposed to users through a web server such as NGINX or Apache, which acts as a reverse proxy.
+All components run on the same host in a typical installation, which keeps the deployment simple to operate and to back up. The same component layout also runs under Docker Compose for evaluation and test environments.
 
 ### Supported operating systems
 
 Flowintel runs on Ubuntu Linux 22.04 LTS and 24.04 LTS. Other Debian-based distributions may work but are not officially tested.
 
 ### Architecture
+
+The diagram below shows how the components fit together. A user's browser talks to NGINX over HTTPS. NGINX serves the static files itself and passes everything else to Gunicorn, which dispatches the request to one of the Flowintel worker processes. The worker reads from and writes to PostgreSQL for persistent data, and to Valkey for the user's session. When an analyst asks for enrichment on an observable, the worker calls the MISP modules service and stores the result back in the case. The notifications service runs alongside the application and pushes updates to the browser as cases evolve.
+
+Users sign in either with a local account managed inside Flowintel or through an external identity provider. **Single sign-on** is supported with Keycloak and with Microsoft Entra ID, so organisations that already run a central directory can keep account creation, password policy and multi-factor authentication where they belong. Permissions inside Flowintel are then applied on top of whichever identity the user signed in with.
+
+Cases can also be synchronised with a MISP instance. Once a case is linked to a MISP event, the standard MISP distribution model decides who else gets to see it: the same organisation, a trusted group, all connected communities, or no one at all. This is the same mechanism that the threat intelligence community already uses to share events between departments and between organisations, so Flowintel integrates nicely into existing sharing arrangements without inventing a new protocol.
+
+When analysts add data points to a case (IP addresses, domains, hashes, URLs, and so on), they can run MISP modules against them to pull in additional context from third-party sources and to pivot from one observable to related ones. The enriched information is attached back to the case, which keeps the investigation trail in one place and saves the analyst from copying values between separate tools.
+
+Analysts can also query a connected MISP instance directly from the case. Any matching events or attributes returned by MISP are added back to the case, so prior knowledge held in the organisation's threat intelligence platform shows up next to the current investigation without leaving Flowintel.
+
+Each component runs as its own systemd service on the host. This means the platform starts automatically with the server, can be restarted component by component during maintenance, and is monitored using the same tools the operations team already uses to monitor the rest of the Linux servers. From an ownership point of view, Flowintel is a single application that fits within a normal Linux operations practice, with no exotic runtime requirements and no per-seat licence fees on its components.
+
+Flowintel keeps two kinds of **audit trail**. Activity that belongs to a case (status changes, comments, file uploads, task updates) is recorded inside the database alongside the case itself, so analysts can see the full history of an investigation from the user interface. Application events (logins, errors, background jobs) are written to rotating log files under the `logs/` folder, with `logs/record.log` as the main entry. Operations teams can tail these files directly or forward them to a central log collector if the organisation already runs one.
+
+**Backups** are handled at the data layer. A regular dump of the PostgreSQL database, together with the uploads folder, is enough to restore a working instance on a fresh server. The procedure, including how often to run it and how to test a restore, is described in the [backup and restore guide](backup-restore.md).
+
+For deployments that need data at rest protection, Flowintel can be installed on **encrypted** volumes. The [encryption guide](encryption-guide.md) walks through the choices to make before installation, so that the database, uploads and backups all sit on storage that meets the organisation's confidentiality requirements.
 
 ![installation-manual-diagrams/flowintel-installation-Architecture.png](installation-manual-diagrams/flowintel-installation-Architecture.png)
 
@@ -230,9 +255,9 @@ Flowintel stores its application files, configuration, and uploaded attachments 
 
 For better organisation and easier backups, create a dedicated partition or mount point for Flowintel.
 
-### Option 1: Simple directory (quick setup for testing)
+### Option 1: Simple directory
 
-If you want to get Flowintel running quickly for testing or development, a simple directory is sufficient.
+A simple directory under `/opt/flowintel` is suitable for development, testing, and smaller production installations. It is the quickest option to set up and is perfectly acceptable if you do not need separate storage management features.
 
 ```bash
 # Create installation directory
@@ -244,7 +269,7 @@ sudo chown -R yourusername:yourusername /opt/flowintel
 
 ### Option 2: LVM partition (recommended for production)
 
-For production environments, use a dedicated LVM partition to keep Flowintel data separate from the operating system. The Logical Volume Manager, or LVM, is a Linux-based storage management technology that adds an abstraction layer between physical disks and filesystems, enabling flexible, dynamic storage allocation. It gives you flexibility with backups, snapshots, and future expansion.
+For production environments, a dedicated LVM partition is the more robust option because it keeps Flowintel data separate from the operating system and makes it easier to manage growth, backups, snapshots, and future expansion. The Logical Volume Manager, or LVM, is a Linux-based storage management technology that adds an abstraction layer between physical disks and filesystems, enabling flexible, dynamic storage allocation.
 
 ```bash
 # Install LVM tools if not present
@@ -689,7 +714,7 @@ If you see the PostgreSQL prompt, the setup is working correctly. Type `\q` to e
 
 With the system packages, reverse proxy, and database in place, the next step is to configure the Flowintel application. These settings must be in place before you run the installation script.
 
-## Create configuration files
+## Configuration files
 
 Flowintel includes default configuration templates that need to be copied and customised for your installation:
 
@@ -698,23 +723,175 @@ cp conf/config.py.default conf/config.py
 cp conf/config_module.py.default conf/config_module.py
 ```
 
-These files will be edited in the next steps to match your environment and requirements.
-
 ## Configure the base application settings
 
-Flowintel uses `conf/config.py` for application settings. The file contains a base configuration class and separate classes for development, testing, and production environments.
-
-Once Flowintel is installed, some of these settings can also be changed through the web interface. Others can only be modified by editing the configuration file directly. This section covers only the settings needed to get Flowintel up and running; detailed configuration options are documented in the user manual.
+Once Flowintel is installed, some of these settings can also be changed through the web interface by users with the **Admin** role. This section covers only the settings needed to get Flowintel up and running; detailed configuration options are documented in the user manual.
 
 ![installation-manual-diagrams/flowintel-installation-Configuration.png](installation-manual-diagrams/flowintel-installation-Configuration.png)
 
+Flowintel reads configuration from environment variables. The recommended way to provide them is a `.env` file: it keeps sensitive data such as database passwords and secret keys out of `conf/config.py`, loads automatically on startup so settings persist across reboots, and is straightforward to back up or transfer to a new server. For development and testing you can edit `conf/config.py` directly instead.
 
-### Base configuration
+## Environment file
 
-Open the configuration file:
+From the template file, create a `.env` file in the Flowintel directory and restrict file permissions to prevent unauthorised access:
 
 ```bash
-vi conf/config.py
+cp /opt/flowintel/flowintel/template.env /opt/flowintel/flowintel/.env
+chmod 600 /opt/flowintel/flowintel/.env
+```
+
+Then open the file for editing.
+
+```
+vi /opt/flowintel/flowintel/.env
+```
+
+## Base configuration
+
+### Secret key
+
+`SECRET_KEY` is used for Flask session encryption and CSRF protection. It must be unique to your installation: if two installations share the same key, a session token from one could be accepted by the other. Generate a strong random value in a separate terminal and paste it into `.env`:
+
+```bash
+python3 -c 'import secrets; print(secrets.token_hex(32))'
+```
+
+### Database connection
+
+The `DB_*` variables tell Flowintel how to connect to PostgreSQL. Set them to match the database and user you created in the database section earlier. `DB_HOST` should be `localhost` when PostgreSQL runs on the same server as Flowintel. `DB_PORT` defaults to `5432` and rarely needs changing.
+
+### File uploads
+
+Users can attach files to cases and tasks, for example evidence, screenshots, or reports. These files are stored on disk in the `uploads/files/` directory within the Flowintel installation, not in the database. `FILE_UPLOAD_MAX_SIZE` controls the maximum size of a single uploaded file, expressed in bytes. The default is 5 MB (5242880 bytes).
+
+If you increase this limit, also update the `client_max_body_size` directive in `/etc/nginx/sites-available/flowintel` to match, otherwise NGINX will reject large uploads before they reach Flowintel. The value included in the NGINX template is `50M`, which comfortably covers the default upload limit. After changing the NGINX configuration, test and reload it:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Reverse proxy settings
+
+When Flowintel runs behind NGINX, Flask needs to read the forwarded headers that NGINX adds so it can determine the real client IP address, the original protocol (HTTP or HTTPS), and the hostname the client requested. Without this, Flask only sees connections from `127.0.0.1` and cannot construct correct redirect URLs.
+
+`BEHIND_PROXY` enables Werkzeug's ProxyFix middleware, which reads those headers. Set it to `true` for any production deployment behind NGINX.
+
+`PROXY_X_FOR` is the number of proxy servers between your users and Flowintel. If NGINX runs on the same server as Flowintel, set this to `1`. If users first pass through a corporate proxy and then reach NGINX, set it to `2`. Setting it too high allows clients to spoof their IP address by injecting forged headers, so keep this value as low as your network topology allows.
+
+`PROXY_X_PROTO` tells Flask to trust the `X-Forwarded-Proto` header so it can distinguish HTTP from HTTPS requests. `PROXY_X_HOST` trusts the `X-Forwarded-Host` header so Flask knows the original hostname. `PROXY_X_PREFIX` trusts the `X-Forwarded-Prefix` header, which is only needed if Flowintel is served under a URL sub-path; the default value of `0` disables it.
+
+### Other settings
+
+The remaining variables in `template.env` cover areas such as appearance (logos, welcome text, GDPR notice), single sign-on via Microsoft Entra ID or Keycloak, outbound webhooks, MISP connector defaults, GPG report signing, and IMAP notification archiving. These are all optional for a basic installation.
+
+### Minimum configuration values to set
+
+Update at least the following configuration values before running the installation script:
+
+```bash
+# Secret key for Flask session encryption and CSRF protection
+SECRET_KEY="your_generated_secret_key_here"
+
+# Database settings
+DB_USER=flowintel
+DB_PASSWORD=your_secure_password_here
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=flowintel
+
+# Flask environment
+FLASK_ENV="production"
+```
+
+## Key configuration options
+
+The table below covers all settings from `template.env` (`.env`):
+
+| Setting | Purpose | Example value |
+|---------|---------|---|
+| `SECRET_KEY` | Session encryption and CSRF protection (generate a strong random key) | 64-character hex string |
+| `DB_NAME` | PostgreSQL database name | `flowintel` |
+| `DB_USER` | PostgreSQL database user | `flowintel` |
+| `DB_PASSWORD` | PostgreSQL user password | Strong password |
+| `DB_HOST` | PostgreSQL server address | `localhost` or `192.168.1.100` |
+| `DB_PORT` | PostgreSQL port | `5432` |
+| `VALKEY_IP` | Valkey session storage IP | `127.0.0.1` |
+| `VALKEY_PORT` | Valkey port | `6379` |
+| `ENFORCE_PRIVILEGED_CASE` | Enable privileged-case controls | `true` |
+| `PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST` | Auto-add admins to requested privileged tasks | `true` |
+| `ENABLE_CHATBOT` | Toggle chatbot routes/menu | `false` |
+| `FILE_UPLOAD_MAX_SIZE` | Maximum file upload size in bytes | `5242880` (5 MB) |
+| `BEHIND_PROXY` | Enable reverse proxy support | `true` or `false` |
+| `PROXY_X_FOR` | Number of proxies to trust | `1` |
+| `PROXY_X_PROTO` | Trust X-Forwarded-Proto header | `1` |
+| `PROXY_X_HOST` | Trust X-Forwarded-Host header | `1` |
+| `PROXY_X_PREFIX` | Trust X-Forwarded-Prefix header | `0` or `1` |
+| `FLASK_ENV` | Flask runtime environment | `production` |
+| `AUDIT_LOG_PREFIX` | Prefix used for audit log entries | `AUDIT` |
+| `LOG_FILE` | Audit/application log filename | `record.log` |
+| `MAIN_LOGO` | Main application logo path | `/static/image/flowintel.png` |
+| `TOPRIGHT_LOGO` | Top-right logo path | empty string |
+| `FOOTER_1_LOGO` | First footer logo path | empty string |
+| `FOOTER_2_LOGO` | Second footer logo path | empty string |
+| `WELCOME_TEXT_TOP` | Login page top text | empty string |
+| `WELCOME_TEXT_BOTTOM` | Login page bottom text | empty string |
+| `WELCOME_LOGO` | Login page logo path | empty string |
+| `SHOW_GDPR_NOTICE` | Show GDPR notice in forms | `true` |
+| `GDPR_NOTICE` | GDPR notice text | Custom string |
+| `ENTRA_ID_ENABLED` | Enable Microsoft Entra ID SSO | `true` or `false` |
+| `ENTRA_TENANT_ID` | Entra tenant ID | GUID |
+| `ENTRA_CLIENT_ID` | Entra application client ID | GUID |
+| `ENTRA_CLIENT_SECRET` | Entra client secret | Secret string |
+| `ENTRA_REDIRECT_URL` | Entra callback URL | `https://<host>/account/entra/callback` |
+| `ENTRA_GROUP_ADMIN` | Entra group mapped to Admin onboarding flow | `FlowintelAdmin` |
+| `ENTRA_GROUP_EDITOR` | Entra group mapped to Editor | `FlowintelEditor` |
+| `ENTRA_GROUP_READONLY` | Entra group mapped to Read Only | `FlowintelReadOnly` |
+| `ENTRA_GROUP_CASE_ADMIN` | Entra group mapped to CaseAdmin | `FlowintelCaseAdmin` |
+| `ENTRA_ROLE_CASE_ADMIN` | Flowintel role name for CaseAdmin mapping | `CaseAdmin` |
+| `ENTRA_GROUP_QUEUE_ADMIN` | Entra group mapped to QueueAdmin | `FlowintelQueueAdmin` |
+| `ENTRA_ROLE_QUEUE_ADMIN` | Flowintel role name for QueueAdmin mapping | `QueueAdmin` |
+| `ENTRA_GROUP_QUEUER` | Entra group mapped to Queuer | `FlowintelQueuer` |
+| `ENTRA_ROLE_QUEUER` | Flowintel role name for Queuer mapping | `Queuer` |
+| `KEYCLOAK_ENABLED` | Enable Keycloak SSO | `true` or `false` |
+| `KEYCLOAK_BASE_URL` | Keycloak server base URL | `https://keycloak.example.com` |
+| `KEYCLOAK_REALM` | Keycloak realm | `flowintel` |
+| `KEYCLOAK_CLIENT_ID` | Keycloak client ID | `flowintel` |
+| `KEYCLOAK_CLIENT_SECRET` | Keycloak client secret | Secret string |
+| `KEYCLOAK_REDIRECT_URL` | Keycloak callback URL | `https://<host>/account/keycloak/callback` |
+| `KEYCLOAK_GROUP_ADMIN` | Keycloak group mapped to Admin onboarding flow | `FlowintelAdmin` |
+| `KEYCLOAK_GROUP_EDITOR` | Keycloak group mapped to Editor | `FlowintelEditor` |
+| `KEYCLOAK_GROUP_READONLY` | Keycloak group mapped to Read Only | `FlowintelReadOnly` |
+| `KEYCLOAK_GROUP_CASE_ADMIN` | Keycloak group mapped to CaseAdmin | `FlowintelCaseAdmin` |
+| `KEYCLOAK_ROLE_CASE_ADMIN` | Flowintel role name for CaseAdmin mapping | `CaseAdmin` |
+| `KEYCLOAK_GROUP_QUEUE_ADMIN` | Keycloak group mapped to QueueAdmin | `FlowintelQueueAdmin` |
+| `KEYCLOAK_ROLE_QUEUE_ADMIN` | Flowintel role name for QueueAdmin mapping | `QueueAdmin` |
+| `KEYCLOAK_GROUP_QUEUER` | Keycloak group mapped to Queuer | `FlowintelQueuer` |
+| `KEYCLOAK_ROLE_QUEUER` | Flowintel role name for Queuer mapping | `Queuer` |
+| `WEBHOOK_URL` | Outbound webhook URL for new-case events | `https://example.com/webhook` |
+| `WEBHOOK_ENABLED` | Enable outbound new-case webhook | `false` |
+| `WEBHOOK_SECRET` | HMAC secret for webhook signing | Secret string |
+| `MISP_EXPORT_FILES` | Include case/task files in MISP exports | `true` or `false` |
+| `MISP_EVENT_THREAT_LEVEL` | Default MISP threat level | `4` |
+| `MISP_EVENT_ANALYSIS` | Default MISP analysis status | `0` |
+| `MISP_ADD_LOCAL_TAGS_ALL_EVENTS` | Local tags applied to MISP events | `curation:source="flowintel"` |
+| `REPOSITORY_BASE_PATH` | Base path for template repositories | `modules/repositories` |
+| `GPG_HOME` | GPG home/keyring directory for report signing | `/home/user/.gnupg` or empty |
+| `GPG_KEY_ID` | GPG signing key identifier | Key ID, fingerprint, or empty |
+| `GPG_PASSPHRASE` | Passphrase for GPG signing key | Secret string or empty |
+| `IMAP_SERVER` | IMAP server for notification archiving | `imap.gmail.com` |
+| `IMAP_PORT` | IMAP server port | `993` |
+| `IMAP_USER` | IMAP username | `your-email@example.com` |
+| `IMAP_PASSWORD` | IMAP password/app password | Secret string |
+| `IMAP_USE_SSL` | Enable SSL for IMAP connection | `true` |
+
+## Alternative: Direct config.py editing (development and testing only)
+
+For development and testing environments, you can edit `conf/config.py` directly instead of using a `.env` file. This approach is simpler for local development but is **not recommended for production** because it stores credentials in the configuration file.
+
+Open and edit config.py
+
+```bash
+vi /opt/flowintel/flowintel/conf/config.py
 ```
 
 The first section of the file contains the base `Config` class. The settings below apply to all environments (development, testing, and production).
@@ -723,44 +900,11 @@ The first section of the file contains the base `Config` class. The settings bel
 class Config:
 ```
 
-#### Secret key
+When editing `config.py`, search for variable names that match the `.env` keys (for example `DB_USER`, `DB_PASSWORD`, `FILE_UPLOAD_MAX_SIZE`, `BEHIND_PROXY`, `MISP_EXPORT_FILES`). This makes it easy to map `.env` values to the corresponding config entries.
 
-The `SECRET_KEY` is used for session encryption and CSRF protection. Generate a strong random key. If you have the configuration file open in an editor, run this command in a separate terminal session:
+Keep these settings in `config.py` at their defaults unless you have a specific reason to change them:
 
-```bash
-python3 -c 'import secrets; print(secrets.token_hex(32))'
-```
-
-Copy the output and replace the default value in the configuration file:
-
-```python
-SECRET_KEY = 'your_generated_key_here'
-```
-
-#### Flask application binding
-
-Flowintel is a Flask application and you need to configure on which IP address and which port it listens. `FLASK_URL` sets the IP address Flask binds to, and `FLASK_PORT` sets the port number.
-
-For production with NGINX, keep `127.0.0.1` to ensure Flask only accepts connections from the reverse proxy. If you need to access Flask directly during testing, change to `0.0.0.0`, but never expose this in production.
-
-```python
-FLASK_URL = '127.0.0.1'
-FLASK_PORT = 7006
-```
-
-#### MISP enrichment modules
-
-The MISP modules provide analysis and enrichment via external services. `MISP_MODULE` sets the address and port where the modules are running. The default value of `127.0.0.1:6666` is correct for most installations. Only change this if the MISP modules run on a different server or port.
-
-```python
-MISP_MODULE = '127.0.0.1:6666'
-```
-
-#### Session storage
-
-When a user logs in to Flowintel, the application creates a session to track their authentication state and preferences. Sessions need to be stored somewhere so that they persist across page loads and survive application restarts. Flowintel uses Valkey for this purpose.
-
-Valkey is an in-memory data store (a community fork of Redis) that keeps session data in RAM for fast access. It runs as a separate service alongside Flowintel and handles all session reads and writes.
+**Valkey session storage**:
 
 ```python
 VALKEY_IP = os.getenv('VALKEY_IP', '127.0.0.1')
@@ -768,55 +912,17 @@ VALKEY_PORT = os.getenv('VALKEY_PORT', '6379')
 SESSION_TYPE = "redis"
 ```
 
-The default settings work for most installations where Valkey runs on the same server. You only need to change these if Valkey is on a different host.
+You only need to change these if Valkey is on a different host. **Note**: `SESSION_TYPE` is set to `"redis"` because Valkey is compatible with Redis and uses the same client protocol.
 
-**Note**: `SESSION_TYPE` is set to `"redis"` because Valkey is compatible with Redis and uses the same client protocol.
-
-**Note**: The Flowintel installation script installs and starts Valkey automatically. No separate setup is needed.
-
-#### File upload limits
-
-Users can attach files to cases and tasks (for example evidence, screenshots, or reports). These files are stored on disk in the `uploads/files/` directory within your Flowintel installation, not in the database.
-
-The `FILE_UPLOAD_MAX_SIZE` setting controls the maximum size of a single uploaded file, expressed in bytes:
-
-```python
-FILE_UPLOAD_MAX_SIZE = int(os.getenv('FILE_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))  # 5MB default
-```
-
-Adjust this based on your storage capacity and the types of files your analysts typically attach. If you increase this limit, also update the NGINX `client_max_body_size` directive in `/etc/nginx/sites-available/flowintel` to match, otherwise NGINX will reject uploads before they reach Flowintel. The default value in the included NGINX template is `50M`:
-
-```nginx
-client_max_body_size 50M;
-```
-
-After changing the value, test and reload the NGINX configuration with `sudo nginx -t && sudo systemctl reload nginx`.
-
-#### Reverse proxy settings
-
-When running Flowintel behind a reverse proxy, Flask needs to know how to extract the real client IP address and other request details from HTTP headers that the proxy adds. Without this configuration, Flask will only see connections coming from `127.0.0.1` and won't be able to determine the actual client IP, protocol (HTTP vs HTTPS), or hostname.
-
-Start by enabling proxy support with `BEHIND_PROXY`. This tells Flask to use Werkzeug's `ProxyFix` middleware, which reads the `X-Forwarded-*` headers that NGINX adds to each request.
-
-The `PROXY_X_FOR` setting controls how many proxy servers are between your users and Flowintel. If you're running NGINX directly on the same server as Flowintel, set this to `1`. If users connect through a corporate proxy first and then reach your NGINX server, set it to `2`. `PROXY_X_PROTO` tells Flask to trust the `X-Forwarded-Proto` header so it can distinguish HTTP from HTTPS requests. `PROXY_X_HOST` trusts the `X-Forwarded-Host` header so Flask knows the original hostname the user requested. `PROXY_X_PREFIX` trusts the `X-Forwarded-Prefix` header, which is only needed if Flowintel is served under a URL sub-path (the default `0` disables it).
-
-```python
-BEHIND_PROXY = os.getenv('BEHIND_PROXY', 'true').lower() == 'true'
-PROXY_X_FOR = int(os.getenv('PROXY_X_FOR', 1))       # Number of proxies to trust
-PROXY_X_PROTO = int(os.getenv('PROXY_X_PROTO', 1))   # Trust X-Forwarded-Proto
-PROXY_X_HOST = int(os.getenv('PROXY_X_HOST', 1))     # Trust X-Forwarded-Host
-PROXY_X_PREFIX = int(os.getenv('PROXY_X_PREFIX', 0)) # Trust X-Forwarded-Prefix
-```
-
-#### Flowintel system roles
-
-Flowintel has three built-in roles (Admin, Editor, and Read only) that cannot be deleted through the interface. The `SYSTEM_ROLES` setting lists their database identifiers. You should not need to change this value.
+**System roles**:
 
 ```python
 SYSTEM_ROLES = [1, 2, 3]
 ```
 
-### Initial user accounts
+Flowintel has three built-in roles (Admin, Editor, Read only) that should remain unchanged.
+
+## Initial user accounts
 
 When Flowintel runs for the first time, it creates two built-in user accounts: an administrator and a bot account. These accounts are defined by `INIT_ADMIN_USER` and `INIT_BOT_USER` in the configuration file. You can change the names and email addresses before the first run, but the settings are only read during the initial bootstrapping of the application. Once the accounts exist in the database, changes to these values have no effect.
 
@@ -850,11 +956,11 @@ INIT_BOT_USER = {
 If you do not intend to use Matrix notifications, you can leave this account as it is. It does not need to be deleted and has no administrative privileges.
 
 
-### Database configuration
+## Database configuration
 
 The configuration file includes settings for both development and production databases. The installation script automatically uses the appropriate configuration based on the installation mode you chose.
 
-#### Option 1: SQLite (development and testing only)
+### Option 1: SQLite (development and testing only)
 
 ```python
 class DevelopmentConfig(Config):
@@ -866,70 +972,10 @@ The SQLite database file is stored in `instance/flowintel.sqlite` within your Fl
 
 **Important**: SQLite is **not recommended for production use**. It lacks the performance, concurrency handling, and data integrity features required for production deployments.
 
-#### Option 2: PostgreSQL (production)
+### Option 2: PostgreSQL (production)
 
-The `ProductionConfig` class is used with PostgreSQL:
+The `ProductionConfig` class is used with PostgreSQL and gets the database host, port name, username, and password through environment variables via the `.env` file as described in the base configuration section above.
 
-```python
-class ProductionConfig(Config):
-    db_user = os.getenv('DB_USER', 'flowintel')
-    db_password = os.getenv('DB_PASSWORD', 'your_secure_password_here')
-    db_host = os.getenv('DB_HOST', 'localhost')
-    db_port = os.getenv('DB_PORT', '5432')
-    db_name = os.getenv('DB_NAME', 'flowintel')
-    
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-```
-
-Update the database name, username, and password to match the PostgreSQL database you created earlier. For production deployments, it is strongly recommended to supply these values through environment variables rather than writing them directly into the configuration file. This keeps credentials out of source-controlled files and makes it easier to manage different environments. The next section explains how to set up environment variables.
-
-### Using environment variables
-
-Instead of hardcoding values in `config.py`, you can use environment variables. This keeps sensitive data such as database passwords and secret keys out of the configuration file itself, which is particularly important if the Flowintel directory is ever backed up, copied, or placed under version control. Environment variables also make it straightforward to change settings without editing code.
-
-The configuration already supports environment variables through `os.getenv()`. You can provide them in two ways:
-
-#### Option 1: System environment variables
-
-Set variables in your shell before starting Flowintel:
-
-```bash
-export DB_PASSWORD='your_secure_password_here'
-export SECRET_KEY='your_secret_key'
-export FLASKENV='production'
-```
-
-This approach is simple and works well when Flowintel is managed by a systemd service file that includes an `EnvironmentFile` directive or when variables are set in the user's shell profile. However, variables defined this way only persist for the current session unless you add them to a file such as `~/.bashrc` or `/etc/environment`. They can also be visible to other processes running under the same user through `/proc`, which may be a concern in shared environments.
-
-#### Option 2: .env file (recommended)
-
-Create a `.env` file in the Flowintel directory:
-
-```bash
-vi .env
-```
-
-Add your configuration:
-
-```bash
-# Database settings
-DB_USER=flowintel
-DB_PASSWORD=your_secure_password_here
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=flowintel
-
-# Flask environment
-FLASKENV=production
-```
-
-Set appropriate permissions to protect sensitive values:
-
-```bash
-chmod 600 .env
-```
-
-The `.env` file is the recommended approach because all settings live in a single, clearly defined location. The file is loaded automatically when Flowintel starts, so variables persist across reboots without any additional shell configuration. It is also easy to back up or copy to a new server. To keep the credentials secure, restrict the file permissions with `chmod 600` (as shown above) and add `.env` to your `.gitignore` file if you are tracking the installation with Git.
 
 ## Development, testing and production settings
 
@@ -1309,7 +1355,7 @@ Once the import is confirmed, remove the key files from the temporary location.
 
 ### Configure Flowintel for report signing
 
-Open `conf/config.py` and set the GPG settings:
+Set the GPG settings:
 
 ```python
 # GPG report signing
@@ -1569,41 +1615,16 @@ A response code of `200` or `302` confirms that the application is running. If y
 
 ## Run Flowintel manually
 
-The method for starting Flowintel manually depends on which installation mode you chose:
-
-**Development mode:**
+Use this for development or to verify the installation. Run Flowintel in the foreground with log output visible:
 
 ```bash
 cd /opt/flowintel/flowintel
 bash launch.sh -l
 ```
 
-The `-l` flag runs Flowintel in the foreground with log output visible. You'll see startup messages, and Flask will bind to the address and port specified in your configuration (default `127.0.0.1:7006`).
+The `-l` flag binds Flask to the address and port specified in your configuration (default `127.0.0.1:7006`). Press `Ctrl+C` to stop Flowintel.
 
-**Production mode:**
-
-```bash
-cd /opt/flowintel/flowintel
-bash launch.sh -p
-```
-
-The `-p` flag runs Flowintel in production mode using Gunicorn as the WSGI server. By default, the launch script starts 4 worker processes. Each worker handles requests independently, so more workers allow Flowintel to serve more users at the same time.
-
-A common rule of thumb is to set the worker count to (2 x CPU cores) + 1. For a 4-core server, that would be 9 workers. To change the default, edit `launch.sh` and update the `-w` value in the Gunicorn command (in the production function):
-
-```bash
-gunicorn -w 9 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
-```
-
-Avoid setting the worker count too high on systems with limited memory, as each worker runs a separate copy of the application.
-
-Once Flowintel is running, restart NGINX so it recognises the backend service is available:
-
-```bash
-sudo systemctl restart nginx
-```
-
-Press `Ctrl+C` to stop Flowintel.
+**For production deployments, use the systemd service described in the next section.** Running directly with `launch.sh` is not recommended for production: the process is not supervised, does not start on boot, and stops when the terminal session closes.
 
 ## Run Flowintel as a service
 
@@ -1661,7 +1682,13 @@ WantedBy=multi-user.target
 
 The `[Unit]` section declares that Flowintel depends on PostgreSQL and Valkey; systemd will start those services first and stop Flowintel if either of them fails. The `Wants=` directive tells systemd to also start the MISP modules and notification services when Flowintel starts. `Type=simple` tells systemd that the process started by `ExecStart` is the main service process. `Restart=on-failure` means systemd will automatically restart Flowintel if it exits with a non-zero status, waiting 10 seconds (`RestartSec`) between attempts. `WantedBy=multi-user.target` ensures the service starts during normal multi-user boot.
 
-The `ExecStart` directive uses Gunicorn with 4 worker processes. A common rule of thumb is to set the worker count to (2 x CPU cores) + 1. To change this, edit the `-w` value in the service file. The bind address (`127.0.0.1:7006`) should match the `FLASK_URL` and `FLASK_PORT` values in `conf/config.py`.
+The `ExecStart` directive uses Gunicorn with 4 worker processes. Each worker handles requests independently, so more workers allow Flowintel to serve more users at the same time. A common rule of thumb is to set the worker count to (2 x CPU cores) + 1. For a 4-core server, that would be 9 workers. To change the default, edit the `-w` value in the service file:
+
+```bash
+ExecStart=/opt/flowintel/flowintel/env/bin/gunicorn -w 9 "app:create_app()" -b 127.0.0.1:7006 --access-logfile -
+```
+
+Avoid setting the worker count too high on systems with limited memory, as each worker runs a separate copy of the application. The bind address (`127.0.0.1:7006`) should match the `FLASK_URL` and `FLASK_PORT` values in `conf/config.py`.
 
 If you need to adjust resource limits (for example capping memory usage), you can add directives such as `MemoryMax=512M` or `CPUQuota=200%` in the `[Service]` section.
 
@@ -2144,7 +2171,23 @@ sudo nginx -t && sudo systemctl reload nginx
    sudo systemctl enable valkey
    ```
 
-2. **Wrong Valkey address or port**
+2. **Wrong Valkey address: `VALKEY_IP` set to `valkey` instead of `127.0.0.1`**
+
+   `valkey` is the Docker Compose service name. On a direct Linux installation this hostname cannot be resolved and Flowintel fails with:
+
+   ```
+   redis.exceptions.ConnectionError: Error -3 connecting to valkey:6379. Temporary failure in name resolution.
+   ```
+
+   Open `.env` and set the correct address:
+
+   ```bash
+   VALKEY_IP=127.0.0.1
+   ```
+
+   Then restart Flowintel.
+
+3. **Valkey not running or not listening on the expected port**
    
    Verify Valkey is listening:
    ```bash
@@ -2156,13 +2199,13 @@ sudo nginx -t && sudo systemctl reload nginx
    nc -zv 127.0.0.1 6379
    ```
    
-   Should respond with `Connection to 127.0.0.1 6379 port [tcp/*] succeeded!`. If not, check your configuration matches:
-   ```python
-   VALKEY_IP = "127.0.0.1"
-   VALKEY_PORT = 6379
+   Should respond with `Connection to 127.0.0.1 6379 port [tcp/*] succeeded!`. If not, check your `.env` matches:
+   ```
+   VALKEY_IP=127.0.0.1
+   VALKEY_PORT=6379
    ```
 
-3. **Configuration mismatch**
+4. **Configuration mismatch**
    
    Check the `conf/config.py` file to ensure `SESSION_TYPE` is set correctly:
    ```bash
@@ -2347,7 +2390,7 @@ This configures Ubuntu to download and install security updates automatically. R
 
 # Upgrading Flowintel
 
-This section covers how to upgrade Flowintel to a newer version. Flowintel uses Flask-Migrate (Alembic) for database schema changes, so every upgrade includes a migration step that applies any new or modified tables and columns automatically. The upgrade process differs slightly depending on whether you follow the latest development branch or pin to tagged releases.
+This section covers how to upgrade Flowintel to a newer version. Flowintel uses Flask-Migrate (Alembic) for database schema changes, so every upgrade includes a migration step that applies any new or modified tables and columns automatically.
 
 ## Before upgrading
 
@@ -2392,9 +2435,9 @@ This section covers how to upgrade Flowintel to a newer version. Flowintel uses 
    cp conf/config_module.py conf/config_module.py.pre-upgrade
    ```
 
-## Option 1: Upgrade using the update script
+## Upgrade using the update script
 
-Flowintel includes an `update.sh` script that automates most of the upgrade process. It pulls the latest code from Git, backs up the database, runs database migrations, updates the MISP taxonomy and galaxy submodules, upgrades Python dependencies, and restarts the MISP modules.
+Flowintel includes an `update.sh` script that automates most of the upgrade process. It pulls the latest code from Git, backs up the database, runs database migrations, updates taxonomy and galaxy submodules, updates Python dependencies, and refreshes MISP modules.
 
 **Development environment:**
 
@@ -2417,22 +2460,21 @@ The script performs the following steps:
 3. Backs up the database (SQLite copy or PostgreSQL dump) into `instance/backup/`
 4. Runs `flask db upgrade` to apply pending database migrations
 5. Updates the MISP taxonomy and galaxy submodules
-6. Upgrades the `pytaxonomies`, `pymispgalaxies`, and `pymisp` Python packages
+6. Updates Python dependencies from `requirements.txt`
 7. Reloads taxonomy and galaxy data into the database
-8. Upgrades and restarts the MISP modules
+8. Starts MISP modules temporarily, then refreshes MISP module metadata in the database
 
-**Note**: The script uses `git pull`, so it always pulls the most recent commits on your current branch (typically `main`). If you want to upgrade to a specific tagged release instead, use the manual method described below.
+**Note**: The script uses `git pull`, so it always pulls the most recent commits on your current branch (typically `main`).
 
 After the script completes, start Flowintel again:
 
+**Development**
 ```bash
-# Development
 bash launch.sh -l
+```
 
-# Production (manual)
-bash launch.sh -p
-
-# Production (systemd service)
+**Production**
+```
 sudo systemctl start flowintel
 ```
 
@@ -2444,75 +2486,6 @@ curl -s http://127.0.0.1:7006/api/swagger.json \
 ```
 
 The output should match the version you upgraded to.
-
-## Option 2: Upgrade to a specific version
-
-If you originally installed Flowintel from a specific Git tag (as described in the "Install a specific version" section), you can upgrade to a newer tagged release rather than tracking the latest development branch.
-
-Fetch all available tags from the remote repository:
-
-```bash
-cd /opt/flowintel/flowintel
-git fetch --tags
-```
-
-List the available versions:
-
-```bash
-git tag --list --sort=-v:refname
-```
-
-Check out the desired version:
-
-```bash
-git checkout tags/3.2.0
-```
-
-After switching to the new tag, complete the remaining upgrade steps manually:
-
-1. **Install updated Python dependencies**:
-
-   ```bash
-   source env/bin/activate
-   pip install -r requirements.txt
-   ```
-
-2. **Run database migrations**:
-
-   ```bash
-   # Development
-   bash migrate.sh --env development -u
-
-   # Production
-   bash migrate.sh --env production -u
-   ```
-
-3. **Update submodules and reload data**:
-
-   ```bash
-   git submodule update --remote
-   pip install -U pytaxonomies pymispgalaxies pymisp
-   python3 app.py -utg
-   python3 app.py -py
-   ```
-
-4. **Upgrade and restart MISP modules**:
-
-   ```bash
-   pip install -U misp-modules
-   python3 app.py -mm
-   ```
-
-5. **Start Flowintel** using the appropriate method for your environment (see above).
-
-6. **Verify the upgrade**. Once Flowintel is running, confirm that the new version is active:
-
-   ```bash
-   curl -s http://127.0.0.1:7006/api/swagger.json \
-     | python3 -c "import sys,json; print(json.load(sys.stdin)['info']['version'])"
-   ```
-
-   The output should match the version you upgraded to (for example `3.2.0`).
 
 ## Check for configuration changes
 
@@ -2626,6 +2599,45 @@ This section describes how to completely remove Flowintel and all associated ser
 
 **Warning**: This process is destructive and irreversible. All case data, configurations, and user files will be permanently deleted. Make sure you have backups if you need to preserve any data.
 
+> **Note on installation modes**: The steps below are split by mode. A **production** installation (run with `bash install.safe.sh --production`) uses PostgreSQL, NGINX, and systemd services installed under `/opt/flowintel`. A **development** installation (run without `--production`) uses SQLite, runs directly from your working directory, and does not set up any system services beyond Valkey. Follow the section that matches how you originally installed Flowintel.
+
+## Development mode uninstall
+
+A development installation does not create systemd services, NGINX configuration, or a PostgreSQL database. The install script does install system packages (Valkey, pandoc, etc.) via apt, but only Valkey runs as a persistent daemon that needs to be explicitly stopped and removed.
+
+1. Stop the running application. If you started it with `bash launch.sh -l`, press **Ctrl+C** in the terminal. If it is running in a `screen` session, kill the screens:
+
+   ```bash
+   screen -X -S fcm quit
+   screen -X -S misp_mod_flowintel quit
+   ```
+
+2. Remove Valkey:
+
+   ```bash
+   sudo systemctl stop valkey
+   sudo systemctl disable valkey
+   sudo apt remove --purge valkey -y
+   sudo rm -rf /var/lib/valkey /var/log/valkey
+   sudo systemctl daemon-reload
+   ```
+
+3. Remove the application directory (the git clone containing the virtual environment and all data):
+
+   ```bash
+   # Replace the path below with the actual directory where you cloned Flowintel
+   rm -rf /path/to/flowintel
+   ```
+
+4. Optionally remove nvm and Node.js (installed in your home directory):
+
+   ```bash
+   rm -rf "$HOME/.nvm"
+   # Remove the lines nvm added to ~/.bashrc
+   ```
+
+That is all that is needed for a development installation. The rest of this section covers **production mode only**.
+
 ## Before uninstalling
 
 Create a backup if you need to preserve any data. Refer to the backup and restore documentation for detailed backup procedures. As a quick reference, you can create a PostgreSQL database dump with:
@@ -2720,26 +2732,20 @@ sudo rm -rf /var/log/postgresql
 Remove Valkey service and files:
 
 ```bash
-# Stop and disable service
+# Stop and disable the service
 sudo systemctl stop valkey
 sudo systemctl disable valkey
 
-# Remove systemd service file
-sudo rm /etc/systemd/system/valkey.service
-sudo systemctl daemon-reload
-
-# Remove Valkey binary
-sudo rm /usr/local/bin/valkey-server
-sudo rm /usr/local/bin/valkey-cli
-
-# Remove configuration
-sudo rm -rf /etc/valkey
+# Remove the package (this removes the binary and the systemd unit file managed by apt)
+sudo apt remove --purge valkey -y
 
 # Remove data directory
 sudo rm -rf /var/lib/valkey
 
 # Remove log files
 sudo rm -rf /var/log/valkey
+
+sudo systemctl daemon-reload
 ```
 
 ## Clean up remaining files

@@ -411,7 +411,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="Architecture" id="architecture">
-    <mxGraphModel dx="1042" dy="576" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="700" math="0" shadow="0">
+    <mxGraphModel dx="1265" dy="444" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="700" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -436,7 +436,7 @@
         <mxCell id="ar_vm_label" value="Linux system" style="text;html=1;fontColor=#1f3763;fontStyle=1;fontSize=12;align=left;verticalAlign=middle;spacingLeft=2;" parent="1" vertex="1">
           <mxGeometry x="64" y="120" width="160" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="ar_vm_os" value="&lt;font style=&quot;font-size:8px;&quot;&gt;Ubuntu 22.04 LTS / 24.04 LTS&lt;/font&gt;" style="text;html=1;fontColor=#6c757d;fontStyle=2;align=left;spacingLeft=2;" vertex="1" parent="1">
+        <mxCell id="ar_vm_os" value="&lt;font style=&quot;font-size:8px;&quot;&gt;Ubuntu 22.04 LTS / 24.04 LTS&lt;/font&gt;" style="text;html=1;fontColor=#6c757d;fontStyle=2;align=left;spacingLeft=2;" parent="1" vertex="1">
           <mxGeometry x="64" y="127" width="200" height="16" as="geometry" />
         </mxCell>
         <mxCell id="ar_proxy" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1f3763;strokeWidth=2;arcSize=10;shadow=1;" parent="1" vertex="1">
@@ -457,7 +457,7 @@
         <mxCell id="ar_fi_desc" value="&lt;b&gt;Flask&lt;/b&gt; — Python web framework&lt;br&gt;&lt;font style=&quot;font-size:8px;color:#6c757d;&quot;&gt;Case management · Workflow · REST API · Reporting&lt;/font&gt;" style="text;html=1;fontSize=10;fontColor=#212529;align=center;verticalAlign=middle;" parent="ar_flowintel" vertex="1">
           <mxGeometry x="10" y="30" width="320" height="64" as="geometry" />
         </mxCell>
-        <mxCell id="689j9ww3INjO2pzbmFPY-1" value="7006" style="rounded=1;html=1;fillColor=#e9ecef;fontColor=#495057;strokeColor=none;fontSize=7;fontStyle=0;arcSize=50;" vertex="1" parent="ar_flowintel">
+        <mxCell id="689j9ww3INjO2pzbmFPY-1" value="7006" style="rounded=1;html=1;fillColor=#e9ecef;fontColor=#495057;strokeColor=none;fontSize=7;fontStyle=0;arcSize=50;" parent="ar_flowintel" vertex="1">
           <mxGeometry x="295" y="31" width="30" height="14" as="geometry" />
         </mxCell>
         <mxCell id="ar_modules" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3e50;strokeWidth=2;arcSize=10;shadow=1;" parent="1" vertex="1">
@@ -502,7 +502,7 @@
         <mxCell id="ar_entra" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3e50;strokeWidth=2;arcSize=10;shadow=1;" parent="1" vertex="1">
           <mxGeometry x="30" y="492" width="185" height="65" as="geometry" />
         </mxCell>
-        <mxCell id="ar_entra_txt" value="&lt;b&gt;Microsoft Entra ID&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px;color:#6c757d;&quot;&gt;Authentication &amp;amp; authorisation&lt;br&gt;SSO&lt;/font&gt;" style="text;html=1;fontSize=9;fontColor=#2c3e50;align=left;verticalAlign=middle;" parent="1" vertex="1">
+        <mxCell id="ar_entra_txt" value="&lt;b&gt;Keycloak &lt;br&gt;Microsoft Entra ID&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px;color:#6c757d;&quot;&gt;Authentication &amp;amp; authorisation&lt;br&gt;SSO&lt;/font&gt;" style="text;html=1;fontSize=9;fontColor=#2c3e50;align=left;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="73" y="492" width="139" height="65" as="geometry" />
         </mxCell>
         <mxCell id="ar_misp" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3e50;strokeWidth=2;arcSize=10;shadow=1;" parent="1" vertex="1">
@@ -514,16 +514,16 @@
         <mxCell id="ar_misp_txt" value="&lt;b&gt;MISP&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px;color:#6c757d;&quot;&gt;Threat Intelligence Platform&lt;br&gt;Event sharing &amp; correlation&lt;/font&gt;" style="text;html=1;fontSize=9;fontColor=#2c3e50;align=left;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="276" y="492" width="140" height="65" as="geometry" />
         </mxCell>
-        <mxCell id="ar_matrix" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3e50;strokeWidth=2;arcSize=10;shadow=1;" vertex="1" parent="1">
+        <mxCell id="ar_matrix" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3e50;strokeWidth=2;arcSize=10;shadow=1;" parent="1" vertex="1">
           <mxGeometry x="430" y="492" width="185" height="65" as="geometry" />
         </mxCell>
-        <mxCell id="ar_matrix_txt" value="&lt;b&gt;Matrix&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px;color:#6c757d;&quot;&gt;Encrypted messaging&lt;br&gt;Real-time notifications&lt;/font&gt;" style="text;html=1;fontSize=9;fontColor=#2c3e50;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="ar_matrix_txt" value="&lt;b&gt;Matrix&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px;color:#6c757d;&quot;&gt;Encrypted messaging&lt;br&gt;Real-time notifications&lt;/font&gt;" style="text;html=1;fontSize=9;fontColor=#2c3e50;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="430" y="492" width="185" height="65" as="geometry" />
         </mxCell>
-        <mxCell id="ar_ail" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3e50;strokeWidth=2;arcSize=10;shadow=1;" vertex="1" parent="1">
+        <mxCell id="ar_ail" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3e50;strokeWidth=2;arcSize=10;shadow=1;" parent="1" vertex="1">
           <mxGeometry x="625" y="492" width="185" height="65" as="geometry" />
         </mxCell>
-        <mxCell id="ar_ail_txt" value="&lt;b&gt;AIL project&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px;color:#6c757d;&quot;&gt;Leak &amp; credential analysis&lt;br&gt;Data export &amp; correlation&lt;/font&gt;" style="text;html=1;fontSize=9;fontColor=#2c3e50;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="ar_ail_txt" value="&lt;b&gt;AIL project&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px;color:#6c757d;&quot;&gt;Leak &amp; credential analysis&lt;br&gt;Data export &amp; correlation&lt;/font&gt;" style="text;html=1;fontSize=9;fontColor=#2c3e50;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="625" y="492" width="185" height="65" as="geometry" />
         </mxCell>
         <mxCell id="ar_e_browser_proxy" value="&lt;font style=&quot;font-size:7px;&quot;&gt;&lt;i&gt;HTTPS&lt;/i&gt;&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#1f3763;strokeWidth=1.5;fontColor=#1f3763;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="ar_browser" target="ar_proxy" edge="1">
@@ -547,13 +547,13 @@
         <mxCell id="ar_e_fi_misp" value="&lt;font style=&quot;font-size:7px;&quot;&gt;&lt;i&gt;threat events&lt;/i&gt;&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#2c3e50;strokeWidth=1.5;fontColor=#2c3e50;dashed=1;dashPattern=6 3;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;exitX=0.35;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="ar_flowintel" target="ar_misp" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ar_e_fi_matrix" value="&lt;font style=&quot;font-size:7px;&quot;&gt;&lt;i&gt;notifications&lt;/i&gt;&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#2c3e50;strokeWidth=1.5;fontColor=#2c3e50;dashed=1;dashPattern=6 3;endArrow=blockThin;endFill=1;exitX=0.65;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="ar_flowintel" target="ar_matrix">
+        <mxCell id="ar_e_fi_matrix" value="&lt;font style=&quot;font-size:7px;&quot;&gt;&lt;i&gt;notifications&lt;/i&gt;&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#2c3e50;strokeWidth=1.5;fontColor=#2c3e50;dashed=1;dashPattern=6 3;endArrow=blockThin;endFill=1;exitX=0.65;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="ar_flowintel" target="ar_matrix" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ar_e_fi_ail" value="&lt;font style=&quot;font-size:7px;&quot;&gt;&lt;i&gt;data export&lt;/i&gt;&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#2c3e50;strokeWidth=1.5;fontColor=#2c3e50;dashed=1;dashPattern=6 3;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="ar_flowintel" target="ar_ail">
+        <mxCell id="ar_e_fi_ail" value="&lt;font style=&quot;font-size:7px;&quot;&gt;&lt;i&gt;data export&lt;/i&gt;&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#2c3e50;strokeWidth=1.5;fontColor=#2c3e50;dashed=1;dashPattern=6 3;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="ar_flowintel" target="ar_ail" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="689j9ww3INjO2pzbmFPY-2" value="443" style="rounded=1;html=1;fillColor=#e9ecef;fontColor=#495057;strokeColor=none;fontSize=7;fontStyle=0;arcSize=50;" vertex="1" parent="1">
+        <mxCell id="689j9ww3INjO2pzbmFPY-2" value="443" style="rounded=1;html=1;fillColor=#e9ecef;fontColor=#495057;strokeColor=none;fontSize=7;fontStyle=0;arcSize=50;" parent="1" vertex="1">
           <mxGeometry x="520" y="163" width="30" height="14" as="geometry" />
         </mxCell>
       </root>
@@ -1228,7 +1228,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="Configuration" id="flowintel_configuration">
-    <mxGraphModel dx="868" dy="480" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="460" math="0" shadow="0">
+    <mxGraphModel dx="1834" dy="644" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="460" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -1298,13 +1298,13 @@
         <mxCell id="cfg_b_d7" value="" style="ellipse;fillColor=#1f3763;strokeColor=none;" parent="cfg_base" vertex="1">
           <mxGeometry x="258" y="78" width="7" height="7" as="geometry" />
         </mxCell>
-        <mxCell id="cfg_b_i7" value="Entra ID" style="text;html=1;fontSize=9;fontColor=#212529;align=left;verticalAlign=middle;" parent="cfg_base" vertex="1">
+        <mxCell id="cfg_b_i7" value="Keycloak and Entra ID configuration" style="text;html=1;fontSize=9;fontColor=#212529;align=left;verticalAlign=middle;" parent="cfg_base" vertex="1">
           <mxGeometry x="272" y="72" width="200" height="18" as="geometry" />
         </mxCell>
-        <mxCell id="wLtty0K2wkcLz-YWL3gq-3" value="" style="ellipse;fillColor=#1f3763;strokeColor=none;" vertex="1" parent="cfg_base">
+        <mxCell id="wLtty0K2wkcLz-YWL3gq-3" value="" style="ellipse;fillColor=#1f3763;strokeColor=none;" parent="cfg_base" vertex="1">
           <mxGeometry x="14" y="114" width="7" height="7" as="geometry" />
         </mxCell>
-        <mxCell id="wLtty0K2wkcLz-YWL3gq-4" value="File upload limits" style="text;html=1;fontSize=9;fontColor=#212529;align=left;verticalAlign=middle;" vertex="1" parent="cfg_base">
+        <mxCell id="wLtty0K2wkcLz-YWL3gq-4" value="File upload limits" style="text;html=1;fontSize=9;fontColor=#212529;align=left;verticalAlign=middle;" parent="cfg_base" vertex="1">
           <mxGeometry x="28" y="108" width="200" height="18" as="geometry" />
         </mxCell>
         <mxCell id="cfg_dev" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f3763;strokeColor=#1f3763;strokeWidth=2;arcSize=5;shadow=1;container=1;collapsible=0;pointerEvents=0;" parent="1" vertex="1">
@@ -1394,10 +1394,10 @@
         <mxCell id="cfg_ext_prod" value="extends" style="text;html=1;fontSize=8;fontColor=#6c757d;fontStyle=2;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="632" y="292" width="50" height="16" as="geometry" />
         </mxCell>
-        <mxCell id="wLtty0K2wkcLz-YWL3gq-1" value="" style="ellipse;fillColor=#1f3763;strokeColor=none;" vertex="1" parent="1">
+        <mxCell id="wLtty0K2wkcLz-YWL3gq-1" value="" style="ellipse;fillColor=#1f3763;strokeColor=none;" parent="1" vertex="1">
           <mxGeometry x="433" y="206" width="7" height="7" as="geometry" />
         </mxCell>
-        <mxCell id="wLtty0K2wkcLz-YWL3gq-2" value="..." style="text;html=1;fontSize=9;fontColor=#212529;align=left;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="wLtty0K2wkcLz-YWL3gq-2" value="..." style="text;html=1;fontSize=9;fontColor=#212529;align=left;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="447" y="200" width="200" height="18" as="geometry" />
         </mxCell>
       </root>
