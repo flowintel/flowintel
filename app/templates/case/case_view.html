@@ -262,16 +262,18 @@
                 <i class="fa-solid fa-house fa-sm"></i>
             </button>
         </li>
-        <li class="nav-item">
+        <li class="nav-item nav-item-closable" v-show="is_tab_visible('notes')">
             <button class="nav-link" id="tab-notes" @click="active_tab('notes')">
                 <i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title fs-6">Notes</span>
             </button>
+            <button class="tab-close-btn" @click.stop="hide_tab('notes')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
-        <li class="nav-item">
+        <li class="nav-item nav-item-closable" v-show="is_tab_visible('misp-objects')">
             <button class="nav-link" id="tab-misp-objects" @click="active_tab('misp-objects')">
                 <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i><i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title fs-6">MISP objects </span> 
                 <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
             </button>
+            <button class="tab-close-btn" @click.stop="hide_tab('misp-objects')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
         <li class="nav-item">
             <button class="nav-link d-none" id="tab-connectors" @click="active_tab('connectors')">
@@ -279,33 +281,61 @@
                 <span class="badge text-bg-secondary" id="id-nb-connectors" v-if="case_connectors_list && case_connectors_list.length">[[case_connectors_list.length]]</span>
             </button>
         </li>
-        <li class="nav-item" v-for="connType in connector_types_in_case" :key="connType">
+        <li class="nav-item nav-item-closable" v-for="connType in active_module_tabs" :key="connType"
+            v-show="is_tab_visible('connector-' + connType.toLowerCase())">
             <button class="nav-link dynamic-connector-tab" :id="'tab-connector-' + connType.toLowerCase()" @click="active_tab('connector-' + connType.toLowerCase())">
                 <i class="fa-solid fa-puzzle-piece fa-sm me-1"></i>
                 <span class="section-title fs-6 me-1">[[ connType ]] </span>
                 <span class="badge text-bg-secondary" v-if="module_counts && module_counts[connType]"> [[ module_counts[connType] ]]</span>
-                
             </button>
+            <div class="tab-module-menu dropdown">
+                <button class="tab-close-btn" data-bs-toggle="dropdown" aria-expanded="false" @click.stop title="Hide or remove">
+                    <i class="fa-solid fa-xmark fa-xs"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size:0.85rem; min-width:180px;">
+                    <li>
+                        <button class="dropdown-item" @click.stop="hide_tab('connector-' + connType.toLowerCase())">
+                            <i class="fa-solid fa-eye-slash fa-sm me-2"></i>Hide tab
+                        </button>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button class="dropdown-item text-danger" @click.stop="open_remove_module_modal(connType)">
+                            <i class="fa-solid fa-trash fa-sm me-2"></i>Remove &amp; delete data
+                        </button>
+                    </li>
+                </ul>
+            </div>
         </li>
-        <li class="nav-item">
+        <li class="nav-item nav-item-closable" v-show="is_tab_visible('files')">
             <button class="nav-link" id="tab-files" @click="active_tab('files')">
                 <i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title fs-6">Files </span>
                 <span class="badge text-bg-secondary" v-if="case_files_list.length > 0">[[case_files_list.length]]</span>
             </button>
+            <button class="tab-close-btn" @click.stop="hide_tab('files')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
-        <li class="nav-item">
+        <li class="nav-item nav-item-closable" v-show="is_tab_visible('timeline')">
             <button class="nav-link" id="tab-timeline" @click="active_tab('timeline')">
                 <i class="fa-solid fa-timeline fa-sm me-1"></i><span class="section-title fs-6">Timeline</span>
             </button>
+            <button class="tab-close-btn" @click.stop="hide_tab('timeline')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
-        <li class="nav-item">
+        <li class="nav-item nav-item-closable" v-show="is_tab_visible('history')">
             <button class="nav-link" id="tab-history" @click="active_tab('history')">
                 <i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i><span class="section-title fs-6">History</span>
             </button>
+            <button class="tab-close-btn" @click.stop="hide_tab('history')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
-        <li class="nav-item">
+        <li class="nav-item nav-item-closable" v-show="is_tab_visible('info')">
             <button class="nav-link" id="tab-info" @click="active_tab('info')">
                 <i class="fa-solid fa-circle-info fa-sm me-1"></i><span class="section-title fs-6">Info</span>
+            </button>
+            <button class="tab-close-btn" @click.stop="hide_tab('info')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
+        </li>
+        <!-- Manage tabs "+" button -->
+        <li class="nav-item ms-1">
+            <button class="nav-link tab-add-btn" @click="open_manage_tabs_modal()" title="Add or restore tabs">
+                <i class="fa-solid fa-plus fa-sm"></i>
             </button>
         </li>
     </ul>
@@ -327,6 +357,98 @@
                 </div>
                 <div class="modal-footer">
                     <button @click="submit_add_new_link()" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Manage Tabs -->
+    <div class="modal fade" id="manageTabsModal" tabindex="-1" aria-labelledby="manageTabsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="manageTabsModalLabel"><i class="fa-solid fa-table-columns me-2"></i>Manage Tabs</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Hidden core tabs -->
+                    <template v-if="hidden_core_tabs.length">
+                        <p class="text-muted mb-2" style="font-size:0.8rem;">HIDDEN TABS</p>
+                        <div class="list-group mb-3">
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3"
+                                 v-for="key in hidden_core_tabs" :key="key">
+                                <span style="font-size:0.9rem;">
+                                    <i :class="core_tab_icons[key]" class="me-2"></i>[[ core_tab_labels[key] ]]
+                                </span>
+                                <button class="btn btn-sm btn-outline-primary" @click="restore_tab(key); close_manage_tabs_modal()">
+                                    <i class="fa-solid fa-eye fa-xs me-1"></i>Show
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Hidden module tabs (connector still in case) -->
+                    <template v-if="hidden_module_tabs.length">
+                        <p class="text-muted mb-2" style="font-size:0.8rem;">HIDDEN MODULE TABS</p>
+                        <div class="list-group mb-3">
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3"
+                                 v-for="connType in hidden_module_tabs" :key="connType">
+                                <span style="font-size:0.9rem;">
+                                    <i class="fa-solid fa-puzzle-piece me-2"></i>[[ connType ]]
+                                </span>
+                                <button class="btn btn-sm btn-outline-primary" @click="restore_tab('connector-' + connType.toLowerCase()); close_manage_tabs_modal()">
+                                    <i class="fa-solid fa-eye fa-xs me-1"></i>Show
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Available modules not yet added -->
+                    <template v-if="available_modules_to_add.length">
+                        <p class="text-muted mb-2" style="font-size:0.8rem;">AVAILABLE MODULES</p>
+                        <div class="list-group mb-3">
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3"
+                                 v-for="typeName in available_modules_to_add" :key="typeName">
+                                <span style="font-size:0.9rem;">
+                                    <i class="fa-solid fa-puzzle-piece me-2"></i>[[ typeName ]]
+                                </span>
+                                <button class="btn btn-sm btn-outline-success"
+                                    @click="add_module_tab(typeName); close_manage_tabs_modal()">
+                                    <i class="fa-solid fa-plus fa-xs me-1"></i>Add
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template v-if="!hidden_core_tabs.length && !hidden_module_tabs.length && !available_modules_to_add.length">
+                        <p class="text-muted text-center py-3"><i class="fa-solid fa-check me-2"></i>All available tabs are currently visible.</p>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Remove Module Confirmation -->
+    <div class="modal fade" id="removeModuleModal" tabindex="-1" aria-labelledby="removeModuleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger" id="removeModuleModalLabel"><i class="fa-solid fa-triangle-exclamation me-2"></i>Remove Module</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" v-if="module_remove_confirm">
+                    <p>Remove the <strong>[[ module_remove_confirm ]]</strong> module tab from this case?</p>
+                    <p class="text-danger mb-0" style="font-size:0.85rem;"><i class="fa-solid fa-circle-exclamation me-1"></i>All <strong>[[ module_remove_confirm ]]</strong> data stored for this case will be permanently deleted.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" @click="module_remove_confirm = null">Cancel</button>
+                    <button type="button" class="btn btn-danger btn-sm" :disabled="is_removing_module" @click="remove_module_tab(module_remove_confirm)">
+                        <span v-if="is_removing_module" class="spinner-border spinner-border-sm me-1"></span>
+                        <i v-else class="fa-solid fa-trash fa-sm me-1"></i>Remove &amp; delete
+                    </button>
                 </div>
             </div>
         </div>
@@ -551,7 +673,7 @@
             </template>
         </template>
 
-        <template v-for="connType in connector_types_in_case" :key="'content-' + connType">
+        <template v-for="connType in active_module_tabs" :key="'content-' + connType">
             <template v-if="main_tab == 'connector-' + connType.toLowerCase()">
                 <component 
                     v-if="loaded_module_components[connType]"
@@ -967,6 +1089,10 @@
                 // Dynamic connector module components
                 const loaded_module_components = ref({})
 
+                // User-managed module tabs (independent of connector linkage in the case)
+                const active_module_tabs = ref([])
+                const ACTIVE_MODULE_TABS_KEY = 'flowintel_module_tabs_{{case.id}}_{{current_user.id}}'
+
                 const connector_types_in_case = computed(() => {
                     if (!case_connectors_list.value || !case_connectors_list.value.length) return []
                     if (!all_connectors_list.value || typeof all_connectors_list.value !== 'object' || Array.isArray(all_connectors_list.value)) return []
@@ -1011,8 +1137,8 @@
                     }
                 }
 
-                // Auto-load module components when connector types change
-                watch(connector_types_in_case, (types) => {
+                // Load module components when active module tabs change
+                watch(active_module_tabs, (types) => {
                     for (const typeName of types) {
                         loadModuleComponent(typeName)
                     }
@@ -1020,6 +1146,138 @@
 
                 // store counts emitted by module components (e.g., Rulezet)
                 const module_counts = ref({})
+
+                // Tab visibility management (stored per case+user in localStorage)
+                const hidden_tabs = ref([])
+                const module_remove_confirm = ref(null)
+                const is_removing_module = ref(false)
+                const HIDDEN_TABS_KEY = 'flowintel_tabs_hidden_{{case.id}}_{{current_user.id}}'
+
+                const core_tab_labels = {
+                    'notes': 'Notes',
+                    'misp-objects': 'MISP Objects',
+                    'files': 'Files',
+                    'timeline': 'Timeline',
+                    'history': 'History',
+                    'info': 'Info'
+                }
+                const core_tab_icons = {
+                    'notes': 'fa-solid fa-note-sticky fa-sm',
+                    'misp-objects': 'fa-solid fa-cubes fa-sm',
+                    'files': 'fa-solid fa-file fa-sm',
+                    'timeline': 'fa-solid fa-timeline fa-sm',
+                    'history': 'fa-solid fa-clock-rotate-left fa-sm',
+                    'info': 'fa-solid fa-circle-info fa-sm'
+                }
+
+                function load_hidden_tabs() {
+                    try {
+                        const stored = localStorage.getItem(HIDDEN_TABS_KEY)
+                        if (stored) hidden_tabs.value = JSON.parse(stored)
+                    } catch(e) {}
+                    try {
+                        const stored = localStorage.getItem(ACTIVE_MODULE_TABS_KEY)
+                        if (stored) {
+                            const tabs = JSON.parse(stored)
+                            active_module_tabs.value = tabs
+                            for (const t of tabs) loadModuleComponent(t)
+                        }
+                    } catch(e) {}
+                }
+
+                function save_hidden_tabs() {
+                    try {
+                        localStorage.setItem(HIDDEN_TABS_KEY, JSON.stringify(hidden_tabs.value))
+                    } catch(e) {}
+                }
+
+                function save_active_module_tabs() {
+                    try {
+                        localStorage.setItem(ACTIVE_MODULE_TABS_KEY, JSON.stringify(active_module_tabs.value))
+                    } catch(e) {}
+                }
+
+                function add_module_tab(typeName) {
+                    if (active_module_tabs.value.includes(typeName)) return
+                    active_module_tabs.value = [...active_module_tabs.value, typeName]
+                    save_active_module_tabs()
+                    loadModuleComponent(typeName)
+                    active_tab('connector-' + typeName.toLowerCase())
+                }
+
+                function is_tab_visible(key) {
+                    return !hidden_tabs.value.includes(key)
+                }
+
+                function hide_tab(key) {
+                    if (!hidden_tabs.value.includes(key)) {
+                        hidden_tabs.value = [...hidden_tabs.value, key]
+                        save_hidden_tabs()
+                    }
+                    // If currently on this tab, switch to main
+                    if (main_tab.value === key || main_tab.value === 'connector-' + key.replace('connector-', '')) {
+                        active_tab('main')
+                    }
+                }
+
+                function restore_tab(key) {
+                    hidden_tabs.value = hidden_tabs.value.filter(k => k !== key)
+                    save_hidden_tabs()
+                }
+
+                const hidden_core_tabs = computed(() =>
+                    Object.keys(core_tab_labels).filter(k => hidden_tabs.value.includes(k))
+                )
+
+                const hidden_module_tabs = computed(() =>
+                    active_module_tabs.value.filter(t => hidden_tabs.value.includes('connector-' + t.toLowerCase()))
+                )
+
+                const available_modules_to_add = computed(() => {
+                    if (!all_connectors_list.value || typeof all_connectors_list.value !== 'object' || Array.isArray(all_connectors_list.value)) return []
+                    const existingTypes = new Set(active_module_tabs.value.map(t => t.toUpperCase()))
+                    return Object.keys(all_connectors_list.value).filter(typeName =>
+                        typeName.toUpperCase() !== 'MISP' && !existingTypes.has(typeName.toUpperCase())
+                    )
+                })
+
+                async function remove_module_tab(connType) {
+                    if (!connType) return
+                    is_removing_module.value = true
+                    try {
+                        const res = await fetch(`/case/{{case.id}}/remove_module_tab/${connType}`, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' }
+                        })
+                        if (main_tab.value === 'connector-' + connType.toLowerCase()) {
+                            active_tab('main')
+                        }
+                        // Remove from active tabs and clear hidden state
+                        active_module_tabs.value = active_module_tabs.value.filter(t => t !== connType)
+                        save_active_module_tabs()
+                        hidden_tabs.value = hidden_tabs.value.filter(k => k !== 'connector-' + connType.toLowerCase())
+                        save_hidden_tabs()
+                        display_toast(res)
+                    } catch(e) {
+                        display_toast({message: 'Request failed', toast_class: 'danger-subtle'})
+                    }
+                    is_removing_module.value = false
+                    module_remove_confirm.value = null
+                    try { window.bootstrap?.Modal.getInstance(document.getElementById('removeModuleModal'))?.hide() } catch(e) {}
+                }
+
+                function open_manage_tabs_modal() {
+                    try { window.bootstrap.Modal.getOrCreateInstance(document.getElementById('manageTabsModal')).show() } catch(e) {}
+                }
+
+                function close_manage_tabs_modal() {
+                    try { window.bootstrap.Modal.getInstance(document.getElementById('manageTabsModal'))?.hide() } catch(e) {}
+                }
+
+                function open_remove_module_modal(connType) {
+                    module_remove_confirm.value = connType
+                    try { window.bootstrap.Modal.getOrCreateInstance(document.getElementById('removeModuleModal')).show() } catch(e) {}
+                }
 
 
                 const open_closed = ref({})
@@ -1111,9 +1369,33 @@
                     }else{
                         let loc = await res.json()
                         case_connectors_list.value = loc["case_connectors"]
+                        // Auto-add module tabs for any new connector types linked to this case
+                        sync_module_tabs_from_connectors()
                         // refresh module counts when connectors change
                         await fetch_module_counts()
                     }
+                }
+
+                function sync_module_tabs_from_connectors() {
+                    if (!all_connectors_list.value || typeof all_connectors_list.value !== 'object' || Array.isArray(all_connectors_list.value)) return
+                    const instanceTypeMap = {}
+                    for (const [typeName, instances] of Object.entries(all_connectors_list.value)) {
+                        if (Array.isArray(instances)) {
+                            for (const inst of instances) instanceTypeMap[inst.id] = typeName
+                        }
+                    }
+                    let changed = false
+                    for (const conn of case_connectors_list.value) {
+                        if (!conn.details || conn.details.id === undefined) continue
+                        const typeName = instanceTypeMap[conn.details.id]
+                        if (!typeName || typeName.toUpperCase() === 'MISP') continue
+                        if (!active_module_tabs.value.includes(typeName)) {
+                            active_module_tabs.value = [...active_module_tabs.value, typeName]
+                            loadModuleComponent(typeName)
+                            changed = true
+                        }
+                    }
+                    if (changed) save_active_module_tabs()
                 }
                 async function fetch_case_files(){
                     const res = await fetch("/case/{{case.id}}/get_case_info")
@@ -1131,6 +1413,8 @@
                     }else{
                         let loc = await res.json()
                         all_connectors_list.value = loc["connectors"]
+                        // Now that we have the connector type map, sync module tabs
+                        sync_module_tabs_from_connectors()
                     }
                 }
                 fetch_connectors()
@@ -1714,6 +1998,7 @@
                 }
 
                 onMounted( async () => {
+                    load_hidden_tabs()
                     await fetchCase()
                     initialize_select2()
                     autosave_case_note()
@@ -1970,6 +2255,23 @@
                     loaded_module_components,
                     get_connector_instances
                     ,module_counts
+                    ,active_module_tabs
+                    ,hidden_tabs
+                    ,module_remove_confirm
+                    ,is_removing_module
+                    ,core_tab_labels
+                    ,core_tab_icons
+                    ,hidden_core_tabs
+                    ,hidden_module_tabs
+                    ,available_modules_to_add
+                    ,is_tab_visible
+                    ,hide_tab
+                    ,restore_tab
+                    ,remove_module_tab
+                    ,add_module_tab
+                    ,open_manage_tabs_modal
+                    ,close_manage_tabs_modal
+                    ,open_remove_module_modal
                 }
             }
         }).mount('#main-container')

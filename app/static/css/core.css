@@ -629,7 +629,6 @@ legend.analyzer-select-case {
   border-bottom: 2px solid transparent;
   margin-right: 0;
   color: #5e5e5e;
-  padding: 2px 15px;
 }
 
 #case-main-nav .nav-tabs>li>button.active,
@@ -642,6 +641,32 @@ legend.analyzer-select-case {
 #collapseTasks>.nav-tabs>li>button:hover {
   color: #4c8ac0;
 }
+
+/* Closing tabs */
+.nav-item-closable { display: flex; align-items: stretch; }
+.nav-item-closable .nav-link { border-top-right-radius: 0 !important; }
+.tab-close-btn {
+    background: none;
+    border: none;
+    color: #aaa;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 0.65rem;
+    line-height: 1;
+    transition: opacity 0.15s, color 0.15s;
+    border-top: 1px solid transparent;
+    border-right: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    border-top-right-radius: 0.25rem;
+    margin-bottom: -1px;
+}
+.nav-item-closable:hover .tab-close-btn { opacity: 1; padding: 0;}
+.tab-close-btn:hover { color: #dc3545; }
+.tab-module-menu { display: flex; align-items: stretch; }
+.tab-module-menu .tab-close-btn { border-radius: 0 0.25rem 0 0; }
+.tab-add-btn { border-style: dashed !important; border-color: #adb5bd !important; color: #6c757d !important; }
+.tab-add-btn:hover { border-color: #0d6efd !important; color: #0d6efd !important; background: none !important; }
+
 
 .dragging-ghost {
   background-color: #ffeeba !important;

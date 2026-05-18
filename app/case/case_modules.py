@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from .case import case_blueprint, check_user_private_case
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
-from ..db_class.db import Rulezet_Rule, db
+from ..db_class.db import Rulezet_Rule, Case_Connector_Instance, Connector_Instance, db
 from ..decorators import misp_editor_required
 from ..utils.logger import flowintel_log
 
@@ -160,3 +160,48 @@ def remove_rulezet_rule(cid):
             return {"message": "Error removing rule", "toast_class": "danger-subtle"}, 400
 
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/remove_module_tab/<connType>", methods=['POST'])
+@login_required
+@misp_editor_required
+def remove_module_tab(cid, connType):
+    """Remove all data and connector linkages for a given connector type from a case."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+    if not check_user_private_case(case):
+        flowintel_log("audit", 403, "Remove module tab: Permission denied", User=current_user.email, CaseId=cid)
+        return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Remove module tab: Action not allowed", User=current_user.email, CaseId=cid)
+        return {"message": "Action not allowed", 'toast_class': "warning-subtle"}, 403
+
+    # Delete module-specific data based on connector type
+    if connType.upper() == 'RULEZET':
+        try:
+            Rulezet_Rule.query.filter_by(case_id=case.id).delete()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    # Remove all Case_Connector_Instance rows for this connector type from the case
+    connector = CommonModel.get_connector_by_name(connType)
+    if connector:
+        try:
+            instances_of_type = Connector_Instance.query.filter_by(connector_id=connector.id).all()
+            instance_ids = [i.id for i in instances_of_type]
+            if instance_ids:
+                Case_Connector_Instance.query.filter(
+                    Case_Connector_Instance.case_id == case.id,
+                    Case_Connector_Instance.instance_id.in_(instance_ids)
+                ).delete(synchronize_session=False)
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    CommonModel.update_last_modif(case.id)
+    flowintel_log("audit", 200, f"Module tab {connType} removed from case", User=current_user.email, CaseId=cid)
+    return {"message": f"{connType} module removed", 'toast_class': "success-subtle"}, 200
