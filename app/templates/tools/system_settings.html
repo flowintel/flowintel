@@ -337,6 +337,14 @@
                                 <td>{{ str_edit('topright_logo') }}</td>
                             </tr>
                             <tr>
+                                <td class="fw-bold">Footer logo 1 <small class="fw-normal text-muted">(FOOTER_1_LOGO)</small></td>
+                                <td>{{ str_edit('footer_1_logo') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Footer logo 2 <small class="fw-normal text-muted">(FOOTER_2_LOGO)</small></td>
+                                <td>{{ str_edit('footer_2_logo') }}</td>
+                            </tr>
+                            <tr>
                                 <td class="fw-bold">Welcome text top <small class="fw-normal text-muted">(WELCOME_TEXT_TOP)</small></td>
                                 <td>{{ str_edit('welcome_text_top', code=false) }}</td>
                             </tr>
@@ -691,6 +699,8 @@
                 audit_log_prefix: false,
                 main_logo: false,
                 topright_logo: false,
+                footer_1_logo: false,
+                footer_2_logo: false,
                 welcome_text_top: false,
                 welcome_text_bottom: false,
                 welcome_logo: false,
@@ -713,6 +723,8 @@
                 audit_log_prefix: {{ (system_info.audit_log_prefix or '') | tojson }},
                 main_logo: {{ (system_info.main_logo or '') | tojson }},
                 topright_logo: {{ (system_info.topright_logo or '') | tojson }},
+                footer_1_logo: {{ (system_info.footer_1_logo or '') | tojson }},
+                footer_2_logo: {{ (system_info.footer_2_logo or '') | tojson }},
                 welcome_text_top: {{ (system_info.welcome_text_top or '') | tojson }},
                 welcome_text_bottom: {{ (system_info.welcome_text_bottom or '') | tojson }},
                 welcome_logo: {{ (system_info.welcome_logo or '') | tojson }},
