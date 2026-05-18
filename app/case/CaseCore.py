@@ -1,5 +1,4 @@
 import os
-import re
 import subprocess
 from typing import List
 import uuid
@@ -34,7 +33,6 @@ from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 
 from ..templating.TemplateCase import TemplateModel as CaseTemplateModel
-from  ..connectors import connectors_core as ConnectorModel
 
 from flask import current_app
 
@@ -1745,7 +1743,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             attributes = Misp_Attribute.query.filter_by(value=attribute.value).all()
             loc = []
             for loc_attr in attributes:
-                cid = Case_Misp_Object.query.get(loc_attr.case_misp_object_id).case_id
+                parent = Case_Misp_Object.query.get(loc_attr.case_misp_object_id)
+                if parent is None:
+                    continue
+                cid = parent.case_id
                 if not cid in loc and not cid == case_id:
                     loc.append(cid)
             return loc
