@@ -105,7 +105,7 @@ export default {
 						<thead>
 							<tr>
 								<th>Filename</th>
-								<th>Upload Date</th>
+								<th>Upload date</th>
 								<th>Size</th>
 								<th>Type</th>
 								<th v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">Actions</th>

@@ -446,7 +446,7 @@ export default {
 	template: `
     <div class="row">
         <div v-if="custom_tags" class="col-6">
-            <h5>Custom Tags</h5>
+            <h5>Custom tags</h5>
             <select data-placeholder="Custom Tags" class="select2-select form-control" multiple id="custom_select" >
                 <template v-for="c_t in custom_tags">
                     <option :value="[[c_t.name]]" :disabled="!c_t.is_active">[[c_t.name]]</option>
@@ -454,7 +454,7 @@ export default {
             </select>
         </div>
         <div class="col-6 card">
-            <b>Selected Custom Tags</b>
+            <b>Selected custom tags</b>
             <table class="table">
                 <tbody>
                     <tr v-for="custom_tag in selected_custom_tags">
@@ -503,7 +503,7 @@ export default {
     </div>
     <div class="row p-2">
         <div class="col-6 card" >
-            <b>Selected Taxonomies</b>
+            <b>Selected taxonomies</b>
             <table class="table">
                 <tbody>
                     <tr v-for="taxo in selected_taxo">
@@ -518,7 +518,7 @@ export default {
             </table>
         </div>
         <div class="col-6 card">
-            <b>Selected Tags</b>
+            <b>Selected tags</b>
             <table class="table" v-if="selected_tags.length">
                 <tbody>
                     <tr v-for="tag in selected_tags">
@@ -567,7 +567,7 @@ export default {
     </div>
     <div class="row p-2">
         <div class="col-6 card" >
-            <b>Selected Galaxies</b>
+            <b>Selected galaxies</b>
             <table class="table" >
                 <tbody>
                     <tr v-for="galax in selected_galaxies">
@@ -582,7 +582,7 @@ export default {
             </table>
         </div>
         <div class="col-6 card">
-            <b>Selected Clusters</b>
+            <b>Selected clusters</b>
             <table class="table">
                 <tbody>
                     <tr v-for="clus in selected_clusters">

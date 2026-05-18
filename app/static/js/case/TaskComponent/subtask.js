@@ -212,7 +212,7 @@ export default {
                 <div class="modal-body">
 					<div class="form-floating">
 						<textarea class="form-control" :id="'textarea-subtask-'+task.id"/>
-						<label>New Subtask</label>
+						<label>New subtask</label>
 						<div :id="'textarea-subtask-error-'+task.id"></div>
 					</div>
                 </div>

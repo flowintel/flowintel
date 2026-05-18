@@ -137,7 +137,7 @@ export default {
                     </div>
                     <div class="form-floating col">
                         <input :name="'attribute_'+attribute.id+'_disable_correlation'" :value="attribute.disable_correlation" class="form-control" type="checkbox" disabled>
-                        <label>Disable Correlation</label>
+                        <label>Disable correlation</label>
                     </div>
                     <div class="form-floating col">
                         <textarea :name="'attribute_'+attribute.id+'_comment'" :value="attribute.comment" class="form-control" disabled></textarea>

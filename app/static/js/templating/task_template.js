@@ -497,7 +497,7 @@ export default {
 					<div class="col-auto">
 						<fieldset class="analyzer-select-case" style="text-align: center;">
 							<legend class="analyzer-select-case">
-								<i class="fa-solid fa-clock fa-sm me-1"></i><span class="section-title">Time Required</span>
+								<i class="fa-solid fa-clock fa-sm me-1"></i><span class="section-title">Time required</span>
 							</legend>
 							[[template.time_required]]
 						</fieldset>

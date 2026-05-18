@@ -677,7 +677,7 @@ export default {
                                                     <th>Organisation</th>
                                                     <th>Event title</th>
                                                     <th>Date</th>
-                                                    <th>Attribute Type</th>
+                                                    <th>Attribute type</th>
                                                     <th>Attribute category</th>
                                                     <th>Value</th>
                                                     <th title="to_ids flag in MISP">IDS</th>
@@ -800,7 +800,7 @@ export default {
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="AddConnectorsLabel">Add Connectors</h1>
+                        <h1 class="modal-title fs-5" id="AddConnectorsLabel">Add connectors</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -838,7 +838,7 @@ export default {
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="EditConnectorsLabel">Edit Connectors</h1>
+                        <h1 class="modal-title fs-5" id="EditConnectorsLabel">Edit connectors</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
                     </div>
                     <div class="modal-body" v-if="edit_instance">

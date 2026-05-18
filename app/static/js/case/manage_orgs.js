@@ -149,7 +149,7 @@ export default {
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h1 class="modal-title fs-5" id="add_orgs_modal">Add Orgs</h1>
+                                <h1 class="modal-title fs-5" id="add_orgs_modal">Add orgs</h1>
                                 <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
@@ -174,7 +174,7 @@ export default {
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h1 class="modal-title fs-5" id="change_owner_modal">Change Owner</h1>
+                                <h1 class="modal-title fs-5" id="change_owner_modal">Change owner</h1>
                                 <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">

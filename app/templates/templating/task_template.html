@@ -134,7 +134,7 @@
                     <div>Custom Tags:</div>
                     <div>
                         <template v-if="custom_tags">
-                            <select data-placeholder="Custom Tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
+                            <select data-placeholder="Custom tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
                                 <template v-for="custom_tag, key in custom_tags">
                                     <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
                                 </template>

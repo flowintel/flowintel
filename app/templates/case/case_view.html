@@ -318,7 +318,7 @@
                 </div>
                 <div class="modal-body">
                     Link to:
-                    <select class="new-link-ajax" name="link_to" tabindex="-1" multiple data-placeholder="Link To"></select>
+                    <select class="new-link-ajax" name="link_to" tabindex="-1" multiple data-placeholder="Link to"></select>
                     <div style="color: brown;" id="add_new_link_error"></div>
                 </div>
                 <div class="modal-footer">
@@ -345,7 +345,7 @@
                             </button>
                         </div>
                         <div class="d-flex align-items-center">
-                            <h6 class="section-title mb-0"><i class="fa-solid fa-link fa-sm me-2"></i>Linked Cases</h6>
+                            <h6 class="section-title mb-0"><i class="fa-solid fa-link fa-sm me-2"></i>Linked cases</h6>
                             <span class="badge text-bg-secondary ms-2">[[cases_info.case.link_to.length]]</span>
                         </div>
                         <hr class="fading-line-2 mt-2 mb-2">
@@ -412,7 +412,7 @@
 				</li>
                 <li class="nav-item">
 					<button class="nav-link" id="subtab-computer-assistate" @click="active_subtab_note('computer-assistate')">
-						<i class="fa-solid fa-robot fa-sm me-1"></i><span class="section-title">Computer Assisted</span>
+						<i class="fa-solid fa-robot fa-sm me-1"></i><span class="section-title">Computer assisted</span>
 					</button>
 				</li>
 			</ul>
@@ -667,7 +667,7 @@
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="radioOther" id="radioOrderAsc" @click="sort_by_filter('last_modif')">
-                                <label class="form-check-label" for="radioOrderAsc">Last Modif</label>
+                                <label class="form-check-label" for="radioOrderAsc">Last modif</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
@@ -687,7 +687,7 @@
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="radioOther" id="radioOtherCaseOrder" @click="sort_by_filter('case_order_id')">
-                                <label class="form-check-label" for="radioOtherCaseOrder">Case Order</label>
+                                <label class="form-check-label" for="radioOtherCaseOrder">Case order</label>
                             </div>
                         </div>
 
@@ -765,7 +765,7 @@
                     <div>Custom Tags:</div>
                     <div>
                         <template v-if="custom_tags">
-                            <select data-placeholder="Custom Tags" class="select2-filter form-control" multiple name="task_custom_tags_select" id="task_custom_tags_select" >
+                            <select data-placeholder="Custom tags" class="select2-filter form-control" multiple name="task_custom_tags_select" id="task_custom_tags_select" >
                                 <template v-for="custom_tag, key in custom_tags">
                                     <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
                                 </template>

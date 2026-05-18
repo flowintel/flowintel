@@ -32,7 +32,7 @@
     <!-- Alerts List -->
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Recent Case Alerts</h5>
+            <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Recent case alerts</h5>
             <div>
                 <span class="badge bg-primary me-2" id="unread-count">[[ unreadCount ]] unread</span>
                 <button class="btn btn-sm btn-outline-secondary me-1" @click="markAllRead" :disabled="unreadCount === 0"><i class="fa-solid fa-check-double me-1"></i>Mark all as read</button>
@@ -73,7 +73,7 @@
         <div class="col-md-6">
             <div class="card config-card">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-plug me-2"></i>Webhook Configuration</h5>
+                    <h5 class="mb-0"><i class="fa-solid fa-plug me-2"></i>Webhook configuration</h5>
                 </div>
                 <div class="card-body">
                     <form @submit.prevent="saveWebhook">
@@ -143,7 +143,7 @@
     <!-- Logs -->
     <div class="card mt-3">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Webhook Logs</h5>
+            <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Webhook logs</h5>
             <button class="btn btn-sm btn-outline-secondary" @click="loadLogs"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
         </div>
         <div class="card-body" id="log-container">
