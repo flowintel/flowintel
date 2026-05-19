@@ -256,7 +256,7 @@
 {% block script %}
 <script type="module">
     const { createApp, ref, computed, onMounted } = Vue
-    import {display_toast} from '/static/js/toaster.js'
+    import {display_toast, message_list} from '/static/js/toaster.js'
 
     createApp({
         delimiters: ['[[', ']]'],
@@ -422,6 +422,7 @@
             })
 
             return {
+                message_list,
                 active_tab,
                 rows,
                 loading,
