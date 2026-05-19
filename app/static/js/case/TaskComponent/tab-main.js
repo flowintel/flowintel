@@ -1,5 +1,5 @@
 import { display_toast } from '/static/js/toaster.js'
-import { isStatusDropdownDisabled, getStatusDropdownTooltip, getAvailableStatuses, canEditRestrictedTask } from '/static/js/case/helpers.js'
+import { isStatusDropdownDisabled, getStatusDropdownTooltip, getAvailableStatuses, canEditRestrictedTask, getStatusHint } from '/static/js/case/helpers.js'
 const { ref, computed } = Vue
 import subtask from './subtask.js'
 import TaskUrlTool from './TaskUrlTool.js'
@@ -30,6 +30,11 @@ export default {
 
 		const statusDropdownTooltip = computed(() => {
 			return getStatusDropdownTooltip(props.task, props.cases_info, props.status_info)
+		})
+
+		const statusHint = computed(() => {
+			if (!props.cases_info?.case?.privileged_case) return ''
+			return getStatusHint(props.task, props.status_info)
 		})
 
 		async function assign_user_task() {
@@ -183,6 +188,7 @@ export default {
 			availableStatuses,
 			statusDropdownDisabled,
 			statusDropdownTooltip,
+			statusHint,
 
 			assign_user_task,
 			change_status,
@@ -284,6 +290,11 @@ export default {
 									</li>
 								</ul>
 							</template>
+						</div>
+						<div v-if="statusHint" class="alert alert-info py-2 px-3 mt-2 mb-0">
+							<small>
+								<i class="fa-solid fa-lightbulb me-2"></i>[[statusHint]]
+							</small>
 						</div>
 					</div>
 				</div>
