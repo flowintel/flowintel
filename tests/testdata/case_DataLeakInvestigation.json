@@ -23,6 +23,7 @@
             "title": "Validate data leak alert",
             "description": "Confirm the alert source, leak claim, and initial credibility before broad escalation.",
             "time_required": "1h",
+            "version": 1,
             "notes": [
                 {
                     "uuid": "6d1eff0f-5cf6-4ee5-8eff-765f8d325f1d",
@@ -44,6 +45,7 @@
             "title": "Preserve evidence and access logs",
             "description": "Collect relevant logs and preserve artifacts to support forensic review and legal traceability.",
             "time_required": "2h",
+            "version": 1,
             "notes": [
                 {
                     "uuid": "a8c1aa08-2a62-49ca-8c32-77ea5e539f6e",
@@ -65,6 +67,7 @@
             "title": "Determine exposed data scope",
             "description": "Identify what data categories were exposed, estimate volume, and assess confidentiality impact.",
             "time_required": "2h",
+            "version": 1,
             "notes": [
                 {
                     "uuid": "69a0fd66-4f65-4ce8-8f58-0da47f7d0973",
@@ -86,6 +89,7 @@
             "title": "Contain leak vectors",
             "description": "Disable or restrict the channels causing exposure and revoke risky credentials or sharing links.",
             "time_required": "1h",
+            "version": 1,
             "notes": [
                 {
                     "uuid": "5f2456fe-d95d-49e8-89c8-f416a287b0dc",
@@ -107,6 +111,7 @@
             "title": "Notify stakeholders and legal",
             "description": "Notify data owners, legal, and compliance contacts based on jurisdictional and contractual obligations.",
             "time_required": "1h",
+            "version": 1,
             "notes": [
                 {
                     "uuid": "8a00f37c-cfef-4673-9772-6f9bf37e8975",
@@ -128,6 +133,7 @@
             "title": "Produce investigation report and lessons learned",
             "description": "Document root cause, impacted data, remediation actions, and follow-up controls.",
             "time_required": "2h",
+            "version": 1,
             "notes": [
                 {
                     "uuid": "705919ec-bac3-4888-87ad-fa19410b58e6",
