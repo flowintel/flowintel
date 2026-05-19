@@ -1,5 +1,5 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
-const { ref, onMounted } = Vue
+const { ref, onMounted, computed } = Vue
 
 export default {
     delimiters: ['[[', ']]'],
@@ -10,6 +10,11 @@ export default {
     setup(props) {
         const case_misp_objects = ref([])
         const is_loading = ref(false)
+        const can_manage_case_misp_objects = computed(() => {
+            const permission = props.cases_info ? props.cases_info.permission : null
+            if (!permission) return false
+            return Boolean(permission.admin || permission.misp_editor)
+        })
 
         async function fetch_case_misp_objects() {
             const res = await fetch('/case/' + props.task.case_id + '/get_case_misp_object')
@@ -60,6 +65,32 @@ export default {
             window.dispatchEvent(new CustomEvent('navigate-to-misp-object', { detail: { object_id: objectId } }))
         }
 
+        function format_object_label(obj) {
+            if (!obj) return ''
+            const objectName = obj.misp_object_name || obj.object_name || ''
+            return objectName
+        }
+
+        function format_attribute_preview(obj) {
+            const preview = obj && obj.attributes_preview ? obj.attributes_preview : []
+            if (!preview.length) return ''
+            return preview.join(' · ')
+        }
+
+        function format_case_object_label(obj) {
+            if (!obj) return ''
+            return format_object_label({
+                misp_object_name: obj.object_name,
+                misp_object_template_uuid: obj.object_uuid,
+            })
+        }
+
+        function format_case_object_preview(obj) {
+            const attributes = obj && obj.attributes ? obj.attributes : []
+            if (!attributes.length) return ''
+            return attributes.slice(0, 3).map(attr => attr.object_relation + ':' + attr.value).join(' · ')
+        }
+
         onMounted(() => {
             fetch_case_misp_objects()
         })
@@ -67,10 +98,15 @@ export default {
         return {
             case_misp_objects,
             is_loading,
+            can_manage_case_misp_objects,
             is_linked,
             link_misp_object,
             unlink_misp_object,
-            show_object
+            show_object,
+            format_object_label,
+            format_attribute_preview,
+            format_case_object_label,
+            format_case_object_preview
         }
     },
     template: `
@@ -81,12 +117,19 @@ export default {
                 <span class="section-title">MISP Objects linked to this task</span>
             </div>
             <div class="task-section-body">
+                <div v-if="!can_manage_case_misp_objects" class="alert alert-warning py-2 px-3 mb-3">
+                    <small>
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        You can view and link existing MISP objects here, but creating or editing case objects requires MISP Editor permissions.
+                    </small>
+                </div>
                 <template v-if="task.misp_object_links && task.misp_object_links.length">
                     <div v-for="link in task.misp_object_links" :key="link.misp_object_id" class="d-flex align-items-center mb-1">
                         <i class="fa-solid fa-cube me-2 text-secondary"></i>
-                        <span class="me-2">
-                            <a href="javascript:void(0)" @click="show_object(link)"><strong>[[link.misp_object_name]]</strong></a>
+                        <span class="me-2 flex-grow-1">
+                            <a href="javascript:void(0)" @click="show_object(link)"><strong>[[format_object_label(link)]]</strong></a>
                             <small class="text-muted ms-1">([[link.misp_object_template_uuid]])</small>
+                            <small v-if="format_attribute_preview(link)" class="text-muted d-block">[[format_attribute_preview(link)]]</small>
                         </span>
                         <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
                             <button @click="unlink_misp_object({id: link.misp_object_id})" class="btn btn-danger btn-sm ms-auto" title="Unlink this MISP object">
@@ -115,9 +158,10 @@ export default {
                         <template v-if="case_misp_objects.length">
                             <div v-for="obj in case_misp_objects" :key="obj.object_id" class="d-flex align-items-center mb-1">
                                 <i class="fa-solid fa-cube me-2 text-secondary"></i>
-                                <span class="me-2">
-                                    <a href="javascript:void(0)" @click="show_object(obj)"><strong>[[obj.object_name]]</strong></a>
+                                <span class="me-2 flex-grow-1">
+                                    <a href="javascript:void(0)" @click="show_object(obj)"><strong>[[format_case_object_label(obj)]]</strong></a>
                                     <small class="text-muted ms-1">([[obj.object_uuid]])</small>
+                                    <small v-if="format_case_object_preview(obj)" class="text-muted d-block">[[format_case_object_preview(obj)]]</small>
                                 </span>
                                 <template v-if="is_linked(obj.object_id)">
                                     <span class="badge text-bg-success ms-auto"><i class="fa-solid fa-check me-1"></i>Linked</span>

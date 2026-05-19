@@ -1186,12 +1186,17 @@ class Task_Misp_Object(db.Model):
     def to_json(self):
         from .db import Case_Misp_Object
         obj = Case_Misp_Object.query.get(self.misp_object_id)
+        attributes_preview = []
+        if obj:
+            for attribute in obj.attributes.limit(3).all():
+                attributes_preview.append(f"{attribute.object_relation}:{attribute.value}")
         json_dict = {
             "id": self.id,
             "task_id": self.task_id,
             "misp_object_id": self.misp_object_id,
             "misp_object_name": obj.name if obj else None,
             "misp_object_template_uuid": obj.template_uuid if obj else None,
+            "attributes_preview": attributes_preview,
         }
         return json_dict
 
