@@ -472,5 +472,16 @@
         }).mount('#main-container')
 
     </script>
+    {% else %}
+    <script type="module">
+        const { createApp, ref } = Vue
+        import {message_list} from '/static/js/toaster.js'
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                return { message_list }
+            }
+        }).mount('#main-container')
+    </script>
     {% endif %}
 {% endblock %}
