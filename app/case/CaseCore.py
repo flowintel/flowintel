@@ -817,6 +817,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             uuid=str(uuid.uuid4()),
             title=case_title_template,
             description=case.description,
+            notes=case.notes,
             last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
         )
         db.session.add(new_template)
@@ -853,15 +854,26 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         for task in case.tasks:
             task_exist = Task_Template.query.filter_by(title=task.title).first()
             if not task_exist:
+                task_notes = task.notes.order_by(Note.task_order_id.asc()).all()
                 task_template = Task_Template(
                     uuid=str(uuid.uuid4()),
                     title=task.title,
                     description=task.description,
-                    nb_notes=0,
+                    nb_notes=len(task_notes),
                     last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
                 )
                 db.session.add(task_template)
                 db.session.commit()
+
+                for note in task_notes:
+                    note_template = Note_Template(
+                        uuid=str(uuid.uuid4()),
+                        note=note.note,
+                        template_id=task_template.id,
+                        template_order_id=note.task_order_id
+                    )
+                    db.session.add(note_template)
+                    db.session.commit()
 
                 for t_url_tool in task.urls_tools:
                     url_tool = Task_Template_Url_Tool(
