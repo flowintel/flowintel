@@ -181,6 +181,17 @@
                             <i class="fa-solid fa-calendar fa-xs me-1"></i>Added [[repo.creation_date]]
                         </small>
                     </div>
+                    <div class="mt-2">
+                        <div class="form-check form-switch mb-0" @click.stop>
+                            <input class="form-check-input" type="checkbox"
+                                   :id="'repo_custom_tags_' + repo.id"
+                                   v-model="repoImportCreateCustomTags[repo.id]">
+                            <label class="form-check-label small text-muted"
+                                   :for="'repo_custom_tags_' + repo.id">
+                                Create custom tags from JSON
+                            </label>
+                        </div>
+                    </div>
                 </a>
 
                 <div class="d-flex flex-column"
@@ -673,6 +684,7 @@
             const entries = reactive({})
             const importing = reactive({})
             const diffing = reactive({})
+            const repoImportCreateCustomTags = reactive({})
 
             async function fetchEntries(repo) {
                 if (!entries[repo.id]) entries[repo.id] = { case: [], task: [], loading: false }
@@ -709,6 +721,11 @@
                     const res  = await fetch('/templating/repositories/list')
                     const data = await res.json()
                     repos.value = data.repositories
+                    repos.value.forEach((repo) => {
+                        if (repoImportCreateCustomTags[repo.id] === undefined) {
+                            repoImportCreateCustomTags[repo.id] = false
+                        }
+                    })
                 } finally {
                     loading.value = false
                 }
@@ -899,7 +916,13 @@
                 try {
                     const res  = await fetch(`/templating/repositories/${repo.id}/entries/${tpl.id}/import`, {
                         method: 'POST',
-                        headers: { 'X-CSRFToken': $('#csrf_token').val() }
+                        headers: {
+                            'X-CSRFToken': $('#csrf_token').val(),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            create_custom_tags: !!repoImportCreateCustomTags[repo.id]
+                        })
                     })
                     const data = await res.json()
                     if (res.ok && data.entries) {
@@ -1126,7 +1149,7 @@
                 repos, filtered, loading, saving,
                 form, editTarget,
                 connectivity, refreshing, expanded,
-                entries, fetchEntries, importing, diffing,
+                entries, fetchEntries, importing, diffing, repoImportCreateCustomTags,
                 toggleExpand, checkConnectivity, refreshRemote, scanRepositories,
                 openAdd, openEdit, saveRepo, deleteRepo,
                 importEntry, viewEntry, diffEntry,
