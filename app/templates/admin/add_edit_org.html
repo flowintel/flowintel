@@ -4,6 +4,8 @@
 {% extends 'base.html' %}
 {% import 'macros/form_macros.html' as f %}
 
+{% block head %}{{ super() }}<meta name="sidebar-active" content="/admin/orgs">{% endblock %}
+
 {% block content %}
     {% if not edit_mode %}
         <div class="case-core-style" style="border-radius: 0;">
