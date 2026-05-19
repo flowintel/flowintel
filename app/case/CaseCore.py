@@ -46,6 +46,20 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         super().__init__()
         self.TasksAI = {}
 
+    @staticmethod
+    def normalize_hedgedoc_url(hedgedoc_url):
+        if not hedgedoc_url:
+            return hedgedoc_url
+
+        normalized_url = hedgedoc_url.strip()
+        if normalized_url.endswith("#"):
+            normalized_url = normalized_url[:-1]
+        if normalized_url.endswith("?both"):
+            normalized_url = normalized_url[:-5]
+        if normalized_url.endswith("?edit"):
+            normalized_url = normalized_url[:-5]
+        return normalized_url
+
     def get_class(self) -> Case:
         return Case
     
@@ -81,6 +95,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     case = CaseTemplateModel.create_case_from_template(template, form_dict["title_template"], user, privileged_case)
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
+            hedgedoc_url = self.normalize_hedgedoc_url(form_dict.get("hedgedoc_url"))
             
             case = Case(
                 title=form_dict["title"].strip(),
@@ -94,6 +109,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 time_required=form_dict["time_required"],
                 is_private=form_dict["is_private"],
                 privileged_case=privileged_case,
+                hedgedoc_url=hedgedoc_url,
                 ticket_id=form_dict["ticket_id"]
             )
             db.session.add(case)
@@ -1312,13 +1328,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def change_hedgedoc_url(self, form_dict, cid, current_user):
         case = CommonModel.get_case(cid)
-        loc_hedgedoc_url = form_dict["hedgedoc_url"]
-        if loc_hedgedoc_url.endswith("#"):
-            loc_hedgedoc_url = loc_hedgedoc_url[:-1]
-        if loc_hedgedoc_url.endswith("?both"):
-            loc_hedgedoc_url = loc_hedgedoc_url[:-5]
-        if loc_hedgedoc_url.endswith("?edit"):
-            loc_hedgedoc_url = loc_hedgedoc_url[:-5]
+        loc_hedgedoc_url = self.normalize_hedgedoc_url(form_dict["hedgedoc_url"])
 
         case.hedgedoc_url = loc_hedgedoc_url
         CommonModel.update_last_modif(cid)

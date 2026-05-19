@@ -237,6 +237,7 @@ class Case(db.Model):
             "description": self.description,
             "recurring_type": self.recurring_type,
             "notes": self.notes,
+            "hedgedoc_url": self.hedgedoc_url,
             "time_required": self.time_required,
             "is_private": self.is_private,
             "ticket_id": self.ticket_id,
