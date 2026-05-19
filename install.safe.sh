@@ -203,6 +203,9 @@ else
   warn "Not in a git repo; skipping submodule init"
 fi
 
+# Create runtime directories expected by the application.
+mkdir -p history history_test
+
 # make launch script executable and run initial setup
 if [ -f ./launch.sh ]; then
   chmod +x ./launch.sh || warn "chmod launch.sh failed"

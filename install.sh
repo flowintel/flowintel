@@ -93,6 +93,10 @@ cd app/assets && bun install && cd ../..
 
 # init submodules
 git submodule init && git submodule update
+
+# Create runtime directories expected by the application.
+mkdir -p history history_test
+
 # make launch scripts executable
 chmod +x launch.sh
 ./launch.sh -i
