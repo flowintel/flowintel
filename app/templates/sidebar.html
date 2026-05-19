@@ -201,7 +201,8 @@
 			return prefixMatches.length ? prefixMatches[0].getAttribute('href') : null;
 		}
 
-		const effectivePage = getSidebarPathFromCurrentUrl();
+		const metaHint = document.querySelector('meta[name="sidebar-active"]');
+		const effectivePage = (metaHint && metaHint.content) ? metaHint.content : getSidebarPathFromCurrentUrl();
 		if (!effectivePage) return;
 
 		// Find the matching link
