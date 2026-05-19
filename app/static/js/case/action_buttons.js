@@ -1,5 +1,5 @@
 import {display_toast} from '../toaster.js'
-import {canModifyPrivilegedCase} from './helpers.js'
+import {canModifyPrivilegedCase, canForkPrivilegedCase} from './helpers.js'
 const { ref, computed } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -15,6 +15,10 @@ export default {
 
         const canModifyCase = computed(() => {
             return canModifyPrivilegedCase(props.cases_info)
+        })
+
+        const canForkCase = computed(() => {
+            return canForkPrivilegedCase(props.cases_info)
         })
 
         async function delete_case(case_id){
@@ -190,6 +194,7 @@ export default {
 		return {
             selected_merge,
             canModifyCase,
+        canForkCase,
             can_manage_templates,
             is_admin,
             delete_case,
@@ -249,7 +254,7 @@ export default {
                                 title="Fork this case" 
                                 data-bs-toggle="modal" 
                                 data-bs-target="#fork_case_modal"
-                                :disabled="!canModifyCase">
+                                :disabled="!canForkCase">
                             <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-code-fork"></i></span> Fork
                         </button>
                     </li>
