@@ -1,0 +1,156 @@
+{
+    "uuid": "9f4d21da-69d1-4c2f-bbfa-77f5b2ca2eb8",
+    "version": 1,
+    "title": "Data leak investigation",
+    "description": "Investigate a suspected data leak involving potentially sensitive operational data from an energy-sector environment.",
+    "recurring_type": null,
+    "notes": "Initial triage indicates possible external exposure through a shared repository. Prioritize scoping and evidence preservation.",
+    "time_required": "",
+    "is_private": false,
+    "ticket_id": "",
+    "is_updated_from_misp": false,
+    "computer_assistate_report": null,
+    "deadline": null,
+    "recurring_date": null,
+    "tags": [
+        "tlp:amber",
+        "nis:impact-sectors-impacted=\"energy\"",
+        "csirt_case_classification:incident-category=\"compromised-information\""
+    ],
+    "clusters": [],
+    "tasks_template": [
+        {
+            "uuid": "4a92cb5f-90e7-4f0f-a5d7-9a4dc852f560",
+            "title": "Validate data leak alert",
+            "description": "Confirm the alert source, leak claim, and initial credibility before broad escalation.",
+            "time_required": "1h",
+            "version": 1,
+            "notes": [
+                {
+                    "uuid": "6d1eff0f-5cf6-4ee5-8eff-765f8d325f1d",
+                    "note": "Capture the original alert payload and timestamp. Avoid modifying any external source content.",
+                    "task_uuid": "4a92cb5f-90e7-4f0f-a5d7-9a4dc852f560"
+                }
+            ],
+            "deadline": null,
+            "tags": [
+                "workflow:todo=\"review-relevance\"",
+                "course-of-action:passive=\"discover\""
+            ],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        },
+        {
+            "uuid": "35f8df2f-4fc4-4bb6-a87d-63cd30722e54",
+            "title": "Preserve evidence and access logs",
+            "description": "Collect relevant logs and preserve artifacts to support forensic review and legal traceability.",
+            "time_required": "2h",
+            "version": 1,
+            "notes": [
+                {
+                    "uuid": "a8c1aa08-2a62-49ca-8c32-77ea5e539f6e",
+                    "note": "Record chain-of-custody details for all exported evidence files.",
+                    "task_uuid": "35f8df2f-4fc4-4bb6-a87d-63cd30722e54"
+                }
+            ],
+            "deadline": null,
+            "tags": [
+                "workflow:todo=\"preserve-evidence\"",
+                "PAP:GREEN"
+            ],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        },
+        {
+            "uuid": "be94353f-6221-40f8-bf4d-31af07887fc5",
+            "title": "Determine exposed data scope",
+            "description": "Identify what data categories were exposed, estimate volume, and assess confidentiality impact.",
+            "time_required": "2h",
+            "version": 1,
+            "notes": [
+                {
+                    "uuid": "69a0fd66-4f65-4ce8-8f58-0da47f7d0973",
+                    "note": "Classify records by sensitivity (public, internal, confidential, regulated) for reporting.",
+                    "task_uuid": "be94353f-6221-40f8-bf4d-31af07887fc5"
+                }
+            ],
+            "deadline": null,
+            "tags": [
+                "workflow:todo=\"expansion\"",
+                "workflow:state=\"incomplete\""
+            ],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        },
+        {
+            "uuid": "95a1f11a-4f36-427c-b6bd-f1510fbb2d46",
+            "title": "Contain leak vectors",
+            "description": "Disable or restrict the channels causing exposure and revoke risky credentials or sharing links.",
+            "time_required": "1h",
+            "version": 1,
+            "notes": [
+                {
+                    "uuid": "5f2456fe-d95d-49e8-89c8-f416a287b0dc",
+                    "note": "Coordinate with platform owners before disabling production integrations.",
+                    "task_uuid": "95a1f11a-4f36-427c-b6bd-f1510fbb2d46"
+                }
+            ],
+            "deadline": null,
+            "tags": [
+                "course-of-action:active=\"disrupt\"",
+                "workflow:todo=\"release-requested\""
+            ],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        },
+        {
+            "uuid": "99d51970-2d2f-4a1d-ae46-7ec5adcaaf55",
+            "title": "Notify stakeholders and legal",
+            "description": "Notify data owners, legal, and compliance contacts based on jurisdictional and contractual obligations.",
+            "time_required": "1h",
+            "version": 1,
+            "notes": [
+                {
+                    "uuid": "8a00f37c-cfef-4673-9772-6f9bf37e8975",
+                    "note": "Track who was notified, when, and by which approved communication channel.",
+                    "task_uuid": "99d51970-2d2f-4a1d-ae46-7ec5adcaaf55"
+                }
+            ],
+            "deadline": null,
+            "tags": [
+                "workflow:todo=\"review-for-privacy\"",
+                "PAP:AMBER"
+            ],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        },
+        {
+            "uuid": "2db41d82-d5fd-451d-9e54-64386fde0620",
+            "title": "Produce investigation report and lessons learned",
+            "description": "Document root cause, impacted data, remediation actions, and follow-up controls.",
+            "time_required": "2h",
+            "version": 1,
+            "notes": [
+                {
+                    "uuid": "705919ec-bac3-4888-87ad-fa19410b58e6",
+                    "note": "Include clear actions with owners and due dates so follow-up can be tracked.",
+                    "task_uuid": "2db41d82-d5fd-451d-9e54-64386fde0620"
+                }
+            ],
+            "deadline": null,
+            "tags": [
+                "workflow:todo=\"review-before-publication\"",
+                "workflow:state=\"complete\""
+            ],
+            "clusters": [],
+            "subtasks": [],
+            "urls_tools": []
+        }
+    ],
+    "misp-objects": []
+}
