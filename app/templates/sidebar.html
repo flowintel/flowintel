@@ -165,6 +165,21 @@
 
 		function getSidebarPathFromCurrentUrl() {
 			const currentPath = normalizePath(window.location.pathname);
+
+			const routeAliases = [
+				{ pattern: /^\/templating\/case\/\d+$/, href: '/templating/cases' },
+				{ pattern: /^\/templating\/edit_case\/\d+$/, href: '/templating/cases' },
+				{ pattern: /^\/templating\/edit_task\/\d+$/, href: '/templating/tasks' },
+				{ pattern: /^\/tools\/note_template_view\/\d+$/, href: '/tools/note_template_index' },
+				{ pattern: /^\/tools\/edit_note_template_view\/\d+$/, href: '/tools/note_template_index' },
+				{ pattern: /^\/tools\/create_note_template_view$/, href: '/tools/note_template_index' }
+			];
+
+			const aliasedMatch = routeAliases.find((alias) => alias.pattern.test(currentPath));
+			if (aliasedMatch) {
+				return aliasedMatch.href;
+			}
+
 			const allLinks = Array.from(document.querySelectorAll('.nav-item .nav-link[href], .collapse-item[href]'))
 				.filter((link) => {
 					const href = link.getAttribute('href');

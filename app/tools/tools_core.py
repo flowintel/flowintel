@@ -270,35 +270,6 @@ def case_template_creation_from_importer(template):
 
     
 def importer_core(files_list, current_user, importer_type, create_custom_tags=False):
-    def _create_missing_custom_tags_in_case(case_obj):
-        # create custom tags that don't exist in the instance
-        for ct in case_obj.get("custom_tags", []):
-            if isinstance(ct, dict):
-                name = ct.get("name")
-                if name and not CustomModel.get_custom_tag_by_name(name):
-                    try:
-                        CustomModel.add_custom_tag_core({
-                            "name": name,
-                            "color": ct.get("color", "#000000"),
-                            "icon": ct.get("icon", "")
-                        })
-                    except Exception:
-                        pass
-        # handle both case tasks and template tasks
-        for task in case_obj.get("tasks", []) + case_obj.get("tasks_template", []):
-            for ct in task.get("custom_tags", []):
-                if isinstance(ct, dict):
-                    name = ct.get("name")
-                    if name and not CustomModel.get_custom_tag_by_name(name):
-                        try:
-                            CustomModel.add_custom_tag_core({
-                                "name": name,
-                                "color": ct.get("color", "#000000"),
-                                "icon": ct.get("icon", "")
-                            })
-                        except Exception:
-                            pass
-
     results = []
     for file in files_list:
         filename = files_list[file].filename
@@ -309,9 +280,9 @@ def importer_core(files_list, current_user, importer_type, create_custom_tags=Fa
                 if create_custom_tags:
                     if isinstance(file_data, list):
                         for case in file_data:
-                            _create_missing_custom_tags_in_case(case)
+                            CustomModel.ensure_custom_tags_for_case_payload(case)
                     elif isinstance(file_data, dict):
-                        _create_missing_custom_tags_in_case(file_data)
+                        CustomModel.ensure_custom_tags_for_case_payload(file_data)
 
                 items = file_data if isinstance(file_data, list) else [file_data]
                 for item in items:

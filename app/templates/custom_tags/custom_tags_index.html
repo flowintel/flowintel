@@ -20,6 +20,7 @@
             </div>
         </div>
     </div>
+        <input type="hidden" id="can_edit_templates" value="{{ 'true' if current_user.is_admin() or current_user.is_template_editor() else 'false' }}">
     
     <hr class="fading-line-2 mt-4 mb-4">
 
@@ -71,7 +72,7 @@
                             </div>
                         </div>
                         <div v-else>
-                            <div v-if="custom_tag.usage_data && (custom_tag.usage_data.cases.length > 0 || custom_tag.usage_data.tasks.length > 0)">
+                            <div v-if="custom_tag.usage_data && (custom_tag.usage_data.cases.length > 0 || custom_tag.usage_data.tasks.length > 0 || custom_tag.usage_data.case_templates.length > 0 || custom_tag.usage_data.task_templates.length > 0)">
                                 <div v-if="custom_tag.usage_data.cases.length > 0" class="mb-3">
                                     <h6 class="mb-2"><i class="fa-solid fa-briefcase me-2"></i>Cases ([[custom_tag.usage_data.cases.length]])</h6>
                                     <ul class="list-group list-group-flush">
@@ -95,9 +96,31 @@
                                         </li>
                                     </ul>
                                 </div>
+                                <div v-if="custom_tag.usage_data.case_templates.length > 0" class="mb-3">
+                                    <h6 class="mb-2"><i class="fa-solid fa-folder-tree me-2"></i>Case templates ([[custom_tag.usage_data.case_templates.length]])</h6>
+                                    <ul class="list-group list-group-flush">
+                                        <li v-for="case_template_item in custom_tag.usage_data.case_templates" class="list-group-item" style="background-color: transparent; border: none; padding-left: 0;">
+                                            <a :href="'/templating/case/'+case_template_item.id" target="_blank" class="text-decoration-none">
+                                                <i class="fa-solid fa-external-link-alt fa-sm me-1"></i>
+                                                <strong>[[case_template_item.title]]</strong>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div v-if="custom_tag.usage_data.task_templates.length > 0" class="mb-3">
+                                    <h6 class="mb-2"><i class="fa-solid fa-diagram-project me-2"></i>Task templates ([[custom_tag.usage_data.task_templates.length]])</h6>
+                                    <ul class="list-group list-group-flush">
+                                        <li v-for="task_template_item in custom_tag.usage_data.task_templates" class="list-group-item" style="background-color: transparent; border: none; padding-left: 0;">
+                                            <a :href="taskTemplateUsageHref(task_template_item.id)" target="_blank" class="text-decoration-none">
+                                                <i class="fa-solid fa-external-link-alt fa-sm me-1"></i>
+                                                [[task_template_item.title]]
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                             <div v-else class="text-muted text-center">
-                                <i class="fa-solid fa-info-circle me-1"></i>This custom tag is not currently used in any cases or tasks.
+                                <i class="fa-solid fa-info-circle me-1"></i>This custom tag is not currently used in any cases, tasks, or templates.
                             </div>
                         </div>
                     </div>
@@ -170,6 +193,7 @@
     <script type="module">
         const { createApp, ref } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+            const can_edit_templates = document.getElementById('can_edit_templates')?.value === 'true'
 
         createApp({
             delimiters: ['[[', ']]'],
@@ -283,18 +307,28 @@
                         try {
                             const res = await fetch('/custom_tags/' + custom_tag.id + '/usage')
                             if (res.status == 200) {
-                                custom_tag.usage_data = await res.json()
+                                const usage_data = await res.json()
+                                custom_tag.usage_data = {
+                                    cases: usage_data.cases || [],
+                                    tasks: usage_data.tasks || [],
+                                    case_templates: usage_data.case_templates || [],
+                                    task_templates: usage_data.task_templates || []
+                                }
                             } else {
-                                custom_tag.usage_data = { cases: [], tasks: [] }
+                                custom_tag.usage_data = { cases: [], tasks: [], case_templates: [], task_templates: [] }
                                 display_toast(res)
                             }
                         } catch (error) {
                             console.error('Error fetching usage data:', error)
-                            custom_tag.usage_data = { cases: [], tasks: [] }
+                            custom_tag.usage_data = { cases: [], tasks: [], case_templates: [], task_templates: [] }
                         } finally {
                             custom_tag.loading_usage = false
                         }
                     }
+                }
+
+                function taskTemplateUsageHref(task_template_id) {
+                    return can_edit_templates ? '/templating/edit_task/' + task_template_id : '/templating/tasks'
                 }
 
                 return {
@@ -307,7 +341,8 @@
                     onInput,
                     delete_custom_tag,
                     getTextColor,
-                    toggle_usage
+                    toggle_usage,
+                    taskTemplateUsageHref
                 }
             }
         }).mount('#main-container')

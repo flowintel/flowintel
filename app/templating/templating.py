@@ -17,10 +17,13 @@ from ..case.common_core import get_instance_with_icon
 from ..utils.logger import flowintel_log
 from ..db_class.db import (
     Case_Template, Case_Task_Template, Case_Template_Galaxy_Tags, Case_Template_Tags,
+    Case_Template_Custom_Tags,
     Cluster, Tags, Task_Template, Task_Template_Galaxy_Tags, Task_Template_Tags,
+    Task_Template_Custom_Tags,
     Template_Repository, Template_Repository_Entry,
 )
 from .. import db
+from ..custom_tags import custom_tags_core as CustomModel
 
 templating_blueprint = Blueprint(
     'templating',
@@ -918,6 +921,34 @@ def _read_entry_file(repo, entry):
         return None, f"Could not read template file: {exc}"
 
 
+def _extract_custom_tag_names(custom_tags):
+    names = []
+    for custom_tag in custom_tags or []:
+        if isinstance(custom_tag, dict):
+            name = (custom_tag.get("name") or "").strip()
+        else:
+            name = str(custom_tag).strip()
+        if name:
+            names.append(name)
+    return list(dict.fromkeys(names))
+
+
+def _set_case_template_custom_tags(case_template_id, custom_tag_names):
+    Case_Template_Custom_Tags.query.filter_by(case_template_id=case_template_id).delete()
+    for name in custom_tag_names:
+        custom_tag = CustomModel.get_custom_tag_by_name(name)
+        if custom_tag:
+            db.session.add(Case_Template_Custom_Tags(case_template_id=case_template_id, custom_tag_id=custom_tag.id))
+
+
+def _set_task_template_custom_tags(task_template_id, custom_tag_names):
+    Task_Template_Custom_Tags.query.filter_by(task_template_id=task_template_id).delete()
+    for name in custom_tag_names:
+        custom_tag = CustomModel.get_custom_tag_by_name(name)
+        if custom_tag:
+            db.session.add(Task_Template_Custom_Tags(task_template_id=task_template_id, custom_tag_id=custom_tag.id))
+
+
 def _scan_local_entries(repo):
     if not repo.local_path:
         return [], "No local path configured for this repository"
@@ -1184,6 +1215,12 @@ def repository_entry_import(rid, eid):
     if not entry:
         return {"message": "Template entry not found", "toast_class": "danger-subtle"}, 404
 
+    payload = request.get_json(silent=True) or {}
+    create_custom_tags_raw = payload.get("create_custom_tags")
+    if create_custom_tags_raw is None:
+        create_custom_tags_raw = request.form.get("create_custom_tags", "false")
+    create_custom_tags = str(create_custom_tags_raw).lower() == "true"
+
     now = datetime.datetime.now(tz=datetime.timezone.utc)
 
     if entry.type == "task":
@@ -1215,6 +1252,7 @@ def repository_entry_import(rid, eid):
             tpl_description = task_data_remote.get("description") or ""
             tpl_version     = task_data_remote.get("version") or entry.version or 1
             tpl_time        = task_data_remote.get("time_required")
+            tpl_custom_tags = task_data_remote.get("custom_tags", [])
         else:
             tpl, err = _read_entry_file(repo, entry)
             if err:
@@ -1223,6 +1261,11 @@ def repository_entry_import(rid, eid):
             tpl_description = tpl.get("description", "")
             tpl_version     = tpl.get("version", 1)
             tpl_time        = tpl.get("time_required")
+            tpl_custom_tags = tpl.get("custom_tags", [])
+
+        if create_custom_tags:
+            CustomModel.ensure_custom_tags_exist(tpl_custom_tags)
+        task_custom_tag_names = _extract_custom_tag_names(tpl_custom_tags)
 
         local = Task_Template.query.filter_by(uuid=entry.uuid).first()
         created = local is None
@@ -1243,6 +1286,8 @@ def repository_entry_import(rid, eid):
             local.time_required = tpl_time  # always overwrite — remote is authoritative
             local.version       = tpl_version
             local.last_modif    = now
+
+        _set_task_template_custom_tags(local.id, task_custom_tag_names)
         db.session.commit()
         action = "imported" if created else "updated"
         msg = f"Task template \"{local.title}\" {action} successfully."
@@ -1274,6 +1319,11 @@ def repository_entry_import(rid, eid):
             local_case.version      = tpl.get("version") or local_case.version
             local_case.last_modif   = now
 
+        case_custom_tags = tpl.get("custom_tags", [])
+        if create_custom_tags:
+            CustomModel.ensure_custom_tags_exist(case_custom_tags)
+        _set_case_template_custom_tags(local_case.id, _extract_custom_tag_names(case_custom_tags))
+
         task_count = 0
         max_order = db.session.query(db.func.max(Case_Task_Template.case_order_id)).filter_by(case_id=local_case.id).scalar()
         next_order = (max_order or 0) + 1
@@ -1300,6 +1350,11 @@ def repository_entry_import(rid, eid):
                 local_task.time_required = task_data.get("time_required")
                 local_task.version      = task_data.get("version") or local_task.version
                 local_task.last_modif   = now
+
+            task_custom_tags = task_data.get("custom_tags", [])
+            if create_custom_tags:
+                CustomModel.ensure_custom_tags_exist(task_custom_tags)
+            _set_task_template_custom_tags(local_task.id, _extract_custom_tag_names(task_custom_tags))
 
             if not Case_Task_Template.query.filter_by(case_id=local_case.id, task_id=local_task.id).first():
                 db.session.add(Case_Task_Template(case_id=local_case.id, task_id=local_task.id, case_order_id=next_order))

@@ -58,11 +58,18 @@ def list():
 @custom_tags_blueprint.route("/<ctid>/usage", methods=['GET'])
 @login_required
 def get_custom_tag_usage(ctid):
-    """Get cases and tasks using a specific custom tag"""
+    """Get cases, tasks, and templates using a specific custom tag"""
     if CustomCore.get_custom_tag(ctid):
         cases = CustomCore.get_cases_using_custom_tag(ctid)
         tasks = CustomCore.get_tasks_using_custom_tag(ctid)
-        return {"cases": cases, "tasks": tasks}, 200
+        case_templates = CustomCore.get_case_templates_using_custom_tag(ctid)
+        task_templates = CustomCore.get_task_templates_using_custom_tag(ctid)
+        return {
+            "cases": cases,
+            "tasks": tasks,
+            "case_templates": case_templates,
+            "task_templates": task_templates
+        }, 200
     return {"message": "Custom tag not found", 'toast_class': "danger-subtle"}, 404
 
 @custom_tags_blueprint.route("/<ctid>/delete_custom_tag", methods=['GET', 'POST'])
