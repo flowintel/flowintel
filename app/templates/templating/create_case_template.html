@@ -160,7 +160,7 @@
 {% block script %}
 <script type="module">
     const { createApp, onMounted, ref} = Vue
-    import {message_list} from '/static/js/toaster.js'
+    import {display_toast, message_list} from '/static/js/toaster.js'
     const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
     
     createApp({
@@ -178,6 +178,7 @@
 
             const md = window.markdownit()
             const note_editor_render = ref("")
+            let editor = null
 
             async function fetch_taxonomies(){
                 const res = await fetch("/case/get_taxonomies")
