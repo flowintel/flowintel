@@ -1,5 +1,6 @@
 {
     "uuid": "9f4d21da-69d1-4c2f-bbfa-77f5b2ca2eb8",
+    "version": 1,
     "title": "Data leak investigation",
     "description": "Investigate a suspected data leak involving potentially sensitive operational data from an energy-sector environment.",
     "recurring_type": null,
