@@ -722,7 +722,6 @@ export default {
                 <tr>
                     <th>Instance name</th>
                     <th>Instance url</th>
-                    <th>Type</th>
                     <th>Identifier on the instance</th>
                     <th>Last sync</th>
                     <th></th>
@@ -742,11 +741,6 @@ export default {
                         <a style="margin-left: 5px" :href="instance.details.url">[[instance.details.url]]</a>
                     </td>
 
-                    <td v-if="instance.details.type">
-                        <span style="margin-left: 3px;" title="type of the module">[[instance.details.type]]</span>
-                    </td>
-                    <td v-else><i>None</i></td>
-
                     <td v-if="instance.identifier">
                         <span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>
                         <template v-if="instance.is_misp_connector">
@@ -765,23 +759,19 @@ export default {
                         <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button> 
-                        <template v-if="instance.details.type == 'send_to'">
-                            <button v-if="!is_sending" class="btn btn-outline-secondary mx-1" @click="send_to_modal(instance)"> Send to </button>
-                            <button v-else class="btn btn-outline-secondary" type="button" disabled>
-                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                <span role="status">Loading...</span>
-                            </button>
-                        </template>
-                        <template v-else-if="instance.details.type == 'receive_from'">
-                            <button v-if="!is_sending" class="btn btn-outline-secondary mx-1" @click="receive_from_modal(instance)"> Receive </button>
-                            <button v-else class="btn btn-outline-secondary" type="button" disabled>
-                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                <span role="status">Loading...</span>
-                            </button>
-                            <button v-if="instance.is_misp_connector" class="btn btn-outline-info mx-1" @click="toggle_misp_search(instance)" title="Search attributes in MISP">
-                                <i class="fa-solid fa-magnifying-glass"></i> Search in MISP
-                            </button>
-                        </template>
+                        <button v-if="!is_sending" class="btn btn-outline-secondary mx-1" @click="send_to_modal(instance)"> Send to </button>
+                        <button v-else class="btn btn-outline-secondary" type="button" disabled>
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            <span role="status">Loading...</span>
+                        </button>
+                        <button v-if="!is_sending" class="btn btn-outline-secondary mx-1" @click="receive_from_modal(instance)"> Receive </button>
+                        <button v-else class="btn btn-outline-secondary" type="button" disabled>
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            <span role="status">Loading...</span>
+                        </button>
+                        <button v-if="instance.is_misp_connector" class="btn btn-outline-info mx-1" @click="toggle_misp_search(instance)" title="Search attributes in MISP">
+                            <i class="fa-solid fa-magnifying-glass"></i> Search in MISP
+                        </button>
                         <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)">
                             <i class="fa-solid fa-trash"></i>
                         </button>
@@ -793,7 +783,7 @@ export default {
                     </td>
                 </tr>
                 
-                <tr v-if="can_edit_object && instance.is_misp_connector && instance.details.type == 'receive_from' && get_misp_search(instance.case_task_instance_id).open">
+                <tr v-if="can_edit_object && instance.is_misp_connector && get_misp_search(instance.case_task_instance_id).open">
                     <td colspan="6" style="background-color: #f8f9fa;">
                         <div class="p-2">
                             <div class="alert alert-info border-0 py-2 px-3 mb-2 d-flex align-items-start" style="background-color: #eaf4fb;">

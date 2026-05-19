@@ -298,16 +298,3 @@ def test_edit_instance_editor_denied(client):
                            headers={"X-API-KEY": EDITOR_KEY},
                            json={"name": "test"})
     assert response.status_code == 403
-
-
-####################
-## Type select ##
-####################
-
-def test_type_select(client):
-    """Editor should be able to get the type select list"""
-    response = client.get("/api/connectors/type_select",
-                          headers={"X-API-KEY": EDITOR_KEY})
-    assert response.status_code == 200
-    assert "type_select" in response.json
-    assert isinstance(response.json["type_select"], list)

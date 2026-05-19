@@ -30,8 +30,6 @@ class AddConnectorInstanceForm(FlaskForm):
     description = TextAreaField('Description', default="", validators=[Optional()])
     url = StringField('Url', validators=[InputRequired(), Length(0, 64)])
     api_key = StringField('Api key', validators=[Optional(), Length(0, 100)])
-    # Make type mandatory when creating an instance
-    type_select = StringField('Type', validators=[InputRequired()])
     is_global_connector = BooleanField('Global connector', validators=[Optional()])
     
     submit = SubmitField('Add')
@@ -67,7 +65,6 @@ class EditConnectorInstanceForm(FlaskForm):
     description = TextAreaField('Description', default="", validators=[Optional()])
     url = StringField('Url', validators=[InputRequired(), Length(0, 64)])
     api_key = StringField('Api key', validators=[Optional(), Length(0, 100)])
-    type_select = StringField('Type', validators=[Optional()])
     is_global_connector = BooleanField('Global connector', validators=[Optional()])
     
     submit = SubmitField('Modify')

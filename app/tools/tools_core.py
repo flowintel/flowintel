@@ -562,14 +562,13 @@ def get_misp_connector_by_user(user_id):
         instances_list = []
         if connector:
             for instance in connector.instances:
-                if instance.type=='receive_from':
-                    if instance.global_api_key:
-                        loc_instance = instance.to_json()
-                        if ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
-                            loc_instance["is_user_global_api"] = True
-                        instances_list.append(loc_instance)
-                    elif ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
-                        instances_list.append(instance.to_json())
+                if instance.global_api_key:
+                    loc_instance = instance.to_json()
+                    if ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                        loc_instance["is_user_global_api"] = True
+                    instances_list.append(loc_instance)
+                elif ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                    instances_list.append(instance.to_json())
         return instances_list
 
 def check_connection_misp(misp_instance_id: int, current_user: User):

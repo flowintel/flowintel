@@ -1366,8 +1366,8 @@ def search_in_misp_task(tid, ciid):
 
     instance = CommonModel.get_instance(task_connector.instance_id)
     misp_connector = CommonModel.get_connector_by_name("MISP")
-    if not instance or not misp_connector or instance.connector_id != misp_connector.id or instance.type != "receive_from":
-        return {"message": "Connector is not a MISP receive_from connector", "toast_class": "warning-subtle"}, 400
+    if not instance or not misp_connector or instance.connector_id != misp_connector.id:
+        return {"message": "Connector is not a MISP connector", "toast_class": "warning-subtle"}, 400
 
     query = ((request.json or {}).get("query") or "").strip()
     if not query:

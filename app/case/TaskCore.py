@@ -859,7 +859,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
             instance_list = list()
             for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id) and instance.type == type_module:
+                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
                     loc_instance = instance.to_json()
                     identifier = CommonModel.get_task_connector_id(instance.id, task_id)
                     loc_instance["identifier"] = identifier.identifier if identifier else None

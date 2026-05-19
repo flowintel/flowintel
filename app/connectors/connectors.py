@@ -7,7 +7,7 @@ from flask_login import (
 from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm, AddConnectorInstanceForm, EditConnectorInstanceForm
 from . import connectors_core as ConnectorModel
 from ..decorators import admin_required, misp_editor_required
-from ..utils.utils import form_to_dict, get_module_type_with_desc
+from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 
 connector_blueprint = Blueprint(
@@ -103,14 +103,6 @@ def nb_page_icons():
 
 
 
-@connector_blueprint.route("/type_select_info", methods=['GET'])
-@login_required
-def type_select_info():
-    """Get module types with descriptions."""
-    module_list = get_module_type_with_desc()
-    return {"type_select_info": module_list}, 200
-
-
 @connector_blueprint.route("/<cid>/get_instances", methods=['GET'])
 @login_required
 def get_instances(cid):
@@ -131,6 +123,18 @@ def get_instances(cid):
                 instance_list.append(loc_instance)
         return {"instances": instance_list}, 200
     return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+
+@connector_blueprint.route("/<cid>/instance/<iid>/cases", methods=['GET'])
+@login_required
+def get_instance_cases(cid, iid):
+    """Get paginated cases linked to a connector instance"""
+    if not ConnectorModel.get_connector(cid):
+        return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+    if not ConnectorModel.get_instance(iid):
+        return {"message": "Instance not found", "toast_class": "danger-subtle"}, 404
+    page = request.args.get('page', 1, type=int)
+    cases, total, nb_pages = ConnectorModel.get_cases_for_instance(iid, page=page)
+    return {"cases": cases, "total": total, "nb_pages": nb_pages, "page": page}, 200
 
 @connector_blueprint.route("/add_connector", methods=['GET','POST'])
 @login_required
@@ -171,7 +175,6 @@ def add_instance(cid):
                     Instance=instance.name,
                     InstanceId=instance.id,
                     InstanceUrl=instance.url,
-                    InstanceType=instance.type,
                     By=current_user.email
                 )
                 return redirect("/connectors")
@@ -250,7 +253,6 @@ def edit_instance(cid, iid):
                     Instance=updated_instance.name if updated_instance else "Unknown",
                     InstanceId=iid,
                     InstanceUrl=updated_instance.url if updated_instance else None,
-                    InstanceType=updated_instance.type if updated_instance else None,
                     By=current_user.email
                 )
             return redirect("/connectors")
@@ -259,7 +261,6 @@ def edit_instance(cid, iid):
             form.url.data = loc_instance.url
             form.description.data = loc_instance.description
             form.is_global_connector.data = True if loc_instance.global_api_key else False
-            form.type_select.data = loc_instance.type
             
         return render_template("connectors/add_instance.html", form=form, edit_mode=True)
     return render_template("404.html")
@@ -318,7 +319,6 @@ def delete_instance(cid, iid):
                     Instance=instance.name,
                     InstanceId=iid,
                     InstanceUrl=instance.url,
-                    InstanceType=instance.type,
                     By=current_user.email
                 )
                 return {

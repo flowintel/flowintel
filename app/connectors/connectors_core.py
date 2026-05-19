@@ -1,7 +1,7 @@
 import datetime
 import os
 from .. import db
-from ..db_class.db import Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance, Connector_Sync_Log
+from ..db_class.db import Case, Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance, Connector_Sync_Log
 import uuid
 from werkzeug.utils import secure_filename
 
@@ -156,6 +156,23 @@ def get_nb_page_connectors(name=None):
         connectors_list = [c for c in connectors_list if name_l in c.get('name','').lower()]
     return int(len(connectors_list) / 25) + 1
 
+def get_cases_for_instance(iid, page=1, per_page=10):
+    """Return paginated cases linked to a connector instance."""
+    query = (
+        db.session.query(Case)
+        .join(Case_Connector_Instance, Case_Connector_Instance.case_id == Case.id)
+        .filter(Case_Connector_Instance.instance_id == iid)
+        .order_by(Case.last_modif.desc())
+    )
+    total = query.count()
+    cases = query.offset((page - 1) * per_page).limit(per_page).all()
+    nb_pages = max(1, (total + per_page - 1) // per_page)
+    return [
+        {"id": c.id, "title": c.title, "uuid": c.uuid, "completed": c.completed}
+        for c in cases
+    ], total, nb_pages
+
+
 def get_icon(iid):
     """Return an icon"""
     return Connector_Icon.query.get(iid)
@@ -223,18 +240,12 @@ def add_connector_core(form_dict):
 
 def add_connector_instance_core(cid, form_dict, user_id):
 
-    if form_dict["type_select"] and not form_dict["type_select"] == "None":
-        type_select = form_dict["type_select"]
-    else:
-        type_select = ""
-
     connector = Connector_Instance(
         name=form_dict["name"],
         description=form_dict["description"],
         url=form_dict["url"],
         uuid=str(uuid.uuid4()),
         connector_id=cid,
-        type=type_select,
         global_api_key=form_dict["api_key"] if form_dict["is_global_connector"] else None
     )
     db.session.add(connector)
@@ -301,14 +312,9 @@ def edit_connector_core(cid, form_dict):
 def edit_connector_instance_core(iid, form_dict):
     instance_db = get_instance(iid)
     if instance_db:
-        if form_dict["type_select"] and not form_dict["type_select"] == "None":
-            type_select = form_dict["type_select"]
-        else:
-            type_select = instance_db.type
         instance_db.name = form_dict["name"]
         instance_db.url = form_dict["url"]
         instance_db.description = form_dict["description"]
-        instance_db.type = type_select
         if form_dict["api_key"]:
             if "is_global_connector" in form_dict and form_dict["is_global_connector"]:
                 instance_db.global_api_key = form_dict["api_key"]

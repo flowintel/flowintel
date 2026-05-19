@@ -1073,7 +1073,6 @@ class Connector_Instance(db.Model):
     url = db.Column(db.String(64), index=True)
     description = db.Column(db.String)
     uuid = db.Column(db.String(36), index=True)
-    type = db.Column(db.String(36), index=True)
     connector_id = db.Column(db.Integer, db.ForeignKey('connector.id', ondelete="CASCADE"))
     global_api_key = db.Column(db.String(100), index=True)
 
@@ -1085,7 +1084,6 @@ class Connector_Instance(db.Model):
             "description": self.description,
             "uuid": self.uuid,
             "connector_id": self.connector_id,
-            "type": self.type,
             "global_api_key": True if self.global_api_key else False
         }
         return json_dict

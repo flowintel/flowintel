@@ -454,6 +454,46 @@
         </div>
     </div>
 
+    <!-- Modal: Add Connector for new module tab -->
+    <div class="modal fade" id="addModuleConnectorModal" tabindex="-1" aria-labelledby="addModuleConnectorModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addModuleConnectorModalLabel">
+                        <i class="fa-solid fa-plug me-2"></i>Link a connector for <strong>[[ pending_connector_type ]]</strong>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" v-if="pending_connector_type">
+                    <p class="text-muted" style="font-size:0.85rem;">No <strong>[[ pending_connector_type ]]</strong> connector is linked to this case yet. Select an instance to add one now, or skip.</p>
+                    <div v-if="pending_connector_instances.length">
+                        <label class="form-label fw-semibold">Instance</label>
+                        <select class="form-select form-select-sm mb-3" v-model="pending_selected_instance">
+                            <option v-for="inst in pending_connector_instances" :key="inst.id" :value="inst">
+                                [[ inst.name ]]
+                            </option>
+                        </select>
+                        <label class="form-label fw-semibold">Identifier <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="text" class="form-control form-control-sm" v-model="pending_connector_identifier" placeholder="e.g. event UUID">
+                    </div>
+                    <div v-else class="alert alert-warning py-2" style="font-size:0.85rem;">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i>No instances found for <strong>[[ pending_connector_type ]]</strong>.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Skip</button>
+                    <button type="button" class="btn btn-primary btn-sm"
+                            :disabled="!pending_selected_instance || is_adding_module_connector"
+                            @click="submit_add_module_connector()"
+                            v-if="pending_connector_instances.length">
+                        <span v-if="is_adding_module_connector" class="spinner-border spinner-border-sm me-1"></span>
+                        <i v-else class="fa-solid fa-plug fa-sm me-1"></i>Link connector
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="collapse show" id="collapseTags">
         <template v-if="main_tab == 'main'">
             <div class="row">
@@ -1151,6 +1191,11 @@
                 const hidden_tabs = ref([])
                 const module_remove_confirm = ref(null)
                 const is_removing_module = ref(false)
+                const pending_connector_type = ref(null)
+                const pending_connector_instances = ref([])
+                const pending_selected_instance = ref(null)
+                const pending_connector_identifier = ref('')
+                const is_adding_module_connector = ref(false)
                 const HIDDEN_TABS_KEY = 'flowintel_tabs_hidden_{{case.id}}_{{current_user.id}}'
 
                 const core_tab_labels = {
@@ -1203,6 +1248,38 @@
                     save_active_module_tabs()
                     loadModuleComponent(typeName)
                     active_tab('connector-' + typeName.toLowerCase())
+
+                    // Check if any connector of this type is already linked to the case
+                    const already_linked = connector_types_in_case.value.some(t => t.toUpperCase() === typeName.toUpperCase())
+                    if (!already_linked && can_use_connectors.value) {
+                        // Gather available instances for this type from all_connectors_list
+                        const instances = (all_connectors_list.value && all_connectors_list.value[typeName]) || []
+                        pending_connector_type.value = typeName
+                        pending_connector_instances.value = instances
+                        pending_selected_instance.value = instances.length ? instances[0] : null
+                        pending_connector_identifier.value = ''
+                        try { window.bootstrap.Modal.getOrCreateInstance(document.getElementById('addModuleConnectorModal')).show() } catch(e) {}
+                    }
+                }
+
+                async function submit_add_module_connector() {
+                    if (!pending_selected_instance.value) return
+                    is_adding_module_connector.value = true
+                    try {
+                        const res = await fetch(`/case/{{case.id}}/add_connector`, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ connectors: [{ name: pending_selected_instance.value.name, identifier: pending_connector_identifier.value }] })
+                        })
+                        if (res.status === 200) {
+                            await fetch_case_connectors()
+                            try { window.bootstrap.Modal.getInstance(document.getElementById('addModuleConnectorModal'))?.hide() } catch(e) {}
+                        }
+                        display_toast(res)
+                    } catch(e) {
+                        display_toast({ message: 'Request failed', toast_class: 'danger-subtle' })
+                    }
+                    is_adding_module_connector.value = false
                 }
 
                 function is_tab_visible(key) {
@@ -2253,25 +2330,31 @@
 
                     connector_types_in_case,
                     loaded_module_components,
-                    get_connector_instances
-                    ,module_counts
-                    ,active_module_tabs
-                    ,hidden_tabs
-                    ,module_remove_confirm
-                    ,is_removing_module
-                    ,core_tab_labels
-                    ,core_tab_icons
-                    ,hidden_core_tabs
-                    ,hidden_module_tabs
-                    ,available_modules_to_add
-                    ,is_tab_visible
-                    ,hide_tab
-                    ,restore_tab
-                    ,remove_module_tab
-                    ,add_module_tab
-                    ,open_manage_tabs_modal
-                    ,close_manage_tabs_modal
-                    ,open_remove_module_modal
+                    get_connector_instances,
+                    module_counts,
+                    active_module_tabs,
+                    hidden_tabs,
+                    module_remove_confirm,
+                    is_removing_module,
+                    core_tab_labels,
+                    core_tab_icons,
+                    hidden_core_tabs,
+                    hidden_module_tabs,
+                    available_modules_to_add,
+                    is_tab_visible,
+                    hide_tab,
+                    restore_tab,
+                    remove_module_tab,
+                    add_module_tab,
+                    submit_add_module_connector,
+                    pending_connector_type,
+                    pending_connector_instances,
+                    pending_selected_instance,
+                    pending_connector_identifier,
+                    is_adding_module_connector,
+                    open_manage_tabs_modal,
+                    close_manage_tabs_modal,
+                    open_remove_module_modal
                 }
             }
         }).mount('#main-container')

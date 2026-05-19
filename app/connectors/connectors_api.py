@@ -85,7 +85,6 @@ class AddInstance(Resource):
     @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
-        "type_select": "Name of the type. See '/api/connectors/type_select' for more info",
         "url": "Required. Url for the instance. Used by module to connect to service",
         "api_key": "Api key used by module to connect to service",
     })
@@ -109,7 +108,6 @@ class EditInstance(Resource):
     @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
-        "type_select": "Name of the type. See '/api/connectors/type_select' for more info",
         "url": "Required. Url for the instance. Used by module to connect to service",
         "api_key": "Api key used by module to connect to service",
     })
@@ -129,14 +127,6 @@ class EditInstance(Resource):
             return {"message": "Please give data"}, 400
         return {"message": "Connector not found"}, 404
     
-@connectors_ns.route('/type_select')
-@connectors_ns.doc(description='Get type select for instance')
-class GetTypeSelect(Resource):
-    method_decorators = [api_required]
-    def get(self):
-        return {"type_select": utils.get_module_type()}, 200
-    
-
 @connectors_ns.route('/<cid>/delete')
 @connectors_ns.doc(description='Delete Connector')
 class DeleteConnector(Resource):

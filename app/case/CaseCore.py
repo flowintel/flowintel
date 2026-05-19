@@ -221,15 +221,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             loc_instance_id = ""
             r = Connector_Instance.query.filter_by(url=form_dict["origin_url"]).all()
             for instance in r:
-                if instance.type=='send_to':
-                    u = User_Connector_Instance.query.filter_by(instance_id=instance.id, user_id=user.id)
-                    if u:
-                        loc_instance_id=instance.id
-                        cci = Case_Connector_Instance(case_id=case.id, instance_id=instance.id, identifier=event.uuid, is_updating_case=True)
-                        case.is_updated_from_misp = True
-                        db.session.add(cci)
-                        db.session.commit()
-                        break
+                u = User_Connector_Instance.query.filter_by(instance_id=instance.id, user_id=user.id)
+                if u:
+                    loc_instance_id=instance.id
+                    cci = Case_Connector_Instance(case_id=case.id, instance_id=instance.id, identifier=event.uuid, is_updating_case=True)
+                    case.is_updated_from_misp = True
+                    db.session.add(cci)
+                    db.session.commit()
+                    break
             if loc_instance_id:
                 CaseModel.result_misp_object_module(object_uuid_list, instance_id=loc_instance_id, case_id=case.id)
 
@@ -1384,7 +1383,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
             instance_list = list()
             for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id) and instance.type == type_module:
+                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
                     loc_instance = instance.to_json()
                     identifier = CommonModel.get_case_connector_id(instance.id, case_id)
                     loc_instance["identifier"] = identifier.identifier
