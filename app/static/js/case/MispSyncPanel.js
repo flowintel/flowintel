@@ -8,6 +8,7 @@ export default {
         instance: Object,      // connector instance (from case_task_connectors_list)
         direction: String,     // 'send' or 'receive'
         modules: Object,
+        case_misp_objects_list: { type: Array, default: null },
     },
     emits: ['sync_done', 'close'],
     setup(props, { emit }) {
@@ -71,6 +72,13 @@ export default {
         }
 
         async function load_local_objects() {
+            if (props.case_misp_objects_list !== null) {
+                local_objects.value = props.case_misp_objects_list
+                if (props.direction === 'send') {
+                    selected_local_ids.value = local_objects.value.map(o => o.object_id)
+                }
+                return
+            }
             is_loading_local.value = true
             local_objects.value = []
             try {

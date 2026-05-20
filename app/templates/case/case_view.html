@@ -264,21 +264,27 @@
         </li>
         <li class="nav-item nav-item-closable" v-show="is_tab_visible('notes')">
             <button class="nav-link" id="tab-notes" @click="active_tab('notes')">
-                <i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title fs-6">Notes</span>
+                <i class="fa-solid fa-note-sticky fa-sm me-1"></i>
+                <span class="section-title fs-6">Notes</span>
             </button>
             <button class="tab-close-btn" @click.stop="hide_tab('notes')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
-        <li class="nav-item nav-item-closable" v-show="is_tab_visible('misp-objects')">
-            <button class="nav-link" id="tab-misp-objects" @click="active_tab('misp-objects')">
-                <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i><i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title fs-6">MISP objects </span> 
-                <span class="badge text-bg-secondary d-none" id="id-nb-misp-object">[[nb_misp_objects]]</span>
+        <li class="nav-item nav-item-closable" v-show="is_tab_visible('misp')">
+            <button class="nav-link" id="tab-misp" @click="active_tab('misp')">
+                <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i>
+                <i class="fa-solid fa-plug fa-sm me-1"></i>
+                <span class="section-title fs-6">MISP </span>
             </button>
-            <button class="tab-close-btn" @click.stop="hide_tab('misp-objects')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
+            <button class="tab-close-btn" @click.stop="hide_tab('misp')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
         <li class="nav-item">
             <button class="nav-link d-none" id="tab-connectors" @click="active_tab('connectors')">
-                <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i><i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title fs-6">Connectors </span>
-                <span class="badge text-bg-secondary" id="id-nb-connectors" v-if="case_connectors_list && case_connectors_list.length">[[case_connectors_list.length]]</span>
+                <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i>
+                <i class="fa-solid fa-plug fa-sm me-1"></i>
+                <span class="section-title fs-6">Connectors </span>
+                <span class="badge text-bg-secondary" id="id-nb-connectors" v-if="case_connectors_list && case_connectors_list.length">
+                    [[case_connectors_list.length]]
+                </span>
             </button>
         </li>
         <li class="nav-item nav-item-closable" v-for="connType in active_module_tabs" :key="connType"
@@ -436,12 +442,18 @@
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title text-danger" id="removeModuleModalLabel"><i class="fa-solid fa-triangle-exclamation me-2"></i>Remove Module</h5>
+                    <h5 class="modal-title text-danger" id="removeModuleModalLabel">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                        Remove Module
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" v-if="module_remove_confirm">
                     <p>Remove the <strong>[[ module_remove_confirm ]]</strong> module tab from this case?</p>
-                    <p class="text-danger mb-0" style="font-size:0.85rem;"><i class="fa-solid fa-circle-exclamation me-1"></i>All <strong>[[ module_remove_confirm ]]</strong> data stored for this case will be permanently deleted.</p>
+                    <p class="text-danger mb-0" style="font-size:0.85rem;">
+                        <i class="fa-solid fa-circle-exclamation me-1"></i>
+                        All <strong>[[ module_remove_confirm ]]</strong> data stored for this case will be permanently deleted.
+                    </p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" @click="module_remove_confirm = null">Cancel</button>
@@ -465,7 +477,9 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" v-if="pending_connector_type">
-                    <p class="text-muted" style="font-size:0.85rem;">No <strong>[[ pending_connector_type ]]</strong> connector is linked to this case yet. Select an instance to add one now, or skip.</p>
+                    <p class="text-muted" style="font-size:0.85rem;">
+                        No <strong>[[ pending_connector_type ]]</strong> connector is linked to this case yet. Select an instance to add one now, or skip.
+                    </p>
                     <div v-if="pending_connector_instances.length">
                         <label class="form-label fw-semibold">Instance</label>
                         <select class="form-select form-select-sm mb-3" v-model="pending_selected_instance">
@@ -477,7 +491,8 @@
                         <input type="text" class="form-control form-control-sm" v-model="pending_connector_identifier" placeholder="e.g. event UUID">
                     </div>
                     <div v-else class="alert alert-warning py-2" style="font-size:0.85rem;">
-                        <i class="fa-solid fa-triangle-exclamation me-2"></i>No instances found for <strong>[[ pending_connector_type ]]</strong>.
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                        No instances found for <strong>[[ pending_connector_type ]]</strong>.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -606,14 +621,18 @@
                                 </button>
                                 <ul class="dropdown-menu">
                                     <li>
-                                        <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'pdf')" title="Export markdown as pdf">PDF</button>
+                                        <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'pdf')" title="Export markdown as pdf">
+                                            PDF
+                                        </button>
                                         <button v-else class="btn btn-link" disabled>
                                             <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                                             <span role="status">Loading...</span>
                                         </button>
                                     </li>
                                     <li>
-                                        <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'docx')" title="Export markdown as docx">DOCX</button>
+                                        <button v-if="!is_exporting" class="btn btn-link" @click="export_notes(cases_info.case.id, 'docx')" title="Export markdown as docx">
+                                            DOCX
+                                        </button>
                                         <button v-else class="btn btn-link" disabled>
                                             <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                                             <span role="status">Loading...</span>
@@ -663,12 +682,62 @@
 
         </template>
 
-        <template v-else-if="main_tab == 'misp-objects'">
+        <template v-else-if="main_tab == 'misp'">
             <div v-if="!can_use_connectors" class="alert alert-warning" role="alert">
                 <i class="fa-solid fa-lock me-2"></i>
-                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use MISP objects.
+                <strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use MISP.
             </div>
-            <misp_object v-else :case_id="{{case.id}}" :cases_info="cases_info" :spotlight_id="misp_spotlight_id" @clear_spotlight="misp_spotlight_id = null" @modif_misp_objects="(msg) => fetch_nb_misp_objects()"></misp_object>
+            <template v-else>
+                <ul class="nav nav-tabs" style="margin-bottom: 10px;">
+                    <li class="nav-item">
+                        <button :class="['nav-link', {active: subtab_misp === 'objects'}]" id="subtab-misp-objects" @click="active_subtab_misp('objects')">
+                            <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title">MISP Objects</span>
+                            <span class="badge text-bg-secondary ms-1" v-if="nb_misp_objects > 0">[[nb_misp_objects]]</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button :class="['nav-link', {active: subtab_misp === 'sync'}]" id="subtab-misp-sync" @click="active_subtab_misp('sync')">
+                            <i class="fa-solid fa-rotate fa-sm me-1"></i><span class="section-title">Send &amp; Receive</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button :class="['nav-link', {active: subtab_misp === 'search'}]" id="subtab-misp-search" @click="active_subtab_misp('search')">
+                            <i class="fa-solid fa-magnifying-glass fa-sm me-1"></i><span class="section-title">Search</span>
+                        </button>
+                    </li>
+                </ul>
+                <template v-if="subtab_misp === 'objects'">
+                    <misp_object :case_id="{{case.id}}" :cases_info="cases_info" :spotlight_id="misp_spotlight_id" :case_misp_objects_list="case_misp_objects_list" @clear_spotlight="misp_spotlight_id = null" @modif_misp_objects="() => { fetch_nb_misp_objects(); fetch_case_misp_objects() }"></misp_object>
+                </template>
+                <template v-else-if="subtab_misp === 'sync'">
+                    <casemispconnectors
+                        mode="sync"
+                        :case_task_connectors_list="misp_case_connectors_list"
+                        :case_misp_objects_list="case_misp_objects_list"
+                        :modules="modules"
+                        :is_case="true"
+                        :object_id="cases_info.case.id"
+                        :cases_info="cases_info"
+                        @case_connectors="(msg) => fetch_case_connectors()"
+                        @note_change="on_connector_note_change"
+                        @task_connectors="">
+                    </casemispconnectors>
+                </template>
+                <template v-else-if="subtab_misp === 'search'">
+                    <casemispconnectors
+                        mode="search"
+                        :case_task_connectors_list="misp_case_connectors_list"
+                        :case_misp_objects_list="case_misp_objects_list"
+                        :modules="modules"
+                        :is_case="true"
+                        :object_id="cases_info.case.id"
+                        :cases_info="cases_info"
+                        @case_connectors="(msg) => fetch_case_connectors()"
+                        @note_change="on_connector_note_change"
+                        @task_connectors="">
+                    </casemispconnectors>
+                </template>
+            </template>
         </template>
 
         <template v-else-if="main_tab == 'connectors'">
@@ -1046,6 +1115,7 @@
         import manage_orgs from '/static/js/case/manage_orgs.js'
         import misp_object from '/static/js/case/misp_object.js'
         import caseconnectors from '/static/js/case/CaseConnectors.js'
+        import casemispconnectors from '/static/js/case/CaseMispConnectors.js'
         import casefiles from '/static/js/case/CaseFiles.js'
         import case_history from '/static/js/case/case_history.js'
         import timeline_view from '/static/js/case/timeline_view.js'
@@ -1066,6 +1136,7 @@
                 manage_orgs,
                 misp_object,
                 caseconnectors,
+                casemispconnectors,
                 casefiles,
                 case_history,
                 timeline_view,
@@ -1096,6 +1167,7 @@
                 const main_tab = ref('main')
                 const subtab_note = ref('case')
                 const subtab_timeline = ref('timeline-view')
+                const subtab_misp = ref('objects')
                 const tasks_tab = ref('main')
 
                 const taxonomies = ref([])
@@ -1125,6 +1197,7 @@
 
                 const nb_misp_objects = ref(0)
                 const misp_spotlight_id = ref(null)
+                const case_misp_objects_list = ref([])
 
                 // Dynamic connector module components
                 const loaded_module_components = ref({})
@@ -1166,6 +1239,20 @@
                     return case_connectors_list.value.filter(c => c.details && typeInstanceIds.has(c.details.id))
                 }
 
+                const misp_case_connectors_list = computed(() => {
+                    if (!case_connectors_list.value) return []
+                    return case_connectors_list.value.filter(c => c.is_misp_connector)
+                })
+
+                const misp_only_connectors = computed(() => {
+                    if (!all_connectors_list.value || typeof all_connectors_list.value !== 'object' || Array.isArray(all_connectors_list.value)) return {}
+                    const result = {}
+                    for (const [typeName, instances] of Object.entries(all_connectors_list.value)) {
+                        if (typeName.toUpperCase() === 'MISP') result[typeName] = instances
+                    }
+                    return result
+                })
+
                 async function loadModuleComponent(typeName) {
                     if (loaded_module_components.value[typeName] !== undefined) return
                     try {
@@ -1184,6 +1271,10 @@
                     }
                 })
 
+                watch(main_tab, (tab) => {
+                    if (tab === 'misp') fetch_case_misp_objects()
+                })
+
                 // store counts emitted by module components (e.g., Rulezet)
                 const module_counts = ref({})
 
@@ -1200,7 +1291,7 @@
 
                 const core_tab_labels = {
                     'notes': 'Notes',
-                    'misp-objects': 'MISP Objects',
+                    'misp': 'MISP',
                     'files': 'Files',
                     'timeline': 'Timeline',
                     'history': 'History',
@@ -1208,7 +1299,7 @@
                 }
                 const core_tab_icons = {
                     'notes': 'fa-solid fa-note-sticky fa-sm',
-                    'misp-objects': 'fa-solid fa-cubes fa-sm',
+                    'misp': 'fa-solid fa-plug fa-sm',
                     'files': 'fa-solid fa-file fa-sm',
                     'timeline': 'fa-solid fa-timeline fa-sm',
                     'history': 'fa-solid fa-clock-rotate-left fa-sm',
@@ -1729,7 +1820,7 @@
 
                 // Helper to deactivate all tabs (static + dynamic)
                 function deactivate_all_tabs() {
-                    ;['tab-main','tab-history','tab-notes','tab-misp-objects','tab-info','tab-files','tab-timeline','tab-connectors'].forEach(id => {
+                    ;['tab-main','tab-history','tab-notes','tab-misp','tab-info','tab-files','tab-timeline','tab-connectors'].forEach(id => {
                         const el = document.getElementById(id)
                         if (el) el.classList.remove('active')
                     })
@@ -1833,6 +1924,11 @@
                             document.getElementById("subtab-timeline-view").classList.remove("active")
                         }
                     }
+                    await nextTick()
+                }
+
+                async function active_subtab_misp(tab_name) {
+                    subtab_misp.value = tab_name
                     await nextTick()
                 }
 
@@ -2055,6 +2151,14 @@
                     }
                 }
 
+                async function fetch_case_misp_objects() {
+                    const res = await fetch('/case/{{case.id}}/get_case_misp_object')
+                    if (res.status === 200) {
+                        const loc = await res.json()
+                        case_misp_objects_list.value = loc['misp-object'] || []
+                    }
+                }
+
                 function get_completion_pourcentage(){
                     return Math.round((open_closed.value.closed / (open_closed.value.open + open_closed.value.closed) )*100)
                 }
@@ -2110,8 +2214,6 @@
                         dropdownParent: $('#add_new_link')
                     });
 
-                    $("#id-nb-misp-object").removeClass("d-none")
-                    // $("#id-case-status").removeClass("d-none")
 
                     const collapseEl = document.getElementById('collapseTasks');
                     const parentEl = document.getElementById('task-collapse');
@@ -2194,7 +2296,8 @@
 
                     window.addEventListener('navigate-to-misp-object', async (e) => {
                         misp_spotlight_id.value = e.detail.object_id
-                        await active_tab('misp-objects')
+                        await active_tab('misp')
+                        active_subtab_misp('objects')
                         window.scrollTo({ top: 0, behavior: 'smooth' })
                     })
                 })
@@ -2264,10 +2367,12 @@
                     main_tab,
                     subtab_note,
                     subtab_timeline,
+                    subtab_misp,
                     tasks_tab,
                     is_exporting,
                     nb_misp_objects,
                     misp_spotlight_id,
+                    case_misp_objects_list,
                     can_edit_case,
                     can_use_connectors,
                     onInput,
@@ -2275,6 +2380,7 @@
                     active_tab,
                     active_subtab_note,
                     active_subtab_timeline,
+                    active_subtab_misp,
                     active_task_tab,
                     submit_add_new_link,
                     remove_case_link,
@@ -2331,6 +2437,8 @@
                     connector_types_in_case,
                     loaded_module_components,
                     get_connector_instances,
+                    misp_case_connectors_list,
+                    misp_only_connectors,
                     module_counts,
                     active_module_tabs,
                     hidden_tabs,
