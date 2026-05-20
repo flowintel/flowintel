@@ -78,10 +78,31 @@ export default {
             }
         }
 
+        function isCurrentCase(candidate){
+            if(!candidate) return false
+            const curId = props.cases_info && props.cases_info.case ? props.cases_info.case.id : null
+            const curUuid = props.cases_info && props.cases_info.case ? props.cases_info.case.uuid : null
+            const curTitle = props.cases_info && props.cases_info.case ? props.cases_info.case.title : null
+            if(typeof candidate === 'object'){
+                if(curId != null && candidate.id != null && String(candidate.id) === String(curId)) return true
+                if(curUuid && candidate.uuid && candidate.uuid === curUuid) return true
+                if(curTitle && candidate.title && candidate.title === curTitle) return true
+                return false
+            }
+            const s = String(candidate).trim()
+            if(curId != null && s === String(curId)) return true
+            if(curUuid && s === curUuid) return true
+            return false
+        }
+
         async function merge_case() {
             let ocid = selected_merge_input.value && selected_merge_input.value.trim() ? selected_merge_input.value.trim() : (selected_merge.value.id || "")
             if(!ocid){
                 display_toast({message: "No target case selected", toast_class: "warning-subtle"})
+                return
+            }
+            if(isCurrentCase(ocid) || isCurrentCase(selected_merge.value)){
+                display_toast({message: "Cannot merge a case into itself", toast_class: "warning-subtle"})
                 return
             }
             const res = await fetch('/case/' + props.cases_info.case.id + '/merge/' + ocid)
@@ -106,7 +127,9 @@ export default {
                     processResults: function (data) {
                         let case_for_merge = []
                         for(let i in data.cases){
-                            case_for_merge.push({id: data.cases[i].id, text: data.cases[i].title, description: data.cases[i].description})
+                            const c = data.cases[i]
+                            if(isCurrentCase(c)) continue
+                            case_for_merge.push({id: c.id, text: c.title, title: c.title, uuid: c.uuid, description: c.description})
                         }
                         
                         return {
@@ -127,11 +150,23 @@ export default {
                     selected_merge.value = {}
                     return
                 }
+                if(isCurrentCase(val)){
+                    selected_merge.value = {}
+                    selected_merge_input.value = ''
+                    display_toast({message: "Cannot merge a case into itself", toast_class: "warning-subtle"})
+                    return
+                }
                 try{
                     const res = await fetch('/case/get_case/' + encodeURIComponent(val))
                     if(await res.status == 200){
                         const data = await res.json()
-                        selected_merge.value = data
+                        if(data && isCurrentCase(data)){
+                            selected_merge.value = {}
+                            selected_merge_input.value = ''
+                            display_toast({message: "Cannot merge a case into itself", toast_class: "warning-subtle"})
+                            return
+                        }
+                        selected_merge.value = data || {}
                     }else{
                         selected_merge.value = {}
                     }
@@ -141,8 +176,16 @@ export default {
             })
 
             $('.merge-case-ajax').on('change.select2', function (e) {
-                // selected_taxo.value = $(this).select2('data').map(item => item.id);
-                selected_merge.value = $(this).select2('data')[0]
+                const sel = $(this).select2('data')[0]
+                if(sel && isCurrentCase(sel)){
+                    selected_merge.value = {}
+                    selected_merge_input.value = ''
+                    $('#merge_case_input').val('')
+                    $(this).val(null).trigger('change')
+                    display_toast({message: "Cannot merge a case into itself", toast_class: "warning-subtle"})
+                    return
+                }
+                selected_merge.value = sel
                 selected_merge_input.value = ''
                 $('#merge_case_input').val('')
             })
@@ -351,11 +394,13 @@ export default {
                     </div>
                     <div class="modal-body">
                         <div class="alert alert-danger" role="alert">
-                            <i class="fa-solid fa-triangle-exclamation"></i> This will delete this case !
+                            <i class="fa-solid fa-triangle-exclamation"></i> This will delete this (the current) case !
                         </div>
                         <input id="merge_case_input" placeholder="Enter case id or uuid (optional)" class="form-control mb-2" />
                         <select class="merge-case-ajax" name="merge_into" data-placeholder="Or search case by title"></select>
                         <div class="case-core-style mt-3" v-if="Object.keys(selected_merge).length">
+                            <b>Case Title:</b><br>
+                            <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[selected_merge.title || selected_merge.text]]</p>
                             <b>Case Description:</b><br>
                             <p style="white-space: pre-wrap; word-wrap: break-word; margin-top: 5px">[[selected_merge.description]]</p>
                         </div>
