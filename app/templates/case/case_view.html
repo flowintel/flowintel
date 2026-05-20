@@ -273,7 +273,8 @@
             <button class="nav-link" id="tab-misp" @click="active_tab('misp')">
                 <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i>
                 <i class="fa-solid fa-plug fa-sm me-1"></i>
-                <span class="section-title fs-6">MISP </span>
+                <span class="section-title fs-6">MISP</span>
+                <span class="badge text-bg-secondary ms-1" v-if="nb_misp_objects > 0">[[nb_misp_objects]]</span>
             </button>
             <button class="tab-close-btn" @click.stop="hide_tab('misp')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
@@ -707,7 +708,7 @@
                     </li>
                 </ul>
                 <template v-if="subtab_misp === 'objects'">
-                    <misp_object :case_id="{{case.id}}" :cases_info="cases_info" :spotlight_id="misp_spotlight_id" :case_misp_objects_list="case_misp_objects_list" @clear_spotlight="misp_spotlight_id = null" @modif_misp_objects="() => { fetch_nb_misp_objects(); fetch_case_misp_objects() }"></misp_object>
+                    <misp_object :case_id="{{case.id}}" :cases_info="cases_info" :spotlight_id="misp_spotlight_id" :case_misp_objects_list="case_misp_objects_list" @clear_spotlight="misp_spotlight_id = null" @modif_misp_objects="fetch_case_misp_objects"></misp_object>
                 </template>
                 <template v-else-if="subtab_misp === 'sync'">
                     <casemispconnectors
@@ -1195,7 +1196,7 @@
 
                 const case_files_list = ref([])
 
-                const nb_misp_objects = ref(0)
+                const nb_misp_objects = computed(() => case_misp_objects_list.value.length)
                 const misp_spotlight_id = ref(null)
                 const case_misp_objects_list = ref([])
 
@@ -1712,7 +1713,7 @@
                         await nextTick()
                         scrollIntoSelectedElement()
                         fetch_open_closed()
-                        fetch_nb_misp_objects()
+                        fetch_case_misp_objects()
                         resolveAndSetNotes()
                         await fetch_sorted_tasks()
 
@@ -2143,14 +2144,6 @@
                     display_toast(res)
                 }
 
-                async function fetch_nb_misp_objects() {
-                    const res = await fetch('/case/{{case.id}}/nb_objects')
-                    if (await res.status == 200){
-                        let loc = await res.json()
-                        nb_misp_objects.value = loc["nb_objects"]
-                    }
-                }
-
                 async function fetch_case_misp_objects() {
                     const res = await fetch('/case/{{case.id}}/get_case_misp_object')
                     if (res.status === 200) {
@@ -2413,8 +2406,7 @@
                     change_status_sort,
                     change_switch_check,
                     fetch_sorted_tasks,
-
-                    fetch_nb_misp_objects,
+                    fetch_case_misp_objects,
 
                     get_completion_pourcentage,
                     get_completion_color,
