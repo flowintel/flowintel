@@ -18,10 +18,6 @@ export default {
         const edit_instance = ref()
         const is_loading_update = ref(false)
 
-        // Sync log expansion
-        const expanded_log_row = ref(null)
-        const sync_logs_map = ref({})   // keyed by case_task_instance_id
-
         const can_edit_object = computed(() => {
             if (!props.cases_info) return false
             const permission = props.cases_info.permission || {}
@@ -163,28 +159,6 @@ export default {
 
         }
 
-        async function toggle_sync_logs(instance_id) {
-            if (expanded_log_row.value === instance_id) {
-                expanded_log_row.value = null
-                return
-            }
-            expanded_log_row.value = instance_id
-            if (sync_logs_map.value[instance_id]) return  // already loaded
-            sync_logs_map.value[instance_id] = { loading: true, logs: [] }
-            try {
-                const res = await fetch("/case/" + props.object_id + "/connectors/" + instance_id + "/sync_logs")
-                if (res.status === 200) {
-                    const data = await res.json()
-                    sync_logs_map.value[instance_id] = { loading: false, logs: data.sync_logs || [] }
-                } else {
-                    sync_logs_map.value[instance_id] = { loading: false, logs: [] }
-                    display_toast(res)
-                }
-            } catch (e) {
-                sync_logs_map.value[instance_id] = { loading: false, logs: [] }
-            }
-        }
-
         onMounted(async () => {
             await nextTick()
             hasJQuery = (typeof $ !== 'undefined')
@@ -255,15 +229,12 @@ export default {
             edit_instance,
             modal_identifier,
             is_loading_update,
-            expanded_log_row,
-            sync_logs_map,
             can_edit_object,
 
             save_connector,
             remove_connector,
             edit_instance_open_modal,
             edit_connector,
-            toggle_sync_logs,
         }
     },
     css: `
@@ -322,61 +293,6 @@ export default {
                         <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)">
                             <i class="fa-solid fa-trash"></i>
                         </button>
-                        <button v-if="is_case" type="button" class="btn btn-outline-secondary ms-1"
-                                :title="expanded_log_row === instance.case_task_instance_id ? 'Hide sync history' : 'Show sync history'"
-                                @click="toggle_sync_logs(instance.case_task_instance_id)">
-                            <i :class="expanded_log_row === instance.case_task_instance_id ? 'fa-solid fa-chevron-up' : 'fa-solid fa-clock-rotate-left'"></i>
-                        </button>
-                    </td>
-                </tr>
-                <!-- Inline sync log row -->
-                <tr v-if="is_case && expanded_log_row === instance.case_task_instance_id">
-                    <td colspan="7" class="p-0">
-                        <div class="p-3 bg-body-secondary border-top border-bottom">
-                            <div v-if="sync_logs_map[instance.case_task_instance_id]?.loading" class="text-muted small">
-                                <span class="spinner-border spinner-border-sm me-2"></span>Loading sync history…
-                            </div>
-                            <div v-else-if="!sync_logs_map[instance.case_task_instance_id]?.logs?.length" class="text-muted small">
-                                No sync history yet for this connector.
-                            </div>
-                            <div v-else>
-                                <table class="table table-sm table-borderless mb-0">
-                                    <thead>
-                                        <tr class="text-muted" style="font-size:0.8em;">
-                                            <th>Time</th>
-                                            <th>Direction</th>
-                                            <th>Status</th>
-                                            <th>Synced</th>
-                                            <th>Failed</th>
-                                            <th>Message</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="log in sync_logs_map[instance.case_task_instance_id].logs" :key="log.id" style="font-size:0.85em;">
-                                            <td class="text-muted">[[log.timestamp]]</td>
-                                            <td>
-                                                <span v-if="log.direction === 'send'" class="badge bg-secondary"><i class="fa-solid fa-arrow-up me-1"></i>Send</span>
-                                                <span v-else class="badge bg-info text-dark"><i class="fa-solid fa-arrow-down me-1"></i>Receive</span>
-                                            </td>
-                                            <td>
-                                                <span v-if="log.status === 'success'" class="badge bg-success">success</span>
-                                                <span v-else-if="log.status === 'partial'" class="badge bg-warning text-dark">partial</span>
-                                                <span v-else class="badge bg-danger">error</span>
-                                            </td>
-                                            <td>[[log.objects_synced]]</td>
-                                            <td>[[log.objects_failed]]</td>
-                                            <td class="text-muted">
-                                                <span v-if="log.message">[[log.message]]</span>
-                                                <span v-else-if="log.details && log.details.length">
-                                                    <span v-for="d in log.details.filter(d=>d.status==='error').slice(0,3)" :key="d.name" class="text-danger me-2" :title="d.error">[[d.name]]</span>
-                                                    <span v-if="log.details.filter(d=>d.status==='error').length > 3" class="text-muted">…</span>
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
                     </td>
                 </tr>
                 </template>

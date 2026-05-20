@@ -35,8 +35,39 @@ export default {
 
         const misp_search_state = reactive({})
 
+        // Sync logs state (keyed by case_task_instance_id)
+        const sync_logs_map = ref({})
+
+        async function load_sync_logs(instance_id) {
+            if (sync_logs_map.value[instance_id]) return  // already cached
+            sync_logs_map.value[instance_id] = { loading: true, logs: [] }
+            try {
+                const url = props.is_case
+                    ? '/case/' + props.object_id + '/connectors/' + instance_id + '/sync_logs'
+                    : '/case/task/' + props.object_id + '/connectors/' + instance_id + '/sync_logs'
+                const res = await fetch(url)
+                if (res.status === 200) {
+                    const data = await res.json()
+                    sync_logs_map.value[instance_id] = { loading: false, logs: data.sync_logs || [] }
+                } else {
+                    sync_logs_map.value[instance_id] = { loading: false, logs: [] }
+                    display_toast(res)
+                }
+            } catch (e) {
+                sync_logs_map.value[instance_id] = { loading: false, logs: [] }
+            }
+        }
+
+        async function refresh_sync_logs(instance_id) {
+            delete sync_logs_map.value[instance_id]
+            await load_sync_logs(instance_id)
+        }
+
         function set_sync_direction(dir) {
             sync_direction.value = dir
+            if (dir === 'logs' && sync_selected_instance.value) {
+                load_sync_logs(sync_selected_instance.value.case_task_instance_id)
+            }
         }
 
         function get_misp_search(instance_id) {
@@ -138,8 +169,12 @@ export default {
         }
 
         // Auto-init MispSyncPanel when instance or direction changes
-        watch([sync_selected_instance, sync_direction], async ([inst]) => {
+        watch([sync_selected_instance, sync_direction], async ([inst, dir]) => {
             if (props.mode !== 'sync' || !inst) return
+            if (dir === 'logs') {
+                load_sync_logs(inst.case_task_instance_id)
+                return
+            }
             await nextTick()
             sync_panel_ref.value?.on_show()
         }, { immediate: true })
@@ -152,7 +187,9 @@ export default {
             sync_selected_instance,
             search_instance_idx,
             search_selected_instance,
+            sync_logs_map,
             set_sync_direction,
+            refresh_sync_logs,
             get_misp_search,
             submit_misp_search,
             add_results_to_note,
@@ -193,7 +230,7 @@ export default {
                                     </div>
                                 </div>
                             </div>
-                            <!-- Direction tabs: Send / Receive -->
+                            <!-- Direction tabs: Send / Receive / Logs -->
                             <ul class="nav nav-tabs mb-3">
                                 <li class="nav-item">
                                     <button :class="['nav-link', {active: sync_direction === 'send'}]" @click="set_sync_direction('send')">
@@ -205,18 +242,77 @@ export default {
                                         <i class="fa-solid fa-arrow-down fa-sm me-1"></i>Receive
                                     </button>
                                 </li>
+                                <li class="nav-item">
+                                    <button :class="['nav-link', {active: sync_direction === 'logs'}]" @click="set_sync_direction('logs')">
+                                        <i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i>Logs
+                                    </button>
+                                </li>
                             </ul>
-                            <!-- MispSyncPanel -->
-                            <misp-sync-panel
-                                :ref="el => sync_panel_ref = el"
-                                :case_id="object_id"
-                                :instance="sync_selected_instance"
-                                :direction="sync_direction"
-                                :modules="modules"
-                                :case_misp_objects_list="case_misp_objects_list"
-                                @sync_done="(e) => on_sync_done(e)"
-                                @close="">
-                            </misp-sync-panel>
+                            <!-- MispSyncPanel (Send / Receive) -->
+                            <template v-if="sync_direction !== 'logs'">
+                                <misp-sync-panel
+                                    :ref="el => sync_panel_ref = el"
+                                    :case_id="object_id"
+                                    :instance="sync_selected_instance"
+                                    :direction="sync_direction"
+                                    :modules="modules"
+                                    :case_misp_objects_list="case_misp_objects_list"
+                                    @sync_done="(e) => on_sync_done(e)"
+                                    @close="">
+                                </misp-sync-panel>
+                            </template>
+                            <!-- Logs panel -->
+                            <template v-else>
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="text-muted small fw-semibold">Sync history for [[ sync_selected_instance.details.name ]]</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @click="refresh_sync_logs(sync_selected_instance.case_task_instance_id)" title="Refresh logs">
+                                        <i class="fa-solid fa-rotate-right fa-xs"></i>
+                                    </button>
+                                </div>
+                                <div v-if="sync_logs_map[sync_selected_instance.case_task_instance_id]?.loading" class="text-muted small">
+                                    <span class="spinner-border spinner-border-sm me-2"></span>Loading sync history…
+                                </div>
+                                <div v-else-if="!sync_logs_map[sync_selected_instance.case_task_instance_id]?.logs?.length" class="text-muted small">
+                                    <i class="fa-solid fa-circle-info me-1"></i>No sync history yet for this instance.
+                                </div>
+                                <div v-else class="table-responsive">
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <thead>
+                                            <tr class="text-muted" style="font-size:0.8em;">
+                                                <th>Time</th>
+                                                <th>Direction</th>
+                                                <th>Status</th>
+                                                <th>Synced</th>
+                                                <th>Failed</th>
+                                                <th>Message</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="log in sync_logs_map[sync_selected_instance.case_task_instance_id].logs" :key="log.id" style="font-size:0.85em;">
+                                                <td class="text-muted">[[log.timestamp]]</td>
+                                                <td>
+                                                    <span v-if="log.direction === 'send'" class="badge bg-secondary"><i class="fa-solid fa-arrow-up me-1"></i>Send</span>
+                                                    <span v-else class="badge bg-info text-dark"><i class="fa-solid fa-arrow-down me-1"></i>Receive</span>
+                                                </td>
+                                                <td>
+                                                    <span v-if="log.status === 'success'" class="badge bg-success">success</span>
+                                                    <span v-else-if="log.status === 'partial'" class="badge bg-warning text-dark">partial</span>
+                                                    <span v-else class="badge bg-danger">error</span>
+                                                </td>
+                                                <td>[[log.objects_synced]]</td>
+                                                <td>[[log.objects_failed]]</td>
+                                                <td class="text-muted">
+                                                    <span v-if="log.message">[[log.message]]</span>
+                                                    <span v-else-if="log.details && log.details.length">
+                                                        <span v-for="d in log.details.filter(d=>d.status==='error').slice(0,3)" :key="d.name" class="text-danger me-2" :title="d.error">[[d.name]]</span>
+                                                        <span v-if="log.details.filter(d=>d.status==='error').length > 3" class="text-muted">…</span>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </template>
                         </template>
                     </div>
                 </div>

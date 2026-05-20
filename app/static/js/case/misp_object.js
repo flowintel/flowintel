@@ -42,6 +42,7 @@ export default {
         // Search / filter / pagination
         const search_query = ref('')
         const type_filter = ref('')
+        const show_unsynced_only = ref(false)
         const current_page = ref(1)
         const per_page = 10
 
@@ -62,6 +63,9 @@ export default {
             if (t) {
                 objs = objs.filter(o => o.object_name === t)
             }
+            if (show_unsynced_only.value) {
+                objs = objs.filter(o => !o.synced_instances || !o.synced_instances.length)
+            }
             return objs
         })
 
@@ -77,7 +81,7 @@ export default {
             return names.sort()
         })
 
-        watch([search_query, type_filter], () => { current_page.value = 1; activeTabIdx.value = 0 })
+        watch([search_query, type_filter, show_unsynced_only], () => { current_page.value = 1; activeTabIdx.value = 0 })
         watch(() => props.spotlight_id, () => { current_page.value = 1; activeTabIdx.value = 0 })
 
         const can_edit = computed(() => {
@@ -625,6 +629,7 @@ export default {
             toggleTabView,
             search_query,
             type_filter,
+            show_unsynced_only,
             current_page,
             per_page,
             filtered_objects,
@@ -917,9 +922,17 @@ export default {
                 <option v-for="t in object_type_options" :key="t" :value="t">[[ t ]]</option>
             </select>
         </div>
-        <div class="col-md-4 text-muted small">
+        <div class="col-auto">
+            <button type="button"
+                    :class="['btn btn-sm', show_unsynced_only ? 'btn-warning' : 'btn-outline-secondary']"
+                    @click="show_unsynced_only = !show_unsynced_only"
+                    title="Show only objects not yet synced to any MISP instance">
+                <i class="fa-solid fa-filter me-1"></i>Unsynced only
+            </button>
+        </div>
+        <div class="col text-muted small">
             [[ filtered_objects.length ]] object(s)
-            <span v-if="search_query || type_filter"> matching filter</span>
+            <span v-if="search_query || type_filter || show_unsynced_only"> matching filter</span>
         </div>
     </div>
 

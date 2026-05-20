@@ -18,6 +18,8 @@ export default {
         const selected_local_ids = ref([])
         const is_loading_local = ref(false)
 
+        const show_unsynced_only = ref(false)
+
         const remote_objects = ref([])
         const remote_search = ref('')
         const remote_type_filter = ref('')
@@ -40,6 +42,13 @@ export default {
                 )
             }
             if (t) objs = objs.filter(o => o.object_name === t)
+            if (show_unsynced_only.value && props.direction === 'send') {
+                objs = objs.filter(o =>
+                    !o.synced_instances || !o.synced_instances.some(si =>
+                        si.instance_id === props.instance?.details?.id
+                    )
+                )
+            }
             return objs
         })
 
@@ -58,6 +67,9 @@ export default {
                 )
             }
             if (t) objs = objs.filter(o => o.name === t)
+            if (show_unsynced_only.value && props.direction === 'receive') {
+                objs = objs.filter(o => !is_synced_locally(o.uuid))
+            }
             return objs
         })
 
@@ -151,6 +163,7 @@ export default {
             selected_local_ids.value = []
             selected_remote_uuids.value = []
             remote_objects.value = []
+            show_unsynced_only.value = false
             await load_local_objects()
         }
 
@@ -200,6 +213,7 @@ export default {
             remote_objects, remote_search, remote_type_filter, selected_remote_uuids, is_loading_remote,
             module_name, module_desc, is_submitting, is_importing_report,
             filtered_local, filtered_remote, local_type_options, remote_type_options,
+            show_unsynced_only,
             load_remote_objects, toggle_local_all, toggle_remote_all,
             submit, import_event_report, on_show, on_module_change, is_synced_locally
         }
@@ -213,7 +227,7 @@ export default {
                             <select class="form-select form-select-sm" v-model="module_name" @change="on_module_change">
                                 <option value="">-- select module --</option>
                                 <template v-for="(mod, key) in modules">
-                                    <option v-if="direction === 'send' ? mod.type === 'send_to' : mod.type === 'receive_from'" :value="key">[[ key ]]</option>
+                                    <option v-if="(direction === 'send' ? mod.type === 'send_to' : mod.type === 'receive_from') && mod.config?.connector === 'misp'" :value="key">[[ key ]]</option>
                                 </template>
                             </select>
                         </div>
@@ -233,9 +247,17 @@ export default {
                                         <span class="badge bg-secondary ms-1">[[ filtered_local.length ]]</span>
                                         <span v-if="direction === 'send'" class="badge bg-primary ms-1">[[ selected_local_ids.length ]] selected</span>
                                     </span>
-                                    <button v-if="direction === 'send'" type="button" class="btn btn-link btn-sm py-0" @click="toggle_local_all()">
-                                        [[ selected_local_ids.length === filtered_local.length && filtered_local.length > 0 ? 'Deselect all' : 'Select all' ]]
-                                    </button>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button v-if="direction === 'send'" type="button"
+                                                :class="['btn btn-sm py-0', show_unsynced_only ? 'btn-warning' : 'btn-outline-secondary']"
+                                                @click="show_unsynced_only = !show_unsynced_only"
+                                                title="Toggle: show only objects not yet synced to this instance">
+                                            <i class="fa-solid fa-filter me-1"></i>Unsynced only
+                                        </button>
+                                        <button v-if="direction === 'send'" type="button" class="btn btn-link btn-sm py-0" @click="toggle_local_all()">
+                                            [[ selected_local_ids.length === filtered_local.length && filtered_local.length > 0 ? 'Deselect all' : 'Select all' ]]
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="card-body p-2">
                                     <div class="d-flex gap-1 mb-2">
@@ -292,6 +314,12 @@ export default {
                                         <span v-if="direction === 'receive'" class="badge bg-primary ms-1">[[ selected_remote_uuids.length ]] selected</span>
                                     </span>
                                     <div class="d-flex gap-2 align-items-center">
+                                        <button v-if="direction === 'receive' && remote_objects.length" type="button"
+                                                :class="['btn btn-sm py-0', show_unsynced_only ? 'btn-warning' : 'btn-outline-secondary']"
+                                                @click="show_unsynced_only = !show_unsynced_only"
+                                                title="Toggle: show only objects not yet synced locally">
+                                            <i class="fa-solid fa-filter me-1"></i>Unsynced only
+                                        </button>
                                         <button v-if="direction === 'receive' && remote_objects.length" type="button" class="btn btn-link btn-sm py-0" @click="toggle_remote_all()">
                                             [[ selected_remote_uuids.length === filtered_remote.length && filtered_remote.length > 0 ? 'Deselect all' : 'Select all' ]]
                                         </button>
