@@ -720,6 +720,7 @@
                         :object_id="cases_info.case.id"
                         :cases_info="cases_info"
                         @case_connectors="(msg) => fetch_case_connectors()"
+                        @modif_misp_objects="fetch_case_misp_objects"
                         @note_change="on_connector_note_change"
                         @task_connectors="">
                     </casemispconnectors>

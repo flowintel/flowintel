@@ -12,7 +12,7 @@ export default {
         mode: { type: String, required: true },   // 'sync' | 'search'
         case_misp_objects_list: { type: Array, default: null }
     },
-    emits: ['case_connectors', 'task_connectors', 'note_change', 'task_note_added'],
+    emits: ['case_connectors', 'task_connectors', 'note_change', 'task_note_added', 'modif_misp_objects'],
     components: { 'misp-sync-panel': MispSyncPanel },
     setup(props, { emit }) {
         const sidebar_visible = ref(true)
@@ -37,6 +37,39 @@ export default {
 
         // Sync logs state (keyed by case_task_instance_id)
         const sync_logs_map = ref({})
+
+        // Inline identifier editing
+        const identifier_editing = ref(false)
+        const identifier_draft = ref('')
+
+        function start_edit_identifier() {
+            identifier_draft.value = sync_selected_instance.value?.identifier || ''
+            identifier_editing.value = true
+        }
+
+        function cancel_edit_identifier() {
+            identifier_editing.value = false
+            identifier_draft.value = ''
+        }
+
+        async function save_edit_identifier() {
+            const inst = sync_selected_instance.value
+            if (!inst) return
+            const url = props.is_case
+                ? '/case/' + props.object_id + '/connectors/' + inst.case_task_instance_id + '/edit_connector'
+                : '/case/task/' + props.object_id + '/edit_connector/' + inst.case_task_instance_id
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier: identifier_draft.value })
+            })
+            if (res.status === 200) {
+                inst.identifier = identifier_draft.value
+                identifier_editing.value = false
+                identifier_draft.value = ''
+            }
+            display_toast(res)
+        }
 
         async function load_sync_logs(instance_id) {
             if (sync_logs_map.value[instance_id]) return  // already cached
@@ -161,6 +194,7 @@ export default {
         }
 
         function on_sync_done({ direction, instance }) {
+            emit('modif_misp_objects')
             if (props.is_case) {
                 emit("case_connectors", true)
             } else {
@@ -168,7 +202,11 @@ export default {
             }
         }
 
-        // Auto-init MispSyncPanel when instance or direction changes
+        // Auto-init MispSyncPanel when instance or direction changes; reset identifier edit on instance change
+        watch(sync_selected_instance, () => {
+            identifier_editing.value = false
+            identifier_draft.value = ''
+        })
         watch([sync_selected_instance, sync_direction], async ([inst, dir]) => {
             if (props.mode !== 'sync' || !inst) return
             if (dir === 'logs') {
@@ -188,8 +226,13 @@ export default {
             search_instance_idx,
             search_selected_instance,
             sync_logs_map,
+            identifier_editing,
+            identifier_draft,
             set_sync_direction,
             refresh_sync_logs,
+            start_edit_identifier,
+            cancel_edit_identifier,
+            save_edit_identifier,
             get_misp_search,
             submit_misp_search,
             add_results_to_note,
@@ -221,12 +264,44 @@ export default {
                                 <button class="btn btn-sm btn-outline-secondary flex-shrink-0" @click="sidebar_visible = !sidebar_visible" :title="sidebar_visible ? 'Hide instances' : 'Show instances'">
                                     <i :class="sidebar_visible ? 'fa-solid fa-chevron-left fa-xs' : 'fa-solid fa-chevron-right fa-xs'"></i>
                                 </button>
-                                <div>
-                                    <a :href="sync_selected_instance.details.url" class="text-primary small fw-semibold" target="_blank">[[ sync_selected_instance.details.url ]]</a>
-                                    <div class="small mt-1" style="color:var(--bs-primary);">
-                                        <i class="fa-solid fa-rotate fa-xs me-1"></i>
-                                        <span v-if="sync_selected_instance.last_sync">Last sync: [[ sync_selected_instance.last_sync ]]</span>
-                                        <span v-else class="fst-italic">Never synced</span>
+                                <div class="d-flex">
+                                    <div>
+                                        <a :href="sync_selected_instance.details.url" class="text-primary small fw-semibold" target="_blank">
+                                            [[ sync_selected_instance.details.url ]]
+                                        </a>
+                                        <div class="small mt-1" style="color:var(--bs-primary);">
+                                            <i class="fa-solid fa-rotate fa-xs me-1"></i>
+                                            <span v-if="sync_selected_instance.last_sync">Last sync: [[ sync_selected_instance.last_sync ]]</span>
+                                            <span v-else class="fst-italic">Never synced</span>
+                                        </div>
+                                    </div>
+                                    <div class="small mt-1 ms-4 d-flex gap-1">
+                                        <span class="text-muted">Identifier:</span>
+                                        <template v-if="identifier_editing">
+                                            <input type="text" class="form-control form-control-sm py-0" style="min-width:100%; height:1.6rem;" v-model="identifier_draft"
+                                                @keyup.enter="save_edit_identifier()"
+                                                @keyup.escape="cancel_edit_identifier()">
+                                            <span>
+                                                <button class="btn btn-success btn-sm py-0 px-1" @click="save_edit_identifier()" title="Save">
+                                                    <i class="fa-solid fa-check fa-xs"></i>
+                                                </button>
+                                            </span>
+                                            <span>
+                                                <button class="btn btn-outline-secondary btn-sm py-0 px-1" @click="cancel_edit_identifier()" title="Cancel">
+                                                    <i class="fa-solid fa-xmark fa-xs"></i>
+                                                </button>
+                                            </span>
+                                        </template>
+                                        <template v-else>
+                                            <span :class="sync_selected_instance.identifier ? 'fw-semibold' : 'fst-italic text-muted'" style="color:var(--bs-primary);">
+                                                [[ sync_selected_instance.identifier || 'None' ]]
+                                            </span>
+                                            <span>
+                                                <button v-if="is_case" class="btn btn-link btn-sm p-0 ms-1" style="color:var(--bs-primary); line-height:1;" @click="start_edit_identifier()" title="Edit identifier">
+                                                    <i class="fa-solid fa-pen fa-xs"></i>
+                                                </button>
+                                            </span>
+                                        </template>
                                     </div>
                                 </div>
                             </div>

@@ -13,9 +13,9 @@ export default {
     emits: ['case_connectors', 'task_connectors', 'note_change', 'task_note_added'],
     setup(props, { emit }) {
         const show_add_page = ref(false)
-        const show_edit_page = ref(false)
         const connectors_selected = ref([])
-        const edit_instance = ref()
+        const editing_id = ref(null)
+        const editing_identifier = ref('')
         const is_loading_update = ref(false)
 
         const can_edit_object = computed(() => {
@@ -122,41 +122,40 @@ export default {
             display_toast(res)
         }
 
-        function edit_instance_open_modal(instance) {
-            edit_instance.value = instance
-            show_edit_page.value = true
+        function start_edit(instance) {
+            editing_id.value = instance.case_task_instance_id
+            editing_identifier.value = instance.identifier || ''
+        }
+
+        function cancel_edit() {
+            editing_id.value = null
+            editing_identifier.value = ''
         }
 
         async function edit_connector() {
             let url
             if (props.is_case) {
-                url = "/case/" + props.object_id + "/connectors/" + edit_instance.value.case_task_instance_id + "/edit_connector"
+                url = "/case/" + props.object_id + "/connectors/" + editing_id.value + "/edit_connector"
             } else {
-                url = "/case/task/" + props.object_id + "/edit_connector/" + edit_instance.value.case_task_instance_id
+                url = "/case/task/" + props.object_id + "/edit_connector/" + editing_id.value
             }
-
-            let loc_identifier = $("#input-edit-connector-" + modal_identifier).val()
             const res = await fetch(url, {
                 method: "POST",
                 headers: {
                     "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    "identifier": loc_identifier
-                })
+                body: JSON.stringify({ "identifier": editing_identifier.value })
             });
             if (await res.status == 200) {
                 for (let i in props.case_task_connectors_list) {
-                    if (props.case_task_connectors_list[i].case_task_instance_id == edit_instance.value.case_task_instance_id) {
-                        props.case_task_connectors_list[i].identifier = loc_identifier
+                    if (props.case_task_connectors_list[i].case_task_instance_id == editing_id.value) {
+                        props.case_task_connectors_list[i].identifier = editing_identifier.value
                     }
                 }
-                show_edit_page.value = false
-                edit_instance.value = null
-
+                editing_id.value = null
+                editing_identifier.value = ''
             }
             display_toast(res)
-
         }
 
         onMounted(async () => {
@@ -224,16 +223,17 @@ export default {
 
         return {
             show_add_page,
-            show_edit_page,
             connectors_selected,
-            edit_instance,
+            editing_id,
+            editing_identifier,
             modal_identifier,
             is_loading_update,
             can_edit_object,
 
             save_connector,
             remove_connector,
-            edit_instance_open_modal,
+            start_edit,
+            cancel_edit,
             edit_connector,
         }
     },
@@ -247,7 +247,7 @@ export default {
     `,
     template: `
         <!-- PAGE 1: connector list -->
-        <template v-if="!show_add_page && !show_edit_page">
+        <template v-if="!show_add_page">
         <div v-if="can_edit_object">
             <button class="btn btn-outline-primary" @click="show_add_page = true" title="Add connector">
                 <i class="fa-solid fa-plus"></i>
@@ -276,23 +276,41 @@ export default {
                         <a style="margin-left: 5px" :href="instance.details.url">[[instance.details.url]]</a>
                     </td>
 
-                    <td v-if="instance.identifier">
-                        <span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>
-                        <template v-if="instance.is_misp_connector">
-                            <a style="margin-left: 8px;" :href="(instance.details.url.endsWith('/') ? instance.details.url : instance.details.url + '/') + 'events/view/' + instance.identifier" target="_blank" title="Open MISP event on remote instance">
-                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                            </a>
+                    <td>
+                        <template v-if="editing_id === instance.case_task_instance_id">
+                            <div class="input-group input-group-sm" style="min-width:180px;">
+                                <input type="text" class="form-control" v-model="editing_identifier"
+                                    @keyup.enter="edit_connector()"
+                                    @keyup.escape="cancel_edit()">
+                            </div>
+                        </template>
+                        <template v-else>
+                            <span title="identifier used by module">[[instance.identifier || 'None']]</span>
+                            <template v-if="instance.is_misp_connector && instance.identifier">
+                                <a style="margin-left: 8px;" :href="(instance.details.url.endsWith('/') ? instance.details.url : instance.details.url + '/') + 'events/view/' + instance.identifier" target="_blank" title="Open MISP event on remote instance">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </a>
+                            </template>
                         </template>
                     </td>
-                    <td v-else><i>None</i></td>
 
                     <td v-if="can_edit_object">
-                        <button class="btn btn-outline-primary" @click="edit_instance_open_modal(instance)">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </button> 
-                        <button class="btn btn-outline-danger" @click="remove_connector(instance.case_task_instance_id)">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                        <template v-if="editing_id === instance.case_task_instance_id">
+                            <button class="btn btn-success btn-sm" @click="edit_connector()" title="Save">
+                                <i class="fa-solid fa-check"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm ms-1" @click="cancel_edit()" title="Cancel">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </template>
+                        <template v-else>
+                            <button class="btn btn-outline-primary" @click="start_edit(instance)">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button class="btn btn-outline-danger ms-1" @click="remove_connector(instance.case_task_instance_id)">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </template>
                     </td>
                 </tr>
                 </template>
@@ -334,37 +352,5 @@ export default {
                 </button>
             </div>
         </template><!-- end page 2 -->
-
-        <!-- PAGE 3: Edit connector form (inline) -->
-        <template v-else-if="show_edit_page && edit_instance">
-            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
-                <button type="button" class="btn btn-link p-0 me-3 text-decoration-none text-body" @click="show_edit_page = false; edit_instance = null" title="Back to connectors list">
-                    <i class="fa-solid fa-arrow-left fa-lg"></i>
-                </button>
-                <span class="fw-semibold">Edit Connector</span>
-            </div>
-            <div class="mb-3">
-                <small class="text-muted">Instance name</small>
-                <div class="fw-semibold">[[ edit_instance.details.name ]]</div>
-            </div>
-            <div class="mb-3">
-                <small class="text-muted">Instance URL</small>
-                <div class="fw-semibold">[[ edit_instance.details.url ]]</div>
-            </div>
-            <div class="form-floating col-md-6">
-                <input :id="'input-edit-connector-'+modal_identifier" class="form-control" :value="edit_instance.identifier">
-                <label>Identifier</label>
-            </div>
-            <div class="d-flex justify-content-end gap-2 mt-3">
-                <button type="button" class="btn btn-secondary" @click="show_edit_page = false; edit_instance = null">
-                    <i class="fa-solid fa-arrow-left me-1"></i>Cancel
-                </button>
-                <button type="button" class="btn btn-primary" @click="edit_connector()">
-                    Save
-                </button>
-            </div>
-        </template><!-- end page 3 -->
-
-
     `
 }
