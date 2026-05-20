@@ -271,8 +271,9 @@ Value: [[misp_attr]]
 
                     $('#insert_form').append(
                         $('<form>').attr({"action": "/analyzer/misp-modules/result_to_case", "name": "flowintel", "method": "post", "style": "display:none"}).append(
-                            $("<input>").attr({"type": "text", "name": "note_selected"}).val(JSON.stringify(data_to_pass)),
-                            $("<input>").attr({"type": "text", "name": "misp_object_selected"}).val(loc),
+                            $("<input>").attr({"type": "hidden", "name": "note_selected"}).val(JSON.stringify(data_to_pass)),
+                            $("<input>").attr({"type": "hidden", "name": "misp_object_selected"}).val(loc),
+                            $("<input>").attr({"type": "hidden", "name": "csrf_token"}).val($('#csrf_token').val())
                         )
                     );
                     document.forms['flowintel'].submit();
