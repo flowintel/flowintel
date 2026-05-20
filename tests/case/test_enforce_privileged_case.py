@@ -49,7 +49,8 @@ def test_editor_delete_denied(client):
                       headers={"X-API-KEY": EDITOR_KEY})
     assert resp.status_code == 403
 
-def test_editor_fork_denied(client):
+def test_editor_fork_allowed(client):
+    """Editors with view access can fork a privileged case (UC-02)."""
     resp = create_case(client, EDITOR_KEY)
     case_id = resp.json["case_id"]
 
@@ -57,7 +58,7 @@ def test_editor_fork_denied(client):
                        content_type="application/json",
                        headers={"X-API-KEY": EDITOR_KEY},
                        json={"case_title_fork": "Forked enforced case"})
-    assert resp.status_code == 403
+    assert resp.status_code == 201
 
 def test_editor_recurring_denied(client):
     resp = create_case(client, EDITOR_KEY)

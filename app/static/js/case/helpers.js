@@ -25,10 +25,11 @@ export function canModifyPrivilegedCase(casesInfo) {
     return casesInfo.permission.admin || casesInfo.permission.case_admin;
 }
 
-// Whether the current user can fork a privileged case.
+// Whether the current user can fork a case. Any user who can view/download
+// the case (i.e. has reached this component) is allowed to fork it
 export function canForkPrivilegedCase(casesInfo) {
-    if (!casesInfo?.case?.privileged_case) return true;
-    return casesInfo.permission.admin || casesInfo.present_in_case;
+    if (!casesInfo) return false;
+    return !casesInfo.permission?.read_only;
 }
 
 // Returns the list of statuses a task can transition to, based on
