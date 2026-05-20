@@ -80,10 +80,9 @@ export default {
         const can_edit = computed(() => {
             if (!props.cases_info) return false
             const permission = props.cases_info.permission
-            const present_in_case = props.cases_info.present_in_case
             if (permission && permission.read_only) return false
             if (permission && permission.admin) return true
-            if (present_in_case) return true
+            if (permission && permission.misp_editor) return true
             return false
         })
 
