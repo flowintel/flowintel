@@ -293,7 +293,7 @@
                 const cur = new Date(days[0] + 'T00:00:00')
                 const end = new Date(days[days.length - 1] + 'T00:00:00')
                 while (cur <= end) {
-                    const key = cur.toISOString().slice(0, 10)
+                    const key = fmt_date(cur)
                     out.push({ day: key, count: counts.get(key) || 0 })
                     cur.setDate(cur.getDate() + 1)
                 }
