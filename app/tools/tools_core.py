@@ -954,13 +954,17 @@ def edit_content_note_template(note_id: int, request_json: dict) -> dict:
     list_params = extract_variables(content)
     note_template = get_note_template(note_id)
 
+    content_changed = note_template.content != content
+    existing_params = set(note_template.params.get("list", []) if note_template.params else [])
+    params_changed = set(list_params) != existing_params
+
     note_template.content = content
     note_template.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
 
-    existing_params = set(note_template.params.get("list", []) if note_template.params else [])
-    if set(list_params) != existing_params:
-        note_template.version = (note_template.version or 1) + 1
+    if params_changed:
         note_template.params = {"list": list_params}
+    if content_changed or params_changed:
+        note_template.version = (note_template.version or 1) + 1
 
     db.session.commit()
     return {"version": note_template.version or 1}
@@ -968,9 +972,16 @@ def edit_content_note_template(note_id: int, request_json: dict) -> dict:
 def edit_note_template(note_id: int, request_json: dict) -> dict:
     note_template = get_note_template(note_id)
 
-    note_template.title = request_json["title"]
-    note_template.description = request_json["description"]
+    new_title = request_json["title"]
+    new_description = request_json["description"]
+    changed = (note_template.title != new_title) or (note_template.description != new_description)
+
+    note_template.title = new_title
+    note_template.description = new_description
     note_template.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+
+    if changed:
+        note_template.version = (note_template.version or 1) + 1
 
     db.session.commit()
     return {"version": note_template.version or 1}
