@@ -94,11 +94,19 @@ def delete_custom_tag(ctid):
 @editor_required
 def change_status():
     """Active or disabled a Custom tag"""
+    from ..utils.logger import flowintel_log
     if "custom_tag_id" in request.args:
-        res = CustomCore.change_status_core(request.args.get("custom_tag_id"))
-        if res:
-            return {'message': 'Custom tag status changed', 'toast_class': "success-subtle"}, 200
-        return {'message': 'Something went wrong', 'toast_class': "danger-subtle"}, 400
+        custom_tag_id = request.args.get("custom_tag_id")
+        custom_tag = CustomCore.get_custom_tag(custom_tag_id)
+        if custom_tag:
+            old_status = custom_tag.is_active
+            res = CustomCore.change_status_core(custom_tag_id)
+            if res:
+                new_status = custom_tag.is_active
+                flowintel_log("audit", 200, f"Custom tag status changed from {old_status} to {new_status}", User=current_user.email, CustomTagId=custom_tag_id, CustomTagName=custom_tag.name)
+                return {'message': 'Custom tag status changed', 'toast_class': "success-subtle"}, 200
+            return {'message': 'Something went wrong', 'toast_class': "danger-subtle"}, 400
+        return {'message': 'Custom tag not found', 'toast_class': "danger-subtle"}, 404
     return {'message': 'Need to pass "custom_tag_id"', 'toast_class': "warning-subtle"}, 400
 
 
