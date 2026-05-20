@@ -75,10 +75,10 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div>My organisation:</div>
+                    <div>Organisation:</div>
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="checkMyOrg" @click="sort_by_filter(current_filter === 'my_org' ? 'last_modif' : 'my_org')" :checked="current_filter === 'my_org'">
-                        <label class="form-check-label" for="checkMyOrg">My organisation</label>
+                        <label class="form-check-label" for="checkMyOrg">Where my organisation is part of the case</label>
                     </div>
                     <hr>
                     <div>Sort by:</div>
@@ -98,7 +98,7 @@
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="radioOther" id="radioOtherDeadLine" @click="sort_by_filter('deadline')">
-                                <label class="form-check-label" for="radioOtherDeadLine">Deadline</label>
+                                <label class="form-check-label" for="radioOtherDeadLine">Deadline (cases without a deadline are hidden)</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="radioOther" id="radioOtherStatus" @click="sort_by_filter('status_id')">
