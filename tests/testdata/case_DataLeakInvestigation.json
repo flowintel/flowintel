@@ -18,7 +18,7 @@
         "csirt_case_classification:incident-category=\"compromised-information\""
     ],
     "clusters": [],
-    "tasks_template": [
+    "tasks": [
         {
             "uuid": "4a92cb5f-90e7-4f0f-a5d7-9a4dc852f560",
             "title": "Validate data leak alert",
