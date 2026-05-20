@@ -116,7 +116,7 @@
 {% block script %}
 <script type="module">
     const { createApp, ref, onMounted} = Vue
-    import {message_list} from '/static/js/toaster.js'
+    import {display_toast, message_list} from '/static/js/toaster.js'
     const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
     createApp({
@@ -134,6 +134,7 @@
 
             const md = window.markdownit()
             const note_editor_render = ref("")
+            let editor = null
             
             let to_hide = true
             function hide_task_creation(){
