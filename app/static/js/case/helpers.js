@@ -116,3 +116,25 @@ export function getStatusDropdownTooltip(task, casesInfo, statusInfo) {
     }
     return '';
 }
+
+// Get a helpful hint about the current status and available transitions in a privileged case.
+export function getStatusHint(task, statusInfo) {
+    if (!statusInfo) return '';
+    
+    const currentStatus = statusInfo.status.find(s => s.id === task.status_id);
+    if (!currentStatus) return '';
+    
+    if (task.status_id === statusInfo.config.TASK_REQUESTED) {
+        return 'This task is awaiting approval. Users with proper permissions can set it to "Approved" to proceed or "Rejected" to decline.';
+    }
+    if (task.status_id === statusInfo.config.TASK_APPROVED) {
+        return 'This task has been approved. You can set it to "Created" (planned), "Ongoing" (in progress), or "Request Review" (ready for approval).';
+    }
+    if (task.status_id === statusInfo.config.TASK_REQUEST_REVIEW) {
+        return 'This task is awaiting review. An approver can review and set it to "Finished", or send it back to "Ongoing" for further work.';
+    }
+    if (task.status_id === statusInfo.config.TASK_REJECTED) {
+        return 'This task has been rejected. Users cannot continue work on it.';
+    }
+    return '';
+}
