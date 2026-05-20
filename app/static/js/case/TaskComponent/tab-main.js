@@ -103,7 +103,6 @@ export default {
 				} else if (!wasCompleted && isFinished) {
 					props.open_closed["open"] -= 1
 					props.open_closed["closed"] += 1
-					fetch('/case/complete_task/' + task.id)
 					let index = props.cases_info.tasks.indexOf(task)
 					if (index > -1) props.cases_info.tasks.splice(index, 1)
 				}
