@@ -52,6 +52,11 @@
             </div>
             <!-- Search bar -->
         </div>
+        {% if not current_user.is_admin() %}
+            <div class="alert alert-warning py-1 px-2 mt-2 mb-0" role="alert">
+                You do not have the Admin permissions. You can view taxonomies but cannot enable or disable them.
+            </div>
+        {% endif %}
     </div>
 
     <hr class="fading-line-2 mb-4 mt-4">
