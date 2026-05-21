@@ -172,18 +172,12 @@ class ForkCase(Resource):
         "case_title_fork": "Required. Title for the case"
     })
     def post(self, cid):
-        from ..decorators import check_privileged_case_permission
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
 
-            if case.privileged_case:
-                error = check_privileged_case_permission(current_user, operation="forking")
-                if error:
-                    return error
-            
             if request.json:
                 if "case_title_fork" in request.json:
                     new_case = CaseModel.fork_case_core(cid, request.json["case_title_fork"], current_user)
