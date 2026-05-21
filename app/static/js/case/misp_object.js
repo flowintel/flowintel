@@ -84,6 +84,44 @@ export default {
         watch([search_query, type_filter, show_unsynced_only], () => { current_page.value = 1; activeTabIdx.value = 0 })
         watch(() => props.spotlight_id, () => { current_page.value = 1; activeTabIdx.value = 0 })
 
+        // Select2 for task assignment in new object form
+        let hasJQuery = false
+        let hasSelect2 = false
+        try {
+            hasJQuery = (typeof $ !== 'undefined')
+            hasSelect2 = hasJQuery && $.fn && $.fn.select2
+        } catch(e) {}
+
+        watch(() => activeTemplate.value.uuid, async (newUuid) => {
+            if (!newUuid) return
+            await nextTick()
+            try {
+                const sel = document.getElementById('new-object-task-select')
+                if (!sel) return
+
+                const updateTaskSelection = function(el) {
+                    try {
+                        if (hasSelect2 && $(el).data('select2')) {
+                            new_object_task_ids.value = $(el).select2('data').map(item => parseInt(item.id))
+                        } else {
+                            new_object_task_ids.value = Array.from(el.selectedOptions || []).map(o => parseInt(o.value))
+                        }
+                    } catch (e) {}
+                }
+
+                // Always attach native change listener as a fallback
+                try { sel.removeEventListener && sel.removeEventListener('change', sel._fi_updateTaskSelection) } catch(e) {}
+                sel._fi_updateTaskSelection = function() { updateTaskSelection(this) }
+                sel.addEventListener('change', sel._fi_updateTaskSelection)
+
+                if (hasSelect2) {
+                    try { if ($(sel).data('select2')) $(sel).select2('destroy') } catch(e) {}
+                    $(sel).select2({ theme: 'bootstrap-5', dropdownParent: $('body'), placeholder: 'Select tasks...', allowClear: true })
+                    $(sel).on('change.select2', function() { updateTaskSelection(this) })
+                }
+            } catch(e) {}
+        })
+
         const can_edit = computed(() => {
             if (!props.cases_info) return false
             const permission = props.cases_info.permission
@@ -177,6 +215,13 @@ export default {
         }
 
         function resetAddObjectForm() {
+            try {
+                if (hasSelect2) {
+                    const sel = document.getElementById('new-object-task-select')
+                    if (sel && $(sel).data('select2')) $(sel).select2('destroy')
+                }
+            } catch(e) {}
+            new_object_task_ids.value = []
             activeTemplate.value = { requiredOneOf: [] }
             selectedQuickTemplate.value = ''
             newObjectAttrState.value = { relation_type_combo: '', value: '', first_seen: '', last_seen: '', comment: '', ids_flag: false, disable_correlation: true }
@@ -739,7 +784,7 @@ export default {
             <div v-if="activeTemplate.uuid">
                 <div class="mb-3">
                     <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Assign to tasks (optional)</label>
-                    <select v-model="new_object_task_ids" class="form-select form-select-sm" multiple size="4">
+                    <select id="new-object-task-select" class="form-select form-select-sm" multiple data-placeholder="Select tasks...">
                         <option v-for="t in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :value="t.id">[[ t.title ]]</option>
                     </select>
                 </div>
