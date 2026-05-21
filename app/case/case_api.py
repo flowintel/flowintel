@@ -690,8 +690,7 @@ class GetAllUsers(Resource):
             users_list = list()
             for org in CommonModel.get_all_org_case(case):
                 for user in org.users:
-                    if not user == current_user:
-                        users_list.append(user.to_json())
+                    users_list.append(user.to_json())
             return {"users": users_list}, 200
         return {"message": "Case not found"}, 404
 

@@ -470,8 +470,7 @@ def get_all_users(cid):
         orgs = CommonModel.get_all_org_case(case)
         for org in orgs:
             for user in org.users:
-                if not user == current_user:
-                    users_list.append(user.to_json())
+                users_list.append(user.to_json())
         return {"users_list": users_list}
     return {"message": "Case not found"}, 404
 
