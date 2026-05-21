@@ -35,8 +35,13 @@
                                     <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;" :class="{'fa-angle-down': custom_tag.show_usage}"></i>[[custom_tag.name]]
                                 </h5>
                                 <div class="d-flex align-items-center">
-                                    <input v-if="custom_tag.is_active || custom_tag.is_active == null" type="checkbox" class="form-check-input me-2" checked @click.stop="change_status(custom_tag)" title="Active">
-                                    <input v-else type="checkbox" class="form-check-input me-2" @click.stop="change_status(custom_tag)" title="Inactive">
+                                    {% if not current_user.read_only() %}
+                                        <input v-if="custom_tag.is_active || custom_tag.is_active == null" type="checkbox" class="form-check-input me-2" checked @click.stop="change_status(custom_tag)" title="Active">
+                                        <input v-else type="checkbox" class="form-check-input me-2" @click.stop="change_status(custom_tag)" title="Inactive">
+                                    {% else %}
+                                        <span v-if="custom_tag.is_active || custom_tag.is_active == null" class="badge bg-success me-2" title="Active">Active</span>
+                                        <span v-else class="badge bg-danger me-2" title="Inactive">Inactive</span>
+                                    {% endif %}
                                     <span class="badge" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">
                                         <i v-if="custom_tag.icon" :class="custom_tag.icon + ' me-1'"></i>[[custom_tag.name]]
                                     </span>
