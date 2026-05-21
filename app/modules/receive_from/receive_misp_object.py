@@ -155,14 +155,16 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
                     db_session.session.commit()
                 details.append({"name": f"attr:{ev_attr.type}", "status": "success", "error": None})
             else:
+                _fs = getattr(ev_attr, 'first_seen', None)
+                _ls = getattr(ev_attr, 'last_seen', None)
                 sa_attr = Misp_Attribute(
                     case_misp_object_id=None,
                     case_id=case["id"],
                     value=str(ev_attr.value),
                     type=ev_attr.type,
                     object_relation="",
-                    first_seen=ev_attr.first_seen if isinstance(ev_attr.first_seen, datetime.datetime) else None,
-                    last_seen=ev_attr.last_seen if isinstance(ev_attr.last_seen, datetime.datetime) else None,
+                    first_seen=_fs if isinstance(_fs, datetime.datetime) else None,
+                    last_seen=_ls if isinstance(_ls, datetime.datetime) else None,
                     comment=ev_attr.comment or "",
                     ids_flag=ev_attr.to_ids or False,
                     disable_correlation=getattr(ev_attr, 'disable_correlation', False) or False,
