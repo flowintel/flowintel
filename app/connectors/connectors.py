@@ -133,8 +133,8 @@ def get_instance_cases(cid, iid):
     if not ConnectorModel.get_instance(iid):
         return {"message": "Instance not found", "toast_class": "danger-subtle"}, 404
     page = request.args.get('page', 1, type=int)
-    cases, total, nb_pages = ConnectorModel.get_cases_for_instance(iid, page=page)
-    return {"cases": cases, "total": total, "nb_pages": nb_pages, "page": page}, 200
+    cases, total, nb_pages, private_count = ConnectorModel.get_cases_for_instance(iid, page=page, current_user=current_user)
+    return {"cases": cases, "total": total, "nb_pages": nb_pages, "page": page, "private_count": private_count}, 200
 
 @connector_blueprint.route("/add_connector", methods=['GET','POST'])
 @login_required

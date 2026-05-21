@@ -194,9 +194,15 @@
                     <template v-else-if="cases_modal_list.length">
                         <ul class="list-group list-group-flush">
                             <li v-for="c in cases_modal_list" :key="c.id" class="list-group-item d-flex justify-content-between align-items-center">
-                                <a :href="'/case/'+c.id" class="text-decoration-none fw-semibold">[[ c.title ]]</a>
+                                <span class="d-flex align-items-center gap-2">
+                                    <i v-if="c.is_private" class="fa-solid fa-lock fa-sm text-muted" title="Private case"></i>
+                                    <a :href="'/case/'+c.id" class="text-decoration-none fw-semibold">[[ c.title ]]</a>
+                                </span>
                                 <span v-if="c.completed" class="badge text-bg-success">Completed</span>
                                 <span v-else class="badge text-bg-secondary">Open</span>
+                            </li>
+                            <li v-if="cases_modal_private_count > 0" class="list-group-item d-flex justify-content-between align-items-center text-muted fst-italic">
+                                <span><i class="fa-solid fa-lock me-1"></i>[[ cases_modal_private_count ]] private case<template v-if="cases_modal_private_count > 1">s</template></span>
                             </li>
                         </ul>
                         <nav v-if="cases_modal_nb_pages > 1" class="mt-3 d-flex justify-content-center">
@@ -216,7 +222,10 @@
                     <p v-else class="text-muted"><i>No cases linked to this instance.</i></p>
                 </div>
                 <div class="modal-footer">
-                    <small class="text-muted me-auto" v-if="cases_modal_total !== null">[[ cases_modal_total ]] case<template v-if="cases_modal_total !== 1">s</template></small>
+                    <small class="text-muted me-auto" v-if="cases_modal_total !== null || cases_modal_private_count > 0">
+                        [[ (cases_modal_total || 0) + cases_modal_private_count ]] case<template v-if="(cases_modal_total || 0) + cases_modal_private_count !== 1">s</template>
+                        <template v-if="cases_modal_private_count > 0"> ([[ cases_modal_private_count ]] private)</template>
+                    </small>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -249,6 +258,7 @@
                 const cases_modal_page = ref(1)
                 const cases_modal_nb_pages = ref(1)
                 const cases_modal_total = ref(null)
+                const cases_modal_private_count = ref(0)
 
 
                 async function fetchConnectors(page=1) {
@@ -361,6 +371,7 @@
                     cases_modal_list.value = data.cases || []
                     cases_modal_nb_pages.value = data.nb_pages || 1
                     cases_modal_total.value = data.total ?? null
+                    cases_modal_private_count.value = data.private_count || 0
                     cases_modal_loading.value = false
                 }
 
@@ -370,6 +381,7 @@
                     cases_modal_instance_name.value = instance.name
                     cases_modal_list.value = []
                     cases_modal_total.value = null
+                    cases_modal_private_count.value = 0
                     cases_modal_page.value = 1
                     cases_modal_nb_pages.value = 1
                     const modal = new bootstrap.Modal(document.getElementById('instance_cases_modal'))
@@ -398,6 +410,7 @@
                     cases_modal_page,
                     cases_modal_nb_pages,
                     cases_modal_total,
+                    cases_modal_private_count,
                 }
             }
         }).mount('#main-container')

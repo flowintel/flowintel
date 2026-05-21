@@ -156,21 +156,40 @@ def get_nb_page_connectors(name=None):
         connectors_list = [c for c in connectors_list if name_l in c.get('name','').lower()]
     return int(len(connectors_list) / 25) + 1
 
-def get_cases_for_instance(iid, page=1, per_page=10):
-    """Return paginated cases linked to a connector instance."""
-    query = (
+def get_cases_for_instance(iid, page=1, per_page=10, current_user=None):
+    """Return paginated cases linked to a connector instance.
+
+    For non-admin users, private cases they are not a member of are excluded
+    from the paginated list.  A separate ``private_count`` is returned so the
+    caller can inform the user that additional private cases exist without
+    revealing their titles.
+    """
+    from ..case.common_core import get_present_in_case
+
+    all_cases = (
         db.session.query(Case)
         .join(Case_Connector_Instance, Case_Connector_Instance.case_id == Case.id)
         .filter(Case_Connector_Instance.instance_id == iid)
         .order_by(Case.last_modif.desc())
+        .all()
     )
-    total = query.count()
-    cases = query.offset((page - 1) * per_page).limit(per_page).all()
+
+    visible = []
+    private_count = 0
+    for c in all_cases:
+        if c.is_private and current_user is not None and not current_user.is_admin():
+            if not get_present_in_case(c.id, current_user):
+                private_count += 1
+                continue
+        visible.append(c)
+
+    total = len(visible)
     nb_pages = max(1, (total + per_page - 1) // per_page)
+    page_cases = visible[(page - 1) * per_page: page * per_page]
     return [
-        {"id": c.id, "title": c.title, "uuid": c.uuid, "completed": c.completed}
-        for c in cases
-    ], total, nb_pages
+        {"id": c.id, "title": c.title, "uuid": c.uuid, "completed": c.completed, "is_private": c.is_private}
+        for c in page_cases
+    ], total, nb_pages, private_count
 
 
 def get_icon(iid):
@@ -408,7 +427,8 @@ def delete_icon_core(iid):
 def misp_get_event_objects(loc_instance, api_key, event_identifier):
     """Fetch objects from a remote MISP event and return a preview list.
 
-    Returns a tuple (objects_list, error_dict).  On success error_dict is None.
+    Returns a tuple (result_dict, error_dict).  On success error_dict is None.
+    result_dict has keys "objects" and "standalone_attributes".
     """
     try:
         from pymisp import PyMISP
@@ -426,7 +446,17 @@ def misp_get_event_objects(loc_instance, api_key, event_identifier):
                 "attributes_preview": attrs,
                 "attribute_count": len(obj.attributes)
             })
-        return objects, None
+        standalone_attributes = []
+        for ev_attr in getattr(event, 'attributes', []):
+            if ev_attr.object_id and int(ev_attr.object_id) != 0:
+                continue
+            standalone_attributes.append({
+                "uuid": ev_attr.uuid,
+                "type": ev_attr.type,
+                "value": str(ev_attr.value)[:80],
+                "comment": getattr(ev_attr, 'comment', '') or ""
+            })
+        return {"objects": objects, "standalone_attributes": standalone_attributes}, None
     except Exception as e:
         return None, {"message": f"Error connecting to MISP: {e}", "toast_class": "danger-subtle", "status": 500}
 
