@@ -212,7 +212,10 @@ class MergeCase(Resource):
             merging_case = CommonModel.get_case(ocid)
             if not merging_case:
                 return {"message": "Target case not found"}, 404
-            
+
+            if merging_case.id == case.id:
+                return {"message": "Cannot merge a case into itself"}, 400
+
             if not check_user_private_case(merging_case, request.headers, current_user):
                 return {"message": "Permission denied"}, 403
 

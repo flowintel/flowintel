@@ -558,7 +558,11 @@ def merge_case(cid, ocid):
         merging_case = CommonModel.get_case(ocid)
         if not merging_case:
             return {"message": "Target case not found", 'toast_class': "danger-subtle"}, 404
-        
+
+        if merging_case.id == case.id:
+            flowintel_log("audit", 400, "Merge case: Cannot merge a case into itself", User=current_user.email, CaseId=cid)
+            return {"message": "Cannot merge a case into itself", 'toast_class': "warning-subtle"}, 400
+
         if not check_user_private_case(merging_case):
             flowintel_log("audit", 403, "Merge case: Permission denied for target case", User=current_user.email, CaseId=cid, TargetCaseId=ocid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
