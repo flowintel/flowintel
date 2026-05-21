@@ -1357,6 +1357,7 @@ class Case_Misp_Object(db.Model):
 class Misp_Attribute(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"))
+    case_id = db.Column(db.Integer, index=True)  # set for standalone attributes (case_misp_object_id is NULL)
     value = db.Column(db.String, index=True)
     type = db.Column(db.String, index=True)
     object_relation = db.Column(db.String, index=True)
@@ -1372,6 +1373,7 @@ class Misp_Attribute(db.Model):
         json_dict = {
             "id": self.id,
             "case_misp_object_id": self.case_misp_object_id,
+            "case_id": self.case_id,
             "value": self.value,
             "type": self.type,
             "object_relation": self.object_relation,

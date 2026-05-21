@@ -217,6 +217,30 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             loc = misp_object_helper.create_misp_object(case.id, obje)
             object_uuid_list = append_dict(object_uuid_list, loc)
 
+        # Import event-level (standalone) attributes
+        standalone_attr_uuid_list = []
+        for event_attr in getattr(event, 'attributes', []):
+            if event_attr.object_id and int(event_attr.object_id) != 0:
+                # attribute belongs to an object, skip (already handled above)
+                continue
+            sa_attr = Misp_Attribute(
+                case_misp_object_id=None,
+                case_id=case.id,
+                value=str(event_attr.value),
+                type=event_attr.type,
+                object_relation="",
+                first_seen=event_attr.first_seen if isinstance(event_attr.first_seen, datetime.datetime) else None,
+                last_seen=event_attr.last_seen if isinstance(event_attr.last_seen, datetime.datetime) else None,
+                comment=event_attr.comment or "",
+                ids_flag=event_attr.to_ids or False,
+                disable_correlation=getattr(event_attr, 'disable_correlation', False) or False,
+                creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+                last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+            )
+            db.session.add(sa_attr)
+            db.session.commit()
+            standalone_attr_uuid_list.append({"attribute_id": sa_attr.id, "uuid": event_attr.uuid})
+
         if "origin_url" in form_dict and form_dict["origin_url"]:
             loc_instance_id = ""
             r = Connector_Instance.query.filter_by(url=form_dict["origin_url"]).all()
@@ -231,6 +255,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     break
             if loc_instance_id:
                 CaseModel.result_misp_object_module(object_uuid_list, instance_id=loc_instance_id, case_id=case.id)
+                CaseModel.result_standalone_attr_module(standalone_attr_uuid_list, instance_id=loc_instance_id, case_id=case.id)
 
         return case
 
@@ -1470,6 +1495,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         instance["identifier"] = case_instance.identifier
 
         case["objects"] = self.get_misp_object_instance(case["id"], instance["id"])
+        case["standalone_attributes"] = self.get_standalone_attr_instance(case["id"], instance["id"])
 
         # Include file metadata for MISP export
         case["files"] = [f.to_json() for f in loc_case.files]
@@ -1587,6 +1613,29 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         db.session.commit()
 
         self.add_attributes_object(cid, case_misp_object.id, request_json)
+
+        # If task ids were provided on creation, link them to the new object
+        try:
+            task_ids = request_json.get('task_ids', []) if isinstance(request_json, dict) else []
+            if isinstance(task_ids, list) and len(task_ids) > 0:
+                valid_task_ids = set()
+                for tid in task_ids:
+                    try:
+                        tid_int = int(tid)
+                    except Exception:
+                        continue
+                    t = Task.query.get(tid_int)
+                    if t and int(t.case_id) == int(cid):
+                        valid_task_ids.add(tid_int)
+
+                for tid in valid_task_ids:
+                    link = Task_Misp_Object(task_id=tid, misp_object_id=case_misp_object.id)
+                    db.session.add(link)
+                if valid_task_ids:
+                    db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flowintel_log('warning', 500, f"Error linking tasks to MISP object: {e}", User=current_user.email, CaseId=cid)
 
         case = CommonModel.get_case(cid)
         CommonModel.save_history(case.uuid, current_user, f"New MISP-Object created")
@@ -1742,15 +1791,137 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             attributes = Misp_Attribute.query.filter_by(value=attribute.value).all()
             loc = []
             for loc_attr in attributes:
-                parent = Case_Misp_Object.query.get(loc_attr.case_misp_object_id)
-                if parent is None:
-                    continue
-                cid = parent.case_id
-                if not cid in loc and not cid == case_id:
+                # standalone attribute - use case_id directly
+                if loc_attr.case_misp_object_id is None:
+                    cid = loc_attr.case_id
+                else:
+                    parent = Case_Misp_Object.query.get(loc_attr.case_misp_object_id)
+                    if parent is None:
+                        continue
+                    cid = parent.case_id
+                if cid and not cid in loc and not cid == case_id:
                     loc.append(cid)
             return loc
         return []
-            
+
+    ################################
+    # Standalone MISP Attributes   #
+    ################################
+
+    def create_standalone_attribute(self, cid, data, current_user):
+        """Create a standalone MISP attribute (not inside any object)"""
+        first_seen = None
+        last_seen = None
+        ids_flag = False
+        disable_correlation = False
+
+        if data.get("first_seen"):
+            first_seen = datetime.datetime.strptime(data["first_seen"], DATETIME_FORMAT)
+        if data.get("last_seen"):
+            last_seen = datetime.datetime.strptime(data["last_seen"], DATETIME_FORMAT)
+        if data.get("ids_flag") and (data["ids_flag"] == 'true' or data["ids_flag"] is True):
+            ids_flag = True
+        if data.get("disable_correlation") and (data["disable_correlation"] == 'true' or data["disable_correlation"] is True):
+            disable_correlation = True
+
+        attr = Misp_Attribute(
+            case_misp_object_id=None,
+            case_id=cid,
+            value=data["value"],
+            type=data["type"],
+            object_relation="",
+            first_seen=first_seen,
+            last_seen=last_seen,
+            comment=data.get("comment", ""),
+            ids_flag=ids_flag,
+            disable_correlation=disable_correlation,
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+        db.session.add(attr)
+        db.session.commit()
+
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, "Standalone MISP attribute created")
+        CommonModel.update_last_modif(cid)
+        return attr
+
+    def get_standalone_attributes_by_case(self, cid):
+        """Get all standalone MISP attributes for a case"""
+        return Misp_Attribute.query.filter_by(case_id=cid, case_misp_object_id=None).all()
+
+    def edit_standalone_attr(self, cid, aid, data):
+        """Edit a standalone MISP attribute"""
+        attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
+        if not attr:
+            return {"message": "Attribute not found", "toast_class": "warning-subtle"}, 404
+
+        first_seen = None
+        last_seen = None
+        ids_flag = False
+        disable_correlation = False
+
+        if data.get("first_seen"):
+            first_seen = datetime.datetime.strptime(data["first_seen"], DATETIME_FORMAT)
+        if data.get("last_seen"):
+            last_seen = datetime.datetime.strptime(data["last_seen"], DATETIME_FORMAT)
+        if data.get("ids_flag") and (data["ids_flag"] == 'true' or data["ids_flag"] is True):
+            ids_flag = True
+        if data.get("disable_correlation") and (data["disable_correlation"] == 'true' or data["disable_correlation"] is True):
+            disable_correlation = True
+
+        attr.value = data["value"]
+        attr.type = data["type"]
+        attr.first_seen = first_seen
+        attr.last_seen = last_seen
+        attr.comment = data.get("comment", "")
+        attr.ids_flag = ids_flag
+        attr.disable_correlation = disable_correlation
+        attr.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+        db.session.commit()
+        return {"message": "Attribute updated", "toast_class": "success-subtle"}, 200
+
+    def delete_standalone_attr(self, cid, aid):
+        """Delete a standalone MISP attribute"""
+        attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
+        if not attr:
+            return {"message": "Attribute not found", "toast_class": "warning-subtle"}, 404
+        misp_attrs = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
+        for m_a in misp_attrs:
+            db.session.delete(m_a)
+        db.session.delete(attr)
+        db.session.commit()
+        return {"message": "Attribute deleted", "toast_class": "success-subtle"}, 200
+
+    def get_standalone_attr_instance(self, case_id, instance_id):
+        """Get standalone attrs with their remote UUIDs for a specific MISP instance"""
+        attrs = Misp_Attribute.query.filter_by(case_id=case_id, case_misp_object_id=None).all()
+        result = []
+        for attr in attrs:
+            loc_attr = attr.to_json()
+            loc_attr["uuid"] = ""
+            loc_attr_uuid = self.get_misp_attribute_instance_uuid(attr.id, instance_id, case_id)
+            if loc_attr_uuid:
+                loc_attr["uuid"] = loc_attr_uuid.attribute_instance_uuid
+            result.append(loc_attr)
+        return result
+
+    def result_standalone_attr_module(self, attr_uuid_list, instance_id, case_id):
+        """Save UUID of standalone attributes for a MISP instance"""
+        for attr in attr_uuid_list:
+            loc_attr_uuid = self.get_misp_attribute_instance_uuid(attr["attribute_id"], instance_id, case_id)
+            if loc_attr_uuid:
+                loc_attr_uuid.attribute_instance_uuid = attr["uuid"]
+                db.session.commit()
+            else:
+                a = Misp_Attribute_Instance_Uuid(
+                    instance_id=instance_id,
+                    misp_attribute_id=attr["attribute_id"],
+                    attribute_instance_uuid=attr["uuid"],
+                    case_id=case_id
+                )
+                db.session.add(a)
+                db.session.commit()
 
     def get_case_misp_object_by_case_id(self, case_id):
         return Case_Misp_Object.query.filter_by(case_id=case_id).all()

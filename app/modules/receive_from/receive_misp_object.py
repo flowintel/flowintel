@@ -120,6 +120,65 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
     case_model.result_misp_object_module(object_uuid_list, instance_id=instance["id"], case_id=case["id"])
 
+    # Import event-level (standalone) attributes
+    standalone_attr_uuid_list = []
+    selected_sa_uuids = None
+    if payload and isinstance(payload.get("selected_standalone_attrs"), list):
+        selected_sa_uuids = set(payload["selected_standalone_attrs"])
+
+    from app.db_class.db import Misp_Attribute, Misp_Attribute_Instance_Uuid
+    for ev_attr in getattr(event, 'attributes', []):
+        # Skip attributes that belong to an object (object_id != 0 means it belongs to an object)
+        if ev_attr.object_id and int(ev_attr.object_id) != 0:
+            continue
+        if selected_sa_uuids is not None and ev_attr.uuid not in selected_sa_uuids:
+            continue
+        try:
+            attr_exist = case_model.get_misp_attribute_instance_by_instance_uuid(ev_attr.uuid, instance["id"], case["id"])
+            if attr_exist:
+                db_misp_attr = case_model.get_misp_attribute(attr_exist.misp_attribute_id)
+                flag = False
+                if db_misp_attr and db_misp_attr.value != str(ev_attr.value):
+                    db_misp_attr.value = str(ev_attr.value)
+                    flag = True
+                if db_misp_attr and db_misp_attr.type != ev_attr.type:
+                    db_misp_attr.type = ev_attr.type
+                    flag = True
+                if db_misp_attr and db_misp_attr.comment != (ev_attr.comment or ""):
+                    db_misp_attr.comment = ev_attr.comment or ""
+                    flag = True
+                if db_misp_attr and db_misp_attr.ids_flag != ev_attr.to_ids:
+                    db_misp_attr.ids_flag = ev_attr.to_ids
+                    flag = True
+                if flag:
+                    db_misp_attr.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+                    db_session.session.commit()
+                details.append({"name": f"attr:{ev_attr.type}", "status": "success", "error": None})
+            else:
+                sa_attr = Misp_Attribute(
+                    case_misp_object_id=None,
+                    case_id=case["id"],
+                    value=str(ev_attr.value),
+                    type=ev_attr.type,
+                    object_relation="",
+                    first_seen=ev_attr.first_seen if isinstance(ev_attr.first_seen, datetime.datetime) else None,
+                    last_seen=ev_attr.last_seen if isinstance(ev_attr.last_seen, datetime.datetime) else None,
+                    comment=ev_attr.comment or "",
+                    ids_flag=ev_attr.to_ids or False,
+                    disable_correlation=getattr(ev_attr, 'disable_correlation', False) or False,
+                    creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+                    last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+                )
+                db_session.session.add(sa_attr)
+                db_session.session.commit()
+                standalone_attr_uuid_list.append({"attribute_id": sa_attr.id, "uuid": ev_attr.uuid})
+                details.append({"name": f"attr:{ev_attr.type}", "status": "success", "error": None})
+        except Exception as e:
+            details.append({"name": f"attr:{getattr(ev_attr, 'type', '?')}", "status": "error", "error": str(e)})
+
+    if standalone_attr_uuid_list:
+        case_model.result_standalone_attr_module(standalone_attr_uuid_list, instance["id"], case["id"])
+
     # Mark case as updated from MISP
     case_obj = CommonModel.get_case(case["id"])
     case_obj.is_updated_from_misp = True

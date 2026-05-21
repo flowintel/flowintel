@@ -6,10 +6,11 @@ from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from ..connectors import connectors_core as ConnectorsModel
 from ..connectors import connectors_core as ConnectorModel
-from ..db_class.db import Task, Task_Misp_Object, Misp_Object_Instance_Uuid, Case_Timeline_Event, db
+from ..db_class.db import Task, Task_Misp_Object, Misp_Object_Instance_Uuid, Misp_Attribute_Instance_Uuid, Case_Timeline_Event, db
 from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
 from ..utils.utils import get_object_templates
+from functools import lru_cache
 
 
 ###############
@@ -86,6 +87,43 @@ def get_correlation_attr(cid, aid):
 def get_misp_object():
     """Get list of misp object"""
     return {"misp-object": get_object_templates()}, 200
+
+
+@case_blueprint.route("/get_misp_attribute_types", methods=['GET'])
+@login_required
+def get_misp_attribute_types():
+    """Return list of MISP attribute types (for frontend dropdowns)"""
+    # Return the cached canonical types. Use ?force=1 to rebuild cache.
+    force = request.args.get('force', '').lower() in ('1', 'true', 'yes')
+    if force:
+        try:
+            _build_misp_attribute_types.cache_clear()
+        except Exception:
+            pass
+    try:
+        types = list(_build_misp_attribute_types())
+        return jsonify({"types": types}), 200
+    except Exception as e:
+        flowintel_log('error', 500, 'Failed to build attribute types from templates', error=str(e))
+        return jsonify({"types": []}), 200
+
+
+@lru_cache(maxsize=1)
+def _build_misp_attribute_types():
+    """Construct and cache the canonical list of attribute types from templates."""
+    templates = get_object_templates()
+    types_set = set()
+    for tpl in templates:
+        for attr in tpl.get('attributes', []):
+            ma = attr.get('misp_attribute')
+            if not ma:
+                continue
+            if isinstance(ma, (list, tuple)):
+                for t in ma:
+                    types_set.add(t)
+            else:
+                types_set.add(ma)
+    return tuple(sorted(types_set))
 
 
 @case_blueprint.route("/<cid>/create_misp_object", methods=['POST'])
@@ -237,6 +275,78 @@ def set_misp_object_tasks(cid, oid):
     except Exception:
         db.session.rollback()
         return {"message": "Error updating tasks", "toast_class": "danger-subtle"}, 500
+
+
+##############################
+# Standalone MISP Attributes #
+##############################
+
+@case_blueprint.route("/<int:cid>/get_case_misp_attributes", methods=['GET'])
+@login_required
+def get_case_misp_attributes(cid):
+    case = CommonModel.get_case(cid)
+    if not case or not check_user_private_case(case):
+        return {"message": "No case found", "toast_class": "warning-subtle"}, 404
+    attrs = CaseModel.get_standalone_attributes_by_case(cid)
+    result = []
+    for attr in attrs:
+        loc = attr.to_json()
+        loc["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
+        loc["synced_instances"] = []
+        synced = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
+        for s in synced:
+            loc["synced_instances"].append({
+                "instance_id": s.instance_id,
+                "uuid": s.attribute_instance_uuid
+            })
+        result.append(loc)
+    return jsonify({"attributes": result})
+
+
+@case_blueprint.route("/<int:cid>/create_misp_attribute", methods=['POST'])
+@login_required
+@editor_required
+@misp_editor_required
+def create_misp_attribute(cid):
+    case = CommonModel.get_case(cid)
+    if not case or not check_user_private_case(case):
+        return {"message": "No case found", "toast_class": "warning-subtle"}, 404
+    data = request.get_json()
+    if not data:
+        return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
+    if not data.get("value"):
+        return {"message": "Value is required", "toast_class": "warning-subtle"}, 400
+    if not data.get("type"):
+        return {"message": "Type is required", "toast_class": "warning-subtle"}, 400
+    attr = CaseModel.create_standalone_attribute(cid, data, current_user)
+    return {"message": "Attribute created", "toast_class": "success-subtle", "attribute": attr.to_json()}, 201
+
+
+@case_blueprint.route("/<int:cid>/misp_attribute/<int:aid>/edit_misp_attribute", methods=['POST'])
+@login_required
+@editor_required
+@misp_editor_required
+def edit_misp_attribute(cid, aid):
+    case = CommonModel.get_case(cid)
+    if not case or not check_user_private_case(case):
+        return {"message": "No case found", "toast_class": "warning-subtle"}, 404
+    data = request.get_json()
+    if not data:
+        return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
+    result, status = CaseModel.edit_standalone_attr(cid, aid, data)
+    return result, status
+
+
+@case_blueprint.route("/<int:cid>/misp_attribute/<int:aid>/delete_misp_attribute", methods=['GET'])
+@login_required
+@editor_required
+@misp_editor_required
+def delete_misp_attribute(cid, aid):
+    case = CommonModel.get_case(cid)
+    if not case or not check_user_private_case(case):
+        return {"message": "No case found", "toast_class": "warning-subtle"}, 404
+    result, status = CaseModel.delete_standalone_attr(cid, aid)
+    return result, status
 
 
 ############
@@ -517,7 +627,7 @@ def misp_objects_preview(cid, ciid):
     objects, error = ConnectorsModel.misp_get_event_objects(loc_instance, api_key, case_instance.identifier)
     if error:
         return {"message": error["message"], "toast_class": error["toast_class"]}, error["status"]
-    return {"objects": objects}, 200
+    return {"objects": objects.get("objects", []), "standalone_attributes": objects.get("standalone_attributes", [])}, 200
 
 
 @case_blueprint.route("/<int:cid>/connectors/<int:ciid>/sync_logs", methods=['GET'])

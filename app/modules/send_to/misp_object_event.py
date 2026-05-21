@@ -197,6 +197,62 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     if case_model and object_uuid_list:
         case_model.result_misp_object_module(object_uuid_list, instance["id"], case["id"])
 
+    # Handle standalone attributes
+    standalone_attr_uuid_list = []
+    standalone_attrs = case.get("standalone_attributes", [])
+    if payload and isinstance(payload.get("selected_standalone_attrs"), list):
+        selected_sa_ids = set(str(i) for i in payload["selected_standalone_attrs"])
+        standalone_attrs = [a for a in standalone_attrs if str(a.get("id", "")) in selected_sa_ids]
+
+    for sa in standalone_attrs:
+        try:
+            misp_attr = MISPAttribute()
+            misp_attr.type = sa["type"]
+            misp_attr.value = sa["value"]
+            misp_attr.comment = sa.get("comment") or ""
+            misp_attr.to_ids = sa.get("ids_flag") or False
+            misp_attr.disable_correlation = sa.get("disable_correlation") or False
+            if sa.get("first_seen"):
+                misp_attr.first_seen = sa["first_seen"]
+            if sa.get("last_seen"):
+                misp_attr.last_seen = sa["last_seen"]
+
+            if sa.get("uuid"):
+                # Try to find and update existing attribute
+                existing = None
+                for ev_attr in event.attributes:
+                    if ev_attr.uuid == sa["uuid"]:
+                        existing = ev_attr
+                        break
+                if existing:
+                    flag_sa_modif = False
+                    if existing.value != sa["value"]:
+                        existing.value = sa["value"]
+                        flag_sa_modif = True
+                    if existing.comment != (sa.get("comment") or ""):
+                        existing.comment = sa.get("comment") or ""
+                        flag_sa_modif = True
+                    if existing.to_ids != (sa.get("ids_flag") or False):
+                        existing.to_ids = sa.get("ids_flag") or False
+                        flag_sa_modif = True
+                    if flag_sa_modif:
+                        misp.update_attribute(existing)
+                    standalone_attr_uuid_list.append({"attribute_id": sa["id"], "uuid": sa["uuid"]})
+                    details.append({"name": f"attr:{sa['type']}", "status": "success", "error": None})
+                    continue
+            # Create new attribute on event
+            res_attr = misp.add_attribute(event.id, misp_attr, pythonify=True)
+            if "errors" in res_attr:
+                details.append({"name": f"attr:{sa['type']}", "status": "error", "error": str(res_attr.get("errors", ""))})
+                continue
+            standalone_attr_uuid_list.append({"attribute_id": sa["id"], "uuid": res_attr.uuid})
+            details.append({"name": f"attr:{sa['type']}", "status": "success", "error": None})
+        except Exception as e:
+            details.append({"name": f"attr:{sa.get('type','?')}", "status": "error", "error": str(e)})
+
+    if case_model and standalone_attr_uuid_list:
+        case_model.result_standalone_attr_module(standalone_attr_uuid_list, instance["id"], case["id"])
+
     synced = sum(1 for d in details if d["status"] == "success")
     failed = sum(1 for d in details if d["status"] == "error")
     return {

@@ -13,17 +13,21 @@ export default {
     emits: ['sync_done', 'close'],
     setup(props, { emit }) {
         const local_objects = ref([])
+        const local_standalone_attrs = ref([])
         const local_search = ref('')
         const local_type_filter = ref('')
         const selected_local_ids = ref([])
+        const selected_local_sa_ids = ref([])
         const is_loading_local = ref(false)
 
         const show_unsynced_only = ref(false)
 
         const remote_objects = ref([])
+        const remote_standalone_attrs = ref([])
         const remote_search = ref('')
         const remote_type_filter = ref('')
         const selected_remote_uuids = ref([])
+        const selected_remote_sa_uuids = ref([])
         const is_loading_remote = ref(false)
 
         const module_name = ref('')
@@ -89,6 +93,8 @@ export default {
                 if (props.direction === 'send') {
                     selected_local_ids.value = local_objects.value.map(o => o.object_id)
                 }
+                // Also load standalone attrs
+                await load_local_standalone_attrs()
                 return
             }
             is_loading_local.value = true
@@ -107,19 +113,36 @@ export default {
             } finally {
                 is_loading_local.value = false
             }
+            await load_local_standalone_attrs()
+        }
+
+        async function load_local_standalone_attrs() {
+            try {
+                const res = await fetch('/case/' + props.case_id + '/get_case_misp_attributes')
+                if (res.status === 200) {
+                    const loc = await res.json()
+                    local_standalone_attrs.value = loc['attributes'] || []
+                    if (props.direction === 'send') {
+                        selected_local_sa_ids.value = local_standalone_attrs.value.map(a => a.id)
+                    }
+                }
+            } catch (e) { /* ignore */ }
         }
 
         async function load_remote_objects() {
             if (!props.instance) return
             is_loading_remote.value = true
             remote_objects.value = []
+            remote_standalone_attrs.value = []
             try {
                 const res = await fetch('/case/' + props.case_id + '/connectors/' + props.instance.case_task_instance_id + '/misp_objects_preview')
                 if (res.status === 200) {
                     const loc = await res.json()
                     remote_objects.value = loc['objects'] || []
+                    remote_standalone_attrs.value = loc['standalone_attributes'] || []
                     if (props.direction === 'receive') {
                         selected_remote_uuids.value = remote_objects.value.map(o => o.uuid)
+                        selected_remote_sa_uuids.value = remote_standalone_attrs.value.map(a => a.uuid)
                     }
                 } else {
                     display_toast(res)
@@ -137,11 +160,27 @@ export default {
             }
         }
 
+        function toggle_local_sa_all() {
+            if (selected_local_sa_ids.value.length === local_standalone_attrs.value.length) {
+                selected_local_sa_ids.value = []
+            } else {
+                selected_local_sa_ids.value = local_standalone_attrs.value.map(a => a.id)
+            }
+        }
+
         function toggle_remote_all() {
             if (selected_remote_uuids.value.length === filtered_remote.value.length) {
                 selected_remote_uuids.value = []
             } else {
                 selected_remote_uuids.value = filtered_remote.value.map(o => o.uuid)
+            }
+        }
+
+        function toggle_remote_sa_all() {
+            if (selected_remote_sa_uuids.value.length === remote_standalone_attrs.value.length) {
+                selected_remote_sa_uuids.value = []
+            } else {
+                selected_remote_sa_uuids.value = remote_standalone_attrs.value.map(a => a.uuid)
             }
         }
 
@@ -161,8 +200,11 @@ export default {
             local_type_filter.value = ''
             remote_type_filter.value = ''
             selected_local_ids.value = []
+            selected_local_sa_ids.value = []
             selected_remote_uuids.value = []
+            selected_remote_sa_uuids.value = []
             remote_objects.value = []
+            remote_standalone_attrs.value = []
             show_unsynced_only.value = false
             await load_local_objects()
         }
@@ -180,9 +222,11 @@ export default {
             }
             if (props.direction === 'send' && module_name.value === 'misp_object_event') {
                 body.selected_objects = selected_local_ids.value
+                body.selected_standalone_attrs = selected_local_sa_ids.value
             }
             if (props.direction === 'receive' && module_name.value === 'receive_misp_object') {
                 body.selected_objects = selected_remote_uuids.value
+                body.selected_standalone_attrs = selected_remote_sa_uuids.value
             }
             const res = await fetch(url, {
                 method: 'POST',
@@ -209,12 +253,12 @@ export default {
         }
 
         return {
-            local_objects, local_search, local_type_filter, selected_local_ids, is_loading_local,
-            remote_objects, remote_search, remote_type_filter, selected_remote_uuids, is_loading_remote,
+            local_objects, local_standalone_attrs, local_search, local_type_filter, selected_local_ids, selected_local_sa_ids, is_loading_local,
+            remote_objects, remote_standalone_attrs, remote_search, remote_type_filter, selected_remote_uuids, selected_remote_sa_uuids, is_loading_remote,
             module_name, module_desc, is_submitting, is_importing_report,
             filtered_local, filtered_remote, local_type_options, remote_type_options,
             show_unsynced_only,
-            load_remote_objects, toggle_local_all, toggle_remote_all,
+            load_remote_objects, toggle_local_all, toggle_local_sa_all, toggle_remote_all, toggle_remote_sa_all,
             submit, import_event_report, on_show, on_module_change, is_synced_locally
         }
     },
@@ -300,11 +344,30 @@ export default {
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- Standalone attributes in local panel -->
+                                    <div v-if="local_standalone_attrs.length" class="mt-2 pt-2 border-top">
+                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                            <span class="text-muted small fw-semibold"><i class="fa-solid fa-tag me-1"></i>Standalone attributes ([[ local_standalone_attrs.length ]])</span>
+                                            <button v-if="direction === 'send'" type="button" class="btn btn-link btn-sm py-0" @click="toggle_local_sa_all()">
+                                                [[ selected_local_sa_ids.length === local_standalone_attrs.length ? 'Deselect all' : 'Select all' ]]
+                                            </button>
+                                        </div>
+                                        <div v-for="sa in local_standalone_attrs" :key="'lsa-'+sa.id" class="border-bottom py-1 px-1">
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="checkbox" :value="sa.id"
+                                                       v-model="selected_local_sa_ids" :id="'lsa-'+instance.case_task_instance_id+'-'+sa.id"
+                                                       :disabled="direction === 'receive'">
+                                                <label class="form-check-label" :for="'lsa-'+instance.case_task_instance_id+'-'+sa.id" style="font-size:0.8em;">
+                                                    <span class="badge bg-secondary me-1">[[ sa.type ]]</span>
+                                                    <span>[[ sa.value.length > 50 ? sa.value.substring(0,50)+'…' : sa.value ]]</span>
+                                                    <span v-if="sa.synced_instances && sa.synced_instances.length" class="badge bg-success ms-1" style="font-size:0.65em;">synced</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- RIGHT: Remote objects -->
                         <div class="col-md-6">
                             <div class="card h-100">
                                 <div class="card-header d-flex justify-content-between align-items-center py-2">
@@ -367,6 +430,26 @@ export default {
                                                 </template>
                                             </div>
                                         </div>
+                                        <!-- Standalone attributes in remote panel -->
+                                        <div v-if="remote_standalone_attrs.length" class="mt-2 pt-2 border-top">
+                                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                                <span class="text-muted small fw-semibold"><i class="fa-solid fa-tag me-1"></i>Standalone attributes ([[ remote_standalone_attrs.length ]])</span>
+                                                <button v-if="direction === 'receive'" type="button" class="btn btn-link btn-sm py-0" @click="toggle_remote_sa_all()">
+                                                    [[ selected_remote_sa_uuids.length === remote_standalone_attrs.length ? 'Deselect all' : 'Select all' ]]
+                                                </button>
+                                            </div>
+                                            <div v-for="sa in remote_standalone_attrs" :key="'rsa-'+sa.uuid" class="border-bottom py-1 px-1">
+                                                <div class="form-check mb-0">
+                                                    <input class="form-check-input" type="checkbox" :value="sa.uuid"
+                                                           v-model="selected_remote_sa_uuids" :id="'rsa-'+instance.case_task_instance_id+'-'+sa.uuid"
+                                                           :disabled="direction === 'send'">
+                                                    <label class="form-check-label" :for="'rsa-'+instance.case_task_instance_id+'-'+sa.uuid" style="font-size:0.8em;">
+                                                        <span class="badge bg-secondary me-1">[[ sa.type ]]</span>
+                                                        <span>[[ sa.value.length > 50 ? sa.value.substring(0,50)+'…' : sa.value ]]</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -389,10 +472,10 @@ export default {
     <div class="d-flex align-items-center justify-content-end gap-2 mt-3 pt-2 border-top">
                     <div class="text-muted small me-auto">
                         <template v-if="direction === 'send'">
-                            <i class="fa-solid fa-arrow-up me-1"></i>[[ selected_local_ids.length ]] local object(s) selected
+                            <i class="fa-solid fa-arrow-up me-1"></i>[[ selected_local_ids.length ]] object(s) + [[ selected_local_sa_ids.length ]] attribute(s) selected
                         </template>
                         <template v-else>
-                            <i class="fa-solid fa-arrow-down me-1"></i>[[ selected_remote_uuids.length ]] remote object(s) selected
+                            <i class="fa-solid fa-arrow-down me-1"></i>[[ selected_remote_uuids.length ]] remote object(s) + [[ selected_remote_sa_uuids.length ]] attribute(s) selected
                         </template>
                     </div>
                     <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>

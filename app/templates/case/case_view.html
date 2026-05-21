@@ -68,13 +68,13 @@
     </div>
     
     <div class="mb-3" style="display: flex; justify-content: space-between;">
-        {% if case.ticket_id %}
         <div class="case-ticket-row">
+            {% if case.ticket_id %}
             <span class="ticket-badge" title="Ticket ID">
                 <i class="fa-solid fa-ticket"></i> {{case.ticket_id}}
             </span>
+            {% endif %}
         </div>
-        {% endif %}
         <template v-if="cases_info">
             {% include 'case/_connectors_button.html' %}
         </template>
@@ -274,7 +274,7 @@
                 <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i>
                 <i class="fa-solid fa-plug fa-sm me-1"></i>
                 <span class="section-title fs-6">MISP</span>
-                <span class="badge text-bg-secondary ms-1" v-if="nb_misp_objects > 0">[[nb_misp_objects]]</span>
+                <span class="badge text-bg-secondary ms-1" v-if="nb_misp_total > 0">[[nb_misp_total]]</span>
             </button>
             <button class="tab-close-btn" @click.stop="hide_tab('misp')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
@@ -697,6 +697,12 @@
                         </button>
                     </li>
                     <li class="nav-item">
+                        <button :class="['nav-link', {active: subtab_misp === 'attributes'}]" id="subtab-misp-attributes" @click="active_subtab_misp('attributes')">
+                            <i class="fa-solid fa-tag fa-sm me-1"></i><span class="section-title">MISP Attributes</span>
+                            <span class="badge text-bg-secondary ms-1" v-if="nb_misp_attrs > 0">[[nb_misp_attrs]]</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
                         <button :class="['nav-link', {active: subtab_misp === 'sync'}]" id="subtab-misp-sync" @click="active_subtab_misp('sync')">
                             <i class="fa-solid fa-rotate fa-sm me-1"></i><span class="section-title">Send &amp; Receive</span>
                         </button>
@@ -708,7 +714,7 @@
                     </li>
                 </ul>
                 <template v-if="subtab_misp === 'objects'">
-                    <misp_object :case_id="{{case.id}}" :cases_info="cases_info" :spotlight_id="misp_spotlight_id" :case_misp_objects_list="case_misp_objects_list" @clear_spotlight="misp_spotlight_id = null" @modif_misp_objects="fetch_case_misp_objects"></misp_object>
+                    <misp_object :case_id="{{case.id}}" :cases_info="cases_info" :spotlight_id="misp_spotlight_id" :case_misp_objects_list="case_misp_objects_list" @clear_spotlight="misp_spotlight_id = null" @modif_misp_objects="(msg) => { fetch_case_misp_objects(); fetch_sorted_tasks(); }"></misp_object>
                 </template>
                 <template v-else-if="subtab_misp === 'sync'">
                     <casemispconnectors
@@ -720,7 +726,7 @@
                         :object_id="cases_info.case.id"
                         :cases_info="cases_info"
                         @case_connectors="(msg) => fetch_case_connectors()"
-                        @modif_misp_objects="fetch_case_misp_objects"
+                        @modif_misp_objects="(msg) => { fetch_case_misp_objects(); fetch_sorted_tasks(); }"
                         @note_change="on_connector_note_change"
                         @task_connectors="">
                     </casemispconnectors>
@@ -738,6 +744,9 @@
                         @note_change="on_connector_note_change"
                         @task_connectors="">
                     </casemispconnectors>
+                </template>
+                <template v-else-if="subtab_misp === 'attributes'">
+                    <mispattributes :case_id="{{case.id}}" :cases_info="cases_info" @attr_count="nb_misp_attrs = $event"></mispattributes>
                 </template>
             </template>
         </template>
@@ -1116,6 +1125,7 @@
         import tags_edition from '/static/js/case/tags_edition.js'
         import manage_orgs from '/static/js/case/manage_orgs.js'
         import misp_object from '/static/js/case/misp_object.js'
+        import mispattributes from '/static/js/case/MispAttributes.js'
         import caseconnectors from '/static/js/case/CaseConnectors.js'
         import casemispconnectors from '/static/js/case/CaseMispConnectors.js'
         import casefiles from '/static/js/case/CaseFiles.js'
@@ -1137,6 +1147,7 @@
                 tags_edition,
                 manage_orgs,
                 misp_object,
+                mispattributes,
                 caseconnectors,
                 casemispconnectors,
                 casefiles,
@@ -1198,6 +1209,8 @@
                 const case_files_list = ref([])
 
                 const nb_misp_objects = computed(() => case_misp_objects_list.value.length)
+                const nb_misp_attrs = ref(0)
+                const nb_misp_total = computed(() => nb_misp_objects.value + nb_misp_attrs.value)
                 const misp_spotlight_id = ref(null)
                 const case_misp_objects_list = ref([])
 
@@ -2153,6 +2166,15 @@
                     }
                 }
 
+                async function fetch_case_misp_attrs() {
+                    const res = await fetch('/case/{{case.id}}/get_case_misp_attributes')
+                    if (res.status === 200) {
+                        const loc = await res.json()
+                        const attrs = loc['attributes'] || []
+                        nb_misp_attrs.value = attrs.length
+                    }
+                }
+
                 function get_completion_pourcentage(){
                     return Math.round((open_closed.value.closed / (open_closed.value.open + open_closed.value.closed) )*100)
                 }
@@ -2180,6 +2202,7 @@
 
                     if (can_use_connectors.value) fetch_case_connectors()
                     fetch_case_files()
+                    await fetch_case_misp_attrs()
 
                     $('.new-link-ajax').select2({
                         ajax: {
@@ -2365,6 +2388,8 @@
                     tasks_tab,
                     is_exporting,
                     nb_misp_objects,
+                    nb_misp_attrs,
+                    nb_misp_total,
                     misp_spotlight_id,
                     case_misp_objects_list,
                     can_edit_case,
