@@ -1,11 +1,11 @@
 import { display_toast, create_message } from '../toaster.js'
-const { ref, computed, onMounted } = Vue
+const { ref, computed, onMounted, watch } = Vue
 
 const MISP_ATTRIBUTE_TYPES = ref([])
 
 async function fetch_attr_types() {
     try {
-        const res = await fetch(`/case/get_misp_attribute_types`)
+        const res = await fetch('/case/get_misp_attribute_types')
         if (res.status === 200) {
             const data = await res.json()
             MISP_ATTRIBUTE_TYPES.value = data.types || []
@@ -32,7 +32,11 @@ export default {
         const edit_state = ref({})
         const search_query = ref('')
         const type_filter = ref('')
+        const show_unsynced_only = ref(false)
         const is_loading = ref(false)
+        const compact_view = ref(true)
+        const tab_view = ref(false)
+        const active_tab_type = ref('')
 
         const can_edit = computed(() => {
             if (!props.cases_info) return false
@@ -46,12 +50,74 @@ export default {
             let list = attrs.value
             const q = search_query.value.trim().toLowerCase()
             const t = type_filter.value
-            if (q) list = list.filter(a => String(a.value).toLowerCase().includes(q) || a.type.toLowerCase().includes(q) || (a.comment || '').toLowerCase().includes(q))
+            if (q) {
+                list = list.filter(a =>
+                    String(a.value).toLowerCase().includes(q) ||
+                    String(a.type).toLowerCase().includes(q) ||
+                    String(a.comment || '').toLowerCase().includes(q)
+                )
+            }
             if (t) list = list.filter(a => a.type === t)
+            if (show_unsynced_only.value) {
+                list = list.filter(a => !a.synced_instances || !a.synced_instances.length)
+            }
             return list
         })
 
+        const grouped_attrs = computed(() => {
+            const grouped = {}
+            for (const a of filtered_attrs.value) {
+                const t = a.type || 'unknown'
+                if (!grouped[t]) grouped[t] = []
+                grouped[t].push(a)
+            }
+            return Object.keys(grouped)
+                .sort((a, b) => a.localeCompare(b))
+                .map(type => ({ type, attrs: grouped[type] }))
+        })
+
+        const tab_types = computed(() => grouped_attrs.value.map(g => g.type))
+
+        const active_tab_attrs = computed(() => {
+            const group = grouped_attrs.value.find(g => g.type === active_tab_type.value)
+            return group ? group.attrs : []
+        })
+
+        const visible_column_count = computed(() => {
+            const base = compact_view.value ? 2 : 7
+            return base + (can_edit.value ? 1 : 0)
+        })
+
         const type_options = computed(() => (MISP_ATTRIBUTE_TYPES.value || []).slice().sort())
+
+        function sync_active_tab_type() {
+            const types = tab_types.value
+            if (!types.length) {
+                active_tab_type.value = ''
+                return
+            }
+            if (!types.includes(active_tab_type.value)) {
+                active_tab_type.value = types[0]
+            }
+        }
+
+        function tab_count_for(type) {
+            const group = grouped_attrs.value.find(g => g.type === type)
+            return group ? group.attrs.length : 0
+        }
+
+        watch(tab_types, () => {
+            sync_active_tab_type()
+        }, { immediate: true })
+
+        function toggle_compact_view() {
+            compact_view.value = !compact_view.value
+        }
+
+        function toggle_tab_view() {
+            tab_view.value = !tab_view.value
+            if (tab_view.value) sync_active_tab_type()
+        }
 
         async function fetch_attrs() {
             is_loading.value = true
@@ -59,7 +125,7 @@ export default {
                 const res = await fetch(`/case/${props.case_id}/get_case_misp_attributes`)
                 if (res.status === 200) {
                     const loc = await res.json()
-                    attrs.value = loc['attributes'] || []
+                    attrs.value = loc.attributes || []
                     emit('attr_count', attrs.value.length)
                 } else {
                     display_toast(res)
@@ -75,8 +141,14 @@ export default {
         }
 
         async function create_attr() {
-            if (!new_state.value.type) { create_message("Select a type", "warning-subtle"); return }
-            if (!new_state.value.value) { create_message("Enter a value", "warning-subtle"); return }
+            if (!new_state.value.type) {
+                create_message('Select a type', 'warning-subtle')
+                return
+            }
+            if (!new_state.value.value) {
+                create_message('Enter a value', 'warning-subtle')
+                return
+            }
             const res = await fetch(`/case/${props.case_id}/create_misp_attribute`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
@@ -108,7 +180,10 @@ export default {
         }
 
         async function save_edit(aid) {
-            if (!edit_state.value.value) { create_message("Enter a value", "warning-subtle"); return }
+            if (!edit_state.value.value) {
+                create_message('Enter a value', 'warning-subtle')
+                return
+            }
             const res = await fetch(`/case/${props.case_id}/misp_attribute/${aid}/edit_misp_attribute`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
@@ -137,33 +212,68 @@ export default {
 
         return {
             MISP_ATTRIBUTE_TYPES,
-            attrs, filtered_attrs, type_options,
-            show_add, new_state, editing_id, edit_state,
-            search_query, type_filter, is_loading,
+            attrs,
+            filtered_attrs,
+            grouped_attrs,
+            tab_types,
+            active_tab_attrs,
+            type_options,
+            show_add,
+            new_state,
+            editing_id,
+            edit_state,
+            search_query,
+            type_filter,
+            show_unsynced_only,
+            is_loading,
+            compact_view,
+            tab_view,
+            active_tab_type,
+            visible_column_count,
             can_edit,
-            fetch_attrs, create_attr, reset_add,
-            start_edit, cancel_edit, save_edit, delete_attr
+            fetch_attrs,
+            create_attr,
+            reset_add,
+            start_edit,
+            cancel_edit,
+            save_edit,
+            delete_attr,
+            toggle_compact_view,
+            toggle_tab_view,
+            tab_count_for
         }
     },
 
     template: `
     <div>
-        <!-- Toolbar -->
         <div class="d-flex align-items-center gap-2 mb-3">
             <button v-if="can_edit" class="btn btn-primary btn-sm" @click="show_add = !show_add" title="Add attribute">
                 <i class="fa-solid fa-plus me-1"></i>Add attribute
             </button>
-            <input v-model="search_query" class="form-control form-control-sm" placeholder="Search value, type, comment…" style="max-width:220px;" />
+            <input v-model="search_query" class="form-control form-control-sm" placeholder="Search value, type, comment..." style="max-width:220px;" />
             <select v-model="type_filter" class="form-select form-select-sm" style="max-width:160px;">
                 <option value="">All types</option>
                 <option v-for="t in type_options" :key="t" :value="t">[[ t ]]</option>
             </select>
-            <button class="btn btn-sm btn-outline-secondary ms-auto" @click="fetch_attrs()" title="Refresh">
+            <button type="button"
+                    :class="['btn btn-sm', show_unsynced_only ? 'btn-warning' : 'btn-outline-secondary']"
+                    @click="show_unsynced_only = !show_unsynced_only"
+                    title="Show only attributes not synced to any MISP instance">
+                <i class="fa-solid fa-filter me-1"></i>Unsynced only
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" @click="toggle_compact_view()" :title="compact_view ? 'Show all columns' : 'Show compact view'">
+                <i :class="compact_view ? 'fa-solid fa-expand' : 'fa-solid fa-compress'"></i>
+                <span class="d-none d-sm-inline ms-1">[[ compact_view ? 'Detailed' : 'Compact' ]]</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggle_tab_view()" :title="tab_view ? 'Switch to table view' : 'Switch to tab view'">
+                <i :class="tab_view ? 'fa-solid fa-table-list' : 'fa-solid fa-folder'"></i>
+                <span class="d-none d-sm-inline ms-1">[[ tab_view ? 'Table' : 'Tabs' ]]</span>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" @click="fetch_attrs()" title="Refresh">
                 <i class="fa-solid fa-rotate"></i>
             </button>
         </div>
 
-        <!-- Add form -->
         <div v-if="show_add && can_edit" class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="fw-bold">New attribute</span>
@@ -212,109 +322,281 @@ export default {
             </div>
         </div>
 
-        <!-- Loading -->
         <div v-if="is_loading" class="text-center py-4">
-            <span class="spinner-border spinner-border-sm me-2"></span>Loading…
+            <span class="spinner-border spinner-border-sm me-2"></span>Loading...
         </div>
 
-        <!-- Empty state -->
         <div v-else-if="!filtered_attrs.length" class="text-muted small fst-italic py-2">
             <span v-if="attrs.length">No attributes match the filter.</span>
             <span v-else>No standalone attributes yet.</span>
         </div>
 
-        <!-- Table -->
-        <div v-else class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th style="font-size:0.8rem; width:130px;">Type</th>
-                        <th style="font-size:0.8rem;">Value</th>
-                        <th style="font-size:0.8rem; width:180px;">Comment</th>
-                        <th style="font-size:0.8rem; width:55px;" title="IDS flag">IDS</th>
-                        <th style="font-size:0.8rem; width:65px;" title="Disable correlation">No corr.</th>
-                        <th style="font-size:0.8rem;">Correlations</th>
-                        <th style="font-size:0.8rem;">Synced</th>
-                        <th v-if="can_edit" style="width:80px;"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <template v-for="sa in filtered_attrs" :key="sa.id">
+        <template v-else-if="!tab_view">
+            <div class="card">
+                <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-semibold text-dark">
+                            <i class="fa-solid fa-tag me-1 text-secondary"></i>Standalone attributes
+                        </span>
+                        <span class="badge bg-secondary">[[ filtered_attrs.length ]]</span>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Value</th>
+                                <th>Type</th>
+                                <th v-show="!compact_view" style="width:55px;" title="IDS flag">IDS</th>
+                                <th v-show="!compact_view" style="width:75px;" title="Disable correlation">No corr.</th>
+                                <th v-show="!compact_view">Comment</th>
+                                <th v-show="!compact_view">Correlations</th>
+                                <th v-show="!compact_view">Synced</th>
+                                <th v-if="can_edit" style="width:80px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template v-for="sa in filtered_attrs" :key="sa.id">
+                                <tr v-if="editing_id !== sa.id">
+                                    <td class="ps-3" style="font-size:0.825rem; word-break:break-all; max-width:280px;">[[ sa.value ]]</td>
+                                    <td><span class="badge bg-light text-dark border">[[ sa.type ]]</span></td>
+                                    <td v-show="!compact_view" style="text-align:center;">
+                                        <i v-if="sa.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                        <span v-else class="text-muted">-</span>
+                                    </td>
+                                    <td v-show="!compact_view" style="text-align:center;">
+                                        <i v-if="sa.disable_correlation" class="fa-solid fa-link-slash text-muted fa-sm" title="Correlation disabled"></i>
+                                        <span v-else class="text-muted">-</span>
+                                    </td>
+                                    <td v-show="!compact_view" class="small text-muted">
+                                        <template v-if="sa.comment">[[ sa.comment ]]</template>
+                                        <span v-else>-</span>
+                                    </td>
+                                    <td v-show="!compact_view" class="small">
+                                        <template v-if="sa.correlation_list && sa.correlation_list.length">
+                                            <template v-for="(cid, idx) in sa.correlation_list" :key="cid + '-' + idx">
+                                                <template v-if="idx < 4">
+                                                    <a :href="'/case/'+cid" class="badge bg-light text-dark me-1" target="_blank">Case [[ cid ]]</a>
+                                                </template>
+                                            </template>
+                                            <button v-if="sa.correlation_list.length > 4" class="btn btn-link p-0 ms-1 small" type="button"
+                                                    data-bs-toggle="collapse" :data-bs-target="'#attr-corr-'+sa.id" aria-expanded="false">
+                                                [[ sa.correlation_list.length - 4 ]] more
+                                            </button>
+                                            <div class="collapse mt-1" :id="'attr-corr-'+sa.id">
+                                                <template v-for="(cid, idx) in sa.correlation_list" :key="'more-'+cid+'-'+idx">
+                                                    <template v-if="idx >= 4">
+                                                        <a :href="'/case/'+cid" class="badge bg-light text-dark me-1" target="_blank">Case [[ cid ]]</a>
+                                                    </template>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <span v-else class="text-muted">-</span>
+                                    </td>
+                                    <td v-show="!compact_view" class="small">
+                                        <span v-for="s in sa.synced_instances" :key="s.instance_id" class="badge bg-info text-dark me-1" :title="'UUID: ' + s.uuid">
+                                            <i class="fa-solid fa-link me-1 fa-sm"></i>#[[ s.instance_id ]]
+                                        </span>
+                                        <span v-if="!sa.synced_instances || !sa.synced_instances.length" class="text-muted">-</span>
+                                    </td>
+                                    <td v-if="can_edit" class="text-end pe-2" style="white-space:nowrap;">
+                                        <button class="btn btn-link btn-sm p-0 me-2 text-primary" title="Edit" @click="start_edit(sa)">
+                                            <i class="fa-solid fa-pen-to-square fa-sm"></i>
+                                        </button>
+                                        <button class="btn btn-link btn-sm p-0 text-danger" title="Delete" @click="delete_attr(sa.id)">
+                                            <i class="fa-solid fa-trash fa-sm"></i>
+                                        </button>
+                                    </td>
+                                </tr>
 
-                        <!-- ── View row ── -->
-                        <tr v-if="editing_id !== sa.id">
-                            <td style="font-size:0.825rem;">
-                                <span class="badge bg-secondary">[[ sa.type ]]</span>
-                            </td>
-                            <td style="font-size:0.825rem; word-break:break-all; max-width:260px;">[[ sa.value ]]</td>
-                            <td style="font-size:0.825rem;">[[ sa.comment || '' ]]</td>
-                            <td style="font-size:0.825rem; text-align:center;">
-                                <i v-if="sa.ids_flag" class="fa-solid fa-check text-success"></i>
-                                <i v-else class="fa-solid fa-xmark text-muted"></i>
-                            </td>
-                            <td style="font-size:0.825rem; text-align:center;">
-                                <i v-if="sa.disable_correlation" class="fa-solid fa-check text-warning"></i>
-                                <i v-else class="fa-solid fa-xmark text-muted"></i>
-                            </td>
-                            <td style="font-size:0.825rem;">
-                                <a v-for="cid in sa.correlation_list" :key="cid"
-                                   :href="'/case/'+cid" class="badge bg-info text-dark me-1" target="_blank">#[[ cid ]]</a>
-                                <span v-if="!sa.correlation_list || !sa.correlation_list.length" class="text-muted">—</span>
-                            </td>
-                            <td style="font-size:0.825rem;">
-                                <span v-for="s in sa.synced_instances" :key="s.instance_id"
-                                      class="badge bg-success me-1" :title="'UUID: '+s.uuid">
-                                    <i class="fa-solid fa-link me-1"></i>#[[ s.instance_id ]]
-                                </span>
-                                <span v-if="!sa.synced_instances || !sa.synced_instances.length" class="text-muted">—</span>
-                            </td>
-                            <td v-if="can_edit" class="text-end">
-                                <button class="btn btn-sm btn-outline-secondary me-1" title="Edit" @click="start_edit(sa)">
-                                    <i class="fa-solid fa-pen"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" title="Delete" @click="delete_attr(sa.id)">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
+                                <tr v-else>
+                                    <td :colspan="visible_column_count" class="p-3 bg-light">
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Type</label>
+                                                <select v-model="edit_state.type" class="form-select form-select-sm">
+                                                    <option v-for="t in MISP_ATTRIBUTE_TYPES" :key="t" :value="t">[[ t ]]</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Value</label>
+                                                <input v-model="edit_state.value" class="form-control form-control-sm" />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Comment</label>
+                                                <input v-model="edit_state.comment" class="form-control form-control-sm" />
+                                            </div>
+                                        </div>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">First seen</label>
+                                                <input type="datetime-local" v-model="edit_state.first_seen" class="form-control form-control-sm" />
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Last seen</label>
+                                                <input type="datetime-local" v-model="edit_state.last_seen" class="form-control form-control-sm" />
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-end">
+                                                <div class="form-check">
+                                                    <input type="checkbox" v-model="edit_state.ids_flag" class="form-check-input" :id="'sa-edit-ids-'+sa.id" />
+                                                    <label class="form-check-label" :for="'sa-edit-ids-'+sa.id" style="font-size:0.875rem;">IDS</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 d-flex align-items-end">
+                                                <div class="form-check">
+                                                    <input type="checkbox" v-model="edit_state.disable_correlation" class="form-check-input" :id="'sa-edit-corr-'+sa.id" />
+                                                    <label class="form-check-label" :for="'sa-edit-corr-'+sa.id" style="font-size:0.875rem;">No correlation</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-secondary" @click="cancel_edit()">Cancel</button>
+                                            <button class="btn btn-sm btn-primary" @click="save_edit(sa.id)">Save</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
 
-                        <!-- ── Edit row ── -->
-                        <tr v-else class="table-warning">
-                            <td>
-                                <select v-model="edit_state.type" class="form-select form-select-sm">
-                                    <option v-for="t in MISP_ATTRIBUTE_TYPES" :key="t" :value="t">[[ t ]]</option>
-                                </select>
-                            </td>
-                            <td>
-                                <input v-model="edit_state.value" class="form-control form-control-sm" />
-                            </td>
-                            <td>
-                                <input v-model="edit_state.comment" class="form-control form-control-sm" />
-                            </td>
-                            <td style="text-align:center;">
-                                <input type="checkbox" v-model="edit_state.ids_flag" class="form-check-input" />
-                            </td>
-                            <td style="text-align:center;">
-                                <input type="checkbox" v-model="edit_state.disable_correlation" class="form-check-input" />
-                            </td>
-                            <td colspan="2">
-                                <div class="d-flex gap-2">
-                                    <input type="datetime-local" v-model="edit_state.first_seen" class="form-control form-control-sm"
-                                           placeholder="First seen" style="max-width:170px;" />
-                                    <input type="datetime-local" v-model="edit_state.last_seen" class="form-control form-control-sm"
-                                           placeholder="Last seen" style="max-width:170px;" />
-                                </div>
-                            </td>
-                            <td v-if="can_edit" class="text-end">
-                                <button class="btn btn-sm btn-secondary me-1" @click="cancel_edit()">Cancel</button>
-                                <button class="btn btn-sm btn-primary" @click="save_edit(sa.id)">Save</button>
-                            </td>
-                        </tr>
+        <template v-else>
+            <div v-if="!tab_types.length" class="text-muted p-2"><i>No attributes match the current filter.</i></div>
+            <template v-else>
+                <ul class="nav nav-tabs mb-0" style="flex-wrap: wrap;">
+                    <li v-for="t in tab_types" :key="'tab-'+t" class="nav-item flex-shrink-0">
+                        <button class="nav-link py-1 px-3" :class="{active: active_tab_type === t}" @click="active_tab_type = t" type="button">
+                            [[ t ]]
+                            <span class="badge text-bg-secondary ms-1">[[ tab_count_for(t) ]]</span>
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content border border-top-0 rounded-bottom">
+                    <div class="tab-pane active show">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Value</th>
+                                        <th>Type</th>
+                                        <th v-show="!compact_view" style="width:55px;" title="IDS flag">IDS</th>
+                                        <th v-show="!compact_view" style="width:75px;" title="Disable correlation">No corr.</th>
+                                        <th v-show="!compact_view">Comment</th>
+                                        <th v-show="!compact_view">Correlations</th>
+                                        <th v-show="!compact_view">Synced</th>
+                                        <th v-if="can_edit" style="width:80px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template v-for="sa in active_tab_attrs" :key="'tab-row-'+sa.id">
+                                        <tr v-if="editing_id !== sa.id">
+                                            <td class="ps-3" style="font-size:0.825rem; word-break:break-all; max-width:280px;">[[ sa.value ]]</td>
+                                            <td><span class="badge bg-light text-dark border">[[ sa.type ]]</span></td>
+                                            <td v-show="!compact_view" style="text-align:center;">
+                                                <i v-if="sa.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!compact_view" style="text-align:center;">
+                                                <i v-if="sa.disable_correlation" class="fa-solid fa-link-slash text-muted fa-sm" title="Correlation disabled"></i>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!compact_view" class="small text-muted">
+                                                <template v-if="sa.comment">[[ sa.comment ]]</template>
+                                                <span v-else>-</span>
+                                            </td>
+                                            <td v-show="!compact_view" class="small">
+                                                <template v-if="sa.correlation_list && sa.correlation_list.length">
+                                                    <template v-for="(cid, idx) in sa.correlation_list" :key="'tab-'+cid+'-'+idx">
+                                                        <template v-if="idx < 4">
+                                                            <a :href="'/case/'+cid" class="badge bg-light text-dark me-1" target="_blank">Case [[ cid ]]</a>
+                                                        </template>
+                                                    </template>
+                                                    <button v-if="sa.correlation_list.length > 4" class="btn btn-link p-0 ms-1 small" type="button"
+                                                            data-bs-toggle="collapse" :data-bs-target="'#attr-tab-corr-'+sa.id" aria-expanded="false">
+                                                        [[ sa.correlation_list.length - 4 ]] more
+                                                    </button>
+                                                    <div class="collapse mt-1" :id="'attr-tab-corr-'+sa.id">
+                                                        <template v-for="(cid, idx) in sa.correlation_list" :key="'tab-more-'+cid+'-'+idx">
+                                                            <template v-if="idx >= 4">
+                                                                <a :href="'/case/'+cid" class="badge bg-light text-dark me-1" target="_blank">Case [[ cid ]]</a>
+                                                            </template>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!compact_view" class="small">
+                                                <span v-for="s in sa.synced_instances" :key="'tab-sync-'+s.instance_id" class="badge bg-info text-dark me-1" :title="'UUID: ' + s.uuid">
+                                                    <i class="fa-solid fa-link me-1 fa-sm"></i>#[[ s.instance_id ]]
+                                                </span>
+                                                <span v-if="!sa.synced_instances || !sa.synced_instances.length" class="text-muted">-</span>
+                                            </td>
+                                            <td v-if="can_edit" class="text-end pe-2" style="white-space:nowrap;">
+                                                <button class="btn btn-link btn-sm p-0 me-2 text-primary" title="Edit" @click="start_edit(sa)">
+                                                    <i class="fa-solid fa-pen-to-square fa-sm"></i>
+                                                </button>
+                                                <button class="btn btn-link btn-sm p-0 text-danger" title="Delete" @click="delete_attr(sa.id)">
+                                                    <i class="fa-solid fa-trash fa-sm"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
 
-                    </template>
-                </tbody>
-            </table>
-        </div>
+                                        <tr v-else>
+                                            <td :colspan="visible_column_count" class="p-3 bg-light">
+                                                <div class="row g-2 mb-2">
+                                                    <div class="col-md-3">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Type</label>
+                                                        <select v-model="edit_state.type" class="form-select form-select-sm">
+                                                            <option v-for="t in MISP_ATTRIBUTE_TYPES" :key="t" :value="t">[[ t ]]</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-5">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Value</label>
+                                                        <input v-model="edit_state.value" class="form-control form-control-sm" />
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Comment</label>
+                                                        <input v-model="edit_state.comment" class="form-control form-control-sm" />
+                                                    </div>
+                                                </div>
+                                                <div class="row g-2 mb-3">
+                                                    <div class="col-md-3">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">First seen</label>
+                                                        <input type="datetime-local" v-model="edit_state.first_seen" class="form-control form-control-sm" />
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Last seen</label>
+                                                        <input type="datetime-local" v-model="edit_state.last_seen" class="form-control form-control-sm" />
+                                                    </div>
+                                                    <div class="col-md-2 d-flex align-items-end">
+                                                        <div class="form-check">
+                                                            <input type="checkbox" v-model="edit_state.ids_flag" class="form-check-input" :id="'sa-edit-tab-ids-'+sa.id" />
+                                                            <label class="form-check-label" :for="'sa-edit-tab-ids-'+sa.id" style="font-size:0.875rem;">IDS</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 d-flex align-items-end">
+                                                        <div class="form-check">
+                                                            <input type="checkbox" v-model="edit_state.disable_correlation" class="form-check-input" :id="'sa-edit-tab-corr-'+sa.id" />
+                                                            <label class="form-check-label" :for="'sa-edit-tab-corr-'+sa.id" style="font-size:0.875rem;">No correlation</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    <button class="btn btn-sm btn-secondary" @click="cancel_edit()">Cancel</button>
+                                                    <button class="btn btn-sm btn-primary" @click="save_edit(sa.id)">Save</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </template>
     </div>
     `
 }
