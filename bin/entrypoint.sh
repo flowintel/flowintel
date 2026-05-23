@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+# TODO maybe we generalize with Database Dialect instead of a single techno ...
+
 echo "Checking if PostgreSQL server is up..."
 
 /home/flowintel/app/bin/wait-for-it.sh postgresql:5432 --timeout=30 --strict -- echo "Postgres is up"

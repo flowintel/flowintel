@@ -1,0 +1,57 @@
+services:
+  valkey:
+    container_name: valkey
+    image: valkey/valkey
+    ports:
+      - '${VALKEY_PORT:-6379}:6379'
+    volumes:
+      - valkey-data:/data
+    networks:
+      - net
+
+
+  flowintel:
+    image: ghcr.io/flowintel/flowintel:latest
+    container_name: flowintel
+    command: bash -i ./launch.sh -ld
+    ports:
+      - '${FLOWINTEL_APP_PORT:-7006}:7006'
+    environment:
+      - SECRET_KEY=${FLOWINTEL_SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
+      - FLASK_PORT=${FLOWINTEL_APP_PORT:-7006}
+      #
+      - DB_HOST=${FLOWINTEL_DB_HOST:-postgresql}
+      - DB_PORT=${FLOWINTEL_DB_PORT:-5432}
+      - DB_USER=${FLOWINTEL_DB_USER:-flowintel}
+      - DB_PASSWORD=${FLOWINTEL_DB_PASSWORD:-flowintel}
+      - DB_NAME=${FLOWINTEL_DB_NAME:-flowintel}
+      - DB_DIALECT=${FLOWINTEL_DB_DIALECT:-postgresql}
+      - DB_DRIVER=${FLOWINTEL_DB_DRIVER:-psycopg2}
+      #
+      - VALKEY_IP=${FLOWINTEL_VALKEY_IP:-valkey}
+      - ADMIN_FIRST_NAME=${FLOWINTEL_ADMIN_FIRST_NAME:-admin}
+      - ADMIN_LAST_NAME=${FLOWINTEL_ADMIN_LAST_NAME:-admin}
+      - ADMIN_MAIL=${FLOWINTEL_ADMIN_MAIL:-admin@admin.admin}
+      - ADMIN_PASSWORD=${FLOWINTEL_ADMIN_PASSWORD:-admin}
+      - BOT_MAIL=${FLOWINTEL_BOT_MAIL:-neo@admin.admin}
+    networks:
+      - net
+    depends_on:
+      - valkey
+
+    volumes:
+      - flowintel-data:/var/lib/flowintel
+
+volumes:
+  db:
+  flowintel-data:
+  valkey-data:
+
+networks:
+  net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+        - subnet: fd31:50:0:1::/64
