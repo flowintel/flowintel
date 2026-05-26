@@ -1,9 +1,6 @@
 #!/bin/bash -i
 set -e
 
-isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1 || true`
-isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1 || true`
-
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Directory of the python virtualenv to use; can be overridden by env var
@@ -62,10 +59,16 @@ function prepare_app_run {
 
 function killscript {
     echo "Stopping existing sessions..."
-    if  [ $isscripted_fcm ]; then
+    local isscripted_fcm
+    local isscripted_misp_mod
+
+    isscripted_fcm=$(screen -ls | egrep '[0-9]+\.fcm' | cut -d. -f1 || true)
+    isscripted_misp_mod=$(screen -ls | egrep '[0-9]+\.misp_mod_flowintel' | cut -d. -f1 || true)
+
+    if [ -n "$isscripted_fcm" ]; then
         screen -X -S fcm quit
     fi
-    if  [ $isscripted_misp_mod ]; then
+    if [ -n "$isscripted_misp_mod" ]; then
         screen -X -S misp_mod_flowintel quit
     fi
 }
@@ -156,6 +159,8 @@ function init_db_prod {
     python3 app.py -mm
     # don't import test data for prod 
     #python3 app.py -td
+
+    killscript
 }
 
 function reload_db {
