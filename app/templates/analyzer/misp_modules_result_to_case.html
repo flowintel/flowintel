@@ -153,6 +153,94 @@
                         </div>
                     </div>
                 </div>
+                <div class="accordion-item" v-if="case_selected">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                        Standalone MISP attributes
+                        </button>
+                    </h2>
+                    <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
+                        <div class="accordion-body">
+                            <div class="text-muted small mb-2" v-if="!list_misp_attributes.length">
+                                No standalone attributes selected from analyser results.
+                            </div>
+                            <div class="table-responsive" v-else>
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">Value</th>
+                                            <th>Type</th>
+                                            <th style="width:75px;">Corr.</th>
+                                            <th style="width:55px;" title="IDS flag">IDS</th>
+                                            <th>Comment</th>
+                                            <th style="width:90px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template v-for="(attr, idx) in list_misp_attributes" :key="'result-to-case-attr-'+idx">
+                                            <tr v-if="editing_attr_idx !== idx">
+                                                <td class="ps-3">[[ attr.value ]]</td>
+                                                <td><span class="badge bg-light text-dark border">[[ attr.type ]]</span></td>
+                                                <td style="text-align:center;">
+                                                    <i v-if="attr.disable_correlation" class="fa-solid fa-link-slash text-muted fa-sm" title="Correlation disabled"></i>
+                                                    <span v-else class="badge bg-light text-dark border" title="Correlation enabled">On</span>
+                                                </td>
+                                                <td style="text-align:center;">
+                                                    <i v-if="attr.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                                    <span v-else class="text-muted">-</span>
+                                                </td>
+                                                <td class="small text-muted">
+                                                    <template v-if="attr.comment">[[ attr.comment ]]</template>
+                                                    <span v-else>-</span>
+                                                </td>
+                                                <td class="text-end pe-2" style="white-space:nowrap;">
+                                                    <button class="btn btn-link btn-sm p-0 me-2 text-primary" @click="start_edit_misp_attribute(idx)" title="Edit attribute">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                    </button>
+                                                    <button class="btn btn-link btn-sm p-0 text-danger" @click="remove_misp_attribute(idx)" title="Remove attribute">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr v-else>
+                                                <td :colspan="6" class="p-3 bg-light">
+                                                    <div class="row g-2 mb-2">
+                                                        <div class="col-md-4">
+                                                            <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Value</label>
+                                                            <input v-model="edit_attr_state.value" class="form-control form-control-sm" />
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Type</label>
+                                                            <input v-model="edit_attr_state.type" class="form-control form-control-sm" />
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Comment</label>
+                                                            <input v-model="edit_attr_state.comment" class="form-control form-control-sm" placeholder="Comment" />
+                                                        </div>
+                                                        <div class="col-md-2 d-flex align-items-end gap-3 pb-1">
+                                                            <div class="form-check">
+                                                                <input type="checkbox" v-model="edit_attr_state.ids_flag" class="form-check-input" :id="'rtc-attr-ids-'+idx" />
+                                                                <label class="form-check-label" :for="'rtc-attr-ids-'+idx" style="font-size:0.875rem;">IDS</label>
+                                                            </div>
+                                                            <div class="form-check">
+                                                                <input type="checkbox" v-model="edit_attr_state.disable_correlation" class="form-check-input" :id="'rtc-attr-corr-'+idx" />
+                                                                <label class="form-check-label" :for="'rtc-attr-corr-'+idx" style="font-size:0.875rem;">No corr.</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex gap-2">
+                                                        <button class="btn btn-secondary btn-sm" @click="cancel_edit_misp_attribute()">Cancel</button>
+                                                        <button class="btn btn-primary btn-sm" @click="save_edit_misp_attribute(idx)">Save</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -183,6 +271,9 @@
                 const create_task = ref(false)
 
                 const list_misp_objects = ref([])
+                const list_misp_attributes = ref([])
+                const editing_attr_idx = ref(null)
+                const edit_attr_state = ref({})
 
                 let editor = ""
 
@@ -193,6 +284,24 @@
                     note_selected.value = loc
                 }
                 fetch_note_selected()
+
+                async function fetch_misp_attribute_selected(){
+                    const res = await fetch("/analyzer/misp-modules/get_misp_attribute_selected")
+                    let loc = await res.json()
+                    if (Array.isArray(loc)) {
+                        list_misp_attributes.value = loc
+                    } else if (typeof loc === 'string' && loc) {
+                        try {
+                            const parsed = JSON.parse(loc)
+                            list_misp_attributes.value = Array.isArray(parsed) ? parsed : []
+                        } catch(e) {
+                            list_misp_attributes.value = []
+                        }
+                    } else {
+                        list_misp_attributes.value = []
+                    }
+                }
+                fetch_misp_attribute_selected()
 
                 function setEditor(note){
                     if(!editor){
@@ -387,6 +496,7 @@
 
                     prepare_request["notes"] = editor.state.doc.toString()
                     prepare_request["misp-objects"] = list_misp_objects.value
+                    prepare_request["misp-attributes"] = list_misp_attributes.value
 
                     const res = await fetch("/analyzer/misp-modules/manage_notes_selected", {
                         method: "POST",
@@ -430,6 +540,53 @@
                     $("#editor_id").removeClass('d-none')
                 }
 
+                function remove_misp_attribute(index){
+                    list_misp_attributes.value.splice(index, 1)
+                    if (editing_attr_idx.value === index) {
+                        editing_attr_idx.value = null
+                        edit_attr_state.value = {}
+                    }
+                }
+
+                function start_edit_misp_attribute(index){
+                    const attr = list_misp_attributes.value[index]
+                    if (!attr) {
+                        return
+                    }
+                    editing_attr_idx.value = index
+                    edit_attr_state.value = {
+                        value: attr.value || '',
+                        type: attr.type || '',
+                        comment: attr.comment || '',
+                        ids_flag: attr.ids_flag === true || attr.ids_flag === 'true',
+                        disable_correlation: attr.disable_correlation === true || attr.disable_correlation === 'true',
+                        first_seen: attr.first_seen || '',
+                        last_seen: attr.last_seen || ''
+                    }
+                }
+
+                function cancel_edit_misp_attribute(){
+                    editing_attr_idx.value = null
+                    edit_attr_state.value = {}
+                }
+
+                function save_edit_misp_attribute(index){
+                    if (!edit_attr_state.value.value || !edit_attr_state.value.type) {
+                        return
+                    }
+                    list_misp_attributes.value[index] = {
+                        ...list_misp_attributes.value[index],
+                        value: edit_attr_state.value.value,
+                        type: edit_attr_state.value.type,
+                        comment: edit_attr_state.value.comment || '',
+                        ids_flag: !!edit_attr_state.value.ids_flag,
+                        disable_correlation: !!edit_attr_state.value.disable_correlation,
+                        first_seen: edit_attr_state.value.first_seen || '',
+                        last_seen: edit_attr_state.value.last_seen || ''
+                    }
+                    cancel_edit_misp_attribute()
+                }
+
                 onMounted(async () => {
                     $('#case-search').removeClass('d-none')
 
@@ -455,13 +612,20 @@
                     create_case,
                     create_task,
                     list_misp_objects,
+                    list_misp_attributes,
+                    editing_attr_idx,
+                    edit_attr_state,
                     onInputCase,
                     select_case,
                     submit,
                     select_case_task,
                     select_task_note,
                     open_collapse_case,
-                    insert_summary_into_note
+                    insert_summary_into_note,
+                    remove_misp_attribute,
+                    start_edit_misp_attribute,
+                    cancel_edit_misp_attribute,
+                    save_edit_misp_attribute
                 }
             }
         }).mount('#main-container')

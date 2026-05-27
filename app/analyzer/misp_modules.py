@@ -24,14 +24,17 @@ def index():
     case_id = ""
     task_id = ""
     misp_object = ""
+    misp_attribute = ""
     if 'case_id' in request.args:
         case_id = request.args.get('case_id')
     if 'task_id' in request.args:
         task_id = request.args.get('task_id')
     if "misp_object" in request.args:
         misp_object = True
+    if "misp_attribute" in request.args:
+        misp_attribute = True
     can_use_misp = current_user.is_admin() or current_user.is_misp_editor()
-    return render_template("analyzer/misp_modules_index.html", case_id=case_id, task_id=task_id, misp_object=misp_object, can_use_misp=can_use_misp)
+    return render_template("analyzer/misp_modules_index.html", case_id=case_id, task_id=task_id, misp_object=misp_object, misp_attribute=misp_attribute, can_use_misp=can_use_misp)
 
 @analyzer_blueprint.route("/misp-modules/result_to_case", methods=['GET', 'POST'])
 @login_required
@@ -40,6 +43,7 @@ def result_to_case():
     """Enrich notes from previous selection"""
     flask_session["note_selected"] = request.form["note_selected"]
     flask_session["misp_object_selected"] = request.form["misp_object_selected"]
+    flask_session["misp_attribute_selected"] = request.form.get("misp_attribute_selected", "[]")
     analyzer_case_id = flask_session.get("analyzer_case_id", "")
     return render_template("analyzer/misp_modules_result_to_case.html", analyzer_case_id=analyzer_case_id)
 
@@ -55,6 +59,12 @@ def get_misp_object_selected():
     """Get notes selected"""
     return flask_session.get("misp_object_selected")
 
+@analyzer_blueprint.route("/misp-modules/get_misp_attribute_selected", methods=['GET', 'POST'])
+@login_required
+def get_misp_attribute_selected():
+    """Get standalone attributes selected"""
+    return flask_session.get("misp_attribute_selected")
+
 
 @analyzer_blueprint.route("/misp-modules/manage_notes_selected", methods=['GET', 'POST'])
 @login_required
@@ -65,6 +75,7 @@ def manage_notes_selected():
     if  isinstance(case_id, int):
         flask_session["note_selected"] = ""
         flask_session["misp_object_selected"] = ""
+        flask_session["misp_attribute_selected"] = ""
         flowintel_log("audit", 200, "Analyser results saved to case",
             User=current_user.email, CaseId=case_id)
         return {"case_id": case_id}, 200

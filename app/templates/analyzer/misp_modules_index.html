@@ -100,8 +100,13 @@
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button :disabled="!case_selected" class="nav-link" id="tab-misp-object" @click="active_tab('misp-object')">
+                    <button :disabled="!can_use_misp_object_tab" class="nav-link" id="tab-misp-object" @click="active_tab('misp-object')">
                         <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title">MISP objects</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button :disabled="!can_use_misp_attribute_tab" class="nav-link" id="tab-misp-attribute" @click="active_tab('misp-attribute')">
+                        <i class="fa-solid fa-tag fa-sm me-1"></i><span class="section-title">MISP attributes</span>
                     </button>
                 </li>
             </ul>
@@ -124,64 +129,310 @@
                 </template>
             </div>
             <div v-else-if="main_tab == 'misp-object'">
-                <div class="d-flex align-items-center mb-2">
-                    <h6 class="mb-0">Select values</h6>
-                    <div class="form-check form-switch ms-3 mb-0">
-                        <input class="form-check-input" type="checkbox" id="auto-copy-toggle" v-model="auto_copy">
-                        <label class="form-check-label" for="auto-copy-toggle">
+                <div class="row g-2 align-items-end mb-2 mt-2">
+                    <div class="col-md-5">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input v-model="object_search_query" class="form-control" type="text" placeholder="Search objects by name or attribute value...">
+                            <button v-if="object_search_query" class="btn btn-outline-secondary" type="button" @click="object_search_query=''"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select v-model="object_type_filter" class="form-select form-select-sm">
+                            <option value="">All types</option>
+                            <option v-for="t in object_type_options" :key="t" :value="t">[[ t ]]</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @click="object_compact_view = !object_compact_view" :title="object_compact_view ? 'Show all columns' : 'Show compact view'">
+                            <i :class="object_compact_view ? 'fa-solid fa-expand' : 'fa-solid fa-compress'"></i>
+                            <span class="d-none d-sm-inline ms-1">[[ object_compact_view ? 'Detailed' : 'Compact' ]]</span>
+                        </button>
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggle_object_tab_view()" :title="object_tab_view ? 'Switch to card view' : 'Switch to tab view'">
+                            <i :class="object_tab_view ? 'fa-solid fa-table-cells-large' : 'fa-solid fa-folder'"></i>
+                            <span class="d-none d-sm-inline ms-1">[[ object_tab_view ? 'Cards' : 'Tabs' ]]</span>
+                        </button>
+                    </div>
+                    <div class="col text-muted small d-flex justify-content-end align-items-center">
+                        <div class="form-check form-switch mb-0 me-3">
+                            <input class="form-check-input" type="checkbox" id="auto-copy-toggle" v-model="auto_copy">
+                            <label class="form-check-label" for="auto-copy-toggle">
+                                <small :class="auto_copy ? 'text-success' : 'text-muted'">Auto-copy [[ auto_copy ? 'on' : 'off' ]]</small>
+                            </label>
+                        </div>
+                        [[ filtered_case_misp_objects.length ]] object(s)
+                        <span v-if="object_search_query || object_type_filter">&nbsp;matching filter</span>
+                    </div>
+                </div>
+
+                <div v-if="!filtered_case_misp_objects.length" class="text-muted small fst-italic py-2">
+                    No objects match the current filter.
+                </div>
+
+                <template v-else-if="!object_tab_view">
+                    <div v-for="misp_object in filtered_case_misp_objects" :key="misp_object.object_id" class="card mb-2">
+                        <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <button class="btn btn-link p-0 fw-semibold text-dark text-decoration-none"
+                                        type="button" data-bs-toggle="collapse"
+                                        :data-bs-target="'#anl-obj-collapse-'+misp_object.object_id"
+                                        aria-expanded="true">
+                                    <i class="fa-solid fa-cube me-1 text-secondary fa-sm"></i>[[ misp_object.object_name ]]
+                                </button>
+                                <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
+                                    <span v-for="si in misp_object.synced_instances" :key="si.instance_id"
+                                        class="badge bg-info text-dark"
+                                        :title="'Remote UUID: ' + si.object_uuid">
+                                        <i class="fa-solid fa-cloud me-1 fa-sm"></i>#[[ si.instance_id ]]
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+                        <div :id="'anl-obj-collapse-'+misp_object.object_id" class="collapse show">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">Value</th>
+                                            <th>Relation</th>
+                                            <th>Type</th>
+                                            <th v-show="!object_compact_view">First seen</th>
+                                            <th v-show="!object_compact_view">Last seen</th>
+                                            <th v-show="!object_compact_view">IDS</th>
+                                            <th v-show="!object_compact_view">Comment</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="attribute in misp_object.attributes" :key="attribute.id">
+                                            <td class="ps-3" @click="copy_to_input(attribute)" style="cursor: pointer;"
+                                                title="Copy into input attributes"
+                                                :class="{'table-success': highlighted_values.has(attribute.value)}">
+                                                [[attribute.value]]
+                                            </td>
+                                            <td><span class="badge bg-light text-dark border">[[attribute.object_relation]]</span></td>
+                                            <td class="text-muted small">[[attribute.type]]</td>
+                                            <td v-show="!object_compact_view" class="small">
+                                                <template v-if="attribute.first_seen">[[attribute.first_seen]]</template>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!object_compact_view" class="small">
+                                                <template v-if="attribute.last_seen">[[attribute.last_seen]]</template>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!object_compact_view" style="text-align:center;">
+                                                <i v-if="attribute.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!object_compact_view" class="small text-muted">
+                                                <template v-if="attribute.comment">[[attribute.comment]]</template>
+                                                <span v-else>-</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <template v-else>
+                    <ul class="nav nav-tabs mb-0" style="flex-wrap: wrap;">
+                        <li v-for="(misp_object, idx) in filtered_case_misp_objects" :key="misp_object.object_id" class="nav-item flex-shrink-0">
+                            <button class="nav-link py-1 px-3" :class="{active: object_active_tab_idx === idx}" @click="object_active_tab_idx = idx" type="button">
+                                <i class="fa-solid fa-cube me-1 text-secondary fa-sm"></i>[[ misp_object.object_name ]]
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content border border-top-0 rounded-bottom">
+                        <div v-if="filtered_case_misp_objects[object_active_tab_idx]" class="tab-pane active show">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">Value</th>
+                                            <th>Relation</th>
+                                            <th>Type</th>
+                                            <th v-show="!object_compact_view">First seen</th>
+                                            <th v-show="!object_compact_view">Last seen</th>
+                                            <th v-show="!object_compact_view">IDS</th>
+                                            <th v-show="!object_compact_view">Comment</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="attribute in filtered_case_misp_objects[object_active_tab_idx].attributes" :key="attribute.id">
+                                            <td class="ps-3" @click="copy_to_input(attribute)" style="cursor: pointer;"
+                                                title="Copy into input attributes"
+                                                :class="{'table-success': highlighted_values.has(attribute.value)}">
+                                                [[attribute.value]]
+                                            </td>
+                                            <td><span class="badge bg-light text-dark border">[[attribute.object_relation]]</span></td>
+                                            <td class="text-muted small">[[attribute.type]]</td>
+                                            <td v-show="!object_compact_view" class="small">
+                                                <template v-if="attribute.first_seen">[[attribute.first_seen]]</template>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!object_compact_view" class="small">
+                                                <template v-if="attribute.last_seen">[[attribute.last_seen]]</template>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!object_compact_view" style="text-align:center;">
+                                                <i v-if="attribute.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!object_compact_view" class="small text-muted">
+                                                <template v-if="attribute.comment">[[attribute.comment]]</template>
+                                                <span v-else>-</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div v-else-if="main_tab == 'misp-attribute'">
+                <div class="d-flex align-items-center gap-2 mb-3 mt-2">
+                    <input v-model="attr_search_query" class="form-control form-control-sm" placeholder="Search value, type, comment..." style="max-width:240px;" />
+                    <select v-model="attr_type_filter" class="form-select form-select-sm" style="max-width:170px;">
+                        <option value="">All types</option>
+                        <option v-for="t in attr_type_options" :key="t" :value="t">[[ t ]]</option>
+                    </select>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @click="attr_compact_view = !attr_compact_view" :title="attr_compact_view ? 'Show all columns' : 'Show compact view'">
+                        <i :class="attr_compact_view ? 'fa-solid fa-expand' : 'fa-solid fa-compress'"></i>
+                        <span class="d-none d-sm-inline ms-1">[[ attr_compact_view ? 'Detailed' : 'Compact' ]]</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggle_attr_tab_view()" :title="attr_tab_view ? 'Switch to table view' : 'Switch to tab view'">
+                        <i :class="attr_tab_view ? 'fa-solid fa-table-list' : 'fa-solid fa-folder'"></i>
+                        <span class="d-none d-sm-inline ms-1">[[ attr_tab_view ? 'Table' : 'Tabs' ]]</span>
+                    </button>
+                    <div class="form-check form-switch mb-0 ms-auto">
+                        <input class="form-check-input" type="checkbox" id="auto-copy-toggle-attr" v-model="auto_copy">
+                        <label class="form-check-label" for="auto-copy-toggle-attr">
                             <small :class="auto_copy ? 'text-success' : 'text-muted'">Auto-copy [[ auto_copy ? 'on' : 'off' ]]</small>
                         </label>
                     </div>
                 </div>
-                <div v-for="misp_object, key_obj in case_misp_objects" class="accordion p-1" :id="'accordion-'+key_obj">
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
-                            [[ misp_object.object_name ]]
-                        </button>
-                        </h2>
-                        <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
-                            <div class="accordion-body">
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>Value</th>
-                                                <th>Object relation</th>
-                                                <th>Type</th>
-                                                <th>First seen</th>
-                                                <th>Last seen</th>
-                                                <th>IDS</th>
-                                                <th>Comment</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr v-for="attribute, key_attr in misp_object.attributes ">
-                                                <td @click="copy_to_input(attribute)" style="cursor: pointer;" title="Copy into input attributes"
-                                                    :class="{'table-success': highlighted_values.has(attribute.value)}">
-                                                    [[attribute.value]]
-                                                </td>
-                                                <td>[[attribute.object_relation]]</td>
-                                                <td>[[attribute.type]]</td>
 
-                                                <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
-                                                <td v-else><i>none</i></td>
+                <div class="text-muted small mb-2">
+                    [[ filtered_case_misp_attributes.length ]] attribute(s)
+                    <span v-if="attr_search_query || attr_type_filter"> matching filter</span>
+                </div>
 
-                                                <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
-                                                <td v-else><i>none</i></td>
+                <div class="text-muted small fst-italic py-2" v-if="!filtered_case_misp_attributes.length">
+                    <span v-if="case_misp_attributes.length">No attributes match the filter.</span>
+                    <span v-else>No standalone MISP attributes found for this case.</span>
+                </div>
 
-                                                <td>[[attribute.ids_flag]]</td>
+                <template v-else-if="!attr_tab_view">
+                    <div class="card">
+                        <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-semibold text-dark">
+                                    <i class="fa-solid fa-tag me-1 text-secondary"></i>Standalone attributes
+                                </span>
+                                <span class="badge bg-secondary">[[ filtered_case_misp_attributes.length ]]</span>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Value</th>
+                                        <th>Type</th>
+                                        <th v-show="!attr_compact_view">First seen</th>
+                                        <th v-show="!attr_compact_view">Last seen</th>
+                                        <th v-show="!attr_compact_view" style="width:55px;" title="IDS flag">IDS</th>
+                                        <th v-show="!attr_compact_view">Comment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="attribute in filtered_case_misp_attributes" :key="attribute.id">
+                                        <td class="ps-3" @click="copy_to_input(attribute)" style="cursor: pointer;"
+                                            title="Copy into input attributes"
+                                            :class="{'table-success': highlighted_values.has(attribute.value)}">
+                                            [[attribute.value]]
+                                        </td>
+                                        <td><span class="badge bg-light text-dark border">[[attribute.type]]</span></td>
+                                        <td v-show="!attr_compact_view" class="small">
+                                            <template v-if="attribute.first_seen">[[attribute.first_seen]]</template>
+                                            <span v-else class="text-muted">-</span>
+                                        </td>
+                                        <td v-show="!attr_compact_view" class="small">
+                                            <template v-if="attribute.last_seen">[[attribute.last_seen]]</template>
+                                            <span v-else class="text-muted">-</span>
+                                        </td>
+                                        <td v-show="!attr_compact_view" style="text-align:center;">
+                                            <i v-if="attribute.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                            <span v-else class="text-muted">-</span>
+                                        </td>
+                                        <td v-show="!attr_compact_view" class="small text-muted">
+                                            <template v-if="attribute.comment">[[attribute.comment]]</template>
+                                            <span v-else>-</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
 
-                                                <td v-if="attribute.comment">[[attribute.comment]]</td>
-                                                <td v-else><i>none</i></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                <template v-else>
+                    <ul class="nav nav-tabs mb-0" style="flex-wrap: wrap;">
+                        <li v-for="t in attr_tab_types" :key="'attr-tab-'+t" class="nav-item flex-shrink-0">
+                            <button class="nav-link py-1 px-3" :class="{active: attr_active_tab_type === t}" @click="attr_active_tab_type = t" type="button">
+                                <i class="fa-solid fa-tag me-1 text-secondary fa-sm"></i>[[ t ]]
+                                <span class="badge bg-secondary ms-1">[[ attr_count_for(t) ]]</span>
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content border border-top-0 rounded-bottom">
+                        <div class="tab-pane active show">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">Value</th>
+                                            <th>Type</th>
+                                            <th v-show="!attr_compact_view">First seen</th>
+                                            <th v-show="!attr_compact_view">Last seen</th>
+                                            <th v-show="!attr_compact_view" style="width:55px;" title="IDS flag">IDS</th>
+                                            <th v-show="!attr_compact_view">Comment</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="attribute in active_attr_tab_attrs" :key="attribute.id">
+                                            <td class="ps-3" @click="copy_to_input(attribute)" style="cursor: pointer;"
+                                                title="Copy into input attributes"
+                                                :class="{'table-success': highlighted_values.has(attribute.value)}">
+                                                [[attribute.value]]
+                                            </td>
+                                            <td><span class="badge bg-light text-dark border">[[attribute.type]]</span></td>
+                                            <td v-show="!attr_compact_view" class="small">
+                                                <template v-if="attribute.first_seen">[[attribute.first_seen]]</template>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!attr_compact_view" class="small">
+                                                <template v-if="attribute.last_seen">[[attribute.last_seen]]</template>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!attr_compact_view" style="text-align:center;">
+                                                <i v-if="attribute.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td v-show="!attr_compact_view" class="small text-muted">
+                                                <template v-if="attribute.comment">[[attribute.comment]]</template>
+                                                <span v-else>-</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
-                </div>
+                </template>
             </div>
         </div>
         
@@ -196,7 +447,7 @@
 {% block script %}
     {% if can_use_misp %}
     <script type="module">
-        const { createApp, ref, onMounted, nextTick } = Vue
+        const { createApp, ref, computed, watch, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import misp_modules from '/static/js/analyzer/misp_modules.js'
         const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
@@ -216,9 +467,20 @@
                 const resolved_task_notes_html = ref([])
                 const main_tab = ref()
                 const all_notes = ref()
-                const case_misp_objects = ref()
+                const case_misp_objects = ref([])
+                const case_misp_attributes = ref([])
                 const auto_copy = ref(true)
                 const highlighted_values = ref(new Set())
+                const object_search_query = ref('')
+                const object_type_filter = ref('')
+                const object_compact_view = ref(true)
+                const object_tab_view = ref(false)
+                const object_active_tab_idx = ref(0)
+                const attr_search_query = ref('')
+                const attr_type_filter = ref('')
+                const attr_compact_view = ref(true)
+                const attr_tab_view = ref(false)
+                const attr_active_tab_type = ref('')
 
                 let editor = ""
 
@@ -228,6 +490,125 @@
 
                 const search_query = ref('')
                 let searchTimer = null
+
+                const object_type_options = computed(() => {
+                    const names = [...new Set((case_misp_objects.value || []).map(o => o.object_name).filter(Boolean))]
+                    return names.sort((a, b) => a.localeCompare(b))
+                })
+
+                const filtered_case_misp_objects = computed(() => {
+                    let objects = case_misp_objects.value || []
+                    const q = object_search_query.value.trim().toLowerCase()
+                    const t = object_type_filter.value
+                    if (q) {
+                        objects = objects.filter(o => {
+                            if ((o.object_name || '').toLowerCase().includes(q)) {
+                                return true
+                            }
+                            return (o.attributes || []).some(a =>
+                                String(a.value || '').toLowerCase().includes(q) ||
+                                String(a.object_relation || '').toLowerCase().includes(q) ||
+                                String(a.type || '').toLowerCase().includes(q) ||
+                                String(a.comment || '').toLowerCase().includes(q)
+                            )
+                        })
+                    }
+                    if (t) {
+                        objects = objects.filter(o => o.object_name === t)
+                    }
+                    return objects
+                })
+
+                watch([object_search_query, object_type_filter], () => {
+                    object_active_tab_idx.value = 0
+                })
+
+                watch(filtered_case_misp_objects, (objects) => {
+                    if (!objects.length || object_active_tab_idx.value >= objects.length) {
+                        object_active_tab_idx.value = 0
+                    }
+                })
+
+                function toggle_object_tab_view() {
+                    object_tab_view.value = !object_tab_view.value
+                    object_active_tab_idx.value = 0
+                }
+
+                const attr_type_options = computed(() => {
+                    const types = [...new Set((case_misp_attributes.value || []).map(a => a.type).filter(Boolean))]
+                    return types.sort((a, b) => a.localeCompare(b))
+                })
+
+                const filtered_case_misp_attributes = computed(() => {
+                    let attrs = case_misp_attributes.value || []
+                    const q = attr_search_query.value.trim().toLowerCase()
+                    const t = attr_type_filter.value
+                    if (q) {
+                        attrs = attrs.filter(a =>
+                            String(a.value || '').toLowerCase().includes(q) ||
+                            String(a.type || '').toLowerCase().includes(q) ||
+                            String(a.comment || '').toLowerCase().includes(q)
+                        )
+                    }
+                    if (t) {
+                        attrs = attrs.filter(a => a.type === t)
+                    }
+                    return attrs
+                })
+
+                const can_use_misp_object_tab = computed(() => {
+                    return !!case_selected.value && (case_misp_objects.value || []).length > 0
+                })
+
+                const can_use_misp_attribute_tab = computed(() => {
+                    return !!case_selected.value && (case_misp_attributes.value || []).length > 0
+                })
+
+                const grouped_case_misp_attributes = computed(() => {
+                    const grouped = {}
+                    for (const a of filtered_case_misp_attributes.value) {
+                        const type = a.type || 'unknown'
+                        if (!grouped[type]) {
+                            grouped[type] = []
+                        }
+                        grouped[type].push(a)
+                    }
+                    return Object.keys(grouped)
+                        .sort((a, b) => a.localeCompare(b))
+                        .map(type => ({ type, attrs: grouped[type] }))
+                })
+
+                const attr_tab_types = computed(() => grouped_case_misp_attributes.value.map(g => g.type))
+
+                const active_attr_tab_attrs = computed(() => {
+                    const group = grouped_case_misp_attributes.value.find(g => g.type === attr_active_tab_type.value)
+                    return group ? group.attrs : []
+                })
+
+                function sync_active_attr_tab_type() {
+                    const types = attr_tab_types.value
+                    if (!types.length) {
+                        attr_active_tab_type.value = ''
+                        return
+                    }
+                    if (!types.includes(attr_active_tab_type.value)) {
+                        attr_active_tab_type.value = types[0]
+                    }
+                }
+
+                watch(attr_tab_types, () => {
+                    sync_active_attr_tab_type()
+                }, { immediate: true })
+
+                function toggle_attr_tab_view() {
+                    attr_tab_view.value = !attr_tab_view.value
+                    sync_active_attr_tab_type()
+                }
+
+                function attr_count_for(type) {
+                    const group = grouped_case_misp_attributes.value.find(g => g.type === type)
+                    return group ? group.attrs.length : 0
+                }
 
                 async function fetchSearchCase(text){
                     result_search.value = []
@@ -285,6 +666,14 @@
                     result_search_task.value = loc_task.tasks
 
                     fetch_case_misp_object(case_selected.value.id)
+                    fetch_case_misp_attributes(case_selected.value.id)
+
+                    object_search_query.value = ''
+                    object_type_filter.value = ''
+                    object_active_tab_idx.value = 0
+                    attr_search_query.value = ''
+                    attr_type_filter.value = ''
+                    sync_active_attr_tab_type()
 
                     $('.select2-select').select2({
                         theme: 'bootstrap-5',
@@ -316,44 +705,36 @@
                 }
 
                 async function active_tab(tab_name){
-                    if(tab_name == 'case'){
-                        main_tab.value = 'case'
-                        if ( !document.getElementById("tab-case-notes").classList.contains("active") ){
-                            document.getElementById("tab-case-notes").classList.add("active")
-                            document.getElementById("tab-all-notes").classList.remove("active")
-                            document.getElementById("tab-task-notes").classList.remove("active")
-                            document.getElementById("tab-misp-object").classList.remove("active")
-                        }
-                        await nextTick()
+                    const tab_map = {
+                        "case": "tab-case-notes",
+                        "all": "tab-all-notes",
+                        "task": "tab-task-notes",
+                        "misp-object": "tab-misp-object",
+                        "misp-attribute": "tab-misp-attribute"
                     }
-                    if(tab_name == 'all'){
-                        main_tab.value = 'all'
-                        if ( !document.getElementById("tab-all-notes").classList.contains("active") ){
-                            document.getElementById("tab-all-notes").classList.add("active")
-                            document.getElementById("tab-case-notes").classList.remove("active")
-                            document.getElementById("tab-task-notes").classList.remove("active")
-                            document.getElementById("tab-misp-object").classList.remove("active")
-                            await nextTick()
+                    if (!tab_map[tab_name]) {
+                        return
+                    }
+                    if (tab_name === 'misp-object' && !can_use_misp_object_tab.value) {
+                        return
+                    }
+                    if (tab_name === 'misp-attribute' && !can_use_misp_attribute_tab.value) {
+                        return
+                    }
+
+                    main_tab.value = tab_name
+                    for (const [key, tab_id] of Object.entries(tab_map)) {
+                        const tab_el = document.getElementById(tab_id)
+                        if (!tab_el) {
+                            continue
                         }
-                    }else if(tab_name == 'task'){
-                        main_tab.value = 'task'
-                        if ( !document.getElementById("tab-task-notes").classList.contains("active") ){
-                            document.getElementById("tab-task-notes").classList.add("active")
-                            document.getElementById("tab-case-notes").classList.remove("active")
-                            document.getElementById("tab-all-notes").classList.remove("active")
-                            document.getElementById("tab-misp-object").classList.remove("active")
-                            await nextTick()
-                        }
-                    }else if(tab_name == 'misp-object'){
-                        main_tab.value = 'misp-object'
-                        if ( !document.getElementById("tab-misp-object").classList.contains("active") ){
-                            document.getElementById("tab-misp-object").classList.add("active")
-                            document.getElementById("tab-case-notes").classList.remove("active")
-                            document.getElementById("tab-all-notes").classList.remove("active")
-                            document.getElementById("tab-task-notes").classList.remove("active")
-                            await nextTick()
+                        if (key === tab_name) {
+                            tab_el.classList.add("active")
+                        } else {
+                            tab_el.classList.remove("active")
                         }
                     }
+                    await nextTick()
                     md.mermaid.init()
                 }
 
@@ -361,9 +742,49 @@
                     const res = await fetch("/case/"+case_id+"/get_case_misp_object")
                     if(await res.status==404 ){
                         display_toast(res)
+                        case_misp_objects.value = []
+                        if (main_tab.value === 'misp-object') {
+                            if (can_use_misp_attribute_tab.value) {
+                                active_tab('misp-attribute')
+                            } else {
+                                active_tab('case')
+                            }
+                        }
                     }else{
                         let loc = await res.json()
                         case_misp_objects.value = loc["misp-object"]
+                        if (main_tab.value === 'misp-object' && !case_misp_objects.value.length) {
+                            if (can_use_misp_attribute_tab.value) {
+                                active_tab('misp-attribute')
+                            } else {
+                                active_tab('case')
+                            }
+                        }
+                    }
+                }
+
+                async function fetch_case_misp_attributes(case_id){
+                    const res = await fetch("/case/"+case_id+"/get_case_misp_attributes")
+                    if (await res.status == 200) {
+                        let loc = await res.json()
+                        case_misp_attributes.value = loc["attributes"] || []
+                        if (main_tab.value === 'misp-attribute' && !case_misp_attributes.value.length) {
+                            if (can_use_misp_object_tab.value) {
+                                active_tab('misp-object')
+                            } else {
+                                active_tab('case')
+                            }
+                        }
+                    } else {
+                        case_misp_attributes.value = []
+                        display_toast(res)
+                        if (main_tab.value === 'misp-attribute') {
+                            if (can_use_misp_object_tab.value) {
+                                active_tab('misp-object')
+                            } else {
+                                active_tab('case')
+                            }
+                        }
                     }
                 }
 
@@ -387,9 +808,23 @@
                         await select_case(loc)
 
                         if("{{misp_object}}"){
-                            fetch_case_misp_object("{{case_id}}")
-                            
-                            active_tab("misp-object")
+                            await fetch_case_misp_object("{{case_id}}")
+
+                            if (can_use_misp_object_tab.value) {
+                                active_tab("misp-object")
+                            } else if (can_use_misp_attribute_tab.value) {
+                                active_tab("misp-attribute")
+                            } else {
+                                active_tab("case")
+                            }
+                        }else if("{{misp_attribute}}"){
+                            await fetch_case_misp_attributes("{{case_id}}")
+
+                            if (can_use_misp_attribute_tab.value) {
+                                active_tab("misp-attribute")
+                            } else {
+                                active_tab("misp-object")
+                            }
                         }else{
                             for(let i in result_search_task.value){
                                 if(result_search_task.value[i].id == '{{task_id}}'){
@@ -398,9 +833,7 @@
                                 }
                             }
                             active_tab("task")
-                        }
-
-                        
+                        }                        
                     }
 
                     // Sync highlights when query inputs change or are removed
@@ -458,6 +891,28 @@
                     all_notes,
                     md,
                     case_misp_objects,
+                    case_misp_attributes,
+                    can_use_misp_object_tab,
+                    filtered_case_misp_objects,
+                    object_type_options,
+                    object_search_query,
+                    object_type_filter,
+                    object_compact_view,
+                    object_tab_view,
+                    object_active_tab_idx,
+                    toggle_object_tab_view,
+                    filtered_case_misp_attributes,
+                    can_use_misp_attribute_tab,
+                    attr_type_options,
+                    attr_search_query,
+                    attr_type_filter,
+                    attr_compact_view,
+                    attr_tab_view,
+                    attr_tab_types,
+                    attr_active_tab_type,
+                    active_attr_tab_attrs,
+                    toggle_attr_tab_view,
+                    attr_count_for,
                     auto_copy,
                     highlighted_values,
                     resolved_case_notes_html,

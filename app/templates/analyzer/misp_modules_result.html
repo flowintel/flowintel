@@ -74,19 +74,112 @@
                                         <div :id="'panelsStayOpen-'+key_query+'-'+key" class="accordion-collapse collapse show">
                                             <!-- visual part -->
                                             <template v-if="main_tab == 'visual'">
-                                                <div class="accordion-body" >
+                                                <div class="accordion-body">
                                                     <template v-if="'results' in result && 'Object' in result.results">
-                                                        <template v-for="obj in result.results.Object">
-                                                            <button class="btn btn-primary" @click="select_misp_object(obj)" title="Add this object to selected object">
-                                                                <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
-                                                            </button>
-                                                            <div v-html="parseMispObject(obj)[0].outerHTML"></div>
+                                                        <template v-for="(obj, obj_idx) in result.results.Object" :key="key_query + '-' + key + '-' + obj_idx">
+                                                            <div class="card mb-3">
+                                                                <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                                                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                                        <span class="fw-semibold text-dark">
+                                                                            <i class="fa-solid fa-cube me-1 text-secondary fa-sm"></i>[[ obj.name ]]
+                                                                        </span>
+                                                                        <span class="badge bg-light text-dark border">[[ (obj.Attribute || []).length ]] attr(s)</span>
+                                                                    </div>
+                                                                    <button class="btn btn-sm btn-outline-primary" @click="select_misp_object(obj)" title="Add this object to selected objects">
+                                                                        <i class="fa-solid fa-plus me-1"></i><i class="fa-solid fa-cubes"></i>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="table-responsive">
+                                                                    <table class="table table-sm table-hover align-middle mb-0">
+                                                                        <thead class="table-light">
+                                                                            <tr>
+                                                                                <th class="ps-3">Value</th>
+                                                                                <th>Relation</th>
+                                                                                <th>Type</th>
+                                                                                <th>First seen</th>
+                                                                                <th>Last seen</th>
+                                                                                <th style="width:55px;" title="IDS flag">IDS</th>
+                                                                                <th>Comment</th>
+                                                                                <th style="width: 80px;"></th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <tr v-for="(attr, attr_idx) in (obj.Attribute || [])" :key="key_query + '-' + key + '-' + obj_idx + '-' + attr_idx">
+                                                                                <td class="ps-3">[[ attr.value ]]</td>
+                                                                                <td><span class="badge bg-light text-dark border">[[ attr.object_relation ]]</span></td>
+                                                                                <td class="text-muted small">[[ attr.type ]]</td>
+                                                                                <td class="small">
+                                                                                    <template v-if="attr.first_seen">[[ attr.first_seen ]]</template>
+                                                                                    <span v-else class="text-muted">-</span>
+                                                                                </td>
+                                                                                <td class="small">
+                                                                                    <template v-if="attr.last_seen">[[ attr.last_seen ]]</template>
+                                                                                    <span v-else class="text-muted">-</span>
+                                                                                </td>
+                                                                                <td style="text-align:center;">
+                                                                                    <i v-if="attr.to_ids" class="fa-solid fa-check text-success fa-sm"></i>
+                                                                                    <span v-else class="text-muted">-</span>
+                                                                                </td>
+                                                                                <td class="small text-muted">
+                                                                                    <template v-if="attr.comment">[[ attr.comment ]]</template>
+                                                                                    <span v-else>-</span>
+                                                                                </td>
+                                                                                <td class="text-end pe-2">
+                                                                                    <button class="btn btn-sm btn-outline-primary"
+                                                                                            @click="select_misp_object_attribute(attr)"
+                                                                                            title="Add as standalone attribute">
+                                                                                        <i class="fa-solid fa-plus me-1"></i><i class="fa-solid fa-tag"></i>
+                                                                                    </button>
+                                                                                </td>
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
                                                         </template>
                                                     </template>
             
                                                     <template v-else>
-                                                        <template v-for="(misp_attrs, key_loop) in result.results">
-                                                            <div v-for="misp_attr in misp_attrs.values" class="accordion-body" v-html="parseMispAttr(misp_attr, misp_attrs.types, key_loop)[0].outerHTML"></div>
+                                                        <template v-for="(misp_attrs, key_loop) in result.results" :key="key_query + '-' + key + '-attrs-' + key_loop">
+                                                            <div class="card mb-3">
+                                                                <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                                                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                                        <span class="fw-semibold text-dark">
+                                                                            <i class="fa-solid fa-tag me-1 text-secondary fa-sm"></i>Attributes [[ Number(key_loop) + 1 ]]
+                                                                        </span>
+                                                                        <span class="badge bg-light text-dark border">[[ (misp_attrs.values || []).length ]] value(s)</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="table-responsive">
+                                                                    <table class="table table-sm table-hover align-middle mb-0">
+                                                                        <thead class="table-light">
+                                                                            <tr>
+                                                                                <th class="ps-3">Value</th>
+                                                                                <th>Type</th>
+                                                                                <th style="width: 80px;"></th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <tr v-for="(misp_attr, attr_idx) in (misp_attrs.values || [])" :key="key_query + '-' + key + '-' + key_loop + '-' + attr_idx">
+                                                                                <td class="ps-3">[[ misp_attr ]]</td>
+                                                                                <td>
+                                                                                    <span class="badge bg-light text-dark border">[[ (misp_attrs.types && misp_attrs.types.length) ? misp_attrs.types[0] : 'text' ]]</span>
+                                                                                    <span v-if="misp_attrs.types && misp_attrs.types.length > 1" class="text-muted small ms-1" :title="'Detected types: ' + misp_attrs.types.join(', ')">
+                                                                                        (+[[ misp_attrs.types.length - 1 ]])
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td class="text-end pe-2">
+                                                                                    <button class="btn btn-sm btn-outline-primary"
+                                                                                            @click="select_misp_attribute(misp_attr, misp_attrs.types)"
+                                                                                            title="Add as standalone attribute">
+                                                                                        <i class="fa-solid fa-plus me-1"></i><i class="fa-solid fa-tag"></i>
+                                                                                    </button>
+                                                                                </td>
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
                                                         </template>
                                                     </template>
                                                 </div>
@@ -171,33 +264,74 @@ Value: [[misp_attr]]
             <div class="card card-body">
                 <div id="editor-selected-notes"></div>
             </div>
-            <div class="row">
-                <div v-for="(misp_object, key_obj) in misp_object_list" class="accordion p-1" :id="'accordion-'+key_obj">
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
-                            [[ misp_object["object-template"].name ]]
-                        </button>
-                        </h2>
-                        <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
-                            <div class="accordion-body">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>object relation</th>
-                                            <th>value</th>
-                                            <th>type</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="(attribute, key_attr) in misp_object.attributes ">
-                                            <td>[[attribute.object_relation]]</td>
-                                            <td>[[attribute.value]]</td>
-                                            <td>[[attribute.type]]</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card mb-3" v-if="misp_object_list.length">
+                        <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                            <span class="fw-semibold text-dark"><i class="fa-solid fa-cubes me-1 text-secondary"></i>Selected MISP objects</span>
+                            <span class="badge bg-secondary">[[ misp_object_list.length ]]</span>
+                        </div>
+                        <div class="card-body p-2">
+                            <div v-for="(misp_object, key_obj) in misp_object_list" :key="'selected-object-'+key_obj" class="card mb-2">
+                                <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                                    <span class="fw-semibold">[[ misp_object["object-template"].name ]]</span>
+                                    <button class="btn btn-link btn-sm p-0 text-danger" @click="delete_selected_object(key_obj)" title="Remove selected object">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-3">Value</th>
+                                                <th>Relation</th>
+                                                <th>Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(attribute, key_attr) in misp_object.attributes" :key="'selected-object-attr-'+key_obj+'-'+key_attr">
+                                                <td class="ps-3">[[attribute.value]]</td>
+                                                <td><span class="badge bg-light text-dark border">[[attribute.object_relation]]</span></td>
+                                                <td class="text-muted small">[[attribute.type]]</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="card" v-if="misp_attribute_list.length">
+                        <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                            <span class="fw-semibold text-dark"><i class="fa-solid fa-tag me-1 text-secondary"></i>Selected standalone attributes</span>
+                            <span class="badge bg-secondary">[[ misp_attribute_list.length ]]</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Value</th>
+                                        <th>Type</th>
+                                        <th style="width: 55px;" title="IDS flag">IDS</th>
+                                        <th style="width: 80px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(attr, idx) in misp_attribute_list" :key="'selected-attr-'+idx">
+                                        <td class="ps-3">[[ attr.value ]]</td>
+                                        <td><span class="badge bg-light text-dark border">[[ attr.type ]]</span></td>
+                                        <td style="text-align:center;">
+                                            <i v-if="attr.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                            <span v-else class="text-muted">-</span>
+                                        </td>
+                                        <td class="text-end pe-2">
+                                            <button class="btn btn-link btn-sm p-0 text-danger" @click="delete_selected_attribute(idx)" title="Remove selected attribute">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -222,6 +356,7 @@ Value: [[misp_attr]]
                 const main_tab = ref('visual')
                 const analyzer_results = ref({})
                 const misp_object_list = ref([])
+                const misp_attribute_list = ref([])
 
                 let editor = ""
 
@@ -265,14 +400,18 @@ Value: [[misp_attr]]
                     if(!data_to_pass){
                         data_to_pass = analyzer_results.value.result
                     }
-                    let loc = JSON.stringify(misp_object_list.value)
-                    if(!loc)
-                        loc=null
+                    let loc_obj = JSON.stringify(misp_object_list.value)
+                    if(!loc_obj)
+                        loc_obj = null
+                    let loc_attr = JSON.stringify(misp_attribute_list.value)
+                    if(!loc_attr)
+                        loc_attr = null
 
                     $('#insert_form').append(
                         $('<form>').attr({"action": "/analyzer/misp-modules/result_to_case", "name": "flowintel", "method": "post", "style": "display:none"}).append(
-                            $("<input>").attr({"type": "hidden", "name": "note_selected"}).val(JSON.stringify(data_to_pass)),
-                            $("<input>").attr({"type": "hidden", "name": "misp_object_selected"}).val(loc),
+                            $("<input>").attr({"type": "text", "name": "note_selected"}).val(JSON.stringify(data_to_pass)),
+                            $("<input>").attr({"type": "text", "name": "misp_object_selected"}).val(loc_obj),
+                            $("<input>").attr({"type": "text", "name": "misp_attribute_selected"}).val(loc_attr),
                             $("<input>").attr({"type": "hidden", "name": "csrf_token"}).val($('#csrf_token').val())
                         )
                     );
@@ -305,6 +444,38 @@ Value: [[misp_attr]]
                         "template_version": misp_object.template_version, "uuid": misp_object.template_uuid}
                     }
                     misp_object_list.value.push(loc_object)
+                }
+
+                function select_misp_attribute(value, types, sourceAttr = null){
+                    const selected_type = (types && types.length) ? types[0] : 'text'
+                    const duplicate = misp_attribute_list.value.find(a => a.value === value && a.type === selected_type)
+                    if (duplicate) {
+                        return
+                    }
+                    misp_attribute_list.value.push({
+                        value: value,
+                        type: selected_type,
+                        comment: sourceAttr && sourceAttr.comment ? sourceAttr.comment : '',
+                        ids_flag: sourceAttr ? (sourceAttr.to_ids || sourceAttr.ids_flag || false) : false,
+                        disable_correlation: false,
+                        first_seen: sourceAttr && sourceAttr.first_seen ? sourceAttr.first_seen : '',
+                        last_seen: sourceAttr && sourceAttr.last_seen ? sourceAttr.last_seen : ''
+                    })
+                }
+
+                function select_misp_object_attribute(attr){
+                    if (!attr || !attr.value) {
+                        return
+                    }
+                    select_misp_attribute(attr.value, [attr.type], attr)
+                }
+
+                function delete_selected_object(index){
+                    misp_object_list.value.splice(index, 1)
+                }
+
+                function delete_selected_attribute(index){
+                    misp_attribute_list.value.splice(index, 1)
                 }
 
                 onMounted(() => {
@@ -362,9 +533,14 @@ Value: [[misp_attr]]
                     parseMispObject,
                     parseMispAttr,
                     misp_object_list,
+                    misp_attribute_list,
                     active_tab,
                     nextPage,
                     select_misp_object,
+                    select_misp_attribute,
+                    select_misp_object_attribute,
+                    delete_selected_object,
+                    delete_selected_attribute,
                     copy_markdown_to_note
                 }
             }

@@ -222,72 +222,80 @@ export default {
         }
     `,
 	template: `
-        <div class="card card-body">
-            <div class="mb-1">
+        <div>
+            <div class="mb-2 d-flex align-items-center gap-2">
                 <button class="btn btn-primary" title="Add a new object" data-bs-toggle="modal" data-bs-target="#modal-add-object">
-                    <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
+                    <i class="fa-solid fa-plus me-1"></i><i class="fa-solid fa-cubes"></i>
                 </button>
+                <span class="text-muted small" v-if="loc_misp_objects.length">[[ loc_misp_objects.length ]] object(s)</span>
             </div>
-            <div class="row" v-if="loc_misp_objects.length">
-                <div v-for="misp_object, key_obj in loc_misp_objects" class="accordion p-1" :id="'accordion-'+key_obj">
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
-                            [[ misp_object['object-template'].name ]]
+            <div class="text-muted small fst-italic py-2" v-if="!loc_misp_objects.length">
+                No selected MISP objects yet.
+            </div>
+            <div v-else>
+                <div v-for="misp_object, key_obj in loc_misp_objects" class="card mb-2" :key="'selected-object-'+key_obj">
+                    <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                        <button class="btn btn-link p-0 fw-semibold text-dark text-decoration-none" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
+                            <i class="fa-solid fa-cube me-1 text-secondary fa-sm"></i>[[ misp_object['object-template'].name ]]
                         </button>
-                        </h2>
-                        <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
-                            <div class="accordion-body">
-                                <button type="button" class="btn btn-primary btn-sm" title="Add new attributes" @click="open_modal_add_attribute(misp_object['object-template'].uuid, 'modal-add-attribute-', key_obj)" >
-                                    <i class="fa-solid fa-plus"></i>
-                                </button>
-                                <button type="button" class="btn btn-danger btn-sm" @click="delete_object(misp_object.id)" title="Delete object">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>Value</th>
-                                                <th>Object Relation</th>
-                                                <th>Type</th>
-                                                <th>First seen</th>
-                                                <th>Last seen</th>
-                                                <th>IDS</th>
-                                                <th>Comment</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr v-for="attribute, key_attr in misp_object.attributes ">
-                                                <td>[[attribute.value]]</td>
-                                                <td>[[attribute.object_relation]]</td>
-                                                <td>[[attribute.type]]</td>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-primary" title="Add new attributes" @click="open_modal_add_attribute(misp_object['object-template'].uuid, 'modal-add-attribute-', key_obj)">
+                                <i class="fa-solid fa-plus fa-sm"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @click="delete_object(misp_object.id)" title="Delete object">
+                                <i class="fa-solid fa-trash fa-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div :id="'collapse-'+key_obj" class="collapse show">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Value</th>
+                                        <th>Relation</th>
+                                        <th>Type</th>
+                                        <th>First seen</th>
+                                        <th>Last seen</th>
+                                        <th style="width:55px;" title="IDS flag">IDS</th>
+                                        <th>Comment</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="attribute, key_attr in misp_object.attributes " :key="'selected-object-attr-'+key_obj+'-'+key_attr">
+                                        <td class="ps-3">[[attribute.value]]</td>
+                                        <td><span class="badge bg-light text-dark border">[[attribute.object_relation]]</span></td>
+                                        <td class="text-muted small">[[attribute.type]]</td>
 
-                                                <td v-if="attribute.first_seen">[[attribute.first_seen]]</td>
-                                                <td v-else><i>none</i></td>
+                                        <td class="small" v-if="attribute.first_seen">[[attribute.first_seen]]</td>
+                                        <td class="small text-muted" v-else>-</td>
 
-                                                <td v-if="attribute.last_seen">[[attribute.last_seen]]</td>
-                                                <td v-else><i>none</i></td>
+                                        <td class="small" v-if="attribute.last_seen">[[attribute.last_seen]]</td>
+                                        <td class="small text-muted" v-else>-</td>
 
-                                                <td>[[attribute.ids_flag]]</td>
+                                        <td style="text-align:center;">
+                                            <i v-if="attribute.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                            <span v-else class="text-muted">-</span>
+                                        </td>
 
-                                                <td v-if="attribute.comment">[[attribute.comment]]</td>
-                                                <td v-else><i>none</i></td>
-                                                <td>
-                                                    <button type="button" class="btn btn-primary btn-sm" title="Edit attribute"
-                                                    @click="open_modal_add_attribute(misp_object['object-template'].uuid, 'modal-edit-attr-', attribute.id)">
-                                                        <i class="fa-solid fa-pen-to-square"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-danger btn-sm" title="Delete attribute"
-                                                    @click="delete_attribute(attribute.id, misp_object.id)">
-                                                        <i class="fa-solid fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        <td class="small text-muted" v-if="attribute.comment">[[attribute.comment]]</td>
+                                        <td class="small text-muted" v-else>-</td>
+                                        <td class="text-end pe-2" style="white-space:nowrap;">
+                                            <button type="button" class="btn btn-link btn-sm p-0 me-2 text-primary" title="Edit attribute"
+                                            @click="open_modal_add_attribute(misp_object['object-template'].uuid, 'modal-edit-attr-', attribute.id)">
+                                                <i class="fa-solid fa-pen-to-square fa-sm"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-link btn-sm p-0 text-danger" title="Delete attribute"
+                                            @click="delete_attribute(attribute.id, misp_object.id)">
+                                                <i class="fa-solid fa-trash fa-sm"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                                 <!-- Edit-attribute modals (outside table for valid HTML) -->
                                 <template v-for="attribute in misp_object.attributes" :key="'edit-modal-'+attribute.id">
                                     <div class="modal fade" :id="'modal-edit-attr-'+attribute.id" tabindex="-1" aria-labelledby="EditObjectLabel" aria-hidden="true">
@@ -359,8 +367,6 @@ export default {
                                         </div>
                                     </div>
                                 </template>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Modal add attributes -->

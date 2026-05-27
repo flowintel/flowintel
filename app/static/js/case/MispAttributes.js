@@ -261,6 +261,11 @@ export default {
                     title="Show only attributes not synced to any MISP instance">
                 <i class="fa-solid fa-filter me-1"></i>Unsynced only
             </button>
+            <a class="btn btn-outline-primary btn-sm"
+               :href="'/analyzer/misp-modules?case_id='+case_id+'&misp_attribute=True'"
+               title="Run analyzer modules from standalone attributes">
+                <i class="fa-solid fa-puzzle-piece me-1"></i>Analyser
+            </a>
             <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" @click="toggle_compact_view()" :title="compact_view ? 'Show all columns' : 'Show compact view'">
                 <i :class="compact_view ? 'fa-solid fa-expand' : 'fa-solid fa-compress'"></i>
                 <span class="d-none d-sm-inline ms-1">[[ compact_view ? 'Detailed' : 'Compact' ]]</span>
