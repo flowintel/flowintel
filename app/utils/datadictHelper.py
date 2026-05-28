@@ -39,7 +39,7 @@ def edition_verification_tags_connectors(data_dict, case_task):
             if not check_tag(tag):
                 return {"message": f"Tag '{tag}' doesn't exist"}
     elif loc_json["tags"]:
-        data_dict["tags"] = loc_json["tags"]
+        data_dict["tags"] = [t["name"] for t in loc_json["tags"]]
     else:
         data_dict["tags"] = []
 
@@ -48,7 +48,7 @@ def edition_verification_tags_connectors(data_dict, case_task):
         if not isinstance(loc, bool):
             return {"message": f"Cluster '{loc}' doesn't exist"}
     elif loc_json["clusters"]:
-        data_dict["clusters"] = loc_json["clusters"]
+        data_dict["clusters"] = [c["uuid"] for c in loc_json["clusters"]]
     else:
         data_dict["clusters"] = []
             
@@ -57,7 +57,7 @@ def edition_verification_tags_connectors(data_dict, case_task):
         if not isinstance(loc, bool):
             return {"message": f"Custom tag '{loc}' doesn't exist"}
     elif loc_json["custom_tags"]:
-        data_dict["custom_tags"] = loc_json["custom_tags"]
+        data_dict["custom_tags"] = [ct["name"] for ct in loc_json["custom_tags"]]
     else:
         data_dict["custom_tags"] = []
 
