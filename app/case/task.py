@@ -1,11 +1,14 @@
 import ast
+import ipaddress
 import os
+import socket
 import uuid
 
 import requests
 
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
+from urllib.parse import urlparse
 
 from app.db_class.db import Case, User, db, Note
 
@@ -932,6 +935,35 @@ def delete_external_reference(cid, tid, erid):
 
 def _probe_external_url(url):
     """Probe a URL to detect common connection failures before invoking misp-modules."""
+    try:
+        parsed_url = urlparse(url)
+    except ValueError:
+        return "The URL is not valid"
+
+    if parsed_url.scheme not in ["http", "https"]:
+        return "Only http:// and https:// URLs are allowed"
+
+    if not parsed_url.hostname:
+        return "The URL is missing a hostname"
+
+    try:
+        addrinfo = socket.getaddrinfo(parsed_url.hostname, None)
+    except socket.gaierror:
+        return "The host likely doesn't exist (DNS resolution failed)"
+
+    for result in addrinfo:
+        ip = result[4][0]
+        parsed_ip = ipaddress.ip_address(ip)
+        if (
+            parsed_ip.is_private
+            or parsed_ip.is_loopback
+            or parsed_ip.is_link_local
+            or parsed_ip.is_multicast
+            or parsed_ip.is_reserved
+            or parsed_ip.is_unspecified
+        ):
+            return "The URL resolves to a restricted network address"
+
     try:
         requests.head(url, timeout=10, allow_redirects=True)
     except requests.exceptions.ConnectionError as e:
