@@ -6,11 +6,10 @@ from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from ..connectors import connectors_core as ConnectorsModel
 from ..connectors import connectors_core as ConnectorModel
-from ..db_class.db import Task, Task_Misp_Object, Misp_Object_Instance_Uuid, Misp_Attribute_Instance_Uuid, Case_Timeline_Event, db
+from ..db_class.db import Task, Task_Misp_Object, Task_Misp_Attribute, Misp_Object_Instance_Uuid, Misp_Attribute_Instance_Uuid, Case_Timeline_Event, db
 from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
 from ..utils.utils import get_object_templates
-from functools import lru_cache
 
 
 ###############
@@ -95,35 +94,12 @@ def get_misp_attribute_types():
     """Return list of MISP attribute types (for frontend dropdowns)"""
     # Return the cached canonical types. Use ?force=1 to rebuild cache.
     force = request.args.get('force', '').lower() in ('1', 'true', 'yes')
-    if force:
-        try:
-            _build_misp_attribute_types.cache_clear()
-        except Exception:
-            pass
     try:
-        types = list(_build_misp_attribute_types())
+        types = CaseModel.get_misp_attribute_types(force=force)
         return jsonify({"types": types}), 200
     except Exception as e:
         flowintel_log('error', 500, 'Failed to build attribute types from templates', error=str(e))
         return jsonify({"types": []}), 200
-
-
-@lru_cache(maxsize=1)
-def _build_misp_attribute_types():
-    """Construct and cache the canonical list of attribute types from templates."""
-    templates = get_object_templates()
-    types_set = set()
-    for tpl in templates:
-        for attr in tpl.get('attributes', []):
-            ma = attr.get('misp_attribute')
-            if not ma:
-                continue
-            if isinstance(ma, (list, tuple)):
-                for t in ma:
-                    types_set.add(t)
-            else:
-                types_set.add(ma)
-    return tuple(sorted(types_set))
 
 
 @case_blueprint.route("/<cid>/create_misp_object", methods=['POST'])
@@ -299,8 +275,28 @@ def get_case_misp_attributes(cid):
                 "instance_id": s.instance_id,
                 "uuid": s.attribute_instance_uuid
             })
+        loc["tasks"] = [
+            {"id": t.task_id, "title": (Task.query.get(t.task_id).title if Task.query.get(t.task_id) else None)}
+            for t in Task_Misp_Attribute.query.filter_by(misp_attribute_id=attr.id).all()
+        ]
         result.append(loc)
     return jsonify({"attributes": result})
+
+
+@case_blueprint.route("/<int:cid>/misp_attribute/<int:aid>/set_tasks", methods=['POST'])
+@login_required
+@editor_required
+def set_misp_attribute_tasks(cid, aid):
+    """Assign tasks to a standalone MISP attribute (replace current assignments)."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Set MISP attribute tasks: Action not allowed", User=current_user.email, CaseId=cid, AttributeId=aid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    task_ids = request.json.get('task_ids', []) if request.is_json else []
+    return CaseModel.set_standalone_attribute_tasks(cid, aid, task_ids, current_user)
 
 
 @case_blueprint.route("/<int:cid>/create_misp_attribute", methods=['POST'])

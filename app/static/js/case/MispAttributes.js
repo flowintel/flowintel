@@ -23,7 +23,7 @@ export default {
         case_id: Number,
         cases_info: Object,
     },
-    emits: ['attr_count'],
+    emits: ['attr_count', 'modif_misp_attrs'],
     setup(props, { emit }) {
         const attrs = ref([])
         const show_add = ref(false)
@@ -37,6 +37,8 @@ export default {
         const compact_view = ref(true)
         const tab_view = ref(false)
         const active_tab_type = ref('')
+        const assigning_attr_id = ref(null)
+        const assign_task_state = ref({})
 
         const can_edit = computed(() => {
             if (!props.cases_info) return false
@@ -84,7 +86,7 @@ export default {
         })
 
         const visible_column_count = computed(() => {
-            const base = compact_view.value ? 2 : 7
+            const base = compact_view.value ? 3 : 8
             return base + (can_edit.value ? 1 : 0)
         })
 
@@ -205,7 +207,53 @@ export default {
             display_toast(res)
         }
 
+        function scroll_to_task(task_id) {
+            const el = document.getElementById('task-' + task_id)
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            } else {
+                window.location.hash = 'task-' + task_id
+            }
+        }
+
+        function toggle_assign_tasks(sa) {
+            if (assigning_attr_id.value === sa.id) {
+                assigning_attr_id.value = null
+                return
+            }
+            assign_task_state.value[sa.id] = (sa.tasks || []).map(t => t.id)
+            assigning_attr_id.value = sa.id
+        }
+
+        async function save_assign_tasks(aid) {
+            const sel = assign_task_state.value[aid] || []
+            const res = await fetch(`/case/${props.case_id}/misp_attribute/${aid}/set_tasks`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_ids: sel })
+            })
+            if (res.status === 200) {
+                const tasks_map = {}
+                if (props.cases_info && props.cases_info.tasks) {
+                    for (const t of props.cases_info.tasks) tasks_map[t.id] = t
+                }
+                const idx = attrs.value.findIndex(a => a.id === aid)
+                if (idx > -1) {
+                    attrs.value[idx].tasks = sel.map(id => ({
+                        id: id,
+                        title: tasks_map[id] ? tasks_map[id].title : `Task ${id}`
+                    }))
+                }
+                assigning_attr_id.value = null
+                emit('modif_misp_attrs', true)
+                create_message('Tasks linked to standalone attribute', 'success-subtle', false, 'fa-solid fa-list-check')
+            }
+            display_toast(res)
+        }
+
         onMounted(async () => {
+            reset_add()
+            assigning_attr_id.value = null
             await fetch_attr_types()
             await fetch_attrs()
         })
@@ -238,6 +286,11 @@ export default {
             cancel_edit,
             save_edit,
             delete_attr,
+            assigning_attr_id,
+            assign_task_state,
+            scroll_to_task,
+            toggle_assign_tasks,
+            save_assign_tasks,
             toggle_compact_view,
             toggle_tab_view,
             tab_count_for
@@ -338,14 +391,6 @@ export default {
 
         <template v-else-if="!tab_view">
             <div class="card">
-                <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="fw-semibold text-dark">
-                            <i class="fa-solid fa-tag me-1 text-secondary"></i>Standalone attributes
-                        </span>
-                        <span class="badge bg-secondary">[[ filtered_attrs.length ]]</span>
-                    </div>
-                </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover align-middle mb-0">
                         <thead class="table-light">
@@ -357,7 +402,8 @@ export default {
                                 <th v-show="!compact_view">Comment</th>
                                 <th v-show="!compact_view">Correlations</th>
                                 <th v-show="!compact_view">Synced</th>
-                                <th v-if="can_edit" style="width:80px;"></th>
+                                <th>Tasks</th>
+                                <th v-if="can_edit" style="width:110px;"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -404,7 +450,22 @@ export default {
                                         </span>
                                         <span v-if="!sa.synced_instances || !sa.synced_instances.length" class="text-muted">-</span>
                                     </td>
+                                    <td class="small">
+                                        <template v-if="sa.tasks && sa.tasks.length">
+                                            <span v-for="task in sa.tasks" :key="'sa-task-'+sa.id+'-'+task.id"
+                                                  class="badge bg-secondary me-1"
+                                                  style="cursor:pointer;"
+                                                  :title="'Go to task: ' + task.title"
+                                                  @click="scroll_to_task(task.id)">
+                                                <i class="fa-solid fa-list-check me-1 fa-sm"></i>[[ task.title ]]
+                                            </span>
+                                        </template>
+                                        <span v-else class="text-muted">-</span>
+                                    </td>
                                     <td v-if="can_edit" class="text-end pe-2" style="white-space:nowrap;">
+                                        <button class="btn btn-link btn-sm p-0 me-2 text-secondary" title="Assign tasks" @click="toggle_assign_tasks(sa)">
+                                            <i class="fa-solid fa-tasks fa-sm"></i>
+                                        </button>
                                         <button class="btn btn-link btn-sm p-0 me-2 text-primary" title="Edit" @click="start_edit(sa)">
                                             <i class="fa-solid fa-pen-to-square fa-sm"></i>
                                         </button>
@@ -414,7 +475,26 @@ export default {
                                     </td>
                                 </tr>
 
-                                <tr v-else>
+                                <tr v-if="editing_id !== sa.id && can_edit && assigning_attr_id === sa.id">
+                                    <td :colspan="visible_column_count" class="p-3 bg-light border-top-0">
+                                        <div v-if="cases_info && cases_info.tasks && cases_info.tasks.length">
+                                            <div class="d-flex flex-wrap gap-3 mb-2">
+                                                <div v-for="task in cases_info.tasks" :key="'assign-sa-'+sa.id+'-'+task.id" class="form-check form-check-inline m-0">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           :id="'assign-sa-'+sa.id+'-'+task.id"
+                                                           :value="task.id"
+                                                           v-model="assign_task_state[sa.id]">
+                                                    <label class="form-check-label small" :for="'assign-sa-'+sa.id+'-'+task.id">[[ task.title ]]</label>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm" @click="save_assign_tasks(sa.id)">Save</button>
+                                            <button class="btn btn-secondary btn-sm ms-1" @click="assigning_attr_id = null">Cancel</button>
+                                        </div>
+                                        <div v-else class="text-muted small">No tasks available in this case.</div>
+                                    </td>
+                                </tr>
+
+                                <tr v-if="editing_id === sa.id">
                                     <td :colspan="visible_column_count" class="p-3 bg-light">
                                         <div class="row g-2 mb-2">
                                             <div class="col-md-3">
@@ -491,7 +571,8 @@ export default {
                                         <th v-show="!compact_view">Comment</th>
                                         <th v-show="!compact_view">Correlations</th>
                                         <th v-show="!compact_view">Synced</th>
-                                        <th v-if="can_edit" style="width:80px;"></th>
+                                        <th>Tasks</th>
+                                        <th v-if="can_edit" style="width:110px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -538,7 +619,22 @@ export default {
                                                 </span>
                                                 <span v-if="!sa.synced_instances || !sa.synced_instances.length" class="text-muted">-</span>
                                             </td>
+                                            <td class="small">
+                                                <template v-if="sa.tasks && sa.tasks.length">
+                                                    <span v-for="task in sa.tasks" :key="'tab-sa-task-'+sa.id+'-'+task.id"
+                                                          class="badge bg-secondary me-1"
+                                                          style="cursor:pointer;"
+                                                          :title="'Go to task: ' + task.title"
+                                                          @click="scroll_to_task(task.id)">
+                                                        <i class="fa-solid fa-list-check me-1 fa-sm"></i>[[ task.title ]]
+                                                    </span>
+                                                </template>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
                                             <td v-if="can_edit" class="text-end pe-2" style="white-space:nowrap;">
+                                                <button class="btn btn-link btn-sm p-0 me-2 text-secondary" title="Assign tasks" @click="toggle_assign_tasks(sa)">
+                                                    <i class="fa-solid fa-tasks fa-sm"></i>
+                                                </button>
                                                 <button class="btn btn-link btn-sm p-0 me-2 text-primary" title="Edit" @click="start_edit(sa)">
                                                     <i class="fa-solid fa-pen-to-square fa-sm"></i>
                                                 </button>
@@ -548,7 +644,26 @@ export default {
                                             </td>
                                         </tr>
 
-                                        <tr v-else>
+                                        <tr v-if="editing_id !== sa.id && can_edit && assigning_attr_id === sa.id">
+                                            <td :colspan="visible_column_count" class="p-3 bg-light border-top-0">
+                                                <div v-if="cases_info && cases_info.tasks && cases_info.tasks.length">
+                                                    <div class="d-flex flex-wrap gap-3 mb-2">
+                                                        <div v-for="task in cases_info.tasks" :key="'assign-tab-sa-'+sa.id+'-'+task.id" class="form-check form-check-inline m-0">
+                                                            <input class="form-check-input" type="checkbox"
+                                                                   :id="'assign-tab-sa-'+sa.id+'-'+task.id"
+                                                                   :value="task.id"
+                                                                   v-model="assign_task_state[sa.id]">
+                                                            <label class="form-check-label small" :for="'assign-tab-sa-'+sa.id+'-'+task.id">[[ task.title ]]</label>
+                                                        </div>
+                                                    </div>
+                                                    <button class="btn btn-primary btn-sm" @click="save_assign_tasks(sa.id)">Save</button>
+                                                    <button class="btn btn-secondary btn-sm ms-1" @click="assigning_attr_id = null">Cancel</button>
+                                                </div>
+                                                <div v-else class="text-muted small">No tasks available in this case.</div>
+                                            </td>
+                                        </tr>
+
+                                        <tr v-if="editing_id === sa.id">
                                             <td :colspan="visible_column_count" class="p-3 bg-light">
                                                 <div class="row g-2 mb-2">
                                                     <div class="col-md-3">

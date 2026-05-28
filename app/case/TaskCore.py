@@ -7,8 +7,8 @@ from .. import db
 from ..db_class.db import (
     Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
-    Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_User, User, Galaxy,
-    Case_Misp_Object
+    Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_Misp_Attribute, Task_User, User, Galaxy,
+    Case_Misp_Object, Misp_Attribute
 )
 from ..utils.utils import create_specific_dir, isUUID
 
@@ -1050,6 +1050,53 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         db.session.commit()
         if task:
             self.update_task_time_modification(task, current_user, f"MISP object '{obj_name}' unlinked from task '{task.title}'")
+        return True
+
+    def get_misp_attribute_links(self, task_id):
+        """Return all standalone Misp_Attribute records linked to a task."""
+        links = Task_Misp_Attribute.query.filter_by(task_id=task_id).all()
+        result = []
+        for link in links:
+            attr = Misp_Attribute.query.get(link.misp_attribute_id)
+            if attr and attr.case_misp_object_id is None:
+                d = attr.to_json()
+                d["link_id"] = link.id
+                result.append(d)
+        return result
+
+    def link_misp_attribute(self, task_id, misp_attribute_id, current_user):
+        """Link a standalone MISP attribute to a task. Returns the link or None on error."""
+        task = CommonModel.get_task(task_id)
+        if not task:
+            return None
+        attr = Misp_Attribute.query.get(misp_attribute_id)
+        if not attr:
+            return None
+        if attr.case_misp_object_id is not None:
+            return None
+        if int(attr.case_id or -1) != int(task.case_id):
+            return None
+        existing = Task_Misp_Attribute.query.filter_by(task_id=task_id, misp_attribute_id=misp_attribute_id).first()
+        if existing:
+            return existing
+        link = Task_Misp_Attribute(task_id=task_id, misp_attribute_id=misp_attribute_id)
+        db.session.add(link)
+        db.session.commit()
+        self.update_task_time_modification(task, current_user, f"Standalone MISP attribute '{attr.type}: {attr.value}' linked to task '{task.title}'")
+        return link
+
+    def unlink_misp_attribute(self, task_id, misp_attribute_id, current_user):
+        """Remove the link between a standalone MISP attribute and a task."""
+        link = Task_Misp_Attribute.query.filter_by(task_id=task_id, misp_attribute_id=misp_attribute_id).first()
+        if not link:
+            return False
+        task = CommonModel.get_task(task_id)
+        attr = Misp_Attribute.query.get(misp_attribute_id)
+        attr_label = f"{attr.type}: {attr.value}" if attr else str(misp_attribute_id)
+        db.session.delete(link)
+        db.session.commit()
+        if task:
+            self.update_task_time_modification(task, current_user, f"Standalone MISP attribute '{attr_label}' unlinked from task '{task.title}'")
         return True
 
     ############

@@ -9,11 +9,15 @@ export default {
     },
     setup(props) {
         const case_misp_objects = ref([])
+        const case_misp_attributes = ref([])
         const is_loading = ref(false)
         const can_manage_case_misp_objects = computed(() => {
             const permission = props.cases_info ? props.cases_info.permission : null
             if (!permission) return false
             return Boolean(permission.admin || permission.misp_editor)
+        })
+        const can_manage_links = computed(() => {
+            return (props.task.can_edit && props.cases_info.present_in_case) || props.cases_info.permission.admin
         })
 
         async function fetch_case_misp_objects() {
@@ -24,9 +28,22 @@ export default {
             }
         }
 
+        async function fetch_case_misp_attributes() {
+            const res = await fetch('/case/' + props.task.case_id + '/get_case_misp_attributes')
+            if (res.status === 200) {
+                const loc = await res.json()
+                case_misp_attributes.value = loc.attributes || []
+            }
+        }
+
         function is_linked(misp_object_id) {
             return props.task.misp_object_links &&
                 props.task.misp_object_links.some(l => l.misp_object_id === misp_object_id)
+        }
+
+        function is_attribute_linked(misp_attribute_id) {
+            return props.task.misp_attribute_links &&
+                props.task.misp_attribute_links.some(l => l.misp_attribute_id === misp_attribute_id)
         }
 
         async function link_misp_object(obj) {
@@ -48,6 +65,25 @@ export default {
             }
         }
 
+        async function link_misp_attribute(attr) {
+            const res = await fetch('/case/' + props.task.case_id + '/task/' + props.task.id + '/link_misp_attribute', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': $('#csrf_token').val(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ misp_attribute_id: attr.id })
+            })
+            if (res.status === 200) {
+                const loc = await res.json()
+                if (!props.task.misp_attribute_links) props.task.misp_attribute_links = []
+                props.task.misp_attribute_links.push(loc.link)
+                create_message('Standalone MISP attribute linked', 'success-subtle', false, 'fas fa-link')
+            } else {
+                await display_toast(res)
+            }
+        }
+
         async function unlink_misp_object(obj) {
             const res = await fetch('/case/' + props.task.case_id + '/task/' + props.task.id + '/unlink_misp_object/' + obj.id)
             if (res.status === 200) {
@@ -57,6 +93,35 @@ export default {
             } else {
                 await display_toast(res)
             }
+        }
+
+        async function unlink_misp_attribute(attr) {
+            const res = await fetch('/case/' + props.task.case_id + '/task/' + props.task.id + '/unlink_misp_attribute/' + attr.id)
+            if (res.status === 200) {
+                const idx = props.task.misp_attribute_links.findIndex(l => l.misp_attribute_id === attr.id)
+                if (idx > -1) props.task.misp_attribute_links.splice(idx, 1)
+                create_message('Standalone MISP attribute unlinked', 'success-subtle', false, 'fas fa-unlink')
+            } else {
+                await display_toast(res)
+            }
+        }
+
+        function get_attribute_label(attr) {
+            const attrType = attr.misp_attribute_type || attr.type || 'unknown'
+            const attrValue = attr.misp_attribute_value || attr.value || ''
+            return attrType + ': ' + attrValue
+        }
+
+        function get_attribute_type(attr) {
+            return attr.misp_attribute_type || attr.type || 'unknown'
+        }
+
+        function get_attribute_value(attr) {
+            return attr.misp_attribute_value || attr.value || ''
+        }
+
+        function get_attribute_relation(attr) {
+            return attr.misp_attribute_object_relation || attr.object_relation || ''
         }
 
         function show_object(obj) {
@@ -93,20 +158,31 @@ export default {
 
         onMounted(() => {
             fetch_case_misp_objects()
+            fetch_case_misp_attributes()
         })
 
         return {
             case_misp_objects,
+            case_misp_attributes,
             is_loading,
             can_manage_case_misp_objects,
+            can_manage_links,
             is_linked,
+            is_attribute_linked,
             link_misp_object,
+            link_misp_attribute,
             unlink_misp_object,
             show_object,
             format_object_label,
             format_attribute_preview,
             format_case_object_label,
-            format_case_object_preview
+            format_case_object_preview,
+            unlink_misp_attribute,
+            get_attribute_label,
+            get_attribute_type,
+            get_attribute_value,
+            get_attribute_relation,
+            show_object
         }
     },
     template: `
@@ -131,7 +207,7 @@ export default {
                             <small class="text-muted ms-1">([[link.misp_object_template_uuid]])</small>
                             <small v-if="format_attribute_preview(link)" class="text-muted d-block">[[format_attribute_preview(link)]]</small>
                         </span>
-                        <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+                        <template v-if="can_manage_links">
                             <button @click="unlink_misp_object({id: link.misp_object_id})" class="btn btn-danger btn-sm ms-auto" title="Unlink this MISP object">
                                 <i class="fa-solid fa-link-slash"></i>
                             </button>
@@ -144,7 +220,34 @@ export default {
             </div>
         </div>
 
-        <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+        <div class="task-section mt-3">
+            <div class="task-section-header">
+                <i class="fa-solid fa-tag fa-sm me-1"></i>
+                <span class="section-title">Standalone MISP attributes linked to this task</span>
+            </div>
+            <div class="task-section-body">
+                <template v-if="task.misp_attribute_links && task.misp_attribute_links.length">
+                    <div v-for="link in task.misp_attribute_links" :key="link.misp_attribute_id" class="d-flex align-items-center mb-1">
+                        <i class="fa-solid fa-tag me-2 text-secondary"></i>
+                        <span class="me-2 d-flex align-items-center gap-1 flex-wrap text-break">
+                            <span class="badge bg-light text-dark border">[[ get_attribute_type(link) ]]</span>
+                            <strong>[[ get_attribute_value(link) ]]</strong>
+                            <small v-if="get_attribute_relation(link)" class="text-muted">([[ get_attribute_relation(link) ]])</small>
+                        </span>
+                        <template v-if="can_manage_links">
+                            <button @click="unlink_misp_attribute({id: link.misp_attribute_id})" class="btn btn-danger btn-sm ms-auto" title="Unlink this standalone MISP attribute">
+                                <i class="fa-solid fa-link-slash"></i>
+                            </button>
+                        </template>
+                    </div>
+                </template>
+                <template v-else>
+                    <p class="text-muted"><i>No standalone MISP attributes linked</i></p>
+                </template>
+            </div>
+        </div>
+
+        <template v-if="can_manage_links">
             <div class="task-section mt-3">
                 <div class="task-section-header d-flex align-items-center">
                     <i class="fa-solid fa-plus fa-sm me-1"></i>
@@ -175,6 +278,41 @@ export default {
                         </template>
                         <template v-else>
                             <p class="text-muted"><i>No MISP objects in this case yet</i></p>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div class="task-section mt-3">
+                <div class="task-section-header d-flex align-items-center">
+                    <i class="fa-solid fa-plus fa-sm me-1"></i>
+                    <span class="section-title">Link a standalone MISP attribute from this case</span>
+                    <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-bs-toggle="collapse" :data-bs-target="'#misp-attribute-link-collapse-'+task.id" aria-expanded="false" :aria-controls="'misp-attribute-link-collapse-'+task.id">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="task-section-body">
+                    <div :id="'misp-attribute-link-collapse-'+task.id" class="collapse">
+                        <template v-if="case_misp_attributes.length">
+                            <div v-for="attr in case_misp_attributes" :key="attr.id" class="d-flex align-items-center mb-1">
+                                <i class="fa-solid fa-tag me-2 text-secondary"></i>
+                                <span class="me-2 d-flex align-items-center gap-1 flex-wrap text-break">
+                                    <span class="badge bg-light text-dark border">[[ get_attribute_type(attr) ]]</span>
+                                    <strong>[[ get_attribute_value(attr) ]]</strong>
+                                    <small v-if="get_attribute_relation(attr)" class="text-muted">([[ get_attribute_relation(attr) ]])</small>
+                                </span>
+                                <template v-if="is_attribute_linked(attr.id)">
+                                    <span class="badge text-bg-success ms-auto"><i class="fa-solid fa-check me-1"></i>Linked</span>
+                                </template>
+                                <template v-else>
+                                    <button @click="link_misp_attribute(attr)" class="btn btn-primary btn-sm ms-auto" title="Link this standalone MISP attribute to the task">
+                                        <i class="fa-solid fa-link"></i> Link
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <p class="text-muted"><i>No standalone MISP attributes in this case yet</i></p>
                         </template>
                     </div>
                 </div>

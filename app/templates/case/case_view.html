@@ -699,6 +699,7 @@
                     <li class="nav-item">
                         <button :class="['nav-link', {active: subtab_misp === 'attributes'}]" id="subtab-misp-attributes" @click="active_subtab_misp('attributes')">
                             <i class="fa-solid fa-tag fa-sm me-1"></i><span class="section-title">MISP Attributes</span>
+                            <span v-if="is_loading_misp_attrs" class="spinner-border spinner-border-sm ms-1" role="status" aria-hidden="true" style="width:0.75rem;height:0.75rem;"></span>
                             <span class="badge text-bg-secondary ms-1" v-if="nb_misp_attrs > 0">[[nb_misp_attrs]]</span>
                         </button>
                     </li>
@@ -746,7 +747,7 @@
                     </casemispconnectors>
                 </template>
                 <template v-else-if="subtab_misp === 'attributes'">
-                    <mispattributes :case_id="{{case.id}}" :cases_info="cases_info" @attr_count="nb_misp_attrs = $event"></mispattributes>
+                    <mispattributes :case_id="{{case.id}}" :cases_info="cases_info" @attr_count="nb_misp_attrs = $event" @modif_misp_attrs="(msg) => { fetch_sorted_tasks(); }"></mispattributes>
                 </template>
             </template>
         </template>
@@ -1210,6 +1211,7 @@
 
                 const nb_misp_objects = computed(() => case_misp_objects_list.value.length)
                 const nb_misp_attrs = ref(0)
+                const is_loading_misp_attrs = ref(false)
                 const nb_misp_total = computed(() => nb_misp_objects.value + nb_misp_attrs.value)
                 const misp_spotlight_id = ref(null)
                 const case_misp_objects_list = ref([])
@@ -2167,11 +2169,16 @@
                 }
 
                 async function fetch_case_misp_attrs() {
-                    const res = await fetch('/case/{{case.id}}/get_case_misp_attributes')
-                    if (res.status === 200) {
-                        const loc = await res.json()
-                        const attrs = loc['attributes'] || []
-                        nb_misp_attrs.value = attrs.length
+                    is_loading_misp_attrs.value = true
+                    try {
+                        const res = await fetch('/case/{{case.id}}/get_case_misp_attributes')
+                        if (res.status === 200) {
+                            const loc = await res.json()
+                            const attrs = loc['attributes'] || []
+                            nb_misp_attrs.value = attrs.length
+                        }
+                    } finally {
+                        is_loading_misp_attrs.value = false
                     }
                 }
 
@@ -2389,6 +2396,7 @@
                     is_exporting,
                     nb_misp_objects,
                     nb_misp_attrs,
+                    is_loading_misp_attrs,
                     nb_misp_total,
                     misp_spotlight_id,
                     case_misp_objects_list,

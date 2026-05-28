@@ -1921,6 +1921,49 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         db.session.commit()
         return {"message": "Attribute deleted", "toast_class": "success-subtle"}, 200
 
+    def set_standalone_attribute_tasks(self, cid, aid, task_ids, current_user):
+        """Assign tasks to a standalone MISP attribute (replace current assignments)."""
+        misp_attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
+        if not misp_attr:
+            return {"message": "Standalone attribute not found in this case", "toast_class": "warning-subtle"}, 404
+
+        if not isinstance(task_ids, list):
+            return {"message": "task_ids must be a list", "toast_class": "warning-subtle"}, 400
+
+        valid_new_ids = set()
+        for tid in task_ids:
+            try:
+                tid_int = int(tid)
+            except Exception:
+                continue
+            task = Task.query.get(tid_int)
+            if task and int(task.case_id) == int(cid):
+                valid_new_ids.add(tid_int)
+
+        existing_links = Task_Misp_Attribute.query.filter_by(misp_attribute_id=aid).all()
+        existing_ids = {link.task_id for link in existing_links}
+
+        to_add = valid_new_ids - existing_ids
+        to_remove = existing_ids - valid_new_ids
+
+        try:
+            for tid in to_add:
+                db.session.add(Task_Misp_Attribute(task_id=tid, misp_attribute_id=aid))
+            if to_remove:
+                Task_Misp_Attribute.query.filter(
+                    Task_Misp_Attribute.misp_attribute_id == aid,
+                    Task_Misp_Attribute.task_id.in_(list(to_remove))
+                ).delete(synchronize_session=False)
+            db.session.commit()
+
+            case = CommonModel.get_case(cid)
+            CommonModel.save_history(case.uuid, current_user, f"Updated tasks for standalone MISP attribute {misp_attr.id}")
+            CommonModel.update_last_modif(cid)
+            return {"message": "Tasks updated", "toast_class": "success-subtle"}, 200
+        except Exception:
+            db.session.rollback()
+            return {"message": "Error updating tasks", "toast_class": "danger-subtle"}, 500
+
     def get_standalone_attr_instance(self, case_id, instance_id):
         """Get standalone attrs with their remote UUIDs for a specific MISP instance"""
         attrs = Misp_Attribute.query.filter_by(case_id=case_id, case_misp_object_id=None).all()

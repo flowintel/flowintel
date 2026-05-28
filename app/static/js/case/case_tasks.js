@@ -573,7 +573,7 @@ export default {
 				</li>
 				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-misp-objects-'+task.id" @click="select_tab_task('misp-objects')">
-					<i class="fa-solid fa-shield-halved fa-sm me-1"></i><span class="section-title">MISP Objects<template v-if="task.misp_object_links && task.misp_object_links.length"> ([[ task.misp_object_links.length ]])</template></span>
+					<i class="fa-solid fa-shield-halved fa-sm me-1"></i><span class="section-title">MISP Links<template v-if="(task.misp_object_links && task.misp_object_links.length) || (task.misp_attribute_links && task.misp_attribute_links.length)"> ([[ (task.misp_object_links ? task.misp_object_links.length : 0) + (task.misp_attribute_links ? task.misp_attribute_links.length : 0) ]])</template></span>
 					</button>
 				</li>
 				<li class="nav-item">

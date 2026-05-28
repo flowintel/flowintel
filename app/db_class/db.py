@@ -274,6 +274,7 @@ class Task(db.Model):
     external_references = db.relationship('Task_External_Reference', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     notes = db.relationship('Note', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     misp_object_links = db.relationship('Task_Misp_Object', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
+    misp_attribute_links = db.relationship('Task_Misp_Attribute', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
@@ -327,6 +328,7 @@ class Task(db.Model):
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Task_Custom_Tags.task_id==self.id).all()]
         json_dict["misp_object_links"] = [link.to_json() for link in self.misp_object_links]
+        json_dict["misp_attribute_links"] = [link.to_json() for link in self.misp_attribute_links]
 
         return json_dict
     
@@ -355,6 +357,7 @@ class Task(db.Model):
         json_dict["custom_tags"] = [custom_tag.download() for custom_tag in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Task_Custom_Tags.task_id==self.id).all()]
         json_dict["misp_object_links"] = [link.to_json() for link in self.misp_object_links]
+        json_dict["misp_attribute_links"] = [link.to_json() for link in self.misp_attribute_links]
 
         return json_dict
     
@@ -1195,6 +1198,25 @@ class Task_Misp_Object(db.Model):
             "misp_object_name": obj.name if obj else None,
             "misp_object_template_uuid": obj.template_uuid if obj else None,
             "attributes_preview": attributes_preview,
+        }
+        return json_dict
+
+
+class Task_Misp_Attribute(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"), index=True)
+    misp_attribute_id = db.Column(db.Integer, db.ForeignKey('misp__attribute.id', ondelete="CASCADE"), index=True)
+
+    def to_json(self):
+        from .db import Misp_Attribute
+        attr = Misp_Attribute.query.get(self.misp_attribute_id)
+        json_dict = {
+            "id": self.id,
+            "task_id": self.task_id,
+            "misp_attribute_id": self.misp_attribute_id,
+            "misp_attribute_value": attr.value if attr else None,
+            "misp_attribute_type": attr.type if attr else None,
+            "misp_attribute_object_relation": attr.object_relation if attr else None,
         }
         return json_dict
 
