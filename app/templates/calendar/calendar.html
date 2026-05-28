@@ -19,17 +19,17 @@
 <div>
     <!-- Modal -->
     <div class="modal fade" id="modal_task" tabindex="-1" aria-labelledby="modal_task_label" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content calendar-event-modal-content">
+            <div class="modal-header calendar-event-modal-header">
                 <h5 class="modal-title" id="modal_task_label">Modal title</h5>
-                <div id="status_modal"></div>
+                <div id="status_modal" class="calendar-event-status"></div>
                 <button type="button" class="btn-close" aria-label="Close" @click="closeModal"></button>
             </div>
-            <div class="modal-body" id="modal_body">
+            <div class="modal-body calendar-event-modal-body" id="modal_body">
                 ...
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer calendar-event-modal-footer">
                 <button type="button" class="btn btn-secondary" @click="closeModal">Close</button>
                 <a type="button" class="btn btn-primary" id="see_case">See case</a>
             </div>
@@ -289,21 +289,59 @@
                         // Build details block
                         $("#modal_body").empty()
 
-                        let type = d.case_id ? 'Task' : 'Case'
+                        let details = $("<div>").addClass("calendar-event-details")
 
-                        let details = $("<div>")
-                        details.append($("<p>").html('<strong>Creation:</strong> ' + (d.creation_date || '—')))
-                        details.append($("<p>").html('<strong>Last modified:</strong> ' + (d.last_modif || '—')))
-                        details.append($("<p>").html('<strong>Deadline:</strong> ' + (d.deadline || '—')))
+                        const makeSection = (title, contentNode) => {
+                            let section = $("<div>").addClass("calendar-section")
+                            section.append($("<div>").addClass("calendar-section-title").text(title))
+                            section.append($("<div>").addClass("calendar-section-content").append(contentNode))
+                            return section
+                        }
+
+                        const makeMetaItem = (label, value) => {
+                            let item = $("<div>").addClass("calendar-meta-item")
+                            item.append($("<span>").addClass("calendar-meta-label").text(label))
+                            item.append($("<span>").addClass("calendar-meta-value").text(value || '—'))
+                            return item
+                        }
+
+                        const makeMetricItem = (label, value, iconClass='fa-solid fa-square') => {
+                            let item = $("<div>").addClass("calendar-metric-item")
+                            let labelEl = $("<span>").addClass("calendar-metric-label")
+                            labelEl.append($("<i>").addClass(iconClass + " calendar-metric-icon"))
+                            labelEl.append(document.createTextNode(' ' + label))
+                            item.append(labelEl)
+                            item.append($("<strong>").text(String(value || 0)))
+                            return item
+                        }
+
+                        const makeInfoRow = (label, valueNode) => {
+                            let row = $("<div>").addClass("calendar-info-row")
+                            row.append($("<span>").addClass("calendar-info-label").text(label))
+                            let valueEl = $("<span>").addClass("calendar-info-value")
+                            if (valueNode && valueNode.jquery) {
+                                valueEl.append(valueNode)
+                            } else {
+                                valueEl.text(valueNode || '—')
+                            }
+                            row.append(valueEl)
+                            return row
+                        }
+
+                        let metaGrid = $("<div>").addClass("calendar-meta-grid")
+                        metaGrid.append(makeMetaItem('Creation', d.creation_date))
+                        metaGrid.append(makeMetaItem('Last modified', d.last_modif))
+                        metaGrid.append(makeMetaItem('Deadline', d.deadline))
+                        details.append(metaGrid)
 
                         // Tags
                         if (d.tags && d.tags.length){
-                            let tagsContainer = $("<div>").css({"display":"flex","flex-wrap":"wrap","gap":"6px","align-items":"center"})
+                            let tagsContainer = $("<div>").addClass("calendar-pill-list")
                             d.tags.forEach(t => {
                                 try {
                                     let color = t.color || '#777'
                                     let tagEl = $("<div>").addClass('tag').attr('title', t.description || '')
-                                    tagEl.css({"background-color": color, "color": getTextColor(color), "padding": "4px 8px", "border-radius": "6px", "display": "inline-flex", "align-items": "center", "gap": "6px", "font-weight": "600"})
+                                    tagEl.css({"background-color": color, "color": getTextColor(color), "padding": "4px 9px", "border-radius": "999px", "display": "inline-flex", "align-items": "center", "gap": "6px", "font-weight": "600"})
                                     if (t.icon) {
                                         tagEl.append($("<i>").addClass(t.icon))
                                     }
@@ -315,17 +353,17 @@
                                     tagsContainer.append($("<span>").addClass('badge bg-secondary me-1').text(t.name || t))
                                 }
                             })
-                            details.append($("<p>").append($("<strong>").text('Tags: ')).append(tagsContainer))
+                            details.append(makeSection('Tags', tagsContainer))
                         }
 
                         // Custom tags
                         if (d.custom_tags && d.custom_tags.length) {
-                            let customContainer = $("<div>").css({"display":"flex","flex-wrap":"wrap","gap":"6px","align-items":"center"})
+                            let customContainer = $("<div>").addClass("calendar-pill-list")
                             d.custom_tags.forEach(ct => {
                                 try {
                                     let color = ct.color || '#777'
                                     let ctEl = $("<div>").addClass('tag').attr('title', ct.description || '')
-                                    ctEl.css({"background-color": color, "color": getTextColor(color), "padding": "4px 8px", "border-radius": "6px", "display": "inline-flex", "align-items": "center", "gap": "6px", "font-weight": "600"})
+                                    ctEl.css({"background-color": color, "color": getTextColor(color), "padding": "4px 9px", "border-radius": "999px", "display": "inline-flex", "align-items": "center", "gap": "6px", "font-weight": "600"})
                                     if (ct.icon) {
                                         ctEl.append($("<i>").addClass(ct.icon))
                                     }
@@ -335,26 +373,55 @@
                                     customContainer.append($("<span>").addClass('badge bg-secondary me-1').text(ct.name || ct))
                                 }
                             })
-                            details.append($("<p>").append($("<strong>").text('Custom tags: ')).append(customContainer))
+                            details.append(makeSection('Custom tags', customContainer))
                         }
+
+                        let metricGrid = $("<div>").addClass("calendar-metric-grid")
 
                         // Case-specific info
                         if (!d.case_id) {
                             // case
                             if (typeof d.nb_tasks !== 'undefined')
-                                details.append($("<p>").html('<strong>Tasks:</strong> ' + (d.nb_tasks || 0)))
+                                metricGrid.append(makeMetricItem('Tasks', d.nb_tasks, 'fa-solid fa-list-check'))
+                            if (typeof d.nb_objects !== 'undefined')
+                                metricGrid.append(makeMetricItem('MISP objects', d.nb_objects, 'fa-solid fa-cubes'))
+                            if (typeof d.nb_standalone_attrs !== 'undefined')
+                                metricGrid.append(makeMetricItem('Standalone attributes', d.nb_standalone_attrs, 'fa-solid fa-fingerprint'))
+                            if (typeof d.nb_connectors !== 'undefined')
+                                metricGrid.append(makeMetricItem('Connectors', d.nb_connectors, 'fa-solid fa-plug'))
+                            if (typeof d.nb_files !== 'undefined') {
+                                metricGrid.append(makeMetricItem('Files', d.nb_files, 'fa-solid fa-file'))
+                                if (typeof d.nb_case_files !== 'undefined') {
+                                    metricGrid.append(makeMetricItem('Case files', d.nb_case_files, 'fa-solid fa-folder-open'))
+                                }
+                                if (typeof d.nb_task_files !== 'undefined') {
+                                    metricGrid.append(makeMetricItem('Task files', d.nb_task_files, 'fa-solid fa-file-lines'))
+                                }
+                            }
+
+                            if (metricGrid.children().length) {
+                                details.append(makeSection('Case metrics', metricGrid))
+                            }
                         } else {
                             // task
-                            details.append($("<p>").html('<strong>Case:</strong> <a href="/case/' + d.case_id + '">' + (d.case_id) + '</a>'))
+                            let taskInfo = $("<div>").addClass("calendar-info-list")
+                            taskInfo.append(
+                                makeInfoRow(
+                                    'Case',
+                                    $("<a>").attr("href", "/case/" + d.case_id).text(String(d.case_id))
+                                )
+                            )
                             if (typeof d.nb_notes !== 'undefined')
-                                details.append($("<p>").html('<strong>Notes:</strong> ' + (d.nb_notes || (d.notes? d.notes.length : 0))))
+                                taskInfo.append(makeInfoRow('Notes', String(d.nb_notes || (d.notes? d.notes.length : 0))))
                             if (d.urls_tools && d.urls_tools.length)
-                                details.append($("<p>").html('<strong>URLs/Tools:</strong> ' + d.urls_tools.map(u => u.name).join(', ')))
+                                taskInfo.append(makeInfoRow('URLs/Tools', d.urls_tools.map(u => u.name).join(', ')))
+
+                            details.append(makeSection('Task details', taskInfo))
                         }
 
                         // Clusters (render like in case_tasks.js)
                         if (d.clusters && d.clusters.length) {
-                            let clustersContainer = $("<div>").css({"display":"flex","flex-wrap":"wrap","gap":"8px","align-items":"center"})
+                            let clustersContainer = $("<div>").addClass("calendar-pill-list")
                             d.clusters.forEach(c => {
                                 try {
                                     let clEl = $("<div>").addClass("cluster").attr('title', 'Description:\n' + (c.description || '') + '\n\nMetadata:\n' + (c.meta || ''))
@@ -365,11 +432,16 @@
                                     clustersContainer.append($("<span>").text(c.tag || c.name || ''))
                                 }
                             })
-                            details.append($("<p>").append($("<strong>").text('Clusters: ')).append(clustersContainer))
+                            details.append(makeSection('Clusters', clustersContainer))
                         }
 
                         // Description
-                        details.append($("<div>").append($("<pre>").attr({"class": "description"}).text(d.description || '')))
+                        details.append(
+                            makeSection(
+                                'Description',
+                                $("<pre>").attr({"class": "description"}).text(d.description || 'No description')
+                            )
+                        )
 
                         $("#modal_body").append(details)
 
