@@ -262,21 +262,19 @@
                 <i class="fa-solid fa-house fa-sm"></i>
             </button>
         </li>
-        <li class="nav-item nav-item-closable" v-show="is_tab_visible('notes')">
+        <li class="nav-item" v-show="is_tab_visible('notes')">
             <button class="nav-link" id="tab-notes" @click="active_tab('notes')">
                 <i class="fa-solid fa-note-sticky fa-sm me-1"></i>
                 <span class="section-title fs-6">Notes</span>
             </button>
-            <button class="tab-close-btn" @click.stop="hide_tab('notes')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
-        <li class="nav-item nav-item-closable" v-show="is_tab_visible('misp')">
+        <li class="nav-item" v-show="is_tab_visible('misp')">
             <button class="nav-link" id="tab-misp" @click="active_tab('misp')">
                 <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i>
                 <i class="fa-solid fa-plug fa-sm me-1"></i>
                 <span class="section-title fs-6">MISP</span>
                 <span class="badge text-bg-secondary ms-1" v-if="nb_misp_total > 0">[[nb_misp_total]]</span>
             </button>
-            <button class="tab-close-btn" @click.stop="hide_tab('misp')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
         <li class="nav-item">
             <button class="nav-link d-none" id="tab-connectors" @click="active_tab('connectors')">
@@ -288,60 +286,38 @@
                 </span>
             </button>
         </li>
-        <li class="nav-item nav-item-closable" v-for="connType in active_module_tabs" :key="connType"
+        <li class="nav-item" v-for="connType in active_module_tabs" :key="connType"
             v-show="is_tab_visible('connector-' + connType.toLowerCase())">
             <button class="nav-link dynamic-connector-tab" :id="'tab-connector-' + connType.toLowerCase()" @click="active_tab('connector-' + connType.toLowerCase())">
                 <i class="fa-solid fa-puzzle-piece fa-sm me-1"></i>
                 <span class="section-title fs-6 me-1">[[ connType ]] </span>
                 <span class="badge text-bg-secondary" v-if="module_counts && module_counts[connType]"> [[ module_counts[connType] ]]</span>
             </button>
-            <div class="tab-module-menu dropdown">
-                <button class="tab-close-btn" data-bs-toggle="dropdown" aria-expanded="false" @click.stop title="Hide or remove">
-                    <i class="fa-solid fa-xmark fa-xs"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size:0.85rem; min-width:180px;">
-                    <li>
-                        <button class="dropdown-item" @click.stop="hide_tab('connector-' + connType.toLowerCase())">
-                            <i class="fa-solid fa-eye-slash fa-sm me-2"></i>Hide tab
-                        </button>
-                    </li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li>
-                        <button class="dropdown-item text-danger" @click.stop="open_remove_module_modal(connType)">
-                            <i class="fa-solid fa-trash fa-sm me-2"></i>Remove &amp; delete data
-                        </button>
-                    </li>
-                </ul>
-            </div>
         </li>
-        <li class="nav-item nav-item-closable" v-show="is_tab_visible('files')">
+        <li class="nav-item" v-show="is_tab_visible('files')">
             <button class="nav-link" id="tab-files" @click="active_tab('files')">
                 <i class="fa-solid fa-file fa-sm me-1"></i><span class="section-title fs-6">Files </span>
                 <span class="badge text-bg-secondary" v-if="case_files_list.length > 0">[[case_files_list.length]]</span>
             </button>
-            <button class="tab-close-btn" @click.stop="hide_tab('files')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
-        <li class="nav-item nav-item-closable" v-show="is_tab_visible('timeline')">
+        <li class="nav-item" v-show="is_tab_visible('timeline')">
             <button class="nav-link" id="tab-timeline" @click="active_tab('timeline')">
                 <i class="fa-solid fa-timeline fa-sm me-1"></i><span class="section-title fs-6">Timeline</span>
             </button>
-            <button class="tab-close-btn" @click.stop="hide_tab('timeline')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
-        <li class="nav-item nav-item-closable" v-show="is_tab_visible('history')">
+        <li class="nav-item" v-show="is_tab_visible('history')">
             <button class="nav-link" id="tab-history" @click="active_tab('history')">
                 <i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i><span class="section-title fs-6">History</span>
             </button>
-            <button class="tab-close-btn" @click.stop="hide_tab('history')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
-        <li class="nav-item nav-item-closable" v-show="is_tab_visible('info')">
+        <li class="nav-item" v-show="is_tab_visible('info')">
             <button class="nav-link" id="tab-info" @click="active_tab('info')">
                 <i class="fa-solid fa-circle-info fa-sm me-1"></i><span class="section-title fs-6">Info</span>
             </button>
-            <button class="tab-close-btn" @click.stop="hide_tab('info')" title="Hide tab"><i class="fa-solid fa-xmark fa-xs"></i></button>
         </li>
         <!-- Manage tabs "+" button -->
         <li class="nav-item ms-1">
-            <button class="nav-link tab-add-btn" @click="open_manage_tabs_modal()" title="Add or restore tabs">
+            <button class="nav-link tab-add-btn" @click="open_manage_tabs_modal()" title="Manage tabs">
                 <i class="fa-solid fa-plus fa-sm"></i>
             </button>
         </li>
@@ -371,63 +347,122 @@
 
     <!-- Modal: Manage Tabs -->
     <div class="modal fade" id="manageTabsModal" tabindex="-1" aria-labelledby="manageTabsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-md">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="manageTabsModalLabel"><i class="fa-solid fa-table-columns me-2"></i>Manage Tabs</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <!-- Visible core tabs -->
+                    <template v-if="visible_core_tabs.length">
+                        <h6 class="manage-tabs-section-title">Visible Tabs</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-lg-6" v-for="key in visible_core_tabs" :key="key">
+                                <div class="border rounded d-flex justify-content-between align-items-center px-2 py-2 gap-2">
+                                    <div class="d-flex align-items-center gap-1 text-nowrap overflow-hidden" style="font-size:0.85rem; min-width:0;">
+                                        <span class="text-truncate"><i :class="core_tab_icons[key]" class="me-2"></i>[[ core_tab_labels[key] ]]</span>
+                                        <span class="badge text-bg-light border">Core</span>
+                                        <span class="badge text-bg-success-subtle text-success-emphasis border border-success-subtle">Visible</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary flex-shrink-0" @click="hide_tab(key); close_manage_tabs_modal()">
+                                        <i class="fa-solid fa-eye-slash fa-xs me-1"></i>Hide
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Visible module tabs -->
+                    <template v-if="visible_module_tabs.length">
+                        <h6 class="manage-tabs-section-title">Visible Module Tabs</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-lg-6" v-for="connType in visible_module_tabs" :key="'visible-' + connType">
+                                <div class="border rounded d-flex justify-content-between align-items-center px-2 py-2 gap-2">
+                                    <div class="d-flex align-items-center gap-1 text-nowrap overflow-hidden" style="font-size:0.85rem; min-width:0;">
+                                        <span class="text-truncate"><i class="fa-solid fa-puzzle-piece me-2"></i>[[ connType ]]</span>
+                                        <span class="badge text-bg-light border">Module</span>
+                                        <span class="badge text-bg-success-subtle text-success-emphasis border border-success-subtle">Visible</span>
+                                        <span class="badge text-bg-secondary" v-if="module_counts && module_counts[connType]">[[ module_counts[connType] ]]</span>
+                                    </div>
+                                    <div class="btn-group btn-group-sm flex-shrink-0">
+                                        <button class="btn btn-outline-secondary" @click="hide_tab('connector-' + connType.toLowerCase()); close_manage_tabs_modal()">
+                                            <i class="fa-solid fa-eye-slash fa-xs"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" @click="close_manage_tabs_modal(); open_remove_module_modal(connType)">
+                                            <i class="fa-solid fa-trash fa-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
                     <!-- Hidden core tabs -->
                     <template v-if="hidden_core_tabs.length">
-                        <p class="text-muted mb-2" style="font-size:0.8rem;">HIDDEN TABS</p>
-                        <div class="list-group mb-3">
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3"
-                                 v-for="key in hidden_core_tabs" :key="key">
-                                <span style="font-size:0.9rem;">
-                                    <i :class="core_tab_icons[key]" class="me-2"></i>[[ core_tab_labels[key] ]]
-                                </span>
-                                <button class="btn btn-sm btn-outline-primary" @click="restore_tab(key); close_manage_tabs_modal()">
-                                    <i class="fa-solid fa-eye fa-xs me-1"></i>Show
-                                </button>
+                        <h6 class="manage-tabs-section-title">Hidden Tabs</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-lg-6" v-for="key in hidden_core_tabs" :key="key">
+                                <div class="border rounded d-flex justify-content-between align-items-center px-2 py-2 gap-2">
+                                    <div class="d-flex align-items-center gap-1 text-nowrap overflow-hidden" style="font-size:0.85rem; min-width:0;">
+                                        <span class="text-truncate"><i :class="core_tab_icons[key]" class="me-2"></i>[[ core_tab_labels[key] ]]</span>
+                                        <span class="badge text-bg-light border">Core</span>
+                                        <span class="badge text-bg-secondary">Hidden</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary flex-shrink-0" @click="restore_tab(key); close_manage_tabs_modal()">
+                                        <i class="fa-solid fa-eye fa-xs me-1"></i>Show
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </template>
 
                     <!-- Hidden module tabs (connector still in case) -->
                     <template v-if="hidden_module_tabs.length">
-                        <p class="text-muted mb-2" style="font-size:0.8rem;">HIDDEN MODULE TABS</p>
-                        <div class="list-group mb-3">
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3"
-                                 v-for="connType in hidden_module_tabs" :key="connType">
-                                <span style="font-size:0.9rem;">
-                                    <i class="fa-solid fa-puzzle-piece me-2"></i>[[ connType ]]
-                                </span>
-                                <button class="btn btn-sm btn-outline-primary" @click="restore_tab('connector-' + connType.toLowerCase()); close_manage_tabs_modal()">
-                                    <i class="fa-solid fa-eye fa-xs me-1"></i>Show
-                                </button>
+                        <h6 class="manage-tabs-section-title">Hidden Module Tabs</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-lg-6" v-for="connType in hidden_module_tabs" :key="connType">
+                                <div class="border rounded d-flex justify-content-between align-items-center px-2 py-2 gap-2">
+                                    <div class="d-flex align-items-center gap-1 text-nowrap overflow-hidden" style="font-size:0.85rem; min-width:0;">
+                                        <span class="text-truncate"><i class="fa-solid fa-puzzle-piece me-2"></i>[[ connType ]]</span>
+                                        <span class="badge text-bg-light border">Module</span>
+                                        <span class="badge text-bg-secondary">Hidden</span>
+                                        <span class="badge text-bg-secondary" v-if="module_counts && module_counts[connType]">[[ module_counts[connType] ]]</span>
+                                    </div>
+                                    <div class="btn-group btn-group-sm flex-shrink-0">
+                                        <button class="btn btn-outline-primary" @click="restore_tab('connector-' + connType.toLowerCase()); close_manage_tabs_modal()">
+                                            <i class="fa-solid fa-eye fa-xs"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" @click="close_manage_tabs_modal(); open_remove_module_modal(connType)">
+                                            <i class="fa-solid fa-trash fa-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </template>
 
                     <!-- Available modules not yet added -->
                     <template v-if="available_modules_to_add.length">
-                        <p class="text-muted mb-2" style="font-size:0.8rem;">AVAILABLE MODULES</p>
-                        <div class="list-group mb-3">
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3"
-                                 v-for="typeName in available_modules_to_add" :key="typeName">
-                                <span style="font-size:0.9rem;">
-                                    <i class="fa-solid fa-puzzle-piece me-2"></i>[[ typeName ]]
-                                </span>
-                                <button class="btn btn-sm btn-outline-success"
-                                    @click="add_module_tab(typeName); close_manage_tabs_modal()">
-                                    <i class="fa-solid fa-plus fa-xs me-1"></i>Add
-                                </button>
+                        <h6 class="manage-tabs-section-title">Available Modules</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-lg-6" v-for="typeName in available_modules_to_add" :key="typeName">
+                                <div class="border rounded d-flex justify-content-between align-items-center px-2 py-2 gap-2">
+                                    <div class="d-flex align-items-center gap-1 text-nowrap overflow-hidden" style="font-size:0.85rem; min-width:0;">
+                                        <span class="text-truncate"><i class="fa-solid fa-puzzle-piece me-2"></i>[[ typeName ]]</span>
+                                        <span class="badge text-bg-light border">Module</span>
+                                        <span class="badge text-bg-info-subtle text-info-emphasis border border-info-subtle">Available</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-success flex-shrink-0"
+                                        @click="add_module_tab(typeName); close_manage_tabs_modal()">
+                                        <i class="fa-solid fa-plus fa-xs me-1"></i>Add
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </template>
 
-                    <template v-if="!hidden_core_tabs.length && !hidden_module_tabs.length && !available_modules_to_add.length">
+                    <template v-if="!visible_core_tabs.length && !visible_module_tabs.length && !hidden_core_tabs.length && !hidden_module_tabs.length && !available_modules_to_add.length">
                         <p class="text-muted text-center py-3"><i class="fa-solid fa-check me-2"></i>All available tabs are currently visible.</p>
                     </template>
                 </div>
@@ -1414,8 +1449,16 @@
                     Object.keys(core_tab_labels).filter(k => hidden_tabs.value.includes(k))
                 )
 
+                const visible_core_tabs = computed(() =>
+                    Object.keys(core_tab_labels).filter(k => !hidden_tabs.value.includes(k))
+                )
+
                 const hidden_module_tabs = computed(() =>
                     active_module_tabs.value.filter(t => hidden_tabs.value.includes('connector-' + t.toLowerCase()))
+                )
+
+                const visible_module_tabs = computed(() =>
+                    active_module_tabs.value.filter(t => !hidden_tabs.value.includes('connector-' + t.toLowerCase()))
                 )
 
                 const available_modules_to_add = computed(() => {
@@ -2491,7 +2534,9 @@
                     core_tab_labels,
                     core_tab_icons,
                     hidden_core_tabs,
+                    visible_core_tabs,
                     hidden_module_tabs,
+                    visible_module_tabs,
                     available_modules_to_add,
                     is_tab_visible,
                     hide_tab,

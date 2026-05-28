@@ -642,30 +642,21 @@ legend.analyzer-select-case {
   color: #4c8ac0;
 }
 
-/* Closing tabs */
-.nav-item-closable { display: flex; align-items: stretch; }
-.nav-item-closable .nav-link { border-top-right-radius: 0 !important; }
-.tab-close-btn {
-    background: none;
-    border: none;
-    color: #aaa;
-    opacity: 0;
-    cursor: pointer;
-    font-size: 0.65rem;
-    line-height: 1;
-    transition: opacity 0.15s, color 0.15s;
-    border-top: 1px solid transparent;
-    border-right: 1px solid transparent;
-    border-bottom: 1px solid transparent;
-    border-top-right-radius: 0.25rem;
-    margin-bottom: -1px;
-}
-.nav-item-closable:hover .tab-close-btn { opacity: 1; padding: 0;}
-.tab-close-btn:hover { color: #dc3545; }
-.tab-module-menu { display: flex; align-items: stretch; }
-.tab-module-menu .tab-close-btn { border-radius: 0 0.25rem 0 0; }
 .tab-add-btn { border-style: dashed !important; border-color: #adb5bd !important; color: #6c757d !important; }
 .tab-add-btn:hover { border-color: #0d6efd !important; color: #0d6efd !important; background: none !important; }
+
+.manage-tabs-section-title {
+  margin: 0 0 0.5rem 0;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0b4f8a;
+  background: linear-gradient(90deg, #e9f3ff 0%, #f8fbff 100%);
+  border: 1px solid #cfe3fb;
+  border-radius: 0.35rem;
+}
 
 
 .dragging-ghost {
