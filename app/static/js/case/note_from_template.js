@@ -462,32 +462,50 @@ export default {
 
         async function export_notes(type){
             is_exporting.value = true
-            let filename = ""
+            let filename = `case_note_template.${type}`
             let loc = {}
             for(let i in selected_note_template.value.params.list){
                 loc[selected_note_template.value.params.list[i]] = $("#"+selected_note_template.value.params.list[i]).val()
             }
             let compiled = Handlebars.compile(case_note_template.value.content)
 
-            await fetch(
-                '/case/'+props.cases_info.case.id+'/export_notes_template?type=' + type,{
-                    headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                    method: "POST",
-                    body: JSON.stringify({"content": compiled(loc)})
-                }
-            ).then(res =>{
-                filename = res.headers.get("content-disposition").split("=")
-                filename = filename[filename.length - 1]
-                return res.blob() 
-            })
-            .then(data =>{
-                var a = document.createElement("a")
-                a.href = window.URL.createObjectURL(data);
-                a.download = filename;
-                a.click();
-            })
+            try {
+                const res = await fetch(
+                    '/case/' + props.cases_info.case.id + '/export_notes_template?type=' + type, {
+                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                        method: "POST",
+                        body: JSON.stringify({ "content": compiled(loc) })
+                    }
+                )
 
-            is_exporting.value = false
+                const contentType = (res.headers.get("content-type") || "").toLowerCase()
+                if (res.status !== 200 || contentType.includes("application/json")) {
+                    await display_toast({message: "There is an error during export", toast_class: "danger-subtle"}, true)
+                    return
+                }
+
+                const disposition = res.headers.get("content-disposition")
+                if (disposition) {
+                    const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)\"?/i)
+                    if (match && match[1]) {
+                        try {
+                            filename = decodeURIComponent(match[1])
+                        } catch (e) {
+                            filename = match[1]
+                        }
+                    }
+                }
+
+                const data = await res.blob()
+                var a = document.createElement("a")
+                a.href = window.URL.createObjectURL(data)
+                a.download = filename
+                a.click()
+            } catch (e) {
+                await display_toast({message: "There is an error during export", toast_class: "danger-subtle"}, true)
+            } finally {
+                is_exporting.value = false
+            }
         }
 
         async function remove_note_template() {

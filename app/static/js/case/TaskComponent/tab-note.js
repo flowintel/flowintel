@@ -177,20 +177,38 @@ export default {
 		async function export_notes(task, type, note_id) {
 			// Export notes in different format and download it
 			is_exporting.value = true
-			let filename = ""
-			await fetch('/case/' + task.case_id + '/task/' + task.id + '/export_notes?type=' + type + "&note_id=" + note_id)
-				.then(res => {
-					filename = res.headers.get("content-disposition").split("=")
-					filename = filename[filename.length - 1]
-					return res.blob()
-				})
-				.then(data => {
-					var a = document.createElement("a")
-					a.href = window.URL.createObjectURL(data);
-					a.download = filename;
-					a.click();
-				})
-			is_exporting.value = false
+			let filename = `task_note.${type}`
+
+			try {
+				const res = await fetch('/case/' + task.case_id + '/task/' + task.id + '/export_notes?type=' + type + "&note_id=" + note_id)
+				const contentType = (res.headers.get("content-type") || "").toLowerCase()
+				if (res.status !== 200 || contentType.includes("application/json")) {
+					await display_toast({message: "There is an error during export", toast_class: "danger-subtle"}, true)
+					return
+				}
+
+				const disposition = res.headers.get("content-disposition")
+				if (disposition) {
+					const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)\"?/i)
+					if (match && match[1]) {
+						try {
+							filename = decodeURIComponent(match[1])
+						} catch (e) {
+							filename = match[1]
+						}
+					}
+				}
+
+				const data = await res.blob()
+				var a = document.createElement("a")
+				a.href = window.URL.createObjectURL(data)
+				a.download = filename
+				a.click()
+			} catch (e) {
+				await display_toast({message: "There is an error during export", toast_class: "danger-subtle"}, true)
+			} finally {
+				is_exporting.value = false
+			}
 		}
 
 		async function modif_note(task, note_id, key) {

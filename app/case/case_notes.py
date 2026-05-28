@@ -63,6 +63,9 @@ def export_notes(cid):
                 CommonModel.delete_temp_folder()
             except OSError:
                 pass
+            if isinstance(res, dict):
+                flowintel_log("error", 400, "Export notes of a case failed", User=current_user.email, CaseId=cid, ExportType=request.args.get("type"), ErrorMessage=res.get("message"))
+                return res, 400
             flowintel_log("audit", 200, "Export notes of a case", User=current_user.email, CaseId=cid, ExportType=request.args.get("type"))
             return res
         return {"message": "'type' is missing", 'toast_class': "warning-subtle"}, 400
@@ -315,6 +318,9 @@ def export_notes_template(cid):
                     CommonModel.delete_temp_folder()
                 except OSError:
                     pass
+                if isinstance(res, dict):
+                    flowintel_log("error", 400, "Export notes template of a case failed", User=current_user.email, CaseId=cid, ExportType=request.args.get("type"), ErrorMessage=res.get("message"))
+                    return res, 400
                 flowintel_log("audit", 200, "Export notes template of a case", User=current_user.email, CaseId=cid, ExportType=request.args.get("type"))
                 return res
             return {"message": "No content passed", "toast_class": "warning-subtle"}, 400

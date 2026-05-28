@@ -618,6 +618,9 @@ def export_notes(cid, tid):
                     note_id = request.args.get("note_id")
                     res = CommonModel.export_notes(case_task=False, case_task_id=tid, type_req=type_req, note_id=note_id)
                     CommonModel.delete_temp_folder()
+                    if isinstance(res, dict):
+                        flowintel_log("error", 400, "Export notes of a task failed", User=current_user.email, CaseId=cid, TaskId=tid, ExportType=type_req, NoteId=note_id, ErrorMessage=res.get("message"))
+                        return res, 400
                     flowintel_log("audit", 200, "Export notes of a task", User=current_user.email, CaseId=cid, TaskId=tid, ExportType=type_req, NoteId=note_id)
                     return res
                 return {"message": "'note_id' is missing", 'toast_class': "warning-subtle"}, 400

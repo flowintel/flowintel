@@ -1,4 +1,5 @@
 import os, re
+import logging
 import shutil
 import datetime
 import subprocess
@@ -16,6 +17,24 @@ from ..custom_tags import custom_tags_core as CustomModel
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
 HISTORY_DIR = os.environ.get("HISTORY_DIR", "history")
+
+def _build_export_error(error_text: str):
+    """Build a user-friendly export error payload from pandoc/mermaid output."""
+    sanitized = "\n".join(line.strip() for line in (error_text or "").splitlines() if line.strip())
+    lower = sanitized.lower()
+
+    message = "Error during export process"
+    if any(token in lower for token in ["mermaid", "parse error", "syntax error", "lexical error"]):
+        message = "Mermaid diagram syntax error: please verify your Mermaid block and try again"
+
+    details = ""
+    if sanitized:
+        details = sanitized[:600]
+
+    payload = {"message": message, "toast_class": "danger-subtle"}
+    if details:
+        payload["details"] = details
+    return payload
 
 
 def _format_logs_as_markdown(case, log_entries, title="History"):
@@ -700,32 +719,41 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
     mermaid_enabled = current_app.config.get("ENABLE_MERMAID_EXPORT", True)
     use_mermaid_filter = allow_mermaid and mermaid_enabled
 
+    command = None
     if type_req == "pdf":
-        command = ["pandoc", temp_md, "--pdf-engine=xelatex", \
-                   "-V", "colorlinks=true", \
-                   "-V", "linkcolor=blue", \
-                   "-V", "urlcolor=red", \
-                   "-V", "tocolor=gray",\
-                   "--number-sections", "--toc", \
-                   "--template", "eisvogel",\
+        command = ["pandoc", temp_md, "--pdf-engine=xelatex",
+                   "-V", "colorlinks=true",
+                   "-V", "linkcolor=blue",
+                   "-V", "urlcolor=red",
+                   "-V", "tocolor=gray",
+                   "--number-sections", "--toc",
+                   "--template", "eisvogel",
                    "-o", temp_export]
         if use_mermaid_filter:
             command.append("--filter=pandoc-mermaid")
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
     elif type_req == "docx":
         command = ["pandoc", temp_md, "-o", temp_export]
         if use_mermaid_filter:
             command.append("--filter=mermaid-filter")
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    process.wait()
+    else:
+        return {"message": "Unsupported export type", "toast_class": "warning-subtle"}
 
+    try:
+        process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
+    except Exception as e:
+        return {"message": "Error during export process", "toast_class": "danger-subtle", "details": str(e)}
+    
     try:
         shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
     except OSError:
         pass
 
+    if process.returncode != 0:
+        raw_error = process.stderr or process.stdout or ""
+        return _build_export_error(raw_error)
+
     if not os.path.isfile(temp_export):
-        return {"message": "Error during export process", "toast_class": "danger-subtle"}
+        return {"message": "Error during export process", "toast_class": "danger-subtle", "details": "Output file was not generated"}
     
     return send_file(temp_export, as_attachment=True, download_name=download_filename)
 
