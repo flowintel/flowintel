@@ -5,7 +5,7 @@ import subprocess
 from typing import List
 import uuid
 
-from flask import send_file
+from flask import send_file, current_app
 from .. import db
 from ..db_class.db import *
 from ..utils.utils import get_modules_list, isUUID, create_specific_dir
@@ -665,8 +665,7 @@ def convert_inline_code_to_verb(text: str) -> str:
     inline_code_pattern = re.compile(r'`[^`\n]+`')
     return inline_code_pattern.sub(replace_inline_code, text)
 
-
-def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int = None):
+def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int = None, allow_mermaid: bool = True):
     """Export notes into a format like pdf or docx"""
     from ..utils.note_variables import resolve_variables
     if not case_task:
@@ -679,9 +678,9 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
         note = case.notes
         note = resolve_variables(note, case_id=case_task_id)
 
-    return export_notes_core(case_task_id, type_req, note)
+    return export_notes_core(case_task_id, type_req, note, allow_mermaid=allow_mermaid)
 
-def export_notes_core(case_task_id: int, type_req: str, note: str, download_filename: str = None):
+def export_notes_core(case_task_id: int, type_req: str, note: str, download_filename: str = None, allow_mermaid: bool = True):
     if not os.path.isdir(TEMP_FOLDER):
         os.mkdir(TEMP_FOLDER)
 
@@ -697,19 +696,27 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
     loc_note = convert_inline_code_to_verb(loc_note)
     with open(temp_md, "w")as write_file:
         write_file.write(loc_note)
-        
+
+    mermaid_enabled = current_app.config.get("ENABLE_MERMAID_EXPORT", True)
+    use_mermaid_filter = allow_mermaid and mermaid_enabled
+
     if type_req == "pdf":
-        process = subprocess.Popen(["pandoc", temp_md, "--pdf-engine=xelatex", \
-                                    "-V", "colorlinks=true", \
-                                    "-V", "linkcolor=blue", \
-                                    "-V", "urlcolor=red", \
-                                    "-V", "tocolor=gray",\
-                                    "--number-sections", "--toc", \
-                                    "--template", "eisvogel",\
-                                    "-o", temp_export, \
-                                    "--filter=pandoc-mermaid"], stdout=subprocess.PIPE)
+        command = ["pandoc", temp_md, "--pdf-engine=xelatex", \
+                   "-V", "colorlinks=true", \
+                   "-V", "linkcolor=blue", \
+                   "-V", "urlcolor=red", \
+                   "-V", "tocolor=gray",\
+                   "--number-sections", "--toc", \
+                   "--template", "eisvogel",\
+                   "-o", temp_export]
+        if use_mermaid_filter:
+            command.append("--filter=pandoc-mermaid")
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
     elif type_req == "docx":
-        process = subprocess.Popen(["pandoc", temp_md, "-o", temp_export, "--filter=mermaid-filter"], stdout=subprocess.PIPE)
+        command = ["pandoc", temp_md, "-o", temp_export]
+        if use_mermaid_filter:
+            command.append("--filter=mermaid-filter")
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
     process.wait()
 
     try:
