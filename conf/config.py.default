@@ -161,6 +161,13 @@ class Config:
     ENABLE_CHATBOT = os.getenv('ENABLE_CHATBOT', 'false').lower() == 'true'
 
     # =============================================================================
+    # EXPORT / MERMAID
+    # =============================================================================
+    # Enable Mermaid rendering during server-side note exports (PDF/DOCX).
+    # Set to false to disable Mermaid Pandoc filters entirely.
+    ENABLE_MERMAID_EXPORT = os.getenv('ENABLE_MERMAID_EXPORT', 'true').lower() == 'true'
+
+    # =============================================================================
     # ENTRA ID
     # =============================================================================
     # Microsoft Entra ID (Azure AD) SSO configuration
