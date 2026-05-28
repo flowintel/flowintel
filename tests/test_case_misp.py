@@ -163,3 +163,67 @@ def test_delete_attribute_and_object(create_case, client):
     objs = get_case_objects(client, case.id, api_key)
     assert len(objs) == 0
 
+
+def test_standalone_misp_attribute_lifecycle(create_case, client):
+    case, user = create_case
+    api_key = "admin_api_key"
+
+    create_payload = {
+        "value": "5.5.5.5",
+        "type": "ip-dst",
+        "comment": "standalone",
+        "ids_flag": False,
+        "disable_correlation": False,
+        "first_seen": "",
+        "last_seen": ""
+    }
+
+    res = client.post(
+        f"/api/case/{case.id}/create_misp_attribute",
+        json=create_payload,
+        headers={"X-API-KEY": api_key}
+    )
+    assert res.status_code == 201
+    created_attr = res.get_json()["attribute"]
+    aid = created_attr["id"]
+
+    res = client.get(f"/api/case/{case.id}/get_case_misp_attributes", headers={"X-API-KEY": api_key})
+    assert res.status_code == 200
+    attrs = res.get_json()["attributes"]
+    assert any(attr["id"] == aid and attr["value"] == "5.5.5.5" for attr in attrs)
+
+    edit_payload = {
+        "value": "6.6.6.6",
+        "type": "ip-dst",
+        "comment": "edited standalone",
+        "ids_flag": True,
+        "disable_correlation": True,
+        "first_seen": "",
+        "last_seen": ""
+    }
+    res = client.post(
+        f"/api/case/{case.id}/misp_attribute/{aid}/edit_misp_attribute",
+        json=edit_payload,
+        headers={"X-API-KEY": api_key}
+    )
+    assert res.status_code == 200
+
+    res = client.get(f"/api/case/{case.id}/get_case_misp_attributes", headers={"X-API-KEY": api_key})
+    assert res.status_code == 200
+    attrs = res.get_json()["attributes"]
+    edited = next(attr for attr in attrs if attr["id"] == aid)
+    assert edited["value"] == "6.6.6.6"
+    assert edited["ids_flag"] is True
+    assert edited["disable_correlation"] is True
+
+    res = client.get(
+        f"/api/case/{case.id}/misp_attribute/{aid}/delete_misp_attribute",
+        headers={"X-API-KEY": api_key}
+    )
+    assert res.status_code == 200
+
+    res = client.get(f"/api/case/{case.id}/get_case_misp_attributes", headers={"X-API-KEY": api_key})
+    assert res.status_code == 200
+    attrs = res.get_json()["attributes"]
+    assert all(attr["id"] != aid for attr in attrs)
+
