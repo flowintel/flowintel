@@ -633,6 +633,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             case_loc["nb_objects"] = len(self.get_misp_object_by_case(case.id))
         except Exception:
             case_loc["nb_objects"] = 0
+        # number of standalone MISP attributes in the case
+        try:
+            case_loc["nb_standalone_attrs"] = len(self.get_standalone_attributes_by_case(case.id))
+        except Exception:
+            case_loc["nb_standalone_attrs"] = 0
 
         return case_loc
 
