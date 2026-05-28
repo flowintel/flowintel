@@ -1,6 +1,6 @@
 from flask import request
 
-from app.db_class.db import Case, User, File
+from app.db_class.db import Case, User, File, Misp_Attribute_Instance_Uuid
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
@@ -1064,6 +1064,19 @@ class ModifNoteCase(Resource):
             return {"misp-object": utils.get_object_templates()}, 200
 
 
+    @case_ns.route('/get_misp_attribute_types', methods=['GET'])
+    @case_ns.doc(description='Get list of MISP attribute types')
+    class GetMispAttributeTypes(Resource):
+        method_decorators = [api_required]
+        def get(self):
+            force = request.args.get('force', '').lower() in ('1', 'true', 'yes')
+            try:
+                return {"types": CaseModel.get_misp_attribute_types(force=force)}, 200
+            except Exception as e:
+                flowintel_log("error", 500, "Failed to build MISP attribute types", error=str(e))
+                return {"types": []}, 200
+
+
     @case_ns.route('/<cid>/create_misp_object', methods=['POST'])
     @case_ns.doc(description='Create misp object')
     class CreateMispObject(Resource):
@@ -1153,6 +1166,125 @@ class ModifNoteCase(Resource):
                     return CaseModel.delete_attribute(cid, oid, aid)
                 return {"message": "Permission denied"}, 403
             return {"message": "Case not found"}, 404
+
+
+    @case_ns.route('/<cid>/get_case_misp_attributes', methods=['GET'])
+    @case_ns.doc(description='Get standalone MISP attributes for a case')
+    class GetCaseMispAttributes(Resource):
+        method_decorators = [api_required]
+        def get(self, cid):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, current_user):
+                return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+            attrs = CaseModel.get_standalone_attributes_by_case(cid)
+            result = []
+            for attr in attrs:
+                loc_attr = attr.to_json()
+                loc_attr["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
+                loc_attr["synced_instances"] = []
+
+                synced = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
+                for sync in synced:
+                    loc_attr["synced_instances"].append({
+                        "instance_id": sync.instance_id,
+                        "uuid": sync.attribute_instance_uuid
+                    })
+                result.append(loc_attr)
+
+            return {"attributes": result}, 200
+
+
+    @case_ns.route('/<cid>/create_misp_attribute', methods=['POST'])
+    @case_ns.doc(description='Create a standalone MISP attribute')
+    class CreateMispAttribute(Resource):
+        method_decorators = [editor_required, misp_editor_required, api_required]
+        @case_ns.doc(params={
+            "value": "Required. Value of the attribute",
+            "type": "Required. MISP attribute type",
+            "comment": "Optional comment",
+            "ids_flag": "Optional boolean",
+            "disable_correlation": "Optional boolean",
+            "first_seen": "Optional datetime (%Y-%m-%d %H:%M)",
+            "last_seen": "Optional datetime (%Y-%m-%d %H:%M)"
+        })
+        def post(self, cid):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+            if not request.json:
+                return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
+            if not request.json.get("value"):
+                return {"message": "Value is required", "toast_class": "warning-subtle"}, 400
+            if not request.json.get("type"):
+                return {"message": "Type is required", "toast_class": "warning-subtle"}, 400
+
+            attribute = CaseModel.create_standalone_attribute(cid, request.json, current_user)
+            flowintel_log("audit", 201, "Standalone MISP attribute created", User=current_user.email, CaseId=cid, AttributeId=attribute.id)
+            return {"message": "Attribute created", "toast_class": "success-subtle", "attribute": attribute.to_json()}, 201
+
+
+    @case_ns.route('/<cid>/misp_attribute/<aid>/edit_misp_attribute', methods=['POST'])
+    @case_ns.doc(description='Edit a standalone MISP attribute')
+    class EditStandaloneMispAttribute(Resource):
+        method_decorators = [editor_required, misp_editor_required, api_required]
+        @case_ns.doc(params={
+            "value": "Required. Value of the attribute",
+            "type": "Required. MISP attribute type",
+            "comment": "Optional comment",
+            "ids_flag": "Optional boolean",
+            "disable_correlation": "Optional boolean",
+            "first_seen": "Optional datetime (%Y-%m-%d %H:%M)",
+            "last_seen": "Optional datetime (%Y-%m-%d %H:%M)"
+        })
+        def post(self, cid, aid):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+            if not request.json:
+                return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
+            if "value" not in request.json:
+                return {"message": "Need to pass 'value'", "toast_class": "warning-subtle"}, 400
+            if "type" not in request.json:
+                return {"message": "Need to pass 'type'", "toast_class": "warning-subtle"}, 400
+
+            result, status = CaseModel.edit_standalone_attr(cid, aid, request.json)
+            if status == 200:
+                flowintel_log("audit", 200, "Standalone MISP attribute edited", User=current_user.email, CaseId=cid, AttributeId=aid)
+            return result, status
+
+
+    @case_ns.route('/<cid>/misp_attribute/<aid>/delete_misp_attribute', methods=['GET'])
+    @case_ns.doc(description='Delete a standalone MISP attribute')
+    class DeleteStandaloneMispAttribute(Resource):
+        method_decorators = [editor_required, misp_editor_required, api_required]
+        def get(self, cid, aid):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+            result, status = CaseModel.delete_standalone_attr(cid, aid)
+            if status == 200:
+                flowintel_log("audit", 200, "Standalone MISP attribute deleted", User=current_user.email, CaseId=cid, AttributeId=aid)
+            return result, status
 
     
 

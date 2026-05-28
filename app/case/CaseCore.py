@@ -4,6 +4,7 @@ from typing import List
 import uuid
 import datetime
 import json
+from functools import lru_cache
 from flask_login import current_user
 from flask import send_file, current_app
 import pymisp
@@ -23,7 +24,7 @@ from .FilteringAbstract import FilteringAbstract
 from ..utils.note_variables import resolve_variables
 from . import common_core as CommonModel
 from . TaskCore import TaskModel
-from ..utils.utils import get_modules_list
+from ..utils.utils import get_modules_list, get_object_templates
 
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
@@ -38,6 +39,24 @@ from flask import current_app
 
 import conf.config_module as ConfigModule
 import sys
+
+
+@lru_cache(maxsize=1)
+def _build_misp_attribute_types():
+    """Construct and cache the canonical list of attribute types from templates."""
+    templates = get_object_templates()
+    types_set = set()
+    for tpl in templates:
+        for attr in tpl.get('attributes', []):
+            ma = attr.get('misp_attribute')
+            if not ma:
+                continue
+            if isinstance(ma, (list, tuple)):
+                for value in ma:
+                    types_set.add(value)
+            else:
+                types_set.add(ma)
+    return tuple(sorted(types_set))
 
 class CaseCore(CommonAbstract, FilteringAbstract):
     def __init__(self):
@@ -78,6 +97,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def get_custom_tags_class_id(self) -> int:
         return Case_Custom_Tags.case_id
+
+    def get_misp_attribute_types(self, force: bool = False) -> list:
+        """Return canonical MISP attribute types built from templates."""
+        if force:
+            try:
+                _build_misp_attribute_types.cache_clear()
+            except Exception:
+                pass
+        return list(_build_misp_attribute_types())
 
 
     def create_case(self, form_dict, user):
