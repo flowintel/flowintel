@@ -54,7 +54,12 @@ export default {
 
             const nodes = graph_events.value.map(ev => {
                 let label = ev.date_text + '\n' + ev.description
-                let color = ev.misp_object_id ? '#17a2b8' : '#6c757d'
+                let color = '#6c757d'
+                if (ev.misp_object_id && Number(ev.misp_object_id) > 0) {
+                    color = '#17a2b8'
+                } else if (ev.misp_object_id && Number(ev.misp_object_id) < 0) {
+                    color = '#fd7e14'
+                }
                 return {
                     id: String(ev.id),
                     data: { label: label, event_id: String(ev.id) },
@@ -303,7 +308,7 @@ export default {
         <div class="mt-2">
             <small class="text-muted">
                 <i class="fa-solid fa-circle-info me-1"></i>
-                Drag nodes to rearrange. Click an edge to select it. Click a node to select it for deletion. MISP-imported events are shown in blue.
+                Drag nodes to rearrange. Click an edge to select it. Click a node to select it for deletion. MISP objects are blue and standalone attributes are orange.
             </small>
         </div>
     </div>

@@ -268,6 +268,7 @@ def get_case_misp_attributes(cid):
     for attr in attrs:
         loc = attr.to_json()
         loc["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
+        loc["is_imported"] = True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=-int(attr.id)).first() else False
         loc["synced_instances"] = []
         synced = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
         for s in synced:
@@ -421,16 +422,27 @@ def delete_timeline_event(cid, eid):
 @login_required
 @editor_required
 def import_misp_to_timeline(cid):
-    """Import MISP objects into the timeline"""
+    """Import MISP objects and standalone attributes into the timeline"""
     case = CommonModel.get_case(cid)
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             data = request.get_json(silent=True) or {}
             object_ids = data.get('object_ids', None)
+            attribute_ids = data.get('attribute_ids', None)
             if object_ids is not None and not isinstance(object_ids, list):
                 return {"message": "'object_ids' must be a list", "toast_class": "warning-subtle"}, 400
-            count = CaseModel.import_misp_objects_to_timeline(cid, current_user, object_ids)
-            return {"message": f"{count} MISP object(s) imported to timeline", "toast_class": "success-subtle"}, 200
+            if attribute_ids is not None and not isinstance(attribute_ids, list):
+                return {"message": "'attribute_ids' must be a list", "toast_class": "warning-subtle"}, 400
+
+            imported = CaseModel.import_misp_objects_to_timeline(cid, current_user, object_ids, attribute_ids)
+            total = imported.get("objects", 0) + imported.get("attributes", 0)
+            return {
+                "message": (
+                    f"{total} MISP item(s) imported to timeline "
+                    f"({imported.get('objects', 0)} object(s), {imported.get('attributes', 0)} standalone attribute(s))"
+                ),
+                "toast_class": "success-subtle"
+            }, 200
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 

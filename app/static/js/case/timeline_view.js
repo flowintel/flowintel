@@ -20,8 +20,11 @@ export default {
         // Import modal state
         const show_import_modal = ref(false)
         const misp_objects = ref([])
+        const misp_attributes = ref([])
         const selected_ids = ref([])
+        const selected_attribute_ids = ref([])
         const select_all = ref(false)
+        const select_all_attributes = ref(false)
 
         const sorted_events = computed(() => {
             const list = [...timeline_events.value]
@@ -74,7 +77,7 @@ export default {
         function render_timeline() {
             if (!timeline_events.value || timeline_events.value.length === 0) {
                 const container = document.getElementById('case-timeline-embed')
-                if (container) container.innerHTML = '<p class="text-muted text-center mt-4">No timeline events yet. Add events or import from MISP objects to build your timeline.</p>'
+                if (container) container.innerHTML = '<p class="text-muted text-center mt-4">No timeline events yet. Add events or import from MISP objects and standalone attributes to build your timeline.</p>'
                 return
             }
 
@@ -88,8 +91,14 @@ export default {
 
                 let headline
                 if (ev.misp_object_id) {
-                    let loc = text.split('—')[0].split(']')[1].trim()
-                    headline = '<i class="fa-solid fa-cubes me-1"></i> ' + loc
+                    const isStandaloneAttr = Number(ev.misp_object_id) < 0
+                    const cleanText = text.split('—')[0]
+                    const headlineText = cleanText.includes(']') ? (cleanText.split(']').slice(1).join(']').trim() || cleanText) : cleanText
+                    if (isStandaloneAttr) {
+                        headline = '<span style="color:#fd7e14;"><i class="fa-solid fa-tag me-1"></i></span> ' + headlineText
+                    } else {
+                        headline = '<span style="color:#17a2b8;"><i class="fa-solid fa-cubes me-1"></i></span> ' + headlineText
+                    }
                 } else {
                     headline = text
                 }
@@ -193,15 +202,37 @@ export default {
 
         // --- Import modal helpers ---
         async function open_import_modal() {
-            const res = await fetch('/case/' + props.case_id + '/get_case_misp_object')
-            if (res.status === 200) {
-                const loc = await res.json()
-                misp_objects.value = loc['misp-object'] || []
-                selected_ids.value = []
-                select_all.value = false
-                show_import_modal.value = true
+            const [objRes, attrRes] = await Promise.all([
+                fetch('/case/' + props.case_id + '/get_case_misp_object'),
+                fetch('/case/' + props.case_id + '/get_case_misp_attributes')
+            ])
+
+            let canOpen = false
+
+            if (objRes.status === 200) {
+                const locObjects = await objRes.json()
+                misp_objects.value = locObjects['misp-object'] || []
+                canOpen = true
             } else {
-                display_toast(res)
+                await display_toast(objRes)
+                misp_objects.value = []
+            }
+
+            if (attrRes.status === 200) {
+                const locAttrs = await attrRes.json()
+                misp_attributes.value = locAttrs.attributes || []
+                canOpen = true
+            } else {
+                await display_toast(attrRes)
+                misp_attributes.value = []
+            }
+
+            if (canOpen) {
+                selected_ids.value = []
+                selected_attribute_ids.value = []
+                select_all.value = false
+                select_all_attributes.value = false
+                show_import_modal.value = true
             }
         }
 
@@ -216,15 +247,35 @@ export default {
             }
         }
 
+        function toggle_select_all_attributes() {
+            if (select_all_attributes.value) {
+                selected_attribute_ids.value = misp_attributes.value.filter(a => !a.is_imported).map(a => a.id)
+            } else {
+                selected_attribute_ids.value = []
+            }
+        }
+
         async function perform_import() {
-            if (!selected_ids.value || selected_ids.value.length === 0) {
-                create_message('Select at least one object to import', 'warning-subtle')
+            const importableObjectIds = (selected_ids.value || []).filter(id => {
+                const obj = misp_objects.value.find(o => Number(o.object_id) === Number(id))
+                return obj && !obj.is_imported
+            })
+            const importableAttributeIds = (selected_attribute_ids.value || []).filter(id => {
+                const attr = misp_attributes.value.find(a => Number(a.id) === Number(id))
+                return attr && !attr.is_imported
+            })
+
+            if (importableObjectIds.length === 0 && importableAttributeIds.length === 0) {
+                create_message('Select at least one object or standalone attribute to import', 'warning-subtle')
                 return
             }
             const res = await fetch('/case/' + props.case_id + '/import_misp_to_timeline', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
-                body: JSON.stringify({object_ids: selected_ids.value})
+                body: JSON.stringify({
+                    object_ids: importableObjectIds,
+                    attribute_ids: importableAttributeIds
+                })
             })
             if (res.status === 200) {
                 show_import_modal.value = false
@@ -236,7 +287,9 @@ export default {
         function close_import_modal() {
             show_import_modal.value = false
             selected_ids.value = []
+            selected_attribute_ids.value = []
             select_all.value = false
+            select_all_attributes.value = false
         }
 
         onMounted(() => {
@@ -263,9 +316,13 @@ export default {
             perform_import,
             show_import_modal,
             misp_objects,
+            misp_attributes,
             selected_ids,
+            selected_attribute_ids,
             select_all,
+            select_all_attributes,
             toggle_select_all,
+            toggle_select_all_attributes,
             close_import_modal,
             fetch_timeline_events
         }
@@ -277,8 +334,8 @@ export default {
                 <button class="btn btn-primary btn-sm me-2" @click="show_add_form = !show_add_form">
                     <i class="fa-solid fa-plus me-1"></i>Add Event
                 </button>
-                <button class="btn btn-outline-secondary btn-sm" @click="open_import_modal()" title="Import MISP objects as timeline events">
-                    <i class="fa-solid fa-cubes me-1"></i>Import MISP Objects
+                <button class="btn btn-outline-secondary btn-sm" @click="open_import_modal()" title="Import selected MISP objects and standalone attributes as timeline events">
+                    <i class="fa-solid fa-cubes me-1"></i>Import MISP Data
                 </button>
             </div>
         </div>
@@ -314,13 +371,14 @@ export default {
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Import MISP Objects</h5>
+                        <h5 class="modal-title">Import MISP Data To Timeline</h5>
                         <button type="button" class="btn-close" @click="close_import_modal()"></button>
                     </div>
                     <div class="modal-body">
+                        <h6 class="mb-2">MISP Objects</h6>
                         <div class="mb-2">
                             <input type="checkbox" id="select_all" v-model="select_all" @change="toggle_select_all()">
-                            <label for="select_all" class="ms-1">Select all</label>
+                            <label for="select_all" class="ms-1">Select all objects</label>
                         </div>
                         <div v-if="misp_objects.length === 0" class="text-muted">No MISP objects found for this case.</div>
                         <div v-else class="list-group" style="max-height:400px; overflow:auto;">
@@ -339,10 +397,35 @@ export default {
                                 </div>
                             </label>
                         </div>
+
+                        <hr>
+                        <h6 class="mb-2">Standalone MISP Attributes</h6>
+                        <div class="mb-2">
+                            <input type="checkbox" id="select_all_attributes" v-model="select_all_attributes" @change="toggle_select_all_attributes()">
+                            <label for="select_all_attributes" class="ms-1">Select all standalone attributes</label>
+                        </div>
+                        <div v-if="misp_attributes.length === 0" class="text-muted">No standalone MISP attributes found for this case.</div>
+                        <div v-else class="list-group" style="max-height:320px; overflow:auto;">
+                            <label v-for="a in misp_attributes" :key="a.id" class="list-group-item d-flex justify-content-between align-items-start">
+                                <div class="d-flex align-items-start">
+                                    <input type="checkbox" class="form-check-input me-2 mt-1" :value="a.id" v-model="selected_attribute_ids" :disabled="a.is_imported">
+                                    <div>
+                                        <strong>[[ a.type ]]</strong>
+                                        <span class="ms-1">[[ a.value ]]</span>
+                                        <div class="text-muted small" v-if="a.object_relation">Relation: [[ a.object_relation ]]</div>
+                                        <div class="text-muted small" v-if="a.first_seen">First seen: [[ a.first_seen ]]</div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span v-if="a.is_imported" class="badge bg-success me-2">Imported</span>
+                                    <span v-else class="badge text-bg-warning rounded-pill">Standalone attr</span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" @click="close_import_modal()">Cancel</button>
-                        <button class="btn btn-primary" @click="perform_import()">Import selected ([[ selected_ids.length ]])</button>
+                        <button class="btn btn-primary" @click="perform_import()">Import selected ([[ selected_ids.length + selected_attribute_ids.length ]])</button>
                     </div>
                 </div>
             </div>
@@ -367,7 +450,7 @@ export default {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="ev in sorted_events" :key="ev.id">
+                    <tr v-for="ev in sorted_events" :key="ev.id" :class="ev.misp_object_id && Number(ev.misp_object_id) > 0 ? 'table-info' : (ev.misp_object_id && Number(ev.misp_object_id) < 0 ? 'table-warning' : '')">
                         <template v-if="editing_event_id === ev.id">
                             <td>
                                 <input type="text" class="form-control form-control-sm" v-model="edit_date_text">
@@ -376,7 +459,12 @@ export default {
                                 <textarea class="form-control form-control-sm" v-model="edit_description" rows="1"></textarea>
                             </td>
                             <td>
-                                <i v-if="ev.misp_object_id" class="fa-solid fa-cubes text-info" title="Linked to MISP object"></i>
+                                <span v-if="ev.misp_object_id && Number(ev.misp_object_id) > 0" class="badge text-bg-info" title="Linked to MISP object">
+                                    <i class="fa-solid fa-cubes me-1"></i>Object
+                                </span>
+                                <span v-else-if="ev.misp_object_id && Number(ev.misp_object_id) < 0" class="badge text-bg-warning" title="Linked to standalone MISP attribute">
+                                    <i class="fa-solid fa-tag me-1"></i>Standalone Attr
+                                </span>
                             </td>
                             <td>
                                 <button class="btn btn-success btn-sm me-1" @click="save_edit(ev.id)" title="Save">
@@ -391,7 +479,12 @@ export default {
                             <td><code>[[ ev.date_text ]]</code></td>
                             <td>[[ ev.description ]]</td>
                             <td>
-                                <i v-if="ev.misp_object_id" class="fa-solid fa-cubes text-info" title="Linked to MISP object"></i>
+                                <span v-if="ev.misp_object_id && Number(ev.misp_object_id) > 0" class="badge text-bg-info" title="Linked to MISP object">
+                                    <i class="fa-solid fa-cubes me-1"></i>Object
+                                </span>
+                                <span v-else-if="ev.misp_object_id && Number(ev.misp_object_id) < 0" class="badge text-bg-warning" title="Linked to standalone MISP attribute">
+                                    <i class="fa-solid fa-tag me-1"></i>Standalone Attr
+                                </span>
                             </td>
                             <td>
                                 <button class="btn btn-outline-primary btn-sm me-1" @click="start_edit(ev)" title="Edit">

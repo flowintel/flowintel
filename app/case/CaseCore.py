@@ -2341,11 +2341,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 continue
         return None
 
-    def import_misp_objects_to_timeline(self, cid, current_user, object_ids=None):
-        """Import MISP objects with first_seen dates as timeline events.
+    def import_misp_objects_to_timeline(self, cid, current_user, object_ids=None, attribute_ids=None):
+        """Import MISP objects and standalone attributes as timeline events.
 
         If `object_ids` is provided (list of ints), only those objects will be
         considered for import.
+
+        If `attribute_ids` is provided (list of ints), only those standalone
+        attributes will be considered for import.
         """
         misp_objects = self.get_misp_object_by_case(cid)
         # Filter to selected objects if provided
@@ -2356,7 +2359,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 object_ids = []
             misp_objects = [obj for obj in misp_objects if obj.id in object_ids]
 
-        imported = 0
+        imported_objects = 0
         for obj in misp_objects:
             # Skip if this object has already been imported to the timeline
             existing_event = Case_Timeline_Event.query.filter_by(case_id=cid, misp_object_id=obj.id).first()
@@ -2381,8 +2384,45 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     description += " — " + ", ".join(attr_lines)
 
                 self.create_timeline_event(cid, date_text, description, obj.id, current_user)
-                imported += 1
-        return imported
+                imported_objects += 1
+
+        imported_attrs = 0
+        if attribute_ids is not None:
+            standalone_attrs = self.get_standalone_attributes_by_case(cid)
+            try:
+                attribute_ids = [int(i) for i in attribute_ids]
+            except Exception:
+                attribute_ids = []
+            standalone_attrs = [attr for attr in standalone_attrs if attr.id in attribute_ids]
+
+            for attr in standalone_attrs:
+                # Reuse the existing misp_object_id field: positive IDs are objects,
+                # negative IDs represent standalone attributes.
+                timeline_attr_id = -int(attr.id)
+                existing_event = Case_Timeline_Event.query.filter_by(case_id=cid, misp_object_id=timeline_attr_id).first()
+                if existing_event:
+                    continue
+
+                date_value = attr.first_seen or attr.last_seen or attr.creation_date
+                if not date_value:
+                    continue
+
+                date_text = date_value.strftime('%Y-%m-%d %H:%M')
+
+                attr_type = attr.type or 'attribute'
+                relation = f" ({attr.object_relation})" if attr.object_relation else ""
+                attr_value = attr.value or ""
+                description = f"[MISP] {attr_type}{relation}: {attr_value}"
+                if attr.comment:
+                    description += f" — {attr.comment}"
+
+                self.create_timeline_event(cid, date_text, description, timeline_attr_id, current_user)
+                imported_attrs += 1
+
+        return {
+            "objects": imported_objects,
+            "attributes": imported_attrs
+        }
 
 
     #####################
