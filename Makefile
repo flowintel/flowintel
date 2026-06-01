@@ -88,6 +88,8 @@ version_repo = "0.0.0"
 #
 tag_message = ""
 
+rebuild = 1
+
 ########################################################################################
 # RULES
 ########################################################################################
@@ -116,6 +118,7 @@ configure_repo_dev:
 	cp -n template.env .env.postgres
 	cp -n template.env .env.mariadb
 	cp -n conf/config.py.default conf/config.py
+	cp -n conf/config_module.py.default conf/config_module.py
 	echo
 	echo "The repository was configured for local dev running."
 	echo
@@ -125,6 +128,8 @@ configure_repo_dev:
 	echo
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
 	read wait_for_me;
+	uv venv;
+	uv pip install -r requirements.txt
 
 # Development lifecycle #
 ########################################################################################
@@ -134,6 +139,9 @@ configure_repo_dev:
 
 # Database Management
 database_init:
+	# TODO Clarify how much it is redundant with migrate.sh script
+	# TODO Clarify why we even need it for Docker as it seems to be already managed in the entrypoint
+	@echo "💣 DO NOT RUN IN PRODUCTION !!!";
 	echo "${RED}First run the application, then run this recipe at first install only.${RESET}"
 	go_to_initdb="N"; \
 	read -p "Do you want to continue ? (Y/N) " go_to_initdb; \
@@ -144,30 +152,69 @@ database_init:
 		echo "Database initialization skipped."; \
 	fi; \
 
+init_migrations:
+	# TODO Clarify how much it is redundant with migrate.sh script
+	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
+	read wait_for_me; \
+	uv run flask db init
+	uv run flask db migrate -m "initial schema"
+
+new_migration:
+	# TODO Clarify how much it is redundant with migrate.sh script
+	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
+	read wait_for_me; \
+	uv run flask db migrate
+	echo "New migration created if new model found"
+
 # Run Application
 # TODO in the future, either build a New image to account for WebApp changes
 # or make a specific "run_dev" to run locally the app and simply spawn databases and
 # Valkey as "dev_infra" like we did for URLChecker Web Platform
-run: configure_repo_dev build_latest_local dev_infra_run
+run: configure_repo_dev dev_localinfra_run
 	echo "Press Enter to close..."
 	read _
 	sleep 1
 	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose down
+	docker compose -f docker-compose-localfull-pg.yml down
 
-run_maria: configure_repo_dev build_maria_latest_local dev_infra_maria_run
+run_maria: configure_repo_dev dev_localinfra_maria_run
 	echo "Press Enter to close..."
 	read _
 	sleep 1
 	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose down -f docker-compose-maria.yml
+	docker compose -f docker-compose-localfull-maria.yml down
+
+runfull: configure_repo_dev build_latest_local
+	cp -f .env.postgres .env
+	docker compose -f docker-compose-localfull-pg.yml up
+	echo "Press Enter to close..."
+	read _
+	sleep 1
+	# Stop test infra (not functionnal yet, might need utilities scripts)
+	docker compose -f docker-compose-localfull-pg.yml down
+
+runfull_maria: configure_repo_dev build_maria_latest_local
+	cp -f .env.mariadb .env
+	docker compose -f docker-compose-localfull-maria.yml up
+	echo "Press Enter to close..."
+	read _
+	sleep 1
+	# Stop test infra (not functionnal yet, might need utilities scripts)
+	docker compose -f docker-compose-localfull-maria.yml down
 ########################################################################################
 
 # Build 🌍 , Publish  🌬️ and Release 🔥
 build_latest_local:
+ifeq ($(rebuild),1)
+	@echo "Image Rebuild rebuild requested"
 	docker build -f DockerfilePostgres -t flowintel:latest .
+else
+	@echo "Image Rebuild skipped"
+endif
 
 build_maria_latest_local:
+ifeq ($(rebuild),1)
+	@echo "Image Rebuild rebuild requested"
 	cp -f requirements.txt requirements.txt.backup; \
 	cp -f requirements.in requirements.in.backup; \
 	sed -i '/^psycopg2/d' requirements.txt; \
@@ -176,22 +223,25 @@ build_maria_latest_local:
 	echo 'PyMySQL' >> requirements.in; \
 	docker build -f DockerfileMaria -t flowintel_maria:latest .; \
 	cp -f requirements.txt.backup requirements.txt; \
-	cp -f requirements.in.backup requirements.in; \
+	cp -f requirements.in.backup requirements.in;
+else
+	@echo "Image Rebuild skipped"
+endif
 
 # Various Helpers
-dev_infra_run:
+dev_localinfra_run:
 	cp -f .env.postgres .env
-	docker compose -f docker-compose-local-pg.yml up
+	docker compose -f docker-compose-localinfra-pg.yml up
 
-dev_infra_maria_run:
+dev_localinfra_maria_run:
 	cp -f .env.mariadb .env
-	docker compose -f docker-compose-local-maria.yml up
+	docker compose -f docker-compose-localinfra-maria.yml up
 
-dev_infra_stop:
-	cd docker && docker compose -f docker-compose-local-pg.yml down
+dev_localinfra_stop:
+	cd docker && docker compose -f docker-compose-localinfra-pg.yml down
 
-dev_infra_maria_stop:
-	cd docker && docker compose -f docker-compose-local-maria.yml down
+dev_localinfra_maria_stop:
+	cd docker && docker compose -f docker-compose-localinfra-maria.yml down
 
 ################
 # Housekeeping #

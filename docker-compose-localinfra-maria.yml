@@ -1,0 +1,39 @@
+services:
+  mariadb:
+    container_name: mariadb
+    image: mariadb:12
+    ports:
+      - '${DB_PORT:-3306}:3306'
+    volumes:
+      - db:/var/lib/mariadb/data
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-flowintel}
+      - MYSQL_USER=${DB_USER:-flowintel}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
+      - MYSQL_DATABASE=${DB_NAME:-flowintel}
+    networks:
+      - net
+    restart: unless-stopped
+
+  valkey:
+    container_name: valkey
+    image: valkey/valkey
+    ports:
+      - '${VALKEY_PORT:-6379}:6379'
+    volumes:
+      - valkey-data:/data
+    networks:
+      - net
+
+volumes:
+  db:
+  valkey-data:
+
+networks:
+  net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+        - subnet: fd31:50:0:1::/64
