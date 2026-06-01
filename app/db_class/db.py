@@ -726,7 +726,7 @@ class Case_Template(db.Model):
 class Task_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    title = db.Column(db.String(255)), index=True)
+    title = db.Column(db.String(255), index=True)
     description = db.Column(db.Text, nullable=True)
     urls_tools = db.relationship('Task_Template_Url_Tool', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
