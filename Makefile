@@ -148,14 +148,14 @@ database_init:
 # TODO in the future, either build a New image to account for WebApp changes
 # or make a specific "run_dev" to run locally the app and simply spawn databases and
 # Valkey as "dev_infra" like we did for URLChecker Web Platform
-run: configure_repo_dev dev_infra_run
+run: configure_repo_dev build_latest_local dev_infra_run
 	echo "Press Enter to close..."
 	read _
 	sleep 1
 	# Stop test infra (not functionnal yet, might need utilities scripts)
 	docker compose down
 
-run_maria: configure_repo_dev dev_infra_maria_run
+run_maria: configure_repo_dev build_latest_local dev_infra_maria_run
 	echo "Press Enter to close..."
 	read _
 	sleep 1
@@ -163,20 +163,24 @@ run_maria: configure_repo_dev dev_infra_maria_run
 	docker compose down -f docker-compose-maria.yml
 ########################################################################################
 
+# Build 🌍 , Publish  🌬️ and Release 🔥
+build_latest_local:
+	docker build -t flowintel:latest .
+
 # Various Helpers
 dev_infra_run:
 	cp -f .env.postgres .env
-	docker compose up
+	docker compose -f docker-compose-local-pg.yml up
 
 dev_infra_maria_run:
 	cp -f .env.mariadb .env
-	docker compose -f docker-compose-maria.yml up
+	docker compose -f docker-compose-local-maria.yml up
 
 dev_infra_stop:
-	cd docker && docker compose down
+	cd docker && docker compose -f docker-compose-local-pg.yml down
 
 dev_infra_maria_stop:
-	cd docker && docker compose -f docker-compose-maria.yml down
+	cd docker && docker compose -f docker-compose-local-maria.yml down
 
 ################
 # Housekeeping #

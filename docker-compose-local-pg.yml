@@ -1,0 +1,57 @@
+services:
+  postgresql:
+    container_name: postgres
+    image: postgres:17
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-flowintel}
+      - POSTGRES_USER=${DB_USER:-flowintel}
+      - POSTGRES_DB=${DB_NAME:-flowintel}
+    networks:
+      - net
+    restart: unless-stopped
+
+  valkey:
+    container_name: valkey
+    image: valkey/valkey
+    ports:
+      - '${VALKEY_PORT:-6379}:6379'
+    volumes:
+      - valkey-data:/data
+    networks:
+      - net
+
+
+  flowintel:
+    image: flowintel:latest
+    container_name: flowintel
+    command: bash -i ./launch.sh -ld
+    ports:
+      - '${APP_PORT:-7006}:7006'
+    environment:
+      - DB_HOST=${DB_HOST:-postgresql}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-flowintel}
+      - DB_PASSWORD=${DB_PASSWORD:-flowintel}
+      - DB_NAME=${DB_NAME:-flowintel}
+      - VALKEY_IP=${VALKEY_IP:-valkey}
+    networks:
+      - net
+    depends_on:
+      - postgresql
+      - valkey
+
+    volumes:
+      - flowintel-data:/var/lib/flowintel
+
+volumes:
+  db:
+  flowintel-data:
+  valkey-data:
+
+networks:
+  net:
+    driver: bridge

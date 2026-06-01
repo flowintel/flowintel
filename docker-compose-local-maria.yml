@@ -27,7 +27,7 @@ services:
 
 
   flowintel:
-    image: ghcr.io/flowintel/flowintel:latest
+    image: flowintel:latest
     container_name: flowintel
     command: bash -i ./launch.sh -ld
     ports:
