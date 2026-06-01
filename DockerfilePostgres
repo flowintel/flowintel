@@ -6,10 +6,8 @@ RUN ln -fs /usr/share/zoneinfo/Europe/Luxembourg /etc/localtime
 
 RUN apt update && apt install -y \
     sudo moreutils software-properties-common \
-    git screen libolm-dev librsvg2-bin wget vim curl gnupg python3-venv python3-pip
-
-# Pandoc dependencies
-RUN apt install -y texlive texlive-xetex texlive-fonts-extra
+    git screen libolm-dev librsvg2-bin wget vim curl gnupg python3-venv python3-pip \
+    texlive texlive-xetex texlive-fonts-extra # Pandoc dependencies
 
 # Install pandoc from GitHub
 RUN <<EOF
@@ -23,26 +21,23 @@ EOF
 # Create a dedicated user and group
 RUN groupadd -r flowintel && useradd -m -g flowintel flowintel
 
-# Copy app source
-COPY . /home/flowintel/app
-
-# Set working directory
 WORKDIR /home/flowintel/app
 
-# Replace secret and update config
-# COPY conf/config.py.default conf/config.py
-# COPY template.env .env
+# Copy on top only files that affect dependency resolution
+COPY requirements.txt requirements.in /home/flowintel/app/
 
-# RUN RAND=$(tr -cd "[:alnum:]" < /dev/urandom | head -c 20) && sed "s/SECRET_KEY_ENV_VAR_NOT_SET/$RAND/" conf/config.py | sponge conf/config.py
-RUN sed "s/FLASK_URL *= *'.*'/FLASK_URL = '0.0.0.0'/" conf/config.py | sponge conf/config.py
+## Keep the virtual env untouchable by the non privileged user
+# Install Python dependencies in a virtualenv
+RUN python3 -m venv /home/flowintel/venv
+ENV PATH="/home/flowintel/venv/bin:${PATH}"
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt --timeout 240
 
-
-# Set proper ownership
-RUN chown -R flowintel:flowintel /home/flowintel/app
 
 # Switch to the non-root user
 USER flowintel
 
+## npm installed moved upper to optimize cache layers - check that there are no strong coupling with Python code updates !
 # Install pandoc Eisvogel template
 RUN <<EOF
 mkdir -p ~/.pandoc/templates
@@ -65,6 +60,25 @@ echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' >> ~/.bashrc
 echo "export PATH=\"\$PATH:$HOME/node_modules/.bin\"" >> ~/.bashrc
 EOF
 
+# We need again to be root, though not sure it is needed due to the chown done in the next steps !
+USER root
+
+# Copy app source later to optimize layer caching
+COPY . /home/flowintel/app
+
+# Replace secret and update config
+# COPY conf/config.py.default conf/config.py
+# COPY template.env .env
+
+# RUN RAND=$(tr -cd "[:alnum:]" < /dev/urandom | head -c 20) && sed "s/SECRET_KEY_ENV_VAR_NOT_SET/$RAND/" conf/config.py | sponge conf/config.py
+RUN sed "s/FLASK_URL *= *'.*'/FLASK_URL = '0.0.0.0'/" conf/config.py | sponge conf/config.py
+
+# Set proper ownership
+RUN chown -R flowintel:flowintel /home/flowintel/app
+
+# We finally switch to the non-root user
+USER flowintel
+
 # Proxy mmdc with proper puppeteer config
 RUN <<EOF
 cd $HOME/node_modules/.bin
@@ -83,11 +97,6 @@ eof
 chmod +x mmdc
 EOF
 
-# Install Python dependencies in a virtualenv
-RUN python3 -m venv /home/flowintel/venv
-ENV PATH="/home/flowintel/venv/bin:${PATH}"
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt --timeout 240
 # Init git submodules & update
 RUN git submodule init && git submodule update
 
@@ -95,7 +104,7 @@ RUN git submodule init && git submodule update
 RUN screen -wipe || true
 
 # Final permissions check (in case)
-RUN chmod +x launch.sh bin/wait-for-it.sh bin/entrypoint.sh /home/flowintel/venv/bin/activate
+RUN chmod +x launch.sh bin/wait-for-it.sh bin/entrypoint.sh
 
 ENTRYPOINT ["/home/flowintel/app/bin/entrypoint.sh"]
 
