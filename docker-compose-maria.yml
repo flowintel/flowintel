@@ -1,15 +1,16 @@
 services:
-  postgresql:
-    container_name: postgres
-    image: postgres:17
+  mariadb:
+    container_name: mariadb
+    image: mariadb:12
     ports:
-      - '${DB_PORT:-5432}:5432'
+      - '${DB_PORT:-3306}:3306'
     volumes:
-      - db:/var/lib/postgresql/data
+      - db:/var/lib/mariadb/data
     environment:
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-flowintel}
-      - POSTGRES_USER=${DB_USER:-flowintel}
-      - POSTGRES_DB=${DB_NAME:-flowintel}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-flowintel}
+      - MYSQL_USER=${DB_USER:-flowintel}
+      - MYSQL_PASSWORD=${DB_USER:-your_secure_password_here}
+      - MYSQL_DATABASE=${DB_NAME:-flowintel}
     networks:
       - net
     restart: unless-stopped
@@ -32,8 +33,8 @@ services:
     ports:
       - '${APP_PORT:-7006}:7006'
     environment:
-      - DB_HOST=${DB_HOST:-postgresql}
-      - DB_PORT=${DB_PORT:-5432}
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_PORT=${DB_PORT:-3306}
       - DB_USER=${DB_USER:-flowintel}
       - DB_PASSWORD=${DB_PASSWORD:-flowintel}
       - DB_NAME=${DB_NAME:-flowintel}
@@ -41,7 +42,7 @@ services:
     networks:
       - net
     depends_on:
-      - postgresql
+      - mariadb
       - valkey
 
     volumes:
