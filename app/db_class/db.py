@@ -5,6 +5,8 @@ from .. import db, login_manager
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
 
+from sqlalchemy.dialects.mysql import LONGTEXT
+
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 CASCADE_DELETE_ORPHAN = "all, delete-orphan"
 FK_TASK_ID = 'task.id'
@@ -915,7 +917,7 @@ class Taxonomy(db.Model):
 class Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    name = db.Column(db.String(64))
+    name = db.Column(db.Text)
     color = db.Column(db.String(64))
     exclude = db.Column(db.Boolean, default=False)
     description = db.Column(db.Text)
@@ -982,13 +984,13 @@ class Galaxy(db.Model):
 
 class Cluster(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(64))
+    name = db.Column(db.String(255))
     uuid = db.Column(db.String(36), index=True)
     version = db.Column(db.Integer, index=True)
     description = db.Column(db.Text)
-    meta = db.Column(db.Text)
+    meta = db.Column(db.Text().with_variant(LONGTEXT(), "mysql", "mariadb"))
     exclude = db.Column(db.Boolean, default=False)
-    tag = db.Column(db.String(64))
+    tag = db.Column(db.Text)
     galaxy_id = db.Column(db.Integer, db.ForeignKey('galaxy.id', ondelete="CASCADE"))
 
     def to_json(self):
@@ -1212,7 +1214,7 @@ class Misp_Module(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True, unique=True)
     description = db.Column(db.Text)
-    input_attr = db.Column(db.String(128))
+    input_attr = db.Column(db.Text)
     version = db.Column(db.String(15))
 
     def to_json(self):
@@ -1359,7 +1361,7 @@ class Case_Misp_Object(db.Model):
 class Misp_Attribute(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"))
-    value = db.Column(db.String(15), index=True)
+    value = db.Column(db.String(255), index=True)
     type = db.Column(db.String(64), index=True)
     object_relation = db.Column(db.String(64), index=True)
     first_seen = db.Column(db.DateTime, index=True)
