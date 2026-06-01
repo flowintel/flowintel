@@ -32,12 +32,24 @@ services:
     ports:
       - '${APP_PORT:-7006}:7006'
     environment:
+      - SECRET_KEY=${FLOWINTEL_SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
+      #
       - DB_HOST=${DB_HOST:-postgresql}
       - DB_PORT=${DB_PORT:-5432}
       - DB_USER=${DB_USER:-flowintel}
       - DB_PASSWORD=${DB_PASSWORD:-flowintel}
       - DB_NAME=${DB_NAME:-flowintel}
+      - DB_DIALECT=${FLOWINTEL_DB_DIALECT:-postgresql}
+      - DB_DRIVER=${FLOWINTEL_DB_DRIVER:-psycopg2}
+      #
       - VALKEY_IP=${VALKEY_IP:-valkey}
+      - ADMIN_FIRST_NAME=${FLOWINTEL_ADMIN_FIRST_NAME:-admin}
+      - ADMIN_LAST_NAME=${FLOWINTEL_ADMIN_LAST_NAME:-admin}
+      - ADMIN_MAIL=${FLOWINTEL_ADMIN_MAIL:-admin@admin.admin}
+      - ADMIN_PASSWORD=${FLOWINTEL_ADMIN_PASSWORD:-admin}
+      - BOT_MAIL=${FLOWINTEL_BOT_MAIL:-neo@admin.admin}
+      #
+      - FLASKENV=${FLASKENV:-production}
     networks:
       - net
     depends_on:

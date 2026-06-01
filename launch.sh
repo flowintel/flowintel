@@ -167,7 +167,7 @@ function reload_db {
 
 function launch_docker {
     mkdir -p logs
-    export FLASKENV="docker"
+    export FLASKENV="${FLASKENV:production}"
     export HISTORY_DIR=$history_dir/history
 
     # Start screen sessions with logs
@@ -185,7 +185,7 @@ function launch_docker {
 
 function init_db_docker {
     mkdir -p logs
-    export FLASKENV="docker"
+    export FLASKENV="${FLASKENV:production}"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"

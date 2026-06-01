@@ -95,9 +95,9 @@ RUN git submodule init && git submodule update
 RUN screen -wipe || true
 
 # Final permissions check (in case)
-RUN chmod +x launch.sh bin/wait-for-it.sh bin/entrypoint.sh /home/flowintel/venv/bin/activate
+RUN chmod +x launch.sh bin/wait-for-it.sh bin/entrypoint-maria.sh /home/flowintel/venv/bin/activate
 
-ENTRYPOINT ["/home/flowintel/app/bin/entrypoint-nodb.sh"]
+ENTRYPOINT ["/home/flowintel/app/bin/entrypoint-maria.sh"]
 
 # Default command: interactive bash + launch
 CMD ["bash", "-i", "./launch.sh", "-ld"]

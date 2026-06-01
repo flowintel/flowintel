@@ -155,7 +155,7 @@ run: configure_repo_dev build_latest_local dev_infra_run
 	# Stop test infra (not functionnal yet, might need utilities scripts)
 	docker compose down
 
-run_maria: configure_repo_dev build_latest_local dev_infra_maria_run
+run_maria: configure_repo_dev build_maria_latest_local dev_infra_maria_run
 	echo "Press Enter to close..."
 	read _
 	sleep 1
@@ -165,7 +165,18 @@ run_maria: configure_repo_dev build_latest_local dev_infra_maria_run
 
 # Build 🌍 , Publish  🌬️ and Release 🔥
 build_latest_local:
-	docker build -t flowintel:latest .
+	docker build -f DockerfilePostgres -t flowintel:latest .
+
+build_maria_latest_local:
+	cp -f requirements.txt requirements.txt.backup; \
+	cp -f requirements.in requirements.in.backup; \
+	sed -i '/^psycopg2/d' requirements.txt; \
+	echo 'PyMySQL>=1.1.0' >> requirements.txt; \
+	sed -i '/^psycopg2/d' requirements.in; \
+	echo 'PyMySQL' >> requirements.in; \
+	docker build -f DockerfileMaria -t flowintel_maria:latest .; \
+	cp -f requirements.txt.backup requirements.txt; \
+	cp -f requirements.in.backup requirements.in; \
 
 # Various Helpers
 dev_infra_run:

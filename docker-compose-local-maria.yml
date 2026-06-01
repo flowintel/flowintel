@@ -7,9 +7,9 @@ services:
     volumes:
       - db:/var/lib/mariadb/data
     environment:
-      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-flowintel}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-flowintel}
       - MYSQL_USER=${DB_USER:-flowintel}
-      - MYSQL_PASSWORD=${DB_USER:-your_secure_password_here}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
       - MYSQL_DATABASE=${DB_NAME:-flowintel}
     networks:
       - net
@@ -27,18 +27,32 @@ services:
 
 
   flowintel:
-    image: flowintel:latest
+    image: flowintel_maria:latest
     container_name: flowintel
     command: bash -i ./launch.sh -ld
     ports:
       - '${APP_PORT:-7006}:7006'
     environment:
+      - SECRET_KEY=${FLOWINTEL_SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
+      #
       - DB_HOST=${DB_HOST:-mariadb}
       - DB_PORT=${DB_PORT:-3306}
       - DB_USER=${DB_USER:-flowintel}
       - DB_PASSWORD=${DB_PASSWORD:-flowintel}
       - DB_NAME=${DB_NAME:-flowintel}
+      - DB_DIALECT=${DB_DIALECT:-mysql}
+      - DB_DRIVER=${DB_DRIVER:-pymysql}
+      #
       - VALKEY_IP=${VALKEY_IP:-valkey}
+      - ADMIN_FIRST_NAME=${FLOWINTEL_ADMIN_FIRST_NAME:-admin}
+      - ADMIN_LAST_NAME=${FLOWINTEL_ADMIN_LAST_NAME:-admin}
+      - ADMIN_MAIL=${FLOWINTEL_ADMIN_MAIL:-admin@admin.admin}
+      - ADMIN_PASSWORD=${FLOWINTEL_ADMIN_PASSWORD:-admin}
+      - BOT_MAIL=${FLOWINTEL_BOT_MAIL:-neo@admin.admin}
+      #
+      - FLASKENV=${FLASKENV:-production}
+      - FLASK_PORT=${FLOWINTEL_APP_PORT:-7006}
+      - FLASK_URL=${FLASK_URL:-0.0.0.0}
     networks:
       - net
     depends_on:
@@ -56,3 +70,8 @@ volumes:
 networks:
   net:
     driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+        - subnet: fd31:50:0:1::/64
