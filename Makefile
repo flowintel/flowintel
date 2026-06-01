@@ -131,6 +131,11 @@ configure_repo_dev:
 	uv venv;
 	uv pip install -r requirements.txt
 
+restore_requirements:
+	echo "Restoring requirements files"
+	cp -f requirements.txt.backup requirements.txt
+	cp -f requirements.in.backup requirements.in
+
 # Development lifecycle #
 ########################################################################################
 # Dependencies
@@ -159,33 +164,119 @@ init_migrations:
 	uv run flask db init
 	uv run flask db migrate -m "initial schema"
 
-new_migration:
+new_migration: dev_localinfra_run
+	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
+	echo "Install the application in Dockerised Local Dev Infra first";
+	read wait_for_me; \
+	echo "Waiting 5 seconds for database available..."
+	sleep 5
+	# Just if case, should be harmless
+	VENV_DIR=".venv" ./launch.sh -i
+	#
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production
+	echo "Database initialised and upgraded, when necessary applied"
+	VENV_DIR=".venv" ./migrate.sh --migrate --env production
+	echo "New migrations created, when applicable"
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production
+	echo "New migrations applied"
+	# Stop test infra (not functionnal yet, might need utilities scripts)
+	docker compose -f docker-compose-localinfra-pg.yml down
+
+
+new_migration_maria: dev_localinfra_maria_run
+	set -e; \
+	trap '$(MAKE) restore_requirements' EXIT; \
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"; \
+	echo "Install the application in Dockerised Local Dev Infra first"; \
+	read wait_for_me; \
+	echo "Waiting 5 seconds for database available..."; \
+	sleep 5; \
+	cp -f requirements.txt requirements.txt.backup; \
+	cp -f requirements.in requirements.in.backup; \
+	sed -i '/^psycopg2/d' requirements.txt; \
+	echo 'PyMySQL>=1.1.0' >> requirements.txt; \
+	sed -i '/^psycopg2/d' requirements.in; \
+	echo 'PyMySQL' >> requirements.in; \
+	# Just if case, should be harmless; \
+	VENV_DIR=".venv" ./launch.sh -i; \
+	#; \
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production; \
+	echo "Database initialised and upgraded, when necessary applied"; \
+	VENV_DIR=".venv" ./migrate.sh --migrate --env production; \
+	echo "New migrations created, when applicable"; \
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production; \
+	echo "New migrations applied"; \
+	# Stop test infra (not functionnal yet, might need utilities scripts); \
+	docker compose -f docker-compose-localinfra-maria.yml down;
+
+full_new_migration:
+	# TODO Clarify how much it is redundant with migrate.sh script
+	# STILL EVEN MORE EXPERIMENTAL
+	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
+	echo "The application must already be run in full Docker mode"
+	read wait_for_me; \
+	echo "Waiting 5 seconds for database available..."
+	sleep 5
+	docker exec -it flowintel bash -i ./migrate.sh --migrate
+	echo "New migration created if new model found"
+	sleep 1
+	docker exec -it flowintel bash -i ./migrate.sh --upgrade
+	echo "New migrations applied"
+	# Stop test infra (not functionnal yet, might need utilities scripts)
+	docker compose -f docker-compose-localinfra-pg.yml down
+
+
+full_new_migration_maria:
+	# TODO Clarify how much it is redundant with migrate.sh script
+	# STILL EVEN MORE EXPERIMENTAL
 	# TODO Clarify how much it is redundant with migrate.sh script
 	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
+	echo "The application must already be run in full Docker mode"
 	read wait_for_me; \
-	uv run flask db migrate
+	echo "Waiting 5 seconds for database available..."
+	sleep 5
+	docker exec -it flowintel bash -i ./migrate.sh --migrate
 	echo "New migration created if new model found"
+	sleep 1
+	docker exec -it flowintel bash -i ./migrate.sh --upgrade
+	echo "New migrations applied"
+	# Stop test infra (not functionnal yet, might need utilities scripts)
+	docker compose -f docker-compose-localfull-maria.yml down
 
 # Run Application
 # TODO in the future, either build a New image to account for WebApp changes
 # or make a specific "run_dev" to run locally the app and simply spawn databases and
 # Valkey as "dev_infra" like we did for URLChecker Web Platform
 run: configure_repo_dev dev_localinfra_run
+	VENV_DIR=".venv" ./install.sh
+	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
 	sleep 1
 	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-localfull-pg.yml down
+	docker compose -f docker-compose-localinfra-pg.yml down
 
 run_maria: configure_repo_dev dev_localinfra_maria_run
-	echo "Press Enter to close..."
-	read _
-	sleep 1
-	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-localfull-maria.yml down
+	set -e; \
+	trap '$(MAKE) restore_requirements' EXIT; \
+	cp -f requirements.txt requirements.txt.backup; \
+	cp -f requirements.in requirements.in.backup; \
+	sed -i '/^psycopg2/d' requirements.txt; \
+	echo 'PyMySQL>=1.1.0' >> requirements.txt; \
+	sed -i '/^psycopg2/d' requirements.in; \
+	echo 'PyMySQL' >> requirements.in; \
+	
+	VENV_DIR=".venv" ./install.sh; \
+	VENV_DIR=".venv" ./launch.sh -l; \
+	
+	echo "Press Enter to close..."; \
+	read _; \
+	sleep 1; \
+	# Stop test infra (not functionnal yet, might need utilities scripts); \
+	docker compose -f docker-compose-localinfra-maria.yml down
 
 runfull: configure_repo_dev build_latest_local
-	cp -f .env.postgres .env
+	cp -f .env.full.postgres .env
 	docker compose -f docker-compose-localfull-pg.yml up
 	echo "Press Enter to close..."
 	read _
@@ -194,7 +285,7 @@ runfull: configure_repo_dev build_latest_local
 	docker compose -f docker-compose-localfull-pg.yml down
 
 runfull_maria: configure_repo_dev build_maria_latest_local
-	cp -f .env.mariadb .env
+	cp -f .env.full.mariadb .env
 	docker compose -f docker-compose-localfull-maria.yml up
 	echo "Press Enter to close..."
 	read _
@@ -214,16 +305,16 @@ endif
 
 build_maria_latest_local:
 ifeq ($(rebuild),1)
-	@echo "Image Rebuild rebuild requested"
+	set -e; \
+	trap '$(MAKE) restore_requirements' EXIT; \
+	echo "Image Rebuild rebuild requested"; \
 	cp -f requirements.txt requirements.txt.backup; \
 	cp -f requirements.in requirements.in.backup; \
 	sed -i '/^psycopg2/d' requirements.txt; \
 	echo 'PyMySQL>=1.1.0' >> requirements.txt; \
 	sed -i '/^psycopg2/d' requirements.in; \
 	echo 'PyMySQL' >> requirements.in; \
-	docker build -f DockerfileMaria -t flowintel_maria:latest .; \
-	cp -f requirements.txt.backup requirements.txt; \
-	cp -f requirements.in.backup requirements.in;
+	docker build -f DockerfileMaria -t flowintel_maria:latest .
 else
 	@echo "Image Rebuild skipped"
 endif
@@ -238,10 +329,10 @@ dev_localinfra_maria_run:
 	docker compose -f docker-compose-localinfra-maria.yml up
 
 dev_localinfra_stop:
-	cd docker && docker compose -f docker-compose-localinfra-pg.yml down
+	docker compose -f docker-compose-localinfra-pg.yml down
 
 dev_localinfra_maria_stop:
-	cd docker && docker compose -f docker-compose-localinfra-maria.yml down
+	docker compose -f docker-compose-localinfra-maria.yml down
 
 ################
 # Housekeeping #
@@ -328,11 +419,17 @@ help :
 	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "configure_repo_dev" "/" "Configure local .env files (TODO: + Python3 venv + pre-commit hooks)"
 	echo ""
 	echo -e "${BOLD}📦 Development lifecycle:${RESET}"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "database_init" "/"  "Initialise database - Run only on first install IN DEV !"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "database_init" "/"  "Initialise database when run fully Dockerised- Run only on first install IN DEV !"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "new_migration" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
 	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run_maria" "/"  "Run Dev App + Dev Infrastructure (docker-compose with MariaDB stack)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_infra_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_infra_maria_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose)"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_run" "/"  "Run Dev Infrastructure manually (docker-compose)"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_run" "/"  "Run Dev Infrastructure manually (docker-compose)"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose)"
+	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose)"
 	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "format_and_lint" "/"  "Format + lint (pre-commit style)"
 	echo ""
 	echo -e "${BOLD}🔥 Build, 🌬️  Publish and 🚀 Release: TODO${RESET}"
