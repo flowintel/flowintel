@@ -136,9 +136,13 @@ function init_db {
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist"
     python3 app.py -i
+    echo "Add taxonomies and galaxies"
     python3 app.py -tg
+    echo "Add or update misp-modules"
     python3 app.py -mm
+    echo "Create default test cases"
     python3 app.py -td
 
     killscript
@@ -151,10 +155,14 @@ function init_db_prod {
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist"
     python3 app.py -i
+    echo "Add taxonomies and galaxies"
     python3 app.py -tg
+    echo "Add or update misp-modules"
     python3 app.py -mm
     # don't import test data for prod 
+    #echo "Create default test cases"
     #python3 app.py -td
 }
 
@@ -190,10 +198,15 @@ function init_db_docker {
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist"
     python3 app.py -i
+    echo "Add taxonomies and galaxies"
     python3 app.py -tg
+    echo "Add or update misp-modules"
     python3 app.py -mm
-    python3 app.py -td
+    # don't import test data for prod 
+    #echo "Create default test cases"
+    #python3 app.py -td
 }
 
 function test_data_community {
