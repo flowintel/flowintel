@@ -109,4 +109,4 @@ RUN chmod +x launch.sh bin/wait-for-it.sh bin/entrypoint.sh
 ENTRYPOINT ["/home/flowintel/app/bin/entrypoint.sh"]
 
 # Default command: interactive bash + launch
-CMD ["bash", "-i", "./launch.sh", "-ld"]
+CMD ["bash", "./launch.sh", "-ld"]
