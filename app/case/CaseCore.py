@@ -1874,6 +1874,29 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         db.session.add(attr)
         db.session.commit()
 
+        # If task ids were provided on creation, link them to the new standalone attribute
+        try:
+            task_ids = data.get('task_ids', []) if isinstance(data, dict) else []
+            if isinstance(task_ids, list) and len(task_ids) > 0:
+                valid_task_ids = set()
+                for tid in task_ids:
+                    try:
+                        tid_int = int(tid)
+                    except Exception:
+                        continue
+                    t = Task.query.get(tid_int)
+                    if t and int(t.case_id) == int(cid):
+                        valid_task_ids.add(tid_int)
+
+                for tid in valid_task_ids:
+                    link = Task_Misp_Attribute(task_id=tid, misp_attribute_id=attr.id)
+                    db.session.add(link)
+                if valid_task_ids:
+                    db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flowintel_log('warning', 500, f"Error linking tasks to standalone MISP attribute: {e}", User=current_user.email, CaseId=cid)
+
         case = CommonModel.get_case(cid)
         CommonModel.save_history(case.uuid, current_user, "Standalone MISP attribute created")
         CommonModel.update_last_modif(cid)

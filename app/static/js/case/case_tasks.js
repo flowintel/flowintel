@@ -314,6 +314,10 @@ export default {
 			// })
 			is_mounted = true
 
+			// Listen for newly created standalone attributes and update task link list
+			window.addEventListener('misp-attribute-created', on_misp_attribute_created)
+			window.addEventListener('misp-attribute-deleted', on_misp_attribute_deleted)
+
 		})
 		Vue.onUpdated(() => {
 			select2_change(props.task.id)
@@ -336,6 +340,45 @@ export default {
 			if (permission && permission.misp_editor) return true
 			return false
 		})
+
+		// Handle newly created standalone attributes globally for this task
+		Vue.onBeforeUnmount(() => {
+			try { window.removeEventListener('misp-attribute-created', on_misp_attribute_created) } catch(e) {}
+			try { window.removeEventListener('misp-attribute-deleted', on_misp_attribute_deleted) } catch(e) {}
+		})
+
+		function on_misp_attribute_created(e) {
+			try {
+				const attr = e && e.detail && e.detail.attribute
+				const task_ids = e && e.detail && e.detail.task_ids ? e.detail.task_ids : []
+				if (!attr || !task_ids || !Array.isArray(task_ids)) return
+				const tid = props.task.id
+				if (task_ids.map(x => parseInt(x)).includes(parseInt(tid))) {
+					if (!props.task.misp_attribute_links) props.task.misp_attribute_links = []
+					props.task.misp_attribute_links.push({
+						"misp_attribute_id": attr.id,
+						"misp_attribute_value": attr.value,
+						"misp_attribute_type": attr.type,
+						"misp_attribute_object_relation": attr.object_relation || null
+					})
+				}
+			} catch (e) {}
+		}
+
+		function on_misp_attribute_deleted(e) {
+			try {
+				const aid = e && e.detail && e.detail.attribute_id
+				const task_ids = e && e.detail && e.detail.task_ids ? e.detail.task_ids : []
+				if (!aid) return
+				const tid = props.task.id
+				if (!task_ids || !Array.isArray(task_ids)) return
+				if (task_ids.map(x => parseInt(x)).includes(parseInt(tid))) {
+					if (!props.task.misp_attribute_links) return
+					const idx = props.task.misp_attribute_links.findIndex(l => parseInt(l.misp_attribute_id) === parseInt(aid))
+					if (idx > -1) props.task.misp_attribute_links.splice(idx, 1)
+				}
+			} catch (e) {}
+		}
 
 		return {
 			can_use_connectors,

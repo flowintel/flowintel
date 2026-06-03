@@ -1,5 +1,5 @@
 import { display_toast, create_message } from '../toaster.js'
-const { ref, computed, onMounted, watch } = Vue
+const { ref, computed, onMounted, watch, nextTick } = Vue
 
 const MISP_ATTRIBUTE_TYPES = ref([])
 
@@ -27,7 +27,8 @@ export default {
     setup(props, { emit }) {
         const attrs = ref([])
         const show_add = ref(false)
-        const new_state = ref({ type: '', value: '', comment: '', ids_flag: false, disable_correlation: false, first_seen: '', last_seen: '' })
+        const new_state = ref({ type: '', value: '', comment: '', ids_flag: false, disable_correlation: false, first_seen: '', last_seen: '', task_ids: [] })
+        const new_attr_task_ids = ref([])
         const editing_id = ref(null)
         const edit_state = ref({})
         const search_query = ref('')
@@ -137,8 +138,31 @@ export default {
             }
         }
 
+        let hasJQuery = false
+        let hasSelect2 = false
+        try {
+            hasJQuery = (typeof $ !== 'undefined')
+            hasSelect2 = hasJQuery && $.fn && $.fn.select2
+        } catch(e) {}
+
         function reset_add() {
-            new_state.value = { type: '', value: '', comment: '', ids_flag: false, disable_correlation: false, first_seen: '', last_seen: '' }
+            try {
+                if (hasSelect2) {
+                    const sel = document.getElementById('new-attr-task-select')
+                    if (sel && $(sel).data('select2')) $(sel).select2('destroy')
+                }
+            } catch(e) {}
+            try {
+                const sel = document.getElementById('new-attr-task-select')
+                if (sel) {
+                    // Clear native select option selections
+                    for (let i = 0; i < sel.options.length; i++) sel.options[i].selected = false
+                    // If jQuery/select2 present, clear its value as well
+                    try { if (hasSelect2 && $(sel).data('select2')) $(sel).val(null).trigger('change') } catch (e) {}
+                }
+            } catch (e) {}
+            new_attr_task_ids.value = []
+            new_state.value = { type: '', value: '', comment: '', ids_flag: false, disable_correlation: false, first_seen: '', last_seen: '', task_ids: [] }
             show_add.value = false
         }
 
@@ -151,16 +175,29 @@ export default {
                 create_message('Enter a value', 'warning-subtle')
                 return
             }
+            // ensure task ids from select2 (if used) are included
+            new_state.value.task_ids = new_attr_task_ids.value.slice()
+
             const res = await fetch(`/case/${props.case_id}/create_misp_attribute`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
                 body: JSON.stringify(new_state.value)
             })
             if (res.status === 201) {
+                const body = await res.json()
+                // copy task ids before reset
+                const linked_task_ids = new_attr_task_ids.value ? new_attr_task_ids.value.slice() : []
                 await fetch_attrs()
+                // notify other components (tasks) about the new attribute and its linked tasks
+                try {
+                    window.dispatchEvent(new CustomEvent('misp-attribute-created', { detail: { attribute: body.attribute, task_ids: linked_task_ids } }))
+                } catch (e) {}
                 reset_add()
+                // display toast using parsed body to avoid consuming the response twice
+                await display_toast(body)
+            } else {
+                await display_toast(res)
             }
-            display_toast(res)
         }
 
         function start_edit(sa) {
@@ -199,10 +236,17 @@ export default {
         }
 
         async function delete_attr(aid) {
+            // capture linked task ids before deletion so we can notify other components
+            const attr = attrs.value.find(a => a.id === aid)
+            const linked_task_ids = attr && attr.tasks ? (attr.tasks.map(t => t.id)) : []
+
             const res = await fetch(`/case/${props.case_id}/misp_attribute/${aid}/delete_misp_attribute`)
             if (res.status === 200) {
                 attrs.value = attrs.value.filter(a => a.id !== aid)
                 emit('attr_count', attrs.value.length)
+                try {
+                    window.dispatchEvent(new CustomEvent('misp-attribute-deleted', { detail: { attribute_id: aid, task_ids: linked_task_ids } }))
+                } catch (e) {}
             }
             display_toast(res)
         }
@@ -256,6 +300,43 @@ export default {
             assigning_attr_id.value = null
             await fetch_attr_types()
             await fetch_attrs()
+        })
+
+        // Initialize select2 when the add panel is shown
+        watch(() => show_add.value, async (nv) => {
+            if (!nv) return
+            await nextTick()
+            try {
+                const sel = document.getElementById('new-attr-task-select')
+                if (!sel) return
+
+                // Ensure no option is pre-selected by clearing native selections before initializing select2
+                try {
+                    for (let i = 0; i < sel.options.length; i++) sel.options[i].selected = false
+                    if (hasSelect2) { try { $(sel).val(null).trigger('change') } catch(e) {} }
+                } catch(e) {}
+
+                const updateTaskSelection = function(el) {
+                    try {
+                        if (hasSelect2 && $(el).data('select2')) {
+                            new_attr_task_ids.value = $(el).select2('data').map(item => parseInt(item.id))
+                        } else {
+                            new_attr_task_ids.value = Array.from(el.selectedOptions || []).map(o => parseInt(o.value))
+                        }
+                        new_state.value.task_ids = new_attr_task_ids.value.slice()
+                    } catch (e) {}
+                }
+
+                try { sel.removeEventListener && sel.removeEventListener('change', sel._fi_updateTaskSelection) } catch(e) {}
+                sel._fi_updateTaskSelection = function() { updateTaskSelection(this) }
+                sel.addEventListener('change', sel._fi_updateTaskSelection)
+
+                if (hasSelect2) {
+                    try { if ($(sel).data('select2')) $(sel).select2('destroy') } catch(e) {}
+                    $(sel).select2({ theme: 'bootstrap-5', dropdownParent: $('body'), placeholder: 'Select tasks...', allowClear: true })
+                    $(sel).on('change.select2', function() { updateTaskSelection(this) })
+                }
+            } catch(e) {}
         })
 
         return {
@@ -353,6 +434,13 @@ export default {
                     <div class="col-md-5">
                         <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Comment</label>
                         <input v-model="new_state.comment" class="form-control form-control-sm" placeholder="Comment" />
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Link to tasks (optional)</label>
+                        <select id="new-attr-task-select" class="form-select form-select-sm" multiple data-placeholder="Select tasks...">
+                            <option v-for="task in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :key="task.id" :value="task.id">[[ task.title ]]</option>
+                        </select>
+                        <div class="small text-muted mt-1">Select one or more tasks to link this attribute to upon creation.</div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">First seen</label>

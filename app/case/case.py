@@ -513,12 +513,10 @@ def download_case(cid):
             flowintel_log("audit", 403, "Download case: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
         
-        task_list = [task.download() for task in case.tasks]
-
-        misp_object_list = [obj.download() for obj in CaseModel.get_misp_object_by_case(cid)]
         return_dict = case.download()
-        return_dict["tasks"] = task_list
-        return_dict["misp-objects"] = misp_object_list
+        return_dict["tasks"] = [task.download() for task in case.tasks]
+        return_dict["misp-objects"] = [obj.download() for obj in CaseModel.get_misp_object_by_case(cid)]
+        return_dict["standalone_attributes"] = [attr.download() for attr in CaseModel.get_standalone_attributes_by_case(cid)]
         flowintel_log("audit", 200, "Download case", User=current_user.email, CaseId=cid)
         return json.dumps(return_dict, indent=4), 200, {'Content-Disposition': f'attachment; filename=case_{case.title}.json'}
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404

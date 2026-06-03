@@ -356,8 +356,8 @@ class Task(db.Model):
         json_dict["external_references"] = [ext_ref.download() for ext_ref in self.external_references]
         json_dict["custom_tags"] = [custom_tag.download() for custom_tag in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Task_Custom_Tags.task_id==self.id).all()]
-        json_dict["misp_object_links"] = [link.to_json() for link in self.misp_object_links]
-        json_dict["misp_attribute_links"] = [link.to_json() for link in self.misp_attribute_links]
+        json_dict["misp_object_links"] = [link.download() for link in self.misp_object_links]
+        json_dict["misp_attribute_links"] = [link.download() for link in self.misp_attribute_links]
 
         return json_dict
     
@@ -448,7 +448,7 @@ class Rulezet_Rule(db.Model):
     format = db.Column(db.String, nullable=True)
     content = db.Column(db.Text, nullable=True)
     version = db.Column(db.String, nullable=True)
-    date_added = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    date_added = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
     def to_json(self):
         return {
@@ -642,7 +642,7 @@ class Alert(db.Model):
     case_id = db.Column(db.Integer, index=True)
     message = db.Column(db.String, index=True)
     status = db.Column(db.String(30), default="pending")
-    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
     is_read = db.Column(db.Boolean, default=False)
     webhook_url = db.Column(db.String, nullable=True)
     webhook_status = db.Column(db.Integer, nullable=True)
@@ -685,6 +685,7 @@ class Case_Template(db.Model):
     time_required = db.Column(db.String)
     notes = db.Column(db.String, nullable=True)
     version = db.Column(db.Integer, default=1)
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
     def to_json(self):
         json_dict =  {
@@ -695,7 +696,8 @@ class Case_Template(db.Model):
             "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "time_required": self.time_required,
             "notes": self.notes,
-            "version": self.version or 1
+            "version": self.version or 1,
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL) if self.creation_date else None,
         }
 
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
@@ -714,7 +716,8 @@ class Case_Template(db.Model):
             "description": self.description,
             "time_required": self.time_required,
             "notes": self.notes,
-            "version": self.version or 1
+            "version": self.version or 1,
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL) if self.creation_date else None,
         }
         json_dict["tags"] = [tag.download() for tag in Tags.query.join(Case_Template_Tags, Case_Template_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
         json_dict["clusters"] = [cluster.download() for cluster in Cluster.query.join(Case_Template_Galaxy_Tags, Case_Template_Galaxy_Tags.template_id==self.id)\
@@ -735,6 +738,7 @@ class Task_Template(db.Model):
     notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     nb_notes = db.Column(db.Integer, index=True)
     last_modif = db.Column(db.DateTime, index=True)
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
     subtasks = db.relationship('Subtask_Template', backref='task_template', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     time_required = db.Column(db.String)
     version = db.Column(db.Integer, default=1)
@@ -748,7 +752,8 @@ class Task_Template(db.Model):
             "nb_notes": self.nb_notes,
             "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
             "time_required": self.time_required,
-            "version": self.version or 1
+            "version": self.version or 1,
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL) if self.creation_date else None,
         }
         json_dict["notes"] = [note.to_json() for note in self.notes]
         json_dict["urls_tools"] = [url_tool.to_json() for url_tool in self.urls_tools]
@@ -768,7 +773,8 @@ class Task_Template(db.Model):
             "title": self.title,
             "description": self.description,
             "time_required": self.time_required,
-            "version": self.version or 1
+            "version": self.version or 1,
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL) if self.creation_date else None
         }
         json_dict["notes"] = [note.download() for note in self.notes]
         json_dict["subtasks"] = [subtask.download() for subtask in self.subtasks]
@@ -803,11 +809,16 @@ class Subtask_Template(db.Model):
         return json_dict
     
 class Note_Template(db.Model):
+    """
+    Note_Template is a template for notes that can be associated with Task_Template. 
+    It allows to predefine notes that will be automatically added when creating a Task from a Task_Template.
+    """
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
     note = db.Column(db.String, nullable=True)
     template_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_TEMPLATE_ID, ondelete="CASCADE"))
     template_order_id = db.Column(db.Integer, index=True)
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
     def to_json(self):
         json_dict = {
@@ -816,7 +827,8 @@ class Note_Template(db.Model):
             "note": self.note,
             "template_id": self.template_id,
             "template_uuid": Task_Template.query.get(self.template_id).uuid,
-            "template_order_id": self.template_order_id
+            "template_order_id": self.template_order_id,
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL) if self.creation_date else None
         }
         return json_dict
     
@@ -824,6 +836,7 @@ class Note_Template(db.Model):
         json_dict = {
             "note": self.note,
             "template_uuid": Task_Template.query.get(self.template_id).uuid,
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL) if self.creation_date else None,
         }
         return json_dict
     
@@ -853,8 +866,8 @@ class ChatConversation(db.Model):
     uuid = db.Column(db.String(36), index=True, unique=True, default=lambda: str(uuid.uuid4()))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False, index=True)
     title = db.Column(db.String(200), nullable=False, default='New Conversation')
-    created_at = db.Column(db.DateTime, default=datetime.datetime.now(tz=datetime.timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
     messages = db.relationship('ChatMessage', backref='conversation', cascade=CASCADE_DELETE_ORPHAN,
                                order_by='ChatMessage.id', lazy=True)
 
@@ -877,7 +890,7 @@ class ChatMessage(db.Model):
     role = db.Column(db.String(10), nullable=False)  # 'user' or 'assistant'
     content = db.Column(db.Text, nullable=False)
     model_name = db.Column(db.String(100), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
     def to_json(self):
         return {
@@ -1135,7 +1148,7 @@ class Connector_Sync_Log(db.Model):
     case_id = db.Column(db.Integer, index=True)
     case_connector_instance_id = db.Column(db.Integer, index=True)
     direction = db.Column(db.String(10))   # 'send' or 'receive'
-    timestamp = db.Column(db.DateTime, index=True, default=datetime.datetime.now)
+    timestamp = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
     status = db.Column(db.String(10))      # 'success', 'error', 'partial'
     message = db.Column(db.Text, nullable=True)
     objects_synced = db.Column(db.Integer, default=0)
@@ -1185,19 +1198,31 @@ class Task_Misp_Object(db.Model):
     misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"), index=True)
 
     def to_json(self):
-        from .db import Case_Misp_Object
         obj = Case_Misp_Object.query.get(self.misp_object_id)
         attributes_preview = []
         if obj:
             for attribute in obj.attributes.limit(3).all():
                 attributes_preview.append(f"{attribute.object_relation}:{attribute.value}")
+        task = Task.query.get(self.task_id)
         json_dict = {
             "id": self.id,
             "task_id": self.task_id,
+            "task_uuid": task.uuid if task else None,
             "misp_object_id": self.misp_object_id,
             "misp_object_name": obj.name if obj else None,
             "misp_object_template_uuid": obj.template_uuid if obj else None,
             "attributes_preview": attributes_preview,
+        }
+        return json_dict
+
+    def download(self):
+        obj = Case_Misp_Object.query.get(self.misp_object_id)
+        task = Task.query.get(self.task_id)
+        json_dict = {
+            "task_id": self.task_id,
+            "task_uuid": task.uuid if task else None,
+            "misp_object_name": obj.name if obj else None,
+            "misp_object_template_uuid": obj.template_uuid if obj else None,
         }
         return json_dict
 
@@ -1208,15 +1233,27 @@ class Task_Misp_Attribute(db.Model):
     misp_attribute_id = db.Column(db.Integer, db.ForeignKey('misp__attribute.id', ondelete="CASCADE"), index=True)
 
     def to_json(self):
-        from .db import Misp_Attribute
         attr = Misp_Attribute.query.get(self.misp_attribute_id)
+        task = Task.query.get(self.task_id)
         json_dict = {
             "id": self.id,
             "task_id": self.task_id,
+            "task_uuid": task.uuid if task else None,
+            "misp_attribute_uuid": attr.uuid if attr else None,
             "misp_attribute_id": self.misp_attribute_id,
             "misp_attribute_value": attr.value if attr else None,
             "misp_attribute_type": attr.type if attr else None,
             "misp_attribute_object_relation": attr.object_relation if attr else None,
+        }
+        return json_dict
+
+    def download(self):
+        attr = Misp_Attribute.query.get(self.misp_attribute_id)
+        task = Task.query.get(self.task_id)
+        json_dict = {
+            "task_id": self.task_id,
+            "task_uuid": task.uuid if task else None,
+            "misp_attribute_uuid": attr.uuid if attr else None
         }
         return json_dict
 
@@ -1229,6 +1266,10 @@ class User_Connector_Instance(db.Model):
 
 
 class Misp_Module(db.Model):
+    """
+    List of available modules to use in MISP modules, 
+    with their input and description to be able to use them in the different connectors
+    """
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String, index=True, unique=True)
     description = db.Column(db.String)
@@ -1303,6 +1344,7 @@ class Custom_Tags(db.Model):
     color = db.Column(db.String(20), index=True)
     icon = db.Column(db.String, index=True, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
 
     def to_json(self):
         json_dict = {
@@ -1310,7 +1352,8 @@ class Custom_Tags(db.Model):
             "name": self.name,
             "color": self.color,
             "icon": self.icon,
-            "is_active": self.is_active
+            "is_active": self.is_active,
+            "uuid": self.uuid
         }
         return json_dict
 
@@ -1318,7 +1361,8 @@ class Custom_Tags(db.Model):
         json_dict = {
             "name": self.name,
             "color": self.color,
-            "icon": self.icon
+            "icon": self.icon,
+            "uuid": self.uuid
         }
         return json_dict
         
@@ -1351,16 +1395,18 @@ class Case_Link_Case(db.Model):
 class Case_Misp_Object(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
     template_uuid = db.Column(db.String(36), index=True)
     name = db.Column(db.String)
-    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
-    last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+    last_modif = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
     attributes = db.relationship('Misp_Attribute', backref='Case_Misp_Object', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
 
     def to_json(self):
         json_dict = {
             "id": self.id,
             "case_id": self.case_id,
+            "uuid": self.uuid,
             "template_uuid": self.template_uuid,
             "name": self.name,
             "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
@@ -1370,6 +1416,7 @@ class Case_Misp_Object(db.Model):
     
     def download(self):
         json_dict = {
+            "uuid": self.uuid,
             "template_uuid": self.template_uuid,
             "name": self.name
         }
@@ -1380,6 +1427,7 @@ class Misp_Attribute(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"))
     case_id = db.Column(db.Integer, index=True)  # set for standalone attributes (case_misp_object_id is NULL)
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
     value = db.Column(db.String, index=True)
     type = db.Column(db.String, index=True)
     object_relation = db.Column(db.String, index=True)
@@ -1387,8 +1435,8 @@ class Misp_Attribute(db.Model):
     last_seen = db.Column(db.DateTime, index=True)
     comment = db.Column(db.String, nullable=True)
     ids_flag = db.Column(db.Boolean)
-    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
-    last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+    last_modif = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
     disable_correlation = db.Column(db.Boolean, default=True)
 
     def to_json(self):
@@ -1396,6 +1444,7 @@ class Misp_Attribute(db.Model):
             "id": self.id,
             "case_misp_object_id": self.case_misp_object_id,
             "case_id": self.case_id,
+            "uuid": self.uuid,
             "value": self.value,
             "type": self.type,
             "object_relation": self.object_relation,
@@ -1417,6 +1466,7 @@ class Misp_Attribute(db.Model):
     
     def download(self):
         json_dict = {
+            "uuid": self.uuid,
             "value": self.value,
             "type": self.type,
             "object_relation": self.object_relation,
@@ -1474,6 +1524,9 @@ class Misp_Attribute_Instance_Uuid(db.Model):
     
 
 class Note_Template_Model(db.Model):
+    """
+    Note_Template_Model is a template for notes.
+    """
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
     author = db.Column(db.Integer, index=True)
@@ -1481,8 +1534,8 @@ class Note_Template_Model(db.Model):
     description = db.Column(db.String)
     content = db.Column(db.String)
     params = db.Column(db.JSON)
-    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
-    last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc), onupdate=datetime.datetime.now(tz=datetime.timezone.utc))
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+    last_modif = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
     version = db.Column(db.Integer, index=True) # Keep an history of all version so case with old version can keep there notes
     # Will change the version only if params have changes
     # Stay in same version if content change without adding or modifying params
@@ -1562,6 +1615,9 @@ class Template_Repository_Entry(db.Model):
 
 
 class Case_Note_Template_Model(db.Model):
+    """
+    Case_Note_Template_Model is a note created from a Note_Template_Model for a specific case.
+    """
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
     note_template_id = db.Column(db.Integer, index=True)
@@ -1587,7 +1643,7 @@ class Case_Timeline_Event(db.Model):
     date_parsed = db.Column(db.DateTime, nullable=True)
     description = db.Column(db.String, nullable=False)
     misp_object_id = db.Column(db.Integer, nullable=True)
-    creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
     def to_json(self):
         json_dict = {
