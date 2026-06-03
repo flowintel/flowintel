@@ -291,60 +291,106 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def delete_case(self, case_id, current_user):
         """Delete a case by is id"""
         case = CommonModel.get_case(case_id)
-        if case:
-            # Delete all tasks in the case
-            for task in case.tasks:
+        if not case:
+            return False
+
+        # Delete all tasks in the case (best-effort)
+        for task in list(case.tasks):
+            try:
                 TaskModel.delete_task(task.id, current_user, case_deleted=True)
+            except Exception as e:
+                flowintel_log("warn", 500, f"Error deleting task {getattr(task, 'id', None)} during case delete: {str(e)}", CaseId=case.id)
 
-            history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
-            if os.path.isfile(history_path):
-                try:
-                    os.remove(history_path)
-                except OSError:
-                    return False
+        # Remove history file (best-effort)
+        history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
+        if os.path.isfile(history_path):
+            try:
+                os.remove(history_path)
+            except Exception as e:
+                flowintel_log("warn", 500, f"Failed to remove history file for case {case.id}: {str(e)}", CaseId=case.id)
 
-            NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", case_id, html_icon="fa-solid fa-trash", current_user=current_user)
+        NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", case_id, html_icon="fa-solid fa-trash", current_user=current_user)
 
-            Case_Tags.query.filter_by(case_id=case.id).delete()
-            Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
-            Case_Org.query.filter_by(case_id=case.id).delete()
-            Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
-            Connector_Sync_Log.query.filter_by(case_id=case.id).delete()
-            Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
-            Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
-            Case_Link_Case.query.filter_by(case_id_2=case.id).delete()
+        # Explicitly remove related DB records that are not (always) covered by cascade
+        Notification.query.filter_by(case_id=case.id).delete()
+        Case_Tags.query.filter_by(case_id=case.id).delete()
+        Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
+        Case_Org.query.filter_by(case_id=case.id).delete()
+        Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
+        Connector_Sync_Log.query.filter_by(case_id=case.id).delete()
+        Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
+        Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
+        Case_Link_Case.query.filter_by(case_id_2=case.id).delete()
 
-            for obj in self.get_misp_object_by_case(case_id):
+        # Delete MISP objects and associated data (best-effort)
+        for obj in self.get_misp_object_by_case(case_id):
+            try:
                 self.delete_misp_object(obj.id)
-            Case_Misp_Object.query.filter_by(case_id=case.id).delete()
+            except Exception as e:
+                flowintel_log("warn", 500, f"Error deleting MISP object {getattr(obj, 'id', None)}: {str(e)}", CaseId=case.id)
+        Case_Misp_Object.query.filter_by(case_id=case.id).delete()
 
-            Recurring_Notification.query.filter_by(case_id=case.id).delete()
-            Case_Note_Template_Model.query.filter_by(case_id=case.id).delete()
-            Rulezet_Rule.query.filter_by(case_id=case.id).delete()
-            Alert.query.filter_by(case_id=case.id).delete()
-            Case_Timeline_Event_Link.query.filter_by(case_id=case.id).delete()
-            Case_Timeline_Event.query.filter_by(case_id=case.id).delete()
+        # Standalone attributes
+        for attr in self.get_standalone_attributes_by_case(case_id):
+            try:
+                Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
+                Task_Misp_Attribute.query.filter_by(misp_attribute_id=attr.id).delete()
+            except Exception as e:
+                flowintel_log("warn", 500, f"Error deleting standalone attribute instances for attr {getattr(attr, 'id', None)}: {str(e)}", CaseId=case.id)
+        Misp_Attribute.query.filter_by(case_id=case.id).delete()
 
-            for file in case.files:
-                file_path = os.path.join(FILE_FOLDER, file.uuid)
+        Recurring_Notification.query.filter_by(case_id=case.id).delete()
+        Case_Note_Template_Model.query.filter_by(case_id=case.id).delete()
+        Rulezet_Rule.query.filter_by(case_id=case.id).delete()
+        Alert.query.filter_by(case_id=case.id).delete()
+        Case_Timeline_Event_Link.query.filter_by(case_id=case.id).delete()
+        Case_Timeline_Event.query.filter_by(case_id=case.id).delete()
+
+        # Files: remove from disk and delete DB rows (best-effort)
+        for file in list(case.files):
+            file_path = os.path.join(FILE_FOLDER, file.uuid)
+            try:
                 if os.path.isfile(file_path):
-                    try:
-                        os.remove(file_path)
-                    except OSError as e:
-                        flowintel_log("error", 500, f"Failed to remove file '{file.uuid}' from disk", Error=str(e))
+                    os.remove(file_path)
+            except Exception as e:
+                flowintel_log("warn", 500, f"Failed to remove file '{getattr(file, 'uuid', None)}' from disk: {str(e)}", CaseId=case.id, FileName=getattr(file, 'name', None))
+            try:
+                db.session.delete(file)
+            except Exception:
+                db.session.rollback()
 
+        # Commit intermediate deletions
+        db.session.commit()
+
+        # Delete the case record
+        try:
             db.session.delete(case)
+            CommonModel.update_last_modif(case.id)
             db.session.commit()
-            return True
-        return False
+        except Exception as e:
+            db.session.rollback()
+            flowintel_log("error", 500, f"Error deleting case {case.id}: {str(e)}")
+            return False
+
+        CommonModel.save_history(case.uuid, current_user, f"Case '{case.title}' deleted")
+        return True
     
     def delete_misp_object(self, oid):
         misp_object = self.get_misp_object(oid)
-        if misp_object:
+        if not misp_object:
+            return False
+        try:
             for attr in misp_object.attributes:
                 Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
                 Misp_Attribute.query.filter_by(id=attr.id).delete()
             Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=misp_object.id).delete()
+            Task_Misp_Object.query.filter_by(misp_object_id=misp_object.id).delete()
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            flowintel_log("warn", 500, f"Error deleting MISP object {oid}: {str(e)}")
+            return False
 
     def get_assigned_tags(self, class_id) -> List:
         """Return a list of tags present in a case"""
@@ -1717,6 +1763,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             misp_objs = Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=oid, case_id=cid).all()
             for m_o in misp_objs:
                 db.session.delete(m_o)
+
+            task_object = Task_Misp_Object.query.filter_by(misp_object_id=oid).all()
+            for t_o in task_object:
+                db.session.delete(t_o)
             
 
             db.session.delete(misp_object)
@@ -1942,9 +1992,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
         if not attr:
             return {"message": "Attribute not found", "toast_class": "warning-subtle"}, 404
+        
         misp_attrs = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
         for m_a in misp_attrs:
             db.session.delete(m_a)
+
+        task_misp_attrs = Task_Misp_Attribute.query.filter_by(misp_attribute_id=attr.id).all()
+        for t_a in task_misp_attrs:
+            db.session.delete(t_a)
+
+
         db.session.delete(attr)
         db.session.commit()
         return {"message": "Attribute deleted", "toast_class": "success-subtle"}, 200

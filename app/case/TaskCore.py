@@ -140,40 +140,68 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def delete_task(self, tid, current_user, case_deleted=False):
         """Delete a task by is id"""
         task = CommonModel.get_task(tid)
-        if task is not None:
-            for file in task.files:
+        if task is None:
+            return False
+
+        # ensure we have the case object before we delete anything
+        case = CommonModel.get_case(task.case_id)
+
+        # Delete files from disk and DB (best-effort, don't abort on file system errors)
+        for file in list(task.files):
+            filepath = os.path.join(FILE_FOLDER, file.uuid)
+            try:
+                os.remove(filepath)
+            except Exception as e:
                 try:
-                    os.remove(os.path.join(FILE_FOLDER, file.uuid))
-                except OSError:
-                    return False
+                    from ..utils.logger import flowintel_log
+                    flowintel_log("warn", 500, f"Error removing file {filepath}: {str(e)}", User=getattr(current_user, 'email', None), TaskId=task.id, FileName=file.name)
+                except Exception:
+                    pass
+            try:
                 db.session.delete(file)
-                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        db.session.commit()
 
-            case = CommonModel.get_case(task.case_id)
-            if not case_deleted:
-                task_users = Task_User.query.where(Task_User.task_id==task.id).all()
-                for task_user in task_users:
-                    user = User.query.get(task_user.user_id)
-                    NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
+        # Notify users and reorder tasks if case is not being deleted
+        if not case_deleted:
+            task_users = Task_User.query.filter_by(task_id=task.id).all()
+            for task_user in task_users:
+                user = User.query.get(task_user.user_id)
+                NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
-                ## Move all task down if possible
-                self.reorder_tasks(case, task.id)
+            # Move all tasks down if possible
+            self.reorder_tasks(case, task.id)
 
-            Task_Tags.query.filter_by(task_id=task.id).delete()
-            Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
-            # remove galaxy-level markers
-            Task_Galaxy.query.filter_by(task_id=task.id).delete()
-            Task_User.query.filter_by(task_id=task.id).delete()
-            Task_Connector_Instance.query.filter_by(task_id=task.id).delete()
-            Note.query.filter_by(task_id=tid).delete()
-            Task_Custom_Tags.query.filter_by(task_id=tid).delete()
-            db.session.delete(task)
-            CommonModel.update_last_modif(task.case_id)
-            db.session.commit()
+        # Remove all DB records that are not covered by SQL-level cascade
+        Task_Tags.query.filter_by(task_id=task.id).delete()
+        Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
+        # remove galaxy-level markers
+        Task_Galaxy.query.filter_by(task_id=task.id).delete()
+        Task_User.query.filter_by(task_id=task.id).delete()
+        Task_Connector_Instance.query.filter_by(task_id=task.id).delete()
+        Task_Custom_Tags.query.filter_by(task_id=task.id).delete()
 
+        # URL/tools and external refs (have FK/cascade but explicit removal keeps behavior deterministic)
+        Task_Url_Tool.query.filter_by(task_id=task.id).delete()
+        Task_External_Reference.query.filter_by(task_id=task.id).delete()
+
+        # MISP links
+        Task_Misp_Object.query.filter_by(task_id=task.id).delete()
+        Task_Misp_Attribute.query.filter_by(task_id=task.id).delete()
+
+        # Notes and subtasks
+        Note.query.filter_by(task_id=task.id).delete()
+        Subtask.query.filter_by(task_id=task.id).delete()
+
+        # Finally remove the task itself
+        db.session.delete(task)
+        CommonModel.update_last_modif(task.case_id)
+        db.session.commit()
+
+        if case:
             CommonModel.save_history(case.uuid, current_user, f"Task '{task.title}' deleted")
-            return True
-        return False
+        return True
 
     def get_nb_open_tasks(self, case):
         loc_open = 0
