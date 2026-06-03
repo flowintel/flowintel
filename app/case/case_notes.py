@@ -646,6 +646,18 @@ def case_report_generate(cid):
             lines.append("No objects.")
         lines.append("")
 
+    if opts.get("include_standalone_attributes", True):
+        lines.append("---")
+        lines.append("")
+        lines.append("### Standalone attributes")
+        attributes = CaseModel.get_standalone_attributes_by_case(cid)
+        if attributes:
+            for attr in attributes:
+                lines.append(f"- {attr.type}: {attr.value}")
+        else:
+            lines.append("No standalone attributes.")
+        lines.append("")
+
     if opts.get("include_taxonomies", False):
         lines.append("---")
         lines.append("")

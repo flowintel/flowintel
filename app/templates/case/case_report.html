@@ -62,7 +62,11 @@
                     </div>
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="opt-objects" checked>
-                        <label class="form-check-label" for="opt-objects">Objects</label>
+                        <label class="form-check-label" for="opt-objects">MISP-Objects</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="opt-standalone-attributes" checked>
+                        <label class="form-check-label" for="opt-standalone-attributes">Standalone MISP-Attributes</label>
                     </div>
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="opt-taxonomies">
@@ -171,6 +175,7 @@
             include_notes:       document.getElementById("opt-notes").checked,
             include_tags:        document.getElementById("opt-tags").checked,
             include_objects:     document.getElementById("opt-objects").checked,
+            include_standalone_attributes: document.getElementById("opt-standalone-attributes").checked,
             include_taxonomies:  document.getElementById("opt-taxonomies").checked,
             include_audit:       document.getElementById("opt-audit").checked,
             include_timeline:    document.getElementById("opt-timeline").checked,
