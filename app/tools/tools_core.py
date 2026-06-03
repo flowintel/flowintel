@@ -4,6 +4,7 @@ from io import BytesIO
 from pymisp import PyMISP
 from werkzeug.datastructures import FileStorage
 from ..db_class.db import *
+from .. import db
 import uuid
 import json
 import datetime
@@ -25,6 +26,18 @@ DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 def case_creation_from_importer(case, current_user):
     if not utils.validate_importer_json(case, jsonschema_flowintel.caseSchema):
         return {"message": f"Case '{case['title']}' format not okay"}
+
+    standalone_attrs = case.get("standalone_attributes")
+    alias_standalone_attrs = case.get("misp-attributes")
+    if standalone_attrs is None:
+        standalone_attrs = alias_standalone_attrs if alias_standalone_attrs is not None else []
+    elif isinstance(standalone_attrs, list) and len(standalone_attrs) == 0 and isinstance(alias_standalone_attrs, list) and len(alias_standalone_attrs) > 0:
+        standalone_attrs = alias_standalone_attrs
+    if standalone_attrs is None:
+        standalone_attrs = []
+    if not isinstance(standalone_attrs, list):
+        return {"message": f"Case '{case['title']}': standalone attributes format not okay"}
+
     for task in case.get("tasks", []):
         if not utils.validate_importer_json(task, jsonschema_flowintel.taskSchema):
             return {"message": f"Task '{task['title']}' format not okay"}
@@ -36,6 +49,15 @@ def case_creation_from_importer(case, current_user):
         for attr in misp_obj.get("attributes", []):
             if not utils.validate_importer_json(attr, jsonschema_flowintel.mispAttrSchema):
                 return {"message": f"MISP-Attribute '{attr['value']}' format not okay"}
+
+    for attr in standalone_attrs:
+        if not utils.validate_importer_json(attr, jsonschema_flowintel.mispAttrSchema):
+            return {"message": f"Standalone MISP-Attribute '{attr.get('value', '')}' format not okay"}
+        if not attr.get("value") or not attr.get("type"):
+            return {"message": f"Case '{case['title']}': standalone MISP attributes require 'value' and 'type'"}
+
+    # Keep one normalized key for the DB creation stage.
+    case["standalone_attributes"] = standalone_attrs
             
     if "tasks_template" in case:
         return {"message": "'tasks_template' field is not allowed in case import, only 'tasks'."}
@@ -149,8 +171,19 @@ def case_creation_from_importer(case, current_user):
         CaseModel.modify_note_core(case_created.id, current_user, case["notes"])
 
     ## Task creation
-    for task in case["tasks"]:
+    created_tasks_map = {}
+    for task in case.get("tasks", []):
         task_created = TaskModel.create_task(task, case_created.id, current_user)
+        # keep mapping from task uuid -> created task id for later linking
+        try:
+            created_tasks_map[task["uuid"]] = task_created.id
+        except Exception:
+            pass
+        # record created id on the task dict to avoid relying on possibly-empty uuids
+        try:
+            task["_created_id"] = task_created.id
+        except Exception:
+            pass
         for note in task.get("notes", []):
             loc_note = TaskModel.create_note(task_created.id, current_user)
             TaskModel.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
@@ -161,9 +194,44 @@ def case_creation_from_importer(case, current_user):
         for urls_tools in task.get("urls_tools", []):
             TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
 
+    # Create MISP objects and link to tasks when task links are present in the import payload
+    created_objects_by_key = {}
     for misp_object in case.get("misp-objects", []):
         misp_object["object-template"] = {"name": misp_object["name"], "uuid": misp_object["template_uuid"]}
-        CaseModel.create_misp_object(case_created.id, misp_object, current_user)
+        # collect task ids that reference this object in the imported tasks
+        task_ids = set()
+        for task in case.get("tasks", []):
+            for link in task.get("misp_object_links", []):
+                if link.get("misp_object_template_uuid") == misp_object.get("template_uuid") and link.get("misp_object_name") == misp_object.get("name"):
+                    tid = task.get("_created_id") or created_tasks_map.get(task.get("uuid"))
+                    if tid:
+                        task_ids.add(tid)
+        if task_ids:
+            misp_object["task_ids"] = list(task_ids)
+        created_obj = CaseModel.create_misp_object(case_created.id, misp_object, current_user)
+        # store created object for attribute matching (keyed by template_uuid+name)
+        try:
+            created_objects_by_key[(created_obj.template_uuid, created_obj.name)] = created_obj.id
+        except Exception:
+            pass
+
+    for attr in case.get("standalone_attributes", []):
+        # collect task ids that reference this standalone attribute in the imported tasks
+        task_ids = set()
+        for task in case.get("tasks", []):
+            for alink in task.get("misp_attribute_links", []):
+                if alink.get("misp_attribute_uuid") == attr.get("uuid"):
+                    tid = task.get("_created_id") or created_tasks_map.get(task.get("uuid"))
+                    if tid:
+                        task_ids.add(tid)
+        if task_ids:
+            attr["task_ids"] = list(task_ids)
+        CaseModel.create_standalone_attribute(case_created.id, attr, current_user)
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     return {"id": case_created.id}
 

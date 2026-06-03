@@ -137,6 +137,8 @@ def exporter():
         case_dict["tasks"] = [t.download() for t in tasks]
         misp_objects = CaseModel.get_misp_object_by_case(cid)
         case_dict["misp-objects"] = [obj.download() for obj in misp_objects]
+        standalone_attrs = CaseModel.get_standalone_attributes_by_case(cid)
+        case_dict["standalone_attributes"] = [attr.download() for attr in standalone_attrs]
         if include_files:
             case_dict["files"] = _encode_files(case.files)
             for i, task in enumerate(tasks):
