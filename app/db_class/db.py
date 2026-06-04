@@ -323,8 +323,6 @@ class Task(db.Model):
                                                     .where(Cluster.id==Task_Galaxy_Tags.cluster_id).all()]
         json_dict["galaxies"] = [galax.to_json() for galax in Galaxy.query.join(Task_Galaxy, Task_Galaxy.task_id==self.id)\
                                                     .where(Galaxy.id==Task_Galaxy.galaxy_id).all()]
-        json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Task_Connector_Instance, Task_Connector_Instance.instance_id==Connector_Instance.id)\
-                                                        .where(Task_Connector_Instance.task_id==self.id).all()]
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Task_Custom_Tags.task_id==self.id).all()]
         json_dict["misp_object_links"] = [link.to_json() for link in self.misp_object_links]
@@ -1184,12 +1182,6 @@ class Case_Template_Connector_Instance(db.Model):
             "identifier": self.identifier
         }
 
-
-class Task_Connector_Instance(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    task_id = db.Column(db.Integer, index=True)
-    instance_id = db.Column(db.Integer, index=True)
-    identifier = db.Column(db.String)
 
 
 class Task_Misp_Object(db.Model):

@@ -225,8 +225,7 @@
                     :object_id="case_template.id"
                     :cases_info="case_template"
                     :can_edit="{{ 'true' if can_manage_templates else 'false' }}"
-                    @case_connectors="(msg) => fetch_case_template_connectors()"
-                    @task_connectors="">
+                    @case_connectors="(msg) => fetch_case_template_connectors()">
                 </templateconnectors>
             </template>
 

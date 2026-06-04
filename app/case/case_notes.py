@@ -541,10 +541,6 @@ def case_report_generate(cid):
                 if ext_refs:
                     lines.append("- **External references:** " + ", ".join(er.url for er in ext_refs))
 
-                task_connectors = CommonModel.get_task_connectors_name(task.id)
-                if task_connectors:
-                    lines.append("- **Connectors:** " + ", ".join(task_connectors))
-
                 lines.append("")
         else:
             lines.append("No tasks.")

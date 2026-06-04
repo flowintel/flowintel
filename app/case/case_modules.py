@@ -13,6 +13,22 @@ from ..utils.logger import flowintel_log
 ## MODULES ##
 #############
 
+@case_blueprint.route("/get_connectors", methods=['GET'])
+@login_required
+def get_connectors():
+    """Get all connectors and instances"""
+    connectors_list = CommonModel.get_connectors()
+    connectors_dict = dict()
+    for connector in connectors_list:
+        loc = list()
+        for instance in connector.instances:
+            if instance.global_api_key or CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+                loc.append(instance.to_json())
+        if loc:
+            connectors_dict[connector.name] = loc
+    
+    return jsonify({"connectors": connectors_dict}), 200
+
 @case_blueprint.route("/get_case_modules", methods=['GET'])
 @login_required
 def get_case_modules():

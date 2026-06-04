@@ -5,8 +5,8 @@ import conf.config_module as Config
 
 module_config = {
     "connector": "misp",
-    "case_task": "task",
-    "description": "Create or modify an event using the current task. The event will include:\n\t- task's info as misp-object\n\t- An event report with notes of the task\n\t- file attachments (when MISP_EXPORT_FILES is enabled)"
+    "case_task": "case",
+    "description": "Create or modify an event using all tasks in the case. The event will include:\n\t- Each task's info as misp-object\n\t- An event report with notes from all tasks\n\t- file attachments (when MISP_EXPORT_FILES is enabled)"
 }
 
 def task_edit(task, attribute):
@@ -70,7 +70,7 @@ def event_report_note_task(task):
     return loc_notes
 
 
-def handler(instance, case, task, user, case_model=None, db_session=None):
+def handler(instance, case, user, case_model=None, db_session=None, payload=None):
     """
     instance: name, url, description, uuid, connector_id, type, api_key, identifier
 
@@ -87,89 +87,99 @@ def handler(instance, case, task, user, case_model=None, db_session=None):
     except Exception:
         return {"message": "Error connecting to MISP"}
     flag = False
+
+    # If there's an identifier, attempt to fetch and update the event
     if "identifier" in instance and instance["identifier"]:
         event = misp.get_event(instance["identifier"], pythonify=True)
         if 'errors' in event:
             flag = True
-        else:                    
-            misp_objects = event.get_objects_by_name("flowintel-task")
-            current_object = None
-            for i in range(0, len(misp_objects)):
-                for attribute in misp_objects[i].attributes:
-                    if attribute.object_relation == 'task-uuid' and attribute.value == task["uuid"]:
-                        current_object = i
+        else:
+            # Process each task in the case
+            for task in case.get("tasks", []):
+                misp_objects = event.get_objects_by_name("flowintel-task")
+                current_object = None
+                for i in range(0, len(misp_objects)):
+                    for attribute in misp_objects[i].attributes:
+                        if attribute.object_relation == 'task-uuid' and attribute.value == task.get("uuid"):
+                            current_object = i
+                            break
+                    if current_object is not None:
                         break
-            ## Task exist in the event
-            if not current_object == None:
-                for attribute in misp_objects[current_object].attributes:
-                    attribute = task_edit(task, attribute)
-                    
 
-                ## Task's notes
-                misp_objects_note = event.get_objects_by_name("flowintel-task-note")
-                for note in task["notes"]:
-                    current_note = None
-                    for i in range(0, len(misp_objects_note)):
-                        for attr in misp_objects_note[i].attributes:
-                            if attr.object_relation == 'note-uuid' and attr.value == note["uuid"]:
-                                current_note = i
+                # Task exists in the event: update attributes/notes/resources
+                if current_object is not None:
+                    for attribute in misp_objects[current_object].attributes:
+                        task_edit(task, attribute)
+
+                    # Task's notes
+                    misp_objects_note = event.get_objects_by_name("flowintel-task-note")
+                    for note in task.get("notes", []):
+                        current_note = None
+                        for i in range(0, len(misp_objects_note)):
+                            for attr in misp_objects_note[i].attributes:
+                                if attr.object_relation == 'note-uuid' and attr.value == note.get("uuid"):
+                                    current_note = i
+                                    break
+                            if current_note is not None:
                                 break
-                    ## Note exist in the event
-                    if not current_note == None:
-                        for attr in misp_objects_note[current_note].attributes:
-                            if attr.object_relation == "note" and not attribute.value == note["note"]:
-                                attr.value = note["note"]
-                    ## Note doesn't exist in the event
-                    else:
-                        misp_note_object = create_task_note(note)
-                        misp_note_object.add_reference(misp_objects[current_object].uuid, relationship_type="note-for")
-                        event.add_object(misp_note_object)
+                        # Note exists: update
+                        if current_note is not None:
+                            for attr in misp_objects_note[current_note].attributes:
+                                if attr.object_relation == "note" and not attr.value == note.get("note"):
+                                    attr.value = note.get("note")
+                        # Note doesn't exist: create and reference
+                        else:
+                            misp_note_object = create_task_note(note)
+                            misp_note_object.add_reference(misp_objects[current_object].uuid, relationship_type="note-for")
+                            event.add_object(misp_note_object)
 
-                ## Task's resources
-                misp_objects_resource = event.get_objects_by_name("flowintel-task-resource")
-                for resource in task["urls_tools"]:
-                    current_resource = None
-                    for i in range(0, len(misp_objects_resource)):
-                        for attr in misp_objects_resource[i].attributes:
-                            if attr.object_relation == 'resource-uuid' and attr.value == resource["uuid"]:
-                                current_resource = i
+                    # Task's resources
+                    misp_objects_resource = event.get_objects_by_name("flowintel-task-resource")
+                    for resource in task.get("urls_tools", []):
+                        current_resource = None
+                        for i in range(0, len(misp_objects_resource)):
+                            for attr in misp_objects_resource[i].attributes:
+                                if attr.object_relation == 'resource-uuid' and attr.value == resource.get("uuid"):
+                                    current_resource = i
+                                    break
+                            if current_resource is not None:
                                 break
-                    ## Resource exist in the event
-                    if not current_resource == None:
-                        for attr in misp_objects_resource[current_resource].attributes:
-                            if attr.object_relation == "name" and not attribute.value == resource["name"]:
-                                attr.value = resource["name"]
-                    ## Resource doesn't exist in the event
-                    else:
-                        misp_resource_object = create_task_resource(resource)
-                        misp_resource_object.add_reference(misp_objects[current_object].uuid, relationship_type="resource-for")
-                        event.add_object(misp_resource_object)
-                
-            ## Task doesn't exist in the event
-            else:
-                loc_misp_task_object = create_task(task, case["uuid"])
-                event.add_object(loc_misp_task_object)
+                        # Resource exists: update
+                        if current_resource is not None:
+                            for attr in misp_objects_resource[current_resource].attributes:
+                                if attr.object_relation == "name" and not attr.value == resource.get("name"):
+                                    attr.value = resource.get("name")
+                        # Resource doesn't exist: create and reference
+                        else:
+                            misp_resource_object = create_task_resource(resource)
+                            misp_resource_object.add_reference(misp_objects[current_object].uuid, relationship_type="resource-for")
+                            event.add_object(misp_resource_object)
 
-                ## Task's notes
-                for note in task["notes"]:
-                    misp_object = create_task_note(note)
-                    misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="note-for")
-                    event.add_object(misp_object)
+                # Task doesn't exist in the event: create object + notes + resources
+                else:
+                    loc_misp_task_object = create_task(task, case["uuid"])
+                    event.add_object(loc_misp_task_object)
 
-                ## Task's resources
-                for resource in task["urls_tools"]:
-                    misp_object = create_task_resource(resource)
-                    misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
-                    event.add_object(misp_object)
+                    for note in task.get("notes", []):
+                        misp_object = create_task_note(note)
+                        misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="note-for")
+                        event.add_object(misp_object)
 
-            
+                    for resource in task.get("urls_tools", []):
+                        misp_object = create_task_resource(resource)
+                        misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
+                        event.add_object(misp_object)
+
+            # Update aggregated tasks' notes report
             if event.EventReport:
-                ## Task' notes
                 if len(event.EventReport) >= 2:
                     loc_event_report_case = event.EventReport[1]
                 else:
                     loc_event_report_case = event.EventReport[0]
-                loc_notes = event_report_note_task(task)
+
+                loc_notes = ""
+                for task in case.get("tasks", []):
+                    loc_notes += event_report_note_task(task)
 
                 if loc_event_report_case:
                     loc_event_report_case["content"] = loc_notes
@@ -181,42 +191,41 @@ def handler(instance, case, task, user, case_model=None, db_session=None):
                             "event_id": event.get("id"),
                             "name": "Tasks' notes",
                             "content": loc_notes
-                        }   
+                        }
                         misp.add_event_report(event.get("id"), event_report)
 
-            
             event = misp.update_event(event, pythonify=True)
 
-    ## Case have no id for this connector or the event doesn't exist anymore  
-    else: 
+    # Case have no id for this connector or the event doesn't exist anymore
+    else:
         flag = True
 
-    ## Event doesn't exist
+    # Event doesn't exist: create and add all tasks
     if flag:
         event = MISPEvent()
         event.uuid = str(uuid.uuid4())
         event.info = f"Case: {case['title']}"  # Required
 
-        # Task
-        loc_misp_task_object = create_task(task, case["uuid"])
-        event.add_object(loc_misp_task_object)
+        for task in case.get("tasks", []):
+            loc_misp_task_object = create_task(task, case["uuid"])
+            event.add_object(loc_misp_task_object)
 
-        ## Task's notes
-        for note in task["notes"]:
-            misp_object = create_task_note(note)
-            misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="note-for")
-            event.add_object(misp_object)
+            for note in task.get("notes", []):
+                misp_object = create_task_note(note)
+                misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="note-for")
+                event.add_object(misp_object)
 
-        ## Task's resources
-        for resource in task["urls_tools"]:
-            misp_object = create_task_resource(resource)
-            misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
-            event.add_object(misp_object)
+            for resource in task.get("urls_tools", []):
+                misp_object = create_task_resource(resource)
+                misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
+                event.add_object(misp_object)
 
         event = misp.add_event(event, pythonify=True)
 
-        ## Task's notes event report
-        loc_notes = event_report_note_task(task)
+        # Tasks' notes event report (aggregated)
+        loc_notes = ""
+        for task in case.get("tasks", []):
+            loc_notes += event_report_note_task(task)
 
         if loc_notes:
             event_report = {
@@ -224,9 +233,9 @@ def handler(instance, case, task, user, case_model=None, db_session=None):
                 "event_id": event.get("id"),
                 "name": "Tasks notes",
                 "content": loc_notes
-            }   
+            }
             misp.add_event_report(event.get("id"), event_report)
-    
+
     if "errors" in event:
         return {"message": event.get("errors", "Error with MISP event")}
 

@@ -10,7 +10,7 @@ export default {
         object_id: Number,
         cases_info: Object,
     },
-    emits: ['case_connectors', 'task_connectors', 'note_change', 'task_note_added'],
+    emits: ['case_connectors', 'note_change', 'task_note_added'],
     setup(props, { emit }) {
         const show_add_page = ref(false)
         const connectors_selected = ref([])
@@ -78,7 +78,7 @@ export default {
                     }
                 }
 
-                let url = props.is_case ? ("/case/" + props.object_id + "/add_connector") : ("/case/task/" + props.object_id + "/add_connector")
+                let url = "/case/" + props.object_id + "/add_connector"
 
                 const res = await fetch(url, {
                     method: 'POST',
@@ -91,8 +91,7 @@ export default {
                     try { $(sel).val(null).trigger('change') } catch(e) {}
                     connectors_selected.value = []
                     show_add_page.value = false
-                    if (props.is_case) emit('case_connectors', true)
-                    else emit('task_connectors', true)
+                    emit('case_connectors', true)
                 }
                 display_toast(res)
             } catch (e) {
@@ -101,12 +100,7 @@ export default {
         }
 
         async function remove_connector(element_instance_id) {
-            let url
-            if (props.is_case) {
-                url = "/case/" + props.object_id + "/connectors/" + element_instance_id + "/remove_connector"
-            } else {
-                url = "/case/task/" + props.object_id + "/remove_connector/" + element_instance_id
-            }
+            let url = "/case/" + props.object_id + "/connectors/" + element_instance_id + "/remove_connector"
 
             const res = await fetch(url)
             if (await res.status == 200) {
@@ -133,12 +127,7 @@ export default {
         }
 
         async function edit_connector() {
-            let url
-            if (props.is_case) {
-                url = "/case/" + props.object_id + "/connectors/" + editing_id.value + "/edit_connector"
-            } else {
-                url = "/case/task/" + props.object_id + "/edit_connector/" + editing_id.value
-            }
+            let url = "/case/" + props.object_id + "/connectors/" + editing_id.value + "/edit_connector"
             const res = await fetch(url, {
                 method: "POST",
                 headers: {

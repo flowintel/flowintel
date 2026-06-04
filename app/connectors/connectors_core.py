@@ -1,7 +1,7 @@
 import datetime
 import os
 from .. import db
-from ..db_class.db import Case, Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance, Connector_Sync_Log
+from ..db_class.db import Case, Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, User_Connector_Instance, Connector_Sync_Log
 import uuid
 from werkzeug.utils import secure_filename
 
@@ -31,8 +31,7 @@ def instance_has_links(instance_id):
     case_link = Case_Connector_Instance.query.filter_by(instance_id=instance_id).first()
     if case_link:
         return True
-    task_link = Task_Connector_Instance.query.filter_by(instance_id=instance_id).first()
-    return task_link is not None
+    return False
 
 def get_user_instance_by_instance(instance_id):
     """Return a user instance by instance id"""
@@ -68,11 +67,7 @@ def connector_has_linked_instances(connector_id):
     if case_link:
         return True
 
-    task_link = db.session.query(Task_Connector_Instance.id).join(
-        Connector_Instance,
-        Task_Connector_Instance.instance_id == Connector_Instance.id
-    ).filter(Connector_Instance.connector_id == connector_id).first()
-    return task_link is not None
+    return False
 
 
 def get_connectors_flags(connector_ids):
@@ -94,14 +89,7 @@ def get_connectors_flags(connector_ids):
         .distinct()
         .all()
     }
-    task_linked = {
-        cid for (cid,) in db.session.query(Connector_Instance.connector_id)
-        .join(Task_Connector_Instance, Task_Connector_Instance.instance_id == Connector_Instance.id)
-        .filter(Connector_Instance.connector_id.in_(connector_ids))
-        .distinct()
-        .all()
-    }
-    connectors_with_links = case_linked.union(task_linked)
+    connectors_with_links = case_linked
     return connectors_with_instances, connectors_with_links
 
 
@@ -378,7 +366,6 @@ def delete_connector_instance_core(iid):
     for ci in Case_Connector_Instance.query.filter_by(instance_id=iid).all():
         Connector_Sync_Log.query.filter_by(case_connector_instance_id=ci.id).delete()
     Case_Connector_Instance.query.filter_by(instance_id=iid).delete()
-    Task_Connector_Instance.query.filter_by(instance_id=iid).delete()
 
     instance = get_instance(iid)
     db.session.delete(instance)

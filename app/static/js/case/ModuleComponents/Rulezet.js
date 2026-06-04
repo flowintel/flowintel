@@ -43,11 +43,11 @@ export default {
         async function run_query() {
             if (!selected_instance.value) return display_toast({message: 'No connector instance selected', toast_class: 'warning-subtle'})
             if (!query_input.value || query_input.value.trim().length === 0) return display_toast({message: 'Please enter a query', toast_class: 'warning-subtle'})
+            if (!module_selected.value || module_selected.value === 'None') return display_toast({message: 'Select a module', toast_class: 'warning-subtle'})
 
             is_loading.value = true
             results.value = []
             try {
-                if (!module_selected.value || module_selected.value === 'None') return display_toast({message: 'Select a module', toast_class: 'warning-subtle'})
                 const url = `/case/${props.case_id}/call_module_case`
                 const res = await fetch(url, {
                     method: 'POST',

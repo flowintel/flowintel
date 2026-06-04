@@ -6,14 +6,14 @@ from flask import current_app
 from .. import db
 from ..db_class.db import (
     Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
-    Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
+    Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
     Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_Misp_Attribute, Task_User, User, Galaxy,
     Case_Misp_Object, Misp_Attribute
 )
 from ..utils.utils import create_specific_dir, isUUID
 
 from sqlalchemy import and_
-from flask import request, send_file
+from flask import send_file
 from werkzeug.utils import secure_filename
 from ..notification import notification_core as NotifModel
 
@@ -179,7 +179,6 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         # remove galaxy-level markers
         Task_Galaxy.query.filter_by(task_id=task.id).delete()
         Task_User.query.filter_by(task_id=task.id).delete()
-        Task_Connector_Instance.query.filter_by(task_id=task.id).delete()
         Task_Custom_Tags.query.filter_by(task_id=task.id).delete()
 
         # URL/tools and external refs (have FK/cascade but explicit removal keeps behavior deterministic)
@@ -870,83 +869,6 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             return True
         return False
 
-
-    def get_task_modules(self):
-        """Return modules for task only"""
-        loc_list = {}
-        _, res = get_modules_list()
-        for module in res:
-            if res[module]["config"]["case_task"] == 'task':
-                loc_list[module] = res[module]
-        return loc_list
-
-    def get_instance_module_core(self, module, type_module, task_id, user_id):
-        """Return a list of connectors instances for a module"""
-        _, res = get_modules_list()
-        if "connector" in res[module]["config"]:
-            connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
-            instance_list = list()
-            for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
-                    loc_instance = instance.to_json()
-                    identifier = CommonModel.get_task_connector_id(instance.id, task_id)
-                    loc_instance["identifier"] = identifier.identifier if identifier else None
-                    instance_list.append(loc_instance)
-            return instance_list
-        return []
-
-
-    def call_module_task(self, module, task_instance_id, case, task, user):
-        """Run a module"""
-        org = CommonModel.get_org(case.owner_org_id)
-
-        case = case.to_json()
-        case["org_name"] = org.name
-        case["org_uuid"] = org.uuid
-        case["status"] = CommonModel.get_status(case["status_id"]).name
-
-        task = task.to_json()
-        task["status"] = CommonModel.get_status(task["status_id"]).name
-
-
-        task_instance = CommonModel.get_task_connectors_by_id(task_instance_id)
-        if not task_instance:
-            return {"message": "Connector instance not found"}
-
-        loc_instance = CommonModel.get_instance(task_instance.instance_id)
-        if not loc_instance:
-            return {"message": "Connector instance not found"}
-
-        user_instance = CommonModel.get_user_instance_both(user.id, loc_instance.id)
-
-        instance = loc_instance.to_json()
-        if loc_instance.global_api_key:
-            instance["api_key"] = loc_instance.global_api_key
-        elif user_instance:
-            instance["api_key"] = user_instance.api_key
-        else:
-            return {"message": "No API key configured for this connector"}
-        instance["identifier"] = task_instance.identifier
-
-        #######
-        # RUN #
-        #######
-        modules, _ = get_modules_list()
-        result = modules[module].handler(instance, case, task, user, case_model=self, db_session=db)
-
-        # Module returns None for success, or a dict.
-        # Dict with "message" key means error.
-        # Dict with "identifier" key means update the connector identifier.
-        if isinstance(result, dict):
-            if "message" in result:
-                return result
-            if "identifier" in result and task_instance.identifier != result["identifier"]:
-                task_instance.identifier = result["identifier"]
-                db.session.commit()
-
-        CommonModel.save_history(case["uuid"], user, f"Task Module {module} used on instances: {instance['name']}")
-
-
     def call_module_task_no_instance(self, module, task, case, current_user, user_id):
         user = User.query.get(user_id)
         modules, _ = get_modules_list()
@@ -1202,43 +1124,6 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                     break
         db.session.commit()
 
-    ##############
-    # Connectors #
-    ##############
 
-    def add_connector(self, tid, request_json, current_user) -> bool:
-        task = CommonModel.get_task(tid)
-
-        for connector in request_json["connectors"]:
-            instance = CommonModel.get_instance_by_name(connector["name"])
-            if not instance:
-                return False
-            loc_identfier = connector.get("identifier", "")
-            c = Task_Connector_Instance(
-                task_id=tid,
-                instance_id=instance.id,
-                identifier=loc_identfier
-            )
-            db.session.add(c)
-            db.session.commit()
-
-            self.update_task_time_modification(task, current_user, f"Connector {instance.name} added to task {task.title}")
-        return True
-
-    def remove_connector(self, task_instance_id):
-        c = Task_Connector_Instance.query.filter_by(id=task_instance_id).first()
-        if not c:
-            return False
-        db.session.delete(c)
-        db.session.commit()
-        return True
-
-    def edit_connector(self, task_instance_id, request_json):
-        c = Task_Connector_Instance.query.filter_by(id=task_instance_id).first()
-        if c:
-            c.identifier = request_json["identifier"]
-            db.session.commit()
-            return True
-        return False
     
 TaskModel = TaskCore()

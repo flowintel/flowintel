@@ -1,5 +1,4 @@
 import os, re
-import logging
 import shutil
 import datetime
 import subprocess
@@ -410,23 +409,6 @@ def get_case_connectors_both(case_id, instance_id):
     """Return an instance of Case_Connector_Instance depending of a case id and an instance id"""
     return Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
 
-def get_task_connectors(tid):
-    """Return a list of all connectors present in a task"""
-    return Task_Connector_Instance.query.filter_by(task_id=tid).all()
-
-def get_task_connectors_by_id(task_instance_id):
-    """Return a task connector instance"""
-    return Task_Connector_Instance.query.get(task_instance_id)
-
-def get_task_connectors_name(task_id):
-    """Return a list of all name connectors present in a task"""
-    return [instance.name for instance in \
-            Connector_Instance.query.join(Task_Connector_Instance, Task_Connector_Instance.instance_id==Connector_Instance.id)\
-                .filter_by(task_id=task_id).all()]
-
-def get_task_connectors_both(task_id, instance_id):
-    """Return an instance of Task_Connector_Instance depending of a task id and an instance id"""
-    return Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).first()
 
 def get_user_instance_both(user_id, instance_id):
     """Return an instance of User_Connector_Instance depending of a user id and an instance id"""
@@ -440,9 +422,6 @@ def get_case_connector_id(instance_id, case_id):
     """Return an instance of Case_Connector_Instance depending of an instance id and a case id"""
     return Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
 
-def get_task_connector_id(instance_id, task_id):
-    """Return an instance of Task_Connector_Instance depending of an instance id and a task id"""
-    return Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).first()
 
 def get_task_note(note_id):
     return Note.query.get(note_id)

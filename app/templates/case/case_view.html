@@ -763,8 +763,7 @@
                         :cases_info="cases_info"
                         @case_connectors="(msg) => fetch_case_connectors()"
                         @modif_misp_objects="(msg) => { fetch_case_misp_objects(); fetch_sorted_tasks(); }"
-                        @note_change="on_connector_note_change"
-                        @task_connectors="">
+                        @note_change="on_connector_note_change">
                     </casemispconnectors>
                 </template>
                 <template v-else-if="subtab_misp === 'search'">
@@ -777,8 +776,7 @@
                         :object_id="cases_info.case.id"
                         :cases_info="cases_info"
                         @case_connectors="(msg) => fetch_case_connectors()"
-                        @note_change="on_connector_note_change"
-                        @task_connectors="">
+                        @note_change="on_connector_note_change">
                     </casemispconnectors>
                 </template>
                 <template v-else-if="subtab_misp === 'attributes'">
@@ -801,8 +799,7 @@
                     :object_id="cases_info.case.id"
                     :cases_info="cases_info"
                     @case_connectors="(msg) => fetch_case_connectors()"
-                    @note_change="on_connector_note_change"
-                    @task_connectors="">
+                    @note_change="on_connector_note_change">
                 </caseconnectors>
             </div>
         </template>
@@ -1091,7 +1088,6 @@
                                         :key_loop="key"
                                         :open_closed="open_closed"
                                         :md="md"
-                                        :all_connectors_list="all_connectors_list"
                                         :task_modules="task_modules">
                             </case_tasks>
                         </div>

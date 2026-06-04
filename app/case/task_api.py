@@ -1,4 +1,4 @@
-from flask import request, current_app
+from flask import request
 
 from app.db_class.db import Case, User
 from .. import db
@@ -9,7 +9,7 @@ from ..utils import utils
 from ..utils.logger import flowintel_log
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required, misp_editor_required
+from ..decorators import api_required, editor_required
 
 task_ns = Namespace("task", description="Endpoints to manage tasks")
 
@@ -64,10 +64,8 @@ class EditTake(Resource):
                      "deadline_time": "Time(%H-%M)",
                      "tags": "list of tags from taxonomies",
                      "clusters": "list of tags from galaxies",
-                     "connectors": "List of name of connectors",
                      "galaxies": "list of galaxies name",
-                     "identifier": "Dictionnary with connector as key and identifier as value",
-                     "custom_tags" : "List of custom tags created on the instance",
+                     "custom_tags": "List of custom tags created on the instance",
                      "time_required": "Time required to realize the task"
                     })
     def post(self, tid):
@@ -499,91 +497,6 @@ class GetGalaxiesTask(Resource):
             return {"clusters": clusters, "galaxies": galaxies}
         return {"message": "Task Not found"}, 404
 
-
-##############
-# Connectors #
-##############
-
-@task_ns.route('/<tid>/get_connectors', methods=['GET'])
-@task_ns.doc(description='Get all connectors for a task')
-class GetConnectors(Resource):
-    method_decorators = [misp_editor_required, api_required]
-    def get(self, tid):
-        task = CommonModel.get_task(tid)
-        if task:
-            if not check_user_private_case(CommonModel.get_case(task.case_id), request.headers):
-                return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-            
-            instance_list = []
-            for task_instance in CommonModel.get_task_connectors(task.id):
-                loc_instance = CommonModel.get_instance(task_instance.instance_id)
-                instance_list.append({
-                    "id": loc_instance.id,
-                    "name": loc_instance.name,
-                    "identifier": task_instance.identifier
-                })
-            return {"connectors": instance_list}, 200
-        return {"message": "Task Not found"}, 404
-
-
-@task_ns.route('/<tid>/add_connectors', methods=['POST'])
-@task_ns.doc(description='Add connectors to a task')
-class AddConnectorsTask(Resource):
-    method_decorators = [misp_editor_required, api_required]
-    @task_ns.doc(params={
-        "connectors": "Required. List of connectors instance. Dict with 'name' and 'identifier' as keys."
-    })
-    def post(self, tid):
-        task = CommonModel.get_task(tid)
-        if task:
-            current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-                    flowintel_log("audit", 403, "Add connectors denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-                    return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin"}, 403
-                
-                if "connectors" in request.json:
-                    if TaskModel.add_connector(tid, request.json, current_user):
-                        return {"message": "Connector added"}, 200
-                    return {"message": "Error Connector added"}, 400
-                return {"message": "Please give a list of connectors"}, 400
-            return {"message": "Permission denied"}, 403
-        return {"message": "Task doesn't exist"}, 404
-    
-@task_ns.route('/<tid>/edit_connector/<ciid>', methods=['POST'])
-@task_ns.doc(description='Edit connector')
-class EditConnectorTask(Resource):
-    method_decorators = [misp_editor_required, api_required]
-    @task_ns.doc(params={
-        "identifier": "Required. Identifier used by modules to identify where to send data."
-    })
-    def post(self, tid, ciid):
-        task = CommonModel.get_task(tid)
-        if task:
-            current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-                if "identifier" in request.json:
-                    if TaskModel.edit_connector(ciid, request.json):
-                        return {"message": "Connector edited"}, 200
-                    return {"message": "Error Connector edited"}, 400
-                return {"message": "Please give a list of connectors"}, 400
-            return {"message": "Permission denied"}, 403
-        return {"message": "Task doesn't exist"}, 404
-    
-@task_ns.route('/<tid>/remove_connector/<ciid>', methods=['GET'])
-@task_ns.doc(description='Remove a connector')
-class RemoveConnectorTask(Resource):
-    method_decorators = [misp_editor_required, api_required]
-    def get(self, tid, ciid):
-        task = CommonModel.get_task(tid)
-        if task:
-            current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-                if TaskModel.remove_connector(ciid):
-                    return {"message": "Connector removed"}, 200
-                return {"message": "Error Connector removed"}, 400
-            return {"message": "Permission denied"}, 403
-        return {"message": "Case doesn't exist"}, 404
 
 ###########
 # Subtask #

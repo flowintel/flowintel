@@ -12,7 +12,7 @@ export default {
         mode: { type: String, required: true },   // 'sync' | 'search'
         case_misp_objects_list: { type: Array, default: null }
     },
-    emits: ['case_connectors', 'task_connectors', 'note_change', 'task_note_added', 'modif_misp_objects'],
+    emits: ['case_connectors', 'note_change', 'task_note_added', 'modif_misp_objects'],
     components: { 'misp-sync-panel': MispSyncPanel },
     setup(props, { emit }) {
         const sidebar_visible = ref(true)
@@ -52,12 +52,14 @@ export default {
             identifier_draft.value = ''
         }
 
+        function getCaseId(){
+            return props.is_case ? props.object_id : (props.cases_info && props.cases_info.case ? props.cases_info.case.id : props.object_id)
+        }
+
         async function save_edit_identifier() {
             const inst = sync_selected_instance.value
             if (!inst) return
-            const url = props.is_case
-                ? '/case/' + props.object_id + '/connectors/' + inst.case_task_instance_id + '/edit_connector'
-                : '/case/task/' + props.object_id + '/edit_connector/' + inst.case_task_instance_id
+            const url = '/case/' + getCaseId() + '/connectors/' + inst.case_task_instance_id + '/edit_connector'
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
@@ -75,9 +77,7 @@ export default {
             if (sync_logs_map.value[instance_id]) return  // already cached
             sync_logs_map.value[instance_id] = { loading: true, logs: [] }
             try {
-                const url = props.is_case
-                    ? '/case/' + props.object_id + '/connectors/' + instance_id + '/sync_logs'
-                    : '/case/task/' + props.object_id + '/connectors/' + instance_id + '/sync_logs'
+                const url = '/case/' + getCaseId() + '/connectors/' + instance_id + '/sync_logs'
                 const res = await fetch(url)
                 if (res.status === 200) {
                     const data = await res.json()
@@ -117,10 +117,7 @@ export default {
         }
 
         function build_search_url(instance) {
-            if (props.is_case) {
-                return "/case/" + props.object_id + "/connectors/" + instance.case_task_instance_id + "/search_in_misp"
-            }
-            return "/case/task/" + props.object_id + "/connectors/" + instance.case_task_instance_id + "/search_in_misp"
+            return "/case/" + getCaseId() + "/connectors/" + instance.case_task_instance_id + "/search_in_misp"
         }
 
         function build_add_note_url() {
@@ -186,8 +183,7 @@ export default {
                 if (props.is_case && loc.notes !== undefined) {
                     emit('note_change', loc.notes)
                 } else if (!props.is_case && loc.note) {
-                    emit('task_note_added', loc.note)
-                    document.getElementById('tab-task-notes-' + props.object_id)?.click()
+                    emit('note_change', loc.notes || [])
                 }
             }
             display_toast(res)
@@ -195,11 +191,7 @@ export default {
 
         function on_sync_done({ direction, instance }) {
             emit('modif_misp_objects')
-            if (props.is_case) {
-                emit("case_connectors", true)
-            } else {
-                emit("task_connectors", true)
-            }
+            emit("case_connectors", true)
         }
 
         // Auto-init MispSyncPanel when instance or direction changes; reset identifier edit on instance change
@@ -325,16 +317,17 @@ export default {
                             </ul>
                             <!-- MispSyncPanel (Send / Receive) -->
                             <template v-if="sync_direction !== 'logs'">
-                                <misp-sync-panel
-                                    :ref="el => sync_panel_ref = el"
-                                    :case_id="object_id"
-                                    :instance="sync_selected_instance"
-                                    :direction="sync_direction"
-                                    :modules="modules"
-                                    :case_misp_objects_list="case_misp_objects_list"
-                                    @sync_done="(e) => on_sync_done(e)"
-                                    @close="">
-                                </misp-sync-panel>
+                                    <misp-sync-panel
+                                        :ref="el => sync_panel_ref = el"
+                                        :case_id="object_id"
+                                        :instance="sync_selected_instance"
+                                        :direction="sync_direction"
+                                        :modules="modules"
+                                        :case_misp_objects_list="case_misp_objects_list"
+                                        :cases_info="cases_info"
+                                        @sync_done="(e) => on_sync_done(e)"
+                                        @close="">
+                                    </misp-sync-panel>
                             </template>
                             <!-- Logs panel -->
                             <template v-else>

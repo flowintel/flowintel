@@ -30,103 +30,155 @@ def upgrade():
     # ==========================================
     # 1. Update 'case__misp__object' (UUID)
     # ==========================================
-    with op.batch_alter_table('case__misp__object', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('uuid', sa.String(length=36), nullable=True))
-        batch_op.create_index(batch_op.f('ix_case__misp__object_uuid'), ['uuid'], unique=False)
+    existing_columns = [col['name'] for col in inspector.get_columns('case__misp__object')]
+    if 'uuid' not in existing_columns:
+        with op.batch_alter_table('case__misp__object', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('uuid', sa.String(length=36), nullable=True))
+            batch_op.create_index(batch_op.f('ix_case__misp__object_uuid'), ['uuid'], unique=False)
 
-    # Define a temporary structure to query/update this specific table
-    t_case_misp = table('case__misp__object', column('id', sa.Integer), column('uuid', sa.String))
-    rows = connection.execute(sa.select(t_case_misp.c.id)).fetchall()
-    for row in rows:
-        connection.execute(
-            t_case_misp.update().where(t_case_misp.c.id == row.id).values(uuid=str(uuid.uuid4()))
-        )
+        # Define a temporary structure to query/update this specific table
+        t_case_misp = table('case__misp__object', column('id', sa.Integer), column('uuid', sa.String))
+        rows = connection.execute(sa.select(t_case_misp.c.id)).fetchall()
+        for row in rows:
+            connection.execute(
+                t_case_misp.update().where(t_case_misp.c.id == row.id).values(uuid=str(uuid.uuid4()))
+            )
 
     # ==========================================
     # 2. Update 'custom__tags' (UUID)
     # ==========================================
-    with op.batch_alter_table('custom__tags', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('uuid', sa.String(length=36), nullable=True))
-        batch_op.create_index(batch_op.f('ix_custom__tags_uuid'), ['uuid'], unique=False)
+    existing_columns = [col['name'] for col in inspector.get_columns('custom__tags')]
+    if 'uuid' not in existing_columns:
+        with op.batch_alter_table('custom__tags', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('uuid', sa.String(length=36), nullable=True))
+            batch_op.create_index(batch_op.f('ix_custom__tags_uuid'), ['uuid'], unique=False)
 
-    t_custom_tags = table('custom__tags', column('id', sa.Integer), column('uuid', sa.String))
-    rows = connection.execute(sa.select(t_custom_tags.c.id)).fetchall()
-    for row in rows:
-        connection.execute(
-            t_custom_tags.update().where(t_custom_tags.c.id == row.id).values(uuid=str(uuid.uuid4()))
-        )
+        t_custom_tags = table('custom__tags', column('id', sa.Integer), column('uuid', sa.String))
+        rows = connection.execute(sa.select(t_custom_tags.c.id)).fetchall()
+        for row in rows:
+            connection.execute(
+                t_custom_tags.update().where(t_custom_tags.c.id == row.id).values(uuid=str(uuid.uuid4()))
+            )
 
     # ==========================================
     # 3. Update 'misp__attribute' (UUID)
     # ==========================================
-    with op.batch_alter_table('misp__attribute', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('uuid', sa.String(length=36), nullable=True))
-        batch_op.create_index(batch_op.f('ix_misp__attribute_uuid'), ['uuid'], unique=False)
+    existing_columns = [col['name'] for col in inspector.get_columns('misp__attribute')]
+    if 'uuid' not in existing_columns:
+        with op.batch_alter_table('misp__attribute', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('uuid', sa.String(length=36), nullable=True))
+            batch_op.create_index(batch_op.f('ix_misp__attribute_uuid'), ['uuid'], unique=False)
 
-    t_misp_attr = table('misp__attribute', column('id', sa.Integer), column('uuid', sa.String))
-    rows = connection.execute(sa.select(t_misp_attr.c.id)).fetchall()
-    for row in rows:
-        connection.execute(
-            t_misp_attr.update().where(t_misp_attr.c.id == row.id).values(uuid=str(uuid.uuid4()))
-        )
+        t_misp_attr = table('misp__attribute', column('id', sa.Integer), column('uuid', sa.String))
+        rows = connection.execute(sa.select(t_misp_attr.c.id)).fetchall()
+        for row in rows:
+            connection.execute(
+                t_misp_attr.update().where(t_misp_attr.c.id == row.id).values(uuid=str(uuid.uuid4()))
+            )
 
     # ==========================================
     # 4. Update 'case__template' (DateTime)
     # ==========================================
-    with op.batch_alter_table('case__template', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('creation_date', sa.DateTime(), nullable=True))
-        batch_op.create_index(batch_op.f('ix_case__template_creation_date'), ['creation_date'], unique=False)
+    existing_columns = [col['name'] for col in inspector.get_columns('case__template')]
+    if 'creation_date' not in existing_columns:
+        with op.batch_alter_table('case__template', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('creation_date', sa.DateTime(), nullable=True))
+            batch_op.create_index(batch_op.f('ix_case__template_creation_date'), ['creation_date'], unique=False)
 
-    # For dates, we can update all rows instantly in one database command
-    t_case_tmp = table('case__template', column('creation_date', sa.DateTime))
-    connection.execute(t_case_tmp.update().values(creation_date=sa.func.now()))
+        # For dates, we can update all rows instantly in one database command
+        t_case_tmp = table('case__template', column('creation_date', sa.DateTime))
+        connection.execute(t_case_tmp.update().values(creation_date=sa.func.now()))
 
     # ==========================================
     # 5. Update 'note__template' (DateTime)
     # ==========================================
-    with op.batch_alter_table('note__template', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('creation_date', sa.DateTime(), nullable=True))
-        batch_op.create_index(batch_op.f('ix_note__template_creation_date'), ['creation_date'], unique=False)
+    existing_columns = [col['name'] for col in inspector.get_columns('note__template')]
+    if 'creation_date' not in existing_columns:
+        with op.batch_alter_table('note__template', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('creation_date', sa.DateTime(), nullable=True))
+            batch_op.create_index(batch_op.f('ix_note__template_creation_date'), ['creation_date'], unique=False)
 
-    t_note_tmp = table('note__template', column('creation_date', sa.DateTime))
-    connection.execute(t_note_tmp.update().values(creation_date=sa.func.now()))
+        t_note_tmp = table('note__template', column('creation_date', sa.DateTime))
+        connection.execute(t_note_tmp.update().values(creation_date=sa.func.now()))
 
     # ==========================================
     # 6. Update 'task__template' (DateTime)
     # ==========================================
-    with op.batch_alter_table('task__template', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('creation_date', sa.DateTime(), nullable=True))
-        batch_op.create_index(batch_op.f('ix_task__template_creation_date'), ['creation_date'], unique=False)
+    existing_columns = [col['name'] for col in inspector.get_columns('task__template')]
+    if 'creation_date' not in existing_columns:
+        with op.batch_alter_table('task__template', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('creation_date', sa.DateTime(), nullable=True))
+            batch_op.create_index(batch_op.f('ix_task__template_creation_date'), ['creation_date'], unique=False)
 
-    t_task_tmp = table('task__template', column('creation_date', sa.DateTime))
-    connection.execute(t_task_tmp.update().values(creation_date=sa.func.now()))
+        t_task_tmp = table('task__template', column('creation_date', sa.DateTime))
+        connection.execute(t_task_tmp.update().values(creation_date=sa.func.now()))
+
+
+    existing_indexes = [idx['name'] for idx in inspector.get_indexes('task__connector__instance')]
+
+    if 'task__connector__instance' in existing_tables:
+        with op.batch_alter_table('task__connector__instance', schema=None) as batch_op:
+            if 'ix_task__connector__instance_instance_id' in existing_indexes:
+                batch_op.drop_index(batch_op.f('ix_task__connector__instance_instance_id'))
+            if 'ix_task__connector__instance_task_id' in existing_indexes:
+                batch_op.drop_index(batch_op.f('ix_task__connector__instance_task_id'))
+
+        op.drop_table('task__connector__instance')
 
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
-    with op.batch_alter_table('task__template', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_task__template_creation_date'))
-        batch_op.drop_column('creation_date')
+    connection = op.get_bind()
+    inspector = sa.inspect(connection)
+    existing_tables = inspector.get_table_names()
 
-    with op.batch_alter_table('note__template', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_note__template_creation_date'))
-        batch_op.drop_column('creation_date')
+    if 'task__connector__instance' not in existing_tables:
+        op.create_table('task__connector__instance',
+        sa.Column('id', sa.INTEGER(), nullable=False),
+        sa.Column('task_id', sa.INTEGER(), nullable=True),
+        sa.Column('instance_id', sa.INTEGER(), nullable=True),
+        sa.Column('identifier', sa.VARCHAR(), nullable=True),
+        sa.PrimaryKeyConstraint('id')
+        )
+        with op.batch_alter_table('task__connector__instance', schema=None) as batch_op:
+            batch_op.create_index(batch_op.f('ix_task__connector__instance_task_id'), ['task_id'], unique=False)
+            batch_op.create_index(batch_op.f('ix_task__connector__instance_instance_id'), ['instance_id'], unique=False)
 
-    with op.batch_alter_table('misp__attribute', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_misp__attribute_uuid'))
-        batch_op.drop_column('uuid')
+    existing_columns = [col['name'] for col in inspector.get_columns('task__template')]
+    if 'creation_date' in existing_columns:
+        with op.batch_alter_table('task__template', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_task__template_creation_date'))
+            batch_op.drop_column('creation_date')
 
-    with op.batch_alter_table('custom__tags', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_custom__tags_uuid'))
-        batch_op.drop_column('uuid')
+    existing_columns = [col['name'] for col in inspector.get_columns('note__template')]
+    if 'creation_date' in existing_columns:
+        with op.batch_alter_table('note__template', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_note__template_creation_date'))
+            batch_op.drop_column('creation_date')
 
-    with op.batch_alter_table('case__template', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_case__template_creation_date'))
-        batch_op.drop_column('creation_date')
+    existing_columns = [col['name'] for col in inspector.get_columns('misp__attribute')]
+    if 'uuid' in existing_columns:
+        with op.batch_alter_table('misp__attribute', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_misp__attribute_uuid'))
+            batch_op.drop_column('uuid')
 
-    with op.batch_alter_table('case__misp__object', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_case__misp__object_uuid'))
-        batch_op.drop_column('uuid')
+    existing_columns = [col['name'] for col in inspector.get_columns('custom__tags')]
+    if 'uuid' in existing_columns:
+        with op.batch_alter_table('custom__tags', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_custom__tags_uuid'))
+            batch_op.drop_column('uuid')
+
+    existing_columns = [col['name'] for col in inspector.get_columns('case__template')]
+    if 'creation_date' in existing_columns:
+        with op.batch_alter_table('case__template', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_case__template_creation_date'))
+            batch_op.drop_column('creation_date')
+
+    existing_columns = [col['name'] for col in inspector.get_columns('case__misp__object')]
+    if 'uuid' in existing_columns:
+        with op.batch_alter_table('case__misp__object', schema=None) as batch_op:
+            batch_op.drop_index(batch_op.f('ix_case__misp__object_uuid'))
+            batch_op.drop_column('uuid')
     # ### end Alembic commands ###

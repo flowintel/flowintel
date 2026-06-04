@@ -806,14 +806,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 for note in task_json["notes"]:
                     TaskModel.modif_note_core(new_task.id, user, note["note"], '-1')
 
-                for connector in task_json["connectors"]:
-                    c = Task_Connector_Instance(
-                        task_id=new_task.id,
-                        instance_id=connector["id"],
-                        identifier=""
-                    )
-                    db.session.add(c)
-                    db.session.commit()
 
             CommonModel.save_history(case.uuid, user, f"Case forked, {new_case.id} - {new_case.title}")
             return new_case
