@@ -27,8 +27,8 @@ class Config:
     #   - Use '127.0.0.1' for local access only (recommended when behind NGINX)
     #   - Use '0.0.0.0' to allow direct access from other machines (testing only)
     # FLASK_PORT: Port number Flask listens on (default 7006)
-    FLASK_URL = '127.0.0.1'
-    FLASK_PORT = 7006
+    FLASK_URL = os.getenv('FLASK_URL', '127.0.0.1')
+    FLASK_PORT = os.getenv('FLASK_PORT', '7006')
 
     # =============================================================================
     # MISP MODULES
@@ -80,15 +80,15 @@ class Config:
     # These users are created on first installation.
     # IMPORTANT: Change the admin password immediately after first login!
     INIT_ADMIN_USER = {
-        "first_name": "admin",
-        "last_name": "admin",
-        "email": "admin@admin.admin",
-        "password": "admin"
+        "first_name": os.getenv('ADMIN_FIRST_NAME', 'admin'),
+        "last_name": os.getenv('ADMIN_LAST_NAME', 'admin'),
+        "email": os.getenv('ADMIN_MAIL', 'admin@admin.admin'),
+        "password": os.getenv('ADMIN_PASSWORD', 'admin'),
     }
     INIT_BOT_USER = {
-        "first_name": "Matrix",
-        "last_name": "Bot",
-        "email": "neo@admin.admin" # Password auto generated
+        "first_name": os.getenv('BOT_FIRST_NAME','Matrix'),
+        "last_name": os.getenv('BOT_LAST_NAME','Bot'),
+        "email": os.getenv('BOT_MAIL', 'neo@admin.admin'),
     }
 
     # =============================================================================
@@ -307,40 +307,19 @@ class ProductionConfig(Config):
     db_host = os.getenv('DB_HOST', 'localhost')
     db_port = os.getenv('DB_PORT', '5432')
     db_name = os.getenv('DB_NAME', 'flowintel')
+    db_dialect = os.getenv('DB_DIALECT', 'postgresql')
+    db_driver = os.getenv('DB_DRIVER', 'psycopg2')
 
     # Database URI
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    SQLALCHEMY_DATABASE_URI = f"{db_dialect}+{db_driver}://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
     @classmethod
     def init_app(cls, app):
         print('THIS APP IS IN PRODUCTION MODE.')
 
-# =============================================================================
-# DOCKER CONFIGURATION
-# =============================================================================
-# Used for Docker container deployments.
-# Database: PostgreSQL (required for Docker deployments)
-# All settings are configured via environment variables in docker-compose.yml
-class DockerConfig(Config):
-    DEBUG = True
-    SESSION_TYPE = "redis"
-    db_user = os.getenv('DB_USER', 'default_user')
-    db_password = os.getenv('DB_PASSWORD', 'default_password')
-    db_host = os.getenv('DB_HOST', 'localhost')
-    db_port = os.getenv('DB_PORT', '5432')
-    db_name = os.getenv('DB_NAME', 'default_db')
-
-    # Database URI
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-
-    @classmethod
-    def init_app(cls, app):
-        print('THIS APP IS IN DOCKER MODE.')
-
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
     'production': ProductionConfig,
-    'docker': DockerConfig,
-    'default': DevelopmentConfig
+    'default': ProductionConfig
 }

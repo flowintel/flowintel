@@ -139,10 +139,18 @@ function init_db {
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist. Wait for Done..."
     python3 app.py -i
+    echo "Done"
+    echo "Add taxonomies and galaxies. Wait for Done..."
     python3 app.py -tg
+    echo "Done"
+    echo "Add or update misp-modules. Wait for Done..."
     python3 app.py -mm
+    echo "Done"
+    echo "Create default test cases. Wait for Done..."
     python3 app.py -td
+    echo "Done"
 
     killscript
 }
@@ -154,10 +162,17 @@ function init_db_prod {
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist. Wait for Done..."
     python3 app.py -i
+    echo "Done"
+    echo "Add taxonomies and galaxies. Wait for Done..."
     python3 app.py -tg
+    echo "Done"
+    echo "Add or update misp-modules. Wait for Done..."
     python3 app.py -mm
+    echo "Done"
     # don't import test data for prod 
+    #echo "Create default test cases"
     #python3 app.py -td
 
     killscript
@@ -172,7 +187,7 @@ function reload_db {
 
 function launch_docker {
     mkdir -p logs
-    export FLASKENV="docker"
+    export FLASKENV="${FLASKENV:production}"
     export HISTORY_DIR=$history_dir/history
 
     # Start screen sessions with logs
@@ -190,15 +205,25 @@ function launch_docker {
 
 function init_db_docker {
     mkdir -p logs
-    export FLASKENV="docker"
+    export FLASKENV="${FLASKENV:production}"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist. Wait for Done..."
     python3 app.py -i
+    echo "Done"
+    echo "Add taxonomies and galaxies. Wait for Done..."
+    echo "Skipping for debugging ..."
     python3 app.py -tg
+    echo "Done"
+    echo "Add or update misp-modules. Wait for Done..."
+    echo "Skipping for debugging ..."
     python3 app.py -mm
-    python3 app.py -td
+    echo "Done"
+    # don't import test data for prod 
+    #echo "Create default test cases"
+    #python3 app.py -td
 }
 
 function test_data_community {

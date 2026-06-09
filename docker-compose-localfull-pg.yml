@@ -26,7 +26,7 @@ services:
 
 
   flowintel:
-    image: ghcr.io/flowintel/flowintel:latest
+    image: flowintel:latest
     container_name: flowintel
     command: bash -i ./launch.sh -ld
     ports:
@@ -50,6 +50,8 @@ services:
       - BOT_MAIL=${FLOWINTEL_BOT_MAIL:-neo@admin.admin}
       #
       - FLASKENV=${FLASKENV:-production}
+      - FLASK_PORT=${FLOWINTEL_APP_PORT:-7006}
+      - FLASK_URL=${FLASK_URL:-0.0.0.0}
     networks:
       - net
     depends_on:
@@ -67,3 +69,8 @@ volumes:
 networks:
   net:
     driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+        - subnet: fd31:50:0:1::/64
