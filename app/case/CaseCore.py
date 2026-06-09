@@ -852,7 +852,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             Case_Custom_Tags,
             Case_Connector_Instance,
             Case_Org,
-            Case_Misp_Object,
         ]
 
         for model in models:
@@ -870,6 +869,26 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 else:
                     # optional: delete the duplicate from current_case
                     db.session.delete(item)
+
+        # -- Handle MISP objects and attributes specially --
+        # Move Case_Misp_Object entries and ensure instance UUIDs follow.
+        for obj in Case_Misp_Object.query.filter_by(case_id=current_case.id).all():
+            obj.case_id = merging_case.id
+            # update any object instance UUID rows to point to the new case
+            for inst in Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=obj.id, case_id=current_case.id).all():
+                inst.case_id = merging_case.id
+
+        db.session.commit()
+
+        # Move standalone MISP attributes (case_misp_object_id is NULL)
+        for s_attr in Misp_Attribute.query.filter_by(case_id=current_case.id, case_misp_object_id=None).all():
+            # move standalone attribute to merging case
+            s_attr.case_id = merging_case.id
+            # update attribute instance uuid rows case_id
+            for ainst in Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=s_attr.id, case_id=current_case.id).all():
+                ainst.case_id = merging_case.id
+
+        db.session.commit()
 
         # Reorder tasks
         max_order = db.session.query(db.func.max(Task.case_order_id))\
