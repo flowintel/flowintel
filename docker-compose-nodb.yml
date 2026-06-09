@@ -22,7 +22,7 @@ services:
       - DB_HOST=${FLOWINTEL_DB_HOST:-postgresql}
       - DB_PORT=${FLOWINTEL_DB_PORT:-5432}
       - DB_USER=${FLOWINTEL_DB_USER:-flowintel}
-      - DB_PASSWORD=${FLOWINTEL_DB_PASSWORD:-flowintel}
+      - DB_PASSWORD=${FLOWINTEL_DB_PASSWORD:-your_secure_password_here}
       - DB_NAME=${FLOWINTEL_DB_NAME:-flowintel}
       - DB_DIALECT=${FLOWINTEL_DB_DIALECT:-postgresql}
       - DB_DRIVER=${FLOWINTEL_DB_DRIVER:-psycopg2}

@@ -2,12 +2,15 @@ services:
   mariadb:
     container_name: mariadb
     image: mariadb:12
+    # TODO
+    # https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/mariadb-server-docker-official-image-environment-variables#using-_file-environment-variables-for-secrets
+    #
     ports:
       - '${DB_PORT:-3306}:3306'
     volumes:
-      - db:/var/lib/mariadb/data
+      - db:/var/lib/mysql
     environment:
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-flowintel}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-mysql}
       - MYSQL_USER=${DB_USER:-flowintel}
       - MYSQL_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
       - MYSQL_DATABASE=${DB_NAME:-flowintel}
@@ -38,7 +41,7 @@ services:
       - DB_HOST=${DB_HOST:-mariadb}
       - DB_PORT=${DB_PORT:-3306}
       - DB_USER=${DB_USER:-flowintel}
-      - DB_PASSWORD=${DB_PASSWORD:-flowintel}
+      - DB_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
       - DB_NAME=${DB_NAME:-flowintel}
       - DB_DIALECT=${DB_DIALECT:-mysql}
       - DB_DRIVER=${DB_DRIVER:-pymysql}
