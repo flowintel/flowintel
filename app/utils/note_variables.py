@@ -373,6 +373,47 @@ def _resolve_case_property(case: Case, parts: list):
         
         return _resolve_misp_object_property(obj, parts[2:])
     
+    # Standalone MISP attributes: @this.case.standalone_attributes...
+    if prop == 'standalone_attributes':
+        # attributes that belong directly to the case (case_misp_object_id is NULL)
+        attrs = Misp_Attribute.query.filter_by(case_id=case.id, case_misp_object_id=None).order_by(Misp_Attribute.id).all()
+
+        if len(parts) == 1:
+            # Return formatted list similar to object attributes
+            lines = []
+            for attr in attrs:
+                lines.append(f"- ({attr.type}): {attr.value}")
+            return '\n'.join(lines) if lines else ''
+
+        # @this.case.standalone_attributes.<n>...
+        try:
+            attr_index = int(parts[1]) - 1  # 1-based
+        except ValueError:
+            return None
+        if attr_index < 0 or attr_index >= len(attrs):
+            return None
+        attr = attrs[attr_index]
+
+        if len(parts) == 2:
+            return attr.value
+
+        if len(parts) == 3:
+            attr_props = {
+                'value': lambda a: a.value,
+                'type': lambda a: a.type,
+                'object_relation': lambda a: a.object_relation or '',
+                'comment': lambda a: a.comment or '',
+                'ids_flag': lambda a: 'Yes' if a.ids_flag else 'No',
+                'first_seen': lambda a: a.first_seen.strftime('%Y-%m-%d %H:%M') if a.first_seen else '',
+                'last_seen': lambda a: a.last_seen.strftime('%Y-%m-%d %H:%M') if a.last_seen else '',
+                'id': lambda a: a.id,
+                'standalone': lambda a: 'Yes' if (a.case_misp_object_id is None and a.case_id is not None) else 'No',
+            }
+            if parts[2] in attr_props:
+                return attr_props[parts[2]](attr)
+
+        return None
+
     return None
 
 
@@ -726,6 +767,26 @@ Use `@me.<property>` as an alias for `@user.<property>`.
 | `@this.case.misp_objects.<n>.attributes.<m>.comment` | Attribute comment |
 
 Use `@case.<id>.misp_objects...` for a different case.
+ 
+---
+
+## Standalone MISP Attributes
+
+| Variable | Description |
+|----------|-------------|
+| `@this.case.standalone_attributes` | Formatted list (one-per-line) of attributes attached directly to the case |
+| `@this.case.standalone_attributes.<n>` | Value of the Nth standalone attribute (1-based) |
+| `@this.case.standalone_attributes.<n>.value` | Attribute value |
+| `@this.case.standalone_attributes.<n>.type` | Attribute type |
+| `@this.case.standalone_attributes.<n>.object_relation` | Object relation (often empty for standalone attrs) |
+| `@this.case.standalone_attributes.<n>.comment` | Attribute comment |
+| `@this.case.standalone_attributes.<n>.ids_flag` | Whether IDS flag is set (Yes/No) |
+| `@this.case.standalone_attributes.<n>.first_seen` | First seen timestamp |
+| `@this.case.standalone_attributes.<n>.last_seen` | Last seen timestamp |
+| `@this.case.standalone_attributes.<n>.id` | Attribute database ID |
+| `@this.case.standalone_attributes.<n>.standalone` | Whether attribute is standalone (Yes/No) |
+
+Use `@case.<id>.standalone_attributes...` for a different case.
 
 ---
 

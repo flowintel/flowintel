@@ -49,6 +49,7 @@
         { label: 'tasks.',          insert: 'tasks.',          info: 'Tasks by position (N)' },
         { label: 'misp_objects',    insert: 'misp_objects',    info: 'MISP objects list' },
         { label: 'misp_objects.',   insert: 'misp_objects.',   info: 'MISP object by position' },
+        { label: 'standalone_attributes', insert: 'standalone_attributes', info: 'Standalone MISP attributes' },
     ]
 
     // Task-specific properties (from note_variables.py _resolve_task_property)
@@ -124,6 +125,7 @@
         { label: 'first_seen',      insert: 'first_seen',      info: 'First seen date' },
         { label: 'last_seen',       insert: 'last_seen',       info: 'Last seen date' },
         { label: 'id',              insert: 'id',              info: 'Attribute ID' },
+        { label: 'standalone',      insert: 'standalone',      info: 'Standalone flag (Yes/No)' },
     ]
 
     // All leaf-level property item lists for doPick matching
@@ -400,6 +402,13 @@
         // ── notes.<n>. sub-path (task only) ───────────────────────────
         if (isTask && /^notes\./.test(rest)) {
             return resolveNotePath(rest.slice(6))
+        }
+
+        // ── misp_objects sub-paths (case only) ────────────────────────
+        // Standalone attributes sub-paths (case only)
+        if (isCase && /^standalone_attributes\./.test(rest)) {
+            // strip the "standalone_attributes." prefix and resolve as an attribute path
+            return resolveAttributePath(rest.slice(22))
         }
 
         // ── misp_objects sub-paths (case only) ────────────────────────

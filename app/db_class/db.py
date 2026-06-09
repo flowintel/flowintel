@@ -1446,7 +1446,9 @@ class Misp_Attribute(db.Model):
             "ids_flag": self.ids_flag,
             "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
             "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
-            "disable_correlation": self.disable_correlation
+            "disable_correlation": self.disable_correlation,
+            # Flag: attribute is standalone (not attached to a MISP object)
+            "standalone": True if (self.case_misp_object_id is None and self.case_id is not None) else False,
         }
 
         if self.first_seen:
@@ -1473,7 +1475,8 @@ class Misp_Attribute(db.Model):
             json_dict["first_seen"] = self.first_seen.strftime('%Y-%m-%dT%H:%M')
         if self.last_seen:
             json_dict["last_seen"] = self.last_seen.strftime('%Y-%m-%dT%H:%M')
-
+        # Include standalone flag in exported/downloaded representation as well
+        json_dict["standalone"] = True if (self.case_misp_object_id is None and self.case_id is not None) else False
         return json_dict
 
 class Misp_Object_Instance_Uuid(db.Model):

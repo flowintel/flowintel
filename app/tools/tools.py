@@ -372,6 +372,13 @@ def recent_logins():
     return ToolsModel.get_recent_logins(limit=limit)
 
 
+@tools_blueprint.route("/note_variables_reference", methods=['GET'])
+@login_required
+def note_variables_reference_view():
+    """Render the note variables syntax reference page"""
+    reference = get_syntax_reference()
+    return render_template("tools/note_variables_reference.html", reference=reference)
+
 
 #################
 # Note Template #
@@ -382,13 +389,6 @@ def recent_logins():
 def note_template_index():
     return render_template("tools/note_template_index.html")
 
-
-@tools_blueprint.route("/note_variables_reference", methods=['GET'])
-@login_required
-def note_variables_reference_view():
-    """Render the note variables syntax reference page"""
-    reference = get_syntax_reference()
-    return render_template("tools/note_variables_reference.html", reference=reference)
 
 @tools_blueprint.route("/create_note_template_view", methods=['GET'])
 @login_required
