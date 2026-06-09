@@ -539,7 +539,7 @@ def fork_case(cid):
 
             new_case = CaseModel.fork_case_core(cid, case_title_fork, current_user)
             if type(new_case) == dict:
-                return new_case
+                return new_case, 400
             flowintel_log("audit", 201, "Case forked", User=current_user.email, OriginalCaseId=cid, NewCaseId=new_case.id, NewCaseTitle=case_title_fork)
             return {"new_case_id": new_case.id}, 201
         return {"message": "'case_title_fork' is missing", 'toast_class': "danger-subtle"}, 400

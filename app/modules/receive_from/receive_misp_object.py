@@ -1,4 +1,5 @@
 import datetime
+from dateutil.parser import parse as parse_date
 from pymisp import PyMISP
 import urllib3
 urllib3.disable_warnings()
@@ -81,16 +82,28 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
                             db_misp_attr.object_relation = attr.object_relation
                             flag = True
                         if not db_misp_attr.first_seen == attr.get("first_seen"):
-                            if type(attr.first_seen) == datetime.datetime:
+                            if isinstance(attr.first_seen, datetime.datetime):
                                 db_misp_attr.first_seen = attr.first_seen
                             else:
-                                db_misp_attr.first_seen = datetime.datetime.strptime(attr.get("first_seen"), DATETIME_FORMAT)
+                                try:
+                                    db_misp_attr.first_seen = parse_date(attr.get("first_seen")) if attr.get("first_seen") else None
+                                except Exception:
+                                    try:
+                                        db_misp_attr.first_seen = datetime.datetime.strptime(attr.get("first_seen"), DATETIME_FORMAT)
+                                    except Exception:
+                                        db_misp_attr.first_seen = None
                             flag = True
                         if not db_misp_attr.last_seen == attr.get("last_seen"):
-                            if type(attr.last_seen) == datetime.datetime:
+                            if isinstance(attr.last_seen, datetime.datetime):
                                 db_misp_attr.last_seen = attr.last_seen
                             else:
-                                db_misp_attr.last_seen = datetime.datetime.strptime(attr.get("last_seen"), DATETIME_FORMAT)
+                                try:
+                                    db_misp_attr.last_seen = parse_date(attr.get("last_seen")) if attr.get("last_seen") else None
+                                except Exception:
+                                    try:
+                                        db_misp_attr.last_seen = datetime.datetime.strptime(attr.get("last_seen"), DATETIME_FORMAT)
+                                    except Exception:
+                                        db_misp_attr.last_seen = None
                             flag = True
                         if not db_misp_attr.comment == attr.comment:
                             db_misp_attr.comment = attr.comment

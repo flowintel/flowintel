@@ -73,8 +73,14 @@ export default {
                     method: "POST",
                     body: JSON.stringify({"case_title_fork": $("#case_title_fork").val()})
                 })
-                let loc = await res.json()
-                window.location.href="/case/" + loc["new_case_id"]
+                if (await res.status != 201){
+                    let res_json = await res.json()
+                    display_toast(res_json)
+                    return
+                }else{
+                    let loc = await res.json()
+                    window.location.href="/case/" + loc["new_case_id"]
+                }
             }
         }
 

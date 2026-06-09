@@ -1,6 +1,7 @@
 from pymisp import MISPObject
 from ..db_class.db import db, Case_Misp_Object, Misp_Attribute
 import datetime
+from dateutil.parser import parse as parse_date
 
 def create_misp_object(case_id: int, misp_object: MISPObject):
     """
@@ -27,15 +28,30 @@ def create_misp_object(case_id: int, misp_object: MISPObject):
         last_seen = None
 
         if object_attr.get("first_seen"):
-            if type(object_attr.get("first_seen")) == datetime.datetime:
-                first_seen = object_attr.get("first_seen")
+            val = object_attr.get("first_seen")
+            if isinstance(val, datetime.datetime):
+                first_seen = val
             else:
-                first_seen = datetime.datetime.strptime(object_attr.get("first_seen"), '%Y-%m-%dT%H:%M')
+                try:
+                    first_seen = parse_date(val)
+                except Exception:
+                    try:
+                        # fallback to legacy exact format
+                        first_seen = datetime.datetime.strptime(val, '%Y-%m-%dT%H:%M')
+                    except Exception:
+                        first_seen = None
         if object_attr.get("last_seen"):
-            if type(object_attr.get("last_seen")) == datetime.datetime:
-                last_seen = object_attr.get("last_seen")
+            val = object_attr.get("last_seen")
+            if isinstance(val, datetime.datetime):
+                last_seen = val
             else:
-                last_seen = datetime.datetime.strptime(object_attr.get("last_seen"), '%Y-%m-%dT%H:%M')
+                try:
+                    last_seen = parse_date(val)
+                except Exception:
+                    try:
+                        last_seen = datetime.datetime.strptime(val, '%Y-%m-%dT%H:%M')
+                    except Exception:
+                        last_seen = None
 
         attr = Misp_Attribute(
             case_misp_object_id=loc_object.id,

@@ -487,8 +487,10 @@ export default {
                                 <th>Type</th>
                                 <th v-show="!compact_view" style="width:55px;" title="IDS flag">IDS</th>
                                 <th v-show="!compact_view" style="width:75px;" title="Disable correlation">No corr.</th>
-                                <th v-show="!compact_view">Comment</th>
+                                <th v-show="!compact_view" style="width:75px;" title="First seen">First seen</th>
+                                <th v-show="!compact_view" style="width:75px;" title="Last seen">Last seen</th>
                                 <th v-show="!compact_view">Correlations</th>
+                                <th v-show="!compact_view">Comment</th>
                                 <th v-show="!compact_view">Synced</th>
                                 <th>Tasks</th>
                                 <th v-if="can_edit" style="width:110px;"></th>
@@ -504,13 +506,17 @@ export default {
                                         <span v-else class="text-muted">-</span>
                                     </td>
                                     <td v-show="!compact_view" style="text-align:center;">
-                                        <i v-if="sa.disable_correlation" class="fa-solid fa-link-slash text-muted fa-sm" title="Correlation disabled"></i>
+                                        <span v-if="sa.first_seen" class="small">[[ sa.first_seen ]]</span>
                                         <span v-else class="text-muted">-</span>
                                     </td>
-                                    <td v-show="!compact_view" class="small text-muted">
-                                        <template v-if="sa.comment">[[ sa.comment ]]</template>
-                                        <span v-else>-</span>
+                                    <td v-show="!compact_view" style="text-align:center;">
+                                        <span v-if="sa.last_seen" class="small">[[ sa.last_seen ]]</span>
+                                        <span v-else class="text-muted">-</span>
                                     </td>
+                                    <td v-show="!compact_view" style="text-align:center;">
+                                        <i v-if="sa.disable_correlation" class="fa-solid fa-link-slash text-muted fa-sm" title="Correlation disabled"></i>
+                                        <span v-else class="text-muted">-</span>
+                                    </td>                                    
                                     <td v-show="!compact_view" class="small">
                                         <template v-if="sa.correlation_list && sa.correlation_list.length">
                                             <template v-for="(cid, idx) in sa.correlation_list" :key="cid + '-' + idx">
@@ -531,6 +537,10 @@ export default {
                                             </div>
                                         </template>
                                         <span v-else class="text-muted">-</span>
+                                    </td>
+                                    <td v-show="!compact_view" class="small text-muted">
+                                        <template v-if="sa.comment">[[ sa.comment ]]</template>
+                                        <span v-else>-</span>
                                     </td>
                                     <td v-show="!compact_view" class="small">
                                         <span v-for="s in sa.synced_instances" :key="s.instance_id" class="badge bg-info text-dark me-1" :title="'UUID: ' + s.uuid">

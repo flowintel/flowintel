@@ -765,12 +765,29 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 db.session.add(c)
                 db.session.commit()
 
+            # Keep mapping of original -> new IDs so we can recreate links
+            object_id_map = {}
+            attr_id_map = {}
+
             loc_misp_objects_list = self.get_misp_object_by_case(case.id)
             for misp_object in loc_misp_objects_list:
                 misp_object_json = misp_object.to_json()
                 misp_object_json["object-template"] = {"uuid": misp_object.template_uuid, "name": misp_object.name}
                 misp_object_json["attributes"] = [attr.to_json() for attr in misp_object.attributes]
-                self.create_misp_object(new_case.id, misp_object_json, user)
+
+                new_obj = self.create_misp_object(new_case.id, misp_object_json, user)
+                if new_obj:
+                    object_id_map[misp_object.id] = new_obj.id
+
+            loc_standalone_attributes_list = self.get_standalone_attributes_by_case(case.id)
+            for attr in loc_standalone_attributes_list:
+                attr_json = attr.to_json()
+                new_attr = self.create_standalone_attribute(new_case.id, attr_json, user)
+                if new_attr:
+                    try:
+                        attr_id_map[attr.id] = new_attr.id
+                    except Exception:
+                        pass
 
             for task in case.tasks:
                 task_json = task.to_json()
@@ -806,13 +823,26 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 for note in task_json["notes"]:
                     TaskModel.modif_note_core(new_task.id, user, note["note"], '-1')
 
+                # Recreate MISP object/attribute links using mapped IDs
+                for misp_object in task_json.get("misp_object_links", []):
+                    orig_obj_id = misp_object.get("misp_object_id")
+                    new_obj_id = object_id_map.get(orig_obj_id)
+                    if new_obj_id:
+                        TaskModel.link_misp_object(new_task.id, new_obj_id, user)
+
+                for misp_attr in task_json.get("misp_attribute_links", []):
+                    orig_attr_id = misp_attr.get("misp_attribute_id")
+                    new_attr_id = attr_id_map.get(orig_attr_id)
+                    if new_attr_id:
+                        TaskModel.link_misp_attribute(new_task.id, new_attr_id, user)
+
 
             CommonModel.save_history(case.uuid, user, f"Case forked, {new_case.id} - {new_case.title}")
             return new_case
         except Exception as e:
             print(e)
             db.session.rollback()
-            return {"message": "error when creating the fork"}, 400
+            return {"message": "error when creating the fork"}
     
     def merge_case_core(self, current_case: Case, merging_case: Case, current_user: User) -> bool:
         """Merge Current case into merging case"""
@@ -1779,9 +1809,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 ids_flag = False
                 disable_correlation = False
                 if "first_seen" in attribute and attribute["first_seen"]:
-                    first_seen = datetime.datetime.strptime(attribute["first_seen"], DATETIME_FORMAT)
+                    val = attribute["first_seen"]
+                    if isinstance(val, datetime.datetime):
+                        first_seen = val
+                    else:
+                        first_seen = self._parse_date(val)
                 if "last_seen" in attribute and attribute["last_seen"]:
-                    last_seen = datetime.datetime.strptime(attribute["last_seen"], DATETIME_FORMAT)
+                    val = attribute["last_seen"]
+                    if isinstance(val, datetime.datetime):
+                        last_seen = val
+                    else:
+                        last_seen = self._parse_date(val)
 
                 if "ids_flag" in attribute and attribute["ids_flag"] and attribute["ids_flag"] == 'true':
                     ids_flag = True
@@ -1820,9 +1858,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 ids_flag = False
                 disable_correlation = False
                 if request_json["first_seen"]:
-                    first_seen = datetime.datetime.strptime(request_json["first_seen"], DATETIME_FORMAT)
+                    val = request_json["first_seen"]
+                    if isinstance(val, datetime.datetime):
+                        first_seen = val
+                    else:
+                        first_seen = self._parse_date(val)
                 if request_json["last_seen"]:
-                    last_seen = datetime.datetime.strptime(request_json["last_seen"], DATETIME_FORMAT)
+                    val = request_json["last_seen"]
+                    if isinstance(val, datetime.datetime):
+                        last_seen = val
+                    else:
+                        last_seen = self._parse_date(val)
 
                 if request_json["ids_flag"] and (request_json["ids_flag"] == 'true' or request_json["ids_flag"] == True):
                     ids_flag = True
@@ -1891,9 +1937,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         disable_correlation = False
 
         if data.get("first_seen"):
-            first_seen = datetime.datetime.strptime(data["first_seen"], DATETIME_FORMAT)
+            val = data["first_seen"]
+            if isinstance(val, datetime.datetime):
+                first_seen = val
+            else:
+                first_seen = self._parse_date(val)
         if data.get("last_seen"):
-            last_seen = datetime.datetime.strptime(data["last_seen"], DATETIME_FORMAT)
+            val = data["last_seen"]
+            if isinstance(val, datetime.datetime):
+                last_seen = val
+            else:
+                last_seen = self._parse_date(val)
         if data.get("ids_flag") and (data["ids_flag"] == 'true' or data["ids_flag"] is True):
             ids_flag = True
         if data.get("disable_correlation") and (data["disable_correlation"] == 'true' or data["disable_correlation"] is True):
@@ -1960,9 +2014,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         disable_correlation = False
 
         if data.get("first_seen"):
-            first_seen = datetime.datetime.strptime(data["first_seen"], DATETIME_FORMAT)
+            val = data["first_seen"]
+            if isinstance(val, datetime.datetime):
+                first_seen = val
+            else:
+                first_seen = self._parse_date(val)
         if data.get("last_seen"):
-            last_seen = datetime.datetime.strptime(data["last_seen"], DATETIME_FORMAT)
+            val = data["last_seen"]
+            if isinstance(val, datetime.datetime):
+                last_seen = val
+            else:
+                last_seen = self._parse_date(val)
         if data.get("ids_flag") and (data["ids_flag"] == 'true' or data["ids_flag"] is True):
             ids_flag = True
         if data.get("disable_correlation") and (data["disable_correlation"] == 'true' or data["disable_correlation"] is True):
