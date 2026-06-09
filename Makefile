@@ -295,7 +295,7 @@ runfull_maria: configure_repo_dev build_maria_latest_local
 ########################################################################################
 
 # Build 🌍 , Publish  🌬️ and Release 🔥
-build_latest_local:
+build_latest_local: nuke
 ifeq ($(rebuild),1)
 	@echo "Image Rebuild rebuild requested"
 	docker build -f DockerfilePostgres -t flowintel:latest .
@@ -303,7 +303,7 @@ else
 	@echo "Image Rebuild skipped"
 endif
 
-build_maria_latest_local:
+build_maria_latest_local: nuke
 ifeq ($(rebuild),1)
 	set -e; \
 	trap '$(MAKE) restore_requirements' EXIT; \
@@ -385,17 +385,31 @@ clean:
 	-find . -name "*.egg-info" -print0 | xargs -0 rm -rf
 
 coverageclean:
-	-rm src/urlchecker/.coverage
-	-rm src/urlchecker/.coverage.*
-	-rm src/urlchecker/coverage.xml
-	-rm -rf src/urlchecker/htmlcov
+	.coverage
+	.coverage.*
+	coverage.xml
+	-rm -rf htmlcov
 
 distclean:
 	-rm -rf ./dist
 	-rm -rf ./build
 	-rm -rf ./.venv
+	-rm -rf logs
+	-rm -rf modules/misp-galaxy
+	-rm -rf modules/misp-objects
+	-rm -rf modules/misp-taxonomies
 
 nuke: clean distclean testclean
+
+nuke_volume:
+	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	@echo "💣 DO NOT RUN IN DEV IF YOU NEED TO KEEP OTHER APP VOLUMES !!! Press Enter to continue or Ctrl+C to exit"
+	read wait_for_me
+	docker volume rm flowintel_db -f
+	docker volume rm flowintel_flowintel-data -f
+	docker volume rm flowintel_valkey-data -f
+	#docker volume prune -f
+	#docker system prune --volumes
 
 # TODO nuke_dev_infra > docker volumes, networks (and images ?)
 

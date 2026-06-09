@@ -199,6 +199,7 @@ function launch_docker {
 }
 
 function init_db_docker {
+    # Run Python unbuffered so we see progress when run the app.py inits
     mkdir -p logs
     export FLASKENV="${FLASKENV:production}"
     export HISTORY_DIR=$history_dir/history
@@ -206,15 +207,13 @@ function init_db_docker {
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
     echo "Initialise the db if it not exist. Wait for Done..."
-    python3 app.py -i
+    python3 -u app.py -i
     echo "Done"
     echo "Add taxonomies and galaxies. Wait for Done..."
-    echo "Skipping for debugging ..."
-    python3 app.py -tg
+    python3 -u app.py -tg
     echo "Done"
     echo "Add or update misp-modules. Wait for Done..."
-    echo "Skipping for debugging ..."
-    python3 app.py -mm
+    python3 -u app.py -mm
     echo "Done"
     # don't import test data for prod 
     #echo "Create default test cases"
