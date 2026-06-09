@@ -1,7 +1,8 @@
 import os
 import json
 import glob
-from ..db_class.db import db
+
+from app.extensions import db
 from ..db_class.db import Taxonomy, Tags, Galaxy, Cluster
 
 from pytaxonomies import Taxonomies

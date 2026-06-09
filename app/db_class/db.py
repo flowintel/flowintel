@@ -1,11 +1,13 @@
 import datetime
 import json
 import uuid
-from .. import db, login_manager
+
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
 
 from sqlalchemy.dialects.mysql import LONGTEXT
+
+from app.extensions import db, login_manager
 
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 CASCADE_DELETE_ORPHAN = "all, delete-orphan"

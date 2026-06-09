@@ -1,5 +1,6 @@
 import json
-from ..db_class.db import db
+
+from app.extensions import db
 from ..db_class.db import Misp_Module, Configurable_Fields, Misp_Module_Config
 from .utils import query_get_module
 

@@ -3,7 +3,35 @@ from io import BytesIO
 
 from pymisp import PyMISP
 from werkzeug.datastructures import FileStorage
-from ..db_class.db import *
+from app.extensions import db
+from ..db_class.db import (
+    Login_Event,
+    Notification,
+    Org,
+    Role,
+    Task_Custom_Tags,
+    User,
+    Case,
+    Task,
+    Task_User,
+    Case_Org,
+    Case_Template,
+    Tags,
+    Case_Tags,
+    Task_Tags,
+    Cluster,
+    Case_Galaxy_Tags,
+    Task_Galaxy_Tags,
+    Connector_Instance,
+    Case_Connector_Instance,
+    User_Connector_Instance,
+    Custom_Tags,
+    Case_Custom_Tags,
+    Case_Misp_Object,
+    Misp_Attribute,
+    Note_Template_Model,
+    Case_Note_Template_Model,
+)
 import uuid
 import json
 import datetime

@@ -3,7 +3,7 @@ from typing import List
 import uuid
 import datetime
 from flask import current_app
-from .. import db
+from app.extensions import db
 from ..db_class.db import (
     Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,

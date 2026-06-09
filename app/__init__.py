@@ -9,6 +9,7 @@ from flask_session import Session
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from app.extensions import db, csrf, migrate, session, login_manager
 from conf.config import config as Config
 import os
 import logging
@@ -16,12 +17,6 @@ from logging.handlers import RotatingFileHandler
 
 import redis
 
-
-db = SQLAlchemy()
-csrf = CSRFProtect()
-migrate = Migrate()
-session = Session()
-login_manager = LoginManager()
 
 def create_app():
     app = Flask(__name__)

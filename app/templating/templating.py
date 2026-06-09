@@ -15,6 +15,7 @@ from ..utils.formHelper import prepare_tags
 from ..case import common_core as CommonCaseModel
 from ..case.common_core import get_instance_with_icon
 from ..utils.logger import flowintel_log
+from app.extensions import db
 from ..db_class.db import (
     Case_Template, Case_Task_Template, Case_Template_Galaxy_Tags, Case_Template_Tags,
     Case_Template_Custom_Tags,
@@ -22,7 +23,6 @@ from ..db_class.db import (
     Task_Template_Custom_Tags,
     Template_Repository, Template_Repository_Entry,
 )
-from .. import db
 from ..custom_tags import custom_tags_core as CustomModel
 
 templating_blueprint = Blueprint(

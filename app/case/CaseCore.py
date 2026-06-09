@@ -16,8 +16,57 @@ from dateutil import relativedelta
 
 from app.utils import misp_object_helper
 
-from .. import db
-from ..db_class.db import *
+from app.extensions import db
+from ..db_class.db import (
+    User,
+    Case,
+    Task,
+    Note,
+    Rulezet_Rule,
+    File,
+    Status,
+    Task_User,
+    Case_Org,
+    Alert,
+    Recurring_Notification,
+    Case_Template,
+    Task_Template,
+    Subtask_Template,
+    Note_Template,
+    Task_Template_Url_Tool,
+    Case_Task_Template,
+    Tags,
+    Case_Tags,
+    Task_Tags,
+    Case_Template_Tags,
+    Task_Template_Tags,
+    Galaxy,
+    Cluster,
+    Case_Galaxy_Tags,
+    Task_Galaxy_Tags,
+    Task_Galaxy,
+    Case_Template_Galaxy_Tags,
+    Task_Template_Galaxy,
+    Task_Template_Galaxy_Tags,
+    Connector_Instance,
+    Case_Connector_Instance,
+    Connector_Sync_Log,
+    Task_Connector_Instance,
+    User_Connector_Instance,
+    Custom_Tags,
+    Case_Custom_Tags,
+    Case_Template_Custom_Tags,
+    Task_Template_Custom_Tags,
+    Case_Link_Case,
+    Case_Misp_Object,
+    Misp_Attribute,
+    Misp_Object_Instance_Uuid,
+    Misp_Attribute_Instance_Uuid,
+    Note_Template_Model,
+    Case_Note_Template_Model,
+    Case_Timeline_Event,
+    Case_Timeline_Event_Link,
+)
 from ..utils.logger import flowintel_log
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract

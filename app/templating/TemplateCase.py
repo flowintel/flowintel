@@ -1,7 +1,35 @@
 from typing import List, Union
-from ..db_class.db import *
+from ..db_class.db import (
+    Case_Template_Connector_Instance,
+    Subtask,
+    Task_Custom_Tags,
+    Task_Url_Tool,
+    User,
+    Case,
+    Task,
+    Note,
+    Case_Org,
+    Case_Template,
+    Case_Task_Template,
+    Tags,
+    Case_Tags,
+    Task_Tags,
+    Case_Template_Tags,
+    Task_Template_Tags,
+    Cluster,
+    Case_Galaxy_Tags,
+    Task_Galaxy_Tags,
+    Task_Galaxy,
+    Case_Template_Galaxy_Tags,
+    Task_Template_Galaxy,
+    Task_Template_Galaxy_Tags,
+    Case_Connector_Instance,
+    Custom_Tags,
+    Case_Custom_Tags,
+    Case_Template_Custom_Tags,
+)
 import uuid
-from .. import db
+from app.extensions import db
 import datetime
 from ..case import common_core
 from ..case.CommonAbstract import CommonAbstract

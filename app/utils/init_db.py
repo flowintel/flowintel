@@ -3,8 +3,9 @@ import datetime
 import json
 import os
 from flask import current_app
-from ..db_class.db import Case, Case_Org, Connector, Connector_Icon, Icon_File, Task, db
-from ..db_class.db import User, Role, Org, Status
+
+from app.extensions import db
+from ..db_class.db import Case, Case_Org, Connector, Connector_Icon, Icon_File, Task, User, Role, Org, Status
 from .utils import generate_api_key
 from ..case import common_core as CommonModel
 from ..case.TaskCore import TaskModel
