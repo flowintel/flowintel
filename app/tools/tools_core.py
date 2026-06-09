@@ -1097,15 +1097,30 @@ def search_attr_with_value(attr_value: str, current_user: User, start_date: str 
             pass
 
     list_attr = query.all()
-    list_obj = [Case_Misp_Object.query.get(attr.case_misp_object_id) for attr in list_attr]
 
     list_case = []
     seen_case_ids = set()
-    for obj in list_obj:
-        if not obj:
+
+    for attr in list_attr:
+        # Determine the case id for this attribute. Attributes can be part of
+        # a MISP object (`case_misp_object_id`) or standalone with
+        # `case_id` set directly.
+        case_id = None
+        if attr.case_misp_object_id:
+            obj = Case_Misp_Object.query.get(attr.case_misp_object_id)
+            if obj:
+                case_id = obj.case_id
+            else:
+                # fallback to attribute's case_id if object record missing
+                case_id = attr.case_id
+        else:
+            case_id = attr.case_id
+
+        if not case_id:
             continue
+
         if current_user.is_admin():
-            case = Case.query.get(obj.case_id)
+            case = Case.query.get(case_id)
         else:
             case = Case.query.join(Case_Org, Case_Org.case_id == Case.id)\
             .filter(
@@ -1113,11 +1128,13 @@ def search_attr_with_value(attr_value: str, current_user: User, start_date: str 
                     Case_Org.org_id == current_user.org_id,
                     Case.is_private == False
                 ),
-                Case.id == obj.case_id
+                Case.id == case_id
             ).first()
-        if case and not case.id in seen_case_ids:
+
+        if case and case.id not in seen_case_ids:
             list_case.append(case.to_json())
             seen_case_ids.add(case.id)
+
     return list_case
 
 
