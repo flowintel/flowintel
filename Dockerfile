@@ -63,6 +63,8 @@ EOF
 USER root
 
 # Copy app source
+# TODO This can further be accelerated by using the src pattern for code location and adding separate copies of requirements
+# and other important folders / files from king directory
 COPY . /home/flowintel/app
 
 # Replace secret and update config
