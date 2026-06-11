@@ -55,13 +55,13 @@ try:
     cur.execute("SELECT 1")
     print(f"CHECK: SELECT 1 -> {cur.fetchone()}", file=sys.stderr)
 
-    cur.execute("SELECT id FROM `user` WHERE first_name = %s LIMIT 1", ("admin",))
+    cur.execute('SELECT id FROM "user" WHERE first_name = %s LIMIT 1', ("admin",))
     exists = cur.fetchone() is not None
     print("1" if exists else "0")
-except psycopg2.err.OperationalError as e:
+except psycopg2.OperationalError as e:
     print(f"CONNECTION_ERROR: {e}", file=sys.stderr)
     print("2")
-except psycopg2.err.ProgrammingError as e:
+except psycopg2.ProgrammingError as e:
     print(f"QUERY_ERROR: {e}", file=sys.stderr)
     print("3")
 except Exception as e:

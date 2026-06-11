@@ -57,7 +57,7 @@ try:
     cur.execute("SELECT 1")
     print(f"CHECK: SELECT 1 -> {cur.fetchone()}", file=sys.stderr)
 
-    cur.execute("SELECT id FROM `user` WHERE first_name = %s LIMIT 1", ("admin",))
+    cur.execute('SELECT id FROM `user` WHERE first_name = %s LIMIT 1', ("admin",))
     exists = cur.fetchone() is not None
     print("1" if exists else "0")
 except pymysql.err.OperationalError as e:
