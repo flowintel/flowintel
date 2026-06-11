@@ -1871,9 +1871,24 @@
                 async function prepare_editor(default_text){
                     const targetElement = document.getElementById('editor')
                     if(targetElement && targetElement.innerHTML === ""){
+                        const variableCompletionExtensions = (() => {
+                            if (!window.FlowintelVarComplete || typeof window.FlowintelVarComplete.extension !== 'function') {
+                                return []
+                            }
+                            try {
+                                const ext = window.FlowintelVarComplete.extension()
+                                if (!ext) return []
+                                return Array.isArray(ext) ? ext : [ext]
+                            } catch (e) {
+                                console.warn('Failed to initialize variable completion extension:', e)
+                                return []
+                            }
+                        })()
+
+                        // Keep CodeMirror enabled for editing with guarded variable completion.
                         editor = new EditorView({
                             doc: default_text,
-                            extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
+                            extensions: [basicSetup, languages.markdown(), ...variableCompletionExtensions, EditorView.updateListener.of((v) => {
                                 if (v.docChanged) {
                                     note_editor_render.value = editor.state.doc.toString()
                                 }
@@ -1883,6 +1898,13 @@
                     }
                     await nextTick()
                     try { await md.mermaid.init() } catch(e) {}
+                }
+
+                function get_case_note_editor_text(){
+                    if (editor && editor.state && editor.state.doc) {
+                        return editor.state.doc.toString()
+                    }
+                    return note_editor_render.value || ''
                 }
 
                 async function fetch_all_notes(){
@@ -2088,7 +2110,7 @@
                 }
 
                 async function save_note_case(){
-                    let notes_loc = editor.state.doc.toString()
+                    let notes_loc = get_case_note_editor_text()
                     if(notes_loc.trim().length == 0){
                         notes_loc = notes_loc.trim()
                     }
@@ -2162,7 +2184,7 @@
 
                 async function autosave_case_note(){
                     if (edit_mode.value){
-                        let notes_loc = editor.state.doc.toString()
+                        let notes_loc = get_case_note_editor_text()
                         if(notes_loc.trim().length == 0){
                             notes_loc = notes_loc.trim()
                         }
