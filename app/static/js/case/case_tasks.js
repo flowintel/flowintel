@@ -645,7 +645,7 @@ export default {
 			</template>
 
 			<template v-else-if="selected_tab == 'info'">
-				<tabInfo :task="task" :cases_info="cases_info" :open_closed="open_closed"></tabInfo>
+				<tabInfo :task="task"></tabInfo>
 			</template>
 		</div>
 	</div>
