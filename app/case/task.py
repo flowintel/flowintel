@@ -46,7 +46,8 @@ def check_user_private_case(case: Case, present_in_case: bool = None) -> bool:
 @editor_required
 def create_task(cid):
     """View of a case"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
         present_in_case = CommonModel.get_present_in_case(cid, current_user)
         if present_in_case or current_user.is_admin():
             form = TaskForm()
@@ -66,8 +67,8 @@ def create_task(cid):
                     else:
                         flash("Error Task Created", "error")
                     return redirect(f"/case/{cid}")
-                return render_template("case/create_task.html", form=form, case_id=cid)
-            return render_template("case/create_task.html", form=form, case_id=cid)
+                return render_template("case/create_task.html", form=form, case_id=cid, case=case)
+            return render_template("case/create_task.html", form=form, case_id=cid, case=case)
         return redirect(f"/case/{cid}")
     return render_template("404.html")
 

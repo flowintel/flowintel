@@ -244,7 +244,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             case.nb_tasks = case.nb_tasks or 0
 
             status_id = 1
-            if case.privileged_case and current_user.is_queuer() and not current_user.is_admin() and not current_user.is_case_admin() and not current_user.is_queue_admin():
+            if case.privileged_case:
                 status_id = current_app.config['TASK_REQUESTED']
 
             task = Task(

@@ -143,21 +143,15 @@
             }
 
             function validate_recurring(event){
-                const select = document.getElementById("recurring")
-                if (!select.value){
+                const dateFieldByMode = {"1": "once", "3": "weekly", "4": "monthly"}
+                const dateFieldId = dateFieldByMode[document.getElementById("recurring").value]
+                if (!dateFieldId) return
+                const dateInput = document.getElementById(dateFieldId)
+                if (dateInput && !dateInput.value){
                     event.preventDefault()
-                    select.reportValidity()
-                    return
-                }
-                const dateInputId = {"1": "once", "3": "weekly", "4": "monthly"}[select.value]
-                if (dateInputId){
-                    const dateInput = document.getElementById(dateInputId)
-                    if (dateInput && !dateInput.value){
-                        event.preventDefault()
-                        dateInput.setCustomValidity("Please pick a date")
-                        dateInput.reportValidity()
-                        dateInput.addEventListener("input", () => dateInput.setCustomValidity(""), {once: true})
-                    }
+                    dateInput.setCustomValidity("Please pick a date")
+                    dateInput.reportValidity()
+                    dateInput.addEventListener("input", () => dateInput.setCustomValidity(""), {once: true})
                 }
             }
 
