@@ -1402,6 +1402,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def add_connector(self, cid, request_json, current_user) -> bool:
         for connector in request_json["connectors"]:
             instance = CommonModel.get_instance_by_name(connector["name"])
+            if Case_Connector_Instance.query.filter_by(case_id=cid, instance_id=instance.id).first():
+                continue
             if "identifier" in connector: loc_identfier = connector["identifier"]
             else: loc_identfier = ""
             c = Case_Connector_Instance(

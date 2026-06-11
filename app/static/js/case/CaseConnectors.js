@@ -52,6 +52,15 @@ export default {
             return !!present_in_case
         })
 
+        const attached_instance_ids = computed(() => {
+            const ids = new Set()
+            for (const i in props.case_task_connectors_list) {
+                const details = props.case_task_connectors_list[i].details
+                if (details && details.id != null) ids.add(details.id)
+            }
+            return ids
+        })
+
         function get_misp_search(instance_id) {
             if (!misp_search_state[instance_id]) {
                 misp_search_state[instance_id] = {
@@ -449,6 +458,28 @@ export default {
             display_toast(res)
         }
 
+        function bind_connectors_change() {
+            const $sel = $('#connectors_select_' + modal_identifier)
+            // Bind under our own namespace so select2('destroy') doesn't strip it.
+            $sel.off('change.cc')
+            $sel.on('change.cc', function () {
+                connectors_selected.value = []
+                const loc = $(this).select2('data').map(item => item.id)
+                for (const element in loc) {
+                    for (const connectors in props.all_connectors_list) {
+                        for (const connector in props.all_connectors_list[connectors]) {
+                            if (loc[element] == props.all_connectors_list[connectors][connector].id) {
+                                connectors_selected.value.push({
+                                    "id": props.all_connectors_list[connectors][connector].id,
+                                    "name": props.all_connectors_list[connectors][connector].name
+                                })
+                            }
+                        }
+                    }
+                }
+            })
+        }
+
         onMounted(() => {
             $('.select2-connect').select2({
                 theme: 'bootstrap-5',
@@ -461,6 +492,20 @@ export default {
             $('.select2-module-receive').select2({
                 theme: 'bootstrap-5',
                 dropdownParent: $("#modal-receive-from-" + modal_identifier)
+            })
+
+            // Rebuild select2 each time the modal opens so it picks up the
+            // <option> set produced by attached_instance_ids' v-if filter.
+            $('#modal-add-connectors-' + modal_identifier).on('show.bs.modal', () => {
+                const $sel = $('#connectors_select_' + modal_identifier)
+                if ($sel.data('select2')) $sel.select2('destroy')
+                connectors_selected.value = []
+                $sel.val(null)
+                $sel.select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#modal-add-connectors-' + modal_identifier)
+                })
+                bind_connectors_change()
             })
 
             $("#modules_select_" + modal_identifier).on('change.select2', function (e) {
@@ -497,22 +542,7 @@ export default {
                 selected_send_module_name.value = loc[0] || ''
             })
 
-            $('#connectors_select_' + modal_identifier).on('change.select2', function (e) {
-                connectors_selected.value = []
-                let loc = $(this).select2('data').map(item => item.id)
-                for (let element in loc) {
-                    for (let connectors in props.all_connectors_list) {
-                        for (let connector in props.all_connectors_list[connectors]) {
-                            if (loc[element] == props.all_connectors_list[connectors][connector].id) {
-                                connectors_selected.value.push({
-                                    "id": props.all_connectors_list[connectors][connector].id,
-                                    "name": props.all_connectors_list[connectors][connector].name
-                                })
-                            }
-                        }
-                    }
-                }
-            })
+            bind_connectors_change()
 
         })
 
@@ -536,6 +566,7 @@ export default {
             expanded_log_row,
             sync_logs_map,
             can_edit_object,
+            attached_instance_ids,
 
             save_connector,
             remove_connector,
@@ -809,7 +840,9 @@ export default {
                                 <template v-if="all_connectors_list">
                                     <template v-for="(instances, connector) in all_connectors_list">
                                         <optgroup :label="[[connector]]">
-                                            <option :value="[[instance.id]]" v-for="instance in instances">[[instance.name]]</option>
+                                            <template v-for="instance in instances">
+                                                <option :value="[[instance.id]]" v-if="!attached_instance_ids.has(instance.id)">[[instance.name]]</option>
+                                            </template>
                                         </optgroup>
                                     </template>
                                 </template>

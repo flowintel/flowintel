@@ -1138,6 +1138,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             instance = CommonModel.get_instance_by_name(connector["name"])
             if not instance:
                 return False
+            if Task_Connector_Instance.query.filter_by(task_id=tid, instance_id=instance.id).first():
+                continue
             loc_identfier = connector.get("identifier", "")
             c = Task_Connector_Instance(
                 task_id=tid,
