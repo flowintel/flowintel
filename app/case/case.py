@@ -220,13 +220,20 @@ def recurring(cid):
                 if not CaseModel.change_recurring(form_dict, cid, current_user):
                     flash("Recurring empty", "error")
                     return redirect(f"/case/{cid}/recurring")
-                if not form_dict["remove"]:
+                if form_dict["remove"]:
+                    flowintel_log("audit", 200, "Recurring removed for case", User=current_user.email, CaseId=cid)
+                    flash("Recurring removed", "success")
+                else:
                     CaseModel.notify_user_recurring(request.form.to_dict(), cid, orgs_in_case)
-                flowintel_log("audit", 200, "Recurring set for case", User=current_user.email, CaseId=cid, Recurring=str(form_dict))
-                flash("Recurring set", "success")
+                    flowintel_log("audit", 200, "Recurring set for case", User=current_user.email, CaseId=cid, Recurring=str(form_dict))
+                    flash("Recurring set", "success")
                 return redirect(f"/case/{cid}")
-            
-            return render_template("case/case_recurring.html", form=form, orgs=orgs_to_return)
+
+            recurring_modes = {"once": 1, "daily": 2, "weekly": 3, "monthly": 4}
+            current_mode = recurring_modes.get(case.recurring_type)
+            current_date = case.recurring_date.strftime("%Y-%m-%d") if case.recurring_date else None
+
+            return render_template("case/case_recurring.html", form=form, orgs=orgs_to_return, case=case, current_mode=current_mode, current_date=current_date)
         
         flash("Action not allowed", "warning")
         return redirect(f"/case/{cid}")
