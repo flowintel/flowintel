@@ -814,6 +814,7 @@ export default {
                                     </template>
                                 </template>
                             </select>
+                            <small class="form-text text-muted">At least one connector must be selected.</small>
                         </div>
                         <div class="row" v-if="connectors_selected">
                             <div class="mb-3 w-25" v-for="instance in connectors_selected" >
@@ -824,7 +825,7 @@ export default {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" @click="save_connector()">
+                        <button type="button" class="btn btn-primary" @click="save_connector()" :disabled="!connectors_selected.length">
                             Save
                         </button>
                     </div>
