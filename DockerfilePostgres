@@ -67,6 +67,7 @@ USER root
 COPY . /home/flowintel/app
 
 # Replace secret and update config
+RUN mkdir -p /home/flowintel/app
 # COPY conf/config.py.default conf/config.py
 # COPY template.env .env
 

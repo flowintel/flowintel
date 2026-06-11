@@ -31,6 +31,7 @@ services:
     command: bash -i ./launch.sh -ld
     ports:
       - '${APP_PORT:-7006}:7006'
+    #
     environment:
       - SECRET_KEY=${FLOWINTEL_SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
       #
@@ -50,14 +51,17 @@ services:
       - BOT_MAIL=${FLOWINTEL_BOT_MAIL:-neo@admin.admin}
       #
       - FLASKENV=${FLASKENV:-production}
+    #
     networks:
       - net
     depends_on:
       - postgresql
       - valkey
-
     volumes:
       - flowintel-data:/var/lib/flowintel
+      - ./conf/config.py:/app/conf/config.py:ro
+      - ./conf/config_module.py:/app/conf/config_module.py:ro
+      - .env:/app/.env
 
 volumes:
   db:

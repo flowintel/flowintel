@@ -1,3 +1,5 @@
 Dockerfile**
 **/node_modules
 modules**
+conf/**
+.env**

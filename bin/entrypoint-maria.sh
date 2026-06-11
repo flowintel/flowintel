@@ -9,7 +9,7 @@ echo "Checking if MariaDB server is up..."
 
 sleep 2
 
-echo "MariaDB is reachable. Checking for database '$DB_NAME'..."
+echo "MariaDB is reachable."
 
 # We make the following distinction error codes:
 # 0 = connected, query ran, no matching admin row.
@@ -18,12 +18,23 @@ echo "MariaDB is reachable. Checking for database '$DB_NAME'..."
 # 3 = SQL/schema problem.
 # 4 = something else.
 DB_EXISTS=$(python3 - << 'EOF'
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=".env")
+
 import os, sys, pymysql
-host = os.getenv("DB_HOST")
-user = os.getenv("DB_USER")
-password = os.getenv("DB_PASSWORD")
-database = os.getenv("DB_NAME")
-port = int(os.getenv("DB_PORT"))
+
+from conf.config import config as Config
+
+config_name = os.environ.get("FLASKENV", "development")
+print(f"Loading app config {config_name}...", file=sys.stderr)
+
+host = Config[config_name].db_host
+user = Config[config_name].db_user
+password = Config[config_name].db_password
+database = Config[config_name].db_name
+port = int(Config[config_name].db_port)
+
+print(f"Checking for database {database}...", file=sys.stderr)
 
 conn = None
 cur = None

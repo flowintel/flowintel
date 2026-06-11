@@ -110,6 +110,13 @@ rebuild = 1
 
 # Init
 ########################################################################################
+first_install: configure_repo_dev
+	echo
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	read wait_for_me;
+	uv venv --allow-existing;
+	uv pip install -r requirements.txt
+
 configure_repo_dev:
 	# In this project, the .env file is automatically run by the application
 	# so we simply rely on switching postgres and mariadb environments at startup by
@@ -125,11 +132,6 @@ configure_repo_dev:
 	echo -e "${BLUE}${BOLD}Please edit the files .env.postgres and .env.mariadb and conf/config.py before proceeding.${RESET}"
 	# TODO add the install deps with uv recipes -> Development lifecycle
 	echo -e "${BLUE}${BOLD}Do not forget to run the database_init recipe at first install, aftert the docker-compose spawned.${RESET}"
-	echo
-	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	read wait_for_me;
-	uv venv;
-	uv pip install -r requirements.txt
 
 restore_requirements:
 	echo "Restoring requirements files"
@@ -276,6 +278,7 @@ run_maria: configure_repo_dev dev_localinfra_maria_run
 	docker compose -f docker-compose-localinfra-maria.yml down
 
 runfull: configure_repo_dev build_latest_local
+	cp -f .env.full.postgres .env.docker
 	cp -f .env.full.postgres .env
 	docker compose -f docker-compose-localfull-pg.yml up
 	echo "Press Enter to close..."
@@ -285,6 +288,7 @@ runfull: configure_repo_dev build_latest_local
 	docker compose -f docker-compose-localfull-pg.yml down
 
 runfull_maria: configure_repo_dev build_maria_latest_local
+	cp -f .env.full.mariadb .env.docker
 	cp -f .env.full.mariadb .env
 	docker compose -f docker-compose-localfull-maria.yml up
 	echo "Press Enter to close..."
@@ -299,6 +303,7 @@ build_latest_local: nuke
 ifeq ($(rebuild),1)
 	@echo "Image Rebuild rebuild requested"
 	docker build -f DockerfilePostgres -t flowintel:latest .
+	@echo "Image built"
 else
 	@echo "Image Rebuild skipped"
 endif
@@ -315,6 +320,7 @@ ifeq ($(rebuild),1)
 	sed -i '/^psycopg2/d' requirements.in; \
 	echo 'PyMySQL' >> requirements.in; \
 	docker build -f DockerfileMaria -t flowintel_maria:latest .
+	@echo "Image built"
 else
 	@echo "Image Rebuild skipped"
 endif
