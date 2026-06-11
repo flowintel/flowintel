@@ -337,8 +337,17 @@ export default {
 			return false
 		})
 
+		const can_reorder = computed(() => {
+			if (!props.cases_info) return false
+			const permission = props.cases_info.permission
+			if (permission && permission.read_only) return false
+			if (permission && permission.admin) return true
+			return !!props.cases_info.present_in_case
+		})
+
 		return {
 			can_use_connectors,
+			can_reorder,
 			getTextColor,
 			mapIcon,
 			module_loader,
@@ -364,7 +373,10 @@ export default {
 		}
 	},
 	template: `
-	<div style="display: flex;">                          
+	<div style="display: flex;">
+		<div v-if="!task.completed && can_reorder" class="task-drag-handle" title="Drag to reorder">
+			<i class="fa-solid fa-grip-vertical"></i>
+		</div>
 		<a href="javascript:void(0)" 
 			class="list-group-item list-group-item-action case-index-list"
 			style="border-top-left-radius: 15px; border-top-right-radius: 15px;"

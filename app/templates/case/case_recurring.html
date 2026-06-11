@@ -11,14 +11,10 @@
         {{ form.hidden_tag() }}
         <div class="modal-body">
             <div class="mb-3 w-50 alert {% if case.recurring_type %}alert-info{% else %}alert-secondary{% endif %}" role="alert">
-                <strong>Current setting:</strong>
                 {% if case.recurring_type %}
-                    {{ case.recurring_type|capitalize }}
-                    {% if current_date %}
-                        next occurrence on <strong>{{ current_date }}</strong>
-                    {% endif %}
+                    <strong>Current setting:</strong> {{ case.recurring_type|capitalize }}{% if current_date %}, next occurrence on <strong>{{ current_date }}</strong>{% endif %}
                 {% else %}
-                     &nbsp;<em>This case is not recurring.</em>
+                    This case is not recurring.
                 {% endif %}
             </div>
 
