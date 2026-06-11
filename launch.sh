@@ -182,7 +182,7 @@ function reload_db {
 
 function launch_docker {
     mkdir -p logs
-    export FLASKENV="${FLASKENV:production}"
+    export FLASKENV="${FLASKENV:-production}"
     export HISTORY_DIR=$history_dir/history
 
     # Start screen sessions with logs
@@ -199,9 +199,9 @@ function launch_docker {
 }
 
 function init_db_docker {
-    # Run Python unbuffered so we see progress when run the app.py inits
+    # Run Python unbuffered so we see progress when the app.py inits
     mkdir -p logs
-    export FLASKENV="${FLASKENV:production}"
+    export FLASKENV="${FLASKENV:-production}"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
