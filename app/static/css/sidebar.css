@@ -330,11 +330,21 @@ footer.sticky-footer .copyright {
   background-size: cover;
 }
 .custom-sidebar-header {
-  background-color: #fff;
-  padding: 3px 30px;
+  /* background-color: #fff;
+  padding: 3px 25px;
   border-radius: 30px;
+  margin-top: 3px; */
+
+  filter: brightness(1.2); 
+  margin-top: 3px;
+}
+
+.custom-sidebar-header img {
+  height: 70px;
 }
 .sidebar.toggled .custom-sidebar-header {
-  padding: 3px 20px;
-  margin-left: 15px;
+  padding: 3px 10px;
+}
+.sidebar.toggled .custom-sidebar-header img {
+  height: 60px;
 }
