@@ -73,7 +73,22 @@ export default {
 
             const options = {
                 isDirected: true,
-                UI: { mode: 'full' }
+                UI: { mode: 'full' },
+                callbacks: {
+                    onNodeSelect: (node) => {
+                        const ev = graph_events.value.find(e => String(e.id) === String(node.id))
+                        if (ev) selected_node.value = ev
+                    },
+                    onNodeBlur: () => { selected_node.value = null },
+                    onEdgeSelect: (edge) => {
+                        const lk = graph_links.value.find(l => String(l.id) === String(edge.id))
+                        if (lk) {
+                            selected_edge.value = lk
+                            edit_link_label.value = lk.label || ''
+                        }
+                    },
+                    onEdgeBlur: () => { selected_edge.value = null }
+                }
             }
 
             graph = new Pivotick(container, data, options)
