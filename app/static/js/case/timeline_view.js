@@ -124,9 +124,31 @@ export default {
             }
         }
 
+        // Mirrors the formats accepted by CaseCore.parse_date(). Kept loose on
+        // purpose: the server is the source of truth, this just gives the user
+        // immediate feedback before the round-trip.
+        function is_valid_date_text(text) {
+            const t = (text || '').trim()
+            if (!t) return false
+            const patterns = [
+                /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?$/,
+                /^\d{4}\/\d{2}\/\d{2}( \d{2}:\d{2}(:\d{2})?)?$/,
+                /^\d{2}[\/-]\d{2}[\/-]\d{4}( \d{2}:\d{2}(:\d{2})?)?$/,
+                /^[A-Za-z]{3,9} \d{1,2},? \d{4}( \d{2}:\d{2}(:\d{2})?)?$/
+            ]
+            if (!patterns.some(re => re.test(t))) return false
+            // Final sanity check via the platform parser.
+            const d = new Date(t.replace(' ', 'T'))
+            return !isNaN(d.getTime())
+        }
+
         async function add_event() {
             if (!new_date_text.value.trim()) {
                 create_message('Date/time is required', 'warning-subtle')
+                return
+            }
+            if (!is_valid_date_text(new_date_text.value)) {
+                create_message('Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15 2024.', 'danger-subtle')
                 return
             }
             if (!new_description.value.trim()) {
@@ -165,6 +187,10 @@ export default {
         async function save_edit(ev_id) {
             if (!edit_date_text.value.trim() || !edit_description.value.trim()) {
                 create_message('Date and description are required', 'warning-subtle')
+                return
+            }
+            if (!is_valid_date_text(edit_date_text.value)) {
+                create_message('Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15 2024.', 'danger-subtle')
                 return
             }
             const res = await fetch('/case/' + props.case_id + '/edit_timeline_event/' + ev_id, {
@@ -289,9 +315,9 @@ export default {
                 <h6 class="card-title mb-3">New timeline event</h6>
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label class="form-label">Date / Time</label>
+                        <label class="form-label">Date / Time <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                         <input type="text" class="form-control form-control-sm" v-model="new_date_text"
-                               placeholder="e.g. 2024-03-15 14:30, Mar 15 2024, 15/03/2024...">
+                               placeholder="e.g. 2024-03-15 14:30, Mar 15 2024, 15/03/2024..." required>
                         <div class="form-text">Any common date format is accepted</div>
                     </div>
                     <div class="col-md-8">

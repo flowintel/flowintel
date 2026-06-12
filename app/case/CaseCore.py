@@ -2017,7 +2017,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def create_timeline_event(self, cid, date_text, description, misp_object_id, current_user):
         """Create a new timeline event"""
-        date_parsed = self._parse_date(date_text)
+        date_parsed = self.parse_date(date_text)
         event = Case_Timeline_Event(
             case_id=cid,
             date_text=date_text,
@@ -2040,7 +2040,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if not event:
             return None
         event.date_text = date_text
-        event.date_parsed = self._parse_date(date_text)
+        event.date_parsed = self.parse_date(date_text)
         event.description = description
         db.session.commit()
 
@@ -2062,8 +2062,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.update_last_modif(cid)
         return True
 
-    def _parse_date(self, date_text):
-        """Try to parse a date string in various formats"""
+    def parse_date(self, date_text):
+        """Try to parse a date string in various formats.
+
+        Returns a `datetime.datetime` on success or `None` when the input is
+        empty or does not match any supported format. Callers that need to
+        reject invalid input should treat `None` as a validation error.
+        """
+        if not date_text or not date_text.strip():
+            return None
         formats = [
             '%Y-%m-%d %H:%M:%S',
             '%Y-%m-%d %H:%M',
