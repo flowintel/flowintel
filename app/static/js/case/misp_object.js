@@ -1,6 +1,6 @@
 import {display_toast, create_message} from '../toaster.js'
 import MispObjectLink from './MispObjectLink.js'
-const { ref, computed, onMounted, watch, nextTick } = Vue
+const { ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue
 export default {
     delimiters: ['[[', ']]'],
     components: { 'misp-object-link': MispObjectLink },
@@ -146,21 +146,41 @@ export default {
 
         async function saveAssignTasks(misp_object_id){
             const sel = assign_task_state.value[misp_object_id] || []
+            if (!sel.length) {
+                create_message("Select at least one task", "warning-subtle")
+                return
+            }
             const res = await fetch(`/case/${props.case_id}/misp_object/${misp_object_id}/set_tasks`, {
                 method: 'POST',
                 headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                 body: JSON.stringify({ task_ids: sel })
             })
             if (await res.status == 200) {
-                // Update local object tasks using props.cases_info.tasks titles
-                const objIdx = case_misp_objects.value.findIndex(o => o.object_id === misp_object_id)
-                if (objIdx > -1) {
-                    const tasksMap = {}
-                    if (props.cases_info && props.cases_info.tasks) {
-                        for (const t of props.cases_info.tasks) tasksMap[t.id] = t
+                // Refresh the case objects list so the per-object task badges update.
+                await fetch_case_misp_object()
+
+                // Also refresh `misp_object_links` on every affected task so the
+                // task header badge ("MISP Objects (N)") and the task's MISP-objects
+                // tab reflect the new assignment immediately, without a page reload.
+                if (props.cases_info && Array.isArray(props.cases_info.tasks)) {
+                    const new_ids = new Set(sel.map(Number))
+                    const affected = new Set(new_ids)
+                    for (const t of props.cases_info.tasks) {
+                        const links = t.misp_object_links || []
+                        if (links.some(l => l.misp_object_id === misp_object_id)) {
+                            affected.add(t.id)
+                        }
                     }
-                    case_misp_objects.value[objIdx].tasks = sel.map(id => ({ id: id, title: tasksMap[id] ? tasksMap[id].title : `Task ${id}` }))
+                    await Promise.all([...affected].map(async tid => {
+                        const r = await fetch(`/case/${props.case_id}/task/${tid}/get_misp_object_links`)
+                        if (r.status === 200) {
+                            const data = await r.json()
+                            const task = props.cases_info.tasks.find(t => t.id === tid)
+                            if (task) task.misp_object_links = data.misp_object_links || []
+                        }
+                    }))
                 }
+
                 assigningTasks.value = null
                 emit('modif_misp_objects', true)
             }
@@ -287,7 +307,24 @@ export default {
         }
 
         function copyUuidToClipboard() {
-            navigator.clipboard.writeText(activeTemplate.value.uuid);
+            const text = activeTemplate.value && activeTemplate.value.uuid
+            if (!text) return
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(() => fallback_copy(text))
+            } else {
+                fallback_copy(text)
+            }
+        }
+
+        function fallback_copy(text) {
+            const ta = document.createElement('textarea')
+            ta.value = text
+            ta.style.position = 'fixed'
+            ta.style.opacity = '0'
+            document.body.appendChild(ta)
+            ta.select()
+            try { document.execCommand('copy') } catch (e) {}
+            document.body.removeChild(ta)
         }
 
         async function delete_object(object_id){
@@ -567,9 +604,18 @@ export default {
         }
         
 
+        // Refresh case-side data (task badges per MISP object) when a task
+        // independently links/unlinks one of its MISP objects via the task UI.
+        const onTaskMispLinkChanged = () => { fetch_case_misp_object() }
+
 		onMounted(() => {
             fetch_case_misp_object()
             fetch_misp_object()
+            window.addEventListener('task-misp-link-changed', onTaskMispLinkChanged)
+        })
+
+        onUnmounted(() => {
+            window.removeEventListener('task-misp-link-changed', onTaskMispLinkChanged)
         })
 
 		return {
@@ -806,7 +852,7 @@ export default {
                                 <template v-if="editingObjectAttrId !== attr.id">
                                     <td>[[attr.object_relation]]</td>
                                     <td>[[attr.type]]</td>
-                                    <td>[[attr.value]]</td>
+                                    <td :title="attr.value">[[ attr.value && attr.value.length > 256 ? attr.value.slice(0, 256) + '…' : attr.value ]]</td>
                                     <td>[[attr.first_seen || '-']]</td>
                                     <td>[[attr.last_seen || '-']]</td>
                                     <td>[[attr.ids_flag]]</td>
@@ -833,7 +879,7 @@ export default {
                                             </div>
                                             <div class="col-md-3">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value <span class="text-danger">*</span></label>
-                                                <input v-model="editObjectAttrState.value" class="form-control form-control-sm" type="text" style="font-size: 0.875rem;">
+                                                <textarea v-model="editObjectAttrState.value" class="form-control form-control-sm" rows="2" style="font-size: 0.875rem; resize: vertical;"></textarea>
                                             </div>
                                             <div class="col-md-2">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
@@ -960,7 +1006,10 @@ export default {
                                     <label class="form-check-label" :for="'assign-'+misp_object.object_id+'-'+task.id">[[ task.title ]]</label>
                                 </div>
                                 <div class="mt-2">
-                                    <button class="btn btn-primary btn-sm" @click="saveAssignTasks(misp_object.object_id)">Save</button>
+                                    <button class="btn btn-primary btn-sm"
+                                            :disabled="!(assign_task_state[misp_object.object_id] && assign_task_state[misp_object.object_id].length)"
+                                            :title="!(assign_task_state[misp_object.object_id] && assign_task_state[misp_object.object_id].length) ? 'Select at least one task' : ''"
+                                            @click="saveAssignTasks(misp_object.object_id)">Save</button>
                                     <button class="btn btn-secondary btn-sm ms-2" @click="assigningTasks = null">Cancel</button>
                                 </div>
                             </div>
@@ -985,7 +1034,7 @@ export default {
                                     <tr v-for="attribute, key_attr in misp_object.attributes ">
                                         <!-- Display mode -->
                                         <template v-if="editingAttrId !== attribute.id">
-                                            <td>[[attribute.value]]</td>
+                                            <td :title="attribute.value">[[ attribute.value && attribute.value.length > 256 ? attribute.value.slice(0, 256) + '…' : attribute.value ]]</td>
                                             <td>[[attribute.object_relation]]</td>
                                             <td>[[attribute.type]]</td>
                                             <td v-show="!compactView">
@@ -1050,7 +1099,7 @@ export default {
                                             <td :colspan="compactView ? 4 : 9" style="padding: 1rem;">
                                                 <div class="mb-3">
                                                     <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
-                                                    <input v-model="editState.value" class="form-control form-control-sm" type="text" style="font-size: 0.875rem;">
+                                                    <textarea v-model="editState.value" class="form-control form-control-sm" rows="2" style="font-size: 0.875rem; resize: vertical;"></textarea>
                                                 </div>
                                                 <div class="row g-2 mb-3">
                                                     <div class="col-md-4">

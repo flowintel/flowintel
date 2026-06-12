@@ -79,7 +79,24 @@ export default {
         }
 
         function copyUuidToClipboard() {
-            navigator.clipboard.writeText(activeTemplate.value.uuid);
+            const text = activeTemplate.value && activeTemplate.value.uuid
+            if (!text) return
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(() => fallback_copy(text))
+            } else {
+                fallback_copy(text)
+            }
+        }
+
+        function fallback_copy(text) {
+            const ta = document.createElement('textarea')
+            ta.value = text
+            ta.style.position = 'fixed'
+            ta.style.opacity = '0'
+            document.body.appendChild(ta)
+            ta.select()
+            try { document.execCommand('copy') } catch (e) {}
+            document.body.removeChild(ta)
         }
 
         function delete_object(object_id){

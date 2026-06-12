@@ -1,12 +1,13 @@
 import json
 import logging
 import os
+import time
 from pathlib import Path
 from pymisp import MISPAttribute, MISPEvent, MISPGalaxy, MISPGalaxyCluster, MISPObject, MISPObjectReference, PyMISP
 import uuid
 from flask import current_app
 import conf.config_module as Config
-from .misp_object_event import all_object_to_misp, manage_object_creation
+from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports
 from app.case.CaseCore import FILE_FOLDER
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,21 @@ module_config = {
     "case_task": "case",
     "description": "Create or modify an event using the current case. The event will include:\n\t- case's info as misp-object\n\t- tasks' info as misp-object\n\t- tasks' subtasks as text attributes\n\t- tasks' external references as link attributes\n\t- case and tasks notes as event report\n\t- file attachments (when MISP_EXPORT_FILES is enabled)"
 }
+
+def bump_event_timestamp(event):
+    """Set the event timestamp to the current epoch second.
+
+    MISP rejects edits when the ``timestamp`` field of the request is not strictly
+    greater than the value stored on the server (HTTP 403, "Event in the request
+    not newer than the local copy"). PyMISP does bump the timestamp when an
+    attribute is modified in-place, but updates that only add/remove objects,
+    add/remove tags or update event reports do not trigger that bump. Forcing
+    the timestamp to ``now`` before every ``update_event`` ensures the edit is
+    accepted even when no scalar attribute was changed.
+    """
+    event.timestamp = int(time.time())
+    return event
+
 
 def common_edit(case_task, attribute):
     if attribute.object_relation == 'title' and not attribute.value == case_task["title"]:
@@ -548,6 +564,7 @@ def handler(instance, case, user, case_model=None, db_session=None):
                                 }   
                                 misp.add_event_report(event.get("id"), event_report)
                 
+                event = bump_event_timestamp(event)
                 event = misp.update_event(event, pythonify=True)
                 if "errors" in event:
                     return {"message": event.get("errors", "Error updating event")}
@@ -579,6 +596,7 @@ def handler(instance, case, user, case_model=None, db_session=None):
                         misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
                         event.add_object(misp_object)
 
+                event = bump_event_timestamp(event)
                 event = misp.update_event(event, pythonify=True)
                 if "errors" in event:
                     return {"message": event.get("errors", "Error updating event")}
@@ -672,6 +690,12 @@ def handler(instance, case, user, case_model=None, db_session=None):
     
     if "errors" in event:
         return {"message": event.get("errors", "Error with MISP event")}
+
+    # Mirror any 'report'-template objects from the case as MISP EventReports on the event.
+    try:
+        _sync_report_event_reports(misp, event, case.get("objects", []) or [])
+    except Exception as exc:
+        logger.warning("Could not mirror report objects as MISP event reports: %s", exc)
 
     local_tags = current_app.config.get("MISP_ADD_LOCAL_TAGS_ALL_EVENTS", "")
     if local_tags:

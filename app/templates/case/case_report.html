@@ -109,6 +109,9 @@
                 <button class="btn btn-outline-secondary btn-sm" id="btn-attach-pdf" disabled title="Attach report as PDF to this case">
                     <i class="fa-solid fa-paperclip me-1"></i>Attach to case as PDF
                 </button>
+                <button class="btn btn-outline-secondary btn-sm" id="btn-create-misp-object" disabled title="Attach this report to the case as a MISP 'report' object">
+                    <i class="fa-solid fa-cube me-1"></i>Create MISP object report
+                </button>
                 <button class="btn btn-outline-secondary btn-sm" id="btn-toggle-raw">
                     <i class="fa-solid fa-code me-1"></i>Show raw Markdown
                 </button>
@@ -120,6 +123,7 @@
                 </button>
             </div>
         </div>
+        <div id="report-action-status" class="alert py-2 px-3 mb-2 d-none" role="status"></div>
 
         <!-- GPG signature banner -->
         <div id="sig-banner" class="d-none mb-2">
@@ -183,6 +187,26 @@
     });
     update_generate_button_state();
 
+    function show_action_status(message, kind) {
+        // kind: 'info' | 'success' | 'danger'
+        const banner = document.getElementById("report-action-status");
+        if (!banner) return;
+        const cls_map = {
+            info:    "alert-info",
+            success: "alert-success",
+            danger:  "alert-danger",
+        };
+        banner.className = `alert py-2 px-3 mb-2 ${cls_map[kind] || "alert-info"}`;
+        banner.textContent = message;
+    }
+
+    function clear_action_status() {
+        const banner = document.getElementById("report-action-status");
+        if (!banner) return;
+        banner.className = "alert py-2 px-3 mb-2 d-none";
+        banner.textContent = "";
+    }
+
     document.getElementById("btn-generate").addEventListener("click", async function () {
         const options = {
             include_metadata:    document.getElementById("opt-metadata").checked,
@@ -207,6 +231,7 @@
         this.disabled = true;
         document.getElementById("generate-spinner").classList.remove("d-none");
         document.getElementById("report-output").classList.add("d-none");
+        clear_action_status();
 
         try {
             const res = await fetch(`/case/${CASE_ID}/report/generate`, {
@@ -229,6 +254,7 @@
             showingRaw = false;
             document.getElementById("btn-download-pdf").removeAttribute("disabled");
             document.getElementById("btn-attach-pdf").removeAttribute("disabled");
+            document.getElementById("btn-create-misp-object").removeAttribute("disabled");
 
             // Signature banner
             const sigBanner = document.getElementById('sig-banner');
@@ -292,10 +318,11 @@
     document.getElementById("btn-copy").addEventListener("click", function () {
         const text = rawMarkdown
         if (!text) return
-        navigator.clipboard.writeText(text).then(() => {
+        const set_copied = () => {
             this.innerHTML = '<i class="fa-solid fa-check me-1"></i>Copied';
             setTimeout(() => { this.innerHTML = '<i class="fa-solid fa-copy me-1"></i>Copy'; }, 2000);
-        }).catch(() => {
+        };
+        const fallback = () => {
             // fallback for non-HTTPS contexts
             const ta = document.createElement('textarea')
             ta.value = text
@@ -305,9 +332,67 @@
             ta.select()
             document.execCommand('copy')
             document.body.removeChild(ta)
-            this.innerHTML = '<i class="fa-solid fa-check me-1"></i>Copied';
-            setTimeout(() => { this.innerHTML = '<i class="fa-solid fa-copy me-1"></i>Copy'; }, 2000);
-        });
+            set_copied();
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(set_copied).catch(fallback);
+        } else {
+            fallback();
+        }
+    });
+
+    document.getElementById("btn-create-misp-object").addEventListener("click", async function () {
+        if (!rawMarkdown) return;
+        const btn = this;
+        const original_html = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Creating…';
+        show_action_status("Creating MISP object and attaching it to the case…", "info");
+
+        const case_link = `${window.location.origin}/case/${CASE_ID}`;
+        const case_title = {{ case.title | tojson }};
+
+        const payload = {
+            "object-template": {
+                "uuid": "70a68471-df22-4e3f-aa1a-5a3be19f82df",
+                "name": "report"
+            },
+            "attributes": [
+                { "object_relation": "case-number", "type": "text", "value": String(CASE_ID) },
+                { "object_relation": "link",        "type": "link", "value": case_link },
+                { "object_relation": "summary",     "type": "text", "value": rawMarkdown },
+                { "object_relation": "title",       "type": "text", "value": case_title },
+                { "object_relation": "type",        "type": "text", "value": "Case" }
+            ]
+        };
+
+        try {
+            const res = await fetch(`/case/${CASE_ID}/create_misp_object`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": $("#csrf_token").val()
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                const msg = data.message || "MISP object created and attached to the case.";
+                message_list.value.push({ message: msg, toast_class: data.toast_class || "success-subtle" });
+                show_action_status(msg, "success");
+            } else {
+                const msg = data.message || "Failed to create MISP object.";
+                message_list.value.push({ message: msg, toast_class: data.toast_class || "danger-subtle" });
+                show_action_status(msg, "danger");
+            }
+        } catch (e) {
+            const msg = "An error occurred while creating the MISP object.";
+            message_list.value.push({ message: msg, toast_class: "danger-subtle" });
+            show_action_status(msg, "danger");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original_html;
+        }
     });
 
     document.getElementById("btn-download-pdf").addEventListener("click", function () {
@@ -367,6 +452,7 @@
 
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Generating PDF…';
+        show_action_status("Generating PDF and attaching it to the case…", "info");
 
         try {
             const pdfBlob = await html2pdf().set(opt).from(el).output('blob');
@@ -389,10 +475,13 @@
             });
             const data = await res.json();
             message_list.value.push({ message: data.message, toast_class: data.toast_class || (res.ok ? 'success-subtle' : 'danger-subtle') });
+            show_action_status(data.message || (res.ok ? "Report attached to the case as PDF." : "Failed to attach the PDF to the case."), res.ok ? "success" : "danger");
         } catch (e) {
             el.style.maxHeight = prevMaxHeight;
             el.style.overflowY  = prevOverflow;
-            message_list.value.push({ message: 'An error occurred while generating or attaching the PDF.', toast_class: 'danger-subtle' });
+            const msg = 'An error occurred while generating or attaching the PDF.';
+            message_list.value.push({ message: msg, toast_class: 'danger-subtle' });
+            show_action_status(msg, "danger");
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-paperclip me-1"></i>Attach to case as PDF';

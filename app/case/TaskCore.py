@@ -1014,16 +1014,15 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     ######################
 
     def get_misp_object_links(self, task_id):
-        """Return all Case_Misp_Object records linked to a task."""
+        """Return all Task_Misp_Object link rows for a task.
+
+        Same shape as Task_Misp_Object.to_json() so the payload matches the
+        `misp_object_links` already embedded in Task.to_json() and consumed by
+        the task's MISP-objects tab (misp_object_name, misp_object_template_uuid,
+        misp_object_id, attributes_preview).
+        """
         links = Task_Misp_Object.query.filter_by(task_id=task_id).all()
-        result = []
-        for link in links:
-            obj = Case_Misp_Object.query.get(link.misp_object_id)
-            if obj:
-                d = obj.to_json()
-                d["link_id"] = link.id
-                result.append(d)
-        return result
+        return [link.to_json() for link in links]
 
     def link_misp_object(self, task_id, misp_object_id, current_user):
         """Link a MISP object to a task. Returns the link or None on error."""

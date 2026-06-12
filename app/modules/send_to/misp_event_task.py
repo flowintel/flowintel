@@ -1,4 +1,5 @@
 from pymisp import MISPEvent, MISPObject, PyMISP
+import time
 import uuid
 from flask import current_app
 import conf.config_module as Config
@@ -8,6 +9,11 @@ module_config = {
     "case_task": "task",
     "description": "Create or modify an event using the current task. The event will include:\n\t- task's info as misp-object\n\t- An event report with notes of the task\n\t- file attachments (when MISP_EXPORT_FILES is enabled)"
 }
+
+def bump_event_timestamp(event):
+    """Force the event timestamp to now so MISP accepts the edit (see misp_event.py)."""
+    event.timestamp = int(time.time())
+    return event
 
 def task_edit(task, attribute):
     if attribute.object_relation == 'title' and not attribute.value == task["title"]:
@@ -185,6 +191,7 @@ def handler(instance, case, task, user, case_model=None, db_session=None):
                         misp.add_event_report(event.get("id"), event_report)
 
             
+            event = bump_event_timestamp(event)
             event = misp.update_event(event, pythonify=True)
 
     ## Case have no id for this connector or the event doesn't exist anymore  

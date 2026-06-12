@@ -1120,6 +1120,18 @@
                         case_connectors_list.value = loc["case_connectors"]
                         // refresh module counts when connectors change
                         await fetch_module_counts()
+                        // refresh MISP-link badge in the header — modules such as misp_event
+                        // may have just attached the case to a MISP event
+                        await refresh_misp_link_status()
+                    }
+                }
+                async function refresh_misp_link_status(){
+                    if(!cases_info.value || !cases_info.value.case) return
+                    const res = await fetch("/case/{{case.id}}/get_case_info")
+                    if(res.status === 200){
+                        const loc = await res.json()
+                        cases_info.value.case.has_misp_event = loc.case.has_misp_event
+                        cases_info.value.case.misp_icon = loc.case.misp_icon
                     }
                 }
                 async function fetch_case_files(){
