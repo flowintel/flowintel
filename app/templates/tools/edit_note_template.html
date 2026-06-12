@@ -1,5 +1,14 @@
 {% extends 'base.html' %}
 
+{% block head %}
+<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
+<script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
+<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <div class="case-core-style" style="border-radius: 0;">
         <div class="row align-items-center">
@@ -12,18 +21,29 @@
 
     <div class="case-core-style">
         <div class="mb-3">
-            <label class="col-form-label">Title:</label>
-            <input v-model="title" class="form-control" placeholder="Title">
+            <label class="col-form-label">Title:<span class="text-danger ms-1">*</span></label>
+            <input v-model="title" class="form-control" placeholder="Title" required>
         </div>
-        
+
         <div class="mb-3">
             <label class="col-form-label">Description:</label>
             <textarea v-model="description" class="form-control" rows="3" placeholder="Description"></textarea>
         </div>
 
+        <div class="mb-3">
+            <label class="col-form-label">Content:<span class="text-danger ms-1">*</span></label>
+            <div style="display: flex;">
+                <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; width: 50%" id="editor"></div>
+                <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+            </div>
+        </div>
+
         <div class="d-flex gap-2" style="margin-top: 10px;">
             <a href="{{ url_for('tools.note_template_index') }}" class="btn btn-secondary">Cancel</a>
-            <button class="btn btn-primary" @click="submit_form()">Save</button>
+            <button class="btn btn-primary"
+                    :disabled="!can_submit"
+                    :title="can_submit ? 'Save' : 'Title and content are required'"
+                    @click="submit_form()">Save</button>
         </div>
     </div>
 {% endblock %}
@@ -32,21 +52,38 @@
 {% block script %}
 <script type="module">
     // @ts-nocheck
-    const { createApp, ref } = Vue
+    const { createApp, ref, computed, onMounted } = Vue
     import {message_list, display_toast} from '/static/js/toaster.js'
-    
+    const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
+
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            const title = ref("{{ note_template.title }}")
-            const description = ref("{{ note_template.description or '' }}")
+            const title = ref({{ note_template.title | tojson }})
+            const description = ref({{ (note_template.description or '') | tojson }})
             const note_id = {{ note_template.id }}
+            const initial_content = {{ (note_template.content or '') | tojson }}
+
+            let editor
+            const note_editor_render = ref(initial_content)
+
+            const md = window.markdownit()
+            md.use(mermaidMarkdown.default)
+
+            const can_submit = computed(() =>
+                title.value.trim() !== "" && note_editor_render.value.trim() !== ""
+            )
 
             async function submit_form() {
-                const res = await fetch('/tools/note_template/' + note_id + '/edit', {
-                    headers: { 
-                        "X-CSRFToken": $("#csrf_token").val(), 
-                        "Content-Type": "application/json" 
+                if(!can_submit.value){
+                    display_toast({message: 'Title and content are required', toast_class: 'warning-subtle'})
+                    return
+                }
+
+                const meta_res = await fetch('/tools/note_template/' + note_id + '/edit', {
+                    headers: {
+                        "X-CSRFToken": $("#csrf_token").val(),
+                        "Content-Type": "application/json"
                     },
                     method: "POST",
                     body: JSON.stringify({
@@ -55,17 +92,60 @@
                     })
                 })
 
-                if (res.status == 200) {
-                    window.location.href = '/tools/note_template_index'
-                } else {
-                    display_toast(res)
+                if (meta_res.status != 200) {
+                    display_toast(meta_res)
+                    return
                 }
+
+                const content_changed = note_editor_render.value !== initial_content
+                if (content_changed) {
+                    const content_res = await fetch('/tools/note_template/' + note_id + '/edit_content', {
+                        headers: {
+                            "X-CSRFToken": $("#csrf_token").val(),
+                            "Content-Type": "application/json"
+                        },
+                        method: "POST",
+                        body: JSON.stringify({"content": note_editor_render.value})
+                    })
+                    if (content_res.status != 200) {
+                        display_toast(content_res)
+                        return
+                    }
+                }
+
+                window.location.href = '/tools/note_template_index'
             }
+
+            onMounted(() => {
+                const targetElement = document.getElementById('editor')
+                if (targetElement && targetElement.innerHTML === "") {
+                    editor = new EditorView({
+                        doc: initial_content,
+                        extensions: [basicSetup, languages.markdown(),
+                            ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []),
+                            EditorView.lineWrapping,
+                            EditorView.theme({
+                                '&': { height: '220px' },
+                                '.cm-scroller': { overflow: 'auto' }
+                            }),
+                            EditorView.updateListener.of((v) => {
+                                if (v.docChanged) {
+                                    note_editor_render.value = editor.state.doc.toString()
+                                }
+                            })],
+                        parent: targetElement
+                    })
+                }
+                md.mermaid.init()
+            })
 
             return {
                 message_list,
+                md,
                 title,
                 description,
+                note_editor_render,
+                can_submit,
                 submit_form
             }
         }

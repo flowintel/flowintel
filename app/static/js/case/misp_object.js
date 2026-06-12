@@ -86,8 +86,7 @@ export default {
             return false
         })
 
-        // Validation helpers — drive `:disabled` on Save/Add buttons so the
-        // user gets visual feedback before submitting (rather than a toast).
+        // Disable Save/Add buttons until required fields are filled in.
         const can_add_new_object_attr = computed(() =>
             !!(newObjectAttrState.value.value && newObjectAttrState.value.relation_type_combo))
         const can_save_edit_object_attr = computed(() =>
@@ -329,7 +328,7 @@ export default {
             }
 
             if (!misp_object || !attribute_to_delete) {
-                display_toast({status: 400, json: async () => ({message: "Attribute not found", toast_class: "danger-subtle"})})
+                display_toast({message: "Attribute not found", toast_class: "danger-subtle"})
                 return
             }
 
