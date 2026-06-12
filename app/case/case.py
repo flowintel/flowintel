@@ -2146,6 +2146,16 @@ def case_report_generate(cid):
         return f'<span class="cluster">{label}</span>'
 
     opts = request.json or {}
+
+    report_section_keys = (
+        "include_metadata", "include_title", "include_description",
+        "include_tasks", "include_files", "include_notes",
+        "include_tags", "include_objects", "include_taxonomies",
+        "include_audit", "include_timeline",
+    )
+    if not any(opts.get(k) for k in report_section_keys):
+        return {"message": "Select at least one section to include in the report."}, 400
+
     tasks = case.tasks.all()
 
     try:

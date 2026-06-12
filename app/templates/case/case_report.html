@@ -85,13 +85,16 @@
             </div>
 
             <div class="mt-4">
-                <button class="btn btn-primary" id="btn-generate">
+                <button class="btn btn-primary" id="btn-generate" disabled>
                     <i class="fa-solid fa-file-lines me-1"></i>Generate report
                 </button>
                 <span id="generate-spinner" class="ms-2 d-none">
                     <span class="spinner-border spinner-border-sm" role="status"></span>
                     Generating…
                 </span>
+                <div id="no-options-hint" class="form-text text-muted mt-2">
+                    <i class="fa-solid fa-circle-info me-1"></i>Select at least one option above to generate a report.
+                </div>
             </div>
         </div>
     </div>
@@ -161,6 +164,25 @@
     let rawSignature = ''
     let showingRaw = false
 
+    const OPTION_IDS = [
+        "opt-metadata", "opt-title", "opt-description", "opt-tasks",
+        "opt-files", "opt-notes", "opt-tags", "opt-objects",
+        "opt-taxonomies", "opt-audit", "opt-timeline",
+    ];
+
+    function update_generate_button_state() {
+        const any_selected = OPTION_IDS.some(id => document.getElementById(id).checked);
+        const btn = document.getElementById("btn-generate");
+        const hint = document.getElementById("no-options-hint");
+        btn.disabled = !any_selected;
+        hint.classList.toggle("d-none", any_selected);
+    }
+
+    OPTION_IDS.forEach(id => {
+        document.getElementById(id).addEventListener("change", update_generate_button_state);
+    });
+    update_generate_button_state();
+
     document.getElementById("btn-generate").addEventListener("click", async function () {
         const options = {
             include_metadata:    document.getElementById("opt-metadata").checked,
@@ -175,6 +197,12 @@
             include_audit:       document.getElementById("opt-audit").checked,
             include_timeline:    document.getElementById("opt-timeline").checked,
         };
+
+        if (!Object.values(options).some(Boolean)) {
+            message_list.value.push({ message: "Select at least one section to include in the report.", toast_class: "warning-subtle" });
+            update_generate_button_state();
+            return;
+        }
 
         this.disabled = true;
         document.getElementById("generate-spinner").classList.remove("d-none");
@@ -244,6 +272,7 @@
         } finally {
             this.disabled = false;
             document.getElementById("generate-spinner").classList.add("d-none");
+            update_generate_button_state();
         }
     });
 
