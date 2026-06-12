@@ -814,6 +814,17 @@
                             </case_tasks>
                         </div>
                     </template>
+                    <div v-if="cases_info.tasks.length === 0" class="text-center text-muted py-4">
+                        <template v-if="(open_closed.open || 0) + (open_closed.closed || 0) === 0">
+                            <i class="fa-solid fa-list-check fa-sm me-1"></i>No task yet
+                            {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
+                            - add one using the <a href="/case/{{case.id}}/create_task"><i class="fa-solid fa-plus"></i></a> button
+                            {% endif %}
+                        </template>
+                        <template v-else>
+                            <i class="fa-solid fa-filter fa-sm me-1"></i>No tasks matching your filter
+                        </template>
+                    </div>
                 </div>
 
                 <!-- Pagination -->
