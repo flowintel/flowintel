@@ -1,5 +1,6 @@
 import { display_toast } from '/static/js/toaster.js'
 import { isStatusDropdownDisabled, getStatusDropdownTooltip, getAvailableStatuses, canEditRestrictedTask, getStatusHint } from '/static/js/case/helpers.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { ref, computed } = Vue
 import subtask from './subtask.js'
 import TaskUrlTool from './TaskUrlTool.js'
@@ -134,6 +135,12 @@ export default {
 		}
 
 		async function remove_assigned_user(user_id) {
+			const ok = await confirmDelete({
+				title: 'Remove user from task?',
+				message: 'Are you sure you want to remove this user from the task?',
+				confirmText: 'Remove'
+			})
+			if (!ok) return
 			// Remove a user from assignment to the task
 			const res = await fetch(
 				'/case/' + props.task.case_id + '/remove_assigned_user/' + props.task.id, {

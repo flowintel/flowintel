@@ -1,4 +1,5 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 
 export default {
     delimiters: ['[[', ']]'],
@@ -79,6 +80,11 @@ export default {
         }
 
         async function delete_url_tool(task, url_tool_id) {
+            const ok = await confirmDelete({
+                title: 'Delete URL/Tool?',
+                message: 'Are you sure you want to delete this URL/Tool? This cannot be undone.'
+            })
+            if (!ok) return
             let url
             if (props.is_template) {
                 url = "/templating/task/" + task.id + "/delete_url_tool/" + url_tool_id

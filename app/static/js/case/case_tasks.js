@@ -8,6 +8,7 @@ import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
 import { isCompleteTaskDisabled, getCompleteTaskTooltip } from './helpers.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { ref, computed, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -149,6 +150,12 @@ export default {
 		}
 
 		async function remove_assign_task(task, current_user) {
+			const ok = await confirmDelete({
+				title: 'Remove your assignment?',
+				message: 'Are you sure you want to remove yourself from this task?',
+				confirmText: 'Remove'
+			})
+			if (!ok) return
 			// Remove current user from assignment to the task
 			const res = await fetch('/case/' + task.case_id + '/remove_assignment/' + task.id)
 

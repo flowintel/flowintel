@@ -1,5 +1,6 @@
 import {display_toast, create_message} from '../toaster.js'
 import MispObjectLink from './MispObjectLink.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -328,6 +329,11 @@ export default {
         }
 
         async function delete_object(object_id){
+            const ok = await confirmDelete({
+                title: 'Delete MISP object?',
+                message: 'Are you sure you want to delete this MISP object? This cannot be undone.'
+            })
+            if (!ok) return
             const res = await fetch("/case/"+props.case_id+"/delete_object/"+object_id)
             if(await res.status==200 ){
                 let loc
@@ -393,6 +399,12 @@ export default {
                     }
                 }
             }
+
+            const ok = await confirmDelete({
+                title: 'Delete attribute?',
+                message: 'Are you sure you want to delete this attribute? This cannot be undone.'
+            })
+            if (!ok) return
 
             const res = await fetch("/case/"+props.case_id+"/misp_object/"+misp_object_id+"/delete_attribute/"+attribute_id)
             if(await res.status==200 ){
