@@ -615,38 +615,42 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         case = CommonModel.get_case(task.case_id)
         if case and case.privileged_case:
             if status == current_app.config['TASK_APPROVED'] and old_status_id == current_app.config['TASK_REQUESTED']:
-                approval_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been approved by an administrator"
+                assignee_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been approved by an administrator"
+                approver_msg = f"[Approver] Task '{task.id}-{task.title}' in case '{case.id}-{case.title}' was approved by an administrator"
                 
                 NotifModel.create_notification_for_approvers(
-                    message=approval_msg,
+                    message=approver_msg,
                     case_id=task.case_id,
                     org_id=case.owner_org_id,
-                    html_icon="fa-solid fa-circle-check"
+                    html_icon="fa-solid fa-circle-check",
+                    exclude_user_id=current_user.id
                 )
                 
                 task_users = Task_User.query.filter_by(task_id=task.id).all()
                 for task_user in task_users:
                     NotifModel.create_notification_user(
-                        message=approval_msg,
+                        message=assignee_msg,
                         case_id=task.case_id,
                         user_id=task_user.user_id,
                         html_icon="fa-solid fa-circle-check"
                     )
             
             elif status == current_app.config['TASK_REJECTED'] and old_status_id == current_app.config['TASK_REQUESTED']:
-                rejection_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been rejected by an administrator"
+                assignee_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been rejected by an administrator"
+                approver_msg = f"[Approver] Task '{task.id}-{task.title}' in case '{case.id}-{case.title}' was rejected by an administrator"
                 
                 NotifModel.create_notification_for_approvers(
-                    message=rejection_msg,
+                    message=approver_msg,
                     case_id=task.case_id,
                     org_id=case.owner_org_id,
-                    html_icon="fa-solid fa-circle-xmark"
+                    html_icon="fa-solid fa-circle-xmark",
+                    exclude_user_id=current_user.id
                 )
                 
                 task_users = Task_User.query.filter_by(task_id=task.id).all()
                 for task_user in task_users:
                     NotifModel.create_notification_user(
-                        message=rejection_msg,
+                        message=assignee_msg,
                         case_id=task.case_id,
                         user_id=task_user.user_id,
                         html_icon="fa-solid fa-circle-xmark"
