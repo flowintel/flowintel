@@ -53,8 +53,10 @@ def read_notification(nid):
         if notif.user_id != current_user.id:
             flowintel_log("audit", 403, "Read notification denied: not owner", User=current_user.email, NotifId=nid)
             return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+        was_read = notif.is_read
         if NotifModel.read_notification_core(nid):
-            return {"message": "Notification read", "toast_class": "success-subtle"}, 200
+            msg = "Notification marked as unread" if was_read else "Notification marked as read"
+            return {"message": msg, "toast_class": "success-subtle"}, 200
         return {"message": "Error Notification read", "toast_class": "danger-subtle"}, 400
     return {"message":"Notification not found", "toast_class": "danger-subtle"}, 404
 

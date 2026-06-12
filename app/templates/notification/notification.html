@@ -169,6 +169,7 @@
 <script type="module">
     const { createApp, ref, computed } = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
+    import { confirmDelete } from '/static/js/confirm.js'
 
     createApp({
         delimiters: ['[[', ']]'],
@@ -285,6 +286,11 @@
             }
 
             async function delete_notif(notif){
+                const ok = await confirmDelete({
+                    title: 'Delete notification?',
+                    message: 'Are you sure you want to delete this notification? This cannot be undone.'
+                })
+                if (!ok) return
                 const res = await fetch("/notification/delete/" + notif.id)
 
                 if(await res.status == 200){
