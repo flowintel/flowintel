@@ -1780,7 +1780,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return attr
         return None
-        # return Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr_id, instance_id=instance_id, case_id=case_id).first()
     
     def get_misp_object_instance_by_instance_uuid(self, object_uuid, instance_id, case_id):
         loc_instance = CommonModel.get_instance(instance_id)

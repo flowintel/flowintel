@@ -216,7 +216,18 @@
     <!-- pagination -->
 
     <template v-if="case_list">
-        <div class="case-grid">
+        <div v-if="Array.isArray(case_list.cases) && case_list.cases.length === 0" class="text-center text-muted py-4">
+            <template v-if="has_active_filters">
+                <i class="fa-solid fa-filter fa-sm me-1"></i>No cases matching your filter
+            </template>
+            <template v-else>
+                <i class="fa-solid fa-folder-open fa-sm me-1"></i>No cases yet
+                {% if not current_user.read_only() %}
+                - create one using the <a href="/case/create_case"><i class="fa-solid fa-plus"></i></a> button
+                {% endif %}
+            </template>
+        </div>
+        <div v-else class="case-grid">
             <template v-for="case_loc in case_list.cases">
                 <div class="case-card">
                     <a :href="`/case/${case_loc.id}`" class="case-content">
@@ -413,6 +424,18 @@
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
                 const md = window.markdownit()
+
+                const has_active_filters = computed(() => {
+                    return (
+                        (search_query.value || '').length > 0 ||
+                        selected_tags.value.length > 0 ||
+                        selected_taxo.value.length > 0 ||
+                        selected_galaxies.value.length > 0 ||
+                        selected_clusters.value.length > 0 ||
+                        selected_custom_tags.value.length > 0 ||
+                        current_filter.value === 'my_org'
+                    )
+                })
 
                 const expandedCases = ref({})
                 const expandedTags = ref({})
@@ -708,6 +731,7 @@
 
                     md,
                     case_list,
+                    has_active_filters,
                     status_info,
                     taxonomies,
                     tags_list,
