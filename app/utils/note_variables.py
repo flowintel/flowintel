@@ -95,11 +95,13 @@ All variables start with `@` and use dot notation to access properties.
 
 import re
 import datetime
-from ..db_class.db import (
+
+from flask_login import current_user
+
+from app.db_class.db import (
     Case, Task, Subtask, Note, Status, Org, Case_Org,
     Case_Misp_Object, Misp_Attribute, Task_User, User
 )
-from flask_login import current_user
 
 # Pattern to match @variable references
 # Matches @word.word.word... patterns, including numeric and UUID segments
@@ -309,20 +311,20 @@ def _resolve_case_property(case: Case, parts: list):
     
     # Tags
     if prop == 'tags' and len(parts) == 1:
-        from ..db_class.db import Tags, Case_Tags
+        from app.db_class.db import Tags, Case_Tags
         tags = Tags.query.join(Case_Tags, Case_Tags.tag_id == Tags.id).filter_by(case_id=case.id).all()
         return ', '.join(t.name for t in tags) if tags else ''
     
     # Clusters
     if prop == 'clusters' and len(parts) == 1:
-        from ..db_class.db import Cluster, Case_Galaxy_Tags
+        from app.db_class.db import Cluster, Case_Galaxy_Tags
         clusters = Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id == case.id)\
             .where(Cluster.id == Case_Galaxy_Tags.cluster_id).all()
         return ', '.join(c.name for c in clusters) if clusters else ''
     
     # Custom tags
     if prop == 'custom_tags' and len(parts) == 1:
-        from ..db_class.db import Custom_Tags, Case_Custom_Tags
+        from app.db_class.db import Custom_Tags, Case_Custom_Tags
         custom_tags = Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id == Custom_Tags.id)\
             .where(Case_Custom_Tags.case_id == case.id).all()
         return ', '.join(t.name for t in custom_tags) if custom_tags else ''
@@ -414,20 +416,20 @@ def _resolve_task_property(task: Task, parts: list):
     
     # Tags
     if prop == 'tags' and len(parts) == 1:
-        from ..db_class.db import Tags, Task_Tags
+        from app.db_class.db import Tags, Task_Tags
         tags = Tags.query.join(Task_Tags, Task_Tags.tag_id == Tags.id).filter_by(task_id=task.id).all()
         return ', '.join(t.name for t in tags) if tags else ''
     
     # Clusters
     if prop == 'clusters' and len(parts) == 1:
-        from ..db_class.db import Cluster, Task_Galaxy_Tags
+        from app.db_class.db import Cluster, Task_Galaxy_Tags
         clusters = Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id == task.id)\
             .where(Cluster.id == Task_Galaxy_Tags.cluster_id).all()
         return ', '.join(c.name for c in clusters) if clusters else ''
     
     # Custom tags
     if prop == 'custom_tags' and len(parts) == 1:
-        from ..db_class.db import Custom_Tags, Task_Custom_Tags
+        from app.db_class.db import Custom_Tags, Task_Custom_Tags
         custom_tags = Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id == Custom_Tags.id)\
             .where(Task_Custom_Tags.task_id == task.id).all()
         return ', '.join(t.name for t in custom_tags) if custom_tags else ''

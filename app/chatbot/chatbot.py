@@ -2,7 +2,11 @@ import datetime
 import requests as http_requests
 from flask import Blueprint, abort, current_app, render_template, request, jsonify
 from flask_login import login_required, current_user
-import conf.config_module as ConfigModule
+
+from app.extensions import db
+from app.db_class.db import ChatConversation, ChatMessage
+
+from ..utils.logger import flowintel_log
 from .chatbot_core import get_chatbot_response, cancel_current_generation
 from ..utils.logger import flowintel_log
 from .. import db

@@ -3,14 +3,13 @@ import datetime
 from typing import List
 from sqlalchemy import and_, desc
 
-from app.utils.utils import isUUID
-
-from .. import db
-from ..db_class.db import (
+from app.extensions import db
+from app.db_class.db import (
     Case_Task_Template, Galaxy, Task_Template, Note_Template, Task_Template_Galaxy, Task_Template_Url_Tool, Subtask_Template,
     Task_Template_Tags, Task_Template_Galaxy_Tags, Task_Template_Custom_Tags,
     Tags, Cluster, Custom_Tags
 )
+
 from ..case.CommonAbstract import CommonAbstract
 from ..case.FilteringAbstract import FilteringAbstract
 from . import common_template_core as CommonModel

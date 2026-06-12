@@ -4,7 +4,7 @@ import msgspec
 from flask import current_app
 
 from app.extensions import db
-from ..db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy, Notification, Recurring_Notification, Login_Event, User_Connector_Instance, Misp_Module_Config, Misp_Module_Result
+from app.db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy, Notification, Recurring_Notification, Login_Event, User_Connector_Instance, Misp_Module_Config, Misp_Module_Result
 from ..utils.utils import generate_api_key
 import uuid
 

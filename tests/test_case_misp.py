@@ -1,6 +1,7 @@
 import pytest
 
 from app.db_class.db import User
+
 from app.case.CaseCore import CaseModel
 from app.utils import utils
 

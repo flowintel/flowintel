@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Union
 
-from ..db_class.db import (
+from app.db_class.db import (
     Case, Case_Custom_Tags, Case_Galaxy_Tags, Case_Tags, Case_Template,
     Case_Template_Custom_Tags, Case_Template_Galaxy_Tags, Case_Template_Tags,
     Cluster, Custom_Tags, Galaxy, Tags, Task, Task_Custom_Tags, Task_Galaxy_Tags,

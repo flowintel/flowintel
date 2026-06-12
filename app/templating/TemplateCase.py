@@ -29,8 +29,12 @@ from ..db_class.db import (
     Case_Template_Custom_Tags,
 )
 import uuid
+
+from sqlalchemy import and_, desc
+
 from app.extensions import db
-import datetime
+from app.db_class.db import *
+
 from ..case import common_core
 from ..case.CommonAbstract import CommonAbstract
 from ..case.FilteringAbstract import FilteringAbstract

@@ -3,14 +3,14 @@ from typing import List
 import uuid
 import datetime
 from flask import current_app
+
 from app.extensions import db
-from ..db_class.db import (
+from app.db_class.db import (
     Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
     Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_User, User, Galaxy,
     Case_Misp_Object
 )
-from ..utils.utils import create_specific_dir, isUUID
 
 from sqlalchemy import and_
 from flask import request, send_file

@@ -9,9 +9,8 @@ from flask_login import (
     login_user,
     logout_user,
 )
-from . import account_core as AccountModel
-from . import entra_core as EntraModel
-from . import keycloak_core as KeycloakModel
+from app.extensions import db
+from app.db_class.db import User, Login_Event
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel

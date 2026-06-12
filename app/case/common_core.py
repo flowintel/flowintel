@@ -7,47 +7,9 @@ import uuid
 
 from flask import send_file
 from app.extensions import db
-from ..db_class.db import (
-    Connector,
-    Connector_Icon,
-    Icon_File,
-    Org,
-    Subtask,
-    Task_Custom_Tags,
-    Task_Url_Tool,
-    Taxonomy,
-    User,
-    Case,
-    Task,
-    Note,
-    File,
-    Status,
-    Task_User,
-    Case_Org,
-    Recurring_Notification,
-    Case_Template,
-    Task_Template,
-    Tags,
-    Case_Tags,
-    Task_Tags,
-    Task_Template_Tags,
-    Galaxy,
-    Cluster,
-    Case_Galaxy_Tags,
-    Task_Galaxy_Tags,
-    Task_Galaxy,
-    Task_Template_Galaxy,
-    Task_Template_Galaxy_Tags,
-    Connector_Instance,
-    Case_Connector_Instance,
-    Task_Connector_Instance,
-    User_Connector_Instance,
-    Custom_Tags,
-    Case_Custom_Tags,
-    Task_Template_Custom_Tags,
-)
+from app.db_class.db import *
+
 from ..utils.utils import get_modules_list, isUUID, create_specific_dir
-from sqlalchemy import desc, func, or_
 from ..utils import utils
 from ..custom_tags import custom_tags_core as CustomModel
 

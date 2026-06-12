@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import desc
 
-from ..db_class.db import Case, Case_Misp_Object, Task_User, Task, Notification
+from app.db_class.db import Case, Task_User, Task, Notification
 
 from ..case import common_core as CommonModel
 from ..case.CaseCore import CaseModel

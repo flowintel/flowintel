@@ -11,7 +11,7 @@ from wtforms.fields import (
     BooleanField
 )
 from wtforms.validators import Email, EqualTo, InputRequired, Length, Optional, Regexp
-from ..db_class.db import User, Org
+from app.db_class.db import User, Org
 from ..utils.utils import isUUID, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, validate_password_strength
 
 

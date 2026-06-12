@@ -16,7 +16,7 @@ from ..case import common_core as CommonCaseModel
 from ..case.common_core import get_instance_with_icon
 from ..utils.logger import flowintel_log
 from app.extensions import db
-from ..db_class.db import (
+from app.db_class.db import (
     Case_Template, Case_Task_Template, Case_Template_Galaxy_Tags, Case_Template_Tags,
     Case_Template_Custom_Tags,
     Cluster, Tags, Task_Template, Task_Template_Galaxy_Tags, Task_Template_Tags,

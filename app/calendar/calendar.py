@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template, request, Response
 from flask_login import login_required, current_user
-from . import calendar_core as CalendarModel
-from ..db_class.db import Case, Task
+from app.db_class.db import Case, Task
 from ..case.common_core import get_present_in_case
 
 calendar_blueprint = Blueprint(

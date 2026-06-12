@@ -5,7 +5,7 @@ from dateutil import relativedelta
 import schedule
 import time
 
-from ..db_class.db import Case, Notification, Recurring_Notification
+from app.db_class.db import Case, Notification, Recurring_Notification
 
 engine = create_engine("sqlite:///instance/flowintel.sqlite")
 

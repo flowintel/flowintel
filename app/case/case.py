@@ -7,13 +7,8 @@ from flask_login import login_required, current_user
 import requests
 import conf.config_module as ConfigModule
 
-from .form import CaseForm, CaseEditForm, RecurringForm
-from .CaseCore import CaseModel, FILE_FOLDER
-from . import common_core as CommonModel
-from .TaskCore import TaskModel
-from ..connectors import connectors_core as ConnectorsModel
 from app.extensions import db
-from ..db_class.db import Case, Task, Task_Misp_Object, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, Case_Timeline_Event
+from app.db_class.db import Case, Task, Task_Misp_Object, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, Case_Timeline_Event
 from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags

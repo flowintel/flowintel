@@ -1,5 +1,7 @@
 from app import create_app, db
 import argparse
+from app.extensions import db
+from app import create_app
 from app.utils.init_db import create_admin
 from app.utils.init_taxonomies import create_taxonomies, create_galaxies
 from app.utils.utils import get_modules_list, update_pymisp_objects

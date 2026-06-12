@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, jsonify, request, current_app
 from flask_login import login_required, current_user
-import conf.config_module as ConfigModule
-from app.db_class.db import Alert, Case, db
+
+from app.extensions import db
+from app.db_class.db import Alert, Case
+
 from app.decorators import admin_required
 from app.case.common_core import check_user_in_private_cases
 from app.modules.notify_user.webhook import ALERT_LOG_FILE as LOG_FILE
