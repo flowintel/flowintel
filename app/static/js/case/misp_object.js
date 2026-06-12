@@ -86,6 +86,17 @@ export default {
             return false
         })
 
+        // Validation helpers — drive `:disabled` on Save/Add buttons so the
+        // user gets visual feedback before submitting (rather than a toast).
+        const can_add_new_object_attr = computed(() =>
+            !!(newObjectAttrState.value.value && newObjectAttrState.value.relation_type_combo))
+        const can_save_edit_object_attr = computed(() =>
+            !!(editObjectAttrState.value.value && editObjectAttrState.value.relation_type_combo))
+        const can_save_object = computed(() => list_attr.value.length > 0)
+        const can_save_new_attr = computed(() =>
+            !!(newAttrState.value.value && newAttrState.value.relation_type_combo))
+        const can_save_edit_attr = computed(() => !!editState.value.value)
+
         const defaultObjectTemplates = {
             'domain/ip': '43b3b146-77eb-4931-b4cc-b66c60f28734',
             'url/domain': '60efb77b-40b5-4c46-871b-ed1ed999fce5',
@@ -576,6 +587,11 @@ export default {
             toggleAddObject,
             cancelAddObject,
             addObjectAttribute,
+            can_add_new_object_attr,
+            can_save_edit_object_attr,
+            can_save_object,
+            can_save_new_attr,
+            can_save_edit_attr,
             removeObjectAttribute,
             startEditObjectAttr,
             cancelEditObjectAttr,
@@ -724,7 +740,7 @@ export default {
                 <h6 class="fw-bold">Add attributes</h6>
                 <div class="row g-2 mb-2">
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
                         <select v-model="newObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
                             <option value="">-- select --</option>
                             <template v-for="attr in activeTemplate.attributes">
@@ -733,7 +749,7 @@ export default {
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value <span class="text-danger">*</span></label>
                         <input v-model="newObjectAttrState.value" class="form-control form-control-sm" type="text" placeholder="Value" style="font-size: 0.875rem;">
                     </div>
                     <div class="col-md-2">
@@ -763,7 +779,9 @@ export default {
                         <input v-model="newObjectAttrState.comment" class="form-control form-control-sm" type="text" placeholder="Comment" style="font-size: 0.875rem;">
                     </div>
                     <div class="col-md-6 d-flex align-items-end">
-                        <button type="button" class="btn btn-primary btn-sm" @click="addObjectAttribute()">
+                        <button type="button" class="btn btn-primary btn-sm" :disabled="!can_add_new_object_attr"
+                                :title="can_add_new_object_attr ? 'Add attribute' : 'Enter a value and select an object relation & type first'"
+                                @click="addObjectAttribute()">
                             <i class="fa-solid fa-plus me-1"></i>Add attribute
                         </button>
                     </div>
@@ -807,7 +825,7 @@ export default {
                                     <td colspan="8" style="padding: 1rem;">
                                         <div class="row g-2 mb-2">
                                             <div class="col-md-3">
-                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
                                                 <select v-model="editObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
                                                     <template v-for="a in activeTemplate.attributes">
                                                         <option :value="a.name + '::' + a.misp_attribute">[[a.name]]::[[a.misp_attribute]]</option>
@@ -815,7 +833,7 @@ export default {
                                                 </select>
                                             </div>
                                             <div class="col-md-3">
-                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value <span class="text-danger">*</span></label>
                                                 <input v-model="editObjectAttrState.value" class="form-control form-control-sm" type="text" style="font-size: 0.875rem;">
                                             </div>
                                             <div class="col-md-2">
@@ -849,7 +867,9 @@ export default {
                                             <button type="button" class="btn btn-secondary btn-sm" @click="cancelEditObjectAttr()">
                                                 Cancel
                                             </button>
-                                            <button type="button" class="btn btn-primary btn-sm" @click="saveEditObjectAttr(attr.id)">
+                                            <button type="button" class="btn btn-primary btn-sm" :disabled="!can_save_edit_object_attr"
+                                                    :title="can_save_edit_object_attr ? 'Save' : 'A value and object relation & type are required'"
+                                                    @click="saveEditObjectAttr(attr.id)">
                                                 Save
                                             </button>
                                         </div>
@@ -860,11 +880,16 @@ export default {
                     </table>
                 </div>
 
+                <div v-if="!can_save_object" class="text-muted mb-2" style="font-size: 0.85rem;">
+                    <i class="fa-solid fa-circle-info me-1"></i>Add at least one attribute before saving the object.
+                </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-secondary" @click="cancelAddObject()">
                         Cancel
                     </button>
-                    <button type="button" class="btn btn-primary" @click="save_changes()">
+                    <button type="button" class="btn btn-primary" :disabled="!can_save_object"
+                            :title="can_save_object ? 'Save object' : 'Add at least one attribute first'"
+                            @click="save_changes()">
                         Save
                     </button>
                 </div>
@@ -1067,7 +1092,8 @@ export default {
                                                     @click="cancelEdit()">
                                                         Cancel
                                                     </button>
-                                                    <button type="button" class="btn btn-primary btn-sm" title="Save changes"
+                                                    <button type="button" class="btn btn-primary btn-sm" :disabled="!can_save_edit_attr"
+                                                    :title="can_save_edit_attr ? 'Save changes' : 'A value is required'"
                                                     @click="saveInlineEdit(misp_object.object_id, attribute.id)">
                                                         Save
                                                     </button>
@@ -1080,12 +1106,12 @@ export default {
                                     <tr v-if="addingAttrToObject === misp_object.object_id">
                                         <td :colspan="compactView ? 4 : 9" style="padding: 1rem; background-color: #f8f9fa;">
                                             <div class="mb-3">
-                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value <span class="text-danger">*</span></label>
                                                 <input v-model="newAttrState.value" class="form-control form-control-sm" type="text" placeholder="Value" style="font-size: 0.875rem;">
                                             </div>
                                             <div class="row g-2 mb-3">
                                                 <div class="col-md-4">
-                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
                                                     <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
                                                         <template v-for="attr in activeTemplateAttr.attributes">
                                                             <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
@@ -1122,7 +1148,8 @@ export default {
                                                 @click="cancelAddAttribute()">
                                                     Cancel
                                                 </button>
-                                                <button type="button" class="btn btn-primary btn-sm" title="Add attribute"
+                                                <button type="button" class="btn btn-primary btn-sm" :disabled="!can_save_new_attr"
+                                                :title="can_save_new_attr ? 'Add attribute' : 'A value and object relation & type are required'"
                                                 @click="saveNewAttribute(misp_object.object_id)">
                                                     Add
                                                 </button>
