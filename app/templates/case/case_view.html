@@ -1540,21 +1540,44 @@
                     const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
                     if(await res.status==400 ){
                         display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        tags_list.value = loc["tags"]
-                        $('#tags_select').trigger('change');
+                        return
                     }
+                    let loc = await res.json()
+                    tags_list.value = loc["tags"]
+                    await nextTick()
+                    // Drop selected tags that are no longer available in the new taxonomies-filtered list
+                    const valid_tags = new Set()
+                    if (tags_list.value){
+                        for (const k in tags_list.value){
+                            for (const t of tags_list.value[k]) valid_tags.add(t.name)
+                        }
+                    }
+                    selected_tags.value = selected_tags.value.filter(name => valid_tags.has(name))
+                    // Sync the select2 widget so its chips reflect the cleared selection
+                    $('#filter_tags_select').val(selected_tags.value).trigger('change.select2')
+                    current_page.value = 1
+                    fetch_sorted_tasks()
                 }
                 async function fetch_cluster(){
                     const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
                     if(await res.status==400 ){
                         display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        cluster_list.value = loc["clusters"]
-                        $('#clusters_select').trigger('change');
+                        return
                     }
+                    let loc = await res.json()
+                    cluster_list.value = loc["clusters"]
+                    await nextTick()
+                    // Drop selected clusters that are no longer available in the new galaxies-filtered list
+                    const valid_clusters = new Set()
+                    if (cluster_list.value){
+                        for (const k in cluster_list.value){
+                            for (const c of cluster_list.value[k]) valid_clusters.add(c.name)
+                        }
+                    }
+                    selected_clusters.value = selected_clusters.value.filter(name => valid_clusters.has(name))
+                    $('#filter_clusters_select').val(selected_clusters.value).trigger('change.select2')
+                    current_page.value = 1
+                    fetch_sorted_tasks()
                 }
 
                 async function fetch_custom_tags(){
