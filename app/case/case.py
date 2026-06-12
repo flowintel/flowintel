@@ -22,6 +22,10 @@ from ..utils.gpg import sign_text
 from ..utils.note_variables import resolve_variables, get_syntax_reference
 from ..connectors import connectors_core as ConnectorModel
 
+# Shared display format for timestamps rendered in case payloads, sync metadata and
+# markdown exports.
+TIMESTAMP_FORMAT = '%Y-%m-%d %H:%M'
+
 case_blueprint = Blueprint(
     'case',
     __name__,
@@ -1291,8 +1295,8 @@ def get_case_misp_object(cid):
                 "attributes": loc_attr_list,
                 "object_id": object.id,
                 "object_uuid": object.template_uuid,
-                "object_creation_date": object.creation_date.strftime('%Y-%m-%d %H:%M'),
-                "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M'),
+                "object_creation_date": object.creation_date.strftime(TIMESTAMP_FORMAT),
+                "object_last_modif": object.last_modif.strftime(TIMESTAMP_FORMAT),
                 "synced_instances": synced_instances,
                 # Mark whether this object already has a timeline event
                 "is_imported": True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=object.id).first() else False
@@ -1670,7 +1674,7 @@ def get_case_connectors(cid):
                 "identifier": case_connector.identifier,
                 "is_updating_case": case_connector.is_updating_case,
                 "is_misp_connector": is_misp_connector,
-                "last_sync": case_connector.last_sync.strftime('%Y-%m-%d %H:%M') if case_connector.last_sync else None
+                "last_sync": case_connector.last_sync.strftime(TIMESTAMP_FORMAT) if case_connector.last_sync else None
             })
         return {"case_connectors": instance_list}, 200
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -2197,7 +2201,7 @@ def case_report_generate(cid):
 
         lines.append(f"- **Case ID:** {case.id}")
 
-        created = case.creation_date.strftime('%Y-%m-%d %H:%M') if case.creation_date else "—"
+        created = case.creation_date.strftime(TIMESTAMP_FORMAT) if case.creation_date else "—"
         lines.append(f"- **Date created:** {created}")
 
         owner_org = CommonModel.get_org(case.owner_org_id)
@@ -2225,7 +2229,7 @@ def case_report_generate(cid):
             lines.append("- **Flags:** " + ", ".join(flags))
 
         if case.deadline:
-            lines.append(f"- **Deadline:** {case.deadline.strftime('%Y-%m-%d %H:%M')}")
+            lines.append(f"- **Deadline:** {case.deadline.strftime(TIMESTAMP_FORMAT)}")
         if case.time_required:
             lines.append(f"- **Time required:** {case.time_required}")
         if case.ticket_id:
@@ -2240,7 +2244,7 @@ def case_report_generate(cid):
         pct = int(done / total * 100) if total > 0 else 0
         lines.append(f"- **Completion:** {done}/{total} tasks ({pct}%)")
 
-        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+        now = datetime.datetime.now().strftime(TIMESTAMP_FORMAT)
         user_label = f"{current_user.first_name} {current_user.last_name} ({current_user.email})"
         lines.append(f"- **Report generated on:** {now} by {user_label}")
 
@@ -2290,7 +2294,7 @@ def case_report_generate(cid):
                     lines.append("- **Owner(s):** —")
 
                 if task.deadline:
-                    lines.append(f"- **Deadline:** {task.deadline.strftime('%Y-%m-%d %H:%M')}")
+                    lines.append(f"- **Deadline:** {task.deadline.strftime(TIMESTAMP_FORMAT)}")
                 if task.time_required:
                     lines.append(f"- **Time required:** {task.time_required}")
 

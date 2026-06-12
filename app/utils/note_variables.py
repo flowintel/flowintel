@@ -101,6 +101,9 @@ from ..db_class.db import (
 )
 from flask_login import current_user
 
+# Shared display format for date/time fields rendered into notes by @-variable resolvers.
+TIMESTAMP_FORMAT = '%Y-%m-%d %H:%M'
+
 # Pattern to match @variable references
 # Matches @word.word.word... patterns, including numeric and UUID segments
 # Stops at whitespace, end of line, or common punctuation that isn't part of the reference
@@ -207,7 +210,7 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
     
     # Simple date helpers
     if root == 'now' and len(parts) == 1:
-        return datetime.datetime.now(tz=datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
+        return datetime.datetime.now(tz=datetime.timezone.utc).strftime(TIMESTAMP_FORMAT)
     
     if root == 'today' and len(parts) == 1:
         return datetime.datetime.now(tz=datetime.timezone.utc).strftime('%Y-%m-%d')
@@ -280,10 +283,10 @@ def _resolve_case_property(case: Case, parts: list):
         'uuid': lambda c: c.uuid,
         'id': lambda c: c.id,
         'completed': lambda c: 'Yes' if c.completed else 'No',
-        'creation_date': lambda c: c.creation_date.strftime('%Y-%m-%d %H:%M') if c.creation_date else '',
-        'deadline': lambda c: c.deadline.strftime('%Y-%m-%d %H:%M') if c.deadline else '',
-        'finish_date': lambda c: c.finish_date.strftime('%Y-%m-%d %H:%M') if c.finish_date else '',
-        'last_modif': lambda c: c.last_modif.strftime('%Y-%m-%d %H:%M') if c.last_modif else '',
+        'creation_date': lambda c: c.creation_date.strftime(TIMESTAMP_FORMAT) if c.creation_date else '',
+        'deadline': lambda c: c.deadline.strftime(TIMESTAMP_FORMAT) if c.deadline else '',
+        'finish_date': lambda c: c.finish_date.strftime(TIMESTAMP_FORMAT) if c.finish_date else '',
+        'last_modif': lambda c: c.last_modif.strftime(TIMESTAMP_FORMAT) if c.last_modif else '',
         'nb_tasks': lambda c: c.nb_tasks or 0,
         'time_required': lambda c: c.time_required or '',
         'ticket_id': lambda c: c.ticket_id or '',
@@ -389,10 +392,10 @@ def _resolve_task_property(task: Task, parts: list):
         'uuid': lambda t: t.uuid,
         'id': lambda t: t.id,
         'completed': lambda t: 'Yes' if t.completed else 'No',
-        'creation_date': lambda t: t.creation_date.strftime('%Y-%m-%d %H:%M') if t.creation_date else '',
-        'deadline': lambda t: t.deadline.strftime('%Y-%m-%d %H:%M') if t.deadline else '',
-        'finish_date': lambda t: t.finish_date.strftime('%Y-%m-%d %H:%M') if t.finish_date else '',
-        'last_modif': lambda t: t.last_modif.strftime('%Y-%m-%d %H:%M') if t.last_modif else '',
+        'creation_date': lambda t: t.creation_date.strftime(TIMESTAMP_FORMAT) if t.creation_date else '',
+        'deadline': lambda t: t.deadline.strftime(TIMESTAMP_FORMAT) if t.deadline else '',
+        'finish_date': lambda t: t.finish_date.strftime(TIMESTAMP_FORMAT) if t.finish_date else '',
+        'last_modif': lambda t: t.last_modif.strftime(TIMESTAMP_FORMAT) if t.last_modif else '',
         'case_id': lambda t: t.case_id,
         'nb_notes': lambda t: t.nb_notes or 0,
         'time_required': lambda t: t.time_required or '',
@@ -538,8 +541,8 @@ def _resolve_misp_object_property(obj: Case_Misp_Object, parts: list):
         'name': lambda o: o.name,
         'id': lambda o: o.id,
         'template_uuid': lambda o: o.template_uuid,
-        'creation_date': lambda o: o.creation_date.strftime('%Y-%m-%d %H:%M') if o.creation_date else '',
-        'last_modif': lambda o: o.last_modif.strftime('%Y-%m-%d %H:%M') if o.last_modif else '',
+        'creation_date': lambda o: o.creation_date.strftime(TIMESTAMP_FORMAT) if o.creation_date else '',
+        'last_modif': lambda o: o.last_modif.strftime(TIMESTAMP_FORMAT) if o.last_modif else '',
     }
     
     if prop in scalar_props and len(parts) == 1:
@@ -575,8 +578,8 @@ def _resolve_misp_object_property(obj: Case_Misp_Object, parts: list):
                 'object_relation': lambda a: a.object_relation,
                 'comment': lambda a: a.comment or '',
                 'ids_flag': lambda a: 'Yes' if a.ids_flag else 'No',
-                'first_seen': lambda a: a.first_seen.strftime('%Y-%m-%d %H:%M') if a.first_seen else '',
-                'last_seen': lambda a: a.last_seen.strftime('%Y-%m-%d %H:%M') if a.last_seen else '',
+                'first_seen': lambda a: a.first_seen.strftime(TIMESTAMP_FORMAT) if a.first_seen else '',
+                'last_seen': lambda a: a.last_seen.strftime(TIMESTAMP_FORMAT) if a.last_seen else '',
                 'id': lambda a: a.id,
             }
             if parts[2] in attr_props:

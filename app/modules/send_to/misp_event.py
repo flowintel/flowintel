@@ -238,9 +238,8 @@ def _existing_attr_values(event, attr_types, prefix=None):
     if not isinstance(attr_types, tuple):
         attr_types = (attr_types,)
     for attr in event.Attribute:
-        if attr.type in attr_types:
-            if attr.value and (prefix is None or attr.value.startswith(prefix)):
-                values.add(attr.value)
+        if attr.type in attr_types and attr.value and (prefix is None or attr.value.startswith(prefix)):
+            values.add(attr.value)
     return values
 
 

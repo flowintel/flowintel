@@ -1553,7 +1553,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             synced = result.get("synced_count", 0) if isinstance(result, dict) else 0
             failed = result.get("failed_count", 0) if isinstance(result, dict) else 0
             details = result.get("details", None) if isinstance(result, dict) else None
-            status = "success" if failed == 0 else ("partial" if synced > 0 else "error")
+            if failed == 0:
+                status = "success"
+            elif synced > 0:
+                status = "partial"
+            else:
+                status = "error"
             sync_log = Connector_Sync_Log(
                 case_id=case["id"],
                 case_connector_instance_id=case_instance_id,
@@ -1804,7 +1809,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return attr
         return None
-        # return Misp_Attribute_Instance_Uuid.query.filter_by(attribute_instance_uuid=attribute_uuid, instance_id=instance_id, case_id=case_id).first()
 
 
     def get_misp_object_instance(self, case_id, instance_id):

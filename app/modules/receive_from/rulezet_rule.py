@@ -1,6 +1,15 @@
 import requests
 import urllib3
-urllib3.disable_warnings()
+import conf.config_module as Config
+
+# SSL verification for outbound Rulezet calls. Defaults to True (secure) when the
+# setting is missing from a user's config_module.py so older deployments stay safe.
+VERIFY_SSL = getattr(Config, "RULEZET_VERIFY_SSL", True)
+
+# Only silence urllib3's InsecureRequestWarning when verification is explicitly
+# disabled by the operator; keep warnings visible otherwise.
+if not VERIFY_SSL:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
 
@@ -27,7 +36,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     db_session: SQLAlchemy db session
     """
     try:
-        r = requests.get(instance["url"], verify=False, timeout=20)
+        requests.get(instance["url"], verify=VERIFY_SSL, timeout=20)
     except Exception:
         return {"message": "Error connecting to Rulezet"}
 
@@ -38,11 +47,11 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     from app.db_class.db import Rulezet_Rule
     import datetime
 
-    loc_json = requests.get(f'{instance["url"]}/api/rule/public/detail/{payload["query"]}', verify=False, timeout=20).json()
+    loc_json = requests.get(f'{instance["url"]}/api/rule/public/detail/{payload["query"]}', verify=VERIFY_SSL, timeout=20).json()
 
     title = loc_json.get("title")
     description = loc_json.get("description")
-    format = loc_json.get("format")
+    rule_format = loc_json.get("format")
     content = loc_json.get("to_string")
     version = loc_json.get("version")
     # store or update rule in DB
@@ -59,7 +68,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     if existing:
         existing.title = title
         existing.description = description
-        existing.format = format
+        existing.format = rule_format
         existing.content = content
         existing.version = version
         existing.date_added = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -71,7 +80,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
             remote_id=str(remote_id) if remote_id else None,
             title=title,
             description=description,
-            format=format,
+            format=rule_format,
             content=content,
             version=version,
             date_added=datetime.datetime.now(tz=datetime.timezone.utc)

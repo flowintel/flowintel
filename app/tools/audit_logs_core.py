@@ -14,6 +14,10 @@ from ..db_class.db import Case, Login_Event, User
 from ..utils.logger import flowintel_log
 
 
+# Common timestamp format shared across history rows, login events and audit log entries.
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M"
+
+
 # [YYYY-MM-DD HH:MM](user): action
 HISTORY_LINE_RE = re.compile(
     r'^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]\(([^)]*)\):\s*(.*)$'
@@ -77,7 +81,7 @@ def _row_text(row):
 
 def row_matches(row, start_dt, end_dt, user_q, action_q, exclude_q):
     try:
-        row_dt = datetime.strptime(row["timestamp"], "%Y-%m-%d %H:%M")
+        row_dt = datetime.strptime(row["timestamp"], TIMESTAMP_FORMAT)
     except (ValueError, KeyError, TypeError):
         return False
     if start_dt and row_dt < start_dt:
@@ -162,7 +166,7 @@ def collect_login_rows():
         if not ev.login_date:
             continue
         rows.append({
-            "timestamp": ev.login_date.strftime("%Y-%m-%d %H:%M"),
+            "timestamp": ev.login_date.strftime(TIMESTAMP_FORMAT),
             "user": user_map.get(ev.user_id, f"user#{ev.user_id}"),
             "action": "Login",
             "case_id": None,
@@ -194,7 +198,7 @@ def collect_audit_rows():
                 user_match = _AUDIT_USER_RE.search(extra)
                 case_match = _AUDIT_CASE_RE.search(extra)
                 rows.append({
-                    "timestamp": ts.strftime("%Y-%m-%d %H:%M"),
+                    "timestamp": ts.strftime(TIMESTAMP_FORMAT),
                     "severity": int(m.group("sev")),
                     "user": user_match.group(1) if user_match else "",
                     "action": m.group("action").strip(),
