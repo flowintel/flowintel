@@ -1,15 +1,17 @@
 from flask import request
 
+from flask_restx import Namespace, Resource
+
 from app.db_class.db import Case, User, File
+
+from ..utils import utils
+from ..utils.logger import flowintel_log
+from ..decorators import api_required, editor_required, misp_editor_required, template_editor_required
+
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
-from ..utils import utils
-from ..utils.logger import flowintel_log
-
-from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required, misp_editor_required, template_editor_required
 
 case_ns = Namespace("case", description="Endpoints to manage cases")
 

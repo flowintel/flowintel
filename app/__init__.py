@@ -1,6 +1,11 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import os
+import logging
+from logging.handlers import RotatingFileHandler
+import redis
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
@@ -10,12 +15,8 @@ from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.extensions import db, csrf, migrate, session, login_manager
-from conf.config import config as Config
-import os
-import logging
-from logging.handlers import RotatingFileHandler
 
-import redis
+from conf.config import config as Config
 
 
 def create_app():

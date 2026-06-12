@@ -2,7 +2,12 @@ import os
 from typing import List
 import uuid
 import datetime
+
 from flask import current_app
+from flask import request, send_file
+from werkzeug.utils import secure_filename
+
+from sqlalchemy import and_
 
 from app.extensions import db
 from app.db_class.db import (
@@ -12,16 +17,13 @@ from app.db_class.db import (
     Case_Misp_Object
 )
 
-from sqlalchemy import and_
-from flask import request, send_file
-from werkzeug.utils import secure_filename
+from app.utils.utils import get_modules_list
+from ..utils.utils import create_specific_dir, isUUID
 from ..notification import notification_core as NotifModel
-
-from . import common_core as CommonModel
 from ..custom_tags import custom_tags_core as CustomModel
 
-from app.utils.utils import get_modules_list
 
+from . import common_core as CommonModel
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
 

@@ -1,12 +1,13 @@
 import datetime
 import os
 import msgspec
+import uuid
+
 from flask import current_app
 
 from app.extensions import db
 from app.db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy, Notification, Recurring_Notification, Login_Event, User_Connector_Instance, Misp_Module_Config, Misp_Module_Result
 from ..utils.utils import generate_api_key
-import uuid
 
 
 def get_all_users():

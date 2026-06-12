@@ -1,4 +1,3 @@
-import conf.config_module as Config
 import smtplib
 import imaplib
 import email
@@ -6,6 +5,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.header import decode_header
 import datetime
+
+import conf.config_module as Config
 
 
 module_config = {

@@ -6,6 +6,9 @@ from typing import List
 import uuid
 
 from flask import send_file
+
+from sqlalchemy import desc, func, or_
+
 from app.extensions import db
 from app.db_class.db import *
 

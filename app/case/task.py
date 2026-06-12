@@ -1,11 +1,11 @@
 import ast
 import os
 import uuid
-
 import requests
-
 from datetime import datetime
+
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
+from flask_login import login_required, current_user
 
 from app.extensions import db
 from app.db_class.db import Case, User, Note
@@ -16,7 +16,12 @@ from ..utils.utils import form_to_dict, validate_file_size, query_post_query
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
 from ..utils.file_converter import convert_file_to_note_content
-from .TaskCore import FILE_FOLDER
+
+from .form import TaskEditForm, TaskForm
+from .CaseCore import CaseModel
+from . import common_core as CommonModel
+from .TaskCore import TaskModel, FILE_FOLDER
+
 
 task_blueprint = Blueprint(
     'task',

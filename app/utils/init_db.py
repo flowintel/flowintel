@@ -1,15 +1,14 @@
 import uuid
-import datetime
 import json
 import os
+
 from flask import current_app
 
 from app.extensions import db
 from app.db_class.db import Connector, Connector_Icon, Icon_File, User, Role, Org, Status
 
 from .utils import generate_api_key
-from ..case import common_core as CommonModel
-from ..case.TaskCore import TaskModel
+
 
 def create_admin_role():
     role = Role.query.filter_by(name="Admin").first()

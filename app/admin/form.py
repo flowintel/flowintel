@@ -11,6 +11,7 @@ from wtforms.fields import (
     BooleanField
 )
 from wtforms.validators import Email, EqualTo, InputRequired, Length, Optional, Regexp
+
 from app.db_class.db import User, Org
 from ..utils.utils import isUUID, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, validate_password_strength
 
@@ -120,7 +121,7 @@ class CreateRoleForm(FlaskForm):
     submit = SubmitField('Create')
 
     def validate_name(self, field):
-        from ..db_class.db import Role
+        from app.db_class.db import Role
         existing_role = Role.query.filter_by(name=field.data).first()
         if existing_role:
             # Allow same name if editing the same role

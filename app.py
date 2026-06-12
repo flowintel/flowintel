@@ -1,18 +1,21 @@
-from app import create_app, db
 import argparse
+import os
+import json
+import logging
+from logging.handlers import RotatingFileHandler
+
+from flask import flash, jsonify, redirect, render_template, request, Response, send_from_directory, url_for
+
 from app.extensions import db
 from app import create_app
+
 from app.utils.init_db import create_admin
 from app.utils.init_taxonomies import create_taxonomies, create_galaxies
 from app.utils.utils import get_modules_list, update_pymisp_objects
 from app.utils.init_misp_modules import create_modules_db
-from flask import flash, jsonify, redirect, render_template, request, Response, send_from_directory, url_for
-import json
 
-import os
-import logging
-from logging.handlers import RotatingFileHandler
 from conf.config import Config
+
 
 #######
 # Log #

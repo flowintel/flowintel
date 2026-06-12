@@ -10,10 +10,13 @@ from app.db_class.db import (
     Tags, Cluster, Custom_Tags
 )
 
+from app.utils.utils import isUUID
 from ..case.CommonAbstract import CommonAbstract
 from ..case.FilteringAbstract import FilteringAbstract
-from . import common_template_core as CommonModel
 from ..custom_tags import custom_tags_core as CustomModel
+
+from . import common_template_core as CommonModel
+
 
 class TaskTemplateCore(CommonAbstract, FilteringAbstract):
     def get_class(self) -> Task_Template:

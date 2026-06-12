@@ -1,7 +1,9 @@
 from flask import Blueprint, jsonify, redirect, render_template, request, session as flask_session
 from flask_login import current_user, login_required
+
 from ..decorators import misp_editor_required
 from ..utils.logger import flowintel_log
+
 from . import session_class as SessionModel
 from . import misp_modules_core as MispModuleModel
 

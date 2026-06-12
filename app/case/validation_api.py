@@ -1,9 +1,10 @@
-from ..db_class.db import Case
 from datetime import datetime
 
 from app.db_class.db import Case
 
 from ..utils.datadictHelper import edition_verification_tags_connectors, creation_verification_tags_connectors
+
+from . import common_core as CommonModel
 
 DATE_FORMAT = '%Y-%m-%d'
 TIME_FORMAT = '%H-%M'

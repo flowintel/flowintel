@@ -1,14 +1,3 @@
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, current_app
-from flask_login import login_required, current_user
-from . import tools_core as ToolsModel
-from ..admin import admin_core as AdminModel
-from ..utils.note_variables import get_syntax_reference
-from ..decorators import editor_required, admin_required, template_editor_required, misp_editor_required
-from ..utils.utils import get_modules_list, reload_application
-from ..utils.logger import flowintel_log
-from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case, check_user_in_private_cases
-from ..case.CaseCore import CaseModel, FILE_FOLDER
-import conf.config_module as ConfigModule
 import base64
 import csv
 import io
@@ -21,6 +10,22 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 from xml.etree.ElementTree import Element, SubElement, tostring
+
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, current_app
+from flask_login import login_required, current_user
+
+from ..admin import admin_core as AdminModel
+from ..utils.note_variables import get_syntax_reference
+from ..decorators import editor_required, admin_required, template_editor_required, misp_editor_required
+from ..utils.utils import get_modules_list, reload_application
+from ..utils.logger import flowintel_log
+from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case, check_user_in_private_cases
+from ..case.CaseCore import CaseModel, FILE_FOLDER
+
+from . import tools_core as ToolsModel
+
+import conf.config_module as ConfigModule
+
 
 tools_blueprint = Blueprint(
     'tools',
@@ -270,7 +275,7 @@ def reload():
 #########
 # Stats #
 #########
-from ..db_class.db import Case, Case_Org
+from app.db_class.db import Case, Case_Org
 
 @tools_blueprint.route("/stats")
 @login_required

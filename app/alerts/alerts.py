@@ -1,3 +1,6 @@
+import os
+import json
+
 from flask import Blueprint, render_template, jsonify, request, current_app
 from flask_login import login_required, current_user
 
@@ -7,10 +10,10 @@ from app.db_class.db import Alert, Case
 from app.decorators import admin_required
 from app.case.common_core import check_user_in_private_cases
 from app.modules.notify_user.webhook import ALERT_LOG_FILE as LOG_FILE
-import os
-import json
 
 from . import alerts_blueprint
+
+import conf.config_module as ConfigModule
 
 
 def read_alert_log(lines=50):
