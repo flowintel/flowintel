@@ -133,10 +133,10 @@ configure_repo_dev:
 	# TODO add the install deps with uv recipes -> Development lifecycle
 	echo -e "${BLUE}${BOLD}Do not forget to run the database_init recipe at first install, aftert the docker-compose spawned.${RESET}"
 
-restore_requirements:
-	echo "Restoring requirements files"
-	cp -f requirements.txt.backup requirements.txt
-	cp -f requirements.in.backup requirements.in
+# restore_requirements:
+# 	echo "Restoring requirements files"
+# 	cp -f requirements.txt.backup requirements.txt
+# 	cp -f requirements.in.backup requirements.in
 
 # Development lifecycle #
 ########################################################################################
@@ -193,13 +193,13 @@ new_migration_maria: dev_localinfra_maria_run
 	read wait_for_me; \
 	echo "Waiting 5 seconds for database available..."; \
 	sleep 5; \
-	cp -f requirements.txt requirements.txt.backup; \
-	cp -f requirements.in requirements.in.backup; \
-	sed -i '/^psycopg2/d' requirements.txt; \
-	echo 'PyMySQL>=1.1.0' >> requirements.txt; \
-	sed -i '/^psycopg2/d' requirements.in; \
-	echo 'PyMySQL' >> requirements.in; \
-	# Just if case, should be harmless; \
+	# cp -f requirements.txt requirements.txt.backup; \
+	# cp -f requirements.in requirements.in.backup; \
+	# sed -i '/^psycopg2/d' requirements.txt; \
+	# echo 'PyMySQL>=1.1.0' >> requirements.txt; \
+	# sed -i '/^psycopg2/d' requirements.in; \
+	# echo 'PyMySQL' >> requirements.in; \
+	# Just in case, should be harmless; \
 	VENV_DIR=".venv" ./launch.sh -i; \
 	#; \
 	VENV_DIR=".venv" ./migrate.sh --upgrade --env production; \
@@ -260,13 +260,13 @@ run: configure_repo_dev dev_localinfra_run
 
 run_maria: configure_repo_dev dev_localinfra_maria_run
 	set -e; \
-	trap '$(MAKE) restore_requirements' EXIT; \
-	cp -f requirements.txt requirements.txt.backup; \
-	cp -f requirements.in requirements.in.backup; \
-	sed -i '/^psycopg2/d' requirements.txt; \
-	echo 'PyMySQL>=1.1.0' >> requirements.txt; \
-	sed -i '/^psycopg2/d' requirements.in; \
-	echo 'PyMySQL' >> requirements.in; \
+	# trap '$(MAKE) restore_requirements' EXIT; \
+	# cp -f requirements.txt requirements.txt.backup; \
+	# cp -f requirements.in requirements.in.backup; \
+	# sed -i '/^psycopg2/d' requirements.txt; \
+	# echo 'PyMySQL>=1.1.0' >> requirements.txt; \
+	# sed -i '/^psycopg2/d' requirements.in; \
+	# echo 'PyMySQL' >> requirements.in; \
 	
 	VENV_DIR=".venv" ./install.sh; \
 	VENV_DIR=".venv" ./launch.sh -l; \
@@ -311,14 +311,14 @@ endif
 build_maria_latest_local: nuke
 ifeq ($(rebuild),1)
 	set -e; \
-	trap '$(MAKE) restore_requirements' EXIT; \
+	# trap '$(MAKE) restore_requirements' EXIT; \
 	echo "Image Rebuild rebuild requested"; \
-	cp -f requirements.txt requirements.txt.backup; \
-	cp -f requirements.in requirements.in.backup; \
-	sed -i '/^psycopg2/d' requirements.txt; \
-	echo 'PyMySQL>=1.1.0' >> requirements.txt; \
-	sed -i '/^psycopg2/d' requirements.in; \
-	echo 'PyMySQL' >> requirements.in; \
+	# cp -f requirements.txt requirements.txt.backup; \
+	# cp -f requirements.in requirements.in.backup; \
+	# sed -i '/^psycopg2/d' requirements.txt; \
+	# echo 'PyMySQL>=1.1.0' >> requirements.txt; \
+	# sed -i '/^psycopg2/d' requirements.in; \
+	# echo 'PyMySQL' >> requirements.in; \
 	docker build -f DockerfileMaria -t flowintel_maria:latest .
 	@echo "Image built"
 else
