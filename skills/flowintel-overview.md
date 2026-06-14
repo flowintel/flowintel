@@ -136,7 +136,7 @@ Point d'entrée principal. Il :
    - Par défaut : Lancer le serveur développement Flask
 
 ### `launch.sh` (Script de Démarrage)`
-Script自动化 qui :
+Script qui :
 1. Vérifie/crée les fichiers de configuration
 2. Tue les sessions screen existantes
 3. Démarre Valkey (session store) dans un screen
