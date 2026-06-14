@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# TODO Add an argument or rely on conf.py to identify dialect and so the migrations branch name ?
+# TODO Regarding migration creation: It should be noted that the first migration needs to be already existed, derived from base and in a specific folder
+
 VENV_DIR="${VENV_DIR:-env}"
 if [ -f "$VENV_DIR/bin/activate" ]; then
     # shellcheck source=/dev/null
@@ -7,24 +11,38 @@ else
     echo "[WARN] Virtualenv '$VENV_DIR' not found; continuing without activation" >&2
 fi
 
-#!/bin/bash
-
 # Function definitions
 function migrate {
-    flask db migrate
+    flask db migrate -m "$MESSAGE" "${MIGRATE_OPTS[@]}"
 }
 
 function upgrade {
-    flask db upgrade
+    flask db upgrade "${UPGRADE_TARGET}"
 }
 
 function downgrade {
-    flask db downgrade
+    flask db downgrade -1
 }
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --message)
+            if [[ -z "$2" ]]; then
+                echo "Error: --message requires a migration message"
+                exit 1
+            fi
+            MESSAGE="$2"
+            shift 2
+            ;;
+        --migration_branch)
+            if [[ -z "$2" ]]; then
+                echo "Error: --migration_branch requires a value (postgres|sqlite|mariadb)"
+                exit 1
+            fi
+            MIGRATION_BRANCH="$2"
+            shift 2
+            ;;
         --env)
             if [[ -z "$2" ]]; then
                 echo "Error: --env requires a value (development|production|docker)"
@@ -59,7 +77,26 @@ if [[ "$FLASKENV" != "development" && "$FLASKENV" != "production" && "$FLASKENV"
     exit 1
 fi
 
-export FLASKENV
+case "$MIGRATION_BRANCH" in
+  postgres)
+    UPGRADE_TARGET="postgres@head"
+    MIGRATE_OPTS=(--head postgres@head --version-path alembic/versions)
+    ;;
+  mariadb)
+    UPGRADE_TARGET="mariadb@head"
+    MIGRATE_OPTS=(--head mariadb@head --version-path alembic/versions_mariadb)
+    ;;
+  sqlite)
+    # The following assumption is based on the observation that postgres (prod) and sqlite (dev) were apparently working
+    # with the same models, same migration files at v3.3.0
+    UPGRADE_TARGET="postgres@head"
+    MIGRATE_OPTS=(--head postgres@head --version-path alembic/versions)
+    ;;
+  *)
+    echo "Error: Invalid migration branch '$MIGRATION_BRANCH'. Must be postgres, sqlite, or mariadb."
+    exit 1
+    ;;
+esac
 
 # Run action
 if [[ -z "$ACTION" ]]; then

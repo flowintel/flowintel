@@ -59,6 +59,7 @@ if [[ "$FLASKENV" == "development" ]]; then
     # SQLite backup
     cp instance/flowintel.sqlite instance/backup/$(date +"%Y_%m_%d").sqlite
 else
+    # TODO MariadDB alternative should be made possible here
     # PostgreSQL backup
     PGDATABASE=${PGDATABASE:-"flowintel"}
     BACKUP_FILE="instance/backup/$(date +"%Y_%m_%d")_pg.sql"
@@ -67,7 +68,8 @@ else
 fi
 
 # Run migration script
-./migrate.sh --env "$FLASKENV" -u
+# TODO MariadDB alternative should be made possible here
+./migrate.sh --env "$FLASKENV" -u --migration_branch postgres
 
 echo ""
 echo "##########"

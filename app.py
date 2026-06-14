@@ -79,15 +79,32 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
     
-
 if args.init_db:
     with app.app_context():
-        db.create_all()
+        from alembic.config import Config
+        from alembic import command
+        from app.db_utils import get_engine
+
+        cfg = Config("migrations/alembic.ini")
+
+        if get_engine().dialect.name in ("mysql", "mariadb"):
+            command.upgrade(cfg, "mariadb@head")
+        else:
+            command.upgrade(cfg, "postgres@head")  # or postgres@head later
         create_admin()
 elif args.recreate_db:
     with app.app_context():
         db.drop_all()
-        db.create_all()
+        from alembic.config import Config
+        from alembic import command
+        from app.db_utils import get_engine
+
+        cfg = Config("migrations/alembic.ini")
+
+        if get_engine().dialect.name in ("mysql", "mariadb"):
+            command.upgrade(cfg, "mariadb@head")
+        else:
+            command.upgrade(cfg, "postgres@head")  # or postgres@head later
         create_admin()
 elif args.delete_db:
     with app.app_context():

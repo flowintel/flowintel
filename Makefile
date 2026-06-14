@@ -159,12 +159,15 @@ database_init:
 		echo "Database initialization skipped."; \
 	fi; \
 
-init_migrations:
+init_migrations_maria:
 	# TODO Clarify how much it is redundant with migrate.sh script
 	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
 	read wait_for_me; \
 	uv run flask db init
-	uv run flask db migrate -m "initial schema"
+	uv run flask db migrate -m "mariadb initial schema" \
+	    --head base \
+    	--branch-label mariadb \
+		--version-path alembic/versions_mariadb
 
 new_migration: dev_localinfra_run
 	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
@@ -175,19 +178,18 @@ new_migration: dev_localinfra_run
 	# Just if case, should be harmless
 	VENV_DIR=".venv" ./launch.sh -i
 	#
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch postgres
 	echo "Database initialised and upgraded, when necessary applied"
-	VENV_DIR=".venv" ./migrate.sh --migrate --env production
+	VENV_DIR=".venv" ./migrate.sh --migrate --env production --migration_branch postgres
 	echo "New migrations created, when applicable"
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch postgres
 	echo "New migrations applied"
 	# Stop test infra (not functionnal yet, might need utilities scripts)
 	docker compose -f docker-compose-localinfra-pg.yml down
 
-
 new_migration_maria: dev_localinfra_maria_run
 	set -e; \
-	trap '$(MAKE) restore_requirements' EXIT; \
+	# trap '$(MAKE) restore_requirements' EXIT; \
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"; \
 	echo "Install the application in Dockerised Local Dev Infra first"; \
 	read wait_for_me; \
@@ -202,11 +204,11 @@ new_migration_maria: dev_localinfra_maria_run
 	# Just in case, should be harmless; \
 	VENV_DIR=".venv" ./launch.sh -i; \
 	#; \
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production; \
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch mariadb; \
 	echo "Database initialised and upgraded, when necessary applied"; \
-	VENV_DIR=".venv" ./migrate.sh --migrate --env production; \
+	VENV_DIR=".venv" ./migrate.sh --migrate --env production --migration_branch mariadb; \
 	echo "New migrations created, when applicable"; \
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production; \
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch mariadb; \
 	echo "New migrations applied"; \
 	# Stop test infra (not functionnal yet, might need utilities scripts); \
 	docker compose -f docker-compose-localinfra-maria.yml down;
@@ -219,10 +221,10 @@ full_new_migration:
 	read wait_for_me; \
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
-	docker exec -it flowintel bash -i ./migrate.sh --migrate
+	docker exec -it flowintel bash -i ./migrate.sh --migrate --migration_branch postgres
 	echo "New migration created if new model found"
 	sleep 1
-	docker exec -it flowintel bash -i ./migrate.sh --upgrade
+	docker exec -it flowintel bash -i ./migrate.sh --upgrade --migration_branch postgres
 	echo "New migrations applied"
 	# Stop test infra (not functionnal yet, might need utilities scripts)
 	docker compose -f docker-compose-localinfra-pg.yml down
@@ -237,10 +239,10 @@ full_new_migration_maria:
 	read wait_for_me; \
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
-	docker exec -it flowintel bash -i ./migrate.sh --migrate
+	docker exec -it flowintel bash -i ./migrate.sh --migrate --migration_branch mariadb
 	echo "New migration created if new model found"
 	sleep 1
-	docker exec -it flowintel bash -i ./migrate.sh --upgrade
+	docker exec -it flowintel bash -i ./migrate.sh --upgrade --migration_branch mariadb
 	echo "New migrations applied"
 	# Stop test infra (not functionnal yet, might need utilities scripts)
 	docker compose -f docker-compose-localfull-maria.yml down

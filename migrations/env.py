@@ -14,6 +14,10 @@ config = context.config
 fileConfig(config.config_file_name)
 logger = logging.getLogger('alembic.env')
 
+##
+# TODO Now maybe we can import these methods from app.db_utils too ?
+def get_dialect_name():
+    return get_engine().dialect.name
 
 def get_engine():
     try:
@@ -22,7 +26,7 @@ def get_engine():
     except TypeError:
         # this works with Flask-SQLAlchemy>=3
         return current_app.extensions['migrate'].db.engine
-
+##
 
 def get_engine_url():
     try:
@@ -99,6 +103,9 @@ def run_migrations_online():
             process_revision_directives=process_revision_directives,
             **current_app.extensions['migrate'].configure_args
         )
+    
+        dialect_name = connection.dialect.name
+        logger.info("Running migrations for dialect: %s", dialect_name)
 
         with context.begin_transaction():
             context.run_migrations()
