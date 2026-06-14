@@ -40,7 +40,8 @@ export default {
 			// Delete a file in the case
 			const ok = await confirmDelete({
 				title: 'Delete file?',
-				message: 'Are you sure you want to delete this file? This cannot be undone.'
+				message: 'Are you sure you want to delete this file? This cannot be undone.',
+				detail: file.name
 			})
 			if (!ok) return
 			const res = await fetch('/case/' + props.case_id + '/delete_case_file/' + file.id)

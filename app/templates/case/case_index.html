@@ -36,7 +36,7 @@
 
             <!-- Search bar -->
             <div class="col input-group w-auto">
-                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
+                <button type="button" class="btn btn-sm" :class="has_active_filters ? 'btn-filter-active' : 'btn-outline-primary'" data-bs-toggle="modal" data-bs-target="#modalCaseFilter" :title="has_active_filters ? 'Filter applied - click to edit' : 'Filter cases'">
                     <i class="fa-solid fa-filter fa-sm"></i>
                 </button>
                 <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search case by title' />
@@ -391,7 +391,7 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, onMounted, computed} = Vue
+        const { createApp, ref, onMounted, computed, nextTick} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
         
@@ -647,7 +647,17 @@
                     }else{
                         let loc = await res.json()
                         tags_list.value = loc["tags"]
-                        $('#tags_select').trigger('change');
+
+                        // Drop selected tags whose taxonomy is no longer selected
+                        const available_tags = new Set()
+                        for(const taxo in tags_list.value){
+                            for(const tag of tags_list.value[taxo]) available_tags.add(tag.name)
+                        }
+                        selected_tags.value = selected_tags.value.filter(t => available_tags.has(t))
+
+                        // Wait for the option list to reflect tags_list before syncing select2
+                        await nextTick()
+                        $('#tags_select').val(selected_tags.value).trigger('change');
                     }
                 }
                 async function fetch_cluster(){
@@ -657,7 +667,17 @@
                     }else{
                         let loc = await res.json()
                         cluster_list.value = loc["clusters"]
-                        $('#clusters_select').trigger('change');
+
+                        // Drop selected clusters whose galaxy is no longer selected
+                        const available_clusters = new Set()
+                        for(const galaxy in cluster_list.value){
+                            for(const cluster of cluster_list.value[galaxy]) available_clusters.add(cluster.name)
+                        }
+                        selected_clusters.value = selected_clusters.value.filter(c => available_clusters.has(c))
+
+                        // Wait for the option list to reflect cluster_list before syncing select2
+                        await nextTick()
+                        $('#clusters_select').val(selected_clusters.value).trigger('change');
                     }
                 }
 

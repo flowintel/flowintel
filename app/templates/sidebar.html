@@ -134,14 +134,14 @@
 		</a>
 	</li>
 
+	{% if config.ENABLE_CHATBOT %}
 	<li class="nav-item">
-		{% if config.ENABLE_CHATBOT %}
 		<a class="nav-link" href="/chatbot/">
 			<i class="fas fa-fw fa-robot"></i>
 			<span>Chatbot</span>
 		</a>
-		{% endif %}
 	</li>
+	{% endif %}
 
 	<!-- Divider -->
 	<hr class="sidebar-divider d-none d-md-block">

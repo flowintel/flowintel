@@ -2,12 +2,9 @@ import requests
 import urllib3
 import conf.config_module as Config
 
-# SSL verification for outbound Rulezet calls. Defaults to True (secure) when the
-# setting is missing from a user's config_module.py so older deployments stay safe.
+# Default to True so existing deployments without RULEZET_VERIFY_SSL stay on the secure default.
 VERIFY_SSL = getattr(Config, "RULEZET_VERIFY_SSL", True)
 
-# Only silence urllib3's InsecureRequestWarning when verification is explicitly
-# disabled by the operator; keep warnings visible otherwise.
 if not VERIFY_SSL:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

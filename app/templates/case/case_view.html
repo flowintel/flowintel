@@ -639,7 +639,7 @@
 
         <!-- Search bar -->
         <div class="col input-group w-auto">
-            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFilter">
+            <button type="button" class="btn btn-sm" :class="has_active_filters ? 'btn-filter-active' : 'btn-outline-primary'" data-bs-toggle="modal" data-bs-target="#modalFilter" :title="has_active_filters ? 'Filter applied - click to edit' : 'Filter tasks'">
                 <i class="fa-solid fa-filter fa-sm"></i>
             </button>
             <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search task by title' />
@@ -1881,6 +1881,17 @@
 
                 const total_pages = computed(() => Math.ceil(total_tasks.value / per_page))
 
+                const has_active_filters = computed(() => {
+                    return (
+                        (search_query.value || '').length > 0 ||
+                        selected_tags.value.length > 0 ||
+                        selected_taxo.value.length > 0 ||
+                        selected_galaxies.value.length > 0 ||
+                        selected_clusters.value.length > 0 ||
+                        selected_custom_tags.value.length > 0
+                    )
+                })
+
                 function go_to_page(page) {
                     if (page < 1 || page > total_pages.value) return
                     current_page.value = page
@@ -1915,6 +1926,7 @@
                     users_in_case,
                     message_list,
                     dayjs,
+                    has_active_filters,
                     main_tab,
                     subtab_note,
                     subtab_timeline,

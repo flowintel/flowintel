@@ -1,5 +1,6 @@
 from pymisp import MISPEvent, MISPObject, PyMISP, MISPAttribute
 from pymisp.exceptions import InvalidMISPObjectAttribute, InvalidMISPObject, NewAttributeError
+import time
 import uuid
 import conf.config_module as Config
 import logging
@@ -23,6 +24,12 @@ REPORT_TEMPLATE_UUID = "70a68471-df22-4e3f-aa1a-5a3be19f82df"
 # object id allows us to update the matching EventReport on re-sync instead of
 # accumulating duplicates.
 _EVENT_REPORT_NAMESPACE = uuid.UUID("5a3be19f-82df-4e3f-aa1a-70a68471df22")
+
+
+def bump_event_timestamp(event):
+    """Set the event timestamp to the current epoch second."""
+    event.timestamp = int(time.time())
+    return event
 
 
 def create_object(misp, object, event_id):
@@ -177,12 +184,7 @@ def _sync_report_event_reports(misp, event, objects):
     the surrounding sync, since the objects themselves have already been
     pushed successfully.
     """
-    event_id = None
-    if event is not None:
-        try:
-            event_id = event.get("id") if hasattr(event, "get") else getattr(event, "id", None)
-        except Exception:
-            event_id = getattr(event, "id", None)
+    event_id = event.get("id") if event is not None else None
     if not event_id:
         logger.info("Skipping event report sync: no event id available")
         return
@@ -316,7 +318,10 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
         return {"message": event.get("errors", "Error with MISP event")}
 
     # Mirror any 'report'-template objects as MISP EventReports on the same event.
-    _sync_report_event_reports(misp, event, objects)
+    try:
+        _sync_report_event_reports(misp, event, objects)
+    except Exception as exc:
+        logger.warning("Could not mirror report objects as MISP event reports: %s", exc)
 
     # Let the module handle its own DB storage
     if case_model and object_uuid_list:

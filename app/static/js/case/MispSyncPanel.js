@@ -1,7 +1,7 @@
 import { display_toast, create_message } from '../toaster.js'
 const { ref, computed, watch } = Vue
 
-const REPORT_TEMPLATE_UUID = '70a68471-df22-4e3f-aa1a-5a3be19f82df'
+export const REPORT_TEMPLATE_UUID = '70a68471-df22-4e3f-aa1a-5a3be19f82df'
 
 export default {
     delimiters: ['[[', ']]'],

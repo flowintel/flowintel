@@ -51,7 +51,8 @@ export default {
 			// Delete a file in the task
 			const ok = await confirmDelete({
 				title: 'Delete file?',
-				message: 'Are you sure you want to delete this file? This cannot be undone.'
+				message: 'Are you sure you want to delete this file? This cannot be undone.',
+				detail: file.name
 			})
 			if (!ok) return
 			const res = await fetch('/case/task/' + task.id + '/delete_file/' + file.id)

@@ -152,6 +152,7 @@
 {% block script %}
 <script type="module">
     import { message_list } from '/static/js/toaster.js'
+    import { REPORT_TEMPLATE_UUID } from '/static/js/case/MispSyncPanel.js'
     const { createApp } = Vue
     createApp({
         delimiters: ['[[', ']]'],
@@ -354,7 +355,7 @@
 
         const payload = {
             "object-template": {
-                "uuid": "70a68471-df22-4e3f-aa1a-5a3be19f82df",
+                "uuid": REPORT_TEMPLATE_UUID,
                 "name": "report"
             },
             "attributes": [

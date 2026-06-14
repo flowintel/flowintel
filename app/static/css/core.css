@@ -346,6 +346,19 @@ legend.analyzer-select-case {
   border-radius: 15px;
 }
 
+.btn-filter-active {
+  background-color: #0a3d91;
+  border-color: #0a3d91;
+  color: #fff;
+}
+
+.btn-filter-active:hover,
+.btn-filter-active:focus {
+  background-color: #082f70;
+  border-color: #082f70;
+  color: #fff;
+}
+
 .case-header-card {
   background-color: #fff;
   border: 1px solid #e9ecef;

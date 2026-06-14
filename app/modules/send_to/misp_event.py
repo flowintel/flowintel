@@ -1,13 +1,12 @@
 import json
 import logging
 import os
-import time
 from pathlib import Path
 from pymisp import MISPAttribute, MISPEvent, MISPGalaxy, MISPGalaxyCluster, MISPObject, MISPObjectReference, PyMISP
 import uuid
 from flask import current_app
 import conf.config_module as Config
-from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports
+from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp
 from app.case.CaseCore import FILE_FOLDER
 
 logger = logging.getLogger(__name__)
@@ -18,21 +17,6 @@ module_config = {
     "case_task": "case",
     "description": "Create or modify an event using the current case. The event will include:\n\t- case's info as misp-object\n\t- tasks' info as misp-object\n\t- tasks' subtasks as text attributes\n\t- tasks' external references as link attributes\n\t- case and tasks notes as event report\n\t- file attachments (when MISP_EXPORT_FILES is enabled)"
 }
-
-def bump_event_timestamp(event):
-    """Set the event timestamp to the current epoch second.
-
-    MISP rejects edits when the ``timestamp`` field of the request is not strictly
-    greater than the value stored on the server (HTTP 403, "Event in the request
-    not newer than the local copy"). PyMISP does bump the timestamp when an
-    attribute is modified in-place, but updates that only add/remove objects,
-    add/remove tags or update event reports do not trigger that bump. Forcing
-    the timestamp to ``now`` before every ``update_event`` ensures the edit is
-    accepted even when no scalar attribute was changed.
-    """
-    event.timestamp = int(time.time())
-    return event
-
 
 def common_edit(case_task, attribute):
     if attribute.object_relation == 'title' and not attribute.value == case_task["title"]:
