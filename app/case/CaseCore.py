@@ -7,7 +7,7 @@ import datetime
 import json
 import sys
 
-from flask_login import current_user, current_app
+from flask_login import current_user
 from flask import send_file, current_app
 import pymisp
 import requests
