@@ -1,5 +1,6 @@
 import logging
 from logging.config import fileConfig
+from pathlib import Path
 
 from flask import current_app
 
@@ -16,9 +17,6 @@ logger = logging.getLogger('alembic.env')
 
 ##
 # TODO Now maybe we can import these methods from app.db_utils too ?
-def get_dialect_name():
-    return get_engine().dialect.name
-
 def get_engine():
     try:
         # this works with Flask-SQLAlchemy<3 and Alchemical
@@ -27,6 +25,19 @@ def get_engine():
         # this works with Flask-SQLAlchemy>=3
         return current_app.extensions['migrate'].db.engine
 ##
+
+def configure_version_locations():
+    dialect = get_engine().dialect.name
+    script = context.script
+    script.__dict__.pop('_version_locations', None)
+
+    base = Path(config.config_file_name).resolve().parent
+    if dialect in ("mysql", "mariadb"):
+        script.version_locations = [str(base / "versions_mariadb")]
+    else:
+        script.version_locations = [str(base / "versions")]
+    
+    logger.info("Using version locations: %s", script.version_locations)
 
 def get_engine_url():
     try:
@@ -67,6 +78,7 @@ def run_migrations_offline():
     script output.
 
     """
+    configure_version_locations()
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url, target_metadata=get_metadata(), literal_binds=True
@@ -94,18 +106,19 @@ def run_migrations_online():
                 directives[:] = []
                 logger.info('No changes in schema detected.')
 
+    configure_version_locations()
     connectable = get_engine()
 
     with connectable.connect() as connection:
+        dialect_name = connection.dialect.name
+        logger.info("Running migrations for dialect: %s", dialect_name)
+
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
             process_revision_directives=process_revision_directives,
             **current_app.extensions['migrate'].configure_args
         )
-    
-        dialect_name = connection.dialect.name
-        logger.info("Running migrations for dialect: %s", dialect_name)
 
         with context.begin_transaction():
             context.run_migrations()
