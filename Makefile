@@ -337,11 +337,11 @@ endif
 
 # Various Helpers
 dev_localinfra_run:
-	cp -f .env.postgres .env
+	# cp -f .env.postgres .env
 	docker compose -f docker-compose-localinfra-pg.yml up
 
 dev_localinfra_maria_run:
-	cp -f .env.mariadb .env
+	# cp -f .env.mariadb .env
 	docker compose -f docker-compose-localinfra-maria.yml up
 
 dev_localinfra_stop:
