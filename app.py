@@ -88,9 +88,16 @@ if args.init_db:
         cfg = Config("migrations/alembic.ini")
 
         if get_engine().dialect.name in ("mysql", "mariadb"):
+            # MariaDB branch contains a properly created "full" alembic init migration
             command.upgrade(cfg, "mariadb@head")
         else:
-            command.upgrade(cfg, "postgres@head")  # or postgres@head later
+            db.create_all()
+            command.stamp(cfg, "postgres@head")
+            # Kept for legacy - how to recreate the init migrations script by replacing the previous 2 lines with:
+            # The app will badly crash, but you will generated the file that can be docker copied out
+            # command.revision(cfg, message="Initial migration", autogenerate=True)
+            # command.upgrade(cfg, "postgres@head")
+            #
         create_admin()
 elif args.recreate_db:
     with app.app_context():
@@ -104,7 +111,8 @@ elif args.recreate_db:
         if get_engine().dialect.name in ("mysql", "mariadb"):
             command.upgrade(cfg, "mariadb@head")
         else:
-            command.upgrade(cfg, "postgres@head")  # or postgres@head later
+            db.create_all()
+            command.stamp(cfg, "postgres@head")
         create_admin()
 elif args.delete_db:
     with app.app_context():

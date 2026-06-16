@@ -110,20 +110,13 @@ rebuild = 1
 
 # Init
 ########################################################################################
-first_install: configure_repo_dev
-	echo
-	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	read wait_for_me;
-	uv venv --allow-existing;
-	uv pip install -r requirements.txt
-
 configure_repo_dev:
 	# In this project, the .env file is automatically run by the application
 	# so we simply rely on switching postgres and mariadb environments at startup by
 	# file permutation
 	# We may add .envbuild file sources in the Makefile later
-	cp -n template.env .env.postgres
-	cp -n template.env .env.mariadb
+	#cp -n template.env .env.postgres
+	#cp -n template.env .env.mariadb
 	cp -n conf/config.py.default conf/config.py
 	cp -n conf/config_module.py.default conf/config_module.py
 	echo
@@ -132,6 +125,13 @@ configure_repo_dev:
 	echo -e "${BLUE}${BOLD}Please edit the files .env.postgres and .env.mariadb and conf/config.py before proceeding.${RESET}"
 	# TODO add the install deps with uv recipes -> Development lifecycle
 	echo -e "${BLUE}${BOLD}Do not forget to run the database_init recipe at first install, aftert the docker-compose spawned.${RESET}"
+
+first_install: configure_repo_dev
+	echo
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	read wait_for_me;
+	uv venv --allow-existing;
+	uv pip install -r requirements.txt
 
 # restore_requirements:
 # 	echo "Restoring requirements files"
@@ -159,6 +159,16 @@ database_init:
 		echo "Database initialization skipped."; \
 	fi; \
 
+init_migrations:
+	# TODO Clarify how much it is redundant with migrate.sh script
+	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
+	read wait_for_me; \
+	uv run flask db init
+	uv run flask db migrate -m "postgres initial schema" \
+	    --head base \
+    	--branch-label postgres \
+		--version-path migrations/versions
+
 init_migrations_maria:
 	# TODO Clarify how much it is redundant with migrate.sh script
 	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
@@ -167,7 +177,7 @@ init_migrations_maria:
 	uv run flask db migrate -m "mariadb initial schema" \
 	    --head base \
     	--branch-label mariadb \
-		--version-path alembic/versions_mariadb
+		--version-path migrations/versions_mariadb
 
 new_migration: dev_localinfra_run
 	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
@@ -281,7 +291,6 @@ run_maria: configure_repo_dev dev_localinfra_maria_run
 
 runfull: configure_repo_dev build_latest_local
 	cp -f .env.full.postgres .env.docker
-	cp -f .env.full.postgres .env
 	docker compose -f docker-compose-localfull-pg.yml up
 	echo "Press Enter to close..."
 	read _
@@ -291,7 +300,6 @@ runfull: configure_repo_dev build_latest_local
 
 runfull_maria: configure_repo_dev build_maria_latest_local
 	cp -f .env.full.mariadb .env.docker
-	cp -f .env.full.mariadb .env
 	docker compose -f docker-compose-localfull-maria.yml up
 	echo "Press Enter to close..."
 	read _

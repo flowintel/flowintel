@@ -42,7 +42,8 @@ services:
     # Note: In production, it is might be chosen that this .env is rather loaded by a systemd .service
     # and is not findable by Docker, but this means the list of environment variables below must be made
     # consistent with the targeted config in production
-    env_file: "./.env.docker"
+    # For some reason, docker compose accept only the default ".env" -> tricky with the dotenv() of Python BTW !
+    # env_file: "./.env"
     #
     environment:
       - SECRET_KEY=${SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}

@@ -21,7 +21,7 @@ function upgrade {
 }
 
 function downgrade {
-    flask db downgrade -1
+    flask db downgrade
 }
 
 # Parse arguments
@@ -80,17 +80,17 @@ fi
 case "$MIGRATION_BRANCH" in
   postgres)
     UPGRADE_TARGET="postgres@head"
-    MIGRATE_OPTS=(--head postgres@head --version-path alembic/versions)
+    MIGRATE_OPTS=(--head postgres@head --version-path migrations/versions)
     ;;
   mariadb)
     UPGRADE_TARGET="mariadb@head"
-    MIGRATE_OPTS=(--head mariadb@head --version-path alembic/versions_mariadb)
+    MIGRATE_OPTS=(--head mariadb@head --version-path migrations/versions_mariadb)
     ;;
   sqlite)
     # The following assumption is based on the observation that postgres (prod) and sqlite (dev) were apparently working
     # with the same models, same migration files at v3.3.0
     UPGRADE_TARGET="postgres@head"
-    MIGRATE_OPTS=(--head postgres@head --version-path alembic/versions)
+    MIGRATE_OPTS=(--head postgres@head --version-path migrations/versions)
     ;;
   *)
     echo "Error: Invalid migration branch '$MIGRATION_BRANCH'. Must be postgres, sqlite, or mariadb."

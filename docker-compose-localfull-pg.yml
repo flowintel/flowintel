@@ -38,7 +38,8 @@ services:
     # Note: In production, it is might be chosen that this .env is rather loaded by a systemd .service
     # and is not findable by Docker, but this means the list of environment variables below must be made
     # consistent with the targeted config in production
-    env_file: "./.env.docker"
+    # For some reason, docker compose accept only the default ".env" -> tricky with the dotenv() of Python BTW !
+    # env_file: "./.env"
     #
     environment:
       - SECRET_KEY=${SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
@@ -46,7 +47,7 @@ services:
       - DB_HOST=${DB_HOST:-postgresql}
       - DB_PORT=${DB_PORT:-5432}
       - DB_USER=${DB_USER:-flowintel}
-      - DB_PASSWORD=${DB_PASSWORD:-flowintel}
+      - DB_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
       - DB_NAME=${DB_NAME:-flowintel}
       - DB_DIALECT=${DB_DIALECT:-postgresql}
       - DB_DRIVER=${DB_DRIVER:-psycopg2}
@@ -60,7 +61,7 @@ services:
       #
       # By default, we use production config because the docker compose owns a database service
       - FLASKENV=${FLASKENV:-production}
-      -
+      #
       - FLASK_PORT=${APP_PORT:-7006}
       - FLASK_URL=${FLASK_URL:-0.0.0.0}
     #
@@ -69,7 +70,6 @@ services:
     depends_on:
       - postgresql
       - valkey
-
     volumes:
       - flowintel-data:/var/lib/flowintel
       - ./conf/config_module.py:/home/flowintel//app/conf/config_module.py:ro
@@ -78,7 +78,7 @@ services:
       # Creates the missing varenv above thanks to dotenv in python3:
       #   - dotenv does not override existing variables by default
       #   - in production, bypass dotenv by simply not mounting the file
-      - ./.env:/home/flowintel/app/.env
+      #- ./.env.docker:/home/flowintel/app/.env
       #
 
 volumes:
