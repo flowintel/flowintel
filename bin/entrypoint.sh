@@ -3,13 +3,13 @@ set -e
 
 # TODO maybe we generalize with Database Dialect instead of a single techno ...
 
-echo "Checking if PostgreSQL server is up..."
+echo "Checking if ${DB_HOST:-postgresql} server is up..."
 
-/home/flowintel/app/bin/wait-for-it.sh postgresql:5432 --timeout=30 --strict -- echo "Postgres is up"
+/home/flowintel/app/bin/wait-for-it.sh "${DB_HOST:-postgresql}":"${DB_PORT:-5432}" --timeout=30 --strict -- echo "${DB_HOST:-postgresql} is up"
 
 sleep 2
 
-echo "Postgres is reachable."
+echo "${DB_HOST:-postgresql} is reachable."
 
 # We make the following distinction error codes:
 # 0 = connected, query ran, no matching admin row.
@@ -18,15 +18,19 @@ echo "Postgres is reachable."
 # 3 = SQL/schema problem.
 # 4 = something else.
 DB_EXISTS=$(python3 - << 'EOF'
-from dotenv import load_dotenv
-load_dotenv(dotenv_path=".env")
-
-import os, sys, psycopg2
-
-from conf.config import config as Config
+import os, sys
 
 config_name = os.environ.get("FLASKENV", "development")
 print(f"Loading app config {config_name}...", file=sys.stderr)
+
+from conf.config import config as Config
+
+driver = str(Config[config_name].db_driver)
+
+if driver == "pymysql":
+    import pymysql
+else:
+    import psycopg2
 
 host = Config[config_name].db_host
 user = Config[config_name].db_user
@@ -34,34 +38,61 @@ password = Config[config_name].db_password
 database = Config[config_name].db_name
 port = int(Config[config_name].db_port)
 
-print(f"Checking for database {database}...", file=sys.stderr)
+print(f"Checking for database {database} using driver {driver}...", file=sys.stderr)
 
 conn = None
 cur = None
 
+if driver == "pymysql":
+    import pymysql as dbmod
+    OperationalError = dbmod.err.OperationalError
+    ProgrammingError = dbmod.err.ProgrammingError
+    user_query = 'SELECT id FROM `user` WHERE first_name = %s LIMIT 1'
+else:
+    import psycopg2 as dbmod
+    OperationalError = dbmod.OperationalError
+    ProgrammingError = dbmod.ProgrammingError
+    user_query = 'SELECT id FROM "user" WHERE first_name = %s LIMIT 1'
+
 try:
     print(f"CHECK: connecting to {host}:{port}/{database}", file=sys.stderr)
-    conn = psycopg2.connect(
+    print(f"CHECK: selected module driver was {driver}", file=sys.stderr)
+    if driver == "pymysql":
+        print(f"CHECK: forced module driver is {pymysql}", file=sys.stderr)
+        conn = dbmod.connect(
         host=host,
         port=port,
         user=user,
         password=password,
-        dbname=database,
-        connect_timeout=3,
+        database=database,
+        connect_timeout=5,
+        read_timeout=5,
+        write_timeout=5,
     )
-    print("CHECK: connection established", file=sys.stderr)
+    else:
+        print(f"CHECK: forced driver is {psycopg2}", file=sys.stderr)
+        conn = dbmod.connect(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            dbname=database,
+            connect_timeout=3,
+        )
+    print(f"CHECK: connection established with driver {driver}", file=sys.stderr)
 
     cur = conn.cursor()
     cur.execute("SELECT 1")
     print(f"CHECK: SELECT 1 -> {cur.fetchone()}", file=sys.stderr)
 
-    cur.execute('SELECT id FROM "user" WHERE first_name = %s LIMIT 1', ("admin",))
+    cur.execute(user_query, ("admin",))
     exists = cur.fetchone() is not None
     print("1" if exists else "0")
-except psycopg2.OperationalError as e:
+
+except OperationalError as e:
     print(f"CONNECTION_ERROR: {e}", file=sys.stderr)
     print("2")
-except psycopg2.ProgrammingError as e:
+except ProgrammingError as e:
     print(f"QUERY_ERROR: {e}", file=sys.stderr)
     print("3")
 except Exception as e:

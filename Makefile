@@ -159,7 +159,7 @@ database_init:
 		echo "Database initialization skipped."; \
 	fi; \
 
-init_migrations:
+init_migrations_postgres:
 	# TODO Clarify how much it is redundant with migrate.sh script
 	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
 	read wait_for_me; \
@@ -179,7 +179,7 @@ init_migrations_maria:
     	--branch-label mariadb \
 		--version-path migrations/versions_mariadb
 
-new_migration: dev_localinfra_run
+new_migration_postgres: dev_localinfra_postgres_run
 	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
 	echo "Install the application in Dockerised Local Dev Infra first";
 	read wait_for_me; \
@@ -195,7 +195,7 @@ new_migration: dev_localinfra_run
 	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch postgres
 	echo "New migrations applied"
 	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-localinfra-pg.yml down
+	docker compose -f docker-compose-local-infra-postgres.yml down
 
 new_migration_maria: dev_localinfra_maria_run
 	set -e; \
@@ -221,7 +221,7 @@ new_migration_maria: dev_localinfra_maria_run
 	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch mariadb; \
 	echo "New migrations applied"; \
 	# Stop test infra (not functionnal yet, might need utilities scripts); \
-	docker compose -f docker-compose-localinfra-maria.yml down;
+	docker compose -f docker-compose-local-infra-maria.yml down;
 
 full_new_migration:
 	# TODO Clarify how much it is redundant with migrate.sh script
@@ -237,7 +237,7 @@ full_new_migration:
 	docker exec -it flowintel bash -i ./migrate.sh --upgrade --migration_branch postgres
 	echo "New migrations applied"
 	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-localinfra-pg.yml down
+	docker compose -f docker-compose-local-infra-postgres.yml down
 
 
 full_new_migration_maria:
@@ -255,20 +255,20 @@ full_new_migration_maria:
 	docker exec -it flowintel bash -i ./migrate.sh --upgrade --migration_branch mariadb
 	echo "New migrations applied"
 	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-localfull-maria.yml down
+	docker compose -f docker-compose-local-full-maria.yml down
 
 # Run Application
 # TODO in the future, either build a New image to account for WebApp changes
 # or make a specific "run_dev" to run locally the app and simply spawn databases and
 # Valkey as "dev_infra" like we did for URLChecker Web Platform
-run: configure_repo_dev dev_localinfra_run
+run_posgtres: configure_repo_dev dev_localinfra_postgres_run
 	VENV_DIR=".venv" ./install.sh
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
 	sleep 1
 	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-localinfra-pg.yml down
+	docker compose -f docker-compose-local-infra-postgres.yml down
 
 run_maria: configure_repo_dev dev_localinfra_maria_run
 	set -e; \
@@ -287,32 +287,41 @@ run_maria: configure_repo_dev dev_localinfra_maria_run
 	read _; \
 	sleep 1; \
 	# Stop test infra (not functionnal yet, might need utilities scripts); \
-	docker compose -f docker-compose-localinfra-maria.yml down
+	docker compose -f docker-compose-local-infra-maria.yml down
 
-runfull: configure_repo_dev build_latest_local
+runfull_postgres: configure_repo_dev build_latest_local
 	cp -f .env.full.postgres .env.docker
-	docker compose -f docker-compose-localfull-pg.yml up
+	docker compose -f docker-compose-local-full-postgres.yml up
 	echo "Press Enter to close..."
 	read _
 	sleep 1
 	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-localfull-pg.yml down
+	docker compose -f docker-compose-local-full-postgres.yml down
 
-runfull_maria: configure_repo_dev build_maria_latest_local
+runfull_maria: configure_repo_dev build_latest_local
 	cp -f .env.full.mariadb .env.docker
-	docker compose -f docker-compose-localfull-maria.yml up
+	docker compose -f docker-compose-local-full-maria.yml up
 	echo "Press Enter to close..."
 	read _
 	sleep 1
 	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-localfull-maria.yml down
+	docker compose -f docker-compose-local-full-maria.yml down
 ########################################################################################
 
 # Build 🌍 , Publish  🌬️ and Release 🔥
 build_latest_local: nuke
 ifeq ($(rebuild),1)
 	@echo "Image Rebuild rebuild requested"
-	docker build -f DockerfilePostgres -t flowintel:latest .
+	docker build -f DockerfileProduction -t flowintel:latest .
+	@echo "Image built"
+else
+	@echo "Image Rebuild skipped"
+endif
+
+build_postgres_latest_local: nuke
+ifeq ($(rebuild),1)
+	@echo "Image Rebuild rebuild requested"
+	docker build -f DockerfilePostgres -t flowintel_postgres:latest .
 	@echo "Image built"
 else
 	@echo "Image Rebuild skipped"
@@ -336,19 +345,19 @@ else
 endif
 
 # Various Helpers
-dev_localinfra_run:
+dev_localinfra_postgres_run:
 	# cp -f .env.postgres .env
-	docker compose -f docker-compose-localinfra-pg.yml up
+	docker compose -f docker-compose-local-infra-postgres.yml up
 
 dev_localinfra_maria_run:
 	# cp -f .env.mariadb .env
-	docker compose -f docker-compose-localinfra-maria.yml up
+	docker compose -f docker-compose-local-infra-maria.yml up
 
-dev_localinfra_stop:
-	docker compose -f docker-compose-localinfra-pg.yml down
+dev_localinfra_postgres_stop:
+	docker compose -f docker-compose-local-infra-postgres.yml down
 
 dev_localinfra_maria_stop:
-	docker compose -f docker-compose-localinfra-maria.yml down
+	docker compose -f docker-compose-local-infra-maria.yml down
 
 ################
 # Housekeeping #

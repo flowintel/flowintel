@@ -30,7 +30,7 @@ services:
 
 
   flowintel:
-    image: flowintel_maria:latest
+    image: flowintel:latest
     container_name: flowintel
     command: bash -i ./launch.sh -ld
     ports:
@@ -76,13 +76,13 @@ services:
       - valkey
     volumes:
       - flowintel-data:/var/lib/flowintel
-      - ./conf/config_module.py:/home/flowintel//app/conf/config_module.py:ro
+      - ./conf/config_module.py:/home/flowintel/app/conf/config_module.py:ro
       - ./conf/config.py:/home/flowintel/app/conf/config.py:ro
       # Development hack 2:
       # Creates the missing varenv above thanks to dotenv in python3:
       #   - dotenv does not override existing variables by default
       #   - in production, bypass dotenv by simply not mounting the file
-      - ./.env:/home/flowintel/app/.env
+      # - ./.env:/home/flowintel/app/.env
       #
 
 volumes:

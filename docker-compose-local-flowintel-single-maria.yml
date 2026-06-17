@@ -1,0 +1,65 @@
+services:
+  flowintel:
+    image: flowintel:latest
+    container_name: flowintel
+    command: bash -i ./launch.sh -ld
+    ports:
+      - '${APP_PORT:-7006}:7006'
+    # Development hack 1:
+    # Overwrites the environment defaults while avoiding that a missing .env file would make config
+    # behavior somehow erratic
+    # When using the Makefile, this is enforced with dotenv based on volume mounting below
+    # Note: In production, it is might be chosen that this .env is rather loaded by a systemd .service
+    # and is not findable by Docker, but this means the list of environment variables below must be made
+    # consistent with the targeted config in production
+    # For some reason, docker compose accept only the default ".env" -> tricky with the dotenv() of Python BTW !
+    # env_file: "./.env"
+    #
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
+      #
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-flowintel}
+      - DB_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
+      - DB_NAME=${DB_NAME:-flowintel}
+      - DB_DIALECT=${DB_DIALECT:-mysql}
+      - DB_DRIVER=${DB_DRIVER:-pymysql}
+      #
+      - VALKEY_IP=${VALKEY_IP:-valkey}
+      - ADMIN_FIRST_NAME=${ADMIN_FIRST_NAME:-admin}
+      - ADMIN_LAST_NAME=${ADMIN_LAST_NAME:-admin}
+      - ADMIN_MAIL=${ADMIN_MAIL:-admin@admin.admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - BOT_MAIL=${BOT_MAIL:-neo@admin.admin}
+      #
+      # By default, we use production config because the docker compose owns a database service
+      - FLASKENV=${FLASKENV:-production}
+      #
+      - FLASK_PORT=${APP_PORT:-7006}
+      - FLASK_URL=${FLASK_URL:-0.0.0.0}
+    #
+    networks:
+      - net
+    volumes:
+      - flowintel-data:/var/lib/flowintel
+      - ./conf/config_module.py:/home/flowintel/app/conf/config_module.py:ro
+      - ./conf/config.py:/home/flowintel/app/conf/config.py:ro
+      # Development hack 2:
+      # Creates the missing varenv above thanks to dotenv in python3:
+      #   - dotenv does not override existing variables by default
+      #   - in production, bypass dotenv by simply not mounting the file
+      # - ./.env:/home/flowintel/app/.env
+      #
+
+volumes:
+  flowintel-data:
+
+networks:
+  net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+        - subnet: fd31:50:0:1::/64
