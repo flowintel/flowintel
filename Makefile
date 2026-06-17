@@ -20,6 +20,15 @@
 #      tag_message = "the message your may want to associate with the Git tag" \
 # ```
 
+##
+# TODO improvement to avoid the ugly /dev/null in the stop recipes make call
+# ifndef VERBOSE
+#  VERBOSE := 0
+# endif
+# info_verbose = $(if $(filter 1,$(VERBOSE)),$(info $(1)))
+# $(call info_verbose,This is printed only when VERBOSE=1)
+##
+
 BOLD := \033[1m
 RESET := \033[0m
 BLUE := \033[1;34m
@@ -84,11 +93,11 @@ UV_VERSION :=
 SHELL := /bin/bash
 
 # this one is to bump version, different from PACKAGE_VERSION which only reads Version state
-version_repo = "0.0.0"
+version_repo := "0.0.0"
 #
-tag_message = ""
+tag_message := ""
 
-rebuild = 1
+rebuild := 1
 
 ########################################################################################
 # RULES
@@ -96,17 +105,36 @@ rebuild = 1
 
 .SILENT:
 .PHONY: configure_repo_dev \
-		clean \
-		testclean \
-		distclean \
-		coverageclean \
-		database_init
-		dev_infra_run \
-		dev_infra_maria_run \
-		dev_infra_stop \
-		run \
+		first_install \
+		database_init \
+		init_migrations_postgres \
+		init_migrations_maria \
+		new_migration_postgres \
+		new_migration_maria \
+		full_new_migration \
+		full_new_migration_maria \
+		run_posgtres \
 		run_maria \
-		nuke
+		runfull_postgres \
+		runfull_maria \
+		build_latest_local \
+		dev_localinfra_postgres_run \
+		dev_localinfra_maria_run \
+		dev_localinfra_postgres_stop \
+		dev_localinfra_maria_stop \
+		dev_localinfra_full_postgres_stop \
+		dev_localinfra_full_maria_stop \
+		format_and_lint \
+		clean \
+		coverageclean \
+		distclean \
+		nuke \
+		nuke_volume \
+		nuke_submodules \
+		help
+# Note: bump_version create a file :)
+
+.ONESHELL:
 
 # Init
 ########################################################################################
@@ -134,14 +162,17 @@ configure_repo_dev:
 first_install: configure_repo_dev
 	echo
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	read wait_for_me;
-	uv venv --allow-existing;
+	read wait_for_me
+	uv venv --allow-existing
 	uv pip install -r requirements.txt
 
+##
+# Kept for legacy as comments and future adaption when running the app local in virtualenv (no Docker except dev infra)
 # restore_requirements:
 # 	echo "Restoring requirements files"
 # 	cp -f requirements.txt.backup requirements.txt
 # 	cp -f requirements.in.backup requirements.in
+##
 
 # Development lifecycle #
 ########################################################################################
@@ -151,23 +182,27 @@ first_install: configure_repo_dev
 
 # Database Management
 database_init:
+	# ! EXPERIMENTAL !
 	# TODO Clarify how much it is redundant with migrate.sh script
 	# TODO Clarify why we even need it for Docker as it seems to be already managed in the entrypoint
-	@echo "💣 DO NOT RUN IN PRODUCTION !!!";
-	echo "${RED}First run the application, then run this recipe at first install only.${RESET}"
-	go_to_initdb="N"; \
-	read -p "Do you want to continue ? (Y/N) " go_to_initdb; \
-	if [ $$go_to_initdb = "Y" ] || [ $$go_to_initdb = "y" ]; then \
-		docker exec -it flowintel bash -i ./launch.sh --init_db; \
-		echo "Database initialized."; \
-	else \
-		echo "Database initialization skipped."; \
-	fi; \
+	echo "💣 DO NOT RUN IN PRODUCTION !!!"
+	echo "! EXPERIMENTAL !"
+	echo -e "${RED}First run the application, then run this recipe at first install only.${RESET}"
+	go_to_initdb="N"
+	read -p "Do you want to continue ? (Y/N) " go_to_initdb
+	if [ $$go_to_initdb = "Y" ] || [ $$go_to_initdb = "y" ]; then
+		docker exec -it flowintel bash -i ./launch.sh --init_db
+		echo "Database initialized."
+	else
+		echo "Database initialization skipped."
+	fi
 
 init_migrations_postgres:
+	# ! EXPERIMENTAL !
 	# TODO Clarify how much it is redundant with migrate.sh script
-	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
-	read wait_for_me; \
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	echo "! EXPERIMENTAL !"
+	read wait_for_me
 	uv run flask db init
 	uv run flask db migrate -m "postgres initial schema" \
 	    --head base \
@@ -175,9 +210,11 @@ init_migrations_postgres:
 		--version-path migrations/versions
 
 init_migrations_maria:
+	# ! EXPERIMENTAL !
 	# TODO Clarify how much it is redundant with migrate.sh script
-	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
-	read wait_for_me; \
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	echo "! EXPERIMENTAL !"
+	read wait_for_me
 	uv run flask db init
 	uv run flask db migrate -m "mariadb initial schema" \
 	    --head base \
@@ -185,9 +222,14 @@ init_migrations_maria:
 		--version-path migrations/versions_mariadb
 
 new_migration_postgres: dev_localinfra_postgres_run
-	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
-	echo "Install the application in Dockerised Local Dev Infra first";
-	read wait_for_me; \
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
+	# ! EXPERIMENTAL !
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	echo "Install the application in Dockerised Local Dev Infra first"
+	echo "! EXPERIMENTAL !"
+	read wait_for_me
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
 	# Just if case, should be harmless
@@ -199,41 +241,39 @@ new_migration_postgres: dev_localinfra_postgres_run
 	echo "New migrations created, when applicable"
 	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch postgres
 	echo "New migrations applied"
-	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-local-infra-postgres.yml down
 
 new_migration_maria: dev_localinfra_maria_run
-	set -e; \
-	# trap '$(MAKE) restore_requirements' EXIT; \
-	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"; \
-	echo "Install the application in Dockerised Local Dev Infra first"; \
-	read wait_for_me; \
-	echo "Waiting 5 seconds for database available..."; \
-	sleep 5; \
-	# cp -f requirements.txt requirements.txt.backup; \
-	# cp -f requirements.in requirements.in.backup; \
-	# sed -i '/^psycopg2/d' requirements.txt; \
-	# echo 'PyMySQL>=1.1.0' >> requirements.txt; \
-	# sed -i '/^psycopg2/d' requirements.in; \
-	# echo 'PyMySQL' >> requirements.in; \
-	# Just in case, should be harmless; \
-	VENV_DIR=".venv" ./launch.sh -i; \
-	#; \
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch mariadb; \
-	echo "Database initialised and upgraded, when necessary applied"; \
-	VENV_DIR=".venv" ./migrate.sh --migrate --env production --migration_branch mariadb; \
-	echo "New migrations created, when applicable"; \
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch mariadb; \
-	echo "New migrations applied"; \
-	# Stop test infra (not functionnal yet, might need utilities scripts); \
-	docker compose -f docker-compose-local-infra-maria.yml down;
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
+	# ! EXPERIMENTAL !
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	echo "Install the application in Dockerised Local Dev Infra first"
+	echo "! EXPERIMENTAL !"
+	read wait_for_me
+	echo "Waiting 5 seconds for database available..."
+	sleep 5
+	# Just in case, should be harmless
+	VENV_DIR=".venv" ./launch.sh -i
+	#
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch mariadb
+	echo "Database initialised and upgraded, when necessary applied"
+	VENV_DIR=".venv" ./migrate.sh --migrate --env production --migration_branch mariadb
+	echo "New migrations created, when applicable"
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch mariadb
+	echo "New migrations applied"
 
 full_new_migration:
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
+	# ! EXPERIMENTAL !
 	# TODO Clarify how much it is redundant with migrate.sh script
 	# STILL EVEN MORE EXPERIMENTAL
-	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
 	echo "The application must already be run in full Docker mode"
-	read wait_for_me; \
+	echo "! EXPERIMENTAL !"
+	read wait_for_me
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
 	docker exec -it flowintel bash -i ./migrate.sh --migrate --migration_branch postgres
@@ -241,121 +281,83 @@ full_new_migration:
 	sleep 1
 	docker exec -it flowintel bash -i ./migrate.sh --upgrade --migration_branch postgres
 	echo "New migrations applied"
-	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-local-infra-postgres.yml down
-
 
 full_new_migration_maria:
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
+	# ! EXPERIMENTAL !
 	# TODO Clarify how much it is redundant with migrate.sh script
 	# STILL EVEN MORE EXPERIMENTAL
-	# TODO Clarify how much it is redundant with migrate.sh script
-	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
 	echo "The application must already be run in full Docker mode"
-	read wait_for_me; \
+	echo "! EXPERIMENTAL !"
+	read wait_for_me
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
 	docker exec -it flowintel bash -i ./migrate.sh --migrate --migration_branch mariadb
 	echo "New migration created if new model found"
 	sleep 1
 	docker exec -it flowintel bash -i ./migrate.sh --upgrade --migration_branch mariadb
-	echo "New migrations applied"
-	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-local-full-maria.yml down
 
 # Run Application
-# TODO in the future, either build a New image to account for WebApp changes
-# or make a specific "run_dev" to run locally the app and simply spawn databases and
-# Valkey as "dev_infra" like we did for URLChecker Web Platform
 run_posgtres: configure_repo_dev dev_localinfra_postgres_run
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
 	VENV_DIR=".venv" ./install.sh
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
 	sleep 1
-	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-local-infra-postgres.yml down
 
 run_maria: configure_repo_dev dev_localinfra_maria_run
-	set -e; \
-	# trap '$(MAKE) restore_requirements' EXIT; \
-	# cp -f requirements.txt requirements.txt.backup; \
-	# cp -f requirements.in requirements.in.backup; \
-	# sed -i '/^psycopg2/d' requirements.txt; \
-	# echo 'PyMySQL>=1.1.0' >> requirements.txt; \
-	# sed -i '/^psycopg2/d' requirements.in; \
-	# echo 'PyMySQL' >> requirements.in; \
-	
-	VENV_DIR=".venv" ./install.sh; \
-	VENV_DIR=".venv" ./launch.sh -l; \
-	
-	echo "Press Enter to close..."; \
-	read _; \
-	sleep 1; \
-	# Stop test infra (not functionnal yet, might need utilities scripts); \
-	docker compose -f docker-compose-local-infra-maria.yml down
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
+	VENV_DIR=".venv" ./install.sh
+	VENV_DIR=".venv" ./launch.sh -l
+	echo "Press Enter to close..."
+	read _
+	sleep 1
 
 runfull_postgres: configure_repo_dev build_latest_local
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_full_postgres_stop -s >/dev/null' EXIT
 	cp -f .env.full.postgres .env.docker
 	docker compose -f docker-compose-local-full-postgres.yml up
 	echo "Press Enter to close..."
 	read _
 	sleep 1
-	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-local-full-postgres.yml down
 
 runfull_maria: configure_repo_dev build_latest_local
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_full_maria_stop -s >/dev/null' EXIT
 	cp -f .env.full.mariadb .env.docker
 	docker compose -f docker-compose-local-full-maria.yml up
 	echo "Press Enter to close..."
 	read _
 	sleep 1
-	# Stop test infra (not functionnal yet, might need utilities scripts)
-	docker compose -f docker-compose-local-full-maria.yml down
+
 ########################################################################################
 
 # Build 🌍 , Publish  🌬️ and Release 🔥
 build_latest_local: nuke
 ifeq ($(rebuild),1)
-	@echo "Image Rebuild rebuild requested"
+	echo "Image Rebuild rebuild requested"
 	docker build -f DockerfileProduction -t flowintel:latest .
-	@echo "Image built"
+	echo "Image built"
 else
-	@echo "Image Rebuild skipped"
-endif
-
-build_postgres_latest_local: nuke
-ifeq ($(rebuild),1)
-	@echo "Image Rebuild rebuild requested"
-	docker build -f DockerfilePostgres -t flowintel_postgres:latest .
-	@echo "Image built"
-else
-	@echo "Image Rebuild skipped"
-endif
-
-build_maria_latest_local: nuke
-ifeq ($(rebuild),1)
-	set -e; \
-	# trap '$(MAKE) restore_requirements' EXIT; \
-	echo "Image Rebuild rebuild requested"; \
-	# cp -f requirements.txt requirements.txt.backup; \
-	# cp -f requirements.in requirements.in.backup; \
-	# sed -i '/^psycopg2/d' requirements.txt; \
-	# echo 'PyMySQL>=1.1.0' >> requirements.txt; \
-	# sed -i '/^psycopg2/d' requirements.in; \
-	# echo 'PyMySQL' >> requirements.in; \
-	docker build -f DockerfileMaria -t flowintel_maria:latest .
-	@echo "Image built"
-else
-	@echo "Image Rebuild skipped"
+	echo "Image Rebuild skipped"
 endif
 
 # Various Helpers
 dev_localinfra_postgres_run:
-	# cp -f .env.postgres .env
 	docker compose -f docker-compose-local-infra-postgres.yml up
 
 dev_localinfra_maria_run:
-	# cp -f .env.mariadb .env
 	docker compose -f docker-compose-local-infra-maria.yml up
 
 dev_localinfra_postgres_stop:
@@ -363,6 +365,12 @@ dev_localinfra_postgres_stop:
 
 dev_localinfra_maria_stop:
 	docker compose -f docker-compose-local-infra-maria.yml down
+
+dev_localinfra_full_postgres_stop:
+	docker compose -f docker-compose-local-full-postgres.yml down
+
+dev_localinfra_full_maria_stop:
+	docker compose -f docker-compose-local-full-maria.yml down
 
 ################
 # Housekeeping #
@@ -372,59 +380,59 @@ format_and_lint:
 
 bump_version: version
 ifeq (${version_repo},"0.0.0")
-	@echo "❌ Provide version_repo=X.Y.Z on CLI"
-	@echo "Usage: make bump_version version_repo=1.2.3"
+	echo "❌ Provide version_repo=X.Y.Z on CLI"
+	echo "Usage: make bump_version version_repo=1.2.3"
 else
-	@echo "✅ Ensure clean working directory first"
-	@if ! git diff-index --quiet HEAD --; then \
+	echo "✅ Ensure clean working directory first"
+	if ! git diff-index --quiet HEAD --; then \
 		echo "❌ Working directory is dirty. Commit or stash changes first."; \
 		exit 1; \
 	fi
 
-	@echo "🔄 Pulling latest changes..."
+	echo "🔄 Pulling latest changes..."
 	git pull
 
-	@echo "📝 Bumping repo to version ${version_repo}"
+	echo "📝 Bumping repo to version ${version_repo}"
 	echo ${version_repo} > version
 	sed -i "s/.*version =.*/version = \"${version_repo}\"/" "pyproject.toml"
 
-	@echo "🔒 Updating uv.lock..."
+	echo "🔒 Updating uv.lock..."
 	uv lock
 
-	@echo "📦 Staging changes..."
+	echo "📦 Staging changes..."
 	git add version
 	git add "pyproject.toml"
 	git add uv.lock
 
-	@echo "💾 Committing changes..."
+	echo "💾 Committing changes..."
 	git commit -m "BUMP to version ${version_repo}"
 
-	@echo "🏷️  Creating tag ${version_repo}..."
+	echo "🏷️  Creating tag ${version_repo}..."
 	git tag ${version_repo} -m "${tag_message}"
 
-	@echo "🚀 Pushing to remote..."
+	echo "🚀 Pushing to remote..."
 	git push
 	git push --tags
 
-	@echo "✅ Version bumped to ${version_repo}"
+	echo "✅ Version bumped to ${version_repo}"
 endif
 
 clean:
-	-find . -name __pycache__ -print0 | xargs -0 rm -rf
-	-find . -name "*.pyc" -print0 | xargs -0 rm -rf
-	-find . -name "*.egg-info" -print0 | xargs -0 rm -rf
+	- find . -name __pycache__ -print0 | xargs -0 rm -rf
+	- find . -name "*.pyc" -print0 | xargs -0 rm -rf
+	- find . -name "*.egg-info" -print0 | xargs -0 rm -rf
 
 coverageclean:
-	-rm -rf .coverage
-	-rm -rf .coverage.*
-	-rm -rf coverage.xml
-	-rm -rf htmlcov
+	rm -rf .coverage
+	rm -rf .coverage.*
+	rm -rf coverage.xml
+	rm -rf htmlcov
 
 distclean:
-	-rm -rf ./dist
-	-rm -rf ./build
-	-rm -rf ./.venv
-	-rm -rf logs
+	rm -rf ./dist
+	rm -rf ./build
+	rm -rf ./.venv
+	rm -rf logs
 
 nuke: clean distclean testclean coverageclean
 
@@ -435,14 +443,10 @@ nuke_volume:
 	docker volume rm flowintel_db -f
 	docker volume rm flowintel_flowintel-data -f
 	docker volume rm flowintel_valkey-data -f
-	#docker volume prune -f
-	#docker system prune --volumes
 
-nuke_submodules:
+reinit_submodules:
 	git submodule sync
 	git submodule update --init
-
-# TODO nuke_dev_infra > docker volumes, networks (and images ?)
 
 ########################################################################################
 
@@ -461,38 +465,48 @@ help :
 	echo -e "${GREEN}# Available combinations arguments/targets/description:${RESET}"
 	echo ""
 	echo -e "${BOLD}🛠️  Initialize local dev environment:${RESET}"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "configure_repo_dev" "/" "Configure local .env files (TODO: + Python3 venv + pre-commit hooks)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "configure_repo_dev" "/" "Configure local .env files"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "first_install" "/" "configure_repo_deb then initialize Python venv"
 	echo ""
 	echo -e "${BOLD}📦 Development lifecycle:${RESET}"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "database_init" "/"  "Initialise database when run fully Dockerised- Run only on first install IN DEV !"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "new_migration" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_run" "/"  "Run Dev Infrastructure manually (docker-compose)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_run" "/"  "Run Dev Infrastructure manually (docker-compose)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "format_and_lint" "/"  "Format + lint (pre-commit style)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "database_init" "/"  "Initialise database when run fully Dockerised- Run only on first install IN DEV !"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "init_migrations_postgres" "/"  "Init a migration folder, Postgresql running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "init_migrations_mariadb" "/"  "Init a migration folder, MariaDB running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "new_migration_postgres" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_new_migration_postgres" "/"  "Create a new migration file, Fully Dockerised infrastructure (Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_new_migration_maria" "/"  "Create a new migration file, Fully Dockerised infrastructure (MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run_postgres" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "build_latest_local" "/"  "Build the database agnostic Docker Image (DockerfileProduction)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_run" "/"  "Run Dev Infrastructure manually (docker-compose, Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_run" "/"  "Run Dev Infrastructure manually (docker-compose, MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose, Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose, MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose, MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_full_postgres_stop" "/"  "Stop Dev Full Infrastructure manually when things gone stuck (docker-compose, Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_full_maria_stop" "/"  "Stop Dev Full Infrastructure manually when things gone stuck (docker-compose, MariaDB stack)"
 	echo ""
 	echo -e "${BOLD}🔥 Build, 🌬️  Publish and 🚀 Release: TODO${RESET}"
 	echo ""
 	echo -e "${BOLD}🧪 Tests: TODO${RESET}"
 	echo ""
 	echo -e "${BOLD}🧹 Housekeeping:${RESET}"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "format_and_lint" "/" "Run the formatter and linter our of pre-commit hooks"
-	@printf "  %-20s %s %-20s %s %s\n" "[version_repo=X.Y.Z]" "/" "bump_version" "/" "Bump version + tag (use version_repo=X.Y.Z)"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "clean" "/" "Clean Python artifacts"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "coverageclean" "/" "Clean Coverage test artifacts"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "distclean" "/" "Clean Build and Dist artifacts"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "venvclean" "/" "Clean .venv artifacts"
-	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "nuke" "/" "Chain the cleaning steps above"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "format_and_lint" "/" "Run the formatter and linter our of pre-commit hooks"
+	printf "  %-20s %s %-20s %s %s\n" "[version_repo=X.Y.Z]" "/" "bump_version" "/" "Bump version + tag (use version_repo=X.Y.Z)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "clean" "/" "Clean Python artifacts"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "coverageclean" "/" "Clean Coverage test artifacts"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "distclean" "/" "Clean Build and Dist artifacts"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "venvclean" "/" "Clean .venv artifacts"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "nuke" "/" "Chain the cleaning steps above"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "nuke_volume" "/" "Delete all Docker volumes (dangerous)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "reinit_submodules" "/" "Reinitialise the Submodules"
 	echo ""
 	echo -e "${GREEN}${BOLD}💡 Examples:${RESET}"
 	echo "  make configure_repo_dev"
-	echo "  make run"
+	echo "  make runfull_postgres"
 	echo "  make database_init # on first install, after docker-compose has been spawned in DEV only !"
 	echo "  make bump_version version_repo=1.2.3 tag_message=\"Release v1.2.3\""
 	echo ""
@@ -500,4 +514,4 @@ help :
 	echo "- version_repo=\"0.0.0\""
 	echo "-	tag_message=\"\""
 	echo ""
-	@printf "\033[0;32m%s\033[0m\n" "Run 'make help' anytime for this reference"
+	printf "\033[0;32m%s\033[0m\n" "Run 'make help' anytime for this reference"
