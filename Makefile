@@ -111,14 +111,19 @@ rebuild = 1
 # Init
 ########################################################################################
 configure_repo_dev:
+	##
+	# Kept for legacy as comments and future adaption when running the app local in virtualenv (no Docker except dev infra)
 	# In this project, the .env file is automatically run by the application
 	# so we simply rely on switching postgres and mariadb environments at startup by
 	# file permutation
 	# We may add .envbuild file sources in the Makefile later
 	#cp -n template.env .env.postgres
 	#cp -n template.env .env.mariadb
-	cp -n conf/config.py.default conf/config.py
-	cp -n conf/config_module.py.default conf/config_module.py
+	##
+	# MacOS Tweak: Let's ignore the error exit code 1 on MacOS (file already exist -> no overwrite)
+	- cp -n conf/config.py.default conf/config.py
+	- cp -n conf/config_module.py.default conf/config_module.py
+	#
 	echo
 	echo "The repository was configured for local dev running."
 	echo
