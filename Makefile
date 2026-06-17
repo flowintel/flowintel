@@ -401,9 +401,9 @@ clean:
 	-find . -name "*.egg-info" -print0 | xargs -0 rm -rf
 
 coverageclean:
-	.coverage
-	.coverage.*
-	coverage.xml
+	-rm -rf .coverage
+	-rm -rf .coverage.*
+	-rm -rf coverage.xml
 	-rm -rf htmlcov
 
 distclean:
@@ -411,11 +411,8 @@ distclean:
 	-rm -rf ./build
 	-rm -rf ./.venv
 	-rm -rf logs
-	-rm -rf modules/misp-galaxy
-	-rm -rf modules/misp-objects
-	-rm -rf modules/misp-taxonomies
 
-nuke: clean distclean testclean
+nuke: clean distclean testclean coverageclean
 
 nuke_volume:
 	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
@@ -426,6 +423,10 @@ nuke_volume:
 	docker volume rm flowintel_valkey-data -f
 	#docker volume prune -f
 	#docker system prune --volumes
+
+nuke_submodules:
+	git submodule sync
+	git submodule update --init
 
 # TODO nuke_dev_infra > docker volumes, networks (and images ?)
 
