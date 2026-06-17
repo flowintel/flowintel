@@ -1,4 +1,5 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 
 export default {
 	delimiters: ['[[', ']]'],
@@ -48,9 +49,12 @@ export default {
 
 		async function delete_file(file, task) {
 			// Delete a file in the task
-			if (!confirm('Are you sure you want to delete "' + file.name + '"?')) {
-				return
-			}
+			const ok = await confirmDelete({
+				title: 'Delete file?',
+				message: 'Are you sure you want to delete this file? This cannot be undone.',
+				detail: file.name
+			})
+			if (!ok) return
 			const res = await fetch('/case/task/' + task.id + '/delete_file/' + file.id)
 			if (await res.status == 200) {
 				task.last_modif = Date.now()

@@ -2,6 +2,7 @@ from pymisp import MISPEvent, MISPObject, PyMISP
 import uuid
 from flask import current_app
 import conf.config_module as Config
+from .misp_object_event import bump_event_timestamp
 
 module_config = {
     "connector": "misp",
@@ -185,6 +186,7 @@ def handler(instance, case, task, user, case_model=None, db_session=None):
                         misp.add_event_report(event.get("id"), event_report)
 
             
+            event = bump_event_timestamp(event)
             event = misp.update_event(event, pythonify=True)
 
     ## Case have no id for this connector or the event doesn't exist anymore  

@@ -1,4 +1,5 @@
 import { display_toast } from '/static/js/toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { ref, nextTick, onMounted, watch, computed } = Vue
 const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 export default {
@@ -110,6 +111,11 @@ export default {
 		}
 
 		async function delete_note(task, note_id, key) {
+			const ok = await confirmDelete({
+				title: 'Delete note?',
+				message: 'Are you sure you want to delete this note? This cannot be undone.'
+			})
+			if (!ok) return
 			// Delete a note of the task
 			const res = await fetch('/case/' + task.case_id + '/delete_note/' + task.id + '?note_id=' + note_id)
 

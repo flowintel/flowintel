@@ -639,7 +639,7 @@
 
         <!-- Search bar -->
         <div class="col input-group w-auto">
-            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFilter">
+            <button type="button" class="btn btn-sm" :class="has_active_filters ? 'btn-filter-active' : 'btn-outline-primary'" data-bs-toggle="modal" data-bs-target="#modalFilter" :title="has_active_filters ? 'Filter applied - click to edit' : 'Filter tasks'">
                 <i class="fa-solid fa-filter fa-sm"></i>
             </button>
             <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search task by title' />
@@ -814,6 +814,17 @@
                             </case_tasks>
                         </div>
                     </template>
+                    <div v-if="cases_info.tasks.length === 0" class="text-center text-muted py-4">
+                        <template v-if="(open_closed.open || 0) + (open_closed.closed || 0) === 0">
+                            <i class="fa-solid fa-list-check fa-sm me-1"></i>No task yet
+                            {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
+                            - add one using the <a href="/case/{{case.id}}/create_task"><i class="fa-solid fa-plus"></i></a> button
+                            {% endif %}
+                        </template>
+                        <template v-else>
+                            <i class="fa-solid fa-filter fa-sm me-1"></i>No tasks matching your filter
+                        </template>
+                    </div>
                 </div>
 
                 <!-- Pagination -->
@@ -1109,6 +1120,18 @@
                         case_connectors_list.value = loc["case_connectors"]
                         // refresh module counts when connectors change
                         await fetch_module_counts()
+                        // refresh MISP-link badge in the header — modules such as misp_event
+                        // may have just attached the case to a MISP event
+                        await refresh_misp_link_status()
+                    }
+                }
+                async function refresh_misp_link_status(){
+                    if(!cases_info.value || !cases_info.value.case) return
+                    const res = await fetch("/case/{{case.id}}/get_case_info")
+                    if(res.status === 200){
+                        const loc = await res.json()
+                        cases_info.value.case.has_misp_event = loc.case.has_misp_event
+                        cases_info.value.case.misp_icon = loc.case.misp_icon
                     }
                 }
                 async function fetch_case_files(){
@@ -1517,21 +1540,44 @@
                     const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
                     if(await res.status==400 ){
                         display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        tags_list.value = loc["tags"]
-                        $('#tags_select').trigger('change');
+                        return
                     }
+                    let loc = await res.json()
+                    tags_list.value = loc["tags"]
+                    await nextTick()
+                    // Drop selected tags that are no longer available in the new taxonomies-filtered list
+                    const valid_tags = new Set()
+                    if (tags_list.value){
+                        for (const k in tags_list.value){
+                            for (const t of tags_list.value[k]) valid_tags.add(t.name)
+                        }
+                    }
+                    selected_tags.value = selected_tags.value.filter(name => valid_tags.has(name))
+                    // Sync the select2 widget so its chips reflect the cleared selection
+                    $('#filter_tags_select').val(selected_tags.value).trigger('change.select2')
+                    current_page.value = 1
+                    fetch_sorted_tasks()
                 }
                 async function fetch_cluster(){
                     const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
                     if(await res.status==400 ){
                         display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        cluster_list.value = loc["clusters"]
-                        $('#clusters_select').trigger('change');
+                        return
                     }
+                    let loc = await res.json()
+                    cluster_list.value = loc["clusters"]
+                    await nextTick()
+                    // Drop selected clusters that are no longer available in the new galaxies-filtered list
+                    const valid_clusters = new Set()
+                    if (cluster_list.value){
+                        for (const k in cluster_list.value){
+                            for (const c of cluster_list.value[k]) valid_clusters.add(c.name)
+                        }
+                    }
+                    selected_clusters.value = selected_clusters.value.filter(name => valid_clusters.has(name))
+                    $('#filter_clusters_select').val(selected_clusters.value).trigger('change.select2')
+                    current_page.value = 1
+                    fetch_sorted_tasks()
                 }
 
                 async function fetch_custom_tags(){
@@ -1762,7 +1808,7 @@
 
                     const options = {
                         animation: 150,
-                        handle: '.list-group-item', // Only drag by header
+                        handle: '.task-drag-handle',
                         ghostClass: 'dragging-ghost',  // class applied to the clone while dragging
                         onEnd: async function(evt) {
                             let task
@@ -1835,6 +1881,17 @@
 
                 const total_pages = computed(() => Math.ceil(total_tasks.value / per_page))
 
+                const has_active_filters = computed(() => {
+                    return (
+                        (search_query.value || '').length > 0 ||
+                        selected_tags.value.length > 0 ||
+                        selected_taxo.value.length > 0 ||
+                        selected_galaxies.value.length > 0 ||
+                        selected_clusters.value.length > 0 ||
+                        selected_custom_tags.value.length > 0
+                    )
+                })
+
                 function go_to_page(page) {
                     if (page < 1 || page > total_pages.value) return
                     current_page.value = page
@@ -1869,6 +1926,7 @@
                     users_in_case,
                     message_list,
                     dayjs,
+                    has_active_filters,
                     main_tab,
                     subtab_note,
                     subtab_timeline,

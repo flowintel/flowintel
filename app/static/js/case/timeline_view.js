@@ -1,4 +1,5 @@
 import {display_toast, create_message} from '../toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { ref, onMounted, nextTick, computed } = Vue
 
 export default {
@@ -124,9 +125,28 @@ export default {
             }
         }
 
+        // Mirrors the formats accepted by CaseCore.parse_date(). Kept loose on
+        // purpose: the server is the source of truth, this just gives the user
+        // immediate feedback before the round-trip.
+        function is_valid_date_text(text) {
+            const t = (text || '').trim()
+            if (!t) return false
+            const patterns = [
+                /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?$/,
+                /^\d{4}\/\d{2}\/\d{2}( \d{2}:\d{2}(:\d{2})?)?$/,
+                /^\d{2}[\/-]\d{2}[\/-]\d{4}( \d{2}:\d{2}(:\d{2})?)?$/,
+                /^[A-Za-z]{3,9} \d{1,2}, \d{4}( \d{2}:\d{2}(:\d{2})?)?$/
+            ]
+            return patterns.some(re => re.test(t))
+        }
+
         async function add_event() {
             if (!new_date_text.value.trim()) {
                 create_message('Date/time is required', 'warning-subtle')
+                return
+            }
+            if (!is_valid_date_text(new_date_text.value)) {
+                create_message('Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.', 'danger-subtle')
                 return
             }
             if (!new_description.value.trim()) {
@@ -167,6 +187,10 @@ export default {
                 create_message('Date and description are required', 'warning-subtle')
                 return
             }
+            if (!is_valid_date_text(edit_date_text.value)) {
+                create_message('Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.', 'danger-subtle')
+                return
+            }
             const res = await fetch('/case/' + props.case_id + '/edit_timeline_event/' + ev_id, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
@@ -183,7 +207,11 @@ export default {
         }
 
         async function delete_event(ev_id) {
-            if (!confirm('Delete this timeline event?')) return
+            const ok = await confirmDelete({
+                title: 'Delete timeline event?',
+                message: 'Are you sure you want to delete this timeline event? This cannot be undone.'
+            })
+            if (!ok) return
             const res = await fetch('/case/' + props.case_id + '/delete_timeline_event/' + ev_id)
             if (res.status === 200) {
                 await fetch_timeline_events()
@@ -289,9 +317,9 @@ export default {
                 <h6 class="card-title mb-3">New timeline event</h6>
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label class="form-label">Date / Time</label>
+                        <label class="form-label">Date / Time <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                         <input type="text" class="form-control form-control-sm" v-model="new_date_text"
-                               placeholder="e.g. 2024-03-15 14:30, Mar 15 2024, 15/03/2024...">
+                               placeholder="e.g. 2024-03-15 14:30, Mar 15, 2024, 15/03/2024..." required>
                         <div class="form-text">Any common date format is accepted</div>
                     </div>
                     <div class="col-md-8">

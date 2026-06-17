@@ -869,7 +869,12 @@ def _annotate_local(entries_list):
     for entry in entries_list:
         t = entry.get("type")
         uuid = entry.get("uuid", "")
-        local_ver = local_cases.get(uuid) if t == "case" else local_tasks.get(uuid) if t == "task" else None
+        if t == "case":
+            local_ver = local_cases.get(uuid)
+        elif t == "task":
+            local_ver = local_tasks.get(uuid)
+        else:
+            local_ver = None
         entry["local"] = local_ver is not None
         entry["localVersion"] = local_ver
         entry["localNewer"] = bool(local_ver and entry.get("version") and local_ver > entry["version"])

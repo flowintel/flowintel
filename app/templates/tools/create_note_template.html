@@ -25,30 +25,31 @@
 
 <div class="row">
     <div class="mb-3 w-50">
-        <label for="title" class="col-form-label">Title:</label>
-        <input class="form-control" type="text" id="title-input">
-        <span id="title-error" style="color:brown"></span>
+        <label for="title-input" class="col-form-label">Title:<span class="text-danger ms-1">*</span></label>
+        <input class="form-control" type="text" id="title-input" v-model="title" required>
     </div>
     <div class="mb-3 w-50">
-        <label for="description" class="col-form-label">Description:</label>
-        <input class="form-control" type="text" id="description-input">
-        <span id="description-error" style="color:brown"></span>
+        <label for="description-input" class="col-form-label">Description:</label>
+        <input class="form-control" type="text" id="description-input" v-model="description">
     </div>
 </div>
 
-Content:
+<label class="col-form-label">Content:<span class="text-danger ms-1">*</span></label>
 <div style="display: flex;">
     <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; width: 50%" id="editor"></div>
     <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
 </div>
 
-<button class="btn btn-primary mt-3" @click="submit">Submit</button>
+<button class="btn btn-primary mt-3"
+        :disabled="!can_submit"
+        :title="can_submit ? 'Submit' : 'Title and content are required'"
+        @click="submit">Submit</button>
 {% endblock %}
 
 
 {% block script %}
 <script type="module">
-    const { createApp, onMounted, ref} = Vue
+    const { createApp, onMounted, ref, computed } = Vue
     import {message_list, display_toast} from '/static/js/toaster.js'
     const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
@@ -56,21 +57,20 @@ Content:
         delimiters: ['[[', ']]'],
         setup() {
             let editor
+            const title = ref("")
+            const description = ref("")
             const note_editor_render = ref("")
 
             const md = window.markdownit()			// Library to Parse and display markdown
 		    md.use(mermaidMarkdown.default)			// Use mermaid library
 
-            async function submit() {
-                $("#title-error").text("")
-                $("#description-error").text("")
+            const can_submit = computed(() =>
+                title.value.trim() !== "" && note_editor_render.value.trim() !== ""
+            )
 
-                let title=$("#title-input").val()
-                let description=$("#description-input").val()
-                if(!title){
-                    $("#title-error").text("Need to pass a title")
-                }
-                if(!title){
+            async function submit() {
+                if(!can_submit.value){
+                    display_toast({message: 'Title and content are required', toast_class: 'warning-subtle'})
                     return
                 }
 
@@ -78,7 +78,7 @@ Content:
                     '/tools/create_note_template',{
                         headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                         method: "POST",
-                        body: JSON.stringify({"title": title, "description": description || "", "content": note_editor_render.value})
+                        body: JSON.stringify({"title": title.value, "description": description.value || "", "content": note_editor_render.value})
                     }
                 )
                 if(await res_msg.status == 201){
@@ -92,12 +92,19 @@ Content:
                 const targetElement = document.getElementById('editor')
                 if(targetElement && targetElement.innerHTML === ""){
                         editor = new EditorView({
-                            doc: "\n\n",
-                            extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-                                if (v.docChanged) {
-                                    note_editor_render.value = editor.state.doc.toString()
-                                }
-                            })],
+                            doc: "",
+                            extensions: [basicSetup, languages.markdown(),
+                                ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []),
+                                EditorView.lineWrapping,
+                                EditorView.theme({
+                                    '&': { height: '220px' },
+                                    '.cm-scroller': { overflow: 'auto' }
+                                }),
+                                EditorView.updateListener.of((v) => {
+                                    if (v.docChanged) {
+                                        note_editor_render.value = editor.state.doc.toString()
+                                    }
+                                })],
                             parent: targetElement
                         })
                 }
@@ -107,7 +114,10 @@ Content:
             return {
                 message_list,
                 md,
+                title,
+                description,
                 note_editor_render,
+                can_submit,
                 submit
             }
         }

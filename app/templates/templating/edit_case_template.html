@@ -20,8 +20,8 @@
         <div class="case-core-style" style="min-height: 70px;">
             <div class="row">
                 <div class="mb-3 w-50">
-                    {{form.title.label(class_="col-form-label")}}:
-                    {{form.title(class_="form-control")}}
+                    {{form.title.label(class_="col-form-label")}} <span class="text-danger">*</span>
+                    {{form.title(class_="form-control", required=True)}}
                     {% if form.title.errors %}
                         <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                     {%endif%}
@@ -70,7 +70,13 @@
                 if(targetElement && targetElement.innerHTML === ""){
                     editor = new EditorView({
                         doc: description_content,
-                        extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
+                        extensions: [basicSetup, languages.markdown(),
+                            EditorView.lineWrapping,
+                            EditorView.theme({
+                                '&': { height: '220px' },
+                                '.cm-scroller': { overflow: 'auto' }
+                            }),
+                            EditorView.updateListener.of((v) => {
                             if (v.docChanged) {
                                 note_editor_render.value = editor.state.doc.toString()
                             }

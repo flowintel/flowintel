@@ -60,41 +60,40 @@ def convert_json_to_note(content):
         return f"Invalid JSON: {str(e)}"
     
     # Check list with multiple items
-    if isinstance(data, list) and len(data) > 0:
-        if isinstance(data[0], dict):
-            all_keys = set()
-            for item in data:
-                if isinstance(item, dict):
-                    all_keys.update(item.keys())
-            all_keys = sorted(all_keys)
-            
-            markdown = ''
-            
+    if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+        all_keys = set()
+        for item in data:
+            if isinstance(item, dict):
+                all_keys.update(item.keys())
+        all_keys = sorted(all_keys)
+
+        markdown = ''
+
+        markdown += '| '
+        for key in all_keys:
+            markdown += escape_markdown(str(key)) + ' | '
+        markdown += '\n'
+
+        markdown += '| '
+        for key in all_keys:
+            markdown += '--- | '
+        markdown += '\n'
+
+        for item in data:
             markdown += '| '
-            for key in all_keys:
-                markdown += escape_markdown(str(key)) + ' | '
+            if isinstance(item, dict):
+                for key in all_keys:
+                    value = item.get(key, '')
+                    if isinstance(value, (dict, list)):
+                        value = json.dumps(value, indent=2)
+                    markdown += escape_markdown(str(value)) + ' | '
+            else:
+                markdown += escape_markdown(str(item)) + ' | '
+                for _ in range(len(all_keys) - 1):
+                    markdown += ' | '
             markdown += '\n'
-            
-            markdown += '| '
-            for key in all_keys:
-                markdown += '--- | '
-            markdown += '\n'
-            
-            for item in data:
-                markdown += '| '
-                if isinstance(item, dict):
-                    for key in all_keys:
-                        value = item.get(key, '')
-                        if isinstance(value, (dict, list)):
-                            value = json.dumps(value, indent=2)
-                        markdown += escape_markdown(str(value)) + ' | '
-                else:
-                    markdown += escape_markdown(str(item)) + ' | '
-                    for _ in range(len(all_keys) - 1):
-                        markdown += ' | '
-                markdown += '\n'
-            
-            return markdown
+
+        return markdown
     # Fallback
     return f'```json\n{json.dumps(data, indent=2)}\n```'
 

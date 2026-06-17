@@ -1402,6 +1402,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def add_connector(self, cid, request_json, current_user) -> bool:
         for connector in request_json["connectors"]:
             instance = CommonModel.get_instance_by_name(connector["name"])
+            if Case_Connector_Instance.query.filter_by(case_id=cid, instance_id=instance.id).first():
+                continue
             if "identifier" in connector: loc_identfier = connector["identifier"]
             else: loc_identfier = ""
             c = Case_Connector_Instance(
@@ -1551,7 +1553,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             synced = result.get("synced_count", 0) if isinstance(result, dict) else 0
             failed = result.get("failed_count", 0) if isinstance(result, dict) else 0
             details = result.get("details", None) if isinstance(result, dict) else None
-            status = "success" if failed == 0 else ("partial" if synced > 0 else "error")
+            if failed == 0:
+                status = "success"
+            elif synced > 0:
+                status = "partial"
+            else:
+                status = "error"
             sync_log = Connector_Sync_Log(
                 case_id=case["id"],
                 case_connector_instance_id=case_instance_id,
@@ -1778,7 +1785,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return attr
         return None
-        # return Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr_id, instance_id=instance_id, case_id=case_id).first()
     
     def get_misp_object_instance_by_instance_uuid(self, object_uuid, instance_id, case_id):
         loc_instance = CommonModel.get_instance(instance_id)
@@ -1803,7 +1809,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return attr
         return None
-        # return Misp_Attribute_Instance_Uuid.query.filter_by(attribute_instance_uuid=attribute_uuid, instance_id=instance_id, case_id=case_id).first()
 
 
     def get_misp_object_instance(self, case_id, instance_id):
@@ -2015,7 +2020,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def create_timeline_event(self, cid, date_text, description, misp_object_id, current_user):
         """Create a new timeline event"""
-        date_parsed = self._parse_date(date_text)
+        date_parsed = self.parse_date(date_text)
         event = Case_Timeline_Event(
             case_id=cid,
             date_text=date_text,
@@ -2038,7 +2043,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if not event:
             return None
         event.date_text = date_text
-        event.date_parsed = self._parse_date(date_text)
+        event.date_parsed = self.parse_date(date_text)
         event.description = description
         db.session.commit()
 
@@ -2060,8 +2065,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.update_last_modif(cid)
         return True
 
-    def _parse_date(self, date_text):
-        """Try to parse a date string in various formats"""
+    def parse_date(self, date_text):
+        """Try to parse a date string in various formats.
+
+        Returns a `datetime.datetime` on success or `None` when the input is
+        empty or does not match any supported format. Callers that need to
+        reject invalid input should treat `None` as a validation error.
+        """
+        if not date_text or not date_text.strip():
+            return None
         formats = [
             '%Y-%m-%d %H:%M:%S',
             '%Y-%m-%d %H:%M',

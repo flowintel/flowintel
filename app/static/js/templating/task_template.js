@@ -1,6 +1,7 @@
 import { display_toast, create_message } from '../toaster.js'
 import TaskUrlTool from '../case/TaskComponent/TaskUrlTool.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 const { ref, nextTick } = Vue
 export default {
@@ -121,6 +122,11 @@ export default {
 		}
 
 		async function delete_note(template, note_id, key) {
+			const ok = await confirmDelete({
+				title: 'Delete note?',
+				message: 'Are you sure you want to delete this note? This cannot be undone.'
+			})
+			if (!ok) return
 			// Delete a note of the task
 			const res = await fetch('/templating/task/' + template.id + '/delete_note?note_id=' + note_id)
 
@@ -234,6 +240,7 @@ export default {
 			let description = $("#create-subtask-" + task.id).val()
 			if (!description) {
 				$("#create-subtask-error-" + task.id).text("Cannot be empty...").css("color", "brown")
+				return
 			}
 
 			const res = await fetch("/templating/task/" + task.id + "/create_subtask", {
@@ -246,8 +253,10 @@ export default {
 				})
 			});
 			if (await res.status == 200) {
-				let loc = res.json()["id"]
-				task.subtasks.push({ "id": loc, "description": description, "task_id": task.id, "completed": false })
+				let loc = await res.json()
+				task.subtasks.push({ "id": loc["id"], "description": description, "task_id": task.id, "completed": false })
+				$("#create-subtask-" + task.id).val("")
+				$("#create_subtask_" + task.id).modal("hide")
 				create_message("Subtask created", "success-subtle")
 			} else {
 				await display_toast(res)
@@ -282,6 +291,11 @@ export default {
 		}
 
 		async function delete_subtask(task, subtask_id) {
+			const ok = await confirmDelete({
+				title: 'Delete subtask?',
+				message: 'Are you sure you want to delete this subtask? This cannot be undone.'
+			})
+			if (!ok) return
 			const res = await fetch('/templating/task/' + task.id + "/delete_subtask/" + subtask_id)
 
 			if (await res.status == 200) {

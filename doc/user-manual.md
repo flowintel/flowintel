@@ -258,7 +258,7 @@ The following fields are available:
 When creating or editing a case, two settings control how the case behaves:
 
 - **Private case**: when enabled, only users whose organisation is assigned to the case can see it. Other users, except administrators, will not find the case in any listing. Use this for sensitive investigations that should not be visible to the entire platform.
-- **Privileged case**: when enabled, certain actions on the case require authorisation from a user with elevated permissions. In a privileged case, a user with the Queuer permission cannot directly create tasks in the normal way. Instead, their tasks are created with a Requested status and must be approved by an administrator, Case Admin or Queue Admin before they become active. This enforces a four-eyes principle, ensuring that an analyst's work is verified by a supervisor.
+- **Privileged case**: when enabled, certain actions on the case require authorisation from a user with elevated permissions. In a privileged case, every new task starts in a Requested status and must be approved by an administrator, Case Admin or Queue Admin before it becomes active, no matter who created it. This enforces a four-eyes principle, ensuring that a task is always verified by a second person before work begins.
 
 In short, a private case controls who can see it, while a privileged case controls who can manage it.
 
@@ -1110,16 +1110,16 @@ Flowintel supports this through **privileged cases**. When a case is marked as p
 
 ### How the privileged case workflow operates
 
-In a standard case, any Editor can freely create tasks, update their status and complete them. A privileged case adds a review layer controlled by two permission types: the **Queuer** permission (for the person doing the work) and the approver permissions (**Admin**, **Case Admin** or **Queue Admin**).
+In a standard case, any Editor can freely create tasks, update their status and complete them. A privileged case adds a review layer controlled by the approver permissions (**Admin**, **Case Admin** or **Queue Admin**) and a **Queuer** permission for users whose role is to propose work.
 
-When a Queuer adds a task to a privileged case, the task starts in a **Requested** state rather than Created. It is a proposal, not yet active. Approvers are notified and can either:
+When any user adds a task to a privileged case, the task starts in a **Requested** state rather than Created. It is a proposal, not yet active. Approvers are notified and can either:
 
-- **Approve** the task, moving it to Approved so the Queuer can begin work, or
+- **Approve** the task, moving it to Approved so work can begin, or
 - **Reject** it, moving it to Rejected and notifying the requester.
 
-Once approved, the Queuer works on the task normally: setting it to Ongoing, attaching files and writing notes. When the work is done, the Queuer sets the task to **Request Review**. An approver then reviews the completed work and either marks the task as **Finished** or sends it back for further work. This second review closes the loop and keeps the four-eye principle intact from proposal to completion.
+Once approved, the assigned users work on the task normally: setting it to Ongoing, attaching files and writing notes. When the work is done, the task is set to **Request Review**. An approver then reviews the completed work and either marks the task as **Finished** or sends it back for further work. This second review closes the loop and keeps the four-eye principle intact from proposal to completion.
 
-Users with the Editor role but without the Queuer permission can still create tasks in a privileged case. Their tasks start with the normal Created status and skip the review workflow entirely. The Queuer permission is what opts a user into the approval process.
+The Requested status applies uniformly to every task created in a privileged case, including tasks created by approvers themselves. An approver who creates a task is free to approve their own request, but the request still appears in the approval queue and is logged. This keeps the audit trail consistent and avoids hidden shortcuts around the review process.
 
 ### Task editing restrictions
 
@@ -1146,12 +1146,14 @@ The following table summarises what each role can do in a privileged case:
 
 | Role or permission | Create tasks | Approve or reject tasks | Complete or revive case | Mark case as privileged |
 |---|---|---|---|---|
-| Admin | Yes (Created status) | Yes | Yes | Yes |
-| Case Admin | Yes (Created status) | Yes | Yes | Yes |
-| Queue Admin | Yes (Created status) | Yes | No | No |
+| Admin | Yes (Requested status) | Yes | Yes | Yes |
+| Case Admin | Yes (Requested status) | Yes | Yes | Yes |
+| Queue Admin | Yes (Requested status) | Yes | No | No |
 | Queuer | Yes (Requested status) | No | No | No |
-| Editor (no privileged permissions) | Yes (Created status) | No | No | No |
+| Editor (no privileged permissions) | Yes (Requested status) | No | No | No |
 | Read Only | No | No | No | No |
+
+In a non-privileged case the same roles can create tasks too, but the tasks start in the Created status and the approve / reject columns do not apply.
 
 
 # Calendar
@@ -2701,7 +2703,7 @@ Create a new case. Give it a descriptive title and tick the **Privileged case** 
 
 ### Step 4: Request tasks as the Queuer
 
-Still logged in as Dave Deputy, create two tasks on the case. Because Dave has the Queuer role, both tasks are created with the **Requested** status instead of the usual Created status. This is the four-eye principle in action: the Queuer proposes work, but an approver must accept it before the work can begin.
+Still logged in as Dave Deputy, create two tasks on the case. Because the case is privileged, both tasks are created with the **Requested** status instead of the usual Created status. This is the four-eye principle in action: the requester proposes work, and an approver must accept it before the work can begin. The same would happen if an approver created a task on this case: the request would still appear in the approval queue.
 
 ### Step 5: Approve a task as the Queue Admin
 

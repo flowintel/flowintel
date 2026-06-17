@@ -17,12 +17,10 @@ def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, 
     query = Task.query.join(Task_User, Task_User.task_id==Task.id)\
                       .where(Task_User.user_id==user.id, Task.completed==completed)
     inactive_ids = _inactive_status_ids()
-    if inactive_only:
-        if inactive_ids:
-            query = query.filter(Task.status_id.in_(inactive_ids))
-    elif not completed:
-        if inactive_ids:
-            query = query.filter(Task.status_id.notin_(inactive_ids))
+    if inactive_only and inactive_ids:
+        query = query.filter(Task.status_id.in_(inactive_ids))
+    elif not completed and inactive_ids:
+        query = query.filter(Task.status_id.notin_(inactive_ids))
     if overdue_only:
         query = query.filter(Task.deadline.isnot(None), Task.deadline < datetime.utcnow())
     if filter:
