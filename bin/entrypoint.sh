@@ -37,6 +37,7 @@ user = Config[config_name].db_user
 password = Config[config_name].db_password
 database = Config[config_name].db_name
 port = int(Config[config_name].db_port)
+admin_first_name = Config[config_name].INIT_ADMIN_USER["first_name"]
 
 print(f"Checking for database {database} using driver {driver}...", file=sys.stderr)
 
@@ -85,8 +86,11 @@ try:
     cur.execute("SELECT 1")
     print(f"CHECK: SELECT 1 -> {cur.fetchone()}", file=sys.stderr)
 
-    cur.execute(user_query, ("admin",))
+    cur.execute(user_query, (admin_first_name,))
     exists = cur.fetchone() is not None
+    print(f"CHECK: Is First Admin User first name \"{admin_first_name}\" ?", file=sys.stderr)
+    if exists:
+        print("First user is already correctly created...", file=sys.stderr)
     print("1" if exists else "0")
 
 except OperationalError as e:
@@ -94,6 +98,7 @@ except OperationalError as e:
     print("2")
 except ProgrammingError as e:
     print(f"QUERY_ERROR: {e}", file=sys.stderr)
+    print("Initialisation necessary.", file=sys.stderr)
     print("3")
 except Exception as e:
     print(f"OTHER_ERROR: {type(e).__name__}: {e}", file=sys.stderr)
