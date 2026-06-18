@@ -452,6 +452,33 @@
                 </div>
             </div>
 
+            <!-- ── Mermaid ── -->
+            <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-diagram-project me-2"></i>Mermaid</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;">Enable Mermaid in views <small class="fw-normal text-muted">(ENABLE_MERMAID)</small></td>
+                                <td>
+                                    {{ bool_edit('enable_mermaid') }}
+                                    <small class="text-muted ms-1" v-if="!editing.enable_mermaid">Render Mermaid diagrams in markdown views and previews</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Enable Mermaid in exports <small class="fw-normal text-muted">(ENABLE_MERMAID_EXPORT)</small></td>
+                                <td>
+                                    {{ bool_edit('enable_mermaid_export') }}
+                                    <small class="text-muted ms-1" v-if="!editing.enable_mermaid_export">Use Mermaid filters for PDF/DOCX exports</small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- ── Entra ID SSO ── -->
             <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
                 <div class="card-header py-3">
@@ -693,6 +720,8 @@
                 limit_user_view_to_org: false,
                 enforce_privileged_case: false,
                 enable_chatbot: false,
+                enable_mermaid: false,
+                enable_mermaid_export: false,
                 misp_export_files: false,
                 show_gdpr_notice: false,
                 log_file: false,
@@ -717,6 +746,8 @@
                 limit_user_view_to_org: {{ system_info.limit_user_view_to_org | tojson }},
                 enforce_privileged_case: {{ system_info.enforce_privileged_case | tojson }},
                 enable_chatbot: {{ system_info.enable_chatbot | tojson }},
+                enable_mermaid: {{ system_info.enable_mermaid | tojson }},
+                enable_mermaid_export: {{ system_info.enable_mermaid_export | tojson }},
                 misp_export_files: {{ system_info.misp_export_files | tojson }},
                 show_gdpr_notice: {{ system_info.show_gdpr_notice | tojson }},
                 log_file: {{ (system_info.log_file or '') | tojson }},

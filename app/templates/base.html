@@ -19,6 +19,7 @@
             
             <script>dayjs.extend(window.dayjs_plugin_utc)</script>
             <script>dayjs.extend(window.dayjs_plugin_relativeTime)</script>
+            <script>window.ENABLE_MERMAID = {{ config.ENABLE_MERMAID|default(true)|tojson }}</script>
                         
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/select2.min.css') }}">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/select2-bootstrap-5-theme.min.css') }}">
@@ -103,6 +104,24 @@
                 if(!window.markdownit || window.__markdownit_xss_protected) return
                 try{
                     const origFactory = window.markdownit
+                    const noopMermaid = {
+                        init: async function(){},
+                        run: async function(){},
+                        initialize: function(){},
+                        loadPreferences: function(){ return {} }
+                    }
+
+                    function _mermaidEnabled(){
+                        return window.ENABLE_MERMAID !== false
+                    }
+
+                    function _isMermaidPlugin(plugin){
+                        return !!(window.mermaidMarkdown && plugin === window.mermaidMarkdown.default)
+                    }
+
+                    function _ensureMermaidApi(inst){
+                        if(!inst.mermaid) inst.mermaid = noopMermaid
+                    }
 
                     function _escapeHtml(str){
                         if(!str) return str
@@ -146,13 +165,19 @@
 
                         // Secure the default fence rule
                         _secureFenceRule(inst)
+                        if(!_mermaidEnabled()) _ensureMermaidApi(inst)
 
                         // Wrap .use() so that when a plugin replaces the fence rule,
                         // the new rule is automatically wrapped too.
                         const origUse = inst.use.bind(inst)
                         inst.use = function(){
+                            if(!_mermaidEnabled() && _isMermaidPlugin(arguments[0])){
+                                _ensureMermaidApi(inst)
+                                return inst
+                            }
                             const result = origUse.apply(this, arguments)
                             _secureFenceRule(inst)
+                            if(!_mermaidEnabled()) _ensureMermaidApi(inst)
                             return result
                         }
 
