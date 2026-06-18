@@ -434,6 +434,8 @@ distclean:
 	rm -rf ./.venv
 	rm -rf logs
 
+testclean:
+
 nuke: clean distclean testclean coverageclean
 
 nuke_volume:
