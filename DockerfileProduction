@@ -18,8 +18,8 @@ dpkg -i pandoc*.deb
 rm -rf $TMP
 EOF
 
-# Create a dedicated user and group
-RUN groupadd -r flowintel && useradd -m -g flowintel flowintel
+# Create a dedicated user and group, fixing user range ids that should be unreserved and so usable in production
+RUN groupadd --gid 10000 flowintel && useradd --uid 10000 --gid 10000 -m -g flowintel flowintel
 
 WORKDIR /home/flowintel/app
 
