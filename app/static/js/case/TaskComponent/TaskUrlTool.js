@@ -1,6 +1,8 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
 
+const { ref } = Vue
+
 export default {
     delimiters: ['[[', ']]'],
     props: {
@@ -9,11 +11,15 @@ export default {
         is_template: Boolean
     },
     setup(props) {
+        const create_name = ref("")
+        const edit_names = ref({})
+
         async function create_url_tool(task) {
             $("#textarea-url_tool-error-" + task.id).text("")
-            let name = $("#textarea-url_tool-" + task.id).val()
+            let name = create_name.value.trim()
             if (!name) {
                 $("#textarea-url_tool-error-" + task.id).text("Cannot be empty...").css("color", "brown")
+                return
             }
 
             let url
@@ -37,7 +43,7 @@ export default {
 
                 task.urls_tools.push({ "id": loc["id"], "name": name, "task_id": task.id })
                 create_message("url_tool created", "success-subtle", false, "fas fa-plus")
-                $("#textarea-url_tool-" + task.id).val("")
+                create_name.value = ""
                 $("#create_url_tool_" + task.id).modal("hide")
             } else {
                 await display_toast(res)
@@ -46,9 +52,11 @@ export default {
 
         async function edit_url_tool(task, url_tool_id) {
             $("#edit-url_tool-error-" + url_tool_id).text("")
-            let name = $("#edit-url_tool-" + url_tool_id).val()
+            let current = task.urls_tools.find(ut => ut.id == url_tool_id)
+            let name = (edit_names.value[url_tool_id] ?? current?.name ?? "").trim()
             if (!name) {
                 $("#edit-url_tool-error-" + url_tool_id).text("Cannot be empty...").css("color", "brown")
+                return
             }
 
             let url
@@ -107,6 +115,8 @@ export default {
         }
 
         return {
+            create_name,
+            edit_names,
             create_url_tool,
             edit_url_tool,
             delete_url_tool
@@ -148,11 +158,11 @@ export default {
                                     <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <textarea class="form-control" :value="url_tool.name" :id="'edit-url_tool-'+url_tool.id"/>
+                                    <textarea class="form-control" :value="edit_names[url_tool.id] ?? url_tool.name" @input="edit_names[url_tool.id] = $event.target.value" :id="'edit-url_tool-'+url_tool.id"/>
                                     <div :id="'edit-url_tool-error-'+url_tool.id"></div>
                                 </div>
                                 <div class="modal-footer">
-                                    <button @click="edit_url_tool(task, url_tool.id)" class="btn btn-primary">Submit</button>
+                                    <button @click="edit_url_tool(task, url_tool.id)" :disabled="!(edit_names[url_tool.id] ?? url_tool.name).trim()" class="btn btn-primary">Submit</button>
                                 </div>
                             </div>
                         </div>
@@ -172,13 +182,13 @@ export default {
                 </div>
                 <div class="modal-body">
 					<div class="form-floating">
-						<textarea class="form-control" :id="'textarea-url_tool-'+task.id"/>
+						<textarea class="form-control" v-model="create_name" :id="'textarea-url_tool-'+task.id"/>
 						<label>New Url/Tool</label>
 						<div :id="'textarea-url_tool-error-'+task.id"></div>
 					</div>
                 </div>
                 <div class="modal-footer">
-                    <button @click="create_url_tool(task)" class="btn btn-primary">Submit</button>
+                    <button @click="create_url_tool(task)" :disabled="!create_name.trim()" class="btn btn-primary">Submit</button>
                 </div>
             </div>
         </div>
