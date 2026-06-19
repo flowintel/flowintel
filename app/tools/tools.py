@@ -816,6 +816,18 @@ def system_settings_save():
     return jsonify({"message": "Configuration saved", "backup_created": True})
 
 
+@tools_blueprint.route("/system_settings/active_sessions", methods=["GET"])
+@login_required
+@admin_required
+def system_settings_active_sessions():
+    """List other users currently connected, so a reload can be confirmed knowingly."""
+    sessions = AdminModel.list_active_user_sessions(exclude_user_id=current_user.id)
+    return jsonify({
+        "sessions": sessions,
+        "threshold_minutes": AdminModel.ACTIVE_SESSION_THRESHOLD_MINUTES,
+    })
+
+
 @tools_blueprint.route("/system_settings/reload", methods=["POST"])
 @login_required
 @admin_required

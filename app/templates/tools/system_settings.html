@@ -130,9 +130,9 @@
                     <hr class="my-2">
                     <div class="d-flex align-items-center justify-content-between">
                         <small class="text-muted">Reload the application to apply <code>config.py</code> changes</small>
-                        <button class="btn btn-sm btn-outline-warning" @click="confirmReload" :disabled="reloading">
+                        <button class="btn btn-sm btn-outline-warning" @click="openReloadDialog" :disabled="reloading || checkingSessions">
                             <i class="fa-solid fa-arrows-rotate me-1" :class="{ 'fa-spin': reloading }"></i>
-                            [[ reloading ? 'Reloading…' : 'Reload application' ]]
+                            [[ reloading ? 'Reloading…' : (checkingSessions ? 'Checking…' : 'Reload application') ]]
                         </button>
                     </div>
                 </div>
@@ -679,6 +679,59 @@
     </div>
 </div>
 
+<!-- ── Reload confirmation modal ── -->
+<div v-if="showReloadModal" class="modal fade show" style="display: block;" tabindex="-1" @click.self="closeReloadDialog">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-arrows-rotate me-2"></i>Reload application</h5>
+                <button type="button" class="btn-close" @click="closeReloadDialog" :disabled="reloading"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">
+                    This will gracefully restart all application workers to pick up
+                    <code>config.py</code> changes. Active requests will finish before reloading.
+                </p>
+                <div v-if="sessionsError" class="alert alert-secondary mb-2">
+                    <i class="fa-solid fa-circle-question me-1"></i>
+                    Could not check for connected users. Reload only if you are sure no one else is using the application.
+                </div>
+                <div v-else-if="connectedUsers.length" class="alert alert-warning mb-2">
+                    <div class="fw-bold mb-1">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        [[ connectedUsers.length ]] other user[[ connectedUsers.length === 1 ? '' : 's' ]] currently connected
+                    </div>
+                    <div class="small text-muted mb-2">
+                        Based on session activity within the last [[ thresholdMinutes ]] minutes.
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <li v-for="u in connectedUsers" :key="u.id"
+                            class="list-group-item bg-transparent px-0 py-1 d-flex justify-content-between align-items-center">
+                            <span><i class="fa-solid fa-user me-2 text-muted"></i>[[ u.name ]] <small class="text-muted">([[ u.email ]])</small></span>
+                            <span class="text-nowrap">
+                                <small class="text-muted me-2">active [[ formatIdle(u.idle_seconds) ]]</small>
+                                <span v-if="u.sessions > 1" class="badge bg-secondary" :title="u.sessions + ' active sessions'">[[ u.sessions ]]</span>
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+                <div v-else class="alert alert-success mb-2">
+                    <i class="fa-solid fa-circle-check me-1"></i>
+                    No other users with session activity in the last [[ thresholdMinutes ]] minutes.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" @click="closeReloadDialog" :disabled="reloading">Cancel</button>
+                <button type="button" class="btn btn-sm btn-warning" @click="doReload" :disabled="reloading">
+                    <i class="fa-solid fa-arrows-rotate me-1" :class="{ 'fa-spin': reloading }"></i>
+                    [[ reloading ? 'Reloading…' : (connectedUsers.length ? 'Reload anyway' : 'Reload') ]]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<div v-if="showReloadModal" class="modal-backdrop fade show"></div>
+
 {% endblock %}
 
 {% block script %}
@@ -743,6 +796,11 @@
 
             const backupCreated = ref(false)
             const reloading = ref(false)
+            const checkingSessions = ref(false)
+            const showReloadModal = ref(false)
+            const connectedUsers = ref([])
+            const sessionsError = ref(false)
+            const thresholdMinutes = ref(15)
             const originalValues = reactive({})
 
             function filterNumericKey(event) {
@@ -796,10 +854,39 @@
                 editing[key] = false
             }
 
-            async function confirmReload() {
-                if (!confirm('This will gracefully restart all application workers to pick up config.py changes. Active requests will finish before reloading. Continue?')) {
-                    return
+            async function openReloadDialog() {
+                checkingSessions.value = true
+                connectedUsers.value = []
+                sessionsError.value = false
+                try {
+                    const res = await fetch('/tools/system_settings/active_sessions')
+                    if (res.ok) {
+                        const data = await res.json()
+                        connectedUsers.value = data.sessions || []
+                        if (data.threshold_minutes) thresholdMinutes.value = data.threshold_minutes
+                    } else {
+                        sessionsError.value = true
+                    }
+                } catch (e) {
+                    sessionsError.value = true
+                } finally {
+                    checkingSessions.value = false
                 }
+                showReloadModal.value = true
+            }
+
+            function formatIdle(seconds) {
+                if (seconds < 60) return 'just now'
+                const mins = Math.floor(seconds / 60)
+                return mins === 1 ? '1 min ago' : mins + ' mins ago'
+            }
+
+            function closeReloadDialog() {
+                if (reloading.value) return
+                showReloadModal.value = false
+            }
+
+            async function doReload() {
                 reloading.value = true
                 try {
                     const res = await fetch('/tools/system_settings/reload', {
@@ -810,6 +897,7 @@
                     })
                     const data = await res.json()
                     if (res.ok) {
+                        showReloadModal.value = false
                         message_list.value.push({ message: data.message, type: 'success' })
                         // Wait for workers to restart, then reload the page
                         setTimeout(() => { window.location.reload() }, 3000)
@@ -829,11 +917,19 @@
                 editValues,
                 backupCreated,
                 reloading,
+                checkingSessions,
+                showReloadModal,
+                connectedUsers,
+                sessionsError,
+                thresholdMinutes,
                 filterNumericKey,
                 startEdit,
                 saveEdit,
                 cancelEdit,
-                confirmReload
+                formatIdle,
+                openReloadDialog,
+                closeReloadDialog,
+                doReload
             }
         }
     }).mount('#main-container')
