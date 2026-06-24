@@ -3,7 +3,8 @@ services:
     container_name: postgres
     image: postgres:17
     ports:
-      - '${DB_PORT:-5432}:5432'
+      - "127.0.0.1:${DB_PORT:-5432}:${DB_PORT:-5432}"
+      - "[::1]:${DB_PORT:-5432}:${DB_PORT:-5432}"
     volumes:
       - db:/var/lib/postgresql/data
     environment:
@@ -17,8 +18,11 @@ services:
   valkey:
     container_name: valkey
     image: valkey/valkey
+    # We need to expose to host because Flowintel is not containerised
     ports:
-      - '${VALKEY_PORT:-6379}:6379'
+      - "127.0.0.1:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
+      - "[::1]:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
+    #
     volumes:
       - valkey-data:/data
     networks:

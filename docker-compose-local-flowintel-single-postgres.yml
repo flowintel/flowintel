@@ -4,7 +4,8 @@ services:
     container_name: flowintel
     command: bash -i ./launch.sh -ld
     ports:
-      - '${APP_PORT:-7006}:7006'
+      - "127.0.0.1:${APP_PORT:-7006}:${APP_PORT:-7006}"
+      - "[::1]:${APP_PORT:-7006}:${APP_PORT:-7006}"
     # Development hack 1:
     # Overwrites the environment defaults while avoiding that a missing .env file would make config
     # behavior somehow erratic
