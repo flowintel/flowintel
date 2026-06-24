@@ -21,9 +21,14 @@ from conf.config import config as Config
 
 def create_app():
     app = Flask(__name__)
-    config_name = os.environ.get("FLOWINTEL_ENV", "development")
+    config_name = os.environ.get("FLOWINTEL_ENV", "development").strip().lower()
 
-    app.config.from_object(Config[config_name])
+    if config_name not in config:
+        raise ValueError(f"Unknown config environment: {config_name}")
+
+    config_class = config[config_name]
+    app.config.from_object(config_class)
+    config_class.init_app(app)
 
     Config[config_name].init_app(app)
     
