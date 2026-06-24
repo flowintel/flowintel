@@ -117,6 +117,20 @@ Just keep in mind that for taxonomies a `MANIFEST.json` is required and for gala
 
 See: [misp-galaxy](https://github.com/MISP/misp-galaxy), [misp-taxonomies](https://github.com/MISP/misp-taxonomies)
 
+## Makefile helper
+A Makefile helper is provided with this repo, it should work on Linux and modern MacOS.
+For the later, prefer ```gmake```, from Homebrew for example, for maximal compatibility although the modern BSD ```make``` versions shipped with modern MacOS seem compatible with the current Makefile wprkflows.
+
+The Makefile is self documented, type ```make help``` for further information.
+
+In a few line, it provide helper targerts to facilitate various Development workflows and keeping Development environments and installation harmonized.
+Examples of usage:
+1. Start the application fully containerised with a MariaDB backend and an empty databse: ```make nuke_volume;make runfull_maria```
+2. Build the latest local image: ```make build_latest_local```
+3. Run the datastack local Development infrastructure with Postgres: ```make dev_localinfra_postgres_run```
+4. ***Still experimental*** Run the application in it own Python local Virtual Environment alongside the datastack local Development infrastructure with MariaDB: ```make run_maria```
+5. Initial the repository installing locally the Python Virtual Environment and deriving default config: ```make first_install```
+
 ## Dockerised deployment
 The deployment can be conducted using Docker in Development, Testing and Production environment. Different flavors of the
 software architecture can be spawned with different Docker Composition files that can be found in ```docker``` folder.

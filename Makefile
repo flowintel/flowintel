@@ -442,7 +442,7 @@ nuke: clean distclean testclean coverageclean
 
 nuke_volume:
 	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	@echo "💣 DO NOT RUN IN DEV IF YOU NEED TO KEEP OTHER APP VOLUMES !!! Press Enter to continue or Ctrl+C to exit"
+	@echo "💣 DO NOT RUN IN DEV IF YOU NEED TO KEEP YOUR DEV DATABASE DATA !!! Press Enter to continue or Ctrl+C to exit"
 	read wait_for_me
 	docker volume rm flowintel_db -f
 	docker volume rm flowintel_flowintel-data -f
@@ -473,15 +473,15 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "first_install" "/" "configure_repo_deb then initialize Python venv"
 	echo ""
 	echo -e "${BOLD}📦 Development lifecycle:${RESET}"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "database_init" "/"  "Initialise database when run fully Dockerised- Run only on first install IN DEV !"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "init_migrations_postgres" "/"  "Init a migration folder, Postgresql running as Dockerised Dev Infrastructure"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "init_migrations_mariadb" "/"  "Init a migration folder, MariaDB running as Dockerised Dev Infrastructure"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "new_migration_postgres" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_new_migration_postgres" "/"  "Create a new migration file, Fully Dockerised infrastructure (Postgres stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_new_migration_maria" "/"  "Create a new migration file, Fully Dockerised infrastructure (MariaDB stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run_postgres" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "database_init" "/"  "Initialise database when run fully Dockerised- Run only on first install IN DEV !"
+	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "init_migrations_postgres" "/"  "Init a migration folder, Postgresql running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "init_migrations_mariadb" "/"  "Init a migration folder, MariaDB running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "new_migration_postgres" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "full_new_migration_postgres" "/"  "Create a new migration file, Fully Dockerised infrastructure (Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "full_new_migration_maria" "/"  "Create a new migration file, Fully Dockerised infrastructure (MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "run_postgres" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "build_latest_local" "/"  "Build the database agnostic Docker Image (Dockerfile)"
