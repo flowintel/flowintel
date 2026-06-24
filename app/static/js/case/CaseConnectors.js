@@ -1,5 +1,7 @@
 import { display_toast, create_message } from '../toaster.js'
-const { ref, onMounted, computed, nextTick, watch } = Vue
+import MispSyncPanel from './MispSyncPanel.js'
+import { confirmDelete } from '/static/js/confirm.js'
+const { ref, reactive, onMounted, computed, nextTick, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
     props: {
@@ -46,9 +48,19 @@ export default {
                 if (hasSelect2) {
                     try { if ($(sel).data('select2')) $(sel).select2('destroy') } catch (e) {}
                     $(sel).select2({ theme: 'bootstrap-5', dropdownParent: $('body') })
+        
                 }
             } catch (e) {}
         }
+
+        const attached_instance_ids = computed(() => {
+            const ids = new Set()
+            for (const i in props.case_task_connectors_list) {
+                const details = props.case_task_connectors_list[i].details
+                if (details && details.id != null) ids.add(details.id)
+            }
+            return ids
+        })
 
         let modal_identifier = ""
         if (props.is_case) {
@@ -100,6 +112,11 @@ export default {
         }
 
         async function remove_connector(element_instance_id) {
+            const ok = await confirmDelete({
+                title: 'Remove connector?',
+                message: 'Are you sure you want to remove this connector? This cannot be undone.'
+            })
+            if (!ok) return
             let url = "/case/" + props.object_id + "/connectors/" + element_instance_id + "/remove_connector"
 
             const res = await fetch(url)
@@ -147,6 +164,28 @@ export default {
             display_toast(res)
         }
 
+        // function bind_connectors_change() {
+        //     const $sel = $('#connectors_select_' + modal_identifier)
+        //     // Bind under our own namespace so select2('destroy') doesn't strip it.
+        //     $sel.off('change.cc')
+        //     $sel.on('change.cc', function () {
+        //         connectors_selected.value = []
+        //         const loc = $(this).select2('data').map(item => item.id)
+        //         for (const element in loc) {
+        //             for (const connectors in props.all_connectors_list) {
+        //                 for (const connector in props.all_connectors_list[connectors]) {
+        //                     if (loc[element] == props.all_connectors_list[connectors][connector].id) {
+        //                         connectors_selected.value.push({
+        //                             "id": props.all_connectors_list[connectors][connector].id,
+        //                             "name": props.all_connectors_list[connectors][connector].name
+        //                         })
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     })
+        // }
+
         onMounted(async () => {
             await nextTick()
             hasJQuery = (typeof $ !== 'undefined')
@@ -185,6 +224,7 @@ export default {
                     }
                 }
             }
+       
 
             try {
                 if (connectorsSelectEl) {
@@ -218,6 +258,7 @@ export default {
             modal_identifier,
             is_loading_update,
             can_edit_object,
+            attached_instance_ids,
 
             save_connector,
             remove_connector,

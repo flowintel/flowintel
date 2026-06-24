@@ -1,5 +1,6 @@
 import { display_toast } from '/static/js/toaster.js'
 import { isStatusDropdownDisabled, getStatusDropdownTooltip, getAvailableStatuses, canEditRestrictedTask, getStatusHint } from '/static/js/case/helpers.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { ref, computed } = Vue
 import subtask from './subtask.js'
 import TaskUrlTool from './TaskUrlTool.js'
@@ -134,6 +135,12 @@ export default {
 		}
 
 		async function remove_assigned_user(user_id) {
+			const ok = await confirmDelete({
+				title: 'Remove user from task?',
+				message: 'Are you sure you want to remove this user from the task?',
+				confirmText: 'Remove'
+			})
+			if (!ok) return
 			// Remove a user from assignment to the task
 			const res = await fetch(
 				'/case/' + props.task.case_id + '/remove_assigned_user/' + props.task.id, {
@@ -182,6 +189,25 @@ export default {
 			}
 		}
 
+		async function delete_task(task) {
+			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
+
+			if (await res.status == 200) {
+				if (task.completed) {
+					props.open_closed["closed"] -= 1
+				} else {
+					props.open_closed["open"] -= 1
+				}
+
+				let index = props.cases_info.tasks.indexOf(task)
+				if (index > -1)
+					props.cases_info.tasks.splice(index, 1)
+
+				$("#modal-delete-task-" + task.id).modal("hide")
+			}
+			await display_toast(res)
+		}
+
 		return {
 			is_module_loading,
 			availableStatuses,
@@ -194,7 +220,8 @@ export default {
 			notify_user,
 			present_user_in_task,
 			remove_assigned_user,
-			submit_module_task
+			submit_module_task,
+			delete_task
 		}
 	},
 	template: `
@@ -304,5 +331,28 @@ export default {
     <hr>
 
     <subtask :task="task" :cases_info="cases_info"></subtask>
+
+    <div class="row mt-3" v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
+        <div class="col">
+            <button class="btn btn-danger btn-sm" title="Delete the task" data-bs-toggle="modal" :data-bs-target="'#modal-delete-task-'+task.id">
+                <i class="fa-solid fa-trash fa-fw"></i> Delete the task
+            </button>
+        </div>
+    </div>
+
+    <div class="modal fade" :id="'modal-delete-task-'+task.id" tabindex="-1" aria-labelledby="delete_task_modal" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="delete_task_modal">Delete '[[task.title]]' ?</h1>
+                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button class="btn btn-danger btn-sm" @click="delete_task(task)"><i class="fa-solid fa-trash"></i> Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
     `
 }

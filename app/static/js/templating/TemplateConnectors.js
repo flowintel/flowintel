@@ -1,4 +1,5 @@
 import {display_toast} from '../toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { ref, onMounted } = Vue
 
 export default {
@@ -56,7 +57,12 @@ export default {
         }
 
         async function remove_connector(element_instance_id) {
-            let url = "/templating/connectors/" + element_instance_id + "/remove_connector"
+            const ok = await confirmDelete({
+                title: 'Remove connector?',
+                message: 'Are you sure you want to remove this connector? This cannot be undone.'
+            })
+            if (!ok) return
+            let url = "/templating/connectors/"+element_instance_id+"/remove_connector"
 
             const res = await fetch(url)
             if(await res.status==200){

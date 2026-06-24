@@ -6,7 +6,7 @@ from pymisp import MISPAttribute, MISPEvent, MISPGalaxy, MISPGalaxyCluster, MISP
 import uuid
 from flask import current_app
 import conf.config_module as Config
-from .misp_object_event import all_object_to_misp, manage_object_creation
+from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp
 from app.case.CaseCore import FILE_FOLDER
 
 logger = logging.getLogger(__name__)
@@ -222,9 +222,8 @@ def _existing_attr_values(event, attr_types, prefix=None):
     if not isinstance(attr_types, tuple):
         attr_types = (attr_types,)
     for attr in event.Attribute:
-        if attr.type in attr_types:
-            if attr.value and (prefix is None or attr.value.startswith(prefix)):
-                values.add(attr.value)
+        if attr.type in attr_types and attr.value and (prefix is None or attr.value.startswith(prefix)):
+            values.add(attr.value)
     return values
 
 
@@ -548,6 +547,7 @@ def handler(instance, case, user, case_model=None, db_session=None):
                                 }   
                                 misp.add_event_report(event.get("id"), event_report)
                 
+                event = bump_event_timestamp(event)
                 event = misp.update_event(event, pythonify=True)
                 if "errors" in event:
                     return {"message": event.get("errors", "Error updating event")}
@@ -579,6 +579,7 @@ def handler(instance, case, user, case_model=None, db_session=None):
                         misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
                         event.add_object(misp_object)
 
+                event = bump_event_timestamp(event)
                 event = misp.update_event(event, pythonify=True)
                 if "errors" in event:
                     return {"message": event.get("errors", "Error updating event")}
@@ -672,6 +673,12 @@ def handler(instance, case, user, case_model=None, db_session=None):
     
     if "errors" in event:
         return {"message": event.get("errors", "Error with MISP event")}
+
+    # Mirror any 'report'-template objects from the case as MISP EventReports on the event.
+    try:
+        _sync_report_event_reports(misp, event, case.get("objects", []) or [])
+    except Exception as exc:
+        logger.warning("Could not mirror report objects as MISP event reports: %s", exc)
 
     local_tags = current_app.config.get("MISP_ADD_LOCAL_TAGS_ALL_EVENTS", "")
     if local_tags:

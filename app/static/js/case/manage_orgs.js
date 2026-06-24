@@ -1,4 +1,5 @@
 import { display_toast } from '../toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -20,6 +21,12 @@ export default {
         fetch_orgs()
 
         async function remove_org_case(cases_info, org) {
+            const ok = await confirmDelete({
+                title: 'Remove organisation?',
+                message: 'Are you sure you want to remove this organisation from the case?',
+                confirmText: 'Remove'
+            })
+            if (!ok) return
             const res = await fetch('/case/' + cases_info.case.id + '/remove_org/' + org.id)
             if (await res.status == 200) {
                 let index = cases_info.orgs_in_case.indexOf(org)

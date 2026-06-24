@@ -38,17 +38,17 @@
 }
 .sidebar {
   width: 6.5rem;
-  min-height: 100vh;
+  height: 100vh;
 }
 .sidebar .nav-item {
   position: relative;
 }
 .sidebar .nav-item:last-child {
-  margin-bottom: 1rem;
+  margin-bottom: clamp(0.25rem, 1vh, 1rem);
 }
 .sidebar .nav-item .nav-link {
   text-align: center;
-  padding: .75rem 1rem;
+  padding: clamp(0.3rem, 1.4vh, 0.75rem) 1rem;
   width: 6.5rem;
 }
 .sidebar .nav-item .nav-link span {
@@ -125,10 +125,10 @@
   margin-left: .25rem;
 }
 .sidebar .sidebar-brand {
-  height: 4.375rem;
+  height: clamp(2.75rem, 7vh, 4.375rem);
 }
 .sidebar hr.sidebar-divider {
-  margin: .5rem 1rem;
+  margin: clamp(0.2rem, 0.8vh, 0.5rem) 1rem;
 }
 .topbar #sidebarToggleTop {
   height: 2.5rem;
@@ -189,14 +189,14 @@
     display: block;
     width: 100%;
     text-align: left;
-    padding: .8rem;
+    padding: clamp(0.3rem, 1.4vh, 0.8rem);
   }
   .sidebar .nav-item .nav-link i {
-    font-size: 1rem;
+    font-size: clamp(0.85rem, 1.8vh, 1rem);
     margin-right: .25rem;
   }
   .sidebar .nav-item .nav-link span {
-    font-size: .95rem;
+    font-size: clamp(0.75rem, 1.8vh, 0.95rem);
     display: inline;
   }
   .sidebar .nav-item .nav-link[data-bs-toggle=collapse]:after {
@@ -235,11 +235,11 @@
     margin: 0;
   }
   .sidebar.toggled .nav-item:last-child {
-    margin-bottom: 1rem;
+    margin-bottom: clamp(0.25rem, 1vh, 1rem);
   }
   .sidebar.toggled .nav-item .nav-link {
     text-align: center;
-    padding: .75rem 1rem;
+    padding: clamp(0.3rem, 1.4vh, 0.75rem) 1rem;
     width: 6.5rem;
   }
   .sidebar.toggled .nav-item .nav-link span {

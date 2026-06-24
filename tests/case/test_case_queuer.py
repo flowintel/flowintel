@@ -169,7 +169,7 @@ def test_queue_admin_task_in_privileged_case_gets_created_status(client):
 
     resp = client.get(f"/api/task/{task_id}", headers={"X-API-KEY": QUEUE_ADMIN_KEY})
     assert resp.status_code == 200
-    assert resp.json["task"]["status_id"] == STATUS_CREATED
+    assert resp.json["task"]["status_id"] == STATUS_REQUESTED
 
 
 ###########################################

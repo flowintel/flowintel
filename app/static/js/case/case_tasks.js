@@ -7,7 +7,8 @@ import tabMispObjects from './TaskComponent/tab-misp-objects.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
 import { isCompleteTaskDisabled, getCompleteTaskTooltip } from './helpers.js'
-const { ref, nextTick } = Vue
+import { confirmDelete } from '/static/js/confirm.js'
+const { ref, computed, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -106,6 +107,12 @@ export default {
 		}
 
 		async function remove_assign_task(task, current_user) {
+			const ok = await confirmDelete({
+				title: 'Remove your assignment?',
+				message: 'Are you sure you want to remove yourself from this task?',
+				confirmText: 'Remove'
+			})
+			if (!ok) return
 			// Remove current user from assignment to the task
 			const res = await fetch('/case/' + task.case_id + '/remove_assignment/' + task.id)
 
@@ -295,7 +302,17 @@ export default {
 			} catch (e) {}
 		}
 
+		const can_reorder = computed(() => {
+			if (!props.cases_info) return false
+			const permission = props.cases_info.permission
+			if (permission && permission.read_only) return false
+			if (permission && permission.admin) return true
+			return !!props.cases_info.present_in_case
+		})
+
 		return {
+			can_use_connectors,
+			can_reorder,
 			getTextColor,
 			mapIcon,
 			module_loader,
@@ -319,7 +336,10 @@ export default {
 		}
 	},
 	template: `
-	<div style="display: flex;">                          
+	<div style="display: flex;">
+		<div v-if="!task.completed && can_reorder" class="task-drag-handle" title="Drag to reorder">
+			<i class="fa-solid fa-grip-vertical"></i>
+		</div>
 		<a href="javascript:void(0)" 
 			class="list-group-item list-group-item-action case-index-list"
 			style="border-top-left-radius: 15px; border-top-right-radius: 15px;"
@@ -571,7 +591,7 @@ export default {
 			</template>
 
 			<template v-else-if="selected_tab == 'info'">
-				<tabInfo :task="task" :cases_info="cases_info" :open_closed="open_closed"></tabInfo>
+				<tabInfo :task="task"></tabInfo>
 			</template>
 		</div>
 	</div>

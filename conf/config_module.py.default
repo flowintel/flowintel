@@ -28,3 +28,7 @@ IMAP_USE_SSL = True
 OLLAMA_URL = "http://localhost:11434"
 OLLAMA_KEY = ""
 OLLAMA_MODEL = ""
+
+# Rulezet receive-from module
+# Set to False only for trusted self-signed test instances; leaving it True is recommended for production.
+RULEZET_VERIFY_SSL = True

@@ -52,13 +52,15 @@ def add_user():
             flash("Your organisation could not be found. Please contact an administrator.", "error")
             return redirect(url_for('admin.users'))
         form.org.choices = [(user_org.id, user_org.name)]
-        form.org.data = str(user_org.id)
+        if request.method == 'GET':
+            form.org.data = str(user_org.id)
     else:
         orgs = [(org.id, org.name) for org in AdminModel.get_all_orgs()]
         form.org.choices = sorted(orgs, key=lambda x: x[1].lower())
         form.org.choices.insert(0, ("None", "New org"))
-        # Set default organisation to current user's organisation
-        if current_user.org_id:
+        # Default to the current user's organisation, but only on GET so we don't
+        # overwrite selected org when the form is submitted.
+        if request.method == 'GET' and current_user.org_id:
             form.org.data = str(current_user.org_id)
 
     if form.validate_on_submit():

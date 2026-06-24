@@ -22,6 +22,18 @@
 
 <hr class="fading-line-2 mb-4 mt-4">
 
+{% if case and case.privileged_case %}
+<div class="alert alert-warning" role="alert">
+    <i class="fa-solid fa-shield-halved me-2"></i>
+    This case is <strong>privileged</strong>. New tasks are created with status <strong>Requested</strong> and must be approved by an administrator before work can start.
+</div>
+{% else %}
+<div class="alert alert-info" role="alert">
+    <i class="fa-solid fa-circle-info me-2"></i>
+    New tasks will be created with status <strong>Created</strong>.
+</div>
+{% endif %}
+
 <form action="" method="post" class="case-core-style" id="task_form">
     {{ form.hidden_tag() }}
             

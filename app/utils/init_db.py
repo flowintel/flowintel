@@ -206,7 +206,7 @@ def create_default_case(user):
         with open(filepath) as f:
             case_data = json.load(f)
         result = case_creation_from_importer(case_data, user)
-        if result:
+        if "message" in result:
             print(f"  Failed: {filename} - {result.get('message', 'Unknown error')}")
         else:
             print(f"  Created: {case_data['title']}")

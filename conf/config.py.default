@@ -161,8 +161,12 @@ class Config:
     ENABLE_CHATBOT = os.getenv('ENABLE_CHATBOT', 'false').lower() == 'true'
 
     # =============================================================================
-    # EXPORT / MERMAID
+    # MERMAID
     # =============================================================================
+    # Enable Mermaid rendering in markdown views and live previews.
+    # Set to false to keep Mermaid blocks as plain markdown/code in the UI.
+    ENABLE_MERMAID = os.getenv('ENABLE_MERMAID', 'true').lower() == 'true'
+
     # Enable Mermaid rendering during server-side note exports (PDF/DOCX).
     # Set to false to disable Mermaid Pandoc filters entirely.
     ENABLE_MERMAID_EXPORT = os.getenv('ENABLE_MERMAID_EXPORT', 'true').lower() == 'true'

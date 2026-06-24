@@ -1,4 +1,5 @@
 import {display_toast, create_message} from '../toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 const { ref, onMounted, nextTick } = Vue
 
 export default {
@@ -78,7 +79,22 @@ export default {
 
             const options = {
                 isDirected: true,
-                UI: { mode: 'full' }
+                UI: { mode: 'full' },
+                callbacks: {
+                    onNodeSelect: (node) => {
+                        const ev = graph_events.value.find(e => String(e.id) === String(node.id))
+                        if (ev) selected_node.value = ev
+                    },
+                    onNodeBlur: () => { selected_node.value = null },
+                    onEdgeSelect: (edge) => {
+                        const lk = graph_links.value.find(l => String(l.id) === String(edge.id))
+                        if (lk) {
+                            selected_edge.value = lk
+                            edit_link_label.value = lk.label || ''
+                        }
+                    },
+                    onEdgeBlur: () => { selected_edge.value = null }
+                }
             }
 
             graph = new Pivotick(container, data, options)
@@ -154,7 +170,11 @@ export default {
 
         async function delete_selected_edge() {
             if (!selected_edge.value) return
-            if (!confirm('Delete this link?')) return
+            const ok = await confirmDelete({
+                title: 'Delete link?',
+                message: 'Are you sure you want to delete this link? This cannot be undone.'
+            })
+            if (!ok) return
             const res = await fetch('/case/' + props.case_id + '/delete_timeline_event_link/' + selected_edge.value.id)
             if (res.status === 200) {
                 selected_edge.value = null
@@ -168,7 +188,11 @@ export default {
                 create_message('Click a node first to select it', 'warning-subtle')
                 return
             }
-            if (!confirm('Delete this event and all its links?')) return
+            const ok = await confirmDelete({
+                title: 'Delete event?',
+                message: 'Are you sure you want to delete this event and all its links? This cannot be undone.'
+            })
+            if (!ok) return
             const res = await fetch('/case/' + props.case_id + '/delete_timeline_event/' + selected_node.value.id)
             if (res.status === 200) {
                 selected_node.value = null

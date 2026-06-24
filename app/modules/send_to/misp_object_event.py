@@ -1,5 +1,6 @@
 from pymisp import MISPEvent, MISPObject, PyMISP, MISPAttribute
 from pymisp.exceptions import InvalidMISPObjectAttribute, InvalidMISPObject, NewAttributeError
+import time
 import uuid
 import conf.config_module as Config
 import logging
@@ -11,8 +12,24 @@ logger = logging.getLogger(__name__)
 module_config = {
     "connector": "misp",
     "case_task": "case",
-    "description": "Create or modify an event using misp-object present in the current case"
+    "description": "Create or modify an event using misp-object present in the current case. Objects that use the MISP 'report' template are also pushed as MISP Event Reports."
 }
+
+# MISP 'report' object template UUID. Objects of this template are mirrored as
+# MISP Event Reports in addition to being synced as regular MISP objects.
+REPORT_TEMPLATE_UUID = "70a68471-df22-4e3f-aa1a-5a3be19f82df"
+
+# Stable namespace used to derive deterministic UUIDs for the MISP Event Reports
+# we create from report objects. Using a deterministic UUID keyed on the local
+# object id allows us to update the matching EventReport on re-sync instead of
+# accumulating duplicates.
+_EVENT_REPORT_NAMESPACE = uuid.UUID("5a3be19f-82df-4e3f-aa1a-70a68471df22")
+
+
+def bump_event_timestamp(event):
+    """Set the event timestamp to the current epoch second."""
+    event.timestamp = int(time.time())
+    return event
 
 
 def create_object(misp, object, event_id):
@@ -137,6 +154,113 @@ def all_object_to_misp(misp, event, objects, object_uuid_list):
     return details, object_uuid_list
 
 
+def _extract_report_fields(object):
+    """Return (title, summary) from a 'report'-template object's attributes.
+
+    Both values may be ``None`` if the corresponding attribute is missing.
+    Multiple ``summary`` attributes are joined with two newlines, matching how
+    MISP renders an event report (free-text markdown).
+    """
+    title = None
+    summary_parts = []
+    for attr in object.get("attributes", []) or []:
+        relation = attr.get("object_relation")
+        value = attr.get("value")
+        if not value:
+            continue
+        if relation == "title" and title is None:
+            title = value
+        elif relation == "summary":
+            summary_parts.append(value)
+    summary = "\n\n".join(summary_parts) if summary_parts else None
+    return title, summary
+
+
+def _sync_report_event_reports(misp, event, objects):
+    """Create or update a MISP EventReport for every report-template object.
+
+    Called after the regular object sync so the event already exists on the MISP
+    server. The function is best-effort: failures are logged but do not abort
+    the surrounding sync, since the objects themselves have already been
+    pushed successfully.
+    """
+    event_id = event.get("id") if event is not None else None
+    if not event_id:
+        logger.info("Skipping event report sync: no event id available")
+        return
+
+    report_objects = [o for o in objects if o.get("template_uuid") == REPORT_TEMPLATE_UUID]
+    logger.info(
+        "Event report sync: %d report-template object(s) out of %d total for event %s",
+        len(report_objects), len(objects), event_id,
+    )
+    if not report_objects:
+        return
+
+    # Re-fetch the event so we see the up-to-date EventReport list (the
+    # ``event`` object we received reflects state from before this sync run).
+    try:
+        fresh = misp.get_event(event_id, pythonify=True)
+    except Exception as exc:
+        logger.warning("Could not fetch MISP event %s to sync event reports: %s", event_id, exc)
+        return
+    if isinstance(fresh, dict) and fresh.get("errors"):
+        logger.warning("Could not fetch MISP event %s to sync event reports: %s", event_id, fresh.get("errors"))
+        return
+
+    existing_by_uuid = {}
+    for er in (getattr(fresh, "EventReport", None) or []):
+        er_uuid = getattr(er, "uuid", None)
+        if er_uuid:
+            existing_by_uuid[er_uuid] = er
+
+    for object in report_objects:
+        title, summary = _extract_report_fields(object)
+        if not title and not summary:
+            logger.info("Skipping report object %s: no title and no summary", object.get("id"))
+            continue
+
+        target_uuid = str(uuid.uuid5(
+            _EVENT_REPORT_NAMESPACE,
+            f"flowintel-report-object-{object.get('id', object.get('uuid', ''))}"
+        ))
+        name = title or f"Report #{object.get('id', '')}"
+        content = summary or ""
+
+        if target_uuid in existing_by_uuid:
+            er = existing_by_uuid[target_uuid]
+            er.name = name
+            er.content = content
+            try:
+                res = misp.update_event_report(er, event_id)
+                logger.info("Updated MISP event report %s on event %s: %s", target_uuid, event_id, _summarize_misp_result(res))
+            except Exception as exc:
+                logger.warning("Could not update MISP event report %s: %s", target_uuid, exc)
+        else:
+            payload = {
+                "uuid": target_uuid,
+                "event_id": event_id,
+                "name": name,
+                "content": content,
+            }
+            try:
+                res = misp.add_event_report(event_id, payload)
+                logger.info("Created MISP event report %s on event %s: %s", target_uuid, event_id, _summarize_misp_result(res))
+            except Exception as exc:
+                logger.warning("Could not create MISP event report for object %s: %s", object.get("id"), exc)
+
+
+def _summarize_misp_result(res):
+    """Best-effort short string representation of a PyMISP add/update result."""
+    if res is None:
+        return "None"
+    if isinstance(res, dict):
+        if "errors" in res:
+            return f"errors={res['errors']!r}"
+        return "ok"
+    return type(res).__name__
+
+
 def handler(instance, case, user, case_model=None, db_session=None, payload=None):
     """
     instance: name, url, description, uuid, connector_id, type, api_key, identifier
@@ -192,6 +316,12 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
     if "errors" in event:
         return {"message": event.get("errors", "Error with MISP event")}
+
+    # Mirror any 'report'-template objects as MISP EventReports on the same event.
+    try:
+        _sync_report_event_reports(misp, event, objects)
+    except Exception as exc:
+        logger.warning("Could not mirror report objects as MISP event reports: %s", exc)
 
     # Let the module handle its own DB storage
     if case_model and object_uuid_list:

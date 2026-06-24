@@ -244,20 +244,83 @@ def admin_edit_user_core(form_dict, id):
         delete_default_org(prev_user_org_id)
 
 
-def _invalidate_user_sessions(user_id):
-    """Remove all server-side sessions belonging to a user."""
+def _iter_user_sessions():
+    """Yield (key, data) for every stored server-side session."""
     redis_client = current_app.config.get("SESSION_REDIS")
     if not redis_client:
         return
     prefix = current_app.config.get("SESSION_KEY_PREFIX", "session:")
     decoder = msgspec.msgpack.Decoder()
     for key in redis_client.scan_iter(f"{prefix}*"):
+        raw = redis_client.get(key)
+        if raw is None:
+            continue
         try:
-            data = decoder.decode(redis_client.get(key))
-            if data.get("_user_id") == str(user_id):
-                redis_client.delete(key)
+            yield key, decoder.decode(raw)
         except Exception:
             continue
+
+
+def _invalidate_user_sessions(user_id):
+    """Remove all server-side sessions belonging to a user."""
+    redis_client = current_app.config.get("SESSION_REDIS")
+    if not redis_client:
+        return
+    for key, data in _iter_user_sessions():
+        if data.get("_user_id") == str(user_id):
+            redis_client.delete(key)
+
+
+# Idle time is (lifetime - ttl), since the TTL resets on each request.
+ACTIVE_SESSION_THRESHOLD_MINUTES = 15
+
+
+def list_active_user_sessions(exclude_user_id=None):
+    """Return distinct users active within the threshold, optionally excluding one."""
+    redis_client = current_app.config.get("SESSION_REDIS")
+    if not redis_client:
+        return []
+
+    lifetime = current_app.config.get("PERMANENT_SESSION_LIFETIME") or datetime.timedelta(days=31)
+    lifetime_seconds = lifetime.total_seconds()
+    threshold_seconds = ACTIVE_SESSION_THRESHOLD_MINUTES * 60
+
+    # user_id -> {"count": sessions, "idle": idle of the most recent one}
+    active = {}
+    for key, data in _iter_user_sessions():
+        user_id = data.get("_user_id")
+        if not user_id or user_id == str(exclude_user_id):
+            continue
+
+        ttl = redis_client.ttl(key)
+        if ttl == -2:  # key expired between scan and read
+            continue
+        # ttl == -1 means no expiry, which we treat as just-active
+        idle = 0 if ttl < 0 else max(0, lifetime_seconds - ttl)
+        if idle > threshold_seconds:
+            continue
+
+        if user_id in active:
+            active[user_id]["count"] += 1
+            active[user_id]["idle"] = min(active[user_id]["idle"], idle)
+        else:
+            active[user_id] = {"count": 1, "idle": idle}
+
+    sessions = []
+    for user_id, entry in active.items():
+        user = get_user(user_id)
+        if not user:
+            continue
+        name = f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email
+        sessions.append({
+            "id": user.id,
+            "name": name,
+            "email": user.email,
+            "sessions": entry["count"],
+            "idle_seconds": int(entry["idle"]),
+        })
+    sessions.sort(key=lambda u: u["idle_seconds"])
+    return sessions
 
 
 def delete_user_core(id):

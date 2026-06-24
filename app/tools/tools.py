@@ -662,6 +662,10 @@ def system_settings():
         'ollama_model': getattr(ConfigModule, 'OLLAMA_MODEL', ''),
         'ollama_key_set': bool(getattr(ConfigModule, 'OLLAMA_KEY', '')),
 
+        # Mermaid
+        'enable_mermaid': current_app.config.get('ENABLE_MERMAID', True),
+        'enable_mermaid_export': current_app.config.get('ENABLE_MERMAID_EXPORT', True),
+
         # Logging & theming
         'log_file': getattr(config_class, 'LOG_FILE', None),
         'audit_log_prefix': current_app.config.get('AUDIT_LOG_PREFIX', 'AUDIT'),
@@ -748,6 +752,8 @@ def system_settings_save():
         'LIMIT_USER_VIEW_TO_ORG': 'bool',
         'ENFORCE_PRIVILEGED_CASE': 'bool',
         'ENABLE_CHATBOT': 'bool',
+        'ENABLE_MERMAID': 'bool',
+        'ENABLE_MERMAID_EXPORT': 'bool',
         'MISP_EXPORT_FILES': 'bool',
         'SHOW_GDPR_NOTICE': 'bool',
         'TASK_REQUESTED': 'int',
@@ -816,6 +822,18 @@ def system_settings_save():
     flowintel_log("audit", 200, "System setting changed", User=current_user.email, Setting=key, Value=py_value)
 
     return jsonify({"message": "Configuration saved", "backup_created": True})
+
+
+@tools_blueprint.route("/system_settings/active_sessions", methods=["GET"])
+@login_required
+@admin_required
+def system_settings_active_sessions():
+    """List other users currently connected, so a reload can be confirmed knowingly."""
+    sessions = AdminModel.list_active_user_sessions(exclude_user_id=current_user.id)
+    return jsonify({
+        "sessions": sessions,
+        "threshold_minutes": AdminModel.ACTIVE_SESSION_THRESHOLD_MINUTES,
+    })
 
 
 @tools_blueprint.route("/system_settings/reload", methods=["POST"])

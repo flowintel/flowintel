@@ -1,6 +1,5 @@
 import { display_toast } from '../toaster.js'
-const { ref, nextTick, onMounted, onUpdated } = Vue
-const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
+const { ref, onMounted, onUpdated } = Vue
 
 export default {
 	delimiters: ['[[', ']]'],
@@ -15,15 +14,11 @@ export default {
 	},
 	setup(props) {
 		const is_mounted = ref(false)
-		const edit_mode = ref(false)
-		const temp_content = ref(props.note_template.content || "")
 
 		const md = window.markdownit()
 		md.use(mermaidMarkdown.default)
 
 		const dayjs = window.dayjs
-
-		let content_editor = null
 
 		onMounted(async () => {
 			const allCollapses = document.getElementById('collapse' + props.note_template.id)
@@ -55,49 +50,6 @@ export default {
 			display_toast(res)
 		}
 
-		async function init_editor() {
-			if (content_editor) {
-				content_editor.destroy()
-				content_editor = null
-			}
-			await nextTick()
-			const targetElement = document.getElementById('editor_' + props.note_template.id)
-			if (targetElement) {
-				content_editor = new EditorView({
-					doc: props.note_template.content || "\n\n",
-					extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-						if (v.docChanged) {
-							temp_content.value = content_editor.state.doc.toString()
-						}
-					})],
-					parent: targetElement
-				})
-			}
-		}
-
-		async function save_content() {
-			let content_text = content_editor.state.doc.toString()
-			if (content_text.trim().length == 0) {
-				content_text = content_text.trim()
-			}
-
-			const res = await fetch('/tools/note_template/' + props.note_template.id + '/edit_content', {
-				headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-				method: "POST",
-				body: JSON.stringify({
-					"content": content_text
-				})
-			})
-
-			if (await res.status == 200) {
-				let loc = await res.clone().json()
-				props.note_template.content = content_text
-				props.note_template.version = loc.version
-				edit_mode.value = false
-			}
-			display_toast(res)
-		}
-
 		function toggleCollapse(id) {
 			const collapseEl = document.getElementById('collapse' + id);
 			const collapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
@@ -107,11 +59,7 @@ export default {
 		return {
 			md,
 			dayjs,
-			temp_content,
-			edit_mode,
 			delete_note_template,
-			init_editor,
-			save_content,
 			toggleCollapse
 		}
 	},
@@ -188,32 +136,15 @@ export default {
 	<!-- Collapse Part -->
 	<div class="collapse" :id="'collapse'+note_template.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
-			<!-- Content editing -->
+			<!-- Content preview (editing happens on the edit page) -->
 			<div>
 				<fieldset class="analyzer-select-case">
 					<legend class="analyzer-select-case">
 						<i class="fa-solid fa-file-lines fa-sm me-1"></i><span class="section-title">Content</span>
-					<button v-if="can_edit && !edit_mode" class="btn btn-primary btn-sm" @click="edit_mode = true; init_editor()" title="Edit content" style="float: right; margin-left: 10px;">
-							<i class="fa-solid fa-pen"></i>
-						</button>
-					<button v-else-if="can_edit" class="btn btn-success btn-sm" @click="save_content()" title="Save content" style="float: right; margin-left: 10px;">
-						<i class="fa-solid fa-check"></i>
-					</button>
-					<button v-if="can_edit && edit_mode" class="btn btn-secondary btn-sm" @click="edit_mode = false" title="Cancel" style="float: right; margin-left: 10px;">
-							<i class="fa-solid fa-times"></i>
-						</button>
 					</legend>
-					
-					<template v-if="edit_mode">
-						<div style="display: flex;">
-							<div class="note-editor" :id="'editor_'+note_template.id"></div>
-							<div class="markdown-render" v-html="md.render(temp_content)"></div>
-						</div>
-					</template>
-					<template v-else>
-						<div v-if="note_template.content" class="markdown-render-result" v-html="md.render(note_template.content)"></div>
-						<div v-else><i style="font-size: 12px;">No content</i></div>
-					</template>
+
+					<div v-if="note_template.content" class="markdown-render-result" v-html="md.render(note_template.content)"></div>
+					<div v-else><i style="font-size: 12px;">No content</i></div>
 				</fieldset>
 			</div>
 		</div>

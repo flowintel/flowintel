@@ -1,6 +1,8 @@
 import { display_toast, create_message } from '../toaster.js'
 const { ref, computed, watch, reactive } = Vue
 
+export const REPORT_TEMPLATE_UUID = '70a68471-df22-4e3f-aa1a-5a3be19f82df'
+
 export default {
     delimiters: ['[[', ']]'],
     props: {
@@ -94,6 +96,17 @@ export default {
                 lo.synced_instances && lo.synced_instances.some(si => si.object_uuid === uuid)
             )
         }
+
+        const selected_report_count = computed(() => {
+            if (props.direction !== 'send') return 0
+            // Count selected local objects that use the MISP 'report' template.
+            // Tied to the checkbox selection so that deselecting a report object
+            // immediately hides the banner.
+            return local_objects.value.filter(o =>
+                o.object_uuid === REPORT_TEMPLATE_UUID &&
+                selected_local_ids.value.includes(o.object_id)
+            ).length
+        })
 
         async function load_local_objects() {
             if (props.case_misp_objects_list !== null) {
@@ -325,7 +338,7 @@ export default {
             load_remote_objects, toggle_local_all, toggle_local_sa_all, toggle_remote_all, toggle_remote_sa_all,
             submit, import_event_report, on_show, on_module_change, is_synced_locally,
             // new panel state
-            active_panel, case_fields, selected_tasks_map, tasks
+            active_panel, case_fields, selected_tasks_map, tasks, selected_report_count
         }
     },
     template: `
@@ -356,6 +369,16 @@ export default {
             </div>
 
             <!-- Two-column object panels -->
+            <div v-if="direction === 'send' && (module_name === 'misp_object_event' || module_name === 'misp_event') && selected_report_count > 0"
+                    class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center">
+                <i class="fa-solid fa-circle-info me-2"></i>
+                <span>
+                    [[ selected_report_count ]] selected object[[ selected_report_count === 1 ? '' : 's' ]]
+                    use[[ selected_report_count === 1 ? 's' : '' ]] the MISP <strong>report</strong> template and
+                    will also be created as a MISP Event Report on the event.
+                </span>
+            </div>
+
             <div class="row g-3">
                 <!-- LEFT: Local objects -->
                 <div class="col-md-6">

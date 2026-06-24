@@ -143,12 +143,11 @@ class EditCase(Resource):
             
             if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
                 if request.json:
-                    if "privileged_case" in request.json:
-                        if request.json["privileged_case"] != case.privileged_case:
-                            from ..decorators import check_privileged_case_permission
-                            error = check_privileged_case_permission(current_user, operation="modification")
-                            if error:
-                                return error
+                    if "privileged_case" in request.json and request.json["privileged_case"] != case.privileged_case:
+                        from ..decorators import check_privileged_case_permission
+                        error = check_privileged_case_permission(current_user, operation="modification")
+                        if error:
+                            return error
                     
                     verif_dict = CaseModelApi.verif_edit_case(request.json, cid)
 
