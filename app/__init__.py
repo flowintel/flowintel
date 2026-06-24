@@ -23,10 +23,10 @@ def create_app():
     app = Flask(__name__)
     config_name = os.environ.get("FLOWINTEL_ENV", "development").strip().lower()
 
-    if config_name not in config:
+    if config_name not in Config:
         raise ValueError(f"Unknown config environment: {config_name}")
 
-    config_class = config[config_name]
+    config_class = Config[config_name]
     app.config.from_object(config_class)
     config_class.init_app(app)
 
