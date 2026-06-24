@@ -37,8 +37,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         --migration_branch)
             if [[ -z "$2" ]]; then
-                echo "Error: --migration_branch requires a value (postgres|sqlite|mariadb)"
-                exit 1
+                MIGRATION_BRANCH="Postgres"
+                # Kept in case we need to revert to branching
+                # echo "Error: --migration_branch requires a value (postgres|sqlite|mariadb)"
+                # exit 1
+                #
             fi
             MIGRATION_BRANCH="$2"
             shift 2
@@ -79,22 +82,38 @@ fi
 
 case "$MIGRATION_BRANCH" in
   postgres)
-    UPGRADE_TARGET="postgres@head"
-    MIGRATE_OPTS=(--head postgres@head --version-path migrations/versions)
+    UPGRADE_TARGET="head"
+    MIGRATE_OPTS=(--head head --version-path migrations/versions)
+    # Kept in case we need to revert to branching
+    # UPGRADE_TARGET="postgres@head"
+    # MIGRATE_OPTS=(--head postgres@head --version-path migrations/versions)
+    #
     ;;
   mariadb)
-    UPGRADE_TARGET="mariadb@head"
-    MIGRATE_OPTS=(--head mariadb@head --version-path migrations/versions_mariadb)
+    UPGRADE_TARGET="head"
+    MIGRATE_OPTS=(--head head --version-path migrations/versions)
+    # Kept in case we need to revert to branching
+    # UPGRADE_TARGET="mariadb@head"
+    # MIGRATE_OPTS=(--head mariadb@head --version-path migrations/versions_mariadb)
+    #
     ;;
   sqlite)
     # The following assumption is based on the observation that postgres (prod) and sqlite (dev) were apparently working
     # with the same models, same migration files at v3.3.0
-    UPGRADE_TARGET="postgres@head"
-    MIGRATE_OPTS=(--head postgres@head --version-path migrations/versions)
+    UPGRADE_TARGET="head"
+    MIGRATE_OPTS=(--head head --version-path migrations/versions)
+    # Kept in case we need to revert to branching
+    # UPGRADE_TARGET="postgres@head"
+    # MIGRATE_OPTS=(--head postgres@head --version-path migrations/versions)
+    #
     ;;
   *)
-    echo "Error: Invalid migration branch '$MIGRATION_BRANCH'. Must be postgres, sqlite, or mariadb."
-    exit 1
+    UPGRADE_TARGET="head"
+    MIGRATE_OPTS=(--head head --version-path migrations/versions)
+    # Kept in case we need to revert to branching
+    # echo "Error: Invalid migration branch '$MIGRATION_BRANCH'. Must be postgres, sqlite, or mariadb."
+    # exit 1
+    #
     ;;
 esac
 

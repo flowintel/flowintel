@@ -33,7 +33,10 @@ def configure_version_locations():
 
     base = Path(config.config_file_name).resolve().parent
     if dialect in ("mysql", "mariadb"):
-        script.version_locations = [str(base / "versions_mariadb")]
+        # Kept in case we need to revert to branching
+        # script.version_locations = [str(base / "versions_mariadb")]
+        #
+        script.version_locations = [str(base / "versions")]
     else:
         script.version_locations = [str(base / "versions")]
     
