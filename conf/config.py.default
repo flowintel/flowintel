@@ -1,6 +1,22 @@
 import os
 
-class Config:
+
+def env_bool(name, default=False):
+    """
+    Parser to replace the obsoleted distutils strtobool parser:
+    - Interpret "1", "true", "yes", "on", "True", "Yes", "On" as True
+    - Interpret "0", "false", "no", "off", "False", "No", "Off" as False
+    """
+    val = os.getenv(name)
+    if val is None:
+        return default
+    val = val.strip().lower()
+    if val in {"1", "true", "yes", "on"}:
+        return True
+    if val in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"Invalid boolean value for {name}: {val}")
+
     """
     Base configuration for Flowintel.
     """
@@ -34,14 +50,16 @@ class Config:
     # MISP MODULES
     # =============================================================================
     # Address and port where MISP modules are running for analysis and enrichment
-    MISP_MODULE = '127.0.0.1:6666'
+    MISP_MODULE_HOST = os.getenv('MISP_MODULE_HOST', '127.0.0.1')
+    MISP_MODULE_PORT = os.getenv('MISP_MODULE_PORT', '6666')
+    MISP_MODULE = f"{MISP_MODULE_HOST}:{MISP_MODULE_PORT}"
     
     # =============================================================================
     # DATABASE CONFIGURATION
     # =============================================================================
     # Connection pool settings for PostgreSQL
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
-    
+
     # =============================================================================
     # SESSION STORAGE (VALKEY)
     # =============================================================================
@@ -62,7 +80,7 @@ class Config:
     # REVERSE PROXY
     # =============================================================================
     # SECURITY: Only enable if Flask is NOT directly accessible (firewall blocks Flask port)
-    BEHIND_PROXY = os.getenv('BEHIND_PROXY', 'true').lower() == 'true'
+    BEHIND_PROXY = env_bool('BEHIND_PROXY', default=True)
     PROXY_X_FOR = int(os.getenv('PROXY_X_FOR', 1))       # Number of proxies to trust
     PROXY_X_PROTO = int(os.getenv('PROXY_X_PROTO', 1))   # Trust X-Forwarded-Proto
     PROXY_X_HOST = int(os.getenv('PROXY_X_HOST', 1))     # Trust X-Forwarded-Host
@@ -131,25 +149,25 @@ class Config:
     # When True: Users can only see other users within their own organisation
     # When False: All users can see all other users
     # Administrators always see all users regardless of this setting.
-    LIMIT_USER_VIEW_TO_ORG = False
+    LIMIT_USER_VIEW_TO_ORG = env_bool('LIMIT_USER_VIEW_TO_ORG', default=False)
 
     # =============================================================================
     # GDPR
     # =============================================================================
     # GDPR and privacy notice for case and task forms
-    SHOW_GDPR_NOTICE = os.getenv('SHOW_GDPR_NOTICE', 'true').lower() == 'true'
+    SHOW_GDPR_NOTICE = env_bool('SHOW_GDPR_NOTICE', default=True)
     GDPR_NOTICE = os.getenv('GDPR_NOTICE', 'Please be mindful of GDPR and privacy regulations when adding personal or sensitive information to cases and tasks.')
 
     # =============================================================================
     # PRIVILEGED CASE / FOUR-EYE REVIEW
     # =============================================================================
     # Privileged case enforcement
-    ENFORCE_PRIVILEGED_CASE = os.getenv('ENFORCE_PRIVILEGED_CASE', 'false').lower() == 'true'
+    ENFORCE_PRIVILEGED_CASE = env_bool('ENFORCE_PRIVILEGED_CASE', default=False)
 
     # Auto-assign Admin, Case Admin and Queue Admin to a task when it is
     # set to "Requested" or "Request Review" in a privileged case.
     # This makes the task visible in their assignment list.
-    PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST = os.getenv('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST', 'false').lower() == 'true'
+    PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST = env_bool('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST', default=False)
 
     # =============================================================================
     # CHATBOT
@@ -158,13 +176,13 @@ class Config:
     # When False, the menu item is hidden and the routes return 404.
     # The chatbot also requires a reachable Ollama instance and the OLLAMA_*
     # values in conf/config_module.py before it can answer questions.
-    ENABLE_CHATBOT = os.getenv('ENABLE_CHATBOT', 'false').lower() == 'true'
+    ENABLE_CHATBOT = env_bool('ENABLE_CHATBOT', default=False)
 
     # =============================================================================
     # ENTRA ID
     # =============================================================================
     # Microsoft Entra ID (Azure AD) SSO configuration
-    ENTRA_ID_ENABLED = os.getenv('ENTRA_ID_ENABLED', 'false').lower() == 'true'
+    ENTRA_ID_ENABLED = env_bool('ENTRA_ID_ENABLED', default=False)
     ENTRA_TENANT_ID = os.getenv('ENTRA_TENANT_ID', '')           # Directory (tenant) ID
     ENTRA_CLIENT_ID = os.getenv('ENTRA_CLIENT_ID', '')           # Application (client) ID
     ENTRA_CLIENT_SECRET = os.getenv('ENTRA_CLIENT_SECRET', '')   # Client secret value
@@ -186,7 +204,7 @@ class Config:
     # KEYCLOAK
     # =============================================================================
     # Keycloak SSO configuration
-    KEYCLOAK_ENABLED = os.getenv('KEYCLOAK_ENABLED', 'false').lower() == 'true'
+    KEYCLOAK_ENABLED = env_bool('KEYCLOAK_ENABLED', default=False)
     KEYCLOAK_BASE_URL = os.getenv('KEYCLOAK_BASE_URL', '')       # e.g. https://keycloak.example.com
     KEYCLOAK_REALM = os.getenv('KEYCLOAK_REALM', 'flowintel')
     KEYCLOAK_CLIENT_ID = os.getenv('KEYCLOAK_CLIENT_ID', 'flowintel')
@@ -209,7 +227,7 @@ class Config:
     # MISP INTEGRATION
     # =============================================================================
     # MISP connector: attach case & task files to the MISP event
-    MISP_EXPORT_FILES = os.getenv('MISP_EXPORT_FILES', 'false').lower() == 'true'
+    MISP_EXPORT_FILES = env_bool('MISP_EXPORT_FILES', default=False)
 
     # MISP event defaults
     # Threat level: 1 = High, 2 = Medium, 3 = Low, 4 = Undefined
