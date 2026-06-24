@@ -349,7 +349,7 @@ runfull_maria: configure_repo_dev build_latest_local
 build_latest_local: nuke
 ifeq ($(rebuild),1)
 	echo "Image Rebuild rebuild requested"
-	docker build -f DockerfileProduction -t flowintel:latest .
+	docker build -f Dockerfile -t flowintel:latest .
 	echo "Image built"
 else
 	echo "Image Rebuild skipped"
@@ -484,7 +484,7 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "build_latest_local" "/"  "Build the database agnostic Docker Image (DockerfileProduction)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "build_latest_local" "/"  "Build the database agnostic Docker Image (Dockerfile)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_run" "/"  "Run Dev Infrastructure manually (docker-compose, Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_run" "/"  "Run Dev Infrastructure manually (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_stop" "/"  "Stop Dev Infrastructure manually when things gone stuck (docker-compose, Postgres stack)"

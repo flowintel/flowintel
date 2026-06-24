@@ -18,8 +18,8 @@ dpkg -i pandoc*.deb
 rm -rf $TMP
 EOF
 
-# Create a dedicated user and group
-RUN groupadd -r flowintel && useradd -m -g flowintel flowintel
+# Create a dedicated user and group, fixing user range ids that should be unreserved and so usable in production
+RUN groupadd --gid 10000 flowintel && useradd --uid 10000 --gid 10000 -m -g flowintel flowintel
 
 WORKDIR /home/flowintel/app
 
@@ -62,22 +62,18 @@ EOF
 # We need again to be root, though not sure it is needed due to the chown done in the next steps !
 USER root
 
-# Copy app source
+# Copy app source later to optimize layer caching
 # TODO This can further be accelerated by using the src pattern for code location and adding separate copies of requirements
 # and other important folders / files from king directory
 COPY . /home/flowintel/app
 
 # Replace secret and update config
-COPY conf/config.py.default conf/config.py
-COPY template.env .env
-
-RUN RAND=$(tr -cd "[:alnum:]" < /dev/urandom | head -c 20) && sed "s/SECRET_KEY_ENV_VAR_NOT_SET/$RAND/" conf/config.py | sponge conf/config.py
-RUN sed "s/FLASK_URL *= *'.*'/FLASK_URL = '0.0.0.0'/" conf/config.py | sponge conf/config.py
+RUN mkdir -p /home/flowintel/app
 
 # Set proper ownership
 RUN chown -R flowintel:flowintel /home/flowintel/app
 
-# Switch to the non-root user
+# We finally switch to the non-root user
 USER flowintel
 
 # Proxy mmdc with proper puppeteer config
