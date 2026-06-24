@@ -47,7 +47,7 @@ services:
       - BOT_MAIL=${BOT_MAIL:-neo@admin.admin}
       #
       # By default, we use production config because the docker compose owns a database service
-      - FLASKENV=${FLASKENV:-production}
+      - FLOWINTEL_ENV=${FLOWINTEL_ENV:-production}
       #
       - FLASK_PORT=${APP_PORT:-7006}
       - FLASK_URL=${FLASK_URL:-0.0.0.0}

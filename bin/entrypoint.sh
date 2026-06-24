@@ -20,7 +20,7 @@ echo "${DB_HOST:-postgresql} is reachable."
 DB_EXISTS=$(python3 - << 'EOF'
 import os, sys
 
-config_name = os.environ.get("FLASKENV", "development")
+config_name = os.environ.get("FLOWINTEL_ENV", "development")
 print(f"Loading app config {config_name}...", file=sys.stderr)
 
 from conf.config import config as Config

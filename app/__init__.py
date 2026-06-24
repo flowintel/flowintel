@@ -21,7 +21,7 @@ from conf.config import config as Config
 
 def create_app():
     app = Flask(__name__)
-    config_name = os.environ.get("FLASKENV", "development")
+    config_name = os.environ.get("FLOWINTEL_ENV", "development")
 
     app.config.from_object(Config[config_name])
 

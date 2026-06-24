@@ -48,7 +48,7 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: --env requires a value (development|production|docker)"
                 exit 1
             fi
-            FLASKENV="$2"
+            FLOWINTEL_ENV="$2"
             shift 2
             ;;
         -m|--migrate)
@@ -72,8 +72,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate environment
-if [[ "$FLASKENV" != "development" && "$FLASKENV" != "production" && "$FLASKENV" != "docker" ]]; then
-    echo "Error: Invalid environment '$FLASKENV'. Must be development, production, or docker."
+if [[ "$FLOWINTEL_ENV" != "development" && "$FLOWINTEL_ENV" != "production" && "$FLOWINTEL_ENV" != "docker" ]]; then
+    echo "Error: Invalid environment '$FLOWINTEL_ENV'. Must be development, production, or docker."
     exit 1
 fi
 

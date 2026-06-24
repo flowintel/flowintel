@@ -9,7 +9,7 @@ User=yourusername
 Group=yourusername
 WorkingDirectory=/opt/flowintel/flowintel
 Environment="PATH=/opt/flowintel/flowintel/env/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="FLASKENV=production"
+Environment="FLOWINTEL_ENV=production"
 Environment="HISTORY_DIR=/opt/flowintel/flowintel/history"
 ExecStart=/opt/flowintel/flowintel/env/bin/python startNotif.py
 Restart=on-failure

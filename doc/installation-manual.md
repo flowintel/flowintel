@@ -1672,7 +1672,7 @@ User=yourusername
 Group=yourusername
 WorkingDirectory=/opt/flowintel/flowintel
 Environment="PATH=/opt/flowintel/flowintel/env/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="FLASKENV=production"
+Environment="FLOWINTEL_ENV=production"
 Environment="HISTORY_DIR=/opt/flowintel/flowintel/history"
 ExecStart=/opt/flowintel/flowintel/env/bin/gunicorn -w 4 "app:create_app()" -b 127.0.0.1:7006 --access-logfile -
 Restart=on-failure
@@ -2517,7 +2517,7 @@ To check which migration your database is currently on:
 
 ```bash
 source env/bin/activate
-export FLASKENV=production  # or development
+export FLOWINTEL_ENV=production  # or development
 flask db current
 ```
 
@@ -2543,7 +2543,7 @@ column "version" of relation "case__template" already exists
 
 ```bash
 source env/bin/activate
-export FLASKENV=production  # or development
+export FLOWINTEL_ENV=production  # or development
 flask db stamp head
 ```
 

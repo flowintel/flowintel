@@ -591,8 +591,8 @@ def search_attr_with_value():
 def system_settings():
     from conf.config import config as app_config
     
-    flaskenv = os.getenv('FLASKENV', 'development')
-    config_class = app_config.get(flaskenv)
+    flowintel_env = os.getenv('FLOWINTEL_ENV', 'development')
+    config_class = app_config.get(flowintel_env)
     
     db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
     if db_uri.startswith('postgresql'):
@@ -638,7 +638,7 @@ def system_settings():
         'config_last_modified': config_last_modified,
 
         # Configuration
-        'flaskenv': flaskenv,
+        'flowintel_env': flowintel_env,
         'secret_key_set': current_app.config.get('SECRET_KEY', '') not in ('', 'SECRET_KEY_ENV_VAR_NOT_SET'),
         'debug': current_app.config.get('DEBUG', False),
         'session_type': current_app.config.get('SESSION_TYPE'),

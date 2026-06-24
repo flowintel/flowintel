@@ -72,13 +72,13 @@ function killscript {
 
 function taxo_galaxy_update {
     prepare_app_run
-    export FLASKENV="${FLASKENV:-development}"
+    export FLOWINTEL_ENV="${FLOWINTEL_ENV:-development}"
     python3 app.py -utg
 }
 
 function misp_module_update {
     prepare_app_run
-    export FLASKENV="${FLASKENV:-development}"
+    export FLOWINTEL_ENV="${FLOWINTEL_ENV:-development}"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
     sleep 3
     python3 app.py -mm
@@ -87,7 +87,7 @@ function misp_module_update {
 
 function launch {
     prepare_app_run
-    export FLASKENV="development"
+    export FLOWINTEL_ENV="development"
     export HISTORY_DIR=$history_dir/history
     killscript
 
@@ -106,7 +106,7 @@ function launch {
 }
 
 function test {
-    export FLASKENV="testing"
+    export FLOWINTEL_ENV="testing"
     export HISTORY_DIR=$history_dir/history_test
     pytest
     rm -r $HISTORY_DIR
@@ -114,7 +114,7 @@ function test {
 
 function production {
     prepare_app_run
-    export FLASKENV="production"
+    export FLOWINTEL_ENV="production"
     export HISTORY_DIR=$history_dir/history
     killscript
 
@@ -131,7 +131,7 @@ function production {
 
 function init_db {
     prepare_app_run
-    export FLASKENV="development"
+    export FLOWINTEL_ENV="development"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
@@ -154,7 +154,7 @@ function init_db {
 
 function init_db_prod {
     prepare_app_run
-    export FLASKENV="production"
+    export FLOWINTEL_ENV="production"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
@@ -175,14 +175,14 @@ function init_db_prod {
 
 function reload_db {
     prepare_app_run
-    export FLASKENV="${FLASKENV:-development}"
+    export FLOWINTEL_ENV="${FLOWINTEL_ENV:-development}"
     export HISTORY_DIR=$history_dir/history
     python3 app.py -r
 }
 
 function launch_docker {
     mkdir -p logs
-    export FLASKENV="${FLASKENV:-production}"
+    export FLOWINTEL_ENV="${FLOWINTEL_ENV:-production}"
     export HISTORY_DIR=$history_dir/history
 
     # Start screen sessions with logs
@@ -201,7 +201,7 @@ function launch_docker {
 function init_db_docker {
     # Run Python unbuffered so we see progress when the app.py inits
     mkdir -p logs
-    export FLASKENV="${FLASKENV:-production}"
+    export FLOWINTEL_ENV="${FLOWINTEL_ENV:-production}"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
