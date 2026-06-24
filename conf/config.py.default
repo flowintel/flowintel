@@ -1,6 +1,13 @@
 import os
 
 
+ALLOWED_DIALECT_DRIVERS = {
+    "postgresql": {"psycopg2",},
+    "mariadb": {"pymysql",},
+    "mysql": {"pymysql",},
+    "sqlite": {None, "", "pysqlite"},
+}
+
 def env_bool(name, default=False):
     """
     Parser to replace the obsoleted distutils strtobool parser:
@@ -17,6 +24,64 @@ def env_bool(name, default=False):
         return False
     raise ValueError(f"Invalid boolean value for {name}: {val}")
 
+def validate_db_config(dialect, driver, env_name):
+    if dialect not in ALLOWED_DIALECT_DRIVERS:
+        raise ValueError(f"Unsupported DB_DIALECT: {dialect}")
+
+    if driver not in ALLOWED_DIALECT_DRIVERS[dialect]:
+        raise ValueError(
+            f"Invalid DB_DRIVER '{driver}' for DB_DIALECT '{dialect}' in {env_name}"
+        )
+
+    if env_name in ("testing", "production") and dialect == "sqlite":
+        raise ValueError("SQLite is forbidden in production and testing")
+
+def build_db_uri(env_name):
+    """
+    Build SQLAlchemy connection URI.
+
+    Configure these settings using environment variables or a .env file.
+    - PostgreSQL or MariaDB recommended for enforced and testing due to the necessity to harden production config and
+    to test migrations as well as specifics around fields like JSON, VARCHARS, etc.
+    - SQLite is allowed in Development only
+    
+    Example .env file:
+      DB_USER=flowintel
+      DB_PASSWORD=your_secure_password_here
+      DB_HOST=localhost
+      DB_PORT=5432
+      DB_NAME=flowintel
+      DB_DIALECT 
+    """
+    dialect = os.getenv("DB_DIALECT", "").strip().lower()
+    driver = os.getenv("DB_DRIVER", "").strip().lower()
+
+    if not dialect:
+        if env_name == "development":
+            return "sqlite:///flowintel.sqlite"
+        raise ValueError("DB_DIALECT must be set explicitely when running outside development")
+
+    validate_db_config(dialect, driver, env_name)
+
+    if dialect == "sqlite":
+        db_path = os.getenv("SQLITE_PATH", "flowintel.sqlite")
+        return f"sqlite:///{db_path}"
+
+    user = os.getenv("DB_USER", "flowintel")
+    password = os.getenv("DB_PASSWORD", "your_secure_password_here")
+    host = os.getenv("DB_HOST", "localhost")
+    port = os.getenv("DB_PORT", "")
+    name = os.getenv("DB_NAME", "flowintel")
+
+    if not port:
+        if dialect == "postgresql":
+            port = "5432"
+        elif dialect in {"mariadb", "mysql"}:
+            port = "3306"    
+
+    return f"{dialect}+{driver}://{user}:{password}@{host}:{port}/{name}"
+
+class Config():
     """
     Base configuration for Flowintel.
     """
@@ -273,8 +338,9 @@ def env_bool(name, default=False):
 # Used for local development and testing.
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel.sqlite"
-    SESSION_TYPE = "redis"
+    
+    # Database URI
+    SQLALCHEMY_DATABASE_URI = build_db_uri(env_name="development")
 
     @classmethod
     def init_app(cls, app):
@@ -287,9 +353,10 @@ class DevelopmentConfig(Config):
 # Used for automated testing (pytest).
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel-test.sqlite"
     WTF_CSRF_ENABLED = False
-    SESSION_TYPE = "redis"
+
+    # Database URI
+    SQLALCHEMY_DATABASE_URI = build_db_uri(env_name="testing")
 
     @classmethod
     def init_app(cls, app):
@@ -300,29 +367,12 @@ class TestingConfig(Config):
 # PRODUCTION CONFIGURATION
 # =============================================================================
 # Used for production deployments.
-# Database: PostgreSQL (recommended for production)
-# 
-# Configure these settings using environment variables or a .env file.
-# 
-# Example .env file:
-#   DB_USER=flowintel
-#   DB_PASSWORD=your_secure_password_here
-#   DB_HOST=localhost
-#   DB_PORT=5432
-#   DB_NAME=flowintel
 class ProductionConfig(Config):
     # environment variables
     SESSION_TYPE = "redis"
-    db_user = os.getenv('DB_USER', 'flowintel')
-    db_password = os.getenv('DB_PASSWORD', 'your_secure_password_here')
-    db_host = os.getenv('DB_HOST', 'localhost')
-    db_port = os.getenv('DB_PORT', '5432')
-    db_name = os.getenv('DB_NAME', 'flowintel')
-    db_dialect = os.getenv('DB_DIALECT', 'postgresql')
-    db_driver = os.getenv('DB_DRIVER', 'psycopg2')
 
     # Database URI
-    SQLALCHEMY_DATABASE_URI = f"{db_dialect}+{db_driver}://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    SQLALCHEMY_DATABASE_URI = build_db_uri(env_name="production")
 
     @classmethod
     def init_app(cls, app):
@@ -332,5 +382,5 @@ config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
     'production': ProductionConfig,
-    'default': ProductionConfig
+    'default': DevelopmentConfig
 }
