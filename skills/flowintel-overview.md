@@ -90,7 +90,7 @@ Flowintel est une plateforme open-source de gestion de cas pour analystes de sé
 ├── app.py                        # Point d'entrée principal & CLI
 ├── launch.sh                    # Script de lancement
 ├── requirements.txt             # Dépendances Python
-├── docker-compose.yml            # Orchestration Docker
+├── docker/docker-compose*.yml            # Orchestration Docker
 ├── Dockerfile                   # Build container
 ├── version                      # Fichier version (3.1.0)
 └── template.env                 # Template environnement
@@ -218,7 +218,7 @@ Utilise flask-restx pour documentation Swagger avec authentification API key. Es
 ### Déploiement Docker
 
 ```
-docker-compose.yml définit :
+docker/docker-compose-*.yml définit :
 ├── postgresql    # Base de données (port 5432)
 ├── valkey        # Session store (port 6379)
 └── flowintel     # Application (port 7006)
@@ -255,10 +255,10 @@ python app.py
 
 ```bash
 # Construire et lancer avec Docker Compose
-docker-compose up --build
+docker/docker-compose* up --build
 
 # Lancer en arrière-plan
-docker-compose up -d
+docker/docker-compose* up -d
 ```
 
 ### Tests

@@ -1,4 +1,36 @@
 services:
+  mariadb:
+    container_name: mariadb
+    image: mariadb:12
+    # TODO
+    # https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/mariadb-server-docker-official-image-environment-variables#using-_file-environment-variables-for-secrets
+    #
+    ports:
+      - "127.0.0.1:${DB_PORT:-3306}:${DB_PORT:-3306}"
+      - "[::1]:${DB_PORT:-3306}:${DB_PORT:-3306}"
+    volumes:
+      - db:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-mysql}
+      - MYSQL_USER=${DB_USER:-flowintel}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
+      - MYSQL_DATABASE=${DB_NAME:-flowintel}
+    networks:
+      - net
+    restart: unless-stopped
+
+  valkey:
+    container_name: valkey
+    image: valkey/valkey
+    ports:
+      - "127.0.0.1:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
+      - "[::1]:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
+    volumes:
+      - valkey-data:/data
+    networks:
+      - net
+
+
   flowintel:
     image: flowintel:latest
     container_name: flowintel
@@ -19,13 +51,13 @@ services:
     environment:
       - SECRET_KEY=${SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
       #
-      - DB_HOST=${DB_HOST:-postgresql}
-      - DB_PORT=${DB_PORT:-5432}
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_PORT=${DB_PORT:-3306}
       - DB_USER=${DB_USER:-flowintel}
       - DB_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
       - DB_NAME=${DB_NAME:-flowintel}
-      - DB_DIALECT=${DB_DIALECT:-postgresql}
-      - DB_DRIVER=${DB_DRIVER:-psycopg2}
+      - DB_DIALECT=${DB_DIALECT:-mysql}
+      - DB_DRIVER=${DB_DRIVER:-pymysql}
       #
       - VALKEY_IP=${VALKEY_IP:-valkey}
       - ADMIN_FIRST_NAME=${ADMIN_FIRST_NAME:-admin}
@@ -42,12 +74,15 @@ services:
     #
     networks:
       - net
+    depends_on:
+      - mariadb
+      - valkey
     volumes:
       - flowintel-data:/var/lib/flowintel
       # TODO as soon as these files completely parametrized, then can be used as a parser of external config
       # currently we mount them at runtime and ignore them at docker build stage to simplify a bit things
-      - ./conf/config_module.py:/home/flowintel/app/conf/config_module.py:ro
-      - ./conf/config.py:/home/flowintel/app/conf/config.py:ro
+      - ../conf/config_module.py:/home/flowintel/app/conf/config_module.py:ro
+      - ../conf/config.py:/home/flowintel/app/conf/config.py:ro
       # Development hack 2:
       # Creates the missing varenv above thanks to dotenv in python3:
       #   - dotenv does not override existing variables by default
@@ -56,7 +91,9 @@ services:
       #
 
 volumes:
+  db:
   flowintel-data:
+  valkey-data:
 
 networks:
   net:

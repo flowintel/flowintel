@@ -1,16 +1,4 @@
 services:
-  valkey:
-    container_name: valkey
-    image: valkey/valkey
-    ports:
-      - "127.0.0.1:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
-      - "[::1]:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
-    volumes:
-      - valkey-data:/data
-    networks:
-      - net
-
-
   flowintel:
     image: flowintel:latest
     container_name: flowintel
@@ -54,14 +42,12 @@ services:
     #
     networks:
       - net
-    depends_on:
-      - valkey
     volumes:
       - flowintel-data:/var/lib/flowintel
       # TODO as soon as these files completely parametrized, then can be used as a parser of external config
       # currently we mount them at runtime and ignore them at docker build stage to simplify a bit things
-      - ./conf/config_module.py:/home/flowintel/app/conf/config_module.py:ro
-      - ./conf/config.py:/home/flowintel/app/conf/config.py:ro
+      - ../conf/config_module.py:/home/flowintel/app/conf/config_module.py:ro
+      - ../conf/config.py:/home/flowintel/app/conf/config.py:ro
       # Development hack 2:
       # Creates the missing varenv above thanks to dotenv in python3:
       #   - dotenv does not override existing variables by default
@@ -71,7 +57,6 @@ services:
 
 volumes:
   flowintel-data:
-  valkey-data:
 
 networks:
   net:

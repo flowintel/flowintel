@@ -328,7 +328,7 @@ runfull_postgres: configure_repo_dev build_latest_local
 	set -e
 	trap '$(MAKE) dev_localinfra_full_postgres_stop -s >/dev/null' EXIT
 	cp -f .env.full.postgres .env.docker
-	docker compose -f docker-compose-local-full-postgres.yml up
+	docker compose -f docker/docker-compose-local-full-postgres.yml up
 	echo "Press Enter to close..."
 	read _
 	sleep 1
@@ -338,7 +338,7 @@ runfull_maria: configure_repo_dev build_latest_local
 	set -e
 	trap '$(MAKE) dev_localinfra_full_maria_stop -s >/dev/null' EXIT
 	cp -f .env.full.mariadb .env.docker
-	docker compose -f docker-compose-local-full-maria.yml up
+	docker compose -f docker/docker-compose-local-full-maria.yml up
 	echo "Press Enter to close..."
 	read _
 	sleep 1
@@ -357,22 +357,22 @@ endif
 
 # Various Helpers
 dev_localinfra_postgres_run:
-	docker compose -f docker-compose-local-infra-postgres.yml up
+	docker compose -f docker/docker-compose-local-infra-postgres.yml up
 
 dev_localinfra_maria_run:
-	docker compose -f docker-compose-local-infra-maria.yml up
+	docker compose -f docker/docker-compose-local-infra-maria.yml up
 
 dev_localinfra_postgres_stop:
-	docker compose -f docker-compose-local-infra-postgres.yml down
+	docker compose -f docker/docker-compose-local-infra-postgres.yml down
 
 dev_localinfra_maria_stop:
-	docker compose -f docker-compose-local-infra-maria.yml down
+	docker compose -f docker/docker-compose-local-infra-maria.yml down
 
 dev_localinfra_full_postgres_stop:
-	docker compose -f docker-compose-local-full-postgres.yml down
+	docker compose -f docker/docker-compose-local-full-postgres.yml down
 
 dev_localinfra_full_maria_stop:
-	docker compose -f docker-compose-local-full-maria.yml down
+	docker compose -f docker/docker-compose-local-full-maria.yml down
 
 ################
 # Housekeeping #

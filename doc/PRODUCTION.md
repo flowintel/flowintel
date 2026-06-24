@@ -70,53 +70,10 @@ Replace `{tag}` with your desired version tag (e.g. `latest`, `v1.6.1`, etc.).
 
 ---
 
-### 6. Set up `docker-compose.yml`
-TODO the .yml files are supposed to be maintained in the repo, not here. I would transform this section into some memo
-like ```adapt the .yml files to your exact use case, especially regarding the .env mounting.```
+### 6. Set up `docker/docker-compose*.yml`
+Adapt the .yml files to your exact use case, especially regarding the environment variables management.
+The different Docker composition files are described in the README.md and can be found under the ```docker/``` folder.
 
-Here is a template `docker-compose.yml` file with PostgreSQL:
-
-```yml
-services:
-  postgresql:
-    container_name: postgres
-    image: postgres:17
-    ports:
-      - '${POSTGRES_PORT}:5432'
-    volumes:
-      - db:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_DB=${POSTGRES_DB}
-    networks:
-      - net
-    restart: unless-stopped
-
-  app:
-    image: flowintel:{tag}
-    container_name: flowintel
-    ports:
-      - '${APP_PORT}:7006'
-    networks:
-      - net
-    depends_on:
-      - postgresql
-    environment:
-      - DB_HOST=postgresql
-      - DB_PORT=${POSTGRES_PORT}
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_NAME=${POSTGRES_DB}
-    restart: unless-stopped
-
-volumes:
-  db:
-
-networks:
-  net:
-    driver: bridge
-```
 ---
 ### 7. Configure environment variables
 TODO Should be made explicit that config (.env, conf.py) are mounted at docker composition level and not embedded into the image.

@@ -19,13 +19,13 @@ services:
     environment:
       - SECRET_KEY=${SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
       #
-      - DB_HOST=${DB_HOST:-mariadb}
-      - DB_PORT=${DB_PORT:-3306}
+      - DB_HOST=${DB_HOST:-postgresql}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_USER=${DB_USER:-flowintel}
       - DB_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
       - DB_NAME=${DB_NAME:-flowintel}
-      - DB_DIALECT=${DB_DIALECT:-mysql}
-      - DB_DRIVER=${DB_DRIVER:-pymysql}
+      - DB_DIALECT=${DB_DIALECT:-postgresql}
+      - DB_DRIVER=${DB_DRIVER:-psycopg2}
       #
       - VALKEY_IP=${VALKEY_IP:-valkey}
       - ADMIN_FIRST_NAME=${ADMIN_FIRST_NAME:-admin}
@@ -46,8 +46,8 @@ services:
       - flowintel-data:/var/lib/flowintel
       # TODO as soon as these files completely parametrized, then can be used as a parser of external config
       # currently we mount them at runtime and ignore them at docker build stage to simplify a bit things
-      - ./conf/config_module.py:/home/flowintel/app/conf/config_module.py:ro
-      - ./conf/config.py:/home/flowintel/app/conf/config.py:ro
+      - ../conf/config_module.py:/home/flowintel/app/conf/config_module.py:ro
+      - ../conf/config.py:/home/flowintel/app/conf/config.py:ro
       # Development hack 2:
       # Creates the missing varenv above thanks to dotenv in python3:
       #   - dotenv does not override existing variables by default
