@@ -802,7 +802,7 @@ DB_PORT=5432
 DB_NAME=flowintel
 
 # Flask environment
-FLASK_ENV="production"
+FLOWINTEL_ENV="production"
 ```
 
 ## Key configuration options
@@ -828,7 +828,7 @@ The table below covers all settings from `template.env` (`.env`):
 | `PROXY_X_PROTO` | Trust X-Forwarded-Proto header | `1` |
 | `PROXY_X_HOST` | Trust X-Forwarded-Host header | `1` |
 | `PROXY_X_PREFIX` | Trust X-Forwarded-Prefix header | `0` or `1` |
-| `FLASK_ENV` | Flask runtime environment | `production` |
+| `FLOWINTEL_ENV` | Flowintel runtime environment | `production` |
 | `AUDIT_LOG_PREFIX` | Prefix used for audit log entries | `AUDIT` |
 | `LOG_FILE` | Audit/application log filename | `record.log` |
 | `MAIN_LOGO` | Main application logo path | `/static/image/flowintel.png` |
