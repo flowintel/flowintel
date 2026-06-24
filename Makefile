@@ -61,6 +61,8 @@ ifeq ($(UNAME_S),Linux)
     $(info ✅ Package manager detected: $(PKG_MANAGER))
 else ifeq ($(UNAME_S),Darwin)
     $(info ✅ Running on macOS)
+	$(info Might require to switch to gmake, GNU make)
+	$(info also recommendations targetting apt should be replaced with your own toolset)
     OS := macOS
 else
     $(error ❌ Unsupported OS: $(UNAME_S). Only Linux and macOS are supported.)
@@ -515,5 +517,26 @@ help :
 	echo -e "${GREEN}${BOLD}📝 Default arguments that can be superseded on CLI:${RESET}"
 	echo "- version_repo=\"0.0.0\""
 	echo "-	tag_message=\"\""
+	echo ""
+	echo "Important information about the assumptions behind the use of Docker"
+	echo "/etc/docker/daemon.json:"
+	echo "- newest Docker"
+	echo "{"
+	echo "  \"ipv6\": true,"
+	echo "  \"ip6tables\": true"	
+	echo "}"
+	echo "- \"Legacy\" Docker"
+	echo "{"
+	echo "  \"ipv6\": true,"
+	echo "  \"ip6tables\": true,"
+	echo "  \"ip6tables\": true,"
+	echo "  \"fixed-cidr-v6\": \"fd00::/80\","
+	echo "  \"experimental\": true"
+	echo "}"
+	echo "- It is assumed that the Developer User account is part of groupd docker so that no need for sudo elevation in the scripts."
+	echo "!!! This is assumed as a reasonible assumption ONLY in DEV on a single User system !!! Adapt accordingly to your policy."
+	echo ""
+	echo "Fonts:"
+	echo "sudo apt install fonts-firacode fonts-dejavu fonts-noto-color-emoji # Then restart Terminal"
 	echo ""
 	printf "\033[0;32m%s\033[0m\n" "Run 'make help' anytime for this reference"
