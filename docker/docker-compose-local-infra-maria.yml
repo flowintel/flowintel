@@ -10,6 +10,7 @@ services:
       - "[::1]:${DB_PORT:-3306}:${DB_PORT:-3306}"
     volumes:
       - db:/var/lib/mysql
+      - ./init-infra-maria.sql:/docker-entrypoint-initdb.d/init.sql:ro
     environment:
       - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-flowintel}
       - MYSQL_USER=${DB_USER:-flowintel}
