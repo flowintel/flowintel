@@ -68,7 +68,7 @@ else
 fi
 
 # Run migration script
-# TODO MariadDB alternative should be made possible here
+# We kept the facility of having different alembic branch, however everything points to "head" by now
 ./migrate.sh --env "$FLOWINTEL_ENV" -u --migration_branch postgres
 
 echo ""

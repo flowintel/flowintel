@@ -134,6 +134,10 @@ Examples of usage:
 ## Dockerised deployment
 The deployment can be conducted using Docker in Development, Testing and Production environment. Different flavors of the
 software architecture can be spawned with different Docker Composition files that can be found in ```docker``` folder.
+
+It should be remarked that currently the Docker images includes the Git submodules (MISP taxonomy, galaxy, objects) for legacy reason.
+In the future, these folders may be directly mounted at runtime to provide more update flexibity.
+
 A distinction is to be made in between:
 1. ```docker-compose.yml``` file that use the online Docker Image alongside dockerised Valkey and Postgres instances,
 2. ```docker-compose-local-*.yml``` files that presuppose that the user built locally a Docker image of the Application.
