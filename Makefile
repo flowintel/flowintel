@@ -187,78 +187,110 @@ new_migration_postgres: dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
-	# ! EXPERIMENTAL !
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	echo "Install the application in Dockerised Local Dev Infra first"
-	echo "! EXPERIMENTAL !"
+	echo "Install the application in Dockerised Local Dev Infra first, with run_postgres"
 	read wait_for_me
+	cp -f .env.postgres .env
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
-	# Just if case, should be harmless
-	VENV_DIR=".venv" ./launch.sh -i
 	#
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch postgres
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env development
 	echo "Database initialised and upgraded, when necessary applied"
-	VENV_DIR=".venv" ./migrate.sh --migrate --env production --migration_branch postgres
+	VENV_DIR=".venv" ./migrate.sh --migrate --env development
 	echo "New migrations created, when applicable"
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch postgres
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env development
 	echo "New migrations applied"
+	rm .env
 
 new_migration_maria: dev_localinfra_maria_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
-	# ! EXPERIMENTAL !
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	echo "Install the application in Dockerised Local Dev Infra first"
-	echo "! EXPERIMENTAL !"
+	echo "Install the application in Dockerised Local Dev Infra first, with run_maria"
 	read wait_for_me
+	cp -f .env.mariadb .env
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
-	# Just in case, should be harmless
-	VENV_DIR=".venv" ./launch.sh -i
 	#
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch mariadb
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env development
 	echo "Database initialised and upgraded, when necessary applied"
-	VENV_DIR=".venv" ./migrate.sh --migrate --env production --migration_branch mariadb
+	VENV_DIR=".venv" ./migrate.sh --migrate --env development
 	echo "New migrations created, when applicable"
-	VENV_DIR=".venv" ./migrate.sh --upgrade --env production --migration_branch mariadb
+	VENV_DIR=".venv" ./migrate.sh --upgrade --env development
 	echo "New migrations applied"
+	rm .env
 
 full_new_migration:
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
 	echo "The application must already be running in full Docker mode"
+	echo "The last migration must have already been applied"
 	echo "Up to the user to extract the file created inside the container"
 	echo "(until the image is made immutable and the migration folder is mounted)"
 	read wait_for_me
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
-	docker exec -it flowintel bash -i ./migrate.sh --migrate --migration_branch postgres
+	# The dockerised deployment owns the FLOWINTEL_ENV definition at runtime
+	# Also, no need for activating the venv as it is already included in the PATH in Docker
+	docker exec -it flowintel bash -i ./migrate.sh --migrate
 	echo "New migration created if new model found"
 	sleep 1
-	docker exec -it flowintel bash -i ./migrate.sh --upgrade --migration_branch postgres
+	# The dockerised deployment owns the FLOWINTEL_ENV definition at runtime
+	# Also, no need for activating the venv as it is already included in the PATH in Docker
+	docker exec -it flowintel bash -i ./migrate.sh --upgrade
 	echo "New migrations applied"
 
 full_new_migration_maria:
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
 	echo "The application must already be running in full Docker mode"
+	echo "The last migration must have already been applied"
 	echo "Up to the user to extract the file created inside the container"
 	echo "(until the image is made immutable and the migration folder is mounted)"
 	read wait_for_me
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
-	docker exec -it flowintel bash -i ./migrate.sh --migrate --migration_branch mariadb
+	# The dockerised deployment owns the FLOWINTEL_ENV definition at runtime
+	# Also, no need for activating the venv as it is already included in the PATH in Docker
+	docker exec -it flowintel bash -i -c "./migrate.sh --migrate"
 	echo "New migration created if new model found"
 	sleep 1
-	docker exec -it flowintel bash -i ./migrate.sh --upgrade --migration_branch mariadb
+	# The dockerised deployment owns the FLOWINTEL_ENV definition at runtime
+	# Also, no need for activating the venv as it is already included in the PATH in Docker
+	docker exec -it flowintel bash -i -c "./migrate.sh --upgrade"
 
-# Run Application
-run_postgres: configure_repo_dev dev_localinfra_postgres_run
+# Install and Run Application
+install_postgres: configure_repo_dev dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
 	cp -f .env.postgres .env
 	VENV_DIR=".venv" ./install.sh
+	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_ENV=production
+	VENV_DIR=".venv" ./launch.sh -l
+	echo "Press Enter to close..."
+	read _
+	sleep 1
+	rm .env
+
+install_maria: configure_repo_dev dev_localinfra_maria_run
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
+	cp -f .env.mariadb .env
+	VENV_DIR=".venv" ./install.sh
+	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_ENV=production
+	VENV_DIR=".venv" ./launch.sh -l
+	echo "Press Enter to close..."
+	read _
+	sleep 1
+	rm .env
+
+run_postgres: configure_repo_dev dev_localinfra_postgres_run
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
+	cp -f .env.postgres .env
+	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
@@ -270,7 +302,7 @@ run_maria: configure_repo_dev dev_localinfra_maria_run
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
 	cp -f .env.mariadb .env
-	VENV_DIR=".venv" ./install.sh
+	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
@@ -427,8 +459,8 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "first_install" "/" "configure_repo_deb then initialize Python venv"
 	echo ""
 	echo -e "${BOLD}📦 Development lifecycle:${RESET}"
-	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "new_migration_postgres" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
-	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "new_migration_postgres" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
+	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "full_new_migration_postgres" "/"  "Create a new migration file, Fully Dockerised infrastructure must be running (Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "full_new_migration_maria" "/"  "Create a new migration file, Fully Dockerised infrastructure must be running (MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "run_postgres" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
