@@ -259,7 +259,7 @@ full_new_migration_maria:
 	docker exec -it flowintel bash -i -c "./migrate.sh --upgrade"
 
 # Install and Run Application
-install_postgres: configure_repo_dev dev_localinfra_postgres_run
+install_postgres: first_install dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
@@ -272,7 +272,7 @@ install_postgres: configure_repo_dev dev_localinfra_postgres_run
 	sleep 1
 	rm .env
 
-install_maria: configure_repo_dev dev_localinfra_maria_run
+install_maria: first_install dev_localinfra_maria_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
@@ -285,7 +285,7 @@ install_maria: configure_repo_dev dev_localinfra_maria_run
 	sleep 1
 	rm .env
 
-run_postgres: configure_repo_dev dev_localinfra_postgres_run
+run_postgres: first_install dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
@@ -297,7 +297,7 @@ run_postgres: configure_repo_dev dev_localinfra_postgres_run
 	sleep 1
 	rm .env
 
-run_maria: configure_repo_dev dev_localinfra_maria_run
+run_maria: first_install dev_localinfra_maria_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
@@ -345,7 +345,7 @@ runfullofficial_postgres: configure_repo_dev
 ########################################################################################
 
 # Test, Build 🌍 , Publish  🌬️ and Release 🔥
-test: configure_repo_dev
+test: first_install
 	VENV_DIR=".venv" ./launch.sh -t
 
 build_latest_local: nuke
