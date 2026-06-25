@@ -1,6 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import os
 import logging
 from logging.handlers import RotatingFileHandler
@@ -16,7 +13,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.extensions import db, csrf, migrate, session, login_manager
 
-from conf.config import config as Config
+from conf.config import config as Config # This will also parse the .env
 
 
 def create_app():
