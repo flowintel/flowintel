@@ -303,25 +303,29 @@ full_new_migration_maria:
 	docker exec -it flowintel bash -i ./migrate.sh --upgrade --migration_branch mariadb
 
 # Run Application
-run_posgtres: configure_repo_dev dev_localinfra_postgres_run
+run_postgres: configure_repo_dev dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
+	cp -f .env.postgres .env
 	VENV_DIR=".venv" ./install.sh
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
 	sleep 1
+	rm .env
 
 run_maria: configure_repo_dev dev_localinfra_maria_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
+	cp -f .env.mariadb .env
 	VENV_DIR=".venv" ./install.sh
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
 	sleep 1
+	rm .env
 
 runfull_postgres: configure_repo_dev build_latest_local
 	# We stop dev infra on error on a the end - must be in single bash shell
@@ -480,8 +484,8 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
 	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "full_new_migration_postgres" "/"  "Create a new migration file, Fully Dockerised infrastructure (Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "full_new_migration_maria" "/"  "Create a new migration file, Fully Dockerised infrastructure (MariaDB stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "run_postgres" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "run_postgres" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "build_latest_local" "/"  "Build the database agnostic Docker Image (Dockerfile)"
