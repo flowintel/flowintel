@@ -266,15 +266,10 @@ new_migration_maria: dev_localinfra_maria_run
 	echo "New migrations applied"
 
 full_new_migration:
-	# We stop dev infra on error on a the end - must be in single bash shell
-	set -e
-	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
-	# ! EXPERIMENTAL !
-	# TODO Clarify how much it is redundant with migrate.sh script
-	# STILL EVEN MORE EXPERIMENTAL
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit";
-	echo "The application must already be run in full Docker mode"
-	echo "! EXPERIMENTAL !"
+	echo "The application must already be running in full Docker mode"
+	echo "Up to the user to extract the file created inside the container"
+	echo "(until the image is made immutable and the migration folder is mounted)"
 	read wait_for_me
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
@@ -285,15 +280,10 @@ full_new_migration:
 	echo "New migrations applied"
 
 full_new_migration_maria:
-	# We stop dev infra on error on a the end - must be in single bash shell
-	set -e
-	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
-	# ! EXPERIMENTAL !
-	# TODO Clarify how much it is redundant with migrate.sh script
-	# STILL EVEN MORE EXPERIMENTAL
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	echo "The application must already be run in full Docker mode"
-	echo "! EXPERIMENTAL !"
+	echo "The application must already be running in full Docker mode"
+	echo "Up to the user to extract the file created inside the container"
+	echo "(until the image is made immutable and the migration folder is mounted)"
 	read wait_for_me
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
@@ -482,8 +472,8 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "init_migrations_mariadb" "/"  "Init a migration folder, MariaDB running as Dockerised Dev Infrastructure"
 	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "new_migration_postgres" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
 	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
-	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "full_new_migration_postgres" "/"  "Create a new migration file, Fully Dockerised infrastructure (Postgres stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "full_new_migration_maria" "/"  "Create a new migration file, Fully Dockerised infrastructure (MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "full_new_migration_postgres" "/"  "Create a new migration file, Fully Dockerised infrastructure must be running (Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "full_new_migration_maria" "/"  "Create a new migration file, Fully Dockerised infrastructure must be running (MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "run_postgres" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
