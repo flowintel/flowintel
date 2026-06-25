@@ -106,6 +106,7 @@ function launch {
 }
 
 function test {
+    prepare_app_run
     export FLOWINTEL_ENV="testing"
     export HISTORY_DIR=$history_dir/history_test
     pytest

@@ -26,8 +26,6 @@ def create_app():
     config_class = Config[config_name]
     app.config.from_object(config_class)
     config_class.init_app(app)
-
-    Config[config_name].init_app(app)
     
     if not app.debug and not app.testing:
         logs_folder = os.path.join(os.getcwd(), "logs")

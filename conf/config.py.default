@@ -27,6 +27,27 @@ def env_bool(name, default=False):
         return False
     raise ValueError(f"Invalid boolean value for {name}: {val}")
 
+def get_db_config():
+    """
+    Configure these settings using environment variables or a .env file.
+    Example .env file:
+      DB_USER=flowintel
+      DB_PASSWORD=your_secure_password_here
+      DB_HOST=localhost
+      DB_PORT=5432
+      DB_NAME=flowintel
+      DB_DIALECT=postgresql
+    """
+    return {
+        "DIALECT": os.getenv("DB_DIALECT", "").strip().lower(),
+        "DRIVER": os.getenv("DB_DRIVER", "").strip().lower(),
+        "USER": os.getenv("DB_USER", "flowintel"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "your_secure_password_here"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", ""),
+        "NAME": os.getenv("DB_NAME", "flowintel"),
+    }
+
 def validate_db_config(dialect, driver, env_name):
     if dialect not in ALLOWED_DIALECT_DRIVERS:
         raise ValueError(f"Unsupported DB_DIALECT: {dialect}")
@@ -39,30 +60,20 @@ def validate_db_config(dialect, driver, env_name):
     if env_name in ("testing", "production") and dialect == "sqlite":
         raise ValueError("SQLite is forbidden in production and testing")
 
-def build_db_uri(env_name):
+def build_db_uri(DB, env_name):
     """
     Build SQLAlchemy connection URI.
-
-    Configure these settings using environment variables or a .env file.
     - PostgreSQL or MariaDB recommended for enforced and testing due to the necessity to harden production config and
     to test migrations as well as specifics around fields like JSON, VARCHARS, etc.
-    - SQLite is allowed in Development only
-    
-    Example .env file:
-      DB_USER=flowintel
-      DB_PASSWORD=your_secure_password_here
-      DB_HOST=localhost
-      DB_PORT=5432
-      DB_NAME=flowintel
-      DB_DIALECT 
+    - SQLite is allowed in Development and Testing only
     """
-    dialect = os.getenv("DB_DIALECT", "").strip().lower()
-    driver = os.getenv("DB_DRIVER", "").strip().lower()
+    dialect = DB['DIALECT']
+    driver = DB['DRIVER']
 
     if not dialect:
-        if env_name == "development":
+        if env_name in ("development", "testing"):
             return "sqlite:///flowintel.sqlite"
-        raise ValueError("DB_DIALECT must be set explicitely when running outside development")
+        raise ValueError("DB_DIALECT must be set explicitely when running outside development and testing")
 
     validate_db_config(dialect, driver, env_name)
 
@@ -70,11 +81,11 @@ def build_db_uri(env_name):
         db_path = os.getenv("SQLITE_PATH", "flowintel.sqlite")
         return f"sqlite:///{db_path}"
 
-    user = os.getenv("DB_USER", "flowintel")
-    password = os.getenv("DB_PASSWORD", "your_secure_password_here")
-    host = os.getenv("DB_HOST", "localhost")
-    port = os.getenv("DB_PORT", "")
-    name = os.getenv("DB_NAME", "flowintel")
+    user = DB['USER']
+    password = DB['PASSWORD']
+    host = DB['HOST']
+    port = DB['PORT']
+    name = DB['NAME']
 
     if not port:
         if dialect == "postgresql":
@@ -89,6 +100,8 @@ class Config():
     Base configuration for Flowintel.
     """
     
+    ENV_NAME = None
+
     # =============================================================================
     # SECRET KEY (REQUIRED)
     # =============================================================================
@@ -333,6 +346,14 @@ class Config():
         "version": 1
     }
 
+    @classmethod
+    def init_app(cls, app):
+        # Database URI is assigned at initialisation to avoid evaluation problems at imports
+        db_cfg = get_db_config()
+        app.config["SQLALCHEMY_DATABASE_URI"] = build_db_uri(
+            DB=db_cfg,
+            env_name=app.config["ENV_NAME"]
+        )
 
 
 # =============================================================================
@@ -341,12 +362,11 @@ class Config():
 # Used for local development and testing.
 class DevelopmentConfig(Config):
     DEBUG = True
-    
-    # Database URI
-    SQLALCHEMY_DATABASE_URI = build_db_uri(env_name="development")
+    ENV_NAME = "development"
 
     @classmethod
     def init_app(cls, app):
+        super().init_app(app)
         print('THIS APP IS IN DEBUG MODE. \
                 YOU SHOULD NOT SEE THIS IN PRODUCTION.')
 
@@ -357,12 +377,11 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     TESTING = True
     WTF_CSRF_ENABLED = False
-
-    # Database URI
-    SQLALCHEMY_DATABASE_URI = build_db_uri(env_name="testing")
+    ENV_NAME = "testing"
 
     @classmethod
     def init_app(cls, app):
+        super().init_app(app)
         print('THIS APP IS IN TESTING MODE.  \
                 YOU SHOULD NOT SEE THIS IN PRODUCTION.')
 
@@ -373,12 +392,11 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     # environment variables
     SESSION_TYPE = "redis"
-
-    # Database URI
-    SQLALCHEMY_DATABASE_URI = build_db_uri(env_name="production")
+    ENV_NAME = "production"
 
     @classmethod
     def init_app(cls, app):
+        super().init_app(app)
         print('THIS APP IS IN PRODUCTION MODE.')
 
 config = {

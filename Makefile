@@ -331,7 +331,10 @@ runfull_maria: configure_repo_dev build_latest_local
 
 ########################################################################################
 
-# Build 🌍 , Publish  🌬️ and Release 🔥
+# Test, Build 🌍 , Publish  🌬️ and Release 🔥
+test: configure_repo_dev
+	VENV_DIR=".venv" ./launch.sh -t
+
 build_latest_local: nuke
 ifeq ($(rebuild),1)
 	echo "Image Rebuild rebuild requested"

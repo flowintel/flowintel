@@ -24,19 +24,22 @@ config_name = os.environ.get("FLOWINTEL_ENV", "development")
 print(f"Loading app config {config_name}...", file=sys.stderr)
 
 from conf.config import config as Config
+from conf.config import get_db_config
 
-driver = str(Config[config_name].db_driver)
+DB = get_db_config()
+
+driver = str(DB["DRIVER"])
 
 if driver == "pymysql":
     import pymysql
 else:
     import psycopg2
 
-host = Config[config_name].db_host
-user = Config[config_name].db_user
-password = Config[config_name].db_password
-database = Config[config_name].db_name
-port = int(Config[config_name].db_port)
+host = DB["HOST"]
+user = DB["USER"]
+password = DB["PASSWORD"]
+database = DB["NAME"]
+port = int(DB["PORT"])
 admin_first_name = Config[config_name].INIT_ADMIN_USER["first_name"]
 
 print(f"Checking for database {database} using driver {driver}...", file=sys.stderr)
