@@ -1839,13 +1839,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     if isinstance(val, datetime.datetime):
                         first_seen = val
                     else:
-                        first_seen = self._parse_date(val)
+                        first_seen = self.parse_date(val)
                 if "last_seen" in attribute and attribute["last_seen"]:
                     val = attribute["last_seen"]
                     if isinstance(val, datetime.datetime):
                         last_seen = val
                     else:
-                        last_seen = self._parse_date(val)
+                        last_seen = self.parse_date(val)
 
                 if "ids_flag" in attribute and attribute["ids_flag"] and attribute["ids_flag"] == 'true':
                     ids_flag = True
@@ -1888,13 +1888,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     if isinstance(val, datetime.datetime):
                         first_seen = val
                     else:
-                        first_seen = self._parse_date(val)
+                        first_seen = self.parse_date(val)
                 if request_json["last_seen"]:
                     val = request_json["last_seen"]
                     if isinstance(val, datetime.datetime):
                         last_seen = val
                     else:
-                        last_seen = self._parse_date(val)
+                        last_seen = self.parse_date(val)
 
                 if request_json["ids_flag"] and (request_json["ids_flag"] == 'true' or request_json["ids_flag"] == True):
                     ids_flag = True
@@ -1967,13 +1967,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             if isinstance(val, datetime.datetime):
                 first_seen = val
             else:
-                first_seen = self._parse_date(val)
+                first_seen = self.parse_date(val)
         if data.get("last_seen"):
             val = data["last_seen"]
             if isinstance(val, datetime.datetime):
                 last_seen = val
             else:
-                last_seen = self._parse_date(val)
+                last_seen = self.parse_date(val)
         if data.get("ids_flag") and (data["ids_flag"] == 'true' or data["ids_flag"] is True):
             ids_flag = True
         if data.get("disable_correlation") and (data["disable_correlation"] == 'true' or data["disable_correlation"] is True):
@@ -2044,13 +2044,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             if isinstance(val, datetime.datetime):
                 first_seen = val
             else:
-                first_seen = self._parse_date(val)
+                first_seen = self.parse_date(val)
         if data.get("last_seen"):
             val = data["last_seen"]
             if isinstance(val, datetime.datetime):
                 last_seen = val
             else:
-                last_seen = self._parse_date(val)
+                last_seen = self.parse_date(val)
         if data.get("ids_flag") and (data["ids_flag"] == 'true' or data["ids_flag"] is True):
             ids_flag = True
         if data.get("disable_correlation") and (data["disable_correlation"] == 'true' or data["disable_correlation"] is True):

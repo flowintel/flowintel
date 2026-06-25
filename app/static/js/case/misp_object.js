@@ -13,10 +13,14 @@ export default {
 	},
     emits: ['modif_misp_objects', 'clear_spotlight'],
 	setup(props, {emit}) {
+        function empty_template(overrides = {}) {
+            return { requiredOneOf: [], attributes: [], ...overrides }
+        }
+
         const case_misp_objects = ref([])
         const misp_objects = ref([])
-        const activeTemplate = ref({requiredOneOf: [],})
-        const activeTemplateAttr = ref({requiredOneOf: [],})
+        const activeTemplate = ref(empty_template())
+        const activeTemplateAttr = ref(empty_template())
         const selectedQuickTemplate = ref('');
         const showAddObject = ref(false)
         const newObjectAttrState = ref({ relation_type_combo: '', value: '', first_seen: '', last_seen: '', comment: '', ids_flag: false, disable_correlation: true })
@@ -142,6 +146,32 @@ export default {
             !!(newAttrState.value.value && newAttrState.value.relation_type_combo))
         const can_save_edit_attr = computed(() => !!editState.value.value)
 
+        function template_attributes(template) {
+            return Array.isArray(template?.attributes) ? template.attributes : []
+        }
+
+        function relation_type_option(attribute) {
+            if (!attribute || !attribute.object_relation || !attribute.type) return null
+            return {
+                name: attribute.object_relation,
+                misp_attribute: attribute.type
+            }
+        }
+
+        function fallback_template(template_uuid, attribute = null) {
+            const currentOption = relation_type_option(attribute)
+            return empty_template({
+                uuid: template_uuid || '',
+                name: 'Unknown template',
+                attributes: currentOption ? [currentOption] : []
+            })
+        }
+
+        function find_object_template(template_uuid, attribute = null) {
+            return misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid) ||
+                fallback_template(template_uuid, attribute)
+        }
+
         const defaultObjectTemplates = {
             'domain/ip': '43b3b146-77eb-4931-b4cc-b66c60f28734',
             'url/domain': '60efb77b-40b5-4c46-871b-ed1ed999fce5',
@@ -253,7 +283,7 @@ export default {
                 }
             } catch(e) {}
             new_object_task_ids.value = []
-            activeTemplate.value = { requiredOneOf: [] }
+            activeTemplate.value = empty_template()
             selectedQuickTemplate.value = ''
             newObjectAttrState.value = { relation_type_combo: '', value: '', first_seen: '', last_seen: '', comment: '', ids_flag: false, disable_correlation: true }
             list_attr.value = []
@@ -476,6 +506,7 @@ export default {
         }
 
         function enterEditMode(attribute, template_uuid) {
+            activeTemplateAttr.value = find_object_template(template_uuid, attribute)
             editingAttrId.value = attribute.id
             editState.value = {
                 value: attribute.value,
@@ -488,7 +519,6 @@ export default {
                 disable_correlation: attribute.disable_correlation,
                 comment: attribute.comment || ''
             }
-            activeTemplateAttr.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid)
         }
 
         function cancelEdit() {
@@ -498,11 +528,12 @@ export default {
 
         function startAddingAttribute(object_id, template_uuid) {
             addingAttrToObject.value = object_id
-            activeTemplateAttr.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid)
+            activeTemplateAttr.value = find_object_template(template_uuid)
+            const firstTemplateAttr = template_attributes(activeTemplateAttr.value)[0]
             newAttrState.value = {
                 value: '',
-                relation_type_combo: activeTemplateAttr.value.attributes[0] ? 
-                    activeTemplateAttr.value.attributes[0].name + '::' + activeTemplateAttr.value.attributes[0].misp_attribute : '',
+                relation_type_combo: firstTemplateAttr ?
+                    firstTemplateAttr.name + '::' + firstTemplateAttr.misp_attribute : '',
                 first_seen: '',
                 last_seen: '',
                 ids_flag: false,
@@ -654,8 +685,8 @@ export default {
         }
 
         watch(selectedQuickTemplate, (newValue, oldValue) => {
-            if (defaultObjectTemplates[newValue]) {                
-                activeTemplate.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === defaultObjectTemplates[newValue]);
+            if (defaultObjectTemplates[newValue]) {
+                activeTemplate.value = find_object_template(defaultObjectTemplates[newValue])
             }
         });
 
@@ -708,6 +739,7 @@ export default {
             misp_objects,
             activeTemplate,
             activeTemplateAttr,
+            template_attributes,
             selectedQuickTemplate,
             list_attr,
             showAddObject,
@@ -881,7 +913,7 @@ export default {
                         <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
                         <select v-model="newObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
                             <option value="">-- select --</option>
-                            <template v-for="attr in activeTemplate.attributes">
+                            <template v-for="attr in template_attributes(activeTemplate)">
                                 <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                             </template>
                         </select>
@@ -965,7 +997,7 @@ export default {
                                             <div class="col-md-3">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
                                                 <select v-model="editObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                    <template v-for="a in activeTemplate.attributes">
+                                                    <template v-for="a in template_attributes(activeTemplate)">
                                                         <option :value="a.name + '::' + a.misp_attribute">[[a.name]]::[[a.misp_attribute]]</option>
                                                     </template>
                                                 </select>
@@ -1215,7 +1247,7 @@ export default {
                                             <div class="col-md-4">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
                                                 <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                    <template v-for="attr in activeTemplateAttr.attributes">
+                                                    <template v-for="attr in template_attributes(activeTemplateAttr)">
                                                         <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                                                     </template>
                                                 </select>
@@ -1264,7 +1296,7 @@ export default {
                                         <div class="col-md-4">
                                             <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
                                             <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                <template v-for="attr in activeTemplateAttr.attributes">
+                                                <template v-for="attr in template_attributes(activeTemplateAttr)">
                                                     <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                                                 </template>
                                             </select>
@@ -1482,7 +1514,7 @@ export default {
                                                 <div class="col-md-4">
                                                     <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
                                                     <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                        <template v-for="attr in activeTemplateAttr.attributes">
+                                                        <template v-for="attr in template_attributes(activeTemplateAttr)">
                                                             <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                                                         </template>
                                                     </select>
@@ -1530,7 +1562,7 @@ export default {
                                             <div class="col-md-4">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
                                                 <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                    <template v-for="attr in activeTemplateAttr.attributes">
+                                                    <template v-for="attr in template_attributes(activeTemplateAttr)">
                                                         <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                                                     </template>
                                                 </select>
@@ -1562,14 +1594,14 @@ export default {
                                         </div>
                                         <div class="d-flex gap-2">
                                             <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
-                                                @click="cancelAddAttribute()">
-                                                    Cancel
-                                                </button>
-                                                <button type="button" class="btn btn-primary btn-sm" :disabled="!can_save_new_attr"
-                                                :title="can_save_new_attr ? 'Add attribute' : 'A value and object relation & type are required'"
-                                                @click="saveNewAttribute(misp_object.object_id)">
-                                                    Add
-                                                </button>
+                                            @click="cancelAddAttribute()">
+                                                Cancel
+                                            </button>
+                                            <button type="button" class="btn btn-primary btn-sm" :disabled="!can_save_new_attr"
+                                            :title="can_save_new_attr ? 'Add attribute' : 'A value and object relation & type are required'"
+                                            @click="saveNewAttribute(misp_object.object_id)">
+                                                Add
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

@@ -6,7 +6,7 @@ from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from ..connectors import connectors_core as ConnectorsModel
 from ..connectors import connectors_core as ConnectorModel
-from ..db_class.db import Task, Task_Misp_Object, Task_Misp_Attribute, Misp_Object_Instance_Uuid, Misp_Attribute_Instance_Uuid, Case_Timeline_Event, db
+from ..db_class.db import Task, Task_Misp_Object, Task_Misp_Attribute, Misp_Object_Instance_Uuid, Misp_Attribute_Instance_Uuid, Case_Timeline_Event, db, DATETIME_FORMAT_FULL
 from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
 from ..utils.utils import get_object_templates
@@ -52,8 +52,8 @@ def get_case_misp_object(cid):
                 "attributes": loc_attr_list,
                 "object_id": object.id,
                 "object_uuid": object.template_uuid,
-                "object_creation_date": object.creation_date.strftime('%Y-%m-%d %H:%M'),
-                "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M'),
+                "object_creation_date": object.creation_date.strftime(DATETIME_FORMAT_FULL),
+                "object_last_modif": object.last_modif.strftime(DATETIME_FORMAT_FULL),
                 "synced_instances": synced_instances,
                 # Mark whether this object already has a timeline event
                 "is_imported": True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=object.id).first() else False
@@ -372,9 +372,14 @@ def create_timeline_event(cid):
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "date_text" in request.json and "description" in request.json:
+                date_text = (request.json["date_text"] or "").strip()
+                if not date_text:
+                    return {"message": "Date/time is required", "toast_class": "warning-subtle"}, 400
+                if CaseModel.parse_date(date_text) is None:
+                    return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
                 misp_object_id = request.json.get("misp_object_id")
                 event = CaseModel.create_timeline_event(
-                    cid, request.json["date_text"], request.json["description"],
+                    cid, date_text, request.json["description"],
                     misp_object_id, current_user
                 )
                 return {"message": "Event created", "toast_class": "success-subtle", "event": event.to_json()}, 200
@@ -392,8 +397,13 @@ def edit_timeline_event(cid, eid):
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "date_text" in request.json and "description" in request.json:
+                date_text = (request.json["date_text"] or "").strip()
+                if not date_text:
+                    return {"message": "Date/time is required", "toast_class": "warning-subtle"}, 400
+                if CaseModel.parse_date(date_text) is None:
+                    return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
                 event = CaseModel.edit_timeline_event(
-                    eid, request.json["date_text"], request.json["description"], current_user
+                    eid, date_text, request.json["description"], current_user
                 )
                 if event:
                     return {"message": "Event updated", "toast_class": "success-subtle", "event": event.to_json()}, 200
@@ -550,7 +560,7 @@ def get_case_connectors(cid):
                 "identifier": case_connector.identifier,
                 "is_updating_case": case_connector.is_updating_case,
                 "is_misp_connector": is_misp_connector,
-                "last_sync": case_connector.last_sync.strftime('%Y-%m-%d %H:%M') if case_connector.last_sync else None
+                "last_sync": case_connector.last_sync.strftime(DATETIME_FORMAT_FULL) if case_connector.last_sync else None
             })
         return {"case_connectors": instance_list}, 200
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404

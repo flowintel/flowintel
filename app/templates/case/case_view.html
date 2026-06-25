@@ -1290,6 +1290,21 @@
                     return [...types]
                 })
 
+                const case_connector_instance_ids = computed(() => {
+                    const ids = new Set()
+                    for (const conn of case_connectors_list.value || []) {
+                        if (conn.details && conn.details.id !== undefined && conn.details.id !== null) {
+                            ids.add(String(conn.details.id))
+                        }
+                    }
+                    return ids
+                })
+
+                function get_unlinked_connector_instances(typeName) {
+                    const instances = (all_connectors_list.value && all_connectors_list.value[typeName]) || []
+                    return instances.filter(inst => !case_connector_instance_ids.value.has(String(inst.id)))
+                }
+
                 function get_connector_instances(connType) {
                     if (!case_connectors_list.value || !all_connectors_list.value) return []
                     const typeInstances = all_connectors_list.value[connType]
@@ -1403,7 +1418,7 @@
                     const already_linked = connector_types_in_case.value.some(t => t.toUpperCase() === typeName.toUpperCase())
                     if (!already_linked && can_use_connectors.value) {
                         // Gather available instances for this type from all_connectors_list
-                        const instances = (all_connectors_list.value && all_connectors_list.value[typeName]) || []
+                        const instances = get_unlinked_connector_instances(typeName)
                         pending_connector_type.value = typeName
                         pending_connector_instances.value = instances
                         pending_selected_instance.value = instances.length ? instances[0] : null
@@ -1414,6 +1429,7 @@
 
                 async function submit_add_module_connector() {
                     if (!pending_selected_instance.value) return
+                    if (case_connector_instance_ids.value.has(String(pending_selected_instance.value.id))) return
                     is_adding_module_connector.value = true
                     try {
                         const res = await fetch(`/case/{{case.id}}/add_connector`, {

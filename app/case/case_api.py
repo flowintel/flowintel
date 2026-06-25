@@ -1,6 +1,6 @@
 from flask import request
 
-from app.db_class.db import Case, User, File, Misp_Attribute_Instance_Uuid
+from app.db_class.db import Case, User, File, Misp_Attribute_Instance_Uuid, DATETIME_FORMAT_FULL
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
@@ -1037,8 +1037,8 @@ class ModifNoteCase(Resource):
                         "attributes": loc_attr_list,
                         "object_id": obj.id,
                         "object_uuid": obj.template_uuid,
-                        "object_creation_date": obj.creation_date.strftime('%Y-%m-%d %H:%M') if obj.creation_date else None,
-                        "object_last_modif": obj.last_modif.strftime('%Y-%m-%d %H:%M') if obj.last_modif else None
+                        "object_creation_date": obj.creation_date.strftime(DATETIME_FORMAT_FULL) if obj.creation_date else None,
+                        "object_last_modif": obj.last_modif.strftime(DATETIME_FORMAT_FULL) if obj.last_modif else None
                     })
 
                 return {"misp-object": loc_object}, 200

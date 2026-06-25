@@ -55,9 +55,10 @@ export default {
 
         const attached_instance_ids = computed(() => {
             const ids = new Set()
+            if (!props.case_task_connectors_list) return ids
             for (const i in props.case_task_connectors_list) {
                 const details = props.case_task_connectors_list[i].details
-                if (details && details.id != null) ids.add(details.id)
+                if (details && details.id != null) ids.add(String(details.id))
             }
             return ids
         })
@@ -361,7 +362,9 @@ export default {
                     <template v-if="all_connectors_list">
                         <template v-for="(instances, connector) in all_connectors_list">
                             <optgroup :label="[[connector]]">
-                                <option :value="[[instance.id]]" v-for="instance in instances">[[instance.name]]</option>
+                                <template v-for="instance in instances" :key="instance ? instance.id : connector">
+                                    <option v-if="instance && !attached_instance_ids.has(String(instance.id))" :value="instance.id">[[instance.name]]</option>
+                                </template>
                             </optgroup>
                         </template>
                     </template>

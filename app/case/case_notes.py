@@ -8,7 +8,7 @@ import conf.config_module as ConfigModule
 from .case import case_blueprint, check_user_private_case
 from .CaseCore import CaseModel, FILE_FOLDER
 from . import common_core as CommonModel
-from ..db_class.db import Case, Case_Link_Case, File, Task_User, User
+from ..db_class.db import Case, Case_Link_Case, File, Task_User, User, DATETIME_FORMAT_FULL
 from ..decorators import editor_required, admin_required
 from ..utils.logger import flowintel_log
 from ..utils.note_variables import resolve_variables, get_syntax_reference
@@ -385,6 +385,16 @@ def case_report_generate(cid):
         return f'<span class="cluster">{label}</span>'
 
     opts = request.json or {}
+
+    report_section_keys = (
+        "include_metadata", "include_title", "include_description",
+        "include_tasks", "include_files", "include_notes",
+        "include_tags", "include_objects", "include_taxonomies",
+        "include_audit", "include_timeline",
+    )
+    if not any(opts.get(k) for k in report_section_keys):
+        return {"message": "Select at least one section to include in the report."}, 400
+
     tasks = case.tasks.all()
 
     try:
@@ -416,7 +426,7 @@ def case_report_generate(cid):
 
         lines.append(f"- **Case ID:** {case.id}")
 
-        created = case.creation_date.strftime('%Y-%m-%d %H:%M') if case.creation_date else "—"
+        created = case.creation_date.strftime(DATETIME_FORMAT_FULL) if case.creation_date else "—"
         lines.append(f"- **Date created:** {created}")
 
         owner_org = CommonModel.get_org(case.owner_org_id)
@@ -444,7 +454,7 @@ def case_report_generate(cid):
             lines.append("- **Flags:** " + ", ".join(flags))
 
         if case.deadline:
-            lines.append(f"- **Deadline:** {case.deadline.strftime('%Y-%m-%d %H:%M')}")
+            lines.append(f"- **Deadline:** {case.deadline.strftime(DATETIME_FORMAT_FULL)}")
         if case.time_required:
             lines.append(f"- **Time required:** {case.time_required}")
         if case.ticket_id:
@@ -459,7 +469,7 @@ def case_report_generate(cid):
         pct = int(done / total * 100) if total > 0 else 0
         lines.append(f"- **Completion:** {done}/{total} tasks ({pct}%)")
 
-        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+        now = datetime.datetime.now().strftime(DATETIME_FORMAT_FULL)
         user_label = f"{current_user.first_name} {current_user.last_name} ({current_user.email})"
         lines.append(f"- **Report generated on:** {now} by {user_label}")
 
@@ -509,7 +519,7 @@ def case_report_generate(cid):
                     lines.append("- **Owner(s):** —")
 
                 if task.deadline:
-                    lines.append(f"- **Deadline:** {task.deadline.strftime('%Y-%m-%d %H:%M')}")
+                    lines.append(f"- **Deadline:** {task.deadline.strftime(DATETIME_FORMAT_FULL)}")
                 if task.time_required:
                     lines.append(f"- **Time required:** {task.time_required}")
 
@@ -802,4 +812,3 @@ def resolve_note_variables(cid):
 def note_variables_reference():
     """Return the complete syntax reference for note variables"""
     return {"reference": get_syntax_reference()}, 200
-

@@ -302,6 +302,14 @@ export default {
 			} catch (e) {}
 		}
 
+		const can_use_connectors = computed(() => {
+			if (!props.cases_info) return false
+			const permission = props.cases_info.permission
+			if (permission && permission.admin) return true
+			if (permission && permission.misp_editor) return true
+			return false
+		})
+
 		const can_reorder = computed(() => {
 			if (!props.cases_info) return false
 			const permission = props.cases_info.permission

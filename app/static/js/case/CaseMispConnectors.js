@@ -325,8 +325,7 @@ export default {
                                         :modules="modules"
                                         :case_misp_objects_list="case_misp_objects_list"
                                         :cases_info="cases_info"
-                                        @sync_done="(e) => on_sync_done(e)"
-                                        @close="">
+                                        @sync_done="(e) => on_sync_done(e)">
                                     </misp-sync-panel>
                             </template>
                             <!-- Logs panel -->

@@ -14,9 +14,36 @@ export default {
         const create_name = ref("")
         const edit_names = ref({})
 
+        function url_tools(task) {
+            return Array.isArray(task?.urls_tools) ? task.urls_tools : []
+        }
+
+        function ensure_url_tools(task) {
+            if (!task) return []
+            if (!Array.isArray(task.urls_tools)) task.urls_tools = []
+            return task.urls_tools
+        }
+
+        function text_value(value) {
+            return String(value ?? "")
+        }
+
+        function is_blank(value) {
+            return !text_value(value).trim()
+        }
+
+        function url_tool_label(url_tool) {
+            return text_value(url_tool?.name)
+        }
+
+        function edit_url_tool_name(url_tool) {
+            if (!url_tool) return ""
+            return text_value(edit_names.value[url_tool.id] ?? url_tool.name)
+        }
+
         async function create_url_tool(task) {
             $("#textarea-url_tool-error-" + task.id).text("")
-            let name = create_name.value.trim()
+            let name = text_value(create_name.value).trim()
             if (!name) {
                 $("#textarea-url_tool-error-" + task.id).text("Cannot be empty...").css("color", "brown")
                 return
@@ -41,7 +68,7 @@ export default {
             if (await res.status == 200) {
                 let loc = await res.json()
 
-                task.urls_tools.push({ "id": loc["id"], "name": name, "task_id": task.id })
+                ensure_url_tools(task).push({ "id": loc["id"], "name": name, "task_id": task.id })
                 create_message("url_tool created", "success-subtle", false, "fas fa-plus")
                 create_name.value = ""
                 $("#create_url_tool_" + task.id).modal("hide")
@@ -52,8 +79,9 @@ export default {
 
         async function edit_url_tool(task, url_tool_id) {
             $("#edit-url_tool-error-" + url_tool_id).text("")
-            let current = task.urls_tools.find(ut => ut.id == url_tool_id)
-            let name = (edit_names.value[url_tool_id] ?? current?.name ?? "").trim()
+            const task_url_tools = ensure_url_tools(task)
+            let current = task_url_tools.find(ut => ut.id == url_tool_id)
+            let name = text_value(edit_names.value[url_tool_id] ?? current?.name).trim()
             if (!name) {
                 $("#edit-url_tool-error-" + url_tool_id).text("Cannot be empty...").css("color", "brown")
                 return
@@ -76,9 +104,9 @@ export default {
                 })
             });
             if (await res.status == 200) {
-                for (let i in task.urls_tools) {
-                    if (task.urls_tools[i].id == url_tool_id) {
-                        task.urls_tools[i].name = name
+                for (let i in task_url_tools) {
+                    if (task_url_tools[i].id == url_tool_id) {
+                        task_url_tools[i].name = name
                         break
                     }
                 }
@@ -103,13 +131,14 @@ export default {
 
             if (await res.status == 200) {
                 let loc_i
-                for (let i in task.urls_tools) {
-                    if (task.urls_tools[i].id == url_tool_id) {
+                const task_url_tools = ensure_url_tools(task)
+                for (let i in task_url_tools) {
+                    if (task_url_tools[i].id == url_tool_id) {
                         loc_i = i
                         break
                     }
                 }
-                task.urls_tools.splice(loc_i, 1)
+                if (loc_i !== undefined) task_url_tools.splice(loc_i, 1)
             }
             await display_toast(res)
         }
@@ -117,6 +146,10 @@ export default {
         return {
             create_name,
             edit_names,
+            url_tools,
+            is_blank,
+            url_tool_label,
+            edit_url_tool_name,
             create_url_tool,
             edit_url_tool,
             delete_url_tool
@@ -136,9 +169,9 @@ export default {
                 </template>
             </div>
             <div class="task-section-body">
-                <template v-for="url_tool in task.urls_tools">
+                <template v-for="url_tool in url_tools(task)">
                     <div>
-                        [[url_tool.name]]
+                        [[ url_tool_label(url_tool) || 'Untitled URL/Tool' ]]
                         <template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
                             <button @click="delete_url_tool(task, url_tool.id)" class="btn btn-danger btn-sm" style="float: right;">
                                 <i class="fa-solid fa-trash"></i>
@@ -158,11 +191,11 @@ export default {
                                     <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <textarea class="form-control" :value="edit_names[url_tool.id] ?? url_tool.name" @input="edit_names[url_tool.id] = $event.target.value" :id="'edit-url_tool-'+url_tool.id"/>
+                                    <textarea class="form-control" :value="edit_url_tool_name(url_tool)" @input="edit_names[url_tool.id] = $event.target.value" :id="'edit-url_tool-'+url_tool.id"/>
                                     <div :id="'edit-url_tool-error-'+url_tool.id"></div>
                                 </div>
                                 <div class="modal-footer">
-                                    <button @click="edit_url_tool(task, url_tool.id)" :disabled="!(edit_names[url_tool.id] ?? url_tool.name).trim()" class="btn btn-primary">Submit</button>
+                                    <button @click="edit_url_tool(task, url_tool.id)" :disabled="is_blank(edit_url_tool_name(url_tool))" class="btn btn-primary">Submit</button>
                                 </div>
                             </div>
                         </div>
@@ -188,7 +221,7 @@ export default {
 					</div>
                 </div>
                 <div class="modal-footer">
-                    <button @click="create_url_tool(task)" :disabled="!create_name.trim()" class="btn btn-primary">Submit</button>
+                    <button @click="create_url_tool(task)" :disabled="is_blank(create_name)" class="btn btn-primary">Submit</button>
                 </div>
             </div>
         </div>
