@@ -344,7 +344,7 @@ runfullofficial_postgres: configure_repo_dev
 
 ########################################################################################
 
-# Test, Build 🌍 , Publish  🌬️ and Release 🔥
+# Test 🧪, Build 🌍 , Publish  🌬️ and Release 🔥
 test: first_install
 	VENV_DIR=".venv" ./launch.sh -t
 
@@ -487,7 +487,6 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfullofficial_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised based on Official Docker image (docker-compose with Postgres stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "build_latest_local" "/"  "Build the database agnostic Docker Image (Dockerfile)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_run" "/"  "Manual Run Dev Infrastructure (docker-compose, Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_run" "/"  "Manual Run Dev Infrastructure (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_stop" "/"  "Manual Stop Dev Infrastructure when things gone stuck (docker-compose, Postgres stack)"
@@ -497,9 +496,10 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_full_maria_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_fullofficial_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure based on Official Docker image when things gone stuck (docker-compose, Postgres stack)"
 	echo ""
-	echo -e "${BOLD}🔥 Build, 🌬️  Publish and 🚀 Release: TODO${RESET}"
+	echo -e "${BOLD}🧪 Test, 🔥 Build, 🌬️  Publish and 🚀 Release: TODO${RESET}"
 	echo ""
-	echo -e "${BOLD}🧪 Tests: TODO${RESET}"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "build_latest_local" "/"  "Build the database agnostic Docker Image (Dockerfile)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "test" "/"  "Launch locally the test leveraging the local virtual environment and default SQLite"
 	echo ""
 	echo -e "${BOLD}🧹 Housekeeping:${RESET}"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "format_and_lint" "/" "Run the formatter and linter our of pre-commit hooks"
