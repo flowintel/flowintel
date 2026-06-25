@@ -183,46 +183,6 @@ first_install: configure_repo_dev
 ########################################################################################
 
 # Database Management
-database_init:
-	# ! EXPERIMENTAL !
-	# TODO Clarify how much it is redundant with migrate.sh script
-	# TODO Clarify why we even need it for Docker as it seems to be already managed in the entrypoint
-	echo "💣 DO NOT RUN IN PRODUCTION !!!"
-	echo "! EXPERIMENTAL !"
-	echo -e "${RED}First run the application, then run this recipe at first install only.${RESET}"
-	go_to_initdb="N"
-	read -p "Do you want to continue ? (Y/N) " go_to_initdb
-	if [ $$go_to_initdb = "Y" ] || [ $$go_to_initdb = "y" ]; then
-		docker exec -it flowintel bash -i ./launch.sh --init_db
-		echo "Database initialized."
-	else
-		echo "Database initialization skipped."
-	fi
-
-init_migrations_postgres:
-	# ! EXPERIMENTAL !
-	# TODO Clarify how much it is redundant with migrate.sh script
-	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	echo "! EXPERIMENTAL !"
-	read wait_for_me
-	uv run flask db init
-	uv run flask db migrate -m "postgres initial schema" \
-	    --head base \
-    	--branch-label postgres \
-		--version-path migrations/versions
-
-init_migrations_maria:
-	# ! EXPERIMENTAL !
-	# TODO Clarify how much it is redundant with migrate.sh script
-	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	echo "! EXPERIMENTAL !"
-	read wait_for_me
-	uv run flask db init
-	uv run flask db migrate -m "mariadb initial schema" \
-	    --head base \
-    	--branch-label mariadb \
-		--version-path migrations/versions_mariadb
-
 new_migration_postgres: dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
@@ -467,9 +427,6 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "first_install" "/" "configure_repo_deb then initialize Python venv"
 	echo ""
 	echo -e "${BOLD}📦 Development lifecycle:${RESET}"
-	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "database_init" "/"  "Initialise database when run fully Dockerised- Run only on first install IN DEV !"
-	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "init_migrations_postgres" "/"  "Init a migration folder, Postgresql running as Dockerised Dev Infrastructure"
-	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "init_migrations_mariadb" "/"  "Init a migration folder, MariaDB running as Dockerised Dev Infrastructure"
 	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "new_migration_postgres" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
 	printf "  %-20s %s %-20s %s %s\n" "[EXPERIMENTAL]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "full_new_migration_postgres" "/"  "Create a new migration file, Fully Dockerised infrastructure must be running (Postgres stack)"
