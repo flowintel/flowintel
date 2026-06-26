@@ -157,8 +157,8 @@
                             <tr>
                                 <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> System environment <small class="fw-normal text-muted">(FLOWINTEL_APP_ENV)</small></td>
                                 <td>
-                                    <span class="badge {% if system_info.flowintel_env == 'production' %}bg-success{% elif system_info.flowintel_env == 'development' %}bg-warning{% else %}bg-secondary{% endif %}">
-                                        {{ system_info.flowintel_env }}
+                                    <span class="badge {% if system_info.flowintel_app_env == 'production' %}bg-success{% elif system_info.flowintel_app_env == 'development' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.flowintel_app_env }}
                                     </span>
                                 </td>
                             </tr>
