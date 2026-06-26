@@ -51,7 +51,7 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: --env requires a value (development|production|testing)"
                 exit 1
             fi
-            export FLOWINTEL_ENV="$2"
+            export FLOWINTEL_APP_ENV="$2"
             shift 2
             ;;
         -m|--migrate)
@@ -75,8 +75,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate environment
-if [[ "$FLOWINTEL_ENV" != "development" && "$FLOWINTEL_ENV" != "production" && "$FLOWINTEL_ENV" != "docker" ]]; then
-    echo "Error: Invalid environment '$FLOWINTEL_ENV'. Must be development, production, or testing."
+if [[ "$FLOWINTEL_APP_ENV" != "development" && "$FLOWINTEL_APP_ENV" != "production" && "$FLOWINTEL_APP_ENV" != "docker" ]]; then
+    echo "Error: Invalid environment '$FLOWINTEL_APP_ENV'. Must be development, production, or testing."
     exit 1
 fi
 

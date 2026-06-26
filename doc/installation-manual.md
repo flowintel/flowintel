@@ -801,8 +801,8 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=flowintel
 
-# Flask environment
-FLOWINTEL_ENV="production"
+# Application environment
+FLOWINTEL_APP_ENV="production"
 ```
 
 ## Key configuration options
@@ -828,7 +828,7 @@ The table below covers all settings from `template.env` (`.env`):
 | `PROXY_X_PROTO` | Trust X-Forwarded-Proto header | `1` |
 | `PROXY_X_HOST` | Trust X-Forwarded-Host header | `1` |
 | `PROXY_X_PREFIX` | Trust X-Forwarded-Prefix header | `0` or `1` |
-| `FLOWINTEL_ENV` | Flowintel runtime environment | `production` |
+| `FLOWINTEL_APP_ENV` | Flowintel runtime environment | `production` |
 | `AUDIT_LOG_PREFIX` | Prefix used for audit log entries | `AUDIT` |
 | `LOG_FILE` | Audit/application log filename | `record.log` |
 | `MAIN_LOGO` | Main application logo path | `/static/image/flowintel.png` |
@@ -1672,7 +1672,7 @@ User=yourusername
 Group=yourusername
 WorkingDirectory=/opt/flowintel/flowintel
 Environment="PATH=/opt/flowintel/flowintel/env/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="FLOWINTEL_ENV=production"
+Environment="FLOWINTEL_APP_ENV=production"
 Environment="HISTORY_DIR=/opt/flowintel/flowintel/history"
 ExecStart=/opt/flowintel/flowintel/env/bin/gunicorn -w 4 "app:create_app()" -b 127.0.0.1:7006 --access-logfile -
 Restart=on-failure
@@ -2517,7 +2517,7 @@ To check which migration your database is currently on:
 
 ```bash
 source env/bin/activate
-export FLOWINTEL_ENV=production  # or development
+export FLOWINTEL_APP_ENV=production  # or development
 flask db current
 ```
 
@@ -2543,7 +2543,7 @@ column "version" of relation "case__template" already exists
 
 ```bash
 source env/bin/activate
-export FLOWINTEL_ENV=production  # or development
+export FLOWINTEL_APP_ENV=production  # or development
 flask db stamp head
 ```
 

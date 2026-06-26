@@ -37,10 +37,10 @@ RUN script -q -c "./launch.sh --init_db" /dev/null
 
 ### 3. Set the environment to production
 
-Run the following command to replace all `FLOWINTEL_ENV="development"` with `FLOWINTEL_ENV="production"` in `launch.sh`:
+Run the following command to replace all `FLOWINTEL_APP_ENV="development"` with `FLOWINTEL_APP_ENV="production"` in `launch.sh`:
 
 ```bash
-sed -i 's/FLOWINTEL_ENV="development"/FLOWINTEL_ENV="production"/g' launch.sh
+sed -i 's/FLOWINTEL_APP_ENV="development"/FLOWINTEL_APP_ENV="production"/g' launch.sh
 ```
 
 ---

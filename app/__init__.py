@@ -18,7 +18,7 @@ from conf.config import config as Config # This will also parse the .env
 
 def create_app():
     app = Flask(__name__)
-    config_name = os.environ.get("FLOWINTEL_ENV", "development").strip().lower()
+    config_name = os.environ.get("FLOWINTEL_APP_ENV", "development").strip().lower()
 
     if config_name not in Config:
         raise ValueError(f"Unknown config environment: {config_name}")

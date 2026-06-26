@@ -591,7 +591,7 @@ def search_attr_with_value():
 def system_settings():
     from conf.config import config as app_config
     
-    flowintel_env = os.getenv('FLOWINTEL_ENV', 'development')
+    flowintel_env = os.getenv('FLOWINTEL_APP_ENV', 'development')
     config_class = app_config.get(flowintel_env)
     
     db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')

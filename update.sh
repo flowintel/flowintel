@@ -11,7 +11,7 @@ fi
 ./launch.sh -ks
 
 # Default environment
-FLOWINTEL_ENV="development"
+FLOWINTEL_APP_ENV="development"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: --env requires a value (development|production|docker)"
                 exit 1
             fi
-            FLOWINTEL_ENV="$2"
+            FLOWINTEL_APP_ENV="$2"
             shift 2
             ;;
         *)
@@ -33,12 +33,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate environment
-if [[ "$FLOWINTEL_ENV" != "development" && "$FLOWINTEL_ENV" != "production" && "$FLOWINTEL_ENV" != "docker" ]]; then
-    echo "Error: Invalid environment '$FLOWINTEL_ENV'. Must be development, production, or docker."
+if [[ "$FLOWINTEL_APP_ENV" != "development" && "$FLOWINTEL_APP_ENV" != "production" && "$FLOWINTEL_APP_ENV" != "docker" ]]; then
+    echo "Error: Invalid environment '$FLOWINTEL_APP_ENV'. Must be development, production, or docker."
     exit 1
 fi
 
-export FLOWINTEL_ENV
+export FLOWINTEL_APP_ENV
 
 echo "##########"
 echo "Git pull"
@@ -55,7 +55,7 @@ if [ ! -d "instance/backup" ]; then
     mkdir -p instance/backup
 fi
 
-if [[ "$FLOWINTEL_ENV" == "development" ]]; then
+if [[ "$FLOWINTEL_APP_ENV" == "development" ]]; then
     # SQLite backup
     cp instance/flowintel.sqlite instance/backup/$(date +"%Y_%m_%d").sqlite
 else
@@ -69,7 +69,7 @@ fi
 
 # Run migration script
 # We kept the facility of having different alembic branch, however everything points to "head" by now
-./migrate.sh --env "$FLOWINTEL_ENV" -u --migration_branch postgres
+./migrate.sh --env "$FLOWINTEL_APP_ENV" -u --migration_branch postgres
 
 echo ""
 echo "##########"

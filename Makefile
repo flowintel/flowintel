@@ -230,12 +230,12 @@ full_new_migration:
 	read wait_for_me
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
-	# The dockerised deployment owns the FLOWINTEL_ENV definition at runtime
+	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
 	# Also, no need for activating the venv as it is already included in the PATH in Docker
 	docker exec -it flowintel bash -i ./migrate.sh --migrate
 	echo "New migration created if new model found"
 	sleep 1
-	# The dockerised deployment owns the FLOWINTEL_ENV definition at runtime
+	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
 	# Also, no need for activating the venv as it is already included in the PATH in Docker
 	docker exec -it flowintel bash -i ./migrate.sh --upgrade
 	echo "New migrations applied"
@@ -249,12 +249,12 @@ full_new_migration_maria:
 	read wait_for_me
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
-	# The dockerised deployment owns the FLOWINTEL_ENV definition at runtime
+	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
 	# Also, no need for activating the venv as it is already included in the PATH in Docker
 	docker exec -it flowintel bash -i -c "./migrate.sh --migrate"
 	echo "New migration created if new model found"
 	sleep 1
-	# The dockerised deployment owns the FLOWINTEL_ENV definition at runtime
+	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
 	# Also, no need for activating the venv as it is already included in the PATH in Docker
 	docker exec -it flowintel bash -i -c "./migrate.sh --upgrade"
 
@@ -265,7 +265,7 @@ install_postgres: first_install dev_localinfra_postgres_run
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
 	cp -f .env.postgres .env
 	VENV_DIR=".venv" ./install.sh
-	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_ENV=production
+	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
@@ -278,7 +278,7 @@ install_maria: first_install dev_localinfra_maria_run
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
 	cp -f .env.mariadb .env
 	VENV_DIR=".venv" ./install.sh
-	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_ENV=production
+	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
@@ -290,7 +290,7 @@ run_postgres: first_install dev_localinfra_postgres_run
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
 	cp -f .env.postgres .env
-	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_ENV=production
+	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
@@ -302,7 +302,7 @@ run_maria: first_install dev_localinfra_maria_run
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
 	cp -f .env.mariadb .env
-	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_ENV=production
+	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
 	read _
