@@ -41,8 +41,8 @@ if [ ! -f "$CONFIG_MODULE_FILE" ]; then
 fi
 
 # Get app URL and port from config
-APP_URL=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_URL)")
-APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_PORT)")
+APP_URL=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.APP_HOST)")
+APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.APP_PORT)")
 
 function prepare_app_run {
     # This function is to avoid having problem with the env for test
